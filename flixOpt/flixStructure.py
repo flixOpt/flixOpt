@@ -276,6 +276,10 @@ class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifische
       
       
 class cEnergySystem:
+    
+    ''' 
+    Handles the energy system as a model.
+    '''
 
     ## Properties:  
   
@@ -291,25 +295,25 @@ class cEnergySystem:
 
     @property
     def allInvestFeatures(self):
-      allInvestFeatures = []
-       
-      for aME in self.allMEsOfFirstLayer: # kann in Komponente (z.B. Speicher) oder Flow stecken
-        for aSubComp in aME.subElements_all:
-          if isinstance(aSubComp,cFeatureInvest):
-            allInvestFeatures.append(aSubComp)
-      return allInvestFeatures
+        allInvestFeatures = []
+         
+        for aME in self.allMEsOfFirstLayer: # kann in Komponente (z.B. Speicher) oder Flow stecken
+            for aSubComp in aME.subElements_all:
+                if isinstance(aSubComp, cFeatureInvest):
+                    allInvestFeatures.append(aSubComp)
+        return allInvestFeatures
     
     # Achtung: Funktion wird nicht nur für Getter genutzt.
     def getFlows(self,listOfComps = None) :      
-      setOfFlows = set()
-      # standardmäßig Flows aller Komponenten:
-      if listOfComps is None:
-        listOfComps = self.listOfComponents
-      # alle comps durchgehen:
-      for comp in listOfComps:
-        newFlows = comp.inputs + comp.outputs
-        setOfFlows = setOfFlows | set(newFlows)
-      return setOfFlows
+        setOfFlows = set()
+        # standardmäßig Flows aller Komponenten:
+        if listOfComps is None:
+            listOfComps = self.listOfComponents
+        # alle comps durchgehen:
+        for comp in listOfComps:
+            newFlows = comp.inputs + comp.outputs
+            setOfFlows = setOfFlows | set(newFlows)
+        return setOfFlows
     
     setOfFlows = property(getFlows)
 
@@ -317,45 +321,57 @@ class cEnergySystem:
     # get all TS in one lis:
     @property
     def allTSinMEs(self):
-      ME : cMEModel
-      allTS = []
-      for ME in self.allMEsOfFirstLayer:
-        allTS += ME.TS_list
-      return allTS
+        ME : cMEModel
+        allTS = []
+        for ME in self.allMEsOfFirstLayer:
+            allTS += ME.TS_list
+        return allTS
       
         
     # aktuelles Bus-Set ausgeben (generiert sich aus dem setOfFlows):  
     @property
-    def setOfBuses(self):      
-      setOfBuses = set()
-      # Flow-Liste durchgehen::
-      for aFlow in self.setOfFlows:
-        setOfBuses.add(aFlow.bus)
-      return setOfBuses     
+    def setOfBuses(self):
+        setOfBuses = set()
+        # Flow-Liste durchgehen::
+        for aFlow in self.setOfFlows:
+            setOfBuses.add(aFlow.bus)
+        return setOfBuses     
     
 
     # timeSeries: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
     def __init__(self, timeSeries, dt_last=None):
-      self.timeSeries = timeSeries
-      self.dt_last    = dt_last
-
-      self.timeSeriesWithEnd = helpers.getTimeSeriesWithEnd(timeSeries, dt_last)
-      helpers.checkTimeSeries('global esTimeSeries', self.timeSeriesWithEnd)
-      
-      # defaults: 
-      self.listOfComponents = []        
-      self.setOfOtherMEs    = set()  ## hier kommen zusätzliche MEs rein, z.B. aggregation
-      self.listOfEffectTypes  = cEffectTypeList() # Kosten, CO2, Primärenergie, ...
-      self.standardEffect   = None # Standard-Effekt, zumeist Kosten
-      self.objectiveEffect  = None # Zielfunktions-Effekt, z.B. Kosten oder CO2
-      # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
-      self.globalComp       = cGlobal('globalComp')
-      self.__finalized      = False # wenn die MEs alle finalisiert sind, dann True
-      self.modBox           = None # later activated
-      # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können: 
-      # self.addComponents(self.globalComp)
-
-    
+        '''        
+          Parameters
+          ----------
+          timeSeries : np.array of datetime64
+              timeseries of the data
+          dt_last : for calc
+              The duration of last time step. 
+              Storages needs this time-duration for calculation of charge state
+              after last time step. 
+              If None, then last time increment of timeSeries is used.
+          
+        '''
+        self.timeSeries = timeSeries
+        self.dt_last    = dt_last
+          
+        self.timeSeriesWithEnd = helpers.getTimeSeriesWithEnd(timeSeries, dt_last)
+        helpers.checkTimeSeries('global esTimeSeries', self.timeSeriesWithEnd)
+        
+        # defaults: 
+        self.listOfComponents = []        
+        self.setOfOtherMEs    = set()  ## hier kommen zusätzliche MEs rein, z.B. aggregation
+        self.listOfEffectTypes  = cEffectTypeList() # Kosten, CO2, Primärenergie, ...
+        self.standardEffect   = None # Standard-Effekt, zumeist Kosten
+        self.objectiveEffect  = None # Zielfunktions-Effekt, z.B. Kosten oder CO2
+        # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
+        self.globalComp       = cGlobal('globalComp')
+        self.__finalized      = False # wenn die MEs alle finalisiert sind, dann True
+        self.modBox           = None # later activated
+        # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können: 
+        # self.addComponents(self.globalComp)
+        
+            
 
       
     # Effekte registrieren:
@@ -729,786 +745,802 @@ class cEnergySystem:
 
 # Standardoptimierung segmentiert/nicht segmentiert
 class cCalculation :
-
-  @property
-  def infos(self):
-    infos = {}
-    
-    calcInfos = self._infos
-    infos['calculation'] = calcInfos    
-    calcInfos['name'] = self.label
-    calcInfos['no ChosenIndexe'] = len(self.chosenEsTimeIndexe)
-    calcInfos['calcType'] = self.calcType    
-    calcInfos['duration'] = self.durations
-    infos['system_description'] = self.es.getSystemDescr()
-    infos['modboxes'] = {}        
-    infos['modboxes']['duration']= [aModbox.duration for aModbox in self.listOfModbox]               
-    infos['modboxes']['info']    = [aModBox.infos for aModBox in self.listOfModbox]    
-    
-    return infos
-  
-  
-  @property
-  def results(self):
-    # wenn noch nicht belegt, dann aus modbox holen
-    if self.__results is None:
-      self.__results = self.listOfModbox[0].results    
-    
-    # (bei segmented Calc ist das schon explizit belegt.)
-    return self.__results
-
-  @property
-  def results_struct(self):    
-    # Wenn noch nicht ermittelt:
-    if (self.__results_struct is None) :      
-        #Neurechnen (nur bei Segments)  
-        if  (self.calcType == 'segmented'):
-            self.__results_struct = helpers.createStructFromDictInDict(self.results)
-        # nur eine Modbox vorhanden ('full','aggregated')
-        elif len(self.listOfModbox) == 1:
-            self.__results_struct = self.listOfModbox[0].results_struct
-        else:
-            raise Exception ('calcType ' + str(self.calcType) + ' not defined')
-    return self.__results_struct
-  
-  es: cEnergySystem
-  # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-  def __init__(self, label, es, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
-    self.label = label
-    self.nameOfCalc = None # name for storing results
-    self.es = es
-    self.modType    = modType
-    self.chosenEsTimeIndexe = chosenEsTimeIndexe
-    self.pathForSaving = pathForSaving
-    self.calcType = None # 'full', 'segmented', 'aggregated'
-    self._infos = {}
-    
-    self.listOfModbox = [] # liste der ModelBoxes (nur bei Segmentweise mehrere!)
-    self.durations = {} # Dauer der einzelnen Dinge
-    self.durations['modeling'] = 0
-    self.durations['solving'] = 0
-    self.TSlistForAggregation = None # list of timeseries for aggregation
-    # assert from_index < to_index
-    # assert from_index >= 0
-    # assert to_index <= len(self.es.timeSeries)-1    
-    
-    # Wenn chosenEsTimeIndexe = None, dann alle nehmen
-    if self.chosenEsTimeIndexe is None : self.chosenEsTimeIndexe = range(len(es.timeSeries))
-    (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)        
-    helpers.checkTimeSeries('chosenEsTimeIndexe', self.timeSeries)
-    
-    self.nrOfTimeSteps = len(self.timeSeries)    
-
-    self.__results        = None
-    self.__results_struct = None # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
-    self.segmentModBoxList = [] # modBox list
-  
-  # Variante1:
-  def doModelingAsOneSegment(self):
-    self.checkIfAlreadyModeled()
-    self.calcType = 'full'
-    # System finalisieren:
-    self.es.finalize()
-    
-    t_start = time.time()
-    # Modellierungsbox / TimePeriod-Box bauen:
-    aModBox  = cModelBoxOfES(self.label, self.modType, self.es, self.chosenEsTimeIndexe) # alle Indexe nehmen!               
-    # modBox aktivieren:
-    self.es.activateModBox(aModBox)
-    # modellieren:
-    self.es.doModelingOfElements()
-    
-    self.durations['modeling'] = round(time.time()-t_start,2)
-    self.listOfModbox.append(aModBox)
-    return aModBox
-    
-  
-  # Variante2:
-  def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix = '', nameSuffix ='', aPath = 'results/'):
-    self.checkIfAlreadyModeled()
-    self._infos['segmentedProps'] = {'segmentLen':segmentLen, 'nrUsedSteps':  nrOfUsedSteps}
-
-    
-    self.calcType = 'segmented'
-    print('##############################################################')
-    print('#################### segmented Solving #######################')
-    
-    
-    t_start = time.time()
-    # system finalisieren:
-    self.es.finalize()
-    
-    # nrOfTimeSteps = self.to_index - self.from_index +1    
-    
-    assert nrOfUsedSteps <= segmentLen
-    assert segmentLen    <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
-
-    # timeSeriesOfSim = self.es.timeSeries[from_index:to_index+1]
-       
-    # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
-    nrOfSimSegments = math.ceil((self.nrOfTimeSteps - segmentLen) / nrOfUsedSteps) + 1 
-    self._infos['segmentedProps']['nrOfSegments'] = nrOfSimSegments
-    print('indexe        : ' + str(self.chosenEsTimeIndexe[0]) + '...' + str(self.chosenEsTimeIndexe[-1]))
-    print('segmentLen    : ' + str(segmentLen))
-    print('usedSteps     : ' + str(nrOfUsedSteps))
-    print('-> nr of Sims : ' + str(nrOfSimSegments))
-    print('')
-    
-    for i in range(nrOfSimSegments):      
-      startIndex_calc   = i * nrOfUsedSteps
-      endIndex_calc     = min(startIndex_calc + segmentLen - 1, len(self.chosenEsTimeIndexe) - 1)
-            
-      startIndex_global = self.chosenEsTimeIndexe[startIndex_calc]
-      endIndex_global   = self.chosenEsTimeIndexe[endIndex_calc] # inklusiv
-      indexe_global     = self.chosenEsTimeIndexe[startIndex_calc:endIndex_calc + 1] # inklusive endIndex
-
-
-
-      # new realNrOfUsedSteps:
-      # if last Segment:
-      if i == nrOfSimSegments-1:
-        realNrOfUsedSteps     = endIndex_calc - startIndex_calc + 1
-      else:
-        realNrOfUsedSteps     = nrOfUsedSteps
-      
-      print(str(i) +  '. Segment ' + ' (es-indexe ' + str(startIndex_global) + '...' + str(endIndex_global) + ') :')                 
-   
-      # Modellierungsbox / TimePeriod-Box bauen:
-      label = self.label + '_seg' + str(i)
-      segmentModBox  = cModelBoxOfES(label, self.modType, self.es, indexe_global) # alle Indexe nehmen!       
-      segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
-
-      # Startwerte übergeben von Vorgänger-Modbox:
-      if i > 0 : 
-        segmentModBoxBefore = self.segmentModBoxList[i-1]        
-        segmentModBox.beforeValueSet = cBeforeValueSet(segmentModBoxBefore, segmentModBoxBefore.realNrOfUsedSteps -1)
-        print('### beforeValueSet: ###')        
-        segmentModBox.beforeValueSet.print()
-        print('#######################')
-        # transferStartValues(segment, segmentBefore)
-      
-      # modBox in Energiesystem aktivieren:
-      self.es.activateModBox(segmentModBox)
-
-      # modellieren:
-      t_start_modeling = time.time()
-      self.es.doModelingOfElements()
-      self.durations['modeling'] += round(time.time()-t_start_modeling,2)
-      # modbox in Liste hinzufügen:      
-      self.segmentModBoxList.append(segmentModBox)
-      # übergeordnete Modbox-Liste:
-      self.listOfModbox.append(segmentModBox)
-      
-      # Lösen:
-      t_start_solving = time.time()
-      segmentModBox.solve(**solverProps)# keine SolverOutput-Anzeige, da sonst zu viel
-      self.durations['solving'] += round(time.time()-t_start_solving,2)
-      ## results adding:      
-      self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
-      
-    
-    self.durations['model, solve and segmentStuff'] = round(time.time()-t_start,2)
-    
-    self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
-  
-  def doAggregatedModeling(self, periodLengthInHours, noTypicalPeriods, 
-                           useExtremePeriods, fixStorageFlows,
-                           fixBinaryVarsOnly, percentageOfPeriodFreedom = 0,
-                           costsOfPeriodFreedom = 0,
-                           addPeakMax = [],
-                           addPeakMin = []):
     '''
+    class for defined way of solving a energy system optimizatino
+    '''
+    
+
+    @property
+    def infos(self):
+      infos = {}
       
-
-      Parameters
-      ----------
-      periodLengthInHours : TYPE
-          DESCRIPTION.
-      noTypicalPeriods : TYPE
-          DESCRIPTION.
-      useExtremePeriods : TYPE
-          DESCRIPTION.
-      fixStorageFlows : TYPE
-          DESCRIPTION.
-      fixBinaryVarsOnly : TYPE
-          DESCRIPTION.
-      percentageOfPeriodFreedom : TYPE, optional
-          DESCRIPTION. The default is 0.
-      costsOfPeriodFreedom : TYPE, optional
-          DESCRIPTION. The default is 0.
-
-      addPeakMax : list of cTSraw ...
-          
-      addPeakMin : list of cTSraw
-          
-
-      Raises
-      ------
-      Exception
-          DESCRIPTION.
-
-      Returns
-      -------
-      aModBox : TYPE
-          DESCRIPTION.
-
-      '''
-    self.checkIfAlreadyModeled()
-    
-
-    
-    self._infos['aggregatedProps']={'periodLengthInHours': periodLengthInHours,
-                                     'noTypicalPeriods'   : noTypicalPeriods,
-                                     'useExtremePeriods'  : useExtremePeriods,
-                                     'fixStorageFlows'    : fixStorageFlows,
-                                     'fixBinaryVarsOnly'  : fixBinaryVarsOnly,
-                                     'percentageOfPeriodFreedom' : percentageOfPeriodFreedom,
-                                     'costsOfPeriodFreedom' : costsOfPeriodFreedom}
-    
-    self.calcType = 'aggregated'
-    t_start_agg = time.time()
-    # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-    self.es.activateInTS(self.chosenEsTimeIndexe)
-        
-    # Zeitdaten generieren:
-    (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)    
-    
-    # check equidistant timesteps:
-    if max(dtInHours)-min(dtInHours) != 0:
-        raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(min(dtInHours)) + ' bis ' + str(max(dtInHours)) + ' h')
+      calcInfos = self._infos
+      infos['calculation'] = calcInfos    
+      calcInfos['name'] = self.label
+      calcInfos['no ChosenIndexe'] = len(self.chosenEsTimeIndexe)
+      calcInfos['calcType'] = self.calcType    
+      calcInfos['duration'] = self.durations
+      infos['system_description'] = self.es.getSystemDescr()
+      infos['modboxes'] = {}        
+      infos['modboxes']['duration']= [aModbox.duration for aModbox in self.listOfModbox]               
+      infos['modboxes']['info']    = [aModBox.infos for aModBox in self.listOfModbox]    
+      
+      return infos
     
     
-    print('#########################')
-    print('## TS for aggregation ###')
-
-    ## Daten für Aggregation vorbereiten:    
-    # TSlist and TScollection ohne Skalare:
-    self.TSlistForAggregation = [item for item in self.es.allTSinMEs if item.isArray]
-    self.TScollectionForAgg = cTS_collection(self.TSlistForAggregation, 
-                                             addPeakMax_TSraw = addPeakMax, 
-                                             addPeakMin_TSraw = addPeakMin,
-                                             )
-    self.TScollectionForAgg.print()   
-
-    import pandas as pd    
-    # seriesDict = {i : self.TSlistForAggregation[i].d_i_raw_vec for i in range(len(self.TSlistForAggregation))}    
-    dfSeries = pd.DataFrame(self.TScollectionForAgg.seriesDict, index = chosenTimeSeries)# eigentlich wäre TS als column schön, aber TSAM will die ordnen können.       
-
-    # Check, if timesteps fit in Period:
-    stepsPerPeriod = periodLengthInHours / self.dtInHours[0] 
-    if not stepsPerPeriod.is_integer():
-      raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
-    
-    import flixAggregation as flixAgg
-    # Aggregation:
-    
-    dataAgg = flixAgg.flixAggregation('aggregation',
-                                      timeseries = dfSeries,
-                                      hoursPerTimeStep = self.dtInHours[0],
-                                      hoursPerPeriod = periodLengthInHours,
-                                      hasTSA = False,
-                                      noTypicalPeriods = noTypicalPeriods,
-                                      useExtremePeriods = useExtremePeriods,
-                                      weightDict = self.TScollectionForAgg.weightDict,
-                                      addPeakMax = self.TScollectionForAgg.addPeak_Max_numbers,
-                                      addPeakMin = self.TScollectionForAgg.addPeak_Min_numbers)
-    
-    
-    
-    dataAgg.cluster()   
-    # dataAgg.aggregation.clusterPeriodIdx
-    # dataAgg.aggregation.clusterOrder
-    # dataAgg.aggregation.clusterPeriodNoOccur
-    # dataAgg.aggregation.predictOriginalData()    
-    # self.periodsOrder = aggregation.clusterOrder
-    # self.periodOccurances = aggregation.clusterPeriodNoOccur
-    
-    aggregationModel = flixAgg.cAggregationModeling('aggregation',self.es,
-                                                indexVectorsOfClusters = dataAgg.indexVectorsOfClusters,
-                                                fixBinaryVarsOnly = fixBinaryVarsOnly, 
-                                                fixStorageFlows   = fixStorageFlows,
-                                                listOfMEsToClusterize = None,
-                                                percentageOfPeriodFreedom = percentageOfPeriodFreedom,
-                                                costsOfPeriodFreedom = costsOfPeriodFreedom)
-    
-    # todo: das muss irgendwie nur temporär sein und nicht dauerhaft in es hängen!
-    self.es.addElements(aggregationModel)
-    
-    if fixBinaryVarsOnly:
-      TS_explicit = None
-    else:
-      # neue (Explizit)-Werte für TS sammeln::        
-      TS_explicit = {}
-      for i in range(len(self.TSlistForAggregation)):
-        TS = self.TSlistForAggregation[i]
-        # todo: agg-Wert für TS:
-        TS_explicit[TS] = dataAgg.totalTimeseries[i].values # nur data-array ohne Zeit   
-    
-    
-    import matplotlib.pyplot as plt        
-    plt.title('aggregated series')
-    plt.plot(dfSeries.values)
-    for i in range(len(self.TSlistForAggregation)):
-        plt.plot(dataAgg.totalTimeseries[i].values,'--', label = str(i))
-    if len(self.TSlistForAggregation) < 10: # wenn nicht zu viele
-        plt.legend()
-    plt.show()
-    
-    ##########################
-    # System finalisieren:
-    self.es.finalize()
-    
-    self.durations['aggregation']= round(time.time()- t_start_agg ,2)
-
-
-
-    t_m_start = time.time()    
-    # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-    aModBox  = cModelBoxOfES(self.label, self.modType, self.es, self.chosenEsTimeIndexe, TS_explicit) # alle Indexe nehmen!               
-    self.listOfModbox.append(aModBox)
-    # modBox aktivieren:
-    self.es.activateModBox(aModBox)
-    # modellieren:
-    self.es.doModelingOfElements()
-    
-    
-    self.durations['modeling'] = round(time.time()-t_m_start,2)
-    return aModBox    
+    @property
+    def results(self):
+      # wenn noch nicht belegt, dann aus modbox holen
+      if self.__results is None:
+        self.__results = self.listOfModbox[0].results    
+      
+      # (bei segmented Calc ist das schon explizit belegt.)
+      return self.__results
   
-  def solve(self, solverProps, namePrefix = '', nameSuffix ='', aPath = 'results/', saveResults = True):
-      
-      if self.calcType not in ['full','aggregated']:
-        raise Exeption('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
-      aModbox = self.listOfModbox[0]
-      aModbox.solve(**solverProps)
-      
-      if saveResults:
-        self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
-      
-  
-  def checkIfAlreadyModeled(self):
-    
-    if self.calcType is not None:
-      raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
-
-  def _saveSolveInfos(self, namePrefix = '', nameSuffix ='', aPath = 'results/'):
-      import datetime
-      import yaml      
-      import pathlib
-      
-      # wenn "/" am Anfang, dann löschen (sonst kommt pathlib durcheinander):
-      aPath = aPath[0].replace("/","") + aPath[1:]
-      # absoluter Pfad:
-      aPath = pathlib.Path.cwd() / aPath
-      # Pfad anlegen, fall noch nicht vorhanden:
-      aPath.mkdir(parents=True, exist_ok=True)       
-           
-      timestamp = datetime.datetime.now()
-      timestring = timestamp.strftime('%Y-%m-%d')             
-      self.nameOfCalc = namePrefix.replace(" ","") + timestring + '_' + self.label.replace(" ", "") + nameSuffix.replace(" ","")
-      
-      filename_Data = self.nameOfCalc + '_data.pickle'
-      filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
-            
-      self.path_Data = aPath / filename_Data
-      self.path_Info = aPath / filename_Info
-      
-      #Daten:
-      # with open(yamlPath_Data, 'w') as f:
-      #   yaml.dump(self.results, f, sort_keys = False)
-      import pickle
-      with open(self.path_Data,'wb') as f:
-        pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
-      
-      #Infos:'
-      with open(self.path_Info, 'w',encoding='utf-8') as f:
-          yaml.dump(self.infos, f, 
-                    width=1000, # Verhinderung Zeilenumbruch für lange equations
-                    allow_unicode = True,
-                    sort_keys = False)
-      
-      aStr = '# saved calculation ' + self.nameOfCalc + ' #'
-      print('#'*len(aStr))      
-      print(aStr)
-      print('#'*len(aStr))
-           
-    
-  
-  def __addSegmentResults(self, segment, startIndex_calc, realNrOfUsedSteps):    
-    # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
-
-    if (self.__results is None) :
-      self.__results = {} # leeres Dict als Ausgangszustand      
-    
-    def appendNewResultsToDictValues(result, resultToAppend, resultToAppendVar):
-      if result == {} : 
-        firstFill = True # jeweils neuer Dict muss erzeugt werden für globales Dict
-      else:
-        firstFill = False
-            
-      for key, val in resultToAppend.items():
-        # print(key)
-          
-        # Wenn val ein Wert ist:
-        if isinstance(val, np.ndarray) or isinstance(val, np.float64) or np.isscalar(val): 
-          
-          
-          # Beachte Länge (withEnd z.B. bei Speicherfüllstand)
-          if key in ['timeSeries','dtInHours','dtInHours_tot']:
-            withEnd = False
-          elif key in ['timeSeriesWithEnd']:
-            withEnd = True
+    @property
+    def results_struct(self):    
+      # Wenn noch nicht ermittelt:
+      if (self.__results_struct is None) :      
+          #Neurechnen (nur bei Segments)  
+          if  (self.calcType == 'segmented'):
+              self.__results_struct = helpers.createStructFromDictInDict(self.results)
+          # nur eine Modbox vorhanden ('full','aggregated')
+          elif len(self.listOfModbox) == 1:
+              self.__results_struct = self.listOfModbox[0].results_struct
           else:
-            # Beachte Speicherladezustand und ähnliche Variablen:                      
-            aReferedVariable = resultToAppendVar[key]
-            withEnd = isinstance(aReferedVariable, cVariableB) and aReferedVariable.beforeValueIsStartValue
-
-          # nested:
-          def getValueToAppend(val, withEnd):
-            # wenn skalar, dann Vektor draus machen: 
-            # todo: --> nicht so schön!
-            if np.isscalar(val):
-              val = np.array([val])
-              
-            if withEnd:
-              if firstFill:
-                aValue = val[0:realNrOfUsedSteps +1] # (inklusive WithEnd!)
-              else:
-                # erstes Element weglassen, weil das schon vom Vorgängersegment da ist:
-                aValue = val[1:realNrOfUsedSteps +1] # (inklusive WithEnd!)
-            else:
-              aValue = val[0:realNrOfUsedSteps] # (nur die genutzten Steps!)            
-            return aValue            
-                     
-          aValue = getValueToAppend(val, withEnd)
-          
-          if firstFill: 
-            result[key] = aValue
-          else:# erstmaliges Füllen. Array anlegen.
-            result[key] = np.append(result[key], aValue) # Anhängen (nur die genutzten Steps!)
-          
-        else :
-          if firstFill: result[key] = {}
-          
-          if (resultToAppendVar is not None) and key in resultToAppendVar.keys():
-            resultToAppend_sub = resultToAppendVar[key]
-          else: # z.B. bei time (da keine Variablen)
-            resultToAppend_sub = None
-          appendNewResultsToDictValues(result[key], resultToAppend[key], resultToAppend_sub) # hier rekursiv!
+              raise Exception ('calcType ' + str(self.calcType) + ' not defined')
+      return self.__results_struct
     
-    # rekursiv:
-    appendNewResultsToDictValues(self.__results, segment.results, segment.results_var)
-    
-    # results füllen:
-    # ....
-  
-# mod: -> wird eingefügt in jedes ModelingElement und besitzt die modBox-spezifischen Dinge
-class cMEModel:
-  def __init__(self, ME):
-    self.ME        = ME
-    self.variables = []
-    self.eqs       = []
-    self.ineqs     = []
-    self.objective = None
-  def getVar(self, label):
-    return next((x for x in  self.variables         if x.label == label), None)
-  
-  def getEq (self, label):
-    return next((x for x in (self.eqs + self.ineqs) if x.label == label), None)
-  
-  # Eqs, Ineqs und Objective als Str-Description:
-  def getEqsAsStr(self):
-    # Wenn Glg vorhanden:    
-    eq: cEquation
-    aList = []
-    if (len(self.eqs) + len(self.ineqs)) > 0:
-      for eq in (self.eqs + self.ineqs) :
-        aList.append(eq.getStrDescription())          
-    if not(self.objective is None):
-      aList.append(self.objective.getStrDescription())
-    return aList
-  
-  def getVarsAsStr(self):
-    aList = []
-    for aVar in self.variables:
-      aList.append(aVar.getStrDescription())
-    return aList
-  
-  def printEqs(self, shiftChars):    
-    yaml.dump(self.getEqsAsStr(),              
-              allow_unicode=True)
-          
-  def printVars(self, shiftChars):
-    yaml.dump(self.getVarsAsStr(),              
-              allow_unicode=True)
+    es: cEnergySystem
+    # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
+    def __init__(self, label, es, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
+      self.label = label
+      self.nameOfCalc = None # name for storing results
+      self.es = es
+      self.modType    = modType
+      self.chosenEsTimeIndexe = chosenEsTimeIndexe
+      self.pathForSaving = pathForSaving
+      self.calcType = None # 'full', 'segmented', 'aggregated'
+      self._infos = {}
       
-
+      self.listOfModbox = [] # liste der ModelBoxes (nur bei Segmentweise mehrere!)
+      self.durations = {} # Dauer der einzelnen Dinge
+      self.durations['modeling'] = 0
+      self.durations['solving'] = 0
+      self.TSlistForAggregation = None # list of timeseries for aggregation
+      # assert from_index < to_index
+      # assert from_index >= 0
+      # assert to_index <= len(self.es.timeSeries)-1    
+      
+      # Wenn chosenEsTimeIndexe = None, dann alle nehmen
+      if self.chosenEsTimeIndexe is None : self.chosenEsTimeIndexe = range(len(es.timeSeries))
+      (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)        
+      helpers.checkTimeSeries('chosenEsTimeIndexe', self.timeSeries)
+      
+      self.nrOfTimeSteps = len(self.timeSeries)    
+  
+      self.__results        = None
+      self.__results_struct = None # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
+      self.segmentModBoxList = [] # modBox list
     
-# Element mit Variablen und Gleichungen (ME = Modeling Element):
-#  -> besitzt Methoden, die jede Kindklasse ergänzend füllt:
-#    1. cME.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
-#    2. cME.declareVarsAndEqs() --> Variablen und Eqs definieren.
-#    3. cME.doModeling()        --> Modellierung
-#    4. cME.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
-  
-class cME(cArgsClass): 
-  modBox : cModelBoxOfES
-  
-  new_init_args = [cArg('label','param','str', 'Bezeichnung')]
-  not_used_args = [] 
-
-  @property
-  def label_full(self): #standard-Funktion, wird von Kindern teilweise überschrieben
-    return self.label   # eigtl später mal rekursiv: return self.owner.label_full + self.label
-  
-  @property # subElements of all layers
-  def subElements_all(self):    
-    allSubElements = [] # wichtig, dass neues Listenobjekt!
-    allSubElements += self.subElements 
-    for subElem in self.subElements:
-      # all subElements of subElement hinzufügen:
-      allSubElements += subElem.subElements_all
-    return allSubElements
-  
-  # TODO: besser occupied_args
-  def __init__(self,label, **kwargs):
-    self.label     = label
-    self.TS_list   = []#   = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. cTS_vector)
+    # Variante1:
+    def doModelingAsOneSegment(self):
+      self.checkIfAlreadyModeled()
+      self.calcType = 'full'
+      # System finalisieren:
+      self.es.finalize()
+      
+      t_start = time.time()
+      # Modellierungsbox / TimePeriod-Box bauen:
+      aModBox  = cModelBoxOfES(self.label, self.modType, self.es, self.chosenEsTimeIndexe) # alle Indexe nehmen!               
+      # modBox aktivieren:
+      self.es.activateModBox(aModBox)
+      # modellieren:
+      self.es.doModelingOfElements()
+      
+      self.durations['modeling'] = round(time.time()-t_start,2)
+      self.listOfModbox.append(aModBox)
+      return aModBox
+      
     
-    self.subElements = [] # zugehörige Sub-ModelingElements
-    self.modBox      = None # hier kommt die aktive ModBox rein
-    self.mod         = None # hier kommen alle Glg und Vars rein
-    super().__init__(**kwargs)
+    # Variante2:
+    def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix = '', nameSuffix ='', aPath = 'results/'):
+      self.checkIfAlreadyModeled()
+      self._infos['segmentedProps'] = {'segmentLen':segmentLen, 'nrUsedSteps':  nrOfUsedSteps}
+  
+      
+      self.calcType = 'segmented'
+      print('##############################################################')
+      print('#################### segmented Solving #######################')
+      
+      
+      t_start = time.time()
+      # system finalisieren:
+      self.es.finalize()
+      
+      # nrOfTimeSteps = self.to_index - self.from_index +1    
+      
+      assert nrOfUsedSteps <= segmentLen
+      assert segmentLen    <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
+  
+      # timeSeriesOfSim = self.es.timeSeries[from_index:to_index+1]
+         
+      # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
+      nrOfSimSegments = math.ceil((self.nrOfTimeSteps - segmentLen) / nrOfUsedSteps) + 1 
+      self._infos['segmentedProps']['nrOfSegments'] = nrOfSimSegments
+      print('indexe        : ' + str(self.chosenEsTimeIndexe[0]) + '...' + str(self.chosenEsTimeIndexe[-1]))
+      print('segmentLen    : ' + str(segmentLen))
+      print('usedSteps     : ' + str(nrOfUsedSteps))
+      print('-> nr of Sims : ' + str(nrOfSimSegments))
+      print('')
+      
+      for i in range(nrOfSimSegments):      
+        startIndex_calc   = i * nrOfUsedSteps
+        endIndex_calc     = min(startIndex_calc + segmentLen - 1, len(self.chosenEsTimeIndexe) - 1)
+              
+        startIndex_global = self.chosenEsTimeIndexe[startIndex_calc]
+        endIndex_global   = self.chosenEsTimeIndexe[endIndex_calc] # inklusiv
+        indexe_global     = self.chosenEsTimeIndexe[startIndex_calc:endIndex_calc + 1] # inklusive endIndex
+  
+  
+  
+        # new realNrOfUsedSteps:
+        # if last Segment:
+        if i == nrOfSimSegments-1:
+          realNrOfUsedSteps     = endIndex_calc - startIndex_calc + 1
+        else:
+          realNrOfUsedSteps     = nrOfUsedSteps
         
-    
-  # activate inkl. subMEs:
-  def activateModbox(self, modBox):
-    
-    for aME in self.subElements:
-      aME.activateModbox(modBox) # inkl. subMEs
-    self._activateModBox_ForMeOnly(modBox)
-
-  # activate ohne SubMEs!
-  def _activateModBox_ForMeOnly(self, modBox):
-    self.modBox     = modBox
-    self.mod        = modBox.getModOfME(self)
-
-  # 1.
-  def finalize(self):
-    #print('finalize ' + self.label)
-    # gleiches für alle sub MEs:
-    for aME in self.subElements:
-      aME.finalize()
-
-  # 2.
-  def createNewModAndActivateModBox(self, modBox):    
-    # print('new mod for ' + self.label)
-    # subElemente ebenso:
-    aME:cME
-    for aME in self.subElements:
-      aME.createNewModAndActivateModBox(modBox) # rekursiv!
-    
-    # create mod:
-    aMod = cMEModel(self)
-    # register mod:
-    modBox.registerMEandMod(self, aMod)         
-    
-    self._activateModBox_ForMeOnly(modBox)# subMEs werden bereits aktiviert über aME.createNewMod...()
-    
-  # 3.
-  def declareVarsAndEqs(self, modBox):
-    #   #   # Features preparing:
-    #   # for aFeature in self.features:
-    #   #   aFeature.declareVarsAndEqs(modBox)  
-    pass
-
-
-  # def doModeling(self,modBox,timeIndexe):
-  #   # for aFeature in self.features:
-    #   aFeature.doModeling(modBox, timeIndexe)        
-    
-    
-  # Ergebnisse als dict ausgeben:    
-  def getResults(self):
-    aData = {}
-    aVars = {}
-    # 1. Unterelemente füllen (rekursiv!):
-    for aME in self.subElements:
-      (aData[aME.label], aVars[aME.label]) = aME.getResults() # rekursiv
-
-    # 2. Variablenwerte ablegen:
-    aVar : cVariable
-    for aVar in self.mod.variables :
-      # print(aVar.label)
-      aData[aVar.label] = aVar.getResult()
-      aVars[aVar.label] = aVar # link zur Variable
-      if aVar.isBinary and aVar.len >1:
-        # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1] 
-        #                                                       -> a_ = [nan, 1, nan, nan, 1]        
-        aData[aVar.label + '_'] = helpers.zerosToNans(aVar.getResult())   
-        aVars[aVar.label + '_'] = aVar # link zur Variable
-
-    return aData, aVars
-
-  # so kurze Schreibweise wie möglich, daher:
-  def var(self, label):
-    self.mod.getVar(label)
-  def eq(self, label):
-    self.mod.getEq (label)
-
-
-  def getEqsAsStr(self):
+        print(str(i) +  '. Segment ' + ' (es-indexe ' + str(startIndex_global) + '...' + str(endIndex_global) + ') :')                 
+     
+        # Modellierungsbox / TimePeriod-Box bauen:
+        label = self.label + '_seg' + str(i)
+        segmentModBox  = cModelBoxOfES(label, self.modType, self.es, indexe_global) # alle Indexe nehmen!       
+        segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
   
-    ## subelemente durchsuchen:
-    subs = {}
-    for aSubElement in self.subElements:                
-      subs[aSubElement.label] = aSubElement.getEqsAsStr() # rekursiv
-    ## me:
-    
-    # wenn sub-eqs, dann dict:
-    if not(subs == {}): 
-      eqsAsStr = {}
-      eqsAsStr['_self'] = self.mod.getEqsAsStr() # zuerst eigene ...
-      eqsAsStr.update(subs) # ... dann sub-Eqs
-    # sonst liste:
-    else:
-      eqsAsStr = self.mod.getEqsAsStr()
+        # Startwerte übergeben von Vorgänger-Modbox:
+        if i > 0 : 
+          segmentModBoxBefore = self.segmentModBoxList[i-1]        
+          segmentModBox.beforeValueSet = cBeforeValueSet(segmentModBoxBefore, segmentModBoxBefore.realNrOfUsedSteps -1)
+          print('### beforeValueSet: ###')        
+          segmentModBox.beforeValueSet.print()
+          print('#######################')
+          # transferStartValues(segment, segmentBefore)
+        
+        # modBox in Energiesystem aktivieren:
+        self.es.activateModBox(segmentModBox)
   
-    return eqsAsStr
-  
-
-  def getVarsAsStr(self):
-    aList = []
+        # modellieren:
+        t_start_modeling = time.time()
+        self.es.doModelingOfElements()
+        self.durations['modeling'] += round(time.time()-t_start_modeling,2)
+        # modbox in Liste hinzufügen:      
+        self.segmentModBoxList.append(segmentModBox)
+        # übergeordnete Modbox-Liste:
+        self.listOfModbox.append(segmentModBox)
+        
+        # Lösen:
+        t_start_solving = time.time()
+        segmentModBox.solve(**solverProps)# keine SolverOutput-Anzeige, da sonst zu viel
+        self.durations['solving'] += round(time.time()-t_start_solving,2)
+        ## results adding:      
+        self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
+        
+      
+      self.durations['model, solve and segmentStuff'] = round(time.time()-t_start,2)
+      
+      self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
     
-    aList += self.mod.getVarsAsStr()    
-    for aSubElement in self.subElements:      
-      aList += aSubElement.getVarsAsStr() # rekursiv   
-    
-    return aList
+    def doAggregatedModeling(self, periodLengthInHours, noTypicalPeriods, 
+                             useExtremePeriods, fixStorageFlows,
+                             fixBinaryVarsOnly, percentageOfPeriodFreedom = 0,
+                             costsOfPeriodFreedom = 0,
+                             addPeakMax = [],
+                             addPeakMin = []):
+      '''
+        
   
-  def printEqs(self, shiftChars):
-    print(shiftChars + '·' + self.label + ':')
-    print(yaml.dump(self.getEqsAsStr(),
-              allow_unicode = True))
+        Parameters
+        ----------
+        periodLengthInHours : TYPE
+            DESCRIPTION.
+        noTypicalPeriods : TYPE
+            DESCRIPTION.
+        useExtremePeriods : TYPE
+            DESCRIPTION.
+        fixStorageFlows : TYPE
+            DESCRIPTION.
+        fixBinaryVarsOnly : TYPE
+            DESCRIPTION.
+        percentageOfPeriodFreedom : TYPE, optional
+            DESCRIPTION. The default is 0.
+        costsOfPeriodFreedom : TYPE, optional
+            DESCRIPTION. The default is 0.
+  
+        addPeakMax : list of cTSraw ...
+            
+        addPeakMin : list of cTSraw
+            
+  
+        Raises
+        ------
+        Exception
+            DESCRIPTION.
+  
+        Returns
+        -------
+        aModBox : TYPE
+            DESCRIPTION.
+  
+        '''
+      self.checkIfAlreadyModeled()
+      
+  
+      
+      self._infos['aggregatedProps']={'periodLengthInHours': periodLengthInHours,
+                                       'noTypicalPeriods'   : noTypicalPeriods,
+                                       'useExtremePeriods'  : useExtremePeriods,
+                                       'fixStorageFlows'    : fixStorageFlows,
+                                       'fixBinaryVarsOnly'  : fixBinaryVarsOnly,
+                                       'percentageOfPeriodFreedom' : percentageOfPeriodFreedom,
+                                       'costsOfPeriodFreedom' : costsOfPeriodFreedom}
+      
+      self.calcType = 'aggregated'
+      t_start_agg = time.time()
+      # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
+      self.es.activateInTS(self.chosenEsTimeIndexe)
           
-  def printVars(self, shiftChars):
-    print(shiftChars + self.label + ':')
-    print(yaml.dump(self.getVarsAsStr(),
-              allow_unicode = True))
-  def getEqsVarsOverview(self):
-    aDict = {}
-    aDict['no eqs']          = len(self.mod.eqs)
-    aDict['no eqs single']   = sum([eq.nrOfSingleEquations for eq in self.mod.eqs])
-    aDict['no inEqs']        = len(self.mod.ineqs)
-    aDict['no inEqs single'] = sum([ineq.nrOfSingleEquations for ineq in self.mod.ineqs])
-    aDict['no vars']         = len(self.mod.variables)
-    aDict['no vars single']  =  sum([var.len for var in self.mod.variables])  
-    return aDict
-
-# Definition Effekt (Kosten, CO2,...)     
-class cEffectType(cME) : 
+      # Zeitdaten generieren:
+      (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)    
+      
+      # check equidistant timesteps:
+      if max(dtInHours)-min(dtInHours) != 0:
+          raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(min(dtInHours)) + ' bis ' + str(max(dtInHours)) + ' h')
+      
+      
+      print('#########################')
+      print('## TS for aggregation ###')
   
-   
-  new_init_args = [cArg('label'                                ,'param', 'str'     , 'Bezeichnung'),
-                   cArg('unit'                                 , '?'   , 'str'     , 'Einheit des Effekts, z.B. €, kWh,...'),
-                   cArg('description'                          , '?'   , 'str'     , 'Langbezeichnung'),
-                   cArg('isStandard'                           , '?'   , 'boolean' , 'true, wenn Standard-Effekt (wenn direkte Eingabe bei Kostenpositionen ohne dict) , sonst false'),
-                   cArg('isObjective'                          , '?'   , 'boolean' , 'true, wenn Zielfunktion'),
-                   cArg('specificShareToOtherEffects_operation', '?' , '{effectType: TS, ...}'    , 'Beiträge zu anderen Effekten (nur operation), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
-                   cArg('specificShareToOtherEffects_invest'   , '?' , '{effectType: skalar, ...}', 'Beiträge zu anderen Effekten (nur invest), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
-                   cArg('min_operationSum'                     , '?' , 'skalar' , 'minimale Summe (nur operation) des Effekts'),
-                   cArg('max_operationSum'                     , '?' , 'skalar' , 'maximale Summe (nur operation) des Effekts'),
-                   cArg('min_investSum'                        , '?' , 'skalar' , 'minimale Summe (nur invest) des Effekts'),
-                   cArg('max_investSum'                        , '?' , 'skalar' , 'maximale Summe (nur invest) des Effekts'),
-                   cArg('min_Sum'                              , '?' , 'skalar' , 'minimale Summe des Effekts'),                   
-                   cArg('max_Sum'                              , '?' , 'skalar' , 'maximale Summe des Effekts'),
-                   
-                   ] 
-                   # todo: effects, die noch nicht instanziert sind, können hier auch keine shares zugeordnet werden!
-  not_used_args = ['label']
-
-  # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
-  def __init__(self, label, unit, description, isStandard = False, isObjective = False, specificShareToOtherEffects_operation = {}, specificShareToOtherEffects_invest = {}, 
-               min_operationSum = None, max_operationSum = None, 
-               min_investSum = None, max_investSum = None,
-               min_Sum = None, max_Sum = None,
-               **kwargs) :    
-    super().__init__(label, **kwargs)    
-    self.label       = label
-    self.unit        = unit
-    # self.allFlow     = allFlow
-    self.description = description
-    self.isStandard  = isStandard
-    self.isObjective = isObjective
-    self.specificShareToOtherEffects_operation = specificShareToOtherEffects_operation
-    self.specificShareToOtherEffects_invest    = specificShareToOtherEffects_invest
+      ## Daten für Aggregation vorbereiten:    
+      # TSlist and TScollection ohne Skalare:
+      self.TSlistForAggregation = [item for item in self.es.allTSinMEs if item.isArray]
+      self.TScollectionForAgg = cTS_collection(self.TSlistForAggregation, 
+                                               addPeakMax_TSraw = addPeakMax, 
+                                               addPeakMin_TSraw = addPeakMin,
+                                               )
+      self.TScollectionForAgg.print()   
+  
+      import pandas as pd    
+      # seriesDict = {i : self.TSlistForAggregation[i].d_i_raw_vec for i in range(len(self.TSlistForAggregation))}    
+      dfSeries = pd.DataFrame(self.TScollectionForAgg.seriesDict, index = chosenTimeSeries)# eigentlich wäre TS als column schön, aber TSAM will die ordnen können.       
+  
+      # Check, if timesteps fit in Period:
+      stepsPerPeriod = periodLengthInHours / self.dtInHours[0] 
+      if not stepsPerPeriod.is_integer():
+        raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
+      
+      import flixAggregation as flixAgg
+      # Aggregation:
+      
+      dataAgg = flixAgg.flixAggregation('aggregation',
+                                        timeseries = dfSeries,
+                                        hoursPerTimeStep = self.dtInHours[0],
+                                        hoursPerPeriod = periodLengthInHours,
+                                        hasTSA = False,
+                                        noTypicalPeriods = noTypicalPeriods,
+                                        useExtremePeriods = useExtremePeriods,
+                                        weightDict = self.TScollectionForAgg.weightDict,
+                                        addPeakMax = self.TScollectionForAgg.addPeak_Max_numbers,
+                                        addPeakMin = self.TScollectionForAgg.addPeak_Min_numbers)
+      
+      
+      
+      dataAgg.cluster()   
+      # dataAgg.aggregation.clusterPeriodIdx
+      # dataAgg.aggregation.clusterOrder
+      # dataAgg.aggregation.clusterPeriodNoOccur
+      # dataAgg.aggregation.predictOriginalData()    
+      # self.periodsOrder = aggregation.clusterOrder
+      # self.periodOccurances = aggregation.clusterPeriodNoOccur
+      
+      aggregationModel = flixAgg.cAggregationModeling('aggregation',self.es,
+                                                  indexVectorsOfClusters = dataAgg.indexVectorsOfClusters,
+                                                  fixBinaryVarsOnly = fixBinaryVarsOnly, 
+                                                  fixStorageFlows   = fixStorageFlows,
+                                                  listOfMEsToClusterize = None,
+                                                  percentageOfPeriodFreedom = percentageOfPeriodFreedom,
+                                                  costsOfPeriodFreedom = costsOfPeriodFreedom)
+      
+      # todo: das muss irgendwie nur temporär sein und nicht dauerhaft in es hängen!
+      self.es.addElements(aggregationModel)
+      
+      if fixBinaryVarsOnly:
+        TS_explicit = None
+      else:
+        # neue (Explizit)-Werte für TS sammeln::        
+        TS_explicit = {}
+        for i in range(len(self.TSlistForAggregation)):
+          TS = self.TSlistForAggregation[i]
+          # todo: agg-Wert für TS:
+          TS_explicit[TS] = dataAgg.totalTimeseries[i].values # nur data-array ohne Zeit   
+      
+      
+      import matplotlib.pyplot as plt        
+      plt.title('aggregated series')
+      plt.plot(dfSeries.values)
+      for i in range(len(self.TSlistForAggregation)):
+          plt.plot(dataAgg.totalTimeseries[i].values,'--', label = str(i))
+      if len(self.TSlistForAggregation) < 10: # wenn nicht zu viele
+          plt.legend()
+      plt.show()
+      
+      ##########################
+      # System finalisieren:
+      self.es.finalize()
+      
+      self.durations['aggregation']= round(time.time()- t_start_agg ,2)
+  
+  
+  
+      t_m_start = time.time()    
+      # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
+      aModBox  = cModelBoxOfES(self.label, self.modType, self.es, self.chosenEsTimeIndexe, TS_explicit) # alle Indexe nehmen!               
+      self.listOfModbox.append(aModBox)
+      # modBox aktivieren:
+      self.es.activateModBox(aModBox)
+      # modellieren:
+      self.es.doModelingOfElements()
+      
+      
+      self.durations['modeling'] = round(time.time()-t_m_start,2)
+      return aModBox    
     
-    self.min_operationSum = min_operationSum
-    self.max_operationSum = max_operationSum
-    self.min_investSum    = min_investSum
-    self.max_investSum    = max_investSum
-    self.min_Sum          = min_Sum
-    self.max_Sum          = max_Sum
-    
-    
-    #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ):
-    for effectType, share in self.specificShareToOtherEffects_operation.items() :
-      # value überschreiben durch TS:
-      TS_name = 'specificShareToOtherEffect' +'_'+ effectType.label
-      self.specificShareToOtherEffects_operation[effectType] = cTS_vector(TS_name, specificShareToOtherEffects_operation[effectType], self)
-
-    # ShareSums:
-    self.operation = cFeature_ShareSum(label = 'operation', owner = self, sharesAreTS = True,  minOfSum = self.min_operationSum, maxOfSum = self.max_operationSum)
-    self.invest    = cFeature_ShareSum(label = 'invest'   , owner = self, sharesAreTS = False, minOfSum = self.min_investSum   , maxOfSum = self.max_investSum)
-    self.all       = cFeature_ShareSum(label = 'all'      , owner = self, sharesAreTS = False, minOfSum = self.min_Sum         , maxOfSum = self.max_Sum)
+    def solve(self, solverProps, namePrefix = '', nameSuffix ='', aPath = 'results/', saveResults = True):
         
-  
-  def declareVarsAndEqs(self,modBox):
-    super().declareVarsAndEqs(modBox)
-    self.operation.declareVarsAndEqs(modBox)
-    self.invest   .declareVarsAndEqs(modBox)
-    self.all      .declareVarsAndEqs(modBox)    
-  
-  def doModeling(self, modBox, timeIndexe):
-    print('modeling ' + self.label)
-    super().declareVarsAndEqs(modBox)
-    self.operation.doModeling(modBox, timeIndexe)
-    self.invest   .doModeling(modBox, timeIndexe)
-    self.all      .doModeling(modBox, timeIndexe)
-    # Gleichung für Summe Operation und Invest:
-    # eq: shareSum = effect.operation_sum + effect.operation_invest
-    self.all.addVariableShare(self.operation.mod.var_sum, 1, 1)
-    self.all.addVariableShare(self.invest   .mod.var_sum, 1, 1)
+        if self.calcType not in ['full','aggregated']:
+          raise Exeption('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
+        aModbox = self.listOfModbox[0]
+        aModbox.solve(**solverProps)
+        
+        if saveResults:
+          self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
+        
     
+    def checkIfAlreadyModeled(self):
+      
+      if self.calcType is not None:
+        raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
+  
+    def _saveSolveInfos(self, namePrefix = '', nameSuffix ='', aPath = 'results/'):
+        import datetime
+        import yaml      
+        import pathlib
+        
+        # wenn "/" am Anfang, dann löschen (sonst kommt pathlib durcheinander):
+        aPath = aPath[0].replace("/","") + aPath[1:]
+        # absoluter Pfad:
+        aPath = pathlib.Path.cwd() / aPath
+        # Pfad anlegen, fall noch nicht vorhanden:
+        aPath.mkdir(parents=True, exist_ok=True)       
+             
+        timestamp = datetime.datetime.now()
+        timestring = timestamp.strftime('%Y-%m-%d')             
+        self.nameOfCalc = namePrefix.replace(" ","") + timestring + '_' + self.label.replace(" ", "") + nameSuffix.replace(" ","")
+        
+        filename_Data = self.nameOfCalc + '_data.pickle'
+        filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
+              
+        self.path_Data = aPath / filename_Data
+        self.path_Info = aPath / filename_Info
+        
+        #Daten:
+        # with open(yamlPath_Data, 'w') as f:
+        #   yaml.dump(self.results, f, sort_keys = False)
+        import pickle
+        with open(self.path_Data,'wb') as f:
+          pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        #Infos:'
+        with open(self.path_Info, 'w',encoding='utf-8') as f:
+            yaml.dump(self.infos, f, 
+                      width=1000, # Verhinderung Zeilenumbruch für lange equations
+                      allow_unicode = True,
+                      sort_keys = False)
+        
+        aStr = '# saved calculation ' + self.nameOfCalc + ' #'
+        print('#'*len(aStr))      
+        print(aStr)
+        print('#'*len(aStr))
+             
+      
+    
+    def __addSegmentResults(self, segment, startIndex_calc, realNrOfUsedSteps):    
+      # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
+  
+      if (self.__results is None) :
+        self.__results = {} # leeres Dict als Ausgangszustand      
+      
+      def appendNewResultsToDictValues(result, resultToAppend, resultToAppendVar):
+        if result == {} : 
+          firstFill = True # jeweils neuer Dict muss erzeugt werden für globales Dict
+        else:
+          firstFill = False
+              
+        for key, val in resultToAppend.items():
+          # print(key)
+            
+          # Wenn val ein Wert ist:
+          if isinstance(val, np.ndarray) or isinstance(val, np.float64) or np.isscalar(val): 
+            
+            
+            # Beachte Länge (withEnd z.B. bei Speicherfüllstand)
+            if key in ['timeSeries','dtInHours','dtInHours_tot']:
+              withEnd = False
+            elif key in ['timeSeriesWithEnd']:
+              withEnd = True
+            else:
+              # Beachte Speicherladezustand und ähnliche Variablen:                      
+              aReferedVariable = resultToAppendVar[key]
+              withEnd = isinstance(aReferedVariable, cVariableB) and aReferedVariable.beforeValueIsStartValue
+  
+            # nested:
+            def getValueToAppend(val, withEnd):
+              # wenn skalar, dann Vektor draus machen: 
+              # todo: --> nicht so schön!
+              if np.isscalar(val):
+                val = np.array([val])
+                
+              if withEnd:
+                if firstFill:
+                  aValue = val[0:realNrOfUsedSteps +1] # (inklusive WithEnd!)
+                else:
+                  # erstes Element weglassen, weil das schon vom Vorgängersegment da ist:
+                  aValue = val[1:realNrOfUsedSteps +1] # (inklusive WithEnd!)
+              else:
+                aValue = val[0:realNrOfUsedSteps] # (nur die genutzten Steps!)            
+              return aValue            
+                       
+            aValue = getValueToAppend(val, withEnd)
+            
+            if firstFill: 
+              result[key] = aValue
+            else:# erstmaliges Füllen. Array anlegen.
+              result[key] = np.append(result[key], aValue) # Anhängen (nur die genutzten Steps!)
+            
+          else :
+            if firstFill: result[key] = {}
+            
+            if (resultToAppendVar is not None) and key in resultToAppendVar.keys():
+              resultToAppend_sub = resultToAppendVar[key]
+            else: # z.B. bei time (da keine Variablen)
+              resultToAppend_sub = None
+            appendNewResultsToDictValues(result[key], resultToAppend[key], resultToAppend_sub) # hier rekursiv!
+      
+      # rekursiv:
+      appendNewResultsToDictValues(self.__results, segment.results, segment.results_var)
+      
+      # results füllen:
+      # ....
+  
+class cMEModel:
+    '''
+    is existing in every cME and owns eqs and vars of the activated calculation
+    '''
+    
+    
+    def __init__(self, ME):
+        self.ME        = ME
+        self.variables = []
+        self.eqs       = []
+        self.ineqs     = []
+        self.objective = None
+    def getVar(self, label):
+        return next((x for x in  self.variables         if x.label == label), None)
+    
+    def getEq (self, label):
+        return next((x for x in (self.eqs + self.ineqs) if x.label == label), None)
+    
+    # Eqs, Ineqs und Objective als Str-Description:
+    def getEqsAsStr(self):
+        # Wenn Glg vorhanden:    
+        eq: cEquation
+        aList = []
+        if (len(self.eqs) + len(self.ineqs)) > 0:
+            for eq in (self.eqs + self.ineqs) :
+                aList.append(eq.getStrDescription())          
+        if not(self.objective is None):
+            aList.append(self.objective.getStrDescription())
+        return aList
+    
+    def getVarsAsStr(self):
+        aList = []
+        for aVar in self.variables:
+            aList.append(aVar.getStrDescription())
+        return aList
+    
+    def printEqs(self, shiftChars):    
+        yaml.dump(self.getEqsAsStr(),              
+                  allow_unicode=True)
+            
+    def printVars(self, shiftChars):
+        yaml.dump(self.getVarsAsStr(),              
+                  allow_unicode=True)
+
+
+class cME(cArgsClass):
+    """
+    Element mit Variablen und Gleichungen (ME = Modeling Element)
+    -> besitzt Methoden, die jede Kindklasse ergänzend füllt:
+    1. cME.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
+    2. cME.declareVarsAndEqs() --> Variablen und Eqs definieren.
+    3. cME.doModeling()        --> Modellierung
+    4. cME.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
+    """
+    modBox : cModelBoxOfES
+    
+    new_init_args = [cArg('label','param','str', 'Bezeichnung')]
+    not_used_args = [] 
+  
+    @property
+    def label_full(self): #standard-Funktion, wird von Kindern teilweise überschrieben
+      return self.label   # eigtl später mal rekursiv: return self.owner.label_full + self.label
+    
+    @property # subElements of all layers
+    def subElements_all(self):    
+      allSubElements = [] # wichtig, dass neues Listenobjekt!
+      allSubElements += self.subElements 
+      for subElem in self.subElements:
+        # all subElements of subElement hinzufügen:
+        allSubElements += subElem.subElements_all
+      return allSubElements
+    
+    # TODO: besser occupied_args
+    def __init__(self,label, **kwargs):
+      self.label     = label
+      self.TS_list   = []#   = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. cTS_vector)
+      
+      self.subElements = [] # zugehörige Sub-ModelingElements
+      self.modBox      = None # hier kommt die aktive ModBox rein
+      self.mod         = None # hier kommen alle Glg und Vars rein
+      super().__init__(**kwargs)
+          
+      
+    # activate inkl. subMEs:
+    def activateModbox(self, modBox):
+      
+      for aME in self.subElements:
+        aME.activateModbox(modBox) # inkl. subMEs
+      self._activateModBox_ForMeOnly(modBox)
+  
+    # activate ohne SubMEs!
+    def _activateModBox_ForMeOnly(self, modBox):
+      self.modBox     = modBox
+      self.mod        = modBox.getModOfME(self)
+  
+    # 1.
+    def finalize(self):
+      #print('finalize ' + self.label)
+      # gleiches für alle sub MEs:
+      for aME in self.subElements:
+        aME.finalize()
+  
+    # 2.
+    def createNewModAndActivateModBox(self, modBox):    
+      # print('new mod for ' + self.label)
+      # subElemente ebenso:
+      aME:cME
+      for aME in self.subElements:
+        aME.createNewModAndActivateModBox(modBox) # rekursiv!
+      
+      # create mod:
+      aMod = cMEModel(self)
+      # register mod:
+      modBox.registerMEandMod(self, aMod)         
+      
+      self._activateModBox_ForMeOnly(modBox)# subMEs werden bereits aktiviert über aME.createNewMod...()
+      
+    # 3.
+    def declareVarsAndEqs(self, modBox):
+      #   #   # Features preparing:
+      #   # for aFeature in self.features:
+      #   #   aFeature.declareVarsAndEqs(modBox)  
+      pass
+  
+  
+    # def doModeling(self,modBox,timeIndexe):
+    #   # for aFeature in self.features:
+      #   aFeature.doModeling(modBox, timeIndexe)        
+      
+      
+    # Ergebnisse als dict ausgeben:    
+    def getResults(self):
+      aData = {}
+      aVars = {}
+      # 1. Unterelemente füllen (rekursiv!):
+      for aME in self.subElements:
+        (aData[aME.label], aVars[aME.label]) = aME.getResults() # rekursiv
+  
+      # 2. Variablenwerte ablegen:
+      aVar : cVariable
+      for aVar in self.mod.variables :
+        # print(aVar.label)
+        aData[aVar.label] = aVar.getResult()
+        aVars[aVar.label] = aVar # link zur Variable
+        if aVar.isBinary and aVar.len >1:
+          # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1] 
+          #                                                       -> a_ = [nan, 1, nan, nan, 1]        
+          aData[aVar.label + '_'] = helpers.zerosToNans(aVar.getResult())   
+          aVars[aVar.label + '_'] = aVar # link zur Variable
+  
+      return aData, aVars
+  
+    # so kurze Schreibweise wie möglich, daher:
+    def var(self, label):
+      self.mod.getVar(label)
+    def eq(self, label):
+      self.mod.getEq (label)
+  
+  
+    def getEqsAsStr(self):
+    
+      ## subelemente durchsuchen:
+      subs = {}
+      for aSubElement in self.subElements:                
+        subs[aSubElement.label] = aSubElement.getEqsAsStr() # rekursiv
+      ## me:
+      
+      # wenn sub-eqs, dann dict:
+      if not(subs == {}): 
+        eqsAsStr = {}
+        eqsAsStr['_self'] = self.mod.getEqsAsStr() # zuerst eigene ...
+        eqsAsStr.update(subs) # ... dann sub-Eqs
+      # sonst liste:
+      else:
+        eqsAsStr = self.mod.getEqsAsStr()
+    
+      return eqsAsStr
+    
+  
+    def getVarsAsStr(self):
+        aList = []
+        
+        aList += self.mod.getVarsAsStr()    
+        for aSubElement in self.subElements:      
+          aList += aSubElement.getVarsAsStr() # rekursiv   
+        
+        return aList
+    
+    def printEqs(self, shiftChars):
+        print(shiftChars + '·' + self.label + ':')
+        print(yaml.dump(self.getEqsAsStr(),
+                        allow_unicode=True))     
+
+    def printVars(self, shiftChars):
+        print(shiftChars + self.label + ':')
+        print(yaml.dump(self.getVarsAsStr(),
+                        allow_unicode=True))
+
+    def getEqsVarsOverview(self):
+        aDict = {}
+        aDict['no eqs']          = len(self.mod.eqs)
+        aDict['no eqs single']   = sum([eq.nrOfSingleEquations for eq in self.mod.eqs])
+        aDict['no inEqs']        = len(self.mod.ineqs)
+        aDict['no inEqs single'] = sum([ineq.nrOfSingleEquations for ineq in self.mod.ineqs])
+        aDict['no vars']         = len(self.mod.variables)
+        aDict['no vars single']  =  sum([var.len for var in self.mod.variables])  
+        return aDict
+
+    
+class cEffectType(cME):
+    '''
+    Effect, i.g. costs, CO2 emissions, area, ...
+    can be used later afterwards for allocating effects to compontents and flows.
+    '''
+    new_init_args = [cArg('label'                                ,'param', 'str'     , 'Bezeichnung'),
+                     cArg('unit'                                 , '?'   , 'str'     , 'Einheit des Effekts, z.B. €, kWh,...'),
+                     cArg('description'                          , '?'   , 'str'     , 'Langbezeichnung'),
+                     cArg('isStandard'                           , '?'   , 'boolean' , 'true, wenn Standard-Effekt (wenn direkte Eingabe bei Kostenpositionen ohne dict) , sonst false'),
+                     cArg('isObjective'                          , '?'   , 'boolean' , 'true, wenn Zielfunktion'),
+                     cArg('specificShareToOtherEffects_operation', '?' , '{effectType: TS, ...}'    , 'Beiträge zu anderen Effekten (nur operation), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
+                     cArg('specificShareToOtherEffects_invest'   , '?' , '{effectType: skalar, ...}', 'Beiträge zu anderen Effekten (nur invest), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
+                     cArg('min_operationSum'                     , '?' , 'skalar' , 'minimale Summe (nur operation) des Effekts'),
+                     cArg('max_operationSum'                     , '?' , 'skalar' , 'maximale Summe (nur operation) des Effekts'),
+                     cArg('min_investSum'                        , '?' , 'skalar' , 'minimale Summe (nur invest) des Effekts'),
+                     cArg('max_investSum'                        , '?' , 'skalar' , 'maximale Summe (nur invest) des Effekts'),
+                     cArg('min_Sum'                              , '?' , 'skalar' , 'minimale Summe des Effekts'),                   
+                     cArg('max_Sum'                              , '?' , 'skalar' , 'maximale Summe des Effekts'),
+                     
+                     ] 
+                     # todo: effects, die noch nicht instanziert sind, können hier auch keine shares zugeordnet werden!
+    not_used_args = ['label']
+  
+    # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
+    def __init__(self, label, unit, description, isStandard = False, isObjective = False, specificShareToOtherEffects_operation = {}, specificShareToOtherEffects_invest = {}, 
+                 min_operationSum = None, max_operationSum = None, 
+                 min_investSum = None, max_investSum = None,
+                 min_Sum = None, max_Sum = None,
+                 **kwargs):    
+        super().__init__(label, **kwargs)    
+        self.label       = label
+        self.unit        = unit
+        # self.allFlow     = allFlow
+        self.description = description
+        self.isStandard  = isStandard
+        self.isObjective = isObjective
+        self.specificShareToOtherEffects_operation = specificShareToOtherEffects_operation
+        self.specificShareToOtherEffects_invest    = specificShareToOtherEffects_invest
+        
+        self.min_operationSum = min_operationSum
+        self.max_operationSum = max_operationSum
+        self.min_investSum    = min_investSum
+        self.max_investSum    = max_investSum
+        self.min_Sum          = min_Sum
+        self.max_Sum          = max_Sum
+        
+        
+        #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ):
+        for effectType, share in self.specificShareToOtherEffects_operation.items() :
+          # value überschreiben durch TS:
+          TS_name = 'specificShareToOtherEffect' +'_'+ effectType.label
+          self.specificShareToOtherEffects_operation[effectType] = cTS_vector(TS_name, specificShareToOtherEffects_operation[effectType], self)
+    
+        # ShareSums:
+        self.operation = cFeature_ShareSum(label = 'operation', owner = self, sharesAreTS = True,  minOfSum = self.min_operationSum, maxOfSum = self.max_operationSum)
+        self.invest    = cFeature_ShareSum(label = 'invest'   , owner = self, sharesAreTS = False, minOfSum = self.min_investSum   , maxOfSum = self.max_investSum)
+        self.all       = cFeature_ShareSum(label = 'all'      , owner = self, sharesAreTS = False, minOfSum = self.min_Sum         , maxOfSum = self.max_Sum)
+          
+    
+    def declareVarsAndEqs(self,modBox):
+        super().declareVarsAndEqs(modBox)
+        self.operation.declareVarsAndEqs(modBox)
+        self.invest   .declareVarsAndEqs(modBox)
+        self.all      .declareVarsAndEqs(modBox)    
+    
+    def doModeling(self, modBox, timeIndexe):
+        print('modeling ' + self.label)
+        super().declareVarsAndEqs(modBox)
+        self.operation.doModeling(modBox, timeIndexe)
+        self.invest   .doModeling(modBox, timeIndexe)
+        self.all      .doModeling(modBox, timeIndexe)
+        # Gleichung für Summe Operation und Invest:
+        # eq: shareSum = effect.operation_sum + effect.operation_invest
+        self.all.addVariableShare(self.operation.mod.var_sum, 1, 1)
+        self.all.addVariableShare(self.invest   .mod.var_sum, 1, 1)
+      
 # ModelingElement (ME) Klasse zum Summieren einzelner Shares
 # geht für skalar und TS
 # z.B. invest.costs 
 
 
 # Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
-class cEffectTypeList(list):    
-
-  # return standard effectType:
-  def standardType(self):
-    aEffect : cEffectType
-    aStandardEffect = None
-    # TODO: eleganter nach attribut suchen:
-    for aEffectType in self:
-      if aEffectType.isStandard : aStandardEffect = aEffectType
-    return aStandardEffect
-  
-  def objectiveEffect(self):
-    aEffect : cEffectType
-    aObjectiveEffect = None
-    # TODO: eleganter nach attribut suchen:
-    for aEffectType in self:
-      if aEffectType.isObjective : aObjectiveEffect = aEffectType
-    return aObjectiveEffect
+class cEffectTypeList(list):
+    '''
+    internal effect list for simple handling of effects
+    '''
+    # return standard effectType:
+    def standardType(self):
+        aEffect : cEffectType
+        aStandardEffect = None
+        # TODO: eleganter nach attribut suchen:
+        for aEffectType in self:
+            if aEffectType.isStandard : aStandardEffect = aEffectType
+        return aStandardEffect
     
+    def objectiveEffect(self):
+        aEffect : cEffectType
+        aObjectiveEffect = None
+        # TODO: eleganter nach attribut suchen:
+        for aEffectType in self:
+            if aEffectType.isObjective : aObjectiveEffect = aEffectType
+        return aObjectiveEffect
+      
     
 from flixFeatures import * 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class cBaseComponent(cME):
+    ''' 
+    basic component class for all components
+    '''    
     modBox : cModelBoxOfES
   
     new_init_args = [cArg('on_valuesBeforeBegin', 'initial', 'list', 'Ein(1)/Aus(0)-Wert vor Zeitreihe'),
@@ -1665,223 +1697,231 @@ class cBaseComponent(cME):
 
 # komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
 class cGlobal(cME):
+    ''' 
+    storing global modeling stuff like effect equations and optimization target
+    '''
   
-  def __init__(self, label, **kwargs):
-    super().__init__(label, **kwargs)
-    
-    self.listOfEffectTypes = [] # wird überschrieben mit spezieller Liste
-
-    self.objective = None
-
-  def finalize(self):
-    super().finalize() # TODO: super-Finalize eher danach?
-    self.penalty   = cFeature_ShareSum('penalty', self, sharesAreTS = True)
-    
-    # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
-    self.subElements.extend(self.listOfEffectTypes)
-   
-  
-  # Beiträge registrieren:
-  # effectValues kann sein 
-  #   1. {effecttype1 : TS, effectType2: : TS} oder 
-  #   2. TS oder skalar 
-  #     -> Zuweisung zu Standard-EffektType      
-    
-  def addShareToOperation(self, aVariable, effect_values, factor):
-    if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
-    self.__addShare('operation', effect_values, factor, aVariable)
-
-  def addConstantShareToOperation(self, effect_values, factor):
-    self.__addShare('operation', effect_values, factor)
-    
-  def addShareToInvest   (self, aVariable, effect_values, factor):
-    if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
-    self.__addShare('invest'   , effect_values, factor, aVariable)
-    
-  def addConstantShareToInvest   (self, effect_values, factor):
-    self.__addShare('invest'   , effect_values, factor)    
-  
-  # wenn aVariable = None, dann constanter Share
-  def __addShare(self, operationOrInvest, effect_values, factor, aVariable = None):
-    aEffectSum : cFeature_ShareSum
-    
-    effect_values_dict = getEffectDictOfEffectValues(effect_values)
-              
-    # an alle Effekttypen, die einen Wert haben, anhängen:
-    for effectType, value in effect_values_dict.items():                 
-      # Falls None, dann Standard-effekt nutzen:
-      effectType : cEffectType
-      if effectType is None : effectType = self.listOfEffectTypes.standardType()
-      elif effectType not in self.listOfEffectTypes:
-        raise Exception('Effect \'' + effectType.label + '\' was not added to model (but used in some costs)!')        
-        
-      if operationOrInvest   == 'operation':        
-        effectType.operation.addShare(aVariable, value, factor) # hier darf aVariable auch None sein!
-      elif operationOrInvest == 'invest':
-        effectType.invest   .addShare(aVariable, value, factor) # hier darf aVariable auch None sein!
-      else:
-        raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
-
-  def declareVarsAndEqs(self,modBox):
-    
-    # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
-
-    super().declareVarsAndEqs(modBox)
-
-    
-    for effect in self.listOfEffectTypes:
-      effect.declareVarsAndEqs(modBox)
-    self.penalty  .declareVarsAndEqs(modBox)
-
-    self.objective  = cEquation('obj',self,modBox,'objective')   
-   
-    # todo : besser wäre objective separat:
-   #  eq_objective = cEquation('objective',self,modBox,'objective')   
-    # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-  def doModeling(self,modBox,timeIndexe):
-    # super().doModeling(modBox,timeIndexe)
-    
-    self.penalty  .doModeling(modBox,timeIndexe)
-    ## Gleichungen bauen für Effekte: ##       
-    for effect in self.listOfEffectTypes:
-      effect.doModeling(modBox,timeIndexe)
-    
-    
-    ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##    
-    for effectType in self.listOfEffectTypes :                      
-      # Beitrag/Share ergänzen:
-      # 1. operation: -> hier sind es Zeitreihen (share_TS)
-      # alle specificSharesToOtherEffects durchgehen:
-      for effectTypeOfShare, specShare_TS in effectType.specificShareToOtherEffects_operation.items():               
-        # Share anhängen (an jeweiligen Effekt):
-        effectTypeOfShare.operation.addVariableShare(effectType.operation.mod.var_sum_TS, specShare_TS, 1)
-      # 2. invest:    -> hier ist es Skalar (share)
-      # alle specificSharesToOtherEffects durchgehen:
-      for effectTypeOfShare, specShare in effectType.specificShareToOtherEffects_invest.items():                     
-        # Share anhängen (an jeweiligen Effekt):
-        effectTypeOfShare.invest.addVariableShare(effectType.invest.mod.var_sum   , specShare   , 1)
-                       
+    def __init__(self, label, **kwargs):
+      super().__init__(label, **kwargs)
       
+      self.listOfEffectTypes = [] # wird überschrieben mit spezieller Liste
+  
+      self.objective = None
+  
+    def finalize(self):
+      super().finalize() # TODO: super-Finalize eher danach?
+      self.penalty   = cFeature_ShareSum('penalty', self, sharesAreTS = True)
+      
+      # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
+      self.subElements.extend(self.listOfEffectTypes)
+     
     
-    # ####### Zielfunktion ###########       
-    # Strafkosten immer:
-    self.objective.addSummand(self.penalty  .mod.var_sum, 1) 
+    # Beiträge registrieren:
+    # effectValues kann sein 
+    #   1. {effecttype1 : TS, effectType2: : TS} oder 
+    #   2. TS oder skalar 
+    #     -> Zuweisung zu Standard-EffektType      
+      
+    def addShareToOperation(self, aVariable, effect_values, factor):
+      if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
+      self.__addShare('operation', effect_values, factor, aVariable)
+  
+    def addConstantShareToOperation(self, effect_values, factor):
+      self.__addShare('operation', effect_values, factor)
+      
+    def addShareToInvest   (self, aVariable, effect_values, factor):
+      if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
+      self.__addShare('invest'   , effect_values, factor, aVariable)
+      
+    def addConstantShareToInvest   (self, effect_values, factor):
+      self.__addShare('invest'   , effect_values, factor)    
     
-    # Definierter Effekt als Zielfunktion:
-    objectiveEffect = self.listOfEffectTypes.objectiveEffect()
-    if objectiveEffect is None : raise Exception('Kein Effekt als Zielfunktion gewählt!')
-    self.objective.addSummand(objectiveEffect.operation.mod.var_sum, 1)
-    self.objective.addSummand(objectiveEffect.invest   .mod.var_sum ,1)
+    # wenn aVariable = None, dann constanter Share
+    def __addShare(self, operationOrInvest, effect_values, factor, aVariable = None):
+      aEffectSum : cFeature_ShareSum
+      
+      effect_values_dict = getEffectDictOfEffectValues(effect_values)
+                
+      # an alle Effekttypen, die einen Wert haben, anhängen:
+      for effectType, value in effect_values_dict.items():                 
+        # Falls None, dann Standard-effekt nutzen:
+        effectType : cEffectType
+        if effectType is None : effectType = self.listOfEffectTypes.standardType()
+        elif effectType not in self.listOfEffectTypes:
+          raise Exception('Effect \'' + effectType.label + '\' was not added to model (but used in some costs)!')        
           
-class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cME???
-
-  new_init_args = [cArg('label'                 , 'param', 'str', 'Bezeichnung'),
-                   cArg('typ'                   , 'param', 'str', 'Zusatzbeschreibung, sonst kein Einfluss'),
-                   cArg('excessCostsPerFlowHour', 'costs', 'TS' , 'Exzesskosten (none/ 0 -> kein Exzess; > 0 -> berücksichtigt')]
-
-  not_used_args = ['label']
-
-  # --> excessCostsPerFlowHour
-  #        none/ 0 -> kein Exzess berücksichtigt
-  #        > 0 berücksichtigt
-    
-  def __init__(self, typ, label, excessCostsPerFlowHour = 1e5, **kwargs):   
-    super().__init__(label,**kwargs)  
-    self.typ = typ
-    self.medium = helpers.InfiniteFullSet()
-    if  (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0) :
-      self.withExcess = True
-      self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)      
-    else: 
-      self.withExcess = False
-
-    
-  def registerInputFlow(self, aFlow):
-    self.inputs.append(aFlow)
-    self.checkMedium(aFlow)
-    
-  def registerOutputFlow(self,aFlow):
-    self.outputs.append(aFlow) 
-    self.checkMedium(aFlow)
-
-  def checkMedium(self,aFlow):
-    # Wenn noch nicht belegt
-    if aFlow.medium is not None : 
-      # set gemeinsamer Medien:
-      newMedium = self.medium & aFlow.medium
-      # wenn mindestens ein Eintrag:    
-      if newMedium : 
-        self.medium = newMedium
-      else : 
-        raise Exception('in cBus ' + self.label + ' : registerFlow(): medium ' + str(aFlow.medium) + ' of ' + aFlow.label + ' passt nicht zu bisherigen Flows ' + str(self.medium) ) 
-
-  def declareVarsAndEqs(self, modBox):
-    super().declareVarsAndEqs(modBox)
-    # Fehlerplus/-minus:
-    if self.withExcess:
-      # Fehlerplus und -minus definieren
-      self.excessIn  =  cVariable('excessIn' , len(modBox.timeSeries), self, modBox, min=0)   
-      self.excessOut =  cVariable('excessOut', len(modBox.timeSeries), self, modBox, min=0)         
-    
-  def doModeling(self, modBox, timeIndexe):        
-    super().doModeling(modBox, timeIndexe)
+        if operationOrInvest   == 'operation':        
+          effectType.operation.addShare(aVariable, value, factor) # hier darf aVariable auch None sein!
+        elif operationOrInvest == 'invest':
+          effectType.invest   .addShare(aVariable, value, factor) # hier darf aVariable auch None sein!
+        else:
+          raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
+  
+    def declareVarsAndEqs(self,modBox):
       
-    # inputs = outputs 
-    eq_busbalance = cEquation('busBalance', self, modBox)
-    for aFlow in self.inputs:
-      eq_busbalance.addSummand(aFlow.mod.var_val, 1)
-    for aFlow in self.outputs:
-      eq_busbalance.addSummand(aFlow.mod.var_val,-1)
-    
-    # Fehlerplus/-minus:
-    if self.withExcess:
-      # Hinzufügen zur Bilanz:
-      eq_busbalance.addSummand(self.excessOut, -1) 
-      eq_busbalance.addSummand(self.excessIn ,  1)      
+      # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
+  
+      super().declareVarsAndEqs(modBox)
+  
+      
+      for effect in self.listOfEffectTypes:
+        effect.declareVarsAndEqs(modBox)
+      self.penalty  .declareVarsAndEqs(modBox)
+  
+      self.objective  = cEquation('obj',self,modBox,'objective')   
+     
+      # todo : besser wäre objective separat:
+     #  eq_objective = cEquation('objective',self,modBox,'objective')   
+      # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
+    def doModeling(self,modBox,timeIndexe):
+      # super().doModeling(modBox,timeIndexe)
+      
+      self.penalty  .doModeling(modBox,timeIndexe)
+      ## Gleichungen bauen für Effekte: ##       
+      for effect in self.listOfEffectTypes:
+        effect.doModeling(modBox,timeIndexe)
+      
+      
+      ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##    
+      for effectType in self.listOfEffectTypes :                      
+        # Beitrag/Share ergänzen:
+        # 1. operation: -> hier sind es Zeitreihen (share_TS)
+        # alle specificSharesToOtherEffects durchgehen:
+        for effectTypeOfShare, specShare_TS in effectType.specificShareToOtherEffects_operation.items():               
+          # Share anhängen (an jeweiligen Effekt):
+          effectTypeOfShare.operation.addVariableShare(effectType.operation.mod.var_sum_TS, specShare_TS, 1)
+        # 2. invest:    -> hier ist es Skalar (share)
+        # alle specificSharesToOtherEffects durchgehen:
+        for effectTypeOfShare, specShare in effectType.specificShareToOtherEffects_invest.items():                     
+          # Share anhängen (an jeweiligen Effekt):
+          effectTypeOfShare.invest.addVariableShare(effectType.invest.mod.var_sum   , specShare   , 1)
+                         
+        
+      
+      # ####### target function  ###########       
+      # Strafkosten immer:
+      self.objective.addSummand(self.penalty  .mod.var_sum, 1) 
+      
+      # Definierter Effekt als Zielfunktion:
+      objectiveEffect = self.listOfEffectTypes.objectiveEffect()
+      if objectiveEffect is None : raise Exception('Kein Effekt als Zielfunktion gewählt!')
+      self.objective.addSummand(objectiveEffect.operation.mod.var_sum, 1)
+      self.objective.addSummand(objectiveEffect.invest   .mod.var_sum ,1)
+            
+class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cME???
+    '''
+    realizing balance of all linked flows
+    (penalty flow is excess can be activated)
+    '''
+     
+    new_init_args = [cArg('label'                 , 'param', 'str', 'Bezeichnung'),
+                     cArg('typ'                   , 'param', 'str', 'Zusatzbeschreibung, sonst kein Einfluss'),
+                     cArg('excessCostsPerFlowHour', 'costs', 'TS' , 'Exzesskosten (none/ 0 -> kein Exzess; > 0 -> berücksichtigt')]
+  
+    not_used_args = ['label']
+  
+    # --> excessCostsPerFlowHour
+    #        none/ 0 -> kein Exzess berücksichtigt
+    #        > 0 berücksichtigt
+      
+    def __init__(self, typ, label, excessCostsPerFlowHour = 1e5, **kwargs):   
+      super().__init__(label,**kwargs)  
+      self.typ = typ
+      self.medium = helpers.InfiniteFullSet()
+      if  (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0) :
+        self.withExcess = True
+        self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)      
+      else: 
+        self.withExcess = False
+  
+      
+    def registerInputFlow(self, aFlow):
+      self.inputs.append(aFlow)
+      self.checkMedium(aFlow)
+      
+    def registerOutputFlow(self,aFlow):
+      self.outputs.append(aFlow) 
+      self.checkMedium(aFlow)
+  
+    def checkMedium(self,aFlow):
+      # Wenn noch nicht belegt
+      if aFlow.medium is not None : 
+        # set gemeinsamer Medien:
+        newMedium = self.medium & aFlow.medium
+        # wenn mindestens ein Eintrag:    
+        if newMedium : 
+          self.medium = newMedium
+        else : 
+          raise Exception('in cBus ' + self.label + ' : registerFlow(): medium ' + str(aFlow.medium) + ' of ' + aFlow.label + ' passt nicht zu bisherigen Flows ' + str(self.medium) ) 
+  
+    def declareVarsAndEqs(self, modBox):
+      super().declareVarsAndEqs(modBox)
+      # Fehlerplus/-minus:
+      if self.withExcess:
+        # Fehlerplus und -minus definieren
+        self.excessIn  =  cVariable('excessIn' , len(modBox.timeSeries), self, modBox, min=0)   
+        self.excessOut =  cVariable('excessOut', len(modBox.timeSeries), self, modBox, min=0)         
+      
+    def doModeling(self, modBox, timeIndexe):        
+      super().doModeling(modBox, timeIndexe)
+        
+      # inputs = outputs 
+      eq_busbalance = cEquation('busBalance', self, modBox)
+      for aFlow in self.inputs:
+        eq_busbalance.addSummand(aFlow.mod.var_val, 1)
+      for aFlow in self.outputs:
+        eq_busbalance.addSummand(aFlow.mod.var_val,-1)
+      
+      # Fehlerplus/-minus:
+      if self.withExcess:
+        # Hinzufügen zur Bilanz:
+        eq_busbalance.addSummand(self.excessOut, -1) 
+        eq_busbalance.addSummand(self.excessIn ,  1)      
+  
+    def addShareToGlobals(self,globalComp,modBox) :
+      super().addShareToGlobals(globalComp, modBox)
+      # Strafkosten hinzufügen:
+      if self.withExcess :      
+        globalComp.penalty.addVariableShare(self.excessIn , self.excessCostsPerFlowHour, modBox.dtInHours)
+        globalComp.penalty.addVariableShare(self.excessOut, self.excessCostsPerFlowHour, modBox.dtInHours)
+        # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
+        # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
+      
+    def print(self,shiftChars):
+      print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' +  str(len(self.outputs)) + ' Out-Flows registered' )        
+      
+      print(shiftChars + '   medium: ' + str(self.medium))
+      super().print(shiftChars)
 
-  def addShareToGlobals(self,globalComp,modBox) :
-    super().addShareToGlobals(globalComp, modBox)
-    # Strafkosten hinzufügen:
-    if self.withExcess :      
-      globalComp.penalty.addVariableShare(self.excessIn , self.excessCostsPerFlowHour, modBox.dtInHours)
-      globalComp.penalty.addVariableShare(self.excessOut, self.excessCostsPerFlowHour, modBox.dtInHours)
-      # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
-      # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
-    
-  def print(self,shiftChars):
-    print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' +  str(len(self.outputs)) + ' Out-Flows registered' )        
-    
-    print(shiftChars + '   medium: ' + str(self.medium))
-    super().print(shiftChars)
-
-   
-    
 
  # Medien definieren:
-class cMediumCollection :
-  # single medium:
-  heat    = set(['heat'])
-  cold    = set(['cold'])
-  el      = set(['el'])
-  gas     = set(['gas'])
-  lignite = set(['lignite'])
-  biomass = set(['biomass'])
-  ash     = set(['ash'])
-  # groups: 
-  fu        = gas | lignite | biomass
-  fossil_fu = gas | lignite
-  
-  # neues Medium hinzufügen:
-  def addMedium(attrName, aSetOfStrs):
-    cMediumCollection.setattr(attrName,aSetOfStrs)
+class cMediumCollection:
+    '''
+    define possible domains for flow (not tested!)
+    '''
+    # single medium:
+    heat    = set(['heat'])
+    cold    = set(['cold'])
+    el      = set(['el'])
+    gas     = set(['gas'])
+    lignite = set(['lignite'])
+    biomass = set(['biomass'])
+    ash     = set(['ash'])
+    # groups: 
+    fu        = gas | lignite | biomass
+    fossil_fu = gas | lignite
     
-  # checkifFits(medium1,medium2,...)
-  def checkIfFits(*args):
-    aCommonMedium = helpers.InfiniteFullSet()
-    for aMedium in args:
-      if aMedium is not None : aCommonMedium = aCommonMedium & aMedium 
-    if aCommonMedium : return True
-    else             : return False
+    # neues Medium hinzufügen:
+    def addMedium(attrName, aSetOfStrs):
+      cMediumCollection.setattr(attrName,aSetOfStrs)
+      
+    # checkifFits(medium1,medium2,...)
+    def checkIfFits(*args):
+      aCommonMedium = helpers.InfiniteFullSet()
+      for aMedium in args:
+        if aMedium is not None : aCommonMedium = aCommonMedium & aMedium 
+      if aCommonMedium : return True
+      else             : return False
     
 # input/output-dock (TODO:
 class cIO(): 
@@ -1893,6 +1933,9 @@ class cIO():
 # todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
 # Fluss/Strippe
 class cFlow(cME):
+    '''
+    flows are inputs and outputs of components
+    '''
     ## Parameter       
     # valuesBeforeBegin -> Liste mit letzten 2 Werten davor!
     new_init_args = [cArg('label'               , 'param', 'str',        'Bezeichnung'),
@@ -1921,22 +1964,21 @@ class cFlow(cME):
 
     @property
     def label_full(self):
-      # Wenn im Erstellungsprozess comp noch nicht bekannt:
-      if self.comp is None:
-        comp_label = 'unknownComp'
-      else:
-        comp_label = self.comp.label
-      
-      separator = '_' # wichtig, sonst geht results_struct nicht
-      return comp_label + separator + self.label # z.B. für results_struct (deswegen auch _  statt . dazwischen)
+        # Wenn im Erstellungsprozess comp noch nicht bekannt:
+        if self.comp is None:
+            comp_label = 'unknownComp'
+        else:
+            comp_label = self.comp.label
+        separator = '_' # wichtig, sonst geht results_struct nicht
+        return comp_label + separator + self.label # z.B. für results_struct (deswegen auch _  statt . dazwischen)
 
     @property #Richtung
     def isInputInComp(self):
-      comp : cBaseComponent
-      if self in self.comp.inputs:
-        return True
-      else:
-        return False
+        comp : cBaseComponent
+        if self in self.comp.inputs:
+            return True
+        else:
+            return False
 
     @property
     def investmentSize_is_fixed(self):
