@@ -8,7 +8,6 @@ flixOpt is developed in project SMARTBIOGRID by [TU Dresden](https://github.com/
 
 flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU Dresden](https://github.com/gewv-tu-dresden) and has a few influences from [oemof/solph](https://github.com/oemof/oemof-solph) (Great thanks for your tool!)
 ## key features
-  * architecture allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
   * many constraints available
   * invest optimization
   * segmented linear correlations for
@@ -18,6 +17,10 @@ flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU
     * various effects, i.g. costs, CO2 emissions, primary energy, area demand etc.
     * effects coupleable, i.g. specific costs of CO2-emissions
     * constraints, i.g. max sum of CO2 emissions
+  * architecture
+    * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
+    * interlayer flixBase for modeling and good overview of vars and es
+    * postprocessing unit
 
 ## performance issues
 You can choose between three calculation modes:
