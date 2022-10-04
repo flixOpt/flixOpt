@@ -7,14 +7,13 @@ Created on Tue Oct  4 14:54:19 2022
 
 import simple_example
 
-## TESTING: ##
+# ## TESTING: ##
 print('#############')
-print('## Testing ##')  
+print('## Testing ##')
 objective_value = calc1_res.infos['modboxes']['info'][0]['main_results']['Result of Obj']
-assert round(objective_value,-1) == -10760,'!!!Achtung Ergebnis-Änderung!!!'
+assert round(objective_value, -1) == -10760, '!!!Achtung Ergebnis-Änderung!!!'
 print('##   ok!   ##')
 print('#############')
 
-# if nameOfCalcSegs is not None:  
-  # assert round(0.001* sum(calcSegs.results_struct.globalComp.costs.operation.sum_TS )) == -12, 'TESTING segmentweise - Achtung: Ergebnisse stimmen nicht mehr!'
-    
+# if nameOfCalcSegs is not None:
+#     assert round(0.001* sum(calcSegs.results_struct.globalComp.costs.operation.sum_TS )) == -12, 'TESTING segmentweise - Achtung: Ergebnisse stimmen nicht mehr!'
