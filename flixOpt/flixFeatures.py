@@ -290,21 +290,21 @@ class cFeatureOn(cFeature) :
   # #   self.nameOfVariable = nameOfVariable
   # #   self.flows  = flows
   # #   self.mod.var_on = None
-  def __init__(self, owner, flowsDefiningOn, on_valuesBeforeBegin, switchOnCosts, costsPerRunningHour, onHours_min = None, onHours_max = None, switchOn_maxNr = None, useOn_explicit = False, useSwitchOn_explicit=False):
+  def __init__(self, owner, flowsDefiningOn, on_valuesBeforeBegin, switchOnCosts, costsPerRunningHour, onHoursSum_min = None, onHoursSum_max = None, switchOn_maxNr = None, useOn_explicit = False, useSwitchOn_explicit=False):
     super().__init__('featureOn', owner)
     self.flowsDefiningOn     = flowsDefiningOn
     self.on_valuesBeforeBegin = on_valuesBeforeBegin
     self.switchOnCosts       = switchOnCosts
     self.costsPerRunningHour = costsPerRunningHour
-    self.onHours_min  = onHours_min
-    self.onHours_max  = onHours_max
+    self.onHoursSum_min  = onHoursSum_min
+    self.onHoursSum_max  = onHoursSum_max
     self.switchOn_maxNr      = switchOn_maxNr
     # default:
     self.useOn       = False
     self.useSwitchOn = False
 
     # Notwendige Variablen entsprechend der übergebenen Parameter:        
-    paramsForcingOn = [costsPerRunningHour, onHours_min, onHours_max] 
+    paramsForcingOn = [costsPerRunningHour, onHoursSum_min, onHoursSum_max] 
     if any(param is not None for param in paramsForcingOn):
       self.useOn = True
     
@@ -342,10 +342,10 @@ class cFeatureOn(cFeature) :
       #Before-Variable:
       self.mod.var_on      = cVariableB('on', modBox.nrOfTimeSteps, self.owner, modBox, isBinary = True)
       self.mod.var_on.activateBeforeValues(esBeforeValue = self.on_valuesBeforeBegin[0], beforeValueIsStartValue = False)
-      self.mod.var_onHours = cVariable('onHours', 1, self.owner, modBox, min = self.onHours_min, max = self.onHours_max) # wenn max/min = None, dann bleibt das frei
+      self.mod.var_onHoursSum = cVariable('onHoursSum', 1, self.owner, modBox, min = self.onHoursSum_min, max = self.onHoursSum_max) # wenn max/min = None, dann bleibt das frei
     else :
       self.mod.var_on = None      
-      self.mod.var_onHours = None
+      self.mod.var_onHoursSum = None
       
     # Var SwitchOn
     if self.useSwitchOn:
@@ -435,11 +435,11 @@ class cFeatureOn(cFeature) :
   
       #######################################################################
       #### Anzahl Betriebsstunden ####
-      # eq: onHours = sum(on(t)*dt)
+      # eq: onHoursSum = sum(on(t)*dt)
       
-      eq_OnHours = cEquation('onHours', eqsOwner ,modBox)
-      eq_OnHours.addSummand(     self.mod.var_onHours,  1)
-      eq_OnHours.addSummandSumOf(self.mod.var_on     , -1 * modBox.dtInHours)
+      eq_onHoursSum = cEquation('onHoursSum', eqsOwner ,modBox)
+      eq_onHoursSum.addSummand(     self.mod.var_onHoursSum,  1)
+      eq_onHoursSum.addSummandSumOf(self.mod.var_on     , -1 * modBox.dtInHours)
       
   
   

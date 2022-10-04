@@ -1546,21 +1546,21 @@ class cBaseComponent(cME):
     new_init_args = [cArg('on_valuesBeforeBegin', 'initial', 'list', 'Ein(1)/Aus(0)-Wert vor Zeitreihe'),
                      cArg('switchOnCosts'       , 'costs'  , 'TS'  , 'Einschaltkosten z.B. in €'),
                      cArg('switchOn_maxNr'      , 'param', 'skalar', 'max. zulässige Anzahl Starts'),
-                     cArg('onHours_min'         , 'param', 'skalar', 'min. Betriebsstunden'),
-                     cArg('onHours_max'         , 'param', 'skalar', 'max. Betriebsstunden'),
+                     cArg('onHoursSum_min'         , 'param', 'skalar', 'min. Summe Betriebsstunden'),
+                     cArg('onHoursSum_max'         , 'param', 'skalar', 'max. Summe Betriebsstunden'),
                      cArg('costsPerRunningHour' , 'costs'  , 'TS'  , 'Betriebskosten z.B. in €/h')]
 
     not_used_args = []
         
     
-    def __init__(self, label, on_valuesBeforeBegin = [0,0], switchOnCosts = None, switchOn_maxNr = None, onHours_min = None, onHours_max = None, costsPerRunningHour = None, **kwargs) :            
+    def __init__(self, label, on_valuesBeforeBegin = [0,0], switchOnCosts = None, switchOn_maxNr = None, onHoursSum_min = None, onHoursSum_max = None, costsPerRunningHour = None, **kwargs) :            
       label    =  helpers.checkForAttributeNameConformity(label)          # todo: indexierbar / eindeutig machen!      
       super().__init__(label, **kwargs)
       self.on_valuesBeforeBegin = on_valuesBeforeBegin  
       self.switchOnCosts        = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
       self.switchOn_maxNr       = switchOn_maxNr
-      self.onHours_min          = onHours_min
-      self.onHours_max          = onHours_max
+      self.onHoursSum_min          = onHoursSum_min
+      self.onHoursSum_max          = onHoursSum_max
       self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHOur', costsPerRunningHour , self)     
       
       ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
@@ -1633,7 +1633,7 @@ class cBaseComponent(cME):
       # feature for: On and SwitchOn Vars      
       # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
       flowsDefiningOn = self.inputs + self.outputs # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
-      self.featureOn = cFeatureOn(self, flowsDefiningOn, self.on_valuesBeforeBegin, self.switchOnCosts, self.costsPerRunningHour, onHours_min = self.onHours_min, onHours_max = self.onHours_max, switchOn_maxNr = self.switchOn_maxNr)            
+      self.featureOn = cFeatureOn(self, flowsDefiningOn, self.on_valuesBeforeBegin, self.switchOnCosts, self.costsPerRunningHour, onHoursSum_min = self.onHoursSum_min, onHoursSum_max = self.onHoursSum_max, switchOn_maxNr = self.switchOn_maxNr)            
     
     def declareVarsAndEqs(self,modBox):
       super().declareVarsAndEqs(modBox)   
@@ -1948,8 +1948,8 @@ class cFlow(cME):
                      cArg('positive_gradient'   , 'param', 'TS',         '! noch nicht implementiert !'),
                      cArg('costsPerFlowHour'    , 'costs', 'TS',         'Kosten pro Flow-Arbeit, z.B. €/kWh'),
                      cArg('iCanSwitchOff'       , 'param', 'True/False', 'Kann flow "aus gehen", also auf Null gehen (nur relevant wenn min > 0) -> BinärVariable wird genutzt'),
-                     cArg('onHours_min'         , 'param', 'skalar',     'min. Betriebsstunden'),
-                     cArg('onHours_max'         , 'param', 'skalar',     'max. Betriebsstunden'),
+                     cArg('onHoursSum_min'         , 'param', 'skalar',     'min. Summe Betriebsstunden'),
+                     cArg('onHoursSum_max'         , 'param', 'skalar',     'max. Summe Betriebsstunden'),
                      cArg('switchOnCosts'       , 'costs', 'TS'    ,     'Einschaltkosten z.B. in €'),
                      cArg('switchOn_maxNr'      , 'param', 'skalar',     'max. zulässige Anzahl Starts'),
                      cArg('costsPerRunningHour' , 'costs', 'TS'    ,     'Kosten für den reinen Betrieb, z.B. €/h'),
@@ -2002,7 +2002,7 @@ class cFlow(cME):
     __nominal_val_default = 1e9 # Großer Gültigkeitsbereich als Standard
     
     def __init__(self,label, bus:cBus=None , min_rel = 0, max_rel = 1, nominal_val = __nominal_val_default , loadFactor_min = None, loadFactor_max = None, positive_gradient = None, costsPerFlowHour = None ,iCanSwitchOff = True,
-                 onHours_min = None, onHours_max= None, switchOnCosts = None, switchOn_maxNr = None, costsPerRunningHour =None, sumFlowHours_max = None, sumFlowHours_min = None, valuesBeforeBegin = [0,0], val_rel = None, investArgs = None, **kwargs):
+                 onHoursSum_min = None, onHoursSum_max= None, switchOnCosts = None, switchOn_maxNr = None, costsPerRunningHour =None, sumFlowHours_max = None, sumFlowHours_min = None, valuesBeforeBegin = [0,0], val_rel = None, investArgs = None, **kwargs):
       
       super().__init__(label, **kwargs)   
       # args to attributes:
@@ -2015,8 +2015,8 @@ class cFlow(cME):
       self.positive_gradient   = cTS_vector('positive_gradient', positive_gradient, self)
       self.costsPerFlowHour    = transFormEffectValuesToTSDict('costsPerFlowHour',costsPerFlowHour , self)
       self.iCanSwitchOff       = iCanSwitchOff
-      self.onHours_min         = onHours_min
-      self.onHours_max         = onHours_max
+      self.onHoursSum_min         = onHoursSum_min
+      self.onHoursSum_max         = onHoursSum_max
 
       self.switchOnCosts       = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
       self.switchOn_maxNr      = switchOn_maxNr
@@ -2060,7 +2060,7 @@ class cFlow(cME):
       on_valuesBeforeBegin = 1 * (self.valuesBeforeBegin >= 0.0001 ) # TODO: besser wäre modBox.epsilon, aber hier noch nicht bekannt!)       
       # TODO: Wenn iCanSwitchOff = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
       
-      self.featureOn = cFeatureOn(self, flowsDefiningOn, on_valuesBeforeBegin, self.switchOnCosts, self.costsPerRunningHour, onHours_min = self.onHours_min, onHours_max = self.onHours_max, switchOn_maxNr = self.switchOn_maxNr, useOn_explicit = self.__useOn_fromProps)
+      self.featureOn = cFeatureOn(self, flowsDefiningOn, on_valuesBeforeBegin, self.switchOnCosts, self.costsPerRunningHour, onHoursSum_min = self.onHoursSum_min, onHoursSum_max = self.onHoursSum_max, switchOn_maxNr = self.switchOn_maxNr, useOn_explicit = self.__useOn_fromProps)
 
       if self.investArgs is None:
         self.featureInvest = None # 
