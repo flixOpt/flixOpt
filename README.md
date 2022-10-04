@@ -1,7 +1,7 @@
 # flixOpt
 vector based energy and material flow optimization framework in python
 
-in progress; do not hesitate to contact authors
+flixOpt is in progress - Do not hesitate to contact authors!
 ## introduction
 **flixOpt** is an vector based optimization framework creating and solving mixed-integer programming problems (MILP). It is created with focus of energy flows but can be used for material flows as well.
 
