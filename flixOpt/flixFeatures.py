@@ -290,21 +290,33 @@ class cFeatureOn(cFeature) :
   # #   self.nameOfVariable = nameOfVariable
   # #   self.flows  = flows
   # #   self.mod.var_on = None
-  def __init__(self, owner, flowsDefiningOn, on_valuesBeforeBegin, switchOnCosts, costsPerRunningHour, onHoursSum_min = None, onHoursSum_max = None, switchOn_maxNr = None, useOn_explicit = False, useSwitchOn_explicit=False):
+  def __init__(self, owner, flowsDefiningOn, on_valuesBeforeBegin, 
+               switchOnCosts, costsPerRunningHour, 
+               onHoursSum_min = None, onHoursSum_max = None, 
+               onHours_min = None, onHours_max = None,
+               offHours_min = None, offHours_max = None,
+               switchOn_maxNr = None, 
+               useOn_explicit = False, 
+               useSwitchOn_explicit=False):
     super().__init__('featureOn', owner)
     self.flowsDefiningOn     = flowsDefiningOn
     self.on_valuesBeforeBegin = on_valuesBeforeBegin
     self.switchOnCosts       = switchOnCosts
     self.costsPerRunningHour = costsPerRunningHour
-    self.onHoursSum_min  = onHoursSum_min
-    self.onHoursSum_max  = onHoursSum_max
+    self.onHoursSum_min  = onHoursSum_min # scalar
+    self.onHoursSum_max  = onHoursSum_max # scalar
+    self.onHours_min = onHours_min # cTS_vector
+    self.onHours_max = onHours_max # cTS_vector
+    self.offHours_min = offHours_min # cTS_vector
+    self.offHours_max = offHours_max # cTS_vector
     self.switchOn_maxNr      = switchOn_maxNr
     # default:
     self.useOn       = False
     self.useSwitchOn = False
 
     # Notwendige Variablen entsprechend der übergebenen Parameter:        
-    paramsForcingOn = [costsPerRunningHour, onHoursSum_min, onHoursSum_max] 
+    paramsForcingOn = [costsPerRunningHour, onHoursSum_min, onHoursSum_max, 
+                       onHours_min, onHours_max, offHours_min, offHours_max] 
     if any(param is not None for param in paramsForcingOn):
       self.useOn = True
     
@@ -346,6 +358,20 @@ class cFeatureOn(cFeature) :
     else :
       self.mod.var_on = None      
       self.mod.var_onHoursSum = None
+
+    # onHours:
+    if (self.onHours_min is not None) or (self.onHours_max is not None):
+        aMax = None if (self.onHours_max is None) else self.onHours_max.d_i
+        self.mod.var_onHours = cVariable('onHours', modBox.nrOfTimeSteps, self.owner, modBox,
+                                         max = aMax) # min separat
+        # i.g. 
+        # var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
+        # var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...]
+    # offHours:                           
+    if (self.offHours_min is not None) or (self.offHours_max is not None):        
+        raise Exception('offHours still not implemented!')
+        # self.mod.var_offHours = cVariable('offHours', modBox.nrOfTimeSteps, self.owner, modBox,
+        #                                  max = self.offHours_max) # min separat
       
     # Var SwitchOn
     if self.useSwitchOn:
@@ -430,18 +456,65 @@ class cFeatureOn(cFeature) :
       eq2.addSummand(self.mod.var_on , - sumOfFlowMax/ nrOfFlows, timeIndexe) #         
       if sumOfFlowMax / nrOfFlows > 1000 : log.warning('!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert ('+str(int(sumOfFlowMax / nrOfFlows))+'). Ggf. falsche Ergebnisse !!!')
   
-  
-  
-  
       #######################################################################
-      #### Anzahl Betriebsstunden ####
+      #### number sum on hours ####
       # eq: onHoursSum = sum(on(t)*dt)
       
       eq_onHoursSum = cEquation('onHoursSum', eqsOwner ,modBox)
       eq_onHoursSum.addSummand(     self.mod.var_onHoursSum,  1)
       eq_onHoursSum.addSummandSumOf(self.mod.var_on     , -1 * modBox.dtInHours)
+
+      #######################################################################      
+      #### number onHours ####
       
-  
+      if hasattr(self.mod, 'var_onHours'):
+          # i.g. 
+          # var_on      = [0 0 1 1 1 1 0 1 1 1 0 ...]
+          # var_onHours = [0 0 1 2 3 4 0 1 2 3 0 ...]
+          #                                  |-> min_onHours = 3!
+          
+          #1) eq: onHours(t) <= On(t)*Big | On(t)=0 -> onHours(t) = 0
+          # mit Big = dtInHours_tot
+          ineq_onHours_1 = cEquation('onHours_constraint_1', eqsOwner, modBox, eqType = 'ineq')
+          ineq_onHours_1.addSummand(self.mod.var_onHours,1)
+          ineq_onHours_1.addSummand(self.mod.var_on,-1* modBox.dtInHours_tot)
+                      
+          #2a) eq: onHours(t) - onHours(t-1) <= dt(t)
+          #    on(t)=1 -> ...<= dt(t)
+          #    on(t)=0 -> onHours(t-1)>=
+          ineq_onHours_2a = cEquation('onHours_constraint_2a', eqsOwner, modBox, eqType = 'ineq')
+          ineq_onHours_2a.addSummand(self.mod.var_onHours,1,timeIndexe[1:]) # onHours(t)
+          ineq_onHours_2a.addSummand(self.mod.var_onHours,-1,timeIndexe[0:-1]) # onHours(t-1)
+          ineq_onHours_2a.addRightSide(modBox.dtInHours[1:]) # dt(t)
+          
+          #2b) eq:  onHours(t) - onHours(t-1)             >=  dt(t) - Big*(1-On(t)))      
+          #    eq: -onHours(t) + onHours(t-1) + On(t)*Big <= -dt(t) + Big
+          # with Big = dtInHours_tot # (Big = maxOnHours, should be usable, too!)
+          Big = modBox.dtInHours_tot
+          ineq_onHours_2b = cEquation('onHours_constraint_2b', eqsOwner, modBox, eqType = 'ineq')
+          ineq_onHours_2b.addSummand(self.mod.var_onHours,-1,timeIndexe[1:]) # onHours(t)
+          ineq_onHours_2b.addSummand(self.mod.var_onHours, 1,timeIndexe[0:-1]) # onHours(t-1)
+          ineq_onHours_2b.addSummand(self.mod.var_on     , Big,timeIndexe[1:]) # on(t)
+          ineq_onHours_2b.addRightSide(-modBox.dtInHours[1:] + Big) # dt(t)
+          
+          # 3) check onHours_min before switchOff-step
+          if self.onHours_min is not None:          
+              # eq:  onHours(t-1) >= minOnHours * (On(t)-On(t-1))
+              # eq: -onHours(t-1) - onHours_min * On(t) + onHours_min*On(t-1) <= 0
+              ineq_onHours_min = cEquation('onHours_min', eqsOwner, modBox, eqType='ineq')
+              ineq_onHours_min.addSummand(self.mod.var_onHours,-1,timeIndexe[0:-1]) # onHours(t-1)
+              ineq_onHours_min.addSummand(self.mod.var_on,-self.onHours_min.d_i, timeIndexe[1:]) # on(t)
+              ineq_onHours_min.addSummand(self.mod.var_on, self.onHours_min.d_i, timeIndexe[0:-1]) # on(t-1)
+    
+              
+          # 4) first index:
+          #    eq: onHours(t=0)= dt(0) * On(0)
+          firstIndex = timeIndexe[0] # only first element
+          eq_onHours_first = cEquation('onHours_firstTimeStep',eqsOwner,modBox)
+          eq_onHours_first.addSummand(self.mod.var_onHours, 1, firstIndex)
+          eq_onHours_first.addSummand(self.mod.var_on, modBox.dtInHours[firstIndex], firstIndex)
+          # TODO: Verbindung von letzten und ersten Zeitschritt als Option!
+      
   
   def __addConstraintsForSwitchOnSwitchOff(self,eqsOwner, modBox, timeIndexe):
       # % Schaltänderung aus On-Variable
