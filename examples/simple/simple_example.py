@@ -2,13 +2,13 @@
 ## PreProcessing + Solving: ##
 ##############################
 
-import simple_example_PreProcessing
+import simple_example_PreProcessing as example_pre
 
 # Name der Rechnung:
-nameOfCalc = simple_example_PreProcessing.aCalc.nameOfCalc
+nameOfCalc = example_pre.aCalc.nameOfCalc
 
-if hasattr(simple_example_PreProcessing, 'calcSegs'): 
-  nameOfCalcSegs = simple_example_PreProcessing.calcSegs.nameOfCalc
+if hasattr(example_pre, 'calcSegs'): 
+  nameOfCalcSegs = example_pre.calcSegs.nameOfCalc
 else:
   nameOfCalcSegs = None
 print(nameOfCalc)
@@ -96,4 +96,4 @@ def uebersichtsPlot(aCalc):
 uebersichtsPlot(calc1_res)
 if calcSegs is not None : uebersichtsPlot(calcSegs)
 
-# segmented Plots:
+    

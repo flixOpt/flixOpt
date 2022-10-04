@@ -267,16 +267,3 @@ if doSegmentedCalc:
   
   calcSegs.results_struct
 
-
-## TESTING: ##
-print('#############')
-print('## Testing ##')  
-if solver_name == 'cbc':
-  assert round(aCalc.listOfModbox[0].objective_value) == -11728,'!!!Achtung Ergebnis-Änderung!!!'
-else: # gurobi
-  assert round(aCalc.listOfModbox[0].objective_value,-1) == -10760,'!!!Achtung Ergebnis-Änderung!!!'
-print('##   ok!   ##')
-print('#############')
-
-if doSegmentedCalc: 
-  assert round(0.001* sum(calcSegs.results_struct.globalComp.costs.operation.sum_TS )) == -12, 'TESTING segmentweise - Achtung: Ergebnisse stimmen nicht mehr!'
