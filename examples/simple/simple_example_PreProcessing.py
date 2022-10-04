@@ -18,7 +18,7 @@ Created on Thu Jun 16 11:19:17 2022
 # Solver-Inputs:
 displaySolverOutput = False # ausführlicher Solver-Output.
 displaySolverOutput = True  # ausführlicher Solver-Output.
-gapFrac        = 0.002
+gapFrac        = 0.0001
 timelimit      = 3600
 solver_name    = 'gurobi'
 nrOfThreads    = 1
