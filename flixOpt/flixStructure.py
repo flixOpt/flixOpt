@@ -2027,155 +2027,157 @@ class cFlow(cME):
                  investArgs = None, 
                  **kwargs):
         
-      super().__init__(label, **kwargs)   
-      # args to attributes:
-      self.bus                 = bus
-      self.nominal_val         = nominal_val # skalar!
-      self.min_rel             = cTS_vector('min_rel', min_rel              , self)        
-      self.max_rel             = cTS_vector('max_rel', max_rel              , self)
-      self.loadFactor_min      = loadFactor_min
-      self.loadFactor_max      = loadFactor_max
-      self.positive_gradient   = cTS_vector('positive_gradient', positive_gradient, self)
-      self.costsPerFlowHour    = transFormEffectValuesToTSDict('costsPerFlowHour',costsPerFlowHour , self)
-      self.iCanSwitchOff       = iCanSwitchOff
-      self.onHoursSum_min      = onHoursSum_min
-      self.onHoursSum_max      = onHoursSum_max
-      self.onHours_min         = None if (onHours_min is None) else cTS_vector('onHours_min', onHours_min, self)
-      self.onHours_max         = None if (onHours_max is None) else cTS_vector('onHours_max', onHours_max, self)
-      self.offHours_min        = None if (offHours_min is None) else cTS_vector('offHours_min', onHours_min, self)
-      self.offHours_max        = None if (offHours_max is None) else cTS_vector('offHours_max', onHours_max, self)
-      self.switchOnCosts       = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
-      self.switchOn_maxNr      = switchOn_maxNr
-      self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour , self)
-      self.sumFlowHours_max = sumFlowHours_max
-      self.sumFlowHours_min = sumFlowHours_min 
-
       
-      self.valuesBeforeBegin   = np.array(valuesBeforeBegin)   # list -> np-array
-      
-      if val_rel is None:
-        self.val_rel = None # damit man noch einfach rauskriegt, ob es belegt wurde
-      else:
-        # Check:
-        # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
-        if (self.nominal_val == cFlow.__nominal_val_default) and \
-           ((investArgs is None) or (investArgs.investmentSize_is_fixed == True)): 
-          # Fehlermeldung:
-          raise Exception('Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
         
-        self.val_rel = cTS_vector('val_rel',val_rel, self)
-      
-      self.investArgs          = investArgs
-      # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
-
-      # zugehörige Komponente (wird später von Komponente gefüllt)
-      self.comp = None
-      
-      # defaults:
-      self.medium    = None
-                        
-      # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-      self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
-      
-                     
-      # self.prepared          = False # ob __declareVarsAndEqs() ausgeführt
-
-      # feature for: On and SwitchOn Vars (builds only if necessary)
-      # -> feature bereits hier, da andere Elemente featureOn.activateOnValue() nutzen wollen
-      flowsDefiningOn      = [self] # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)      
-      on_valuesBeforeBegin = 1 * (self.valuesBeforeBegin >= 0.0001 ) # TODO: besser wäre modBox.epsilon, aber hier noch nicht bekannt!)       
-      # TODO: Wenn iCanSwitchOff = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
-      
-      self.featureOn = cFeatureOn(self, flowsDefiningOn,
-                                  on_valuesBeforeBegin, 
-                                  self.switchOnCosts, 
-                                  self.costsPerRunningHour, 
-                                  onHoursSum_min = self.onHoursSum_min, 
-                                  onHoursSum_max = self.onHoursSum_max, 
-                                  onHours_min    = self.onHours_min,
-                                  onHours_max    = self.onHours_max,
-                                  offHours_min   = self.offHours_min,
-                                  offHours_max   = self.offHours_max,
-                                  switchOn_maxNr = self.switchOn_maxNr, 
-                                  useOn_explicit = self.__useOn_fromProps)
-
-      if self.investArgs is None:
-        self.featureInvest = None # 
-      else:
-        self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs, 
-                                            min_rel = self.min_rel,
-                                            max_rel = self.max_rel,
-                                            val_rel = self.val_rel,
-                                            investmentSize = self.nominal_val,
-                                            featureOn      = self.featureOn)
+        super().__init__(label, **kwargs)   
+        # args to attributes:
+        self.bus                 = bus
+        self.nominal_val         = nominal_val # skalar!
+        self.min_rel             = cTS_vector('min_rel', min_rel              , self)        
+        self.max_rel             = cTS_vector('max_rel', max_rel              , self)
+        self.loadFactor_min      = loadFactor_min
+        self.loadFactor_max      = loadFactor_max
+        self.positive_gradient   = cTS_vector('positive_gradient', positive_gradient, self)
+        self.costsPerFlowHour    = transFormEffectValuesToTSDict('costsPerFlowHour',costsPerFlowHour , self)
+        self.iCanSwitchOff       = iCanSwitchOff
+        self.onHoursSum_min      = onHoursSum_min
+        self.onHoursSum_max      = onHoursSum_max
+        self.onHours_min         = None if (onHours_min is None) else cTS_vector('onHours_min', onHours_min, self)
+        self.onHours_max         = None if (onHours_max is None) else cTS_vector('onHours_max', onHours_max, self)
+        self.offHours_min        = None if (offHours_min is None) else cTS_vector('offHours_min', onHours_min, self)
+        self.offHours_max        = None if (offHours_max is None) else cTS_vector('offHours_max', onHours_max, self)
+        self.switchOnCosts       = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
+        self.switchOn_maxNr      = switchOn_maxNr
+        self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour , self)
+        self.sumFlowHours_max = sumFlowHours_max
+        self.sumFlowHours_min = sumFlowHours_min 
+    
+        
+        self.valuesBeforeBegin   = np.array(valuesBeforeBegin)   # list -> np-array
+        
+        if val_rel is None:
+          self.val_rel = None # damit man noch einfach rauskriegt, ob es belegt wurde
+        else:
+          # Check:
+          # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
+          if (self.nominal_val == cFlow.__nominal_val_default) and \
+             ((investArgs is None) or (investArgs.investmentSize_is_fixed == True)): 
+            # Fehlermeldung:
+            raise Exception('Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
+          
+          self.val_rel = cTS_vector('val_rel',val_rel, self)
+        
+        self.investArgs          = investArgs
+        # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
+    
+        # zugehörige Komponente (wird später von Komponente gefüllt)
+        self.comp = None
+        
+        # defaults:
+        self.medium    = None
+                          
+        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
+        self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
+        
+                       
+        # self.prepared          = False # ob __declareVarsAndEqs() ausgeführt
+    
+        # feature for: On and SwitchOn Vars (builds only if necessary)
+        # -> feature bereits hier, da andere Elemente featureOn.activateOnValue() nutzen wollen
+        flowsDefiningOn      = [self] # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)      
+        on_valuesBeforeBegin = 1 * (self.valuesBeforeBegin >= 0.0001 ) # TODO: besser wäre modBox.epsilon, aber hier noch nicht bekannt!)       
+        # TODO: Wenn iCanSwitchOff = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
+        
+        self.featureOn = cFeatureOn(self, flowsDefiningOn,
+                                    on_valuesBeforeBegin, 
+                                    self.switchOnCosts, 
+                                    self.costsPerRunningHour, 
+                                    onHoursSum_min = self.onHoursSum_min, 
+                                    onHoursSum_max = self.onHoursSum_max, 
+                                    onHours_min    = self.onHours_min,
+                                    onHours_max    = self.onHours_max,
+                                    offHours_min   = self.offHours_min,
+                                    offHours_max   = self.offHours_max,
+                                    switchOn_maxNr = self.switchOn_maxNr, 
+                                    useOn_explicit = self.__useOn_fromProps)
+    
+        if self.investArgs is None:
+          self.featureInvest = None # 
+        else:
+          self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs, 
+                                              min_rel = self.min_rel,
+                                              max_rel = self.max_rel,
+                                              val_rel = self.val_rel,
+                                              investmentSize = self.nominal_val,
+                                              featureOn      = self.featureOn)
         
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausiTest(self):
-      # Plausi-Check min < max:
-      if np.any(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d)):       
-      # if np.any(np.asarray(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d) )): 
-        raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
+        # Plausi-Check min < max:
+        if np.any(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d)):       
+        # if np.any(np.asarray(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d) )): 
+          raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
     def activateOnValue(self):
-      self.featureOn.activateOnValueExplicitly()
+        self.featureOn.activateOnValueExplicitly()
 
     def finalize(self):
-      self.plausiTest() # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
-      super().finalize()
+        self.plausiTest() # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
+        super().finalize()
 
       
     def declareVarsAndEqs(self, modBox:cModelBoxOfES):
-      print('declareVarsAndEqs ' + self.label)
-      super().declareVarsAndEqs(modBox)
+        print('declareVarsAndEqs ' + self.label)
+        super().declareVarsAndEqs(modBox)
       
-      self.featureOn.declareVarsAndEqs(modBox) # TODO: rekursiv aufrufen für subElements
-      
-      self.modBox = modBox
-      # Skalare zu Vektoren # 
-      # -> schöner wäre das bei Init, aber da gibt es noch keine Info über Länge)
-      # -> überprüfen, ob nur für pyomo notwendig!
-
-      # timesteps = model.timesteps  
-      ############################           
-
-      ## min/max Werte:
-      #  min-Wert:
-      
-      def getMinMaxOfDefiningVar():
-        # Wenn fixer Lastgang:
-        if self.val_rel is not None:
-          # min = max = val !
-          fix_value = self.val_rel.d_i * self.nominal_val
-          lb = None
-          ub = None
-        else:
-          if self.featureOn.useOn:
-            lb = 0
-          else:
-            lb = self.min_rel.d_i * self.nominal_val # immer an       
-          ub = self.max_rel.d_i * self.nominal_val     
-          fix_value = None
-        return (lb, ub, fix_value)
-      
-      # wenn keine Investrechnung:
-      if self.featureInvest is None:  
-        (lb, ub, fix_value) = getMinMaxOfDefiningVar()
-      else:
-        (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
-            
-      # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-      self.mod.var_val = cVariable('val', modBox.nrOfTimeSteps, self, modBox, min = lb, max = ub, value = fix_value)
-      self.mod.var_sumFlowHours = cVariable('sumFlowHours', 1, self, modBox, min = self.sumFlowHours_min, max = self.sumFlowHours_max)
-      # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
-      self.mod.var_on                               = self.featureOn.getVar_on()           # mit None belegt, falls nicht notwendig           
-      self.mod.var_switchOn, self.mod.var_switchOff = self.featureOn.getVars_switchOnOff() # mit None belegt, falls nicht notwendig           
- 
-      # erst hier, da definingVar vorher nicht belegt!
-      if self.featureInvest is not None: 
-        self.featureInvest.setDefiningVar(self.mod.var_val, self.mod.var_on)
-        self.featureInvest.declareVarsAndEqs(modBox)
+        self.featureOn.declareVarsAndEqs(modBox) # TODO: rekursiv aufrufen für subElements
         
+        self.modBox = modBox
+        # Skalare zu Vektoren # 
+        # -> schöner wäre das bei Init, aber da gibt es noch keine Info über Länge)
+        # -> überprüfen, ob nur für pyomo notwendig!
+    
+        # timesteps = model.timesteps  
+        ############################           
+    
+        ## min/max Werte:
+        #  min-Wert:
+        
+        def getMinMaxOfDefiningVar():
+            # Wenn fixer Lastgang:
+            if self.val_rel is not None:
+                # min = max = val !
+                fix_value = self.val_rel.d_i * self.nominal_val
+                lb = None
+                ub = None
+            else:
+                if self.featureOn.useOn:
+                    lb = 0
+                else:
+                    lb = self.min_rel.d_i * self.nominal_val # immer an       
+                ub = self.max_rel.d_i * self.nominal_val     
+                fix_value = None
+            return (lb, ub, fix_value)
+        
+        # wenn keine Investrechnung:
+        if self.featureInvest is None:  
+            (lb, ub, fix_value) = getMinMaxOfDefiningVar()
+        else:
+            (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
+              
+        # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
+        self.mod.var_val = cVariable('val', modBox.nrOfTimeSteps, self, modBox, min = lb, max = ub, value = fix_value)
+        self.mod.var_sumFlowHours = cVariable('sumFlowHours', 1, self, modBox, min = self.sumFlowHours_min, max = self.sumFlowHours_max)
+        # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
+        self.mod.var_on                               = self.featureOn.getVar_on()           # mit None belegt, falls nicht notwendig           
+        self.mod.var_switchOn, self.mod.var_switchOff = self.featureOn.getVars_switchOnOff() # mit None belegt, falls nicht notwendig           
+     
+        # erst hier, da definingVar vorher nicht belegt!
+        if self.featureInvest is not None: 
+          self.featureInvest.setDefiningVar(self.mod.var_val, self.mod.var_on)
+          self.featureInvest.declareVarsAndEqs(modBox)
+          
     def doModeling(self,modBox:cModelBoxOfES,timeIndexe):        
         # super().doModeling(modBox,timeIndexe)
  
