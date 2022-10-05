@@ -495,16 +495,23 @@ class flix_results():
             y = pd.concat([y_pos,y_neg],axis=1)
                   
             fig, ax = plt.subplots(figsize = (18,10)) 
-          
+            
+            # separate above x_axis
+            if len(y_pos_separat.columns) > 0 :                    
+                for column in y_pos_separat.columns:
+                    ax.plot(y_pos_separat.index, y_pos_separat[column], '--', drawstyle='steps-post', linewidth=3, label = column)
+
             # gestapelt:
             if stacked :               
-                helpers.plotStackedSteps(ax, y) # legende here automatically
-                plt.legend(fontsize=22, loc="upper center",  bbox_to_anchor=(0.5, -0.2), markerscale=2,  ncol=3, frameon=True, fancybox= True, shadow=True)
-            
+                helpers.plotStackedSteps(ax, y) # legende here automatically                
             # normal:
             else:
-                y.plot( drawstyle='steps-post', figsize=(18,10))                                            ### größerer Plot, 16:9 style                            
-                plt.legend( loc="upper center",  bbox_to_anchor=(0.5, -0.2), fontsize=22, ncol=3, frameon=True, shadow= True, fancybox=True) #####David Test  Legende unter Plot
+                y.plot(drawstyle='steps-post', ax=ax)
+                
+
+            plt.legend(fontsize=22, loc="upper center",  bbox_to_anchor=(0.5, -0.2), markerscale=2,  ncol=3, frameon=True, fancybox= True, shadow=True)
+            # plt.legend(loc="upper center",  bbox_to_anchor=(0.5, -0.2), fontsize=22, ncol=3, frameon=True, shadow= True, fancybox=True) 
+
                               
             fig.autofmt_xdate()
            
