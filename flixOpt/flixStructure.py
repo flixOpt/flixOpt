@@ -89,7 +89,6 @@ log = logging.getLogger(__name__)
    
 # TODO: 1. cTimePeriodModel -> hat für Zeitbereich die Modellierung timePeriodModel1, timePeriodModel2,...
 class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifischen Sachen rein
-  
   @property
   def infos(self):    
     infos = super().infos

@@ -60,12 +60,18 @@ class cBaseModel:
     info_flixModel['no inEqs single'] = self.noOfSingleIneqs
     info_flixModel['no vars'] = self.noOfVars
     info_flixModel['no vars single'] = self.noOfSingleVars 
+    info_flixModel['no vars TS'] = len(self.variables_TSonly)
     
     if self.solverLog is not None:      
       infos['solverLog'] = self.solverLog.infos
+    return infos
 
-    
-    return infos  
+  @property
+  def variables_TSonly(self):
+      variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar,cVariable_TS)]
+      return variables_TSonly
+      
+      
   def __init__(self, label, aModType):
     self._infos      = {}
     self.label        = label
@@ -182,7 +188,8 @@ class cBaseModel:
     eq : cEquation
     var : cVariable
   
-    
+      
+  
     self.noOfEqs       = len(self.eqs)
     self.noOfSingleEqs = sum([eq.nrOfSingleEquations for eq in self.eqs])
 
@@ -279,8 +286,8 @@ class cVariable :
         
     # Register me:
     # myMom .variables.append(self) # Komponentenliste
-    baseModel   .variables.append(self) # baseModel-Liste mit allen vars
-    myMom.mod.variables.append(self)
+    baseModel.variables.append(self) # baseModel-Liste mit allen vars
+    myMom.mod.variables.append(self) # TODO: not nice, that this specific thing for energysystems is done here
    
   def transform2MathModel(self,baseModel:cBaseModel):
     self.baseModel = baseModel
@@ -363,6 +370,23 @@ class cVariable :
     
     return aStr
   
+class cVariable_TS(cVariable):
+    # def __init__(self, label, len, myMom, baseModel, isBinary = False, indexe = None, value = None, min = None , max = None))
+    def defineTS(self, anyValDependsOnPrevious=True, valuesIsPostTimeStep=False):
+        '''
+        Parameters
+        ----------
+        oneValDependsOnPrevious : Bool, optional
+            if every value depends on previous -> not fixed in aggregation mode. The default is True.
+        valuesIsPostTimeStep : TYPE, optional
+            DESCRIPTION. The default is False.
+        '''
+        self.defined_TS = True
+        self.anyValDependsOnPrevious = anyValDependsOnPrevious
+        self.valuesIsPostTimeStep = valuesIsPostTimeStep
+    def transform2MathModel(self,baseModel):
+        assert hasattr(self, 'defined_TS') and (self.defined_TS), 
+        ('var_TS ' + self.label + ': defineTS() nicht ausgeführt.')
 # TODO:
 # class cTS_Variable (cVariable):  
 #   valuesIsPostTimeStep = False # für Speicherladezustände true!!!
@@ -372,7 +396,7 @@ class cVariable :
 # variable with Before-Values:
   
 # Variable mit Before-Werten:
-class cVariableB (cVariable): 
+class cVariableB (cVariable_TS): 
 
   #######################################
   # gleiches __init__ wie cVariable!
