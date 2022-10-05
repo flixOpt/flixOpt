@@ -385,8 +385,7 @@ class cVariable_TS(cVariable):
         self.anyValDependsOnPrevious = anyValDependsOnPrevious
         self.valuesIsPostTimeStep = valuesIsPostTimeStep
     def transform2MathModel(self,baseModel):
-        assert hasattr(self, 'defined_TS') and (self.defined_TS), 
-        ('var_TS ' + self.label + ': defineTS() nicht ausgeführt.')
+        assert hasattr(self, 'defined_TS') and (self.defined_TS),('var_TS ' + self.label + ': defineTS() nicht ausgeführt.')
 # TODO:
 # class cTS_Variable (cVariable):  
 #   valuesIsPostTimeStep = False # für Speicherladezustände true!!!
