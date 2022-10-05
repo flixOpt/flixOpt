@@ -173,28 +173,31 @@ class flix_results():
   
     @staticmethod
     # für plot:    
-    def __get_Values_As_DataFrame(flows,timeSeries,dtInHours, minFlowHours):
-        y = pd.DataFrame(index = timeSeries) # letzten Zeitschritt vorerst 
-    
-    
-        
-    
+    def __get_Values_As_DataFrame(flows,timeSeries,dtInHours, minFlowHours, indexSeq):
+        y = pd.DataFrame({'timeSeries': timeSeries,
+                          'dtInHours': dtInHours }) # letzten Zeitschritt vorerst weglassen
+
+            # Beachte: hier noch nicht als df-Index, damit sortierbar
         for aFlow in flows:        
-            # assert aFlow.comp.label in results.keys(), '!Keine Werte für Flow "' + aFlow.label_full + '" vorhanden!'
-            # y[aFlow.comp.label + '.' + aFlow.label] =   aFlow.mod.var_val.getResult() # ! positiv!                    
             values = aFlow.results['val'] # 
-            # print(aFlow.label_full)
             values[np.logical_and(values<0, values>-1e-5)] = 0 # negative Werte durch numerische Auflösung löschen 
             assert (values>=0).all(), 'Warning, Zeitreihen '+ aFlow.label_full +' in inputs enthalten neg. Werte -> Darstellung Graph nicht korrekt'
-            
-            # if inOrOut = 'in':
-            #   sign = +1
-            # elif inOrOut = 'out':
-            #   sign = -1
-            # else:
-            #   raise Exception('not defined')                      
+                                
             if flix_results.isGreaterMinFlowHours(values, dtInHours, minFlowHours): # nur wenn gewisse FlowHours-Sum überschritten
                 y[aFlow.comp + '.' + aFlow.label] = + values # ! positiv!
+        
+        if indexSeq is not None: 
+            # umsortieren
+            y = y.loc[indexSeq]
+            y.index = np.cumsum(y['dtInHours'].values)
+            del y['dtInHours']
+            del y['timeSeries']
+            
+        else:
+            y.set_index(timeSeries)
+            del y['dtInHours']
+            del y['timeSeries']
+            
         return y
     
     def getLoadFactorOfComp(self,aComp):
@@ -356,7 +359,7 @@ class flix_results():
           plot_matplotlib(sums, labels, title, aText)
                            
             
-    def plotInAndOuts(self, busOrComponent, stacked = False, renderer='browser', minFlowHours=0.1, plotAsPlotly = False, title = None, outCompsAboveXAxis=None):
+    def plotInAndOuts(self, busOrComponent, stacked = False, renderer='browser', minFlowHours=0.1, plotAsPlotly = False, title = None, outCompsAboveXAxis=None, sortBy = None):
         '''      
         Parameters
         ----------
@@ -364,10 +367,10 @@ class flix_results():
             DESCRIPTION.
         stacked : TYPE, optional
             DESCRIPTION. The default is False.
-        renderer : TYPE, optional
-            DESCRIPTION. The default is 'browser'.
+        renderer : 'browser', 'svg',...
+        
         minFlowHours : TYPE, optional
-            DESCRIPTION. The default is 0.1.
+            min absolute sum of Flows for Showing curve. The default is 0.1.
         plotAsPlotly : boolean, optional
         
         title : str, optional
@@ -376,9 +379,6 @@ class flix_results():
         
         if not (busOrComponent in self.results.keys()):
             raise Exception(str(busOrComp) + 'is no valid bus or component name')
-    
-        # minFlowHours -> min absolute sum of Flows for Showing curve
-        # renderer     -> 'browser', 'svg',...
         
         import plotly.io as pio            
         pio.renderers.default = renderer # 'browser', 'svg',...
@@ -391,6 +391,16 @@ class flix_results():
         timeSeries = self.timeSeriesWithEnd[0:-1] # letzten Zeitschritt vorerst weglassen
         (in_flows, out_flows) = self.getFlowsOf(busOrComponent)
         
+        if sortBy is not None:
+            # find right flow:
+            (ins, outs) = self.getFlowsOf(busOrComponent,sortBy)
+            flowForSort = (ins+outs)[0] # dirty!
+            # find index sequence
+            indexSeq = np.argsort(flowForSort.results['val']) # ascending
+            indexSeq = indexSeq[::-1] # descending
+        else:
+            indexSeq = None
+            
         # extract outflows above x-Axis:
         out_flows_above_x_axis = []
         if outCompsAboveXAxis is not None:
@@ -400,11 +410,11 @@ class flix_results():
                     out_flows_above_x_axis.append(flow)
         
         # Inputs:
-        y_in = self.__get_Values_As_DataFrame(in_flows, timeSeries, self.dtInHours, minFlowHours)
+        y_in = self.__get_Values_As_DataFrame(in_flows, timeSeries, self.dtInHours, minFlowHours, indexSeq)
         # Outputs; als negative Werte interpretiert:
-        y_out = -1 * self.__get_Values_As_DataFrame(out_flows,timeSeries, self.dtInHours, minFlowHours)
+        y_out = -1 * self.__get_Values_As_DataFrame(out_flows,timeSeries, self.dtInHours, minFlowHours, indexSeq)
     
-        y_out_aboveX = self.__get_Values_As_DataFrame(out_flows_above_x_axis,timeSeries, self.dtInHours, minFlowHours)
+        y_out_aboveX = self.__get_Values_As_DataFrame(out_flows_above_x_axis,timeSeries, self.dtInHours, minFlowHours, indexSeq)
         
         # if hasattr(self, 'excessIn')  and (self.excessIn is not None):
         if 'excessIn' in self.results[busOrComponent].keys():

@@ -29,8 +29,9 @@ else:
 ##### plotting ######
 
 calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outCompsAboveXAxis='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outCompsAboveXAxis='Waermelast', sortBy='Waermelast')
 calc1_res.plotInAndOuts('Fernwaerme',stacked=False, outCompsAboveXAxis='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outCompsAboveXAxis = 'Waermelast', sortBy='Waermelast')
 calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outCompsAboveXAxis = 'Waermelast')
 calc1_res.plotInAndOuts('BHKW2',stacked=True)
 
