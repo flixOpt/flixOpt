@@ -13,14 +13,12 @@ else:
   nameOfCalcSegs = None
 print(nameOfCalc)
 
-#####################
-## PostProcessing: ##
-#####################
+# ####################
+# # PostProcessing: ##
+# ####################
 
-###### loading ######
-
+# ##### loading ######
 import flixPostprocessing as flixPost
-
 calc1_res = flixPost.flix_results(nameOfCalc)
 
 if nameOfCalcSegs is not None:  
@@ -31,10 +29,10 @@ else:
 ##### plotting ######
 
 calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True)
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outCompsAboveXAxis = 'Waermelast')
 calc1_res.plotInAndOuts('BHKW2',stacked=True)
 
-calc1_res.plotShares('Fernwaerme', withoutStorage = True)
+calc1_res.plotShares(['Fernwaerme','Strom'], withoutStorage = True)
 calc1_res.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True, unit='kWh')
 
 import matplotlib.pyplot as plt
@@ -67,6 +65,8 @@ plt.show()
 
 
 # Übersichtsplot:
+import matplotlib.pyplot as plt
+
 
 def uebersichtsPlot(aCalc):
   fig, ax = plt.subplots(figsize=(10, 5))

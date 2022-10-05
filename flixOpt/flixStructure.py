@@ -1686,7 +1686,8 @@ class cBaseComponent(cME):
                        
       if self.isStorage :
           inhalt['isStorage'] = self.isStorage
-      
+      inhalt['class'] = type(self).__name__
+        
       return descr
     
     def print(self,shiftChars):
