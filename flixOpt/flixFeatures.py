@@ -366,7 +366,7 @@ class cFeatureOn(cFeature) :
                                          max = aMax) # min separat
         # i.g. 
         # var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
-        # var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...]
+        # var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
     # offHours:                           
     if (self.offHours_min is not None) or (self.offHours_max is not None):        
         raise Exception('offHours still not implemented!')
@@ -470,7 +470,7 @@ class cFeatureOn(cFeature) :
       if hasattr(self.mod, 'var_onHours'):
           # i.g. 
           # var_on      = [0 0 1 1 1 1 0 1 1 1 0 ...]
-          # var_onHours = [0 0 1 2 3 4 0 1 2 3 0 ...]
+          # var_onHours = [0 0 1 2 3 4 0 1 2 3 0 ...] (bei dt=1)
           #                                  |-> min_onHours = 3!
           
           #1) eq: onHours(t) <= On(t)*Big | On(t)=0 -> onHours(t) = 0
