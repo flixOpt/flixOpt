@@ -69,29 +69,11 @@ from flixComps    import *
 import logging as log
 import os # für logging
 
-root = logging.getLogger()
-root.setLevel(os.environ.get("LOGLEVEL", "DEBUG"))
-root.setLevel(os.environ.get("LOGLEVEL", "INFO"))
-#log.basicConfig(level=logging.DEBUG)
-log.warning('test warning')
-log.info   ('test info')
-log.debug  ('test debug')
-
-
 print('#######################################################################')
 print('################### start of modeling #################################')
 
 
-
-
 # Bus-Definition:
-
-# TODO: '''# Definition default Buses:
-#     defaultBuses.el   = Strom;
-#     defaultBuses.th   = Fernwaerme;
-#     defaultBuses.fuel = Gas;'''
-
-# Busse:
 #                 Typ         Name              
 Strom      = cBus('el'        ,'Strom'     );
 Fernwaerme = cBus('th'        ,'Fernwärme' );  
@@ -107,12 +89,9 @@ CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen',
                     specificShareToOtherEffects_operation = {costs: 0.2}, 
                     specificShareToOtherEffects_invest    = {costs:1000}, 
                     )#max_Sum=3500, max_operationSum=3500, max_investSum=0.5)  
-
-
 PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie'   )
 
 # Komponentendefinition:
-
 invest_Gaskessel = cInvestArgs(fixCosts = 1000,
                                investmentSize_is_fixed = True,
                                investment_is_optional=False,
@@ -156,8 +135,8 @@ aKWK2 = cKWK('BHKW2', eta_th = 0.5, eta_el=0.4, switchOnCosts = 0.01,
 aKWK2.setLinearSegments({aKWK2.P_el: [5  ,30, 40,60 ], # elemente können auch liste sein!
                          aKWK2.Q_th: [6  ,35, 45,100], 
                          aKWK2.Q_fu: [12 ,70, 90,200]})
-# Anmerkung: Punkte über Segmentstart = Segmentende realisierbar, d.h. z.B. [4,4]
 
+# Anmerkung: Punkte über Segmentstart = Segmentende realisierbar, d.h. z.B. [4,4]
 # segmentierte Kosten:
 costsInvestsizeSegments = [[5,25,25,100], #kW
                            {costs:[50,250,250,800],#€
