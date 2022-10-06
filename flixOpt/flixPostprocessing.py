@@ -393,6 +393,12 @@ class flix_results():
         
         title : str, optional
             if None, then automatical title is used    
+            
+        outFlowCompsAboveXAxis : components
+            End-Components of outflows, which should be shown separately above x-Axis, i.g. heat-load
+            
+        sortBy : component or None, optional    
+            Component-Flow which should be used for sorting the timeseries ("Jahresdauerlinie")
         '''
         
         if not (busOrComponent in self.results.keys()):
