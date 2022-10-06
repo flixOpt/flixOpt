@@ -172,12 +172,15 @@ class flix_results():
       
   
     @staticmethod
-    # für plot:    
-    def __get_Values_As_DataFrame(flows,timeSeries,dtInHours, minFlowHours, indexSeq):
-        y = pd.DataFrame({'timeSeries': timeSeries,
-                          'dtInHours': dtInHours }) # letzten Zeitschritt vorerst weglassen
+    # für plot get values (as timeseries or sorted):    
+    def __get_Values_As_DataFrame(flows, timeSeriesWithEnd ,dtInHours, minFlowHours, indexSeq = None):
+        
+        
+        # Dataframe mit Inputs (+) und Outputs (-) erstellen:
+        timeSeries = timeSeriesWithEnd[0:-1] # letzten Zeitschritt vorerst weglassen        
+        y = pd.DataFrame() # letzten Zeitschritt vorerst weglassen
 
-            # Beachte: hier noch nicht als df-Index, damit sortierbar
+        # Beachte: hier noch nicht als df-Index, damit sortierbar
         for aFlow in flows:        
             values = aFlow.results['val'] # 
             values[np.logical_and(values<0, values>-1e-5)] = 0 # negative Werte durch numerische Auflösung löschen 
@@ -186,18 +189,33 @@ class flix_results():
             if flix_results.isGreaterMinFlowHours(values, dtInHours, minFlowHours): # nur wenn gewisse FlowHours-Sum überschritten
                 y[aFlow.comp + '.' + aFlow.label] = + values # ! positiv!
         
+
+        def appendEndTimeStep(y, lastIndex):   
+            # hänge noch einen Zeitschrtt mit gleichen Werten an (withEnd!) damit vollständige Darstellung
+            lastRow = y.iloc[-1] # kopiere aktuell letzte
+
+            lastRow = lastRow.rename(lastIndex) # Index ersetzen -> letzter Zeitschritt als index        
+            y=y.append(lastRow) # anhängen
+            return y
+        
+        # add index (for steps-graph)
         if indexSeq is not None: 
-            # umsortieren
+            y['dtInHours'] = dtInHours
+            # sorting:
             y = y.loc[indexSeq]
-            y.index = np.cumsum(y['dtInHours'].values)
-            del y['dtInHours']
-            del y['timeSeries']
+            # index:
+            indexWithEnd = np.append([0],np.cumsum(y['dtInHours'].values))
+            del y['dtInHours']            
+            y.index = indexWithEnd[:-1]
+            lastIndex = indexWithEnd[-1]            
             
         else:
-            y.set_index(timeSeries)
-            del y['dtInHours']
-            del y['timeSeries']
-            
+            # index:
+            y.index=timeSeries
+            lastIndex = timeSeriesWithEnd[-1] # withEnd        
+        
+        # add last step:
+        y = appendEndTimeStep(y,lastIndex)
         return y
     
     def getLoadFactorOfComp(self,aComp):
@@ -359,7 +377,7 @@ class flix_results():
           plot_matplotlib(sums, labels, title, aText)
                            
             
-    def plotInAndOuts(self, busOrComponent, stacked = False, renderer='browser', minFlowHours=0.1, plotAsPlotly = False, title = None, outCompsAboveXAxis=None, sortBy = None):
+    def plotInAndOuts(self, busOrComponent, stacked = False, renderer='browser', minFlowHours=0.1, plotAsPlotly = False, title = None, outFlowCompsAboveXAxis=None, sortBy = None):
         '''      
         Parameters
         ----------
@@ -385,12 +403,10 @@ class flix_results():
     
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
-           
         
-        # Dataframe mit Inputs (+) und Outputs (-) erstellen:
-        timeSeries = self.timeSeriesWithEnd[0:-1] # letzten Zeitschritt vorerst weglassen
-        (in_flows, out_flows) = self.getFlowsOf(busOrComponent)
-        
+        (in_flows, out_flows) = self.getFlowsOf(busOrComponent)           
+               
+        # sorting:
         if sortBy is not None:
             # find right flow:
             (ins, outs) = self.getFlowsOf(busOrComponent,sortBy)
@@ -403,18 +419,18 @@ class flix_results():
             
         # extract outflows above x-Axis:
         out_flows_above_x_axis = []
-        if outCompsAboveXAxis is not None:
+        if outFlowCompsAboveXAxis is not None:
             for flow in out_flows:
-                if flow.to_node in outCompsAboveXAxis:
+                if flow.to_node in outFlowCompsAboveXAxis:
                     out_flows.remove(flow)
                     out_flows_above_x_axis.append(flow)
         
         # Inputs:
-        y_in = self.__get_Values_As_DataFrame(in_flows, timeSeries, self.dtInHours, minFlowHours, indexSeq)
+        y_in = self.__get_Values_As_DataFrame(in_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
         # Outputs; als negative Werte interpretiert:
-        y_out = -1 * self.__get_Values_As_DataFrame(out_flows,timeSeries, self.dtInHours, minFlowHours, indexSeq)
+        y_out = -1 * self.__get_Values_As_DataFrame(out_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
     
-        y_out_aboveX = self.__get_Values_As_DataFrame(out_flows_above_x_axis,timeSeries, self.dtInHours, minFlowHours, indexSeq)
+        y_out_aboveX = self.__get_Values_As_DataFrame(out_flows_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
         
         # if hasattr(self, 'excessIn')  and (self.excessIn is not None):
         if 'excessIn' in self.results[busOrComponent].keys():
@@ -429,18 +445,7 @@ class flix_results():
                 y_out['excess_out'] = excessOut
                 
           
-        def appendEndTimeStep(y):   
-            # hänge noch einen Zeitschrtt mit gleichen Werten an (withEnd!) damit vollständige Darstellung
-            lastRow = y.iloc[-1] # kopiere aktuell letzte
-            lastTimeStep = self.timeSeriesWithEnd[-1] # withEnd
-            lastRow = lastRow.rename(lastTimeStep) # Index ersetzen -> letzter Zeitschritt als index        
-            y=y.append(lastRow) # anhängen
-            return y
-    
-    
-        y_in = appendEndTimeStep(y_in)
-        y_out = appendEndTimeStep(y_out)
-        y_out_aboveX = appendEndTimeStep(y_out_aboveX)
+
     
     
         # wenn title nicht gegeben

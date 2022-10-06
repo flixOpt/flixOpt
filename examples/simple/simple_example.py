@@ -29,10 +29,10 @@ else:
 ##### plotting ######
 
 calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outCompsAboveXAxis='Waermelast', sortBy='Waermelast')
-calc1_res.plotInAndOuts('Fernwaerme',stacked=False, outCompsAboveXAxis='Waermelast')
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outCompsAboveXAxis = 'Waermelast', sortBy='Waermelast')
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outCompsAboveXAxis = 'Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast', sortBy='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=False, outFlowCompsAboveXAxis='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast', sortBy='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast')
 calc1_res.plotInAndOuts('BHKW2',stacked=True)
 
 calc1_res.plotShares(['Fernwaerme','Strom'], withoutStorage = True)

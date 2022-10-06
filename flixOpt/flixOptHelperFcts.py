@@ -119,7 +119,6 @@ def plotStackedSteps(ax,df,showLegend=True, colors = None): # df = dataframes!
       first = False  
   
   
-  
   # colorlist -> damit gleiche Farben für pos und neg - Werte!:
  
   if colors is None:
