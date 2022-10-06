@@ -28,15 +28,14 @@ nrOfThreads    = 1
 # doSegmentedCalc = True
 doSegmentedCalc  = False
 checkPenalty    = False  
-# importbycsv     = True
 ################
 
-import os
 import matplotlib.pyplot as plt
-import time
-import json
 import numpy as np
 import datetime
+
+from flixStructure import *
+from flixComps    import *
 
 
 ####################### kleine Daten zum Test ###############################
@@ -63,11 +62,6 @@ aTimeSeries = aTimeSeries[0:nrOfTimeSteps]
         
 
 ##########################################################################
-
-from flixStructure import *
-from flixComps    import *
-import logging as log
-import os # für logging
 
 print('#######################################################################')
 print('################### start of modeling #################################')
