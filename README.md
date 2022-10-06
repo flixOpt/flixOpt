@@ -34,4 +34,4 @@ You can choose between three calculation modes:
 ## citing
 For explicitly citing, a link to a paper is coming soon ...
 
-Temporarily use <https://doi.org/10.13140/RG.2.2.31085.87527>
+Temporarily use <https://doi.org/10.13140/RG.2.2.14948.24969>
