@@ -2027,9 +2027,74 @@ class cFlow(cME):
                  val_rel = None, 
                  investArgs = None, 
                  **kwargs):
+        '''
+        Parameters
+        ----------
+        label : TYPE
+            name of flow
+        bus : cBus, optional
+            bus to which flow is linked
+        min_rel : float, array, cTSraw, optional
+            min value is min_rel multiplied by nominal_val
+        max_rel : float, array, cTSraw, optional
+            max value is max_rel multiplied by nominal_val
+        nominal_val : float. None if is a opt-variable, optional
+            nominal value (linked to min_rel, max_rel and others).
+        loadFactor_min : float, optional
+            minimal load factor  general: avg Flow per nominalVal/investSize 
+            (e.g. boiler, kW/kWh=h; solarthermal: kW/m²; 
+             def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
+        loadFactor_max : TYPE, optional
+            DESCRIPTION. The default is None.
+        positive_gradient : TYPE, optional
+            DESCRIPTION. The default is None.
+        costsPerFlowHour : TYPE, optional
+            DESCRIPTION. The default is None.
+        iCanSwitchOff : TYPE, optional
+            DESCRIPTION. The default is True.
+        onHoursSum_min : TYPE, optional
+            DESCRIPTION. The default is None.
+        onHoursSum_max : TYPE, optional
+            DESCRIPTION. The default is None.
+        onHours_min : TYPE, optional
+            DESCRIPTION. The default is None.
+        onHours_max : TYPE, optional
+            DESCRIPTION. The default is None.
+        offHours_min : TYPE, optional
+            DESCRIPTION. The default is None.
+        offHours_max : TYPE, optional
+            DESCRIPTION. The default is None.
+        switchOnCosts : TYPE, optional
+            DESCRIPTION. The default is None.
+        switchOn_maxNr : TYPE, optional
+            DESCRIPTION. The default is None.
+        costsPerRunningHour : TYPE, optional
+            DESCRIPTION. The default is None.
+        sumFlowHours_max : TYPE, optional
+            DESCRIPTION. The default is None.
+        sumFlowHours_min : TYPE, optional
+            DESCRIPTION. The default is None.
+        valuesBeforeBegin : TYPE, optional
+            DESCRIPTION. The default is [0,0].
+        val_rel : TYPE, optional
+            DESCRIPTION. The default is None.
+        investArgs : TYPE, optional
+            DESCRIPTION. The default is None.
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Raises
+        ------
+        Exception
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
         
-      
-        
+
         super().__init__(label, **kwargs)   
         # args to attributes:
         self.bus                 = bus
