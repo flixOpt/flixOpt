@@ -9,7 +9,7 @@ flixOpt was developed in project SMARTBIOGRID by [TU Dresden](https://github.com
 
 flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU Dresden](https://github.com/gewv-tu-dresden) and has a few influences from [oemof/solph](https://github.com/oemof/oemof-solph) (Great thanks for your tool!)
 ## key features
-  * many constraints available
+  * various constraints available
   * invest optimization
   * segmented linear correlations for
     * flows
