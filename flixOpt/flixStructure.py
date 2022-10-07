@@ -46,7 +46,14 @@ Created on Wed Dec 16 12:40:23 2020
 #    Speicher, On/Off, 
 #    maximale FlowArbeit,... -> geht wahrscheinlich gar nicht gut!
 #    helpers.checkBoundsOfParameters -> vielleicht besser in cBaseComponent integrieren, weil dort self.label 
+# TODO: einen Bus automatisch in cEffect erzeugen.
 
+# mögliche Testszenarien für testing-tool:
+   # abschnittsweise linear testen
+   # Komponenten mit offenen Flows 
+   # Binärvariablen ohne max-Wert-Vorgabe des Flows (Binärungenauigkeitsproblem)
+   # Medien-zulässigkeit 
+   
 ##########################
 ## Features to do:
 # -> Standardbuse festlegen für Komponenten (Wenn Eingabe, dann Überschreiben der alten)

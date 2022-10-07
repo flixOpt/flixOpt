@@ -4,13 +4,6 @@ Created on Thu Jun 16 11:19:17 2022
 
 @author: Panitz
 """
-
-# mögliche Testszenarien für testing-tool:
-   # abschnittsweise linear testen
-   # Komponenten mit offenen Flows 
-   # Binärvariablen ohne max-Wert-Vorgabe des Flows (Binärungenauigkeitsproblem)
-   # Medien-zulässigkeit 
-   
 # TODO:
     #  Effektbeispiel mit Anzahl (z.b. Kesselanzahl < 3) 
 
@@ -73,11 +66,9 @@ Strom      = cBus('el'        ,'Strom'     );
 Fernwaerme = cBus('th'        ,'Fernwärme' );  
 Gas        = cBus('fuel'      ,'Gas'       );
 
-# Effects
-# TODO: einen Bus automatisch in cEffect erzeugen.
-# TODO bei flow verhindern, dass der Effekt sich selber gleichen Effekt gibt
-# TODO: für operational-box und invest-box: jeweils cFlow('allCosts', effBus_Costs) bauen -> dort kann man Grenzen einbauen
 
+
+# Effect-Definition:
 costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
 CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen', 
                     specificShareToOtherEffects_operation = {costs: 0.2}, 
@@ -85,7 +76,7 @@ CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen',
                     )#max_Sum=3500, max_operationSum=3500, max_investSum=0.5)  
 PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie'   )
 
-# Komponentendefinition:
+# definition of components:
 invest_Gaskessel = cInvestArgs(fixCosts = 1000,
                                investmentSize_is_fixed = True,
                                investment_is_optional=False,
@@ -126,9 +117,11 @@ aKWK2 = cKWK('BHKW2', eta_th = 0.5, eta_el=0.4, switchOnCosts = 0.01,
             Q_fu = cFlow('Q_fu',bus = Gas),on_valuesBeforeBegin = [1])
 
 
+# linear segments (eta-definitions than become useless!)
 aKWK2.setLinearSegments({aKWK2.P_el: [5  ,30, 40,60 ], # elemente können auch liste sein!
                          aKWK2.Q_th: [6  ,35, 45,100], 
                          aKWK2.Q_fu: [12 ,70, 90,200]})
+
 
 # Anmerkung: Punkte über Segmentstart = Segmentende realisierbar, d.h. z.B. [4,4]
 # segmentierte Kosten:
@@ -171,7 +164,7 @@ aGasTarif         = cSource('Gastarif' ,source = cFlow('Q_Gas'     , bus = Gas  
 # aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -0.07*10))
 aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -p_el))
 
-# Zusammenführung:
+# Built energysystem:
 es = cEnergySystem(aTimeSeries, dt_last=None)
 # es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 es.addEffects(costs, CO2, PE)
@@ -181,13 +174,10 @@ es.addComponents(aKWK)
 
 es.addComponents(aSpeicher)
 
-# flix.mainSystem.extractSubSystem([0,1,2])
-
 chosenEsTimeIndexe = None
 # chosenEsTimeIndexe = [1,3,5]
 
-## geschlossene Modellierung:
-
+## modeling "full":
 aCalc = cCalculation('Sim1', es, 'pyomo', chosenEsTimeIndexe)
 aCalc.doModelingAsOneSegment()
 
@@ -202,20 +192,21 @@ solverProps = {'gapFrac': gapFrac,
                'displaySolverOutput' : displaySolverOutput,
                'threads': nrOfThreads} # nur gurobi!
 
-## geschlossene Berechnung:
+## calculation "full":
 
 aCalc.solve(solverProps, nameSuffix = '_' + solver_name)
 
 aCalc.results_struct
 
-## segmentierte Berechnung:
+## calculation "segmented":
 
 if doSegmentedCalc: 
   calcSegs = cCalculation('Sim2', es, 'pyomo', chosenEsTimeIndexe)
   calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen = 6, nrOfUsedSteps = 2, nameSuffix = '_' + solver_name)
  
 
-## segmentiertes Plotting -> todo -> Umzug in Postprocesing!!!
+## plotting segmented results 
+#  TODO:    Umzug in Postprocesing!!!
 
 if doSegmentedCalc: 
   import matplotlib.pyplot as plt
