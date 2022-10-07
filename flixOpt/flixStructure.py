@@ -2045,11 +2045,11 @@ class cFlow(cME):
             (e.g. boiler, kW/kWh=h; solarthermal: kW/m²; 
              def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
         loadFactor_max : TYPE, optional
-            DESCRIPTION. The default is None.
+            maximal load factor (see minimal load factor)
         positive_gradient : TYPE, optional
-            DESCRIPTION. The default is None.
+           not implemented yet
         costsPerFlowHour : TYPE, optional
-            DESCRIPTION. The default is None.
+            operational costs, costs per flow-"work"
         iCanSwitchOff : TYPE, optional
             DESCRIPTION. The default is True.
         onHoursSum_min : TYPE, optional
