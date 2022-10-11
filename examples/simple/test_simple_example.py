@@ -7,6 +7,7 @@ Created on Tue Oct  4 14:54:19 2022
 
 import simple_example
 
+calc1_res= simple_example.calc1_res
 # ## TESTING: ##
 print('#############')
 print('## Testing ##')
