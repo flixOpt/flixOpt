@@ -1943,38 +1943,8 @@ class cIO():
 class cFlow(cME):
     '''
     flows are inputs and outputs of components
-    
-    
     '''
-    ## Parameter       
-    # valuesBeforeBegin -> Liste mit letzten 2 Werten davor!
-    new_init_args = [cArg('label'               , 'param', 'str',        'Bezeichnung'),
-                     cArg('bus'                 , 'bus'  , 'bus',        'Bus-Komponente, mit der der flow verknüpft wird, angeben'),
-                     cArg('min_rel'             , 'param', 'TS',         'minimaler Wert (relativ) := Flow_min/Nominal_val'),
-                     cArg('max_rel'             , 'param', 'TS',         'maximaler Wert (relativ) := Flow_max/Nominal_val; (wenn Nennwert = max, dann max_rel = 1'),
-                     cArg('nominal_val'         , 'param', 'skalar',     'Investgröße/ Nennwert z.B. kW, Fläche, Volumen, Stck,  möglichst immer so stark wie möglich einschränken (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)'),
-                     cArg('loadFactor_min'      , 'param', 'skalar',     'minimaler nomineller Auslastungsgrad (equivalenter Vollbenutzungsgrad), general: avg Flow per Investsize (e.g. solarthermal: kW/m²; def: load_factor:= sumFlowHours/ (nominal_val*dt_tot)'),
-                     cArg('loadFactor_max'      , 'param', 'skalar',     'maximaler nomineller Auslastungsgrad (equivalenter Vollbenutzungsgrad), general: avg Flow per Investsize (e.g. solarthermal: kW/m²; def: load_factor:= sumFlowHours/ (nominal_val*dt_tot)'),                     
-                     cArg('positive_gradient'   , 'param', 'TS',         '! noch nicht implementiert !'),
-                     cArg('costsPerFlowHour'    , 'costs', 'TS',         'Kosten pro Flow-Arbeit, z.B. €/kWh'),
-                     cArg('iCanSwitchOff'       , 'param', 'True/False', 'Kann flow "aus gehen", also auf Null gehen (nur relevant wenn min > 0) -> BinärVariable wird genutzt'),
-                     cArg('onHoursSum_min'         , 'param', 'skalar',     'min. Summe Betriebsstunden'),
-                     cArg('onHoursSum_max'         , 'param', 'skalar',     'max. Summe Betriebsstunden'),                     
-                     cArg('onHours_min'         , 'param', 'TS',         'min. Betriebsstunden'),
-                     cArg('onHours_max'         , 'param', 'TS',         'max. Betriebsstunden'),
-                     cArg('offHours_min'        , 'param', 'TS',         'min. Off-Stunden'),
-                     cArg('offHours_max'        , 'param', 'TS',         'max. Off-Stunden'),
-                     cArg('switchOnCosts'       , 'costs', 'TS'    ,     'Einschaltkosten z.B. in €'),
-                     cArg('switchOn_maxNr'      , 'param', 'skalar',     'max. zulässige Anzahl Starts'),
-                     cArg('costsPerRunningHour' , 'costs', 'TS'    ,     'Kosten für den reinen Betrieb, z.B. €/h'),
-                     cArg('valuesBeforeBegin'   , 'param', 'list'  ,     'Flow-Werte vor Beginn (zur Berechnung verschied. Dinge im ersten Zeitschritt, z.B. switchOn, gradient,...)'),
-                     cArg('val_rel'             , 'param', 'TS'    ,     'fixe Werte für Flow (falls gegeben). Damit ist Flow-Wert dann keine freie Optimierungsvariable mehr.; min_rel u. max_rel werden nicht mehr genutzt'),
-                     cArg('investArgs'          , 'obj'  , 'cInvestArgs','None or Investitionsparameter'),
-                     cArg('sumFlowHours_max'    , 'param', 'skalar',     'maximale FlowHours in Zeitbereich (if nominal_val is not const, better use loadFactor_max!)'),
-                     cArg('sumFlowHours_min'    , 'param', 'skalar',     'minimale FlowHours in Zeitbereich (if nominal_val is not const, better use loadFactor_min!)'),                     
-                     ]
     
-    not_used_args = ['label']   
 
     @property
     def label_full(self):
@@ -2037,68 +2007,71 @@ class cFlow(cME):
         '''
         Parameters
         ----------
-        label : TYPE
+        label : str
             name of flow
         bus : cBus, optional
             bus to which flow is linked
-        min_rel : float, array, cTSraw, optional
+        min_rel : scalar, array, cTSraw, optional
             min value is min_rel multiplied by nominal_val
-        max_rel : float, array, cTSraw, optional
-            max value is max_rel multiplied by nominal_val
-        nominal_val : float. None if is a opt-variable, optional
-            nominal value (linked to min_rel, max_rel and others).
-        loadFactor_min : float, optional
+        max_rel : scalar, array, cTSraw, optional
+            max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
+        nominal_val : scalar. None if is a nominal value is a opt-variable, optional
+            nominal value/ invest size (linked to min_rel, max_rel and others). 
+            i.g. kW, area, volume, pieces, 
+            möglichst immer so stark wie möglich einschränken 
+            (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)
+        loadFactor_min : scalar, optional
             minimal load factor  general: avg Flow per nominalVal/investSize 
             (e.g. boiler, kW/kWh=h; solarthermal: kW/m²; 
              def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
-        loadFactor_max : TYPE, optional
+        loadFactor_max : scalar, optional
             maximal load factor (see minimal load factor)
         positive_gradient : TYPE, optional
            not implemented yet
-        costsPerFlowHour : TYPE, optional
+        costsPerFlowHour : scalar, array, cTSraw, optional
             operational costs, costs per flow-"work"
-        iCanSwitchOff : TYPE, optional
-            DESCRIPTION. The default is True.
-        onHoursSum_min : TYPE, optional
-            DESCRIPTION. The default is None.
-        onHoursSum_max : TYPE, optional
-            DESCRIPTION. The default is None.
-        onHours_min : TYPE, optional
-            DESCRIPTION. The default is None.
-        onHours_max : TYPE, optional
-            DESCRIPTION. The default is None.
-        offHours_min : TYPE, optional
-            DESCRIPTION. The default is None.
-        offHours_max : TYPE, optional
-            DESCRIPTION. The default is None.
-        switchOnCosts : TYPE, optional
-            DESCRIPTION. The default is None.
-        switchOn_maxNr : TYPE, optional
-            DESCRIPTION. The default is None.
-        costsPerRunningHour : TYPE, optional
-            DESCRIPTION. The default is None.
+        iCanSwitchOff : boolean, optional
+            can flow be off, i.e. be zero (only relevant if min_rel > 0) 
+            Then binary var is used.
+        onHoursSum_min : scalar, optional
+            min. overall sum of operating hours.
+        onHoursSum_max : scalar, optional
+            max. overall sum of operating hours.
+        onHours_min : scalar, optional
+            min sum of operating hours in one piece
+        onHours_max : scalar, optional
+            max sum of operating hours in one piece
+        offHours_min : scalar, optional
+            - not implemented yet - 
+            min sum of non-operating hours in one piece
+        offHours_max : scalar, optional
+            - not implemented yet - 
+            max sum of non-operating hours in one piece
+        switchOnCosts : scalar, array, cTSraw, optional
+            cost of one switch from off (var_on=0) to on (var_on=1), 
+            unit i.g. in Euro
+        switchOn_maxNr : integer, optional
+            max nr of switchOn operations
+        costsPerRunningHour : costs-types, optional
+            costs for operating, i.g. in € per hour
         sumFlowHours_max : TYPE, optional
-            DESCRIPTION. The default is None.
+            maximum flow-hours ("flow-work") 
+            (if nominal_val is not const, maybe loadFactor_max fits better for you!)
         sumFlowHours_min : TYPE, optional
-            DESCRIPTION. The default is None.
-        valuesBeforeBegin : TYPE, optional
-            DESCRIPTION. The default is [0,0].
-        val_rel : TYPE, optional
-            DESCRIPTION. The default is None.
-        investArgs : TYPE, optional
-            DESCRIPTION. The default is None.
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Raises
-        ------
-        Exception
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
+            minimum flow-hours ("flow-work") 
+            (if nominal_val is not const, maybe loadFactor_min fits better for you!)
+        valuesBeforeBegin : list (TODO: why not scalar?), optional
+            Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'), 
+            # TODO: integration of option for 'first is last'
+        val_rel : scalar, array, cTSraw, optional
+            fixed relative values for flow (if given). 
+            val(t) := val_rel(t) * nominal_val(t)
+            With this value, the flow-value is no opt-variable anymore;
+            (min_rel u. max_rel are making sense anymore)
+            used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
+            If the load-profile is just an upper limit, use max_rel instead.
+        investArgs : None or cInvestargs, optional
+            used for investment costs or/and investment-optimization!
         '''
         
 
