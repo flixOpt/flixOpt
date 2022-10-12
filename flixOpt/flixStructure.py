@@ -1443,30 +1443,50 @@ class cEffectType(cME):
     Effect, i.g. costs, CO2 emissions, area, ...
     can be used later afterwards for allocating effects to compontents and flows.
     '''
-    new_init_args = [cArg('label'                                ,'param', 'str'     , 'Bezeichnung'),
-                     cArg('unit'                                 , '?'   , 'str'     , 'Einheit des Effekts, z.B. €, kWh,...'),
-                     cArg('description'                          , '?'   , 'str'     , 'Langbezeichnung'),
-                     cArg('isStandard'                           , '?'   , 'boolean' , 'true, wenn Standard-Effekt (wenn direkte Eingabe bei Kostenpositionen ohne dict) , sonst false'),
-                     cArg('isObjective'                          , '?'   , 'boolean' , 'true, wenn Zielfunktion'),
-                     cArg('specificShareToOtherEffects_operation', '?' , '{effectType: TS, ...}'    , 'Beiträge zu anderen Effekten (nur operation), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
-                     cArg('specificShareToOtherEffects_invest'   , '?' , '{effectType: skalar, ...}', 'Beiträge zu anderen Effekten (nur invest), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
-                     cArg('min_operationSum'                     , '?' , 'skalar' , 'minimale Summe (nur operation) des Effekts'),
-                     cArg('max_operationSum'                     , '?' , 'skalar' , 'maximale Summe (nur operation) des Effekts'),
-                     cArg('min_investSum'                        , '?' , 'skalar' , 'minimale Summe (nur invest) des Effekts'),
-                     cArg('max_investSum'                        , '?' , 'skalar' , 'maximale Summe (nur invest) des Effekts'),
-                     cArg('min_Sum'                              , '?' , 'skalar' , 'minimale Summe des Effekts'),                   
-                     cArg('max_Sum'                              , '?' , 'skalar' , 'maximale Summe des Effekts'),
-                     
-                     ] 
-                     # todo: effects, die noch nicht instanziert sind, können hier auch keine shares zugeordnet werden!
-    not_used_args = ['label']
   
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self, label, unit, description, isStandard = False, isObjective = False, specificShareToOtherEffects_operation = {}, specificShareToOtherEffects_invest = {}, 
                  min_operationSum = None, max_operationSum = None, 
                  min_investSum = None, max_investSum = None,
                  min_Sum = None, max_Sum = None,
-                 **kwargs):    
+                 **kwargs):
+        '''        
+        Parameters
+        ----------
+        label : str
+            name
+        unit : str
+            unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
+        description : str
+            long name
+        isStandard : boolean, optional
+            true, wenn Standard-Effekt (wenn direkte Eingabe bei Kostenpositionen ohne dict) , sonst false
+        isObjective : boolean, optional
+            true, wenn optimization target
+        specificShareToOtherEffects_operation : {effectType: TS, ...}, z.B. 180 €/t_CO2, Angabe als {costs: 180}, optional
+            Beiträge zu anderen Effekten (nur operation)
+        specificShareToOtherEffects_invest : {effectType: TS, ...}, z.B. 180 €/t_CO2, Angabe als {costs: 180}, optional
+            Beiträge zu anderen Effekten (nur invest).
+        min_operationSum : scalar, optional
+            minimale Summe (nur operation) des Effekts
+        max_operationSum : scalar, optional
+            maximale Summe (nur operation) des Effekts.
+        min_investSum : scalar, optional
+            minimale Summe (nur invest) des Effekts
+        max_investSum : scalar, optional
+            maximale Summe (nur invest) des Effekts
+        min_Sum : sclalar, optional
+            minimale Summe des Effekts.
+        max_Sum : scalar, optional
+            maximale Summe des Effekts.
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
         super().__init__(label, **kwargs)    
         self.label       = label
         self.unit        = unit
