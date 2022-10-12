@@ -1549,39 +1549,56 @@ class cBaseComponent(cME):
     basic component class for all components
     '''    
     modBox : cModelBoxOfES
-  
-    new_init_args = [cArg('on_valuesBeforeBegin', 'initial', 'list', 'Ein(1)/Aus(0)-Wert vor Zeitreihe'),
-                     cArg('switchOnCosts'       , 'costs'  , 'TS'  , 'Einschaltkosten z.B. in €'),
-                     cArg('switchOn_maxNr'      , 'param', 'skalar', 'max. zulässige Anzahl Starts'),
-                     cArg('onHoursSum_min'         , 'param', 'skalar', 'min. Summe Betriebsstunden'),
-                     cArg('onHoursSum_max'         , 'param', 'skalar', 'max. Summe Betriebsstunden'),
-                     cArg('costsPerRunningHour' , 'costs'  , 'TS'  , 'Betriebskosten z.B. in €/h')]
-
-    not_used_args = []
-        
     
     def __init__(self, label, on_valuesBeforeBegin = [0,0], switchOnCosts = None, switchOn_maxNr = None, onHoursSum_min = None, onHoursSum_max = None, costsPerRunningHour = None, **kwargs) :            
-      label    =  helpers.checkForAttributeNameConformity(label)          # todo: indexierbar / eindeutig machen!      
-      super().__init__(label, **kwargs)
-      self.on_valuesBeforeBegin = on_valuesBeforeBegin  
-      self.switchOnCosts        = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
-      self.switchOn_maxNr       = switchOn_maxNr
-      self.onHoursSum_min       = onHoursSum_min
-      self.onHoursSum_max       = onHoursSum_max
-      self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHOur', costsPerRunningHour , self)     
-      
-      ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
-      # % On Werte vorher durch Flow-values bestimmen:    
-      # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(modBox.epsilon,self.flowMin)) für alle Flows!
-           
-      self.inputs   = [] # list of flows
-      self.outputs  = [] # list of flows
-      self.isStorage = False
+        '''
+        
 
-    
-      # self.base = None # Energysystem I Belong to     
-            
-      self.subComps = [] # list of subComponents # für mögliche Baumstruktur!     
+        Parameters
+        ----------
+        label : str
+            name.
+        
+        Parameters of on/off-feature 
+        ----------------------------
+        (component is off, if all flows are zero!)
+
+        on_valuesBeforeBegin :  array (TODO: why not scalar?)
+            Ein(1)/Aus(0)-Wert vor Zeitreihe
+        switchOnCosts : look in cFlow for description
+        switchOn_maxNr : look in cFlow for description
+        onHoursSum_min : look in cFlow for description
+        onHoursSum_max : look in cFlow for description
+        costsPerRunningHour : look in cFlow for description
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        label    =  helpers.checkForAttributeNameConformity(label)          # todo: indexierbar / eindeutig machen!      
+        super().__init__(label, **kwargs)
+        self.on_valuesBeforeBegin = on_valuesBeforeBegin  
+        self.switchOnCosts        = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
+        self.switchOn_maxNr       = switchOn_maxNr
+        self.onHoursSum_min       = onHoursSum_min
+        self.onHoursSum_max       = onHoursSum_max
+        self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHOur', costsPerRunningHour , self)     
+        
+        ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
+        # % On Werte vorher durch Flow-values bestimmen:    
+        # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(modBox.epsilon,self.flowMin)) für alle Flows!
+             
+        self.inputs   = [] # list of flows
+        self.outputs  = [] # list of flows
+        self.isStorage = False
+  
+      
+        # self.base = None # Energysystem I Belong to     
+              
+        self.subComps = [] # list of subComponents # für mögliche Baumstruktur!     
         
     # # TODO: ist das noch notwendig?:
     # def addEnergySystemIBelongTo(self,base): 
@@ -1821,31 +1838,45 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
     realizing balance of all linked flows
     (penalty flow is excess can be activated)
     '''
-     
-    new_init_args = [cArg('label'                 , 'param', 'str', 'Bezeichnung'),
-                     cArg('typ'                   , 'param', 'str', 'Zusatzbeschreibung, sonst kein Einfluss'),
-                     cArg('excessCostsPerFlowHour', 'costs', 'TS' , 'Exzesskosten (none/ 0 -> kein Exzess; > 0 -> berücksichtigt')]
-  
-    not_used_args = ['label']
   
     # --> excessCostsPerFlowHour
     #        none/ 0 -> kein Exzess berücksichtigt
     #        > 0 berücksichtigt
       
     def __init__(self, typ, label, excessCostsPerFlowHour = 1e5, **kwargs):   
-      super().__init__(label,**kwargs)  
-      self.typ = typ
-      self.medium = helpers.InfiniteFullSet()
-      if  (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0) :
-        self.withExcess = True
-        self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)      
-      else: 
-        self.withExcess = False
+        '''
+        
+
+        Parameters
+        ----------
+        medium : str
+            additional description. no influence
+        label : str
+            name.
+        excessCostsPerFlowHour : none or scalar, array or cTSraw
+            excess costs / penalty costs
+            (none/ 0 -> no penalty). The default is 1e5.
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        super().__init__(label,**kwargs)  
+        self.typ = typ # TODO: typ mit medium verknüpfen. Typ bisher anscheinend ohne Funktion
+        self.medium = helpers.InfiniteFullSet()
+        if  (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0) :
+          self.withExcess = True
+          self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)      
+        else: 
+          self.withExcess = False
   
       
     def registerInputFlow(self, aFlow):
-      self.inputs.append(aFlow)
-      self.checkMedium(aFlow)
+        self.inputs.append(aFlow)
+        self.checkMedium(aFlow)
       
     def registerOutputFlow(self,aFlow):
       self.outputs.append(aFlow) 
@@ -1921,21 +1952,21 @@ class cMediumCollection:
     
     # neues Medium hinzufügen:
     def addMedium(attrName, aSetOfStrs):
-      cMediumCollection.setattr(attrName,aSetOfStrs)
+        cMediumCollection.setattr(attrName,aSetOfStrs)
       
     # checkifFits(medium1,medium2,...)
     def checkIfFits(*args):
-      aCommonMedium = helpers.InfiniteFullSet()
-      for aMedium in args:
-        if aMedium is not None : aCommonMedium = aCommonMedium & aMedium 
-      if aCommonMedium : return True
-      else             : return False
+        aCommonMedium = helpers.InfiniteFullSet()
+        for aMedium in args:
+          if aMedium is not None : aCommonMedium = aCommonMedium & aMedium 
+        if aCommonMedium : return True
+        else             : return False
     
 # input/output-dock (TODO:
 class cIO(): 
-  pass
-  # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
-  # input wären wie cFlow,aber statt bus : connectsTo -> hier andere cIO oder aber Bus (dort keine cIO, weil nicht notwendig)
+    pass
+    # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
+    # input wären wie cFlow,aber statt bus : connectsTo -> hier andere cIO oder aber Bus (dort keine cIO, weil nicht notwendig)
   
   
 # todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
