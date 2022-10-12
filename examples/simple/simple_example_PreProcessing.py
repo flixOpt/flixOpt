@@ -87,7 +87,7 @@ invest_Gaskessel = cInvestArgs(fixCosts = 1000,
 aGaskessel = cKessel('Kessel', eta = 0.5, costsPerRunningHour = {costs:0, CO2:1000},#, switchOnCosts = 0
                     Q_th = cFlow(label   = 'Q_th', 
                                  bus = Fernwaerme, 
-                                 nominal_val = 50 , 
+                                 nominal_val = 50, 
                                  loadFactor_max = 1.0, 
                                  loadFactor_min = 0.1,
                                  min_rel = 5/50, 

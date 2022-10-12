@@ -5,7 +5,7 @@ Created on Thu Sep 10 13:45:12 2020
 @author: Panitz
 
 # references: 
-#   from flixopt 1.0  : structure / features / math, constraints, ...
+#   from flixoptmat 1.0  : structure / features / math, constraints, ...
 #   from oemof        : some name-definition/ some structure
 """
 
@@ -358,7 +358,7 @@ class cKWK(cBaseLinearTransformer):
         :param cFlow Q_fu: in-Flow Brennstoff
         :param cFlow P_el: out-Flow Strom
         :param cFlow Q_th: out-Flow Wärme
-        :param kwargs:
+        :param kwargs: see mother classes ...
         """
         # super:
         waerme_glg = {Q_fu: eta_th, Q_th: 1}
