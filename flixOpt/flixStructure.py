@@ -80,10 +80,6 @@ import math
 import time
 import yaml #(für json-Schnipsel-print)
 
-import gurobipy as gurobi
-from gurobipy import GRB
-
-
 import flixOptHelperFcts as helpers
 
 from basicModeling import * # Modelliersprache
@@ -194,7 +190,14 @@ class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifische
       
       super().solve(gapFrac, timelimit, solver, displaySolverOutput, **kwargs)
       
-      print('termination message: "' + self.solver_results['Solver'][0]['Termination message'] + '"')
+      if solver == 'gurobi': 
+          termination_message = self.solver_results['Solver'][0]['Termination message']
+      elif solver == 'glpk':
+          termination_message = self.solver_results['Solver'][0]['Status']
+      else:
+          termination_message = 'not implemented for solver yet'
+      print('termination message: "' + termination_message + '"')    
+      
       print('')    
       # Variablen-Ergebnisse abspeichern:      
       # 1. dict:  
@@ -217,7 +220,10 @@ class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifische
       print('penaltyCosts     : ' + str(self.es.globalComp.penalty.mod.var_sum.getResult()  ))
       print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
       print('Result of Obj : ' + str(self.objective_value                  ))            
-      print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
+      try:
+          print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
+      except:
+          print
       print('')
       for aBus in self.es.setOfBuses:
         if aBus.withExcess : 

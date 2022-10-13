@@ -211,8 +211,13 @@ class cBaseModel:
          solver_opt["mipgap"] = gapfrac
          solver_opt["timelimit"] = timelimit
          # todo: threads = ? funktioniert das für cplex?
+      elif solver_name == 'glpk':
+          solver_opt = {} # überschreiben, keine kwargs zulässig
+          solver_opt["mipgap"] = gapfrac 
+          
 
       logfileName = "flixSolverLog.log"
+      solver_opt =''
       self.solver_results = solver.solve(self.model, options = solver_opt, tee = displaySolverOutput, keepfiles=True, logfile=logfileName)     
 
       # Log laden:
@@ -829,6 +834,10 @@ class cSolverLog():
           self.presolved_integer     = int(match.group(1))
           self.presolved_binary      = int(match.group(2))   
           self.presolved_continuous  = self.presolved_cols - self.presolved_integer
+      
+      elif self.solver_name == 'glpk':
+          print('######################################################')
+          print('### No solver-log parsing implemented for glpk yet! ###') 
       else :
         raise Exception('cSolverLog.parseInfos() is not defined for solver ' + self.solver_name)
 

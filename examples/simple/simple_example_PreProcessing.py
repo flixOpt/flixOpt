@@ -11,16 +11,20 @@ Created on Thu Jun 16 11:19:17 2022
 # Solver-Inputs:
 displaySolverOutput = False # ausführlicher Solver-Output.
 displaySolverOutput = True  # ausführlicher Solver-Output.
-gapFrac        = 0.0001
-timelimit      = 3600
-solver_name    = 'gurobi'
+gapFrac = 0.0001
+timelimit = 3600
+
+# solver_name = 'glpk'
+# solver_name = 'gurobi'
+solver_name    = 'cbc'
 nrOfThreads    = 1
-# solver_name    = 'cbc'
 
 ### Durchführungs-Optionen: ###
 # doSegmentedCalc = True
 doSegmentedCalc  = False
 checkPenalty    = False  
+excessCosts = None
+excessCosts = 1e5 # default vlaue
 ################
 
 import matplotlib.pyplot as plt
@@ -62,9 +66,9 @@ print('################### start of modeling #################################')
 
 # Bus-Definition:
 #                 Typ         Name              
-Strom      = cBus('el'        ,'Strom'     );
-Fernwaerme = cBus('th'        ,'Fernwärme' );  
-Gas        = cBus('fuel'      ,'Gas'       );
+Strom      = cBus('el'        ,'Strom'     , excessCostsPerFlowHour = excessCosts);
+Fernwaerme = cBus('th'        ,'Fernwärme' , excessCostsPerFlowHour = excessCosts);  
+Gas        = cBus('fuel'      ,'Gas'       , excessCostsPerFlowHour = excessCosts);
 
 
 
