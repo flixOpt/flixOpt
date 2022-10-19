@@ -20,6 +20,7 @@ class cFlow_post():
         self.comp  = aDescr['comp']
         self.descr = aDescr
         self.flixResults = flixResults
+        self.comp_post = flixResults.postObjOfStr(self.comp)
         # Richtung:    
         self.isInputInComp = aDescr['isInputInComp']    
         if self.isInputInComp:
@@ -28,6 +29,7 @@ class cFlow_post():
         else:
             self.from_node = self.comp
             self.to_node = self.bus
+        self.color = self._getDefaultColor()
       
     def extractResults(self, allResults):
         self.results = allResults[self.comp][self.label]
@@ -52,19 +54,28 @@ class cFlow_post():
         if 'isStorage' in self.flixResults.infos_system['components'][self.comp].keys():
             return self.flixResults.infos_system['components'][self.comp]['isStorage']
         else:
-            return False        
+            return False  
+    def _getDefaultColor(self):
+        return self.comp_post.color
+        
     
 class cCompOrBus_post():
-    def __init__(self,label, aDescr, flixResults):
+    def __init__(self,label, aDescr, flixResults, color = None):
         self.label = label
         self.type  = aDescr['class']
         self.descr = aDescr
         self.flixResults = flixResults
+        self.color = color
     
 class flix_results():
-    def __init__(self, nameOfCalc, results_folder = None, ): #,timestamp = None):
+    def __init__(self, nameOfCalc, results_folder = None, comp_colors = None): #,timestamp = None):
   
         self.label = nameOfCalc
+        self.comp_colors = comp_colors
+        if self.comp_colors == None:
+            import plotly.express as px
+            self.comp_colors = px.colors.qualitative.Light24
+            
         # 'z.B.' 2022-06-14_Sim1_gurobi_SolvingInfos
     
         filename_infos = 'results/' + nameOfCalc + '_solvingInfos.yaml'
@@ -119,8 +130,10 @@ class flix_results():
     def __getAllComps(self):
         comps = []
         comp_dict = self.infos_system['components']
+        
+        myColorIter = iter(self.comp_colors)
         for label,descr in comp_dict.items():      
-            aComp = cCompOrBus_post(label, descr, self)
+            aComp = cCompOrBus_post(label, descr, self, color = next(myColorIter))
             comps.append(aComp)    
         return comps
     
@@ -318,6 +331,7 @@ class flix_results():
         
         sums = np.array([])
         labels = []
+        colors = []
         totalSum = 0
         for aFlow in flows:
           totalSum +=sum(aFlow.results['val'])
@@ -331,10 +345,13 @@ class flix_results():
             else:
               sums=np.append(sums,aSum)
               labels.append(aFlow.comp + '.' + aFlow.label)
+              colors.append(aFlow.color)
+              
         
         if others_Sum >0:
           sums = np.append(sums,others_Sum)
           labels.append('others')
+          colors.append('#AAAAAA')# just a grey
         
         aText = "total: {:.0f}".format(sum(sums)) + ' ' + unit 
         
@@ -363,16 +380,16 @@ class flix_results():
             #       color='black', fontsize=10)
             plt.show()
         
-        def plot_plotly(sums, labels,title, aText):            
+        def plot_plotly(sums, labels,title, aText, colors):            
             import plotly.graph_objects as go
-            fig = go.Figure(data=[go.Pie(labels=labels, values=sums)])
+            fig = go.Figure(data=[go.Pie(labels=labels, values=sums, marker_colors = colors)])
             fig.update_layout(title_text = title,
                               annotations = [dict(text=aText, x=0.95, y=0.05, font_size=20, align = 'right', showarrow=False)],
                               )
             fig.show()
             
         if plotAsPlotly:
-          plot_plotly    (sums, labels, title, aText)
+          plot_plotly    (sums, labels, title, aText, colors)
         else:
           plot_matplotlib(sums, labels, title, aText)
                            
@@ -433,9 +450,10 @@ class flix_results():
         
         # Inputs:
         y_in = self.__get_Values_As_DataFrame(in_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
+        y_in_colors = [in_flow.color for in_flow in in_flows]
         # Outputs; als negative Werte interpretiert:
         y_out = -1 * self.__get_Values_As_DataFrame(out_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
-    
+        y_out_colors = [out_flow.color for out_flow in out_flows]
         y_out_aboveX = self.__get_Values_As_DataFrame(out_flows_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
         
         # if hasattr(self, 'excessIn')  and (self.excessIn is not None):
@@ -447,8 +465,10 @@ class flix_results():
             
             if flix_results.isGreaterMinFlowHours(excessIn, self.dtInHours, minFlowHours):        
                 y_in['excess_in']   = excessIn
+                y_in_colors.append('#FF0000')
             if flix_results.isGreaterMinFlowHours(excessOut, self.dtInHours, minFlowHours):        
                 y_out['excess_out'] = excessOut
+                y_out_colors.append('#FF0000')
                 
           
 
@@ -461,7 +481,7 @@ class flix_results():
         yaxes2_title = 'charge state'
     
     
-        def plotY_plotly(y_pos, y_neg, y_pos_separat, title, yaxes_title, yaxes2_title):
+        def plotY_plotly(y_pos, y_neg, y_pos_separat, title, yaxes_title, yaxes2_title, y_pos_colors, y_neg_colors):
     
             ## Flows:
             # fig = go.Figure()
@@ -470,19 +490,23 @@ class flix_results():
             
             # def plotlyPlot(y_in, y_out, stacked, )
             # input:
+            y_pos_colors = iter(y_pos_colors)
+            y_neg_colors = iter(y_neg_colors)
             for column in y_pos.columns:
+                aColor = next(y_pos_colors)
                 # if isGreaterMinAbsSum(y_in[column]):
                 if stacked :
-                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column],stackgroup='one',line_shape ='hv',name=column))
+                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column],stackgroup='one',line_shape ='hv',name=column, line_color=aColor))
                 else:
-                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column],line_shape ='hv',name=column))
+                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column],line_shape ='hv',name=column, line_color = aColor))
             # output:
             for column in y_neg.columns:
+                aColor = next(y_neg_colors)
                 # if isGreaterMinAbsSum(y_out[column]):
                 if stacked :
-                    fig.add_trace(go.Scatter(x=y_neg.index, y=y_neg[column],stackgroup='two',line_shape ='hv',name=column))
+                    fig.add_trace(go.Scatter(x=y_neg.index, y=y_neg[column],stackgroup='two',line_shape ='hv',name=column, line_color = aColor))
                 else:
-                    fig.add_trace(go.Scatter(x=y_neg.index, y=y_neg[column],line_shape ='hv',name=column))
+                    fig.add_trace(go.Scatter(x=y_neg.index, y=y_neg[column],line_shape ='hv',name=column, line_color = aColor))
             
             # output above x-axis:
             for column in y_pos_separat:
@@ -548,7 +572,7 @@ class flix_results():
             
           
         if plotAsPlotly:
-            plotY_plotly(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title)
+            plotY_plotly(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title, y_in_colors, y_out_colors)
         else:
             plotY_matplotlib(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title)
                              
