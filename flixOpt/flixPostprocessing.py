@@ -14,6 +14,13 @@ import matplotlib.pyplot as plt # für Plots im Postprocessing
 import matplotlib.dates as mdates
 
 class cFlow_post():
+
+
+    @property
+    def color(self):
+        # interaktiv, falls component explizit andere Farbe zugeordnet
+        return self._getDefaultColor()        
+
     def __init__(self,aDescr,flixResults):
         self.label = aDescr['label']
         self.bus   = aDescr['bus']
@@ -29,7 +36,7 @@ class cFlow_post():
         else:
             self.from_node = self.comp
             self.to_node = self.bus
-        self.color = self._getDefaultColor()
+
       
     def extractResults(self, allResults):
         self.results = allResults[self.comp][self.label]
@@ -193,7 +200,7 @@ class flix_results():
         # Dataframe mit Inputs (+) und Outputs (-) erstellen:
         timeSeries = timeSeriesWithEnd[0:-1] # letzten Zeitschritt vorerst weglassen        
         y = pd.DataFrame() # letzten Zeitschritt vorerst weglassen
-
+        y_color = []
         # Beachte: hier noch nicht als df-Index, damit sortierbar
         for aFlow in flows:        
             values = aFlow.results['val'] # 
@@ -202,7 +209,7 @@ class flix_results():
                                 
             if flix_results.isGreaterMinFlowHours(values, dtInHours, minFlowHours): # nur wenn gewisse FlowHours-Sum überschritten
                 y[aFlow.comp + '.' + aFlow.label] = + values # ! positiv!
-        
+                y_color.append(aFlow.color)
 
         def appendEndTimeStep(y, lastIndex):   
             # hänge noch einen Zeitschrtt mit gleichen Werten an (withEnd!) damit vollständige Darstellung
@@ -230,7 +237,7 @@ class flix_results():
         
         # add last step:
         y = appendEndTimeStep(y,lastIndex)
-        return y
+        return y, y_color
     
     def getLoadFactorOfComp(self,aComp):
         (in_flows, out_flows) = self.getFlowsOf(aComp)
@@ -450,13 +457,13 @@ class flix_results():
                     out_flows_above_x_axis.append(flow)
         
         # Inputs:
-        y_in = self.__get_Values_As_DataFrame(in_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
-        y_in_colors = [in_flow.color for in_flow in in_flows]
+        y_in, y_in_colors = self.__get_Values_As_DataFrame(in_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
         # Outputs; als negative Werte interpretiert:
-        y_out = -1 * self.__get_Values_As_DataFrame(out_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
-        y_out_colors = [out_flow.color for out_flow in out_flows]
-        y_out_aboveX = self.__get_Values_As_DataFrame(out_flows_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
-        
+        y_out, y_out_colors = self.__get_Values_As_DataFrame(out_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
+        y_out = -1 * y_out 
+
+        y_out_aboveX, y_above_colors = self.__get_Values_As_DataFrame(out_flows_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
+
         # if hasattr(self, 'excessIn')  and (self.excessIn is not None):
         if 'excessIn' in self.results[busOrComponent].keys():
             # in and out zusammenfassen:
@@ -482,7 +489,7 @@ class flix_results():
         yaxes2_title = 'charge state'
     
     
-        def plotY_plotly(y_pos, y_neg, y_pos_separat, title, yaxes_title, yaxes2_title, y_pos_colors, y_neg_colors):
+        def plotY_plotly(y_pos, y_neg, y_pos_separat, title, yaxes_title, yaxes2_title, y_pos_colors, y_neg_colors, y_above_colors):
     
             ## Flows:
             # fig = go.Figure()
@@ -493,6 +500,7 @@ class flix_results():
             # input:
             y_pos_colors = iter(y_pos_colors)
             y_neg_colors = iter(y_neg_colors)
+            y_above_colors = iter(y_above_colors)
             for column in y_pos.columns:
                 aColor = next(y_pos_colors)
                 # if isGreaterMinAbsSum(y_in[column]):
@@ -511,7 +519,8 @@ class flix_results():
             
             # output above x-axis:
             for column in y_pos_separat:
-                fig.add_trace(go.Scatter(x=y_pos_separat.index, y=y_pos_separat[column],line_shape ='hv',line=dict(dash='dash', width = 4) , name=column))
+                aColor = next(y_above_colors)
+                fig.add_trace(go.Scatter(x=y_pos_separat.index, y=y_pos_separat[column],line_shape ='hv',line=dict(dash='dash', width = 4) , name=column, line_color = aColor))
             
             
             # ## Speicherverlauf auf Sekundärachse:
@@ -573,7 +582,8 @@ class flix_results():
             
           
         if plotAsPlotly:
-            plotY_plotly(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title, y_in_colors, y_out_colors)
+            plotY_plotly(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title,
+                         y_in_colors, y_out_colors, y_above_colors)
         else:
             plotY_matplotlib(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title)
                              
