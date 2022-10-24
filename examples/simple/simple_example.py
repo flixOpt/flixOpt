@@ -19,7 +19,14 @@ print(nameOfCalc)
 
 # ##### loading ######
 import flixPostprocessing as flixPost
-calc1_res = flixPost.flix_results(nameOfCalc)
+# comp_colors = px.colors.qualitative.Plotly + px.colors.qualitative.Bold
+comp_colors = None
+# https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
+
+calc1_res = flixPost.flix_results(nameOfCalc, comp_colors = comp_colors)
+
+#explizite Farbänderung
+calc1_res.postObjOfStr('Waermelast').color = '#000000'
 
 if nameOfCalcSegs is not None:  
   calcSegs = flixPost.flix_results(nameOfCalcSegs)
