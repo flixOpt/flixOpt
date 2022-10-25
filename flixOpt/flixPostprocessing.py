@@ -192,52 +192,6 @@ class flix_results():
         return absFlowHours > minFlowHours
       
   
-    @staticmethod
-    # für plot get values (as timeseries or sorted):    
-    def __get_Values_As_DataFrame(flows, timeSeriesWithEnd ,dtInHours, minFlowHours, indexSeq = None):
-        
-        
-        # Dataframe mit Inputs (+) und Outputs (-) erstellen:
-        timeSeries = timeSeriesWithEnd[0:-1] # letzten Zeitschritt vorerst weglassen        
-        y = pd.DataFrame() # letzten Zeitschritt vorerst weglassen
-        y_color = []
-        # Beachte: hier noch nicht als df-Index, damit sortierbar
-        for aFlow in flows:        
-            values = aFlow.results['val'] # 
-            values[np.logical_and(values<0, values>-1e-5)] = 0 # negative Werte durch numerische Auflösung löschen 
-            assert (values>=0).all(), 'Warning, Zeitreihen '+ aFlow.label_full +' in inputs enthalten neg. Werte -> Darstellung Graph nicht korrekt'
-                                
-            if flix_results.isGreaterMinFlowHours(values, dtInHours, minFlowHours): # nur wenn gewisse FlowHours-Sum überschritten
-                y[aFlow.comp + '.' + aFlow.label] = + values # ! positiv!
-                y_color.append(aFlow.color)
-
-        def appendEndTimeStep(y, lastIndex):   
-            # hänge noch einen Zeitschrtt mit gleichen Werten an (withEnd!) damit vollständige Darstellung
-            lastRow = y.iloc[-1] # kopiere aktuell letzte
-
-            lastRow = lastRow.rename(lastIndex) # Index ersetzen -> letzter Zeitschritt als index        
-            y=y.append(lastRow) # anhängen
-            return y
-        
-        # add index (for steps-graph)
-        if indexSeq is not None: 
-            y['dtInHours'] = dtInHours
-            # sorting:
-            y = y.loc[indexSeq]
-            # index:
-            indexWithEnd = np.append([0],np.cumsum(y['dtInHours'].values))
-            del y['dtInHours']            
-            y.index = indexWithEnd[:-1]
-            lastIndex = indexWithEnd[-1]            
-            
-        else:
-            # index:
-            y.index=timeSeries
-            lastIndex = timeSeriesWithEnd[-1] # withEnd        
-        
-        # add last step:
-        y = appendEndTimeStep(y,lastIndex)
-        return y, y_color
     
     def getLoadFactorOfComp(self,aComp):
         (in_flows, out_flows) = self.getFlowsOf(aComp)
@@ -455,16 +409,18 @@ class flix_results():
                 if flow.to_node in outFlowCompsAboveXAxis:
                     out_flows.remove(flow)
                     out_flows_above_x_axis.append(flow)
+
+
         
         # Inputs:
-        y_in, y_in_colors = self.__get_Values_As_DataFrame(in_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
+        y_in, y_in_colors,  = self._get_FlowValues_As_DataFrame(in_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
         # Outputs; als negative Werte interpretiert:
-        y_out, y_out_colors = self.__get_Values_As_DataFrame(out_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
+        y_out, y_out_colors = self._get_FlowValues_As_DataFrame(out_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
         y_out = -1 * y_out 
+        # Outputs above X-Axis:
+        y_out_aboveX, y_above_colors = self._get_FlowValues_As_DataFrame(out_flows_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
 
-        y_out_aboveX, y_above_colors = self.__get_Values_As_DataFrame(out_flows_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours, indexSeq=indexSeq)
-
-        # if hasattr(self, 'excessIn')  and (self.excessIn is not None):
+        # append excessValues:
         if 'excessIn' in self.results[busOrComponent].keys():
             # in and out zusammenfassen:
             
@@ -472,15 +428,18 @@ class flix_results():
             excessOut = - self.results[busOrComponent]['excessOut']
             
             if flix_results.isGreaterMinFlowHours(excessIn, self.dtInHours, minFlowHours):        
-                y_in['excess_in']   = excessIn
+                y_in['excess_in'] = excessIn
                 y_in_colors.append('#FF0000')
             if flix_results.isGreaterMinFlowHours(excessOut, self.dtInHours, minFlowHours):        
                 y_out['excess_out'] = excessOut
                 y_out_colors.append('#FF0000')
-                
-          
-
-    
+            
+        # 1. sorting(if "sortBy") AND
+        # 2. appending last index (for visualizing last bar (last timestep-width) in plot)
+        listOfDataFrames = (y_in, y_out, y_out_aboveX)
+        y_in = self._sortDataFramesAndAppendLastStep(y_in, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
+        y_out = self._sortDataFramesAndAppendLastStep(y_out, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
+        y_out_aboveX = self._sortDataFramesAndAppendLastStep(y_out_aboveX, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
     
         # wenn title nicht gegeben
         if title is None:
@@ -586,8 +545,58 @@ class flix_results():
                          y_in_colors, y_out_colors, y_above_colors)
         else:
             plotY_matplotlib(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title)
-                             
-              
 
+    @staticmethod
+    # get values of flow as dataframe and belonging colors:    
+    def _get_FlowValues_As_DataFrame(flows, timeSeriesWithEnd ,dtInHours, minFlowHours):
+        # Dataframe mit Inputs (+) und Outputs (-) erstellen:
+        y = pd.DataFrame() # letzten Zeitschritt vorerst weglassen
+        y.index = timeSeriesWithEnd[0:-1] # letzten Zeitschritt vorerst weglassen       
+        y_color = []
+        # Beachte: hier noch nicht als df-Index, damit sortierbar
+        for aFlow in flows:        
+            values = aFlow.results['val'] # 
+            values[np.logical_and(values<0, values>-1e-5)] = 0 # negative Werte durch numerische Auflösung löschen 
+            assert (values>=0).all(), 'Warning, Zeitreihen '+ aFlow.label_full +' in inputs enthalten neg. Werte -> Darstellung Graph nicht korrekt'
+                                
+            if flix_results.isGreaterMinFlowHours(values, dtInHours, minFlowHours): # nur wenn gewisse FlowHours-Sum überschritten
+                y[aFlow.comp + '.' + aFlow.label] = + values # ! positiv!
+                y_color.append(aFlow.color)
+        return y, y_color
+
+    @staticmethod 
+    def _sortDataFramesAndAppendLastStep(y, timeSeriesWithEnd, dtInHours, indexSeq = None):       
+        # add index (for steps-graph)
+        if indexSeq is not None: 
+            y['dtInHours'] = dtInHours
+            # sorting:
+            y = y.iloc[indexSeq]
+            # index:
+            indexWithEnd = np.append([0], np.cumsum(y['dtInHours'].values))
+            del y['dtInHours']            
+            # Index überschreiben:
+            y.index = indexWithEnd[:-1]
+            lastIndex = indexWithEnd[-1]            
+            
+        else:
+            # Index beibehalten:
+            y.index=timeSeriesWithEnd[0:-1]
+            lastIndex = timeSeriesWithEnd[-1] # withEnd                
+        
+        
+        def _appendEndIndex(y, lastIndex):   
+            # hänge noch einen Zeitschrtt mit gleichen Werten an (withEnd!) damit vollständige Darstellung
+            lastRow = y.iloc[-1] # kopiere aktuell letzte
+
+            lastRow = lastRow.rename(lastIndex) # Index ersetzen -> letzter Zeitschritt als index        
+            y=y.append(lastRow) # anhängen
+            return y
+
+        # add last step: (for visu of last timestep-width in plot)
+        y = _appendEndIndex(y, lastIndex)                    
+    
+        return y
+
+                             
 # self.results[]
 ## ideen: kosten-übersicht, JDL, Torten-Diag für Busse
