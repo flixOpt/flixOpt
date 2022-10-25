@@ -35,7 +35,11 @@ else:
 
 ##### plotting ######
 
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
+fig1 = calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
+fig1.savefig('test1')
+fig2 = calc1_res.plotInAndOuts('Fernwaerme',plotAsPlotly = True)
+fig2.write_html('test2.html')
+
 calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast', sortBy='Waermelast')
 calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast')
 calc1_res.plotInAndOuts('Fernwaerme',stacked=False, outFlowCompsAboveXAxis='Waermelast')
