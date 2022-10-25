@@ -258,10 +258,9 @@ class flix_results():
             DESCRIPTION. The default is None.
         unit : TYPE, optional
             DESCRIPTION. The default is 'FlowHours'.
-  
         Returns
         -------
-        nice plot ;)
+        figure
         '''
 
         # if not a list of str yet, transform to list:
@@ -340,7 +339,8 @@ class flix_results():
             #       verticalalignment='top', horizontalalignment='right',
             #       transform=ax.transAxes,
             #       color='black', fontsize=10)
-            plt.show()
+            plt.show()            
+            return fig
         
         def plot_plotly(sums, labels,title, aText, colors):            
             import plotly.graph_objects as go
@@ -348,15 +348,26 @@ class flix_results():
             fig.update_layout(title_text = title,
                               annotations = [dict(text=aText, x=0.95, y=0.05, font_size=20, align = 'right', showarrow=False)],
                               )
+            
             fig.show()
+            return fig
             
         if plotAsPlotly:
-          plot_plotly    (sums, labels, title, aText, colors)
+            fig = plot_plotly    (sums, labels, title, aText, colors)
         else:
-          plot_matplotlib(sums, labels, title, aText)
+            fig = plot_matplotlib(sums, labels, title, aText)
+        return fig
                            
             
-    def plotInAndOuts(self, busOrComponent, stacked = False, renderer='browser', minFlowHours=0.1, plotAsPlotly = False, title = None, outFlowCompsAboveXAxis=None, sortBy = None):
+    def plotInAndOuts(self, 
+                      busOrComponent, 
+                      stacked = False, 
+                      renderer='browser', 
+                      minFlowHours=0.1,
+                      plotAsPlotly = False, 
+                      title = None, 
+                      outFlowCompsAboveXAxis=None,
+                      sortBy = None):
         '''      
         Parameters
         ----------
@@ -378,6 +389,12 @@ class flix_results():
             
         sortBy : component or None, optional    
             Component-Flow which should be used for sorting the timeseries ("Jahresdauerlinie")
+            
+
+        Return
+        ------
+        
+        figure-object
         '''
         
         if not (busOrComponent in self.results.keys()):
@@ -464,9 +481,9 @@ class flix_results():
                 aColor = next(y_pos_colors)
                 # if isGreaterMinAbsSum(y_in[column]):
                 if stacked :
-                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column],stackgroup='one',line_shape ='hv',name=column, line_color=aColor))
+                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column], stackgroup='one', line_shape ='hv', name=column, line_color=aColor))
                 else:
-                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column],line_shape ='hv',name=column, line_color = aColor))
+                    fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column], line_shape='hv', name=column, line_color=aColor))
             # output:
             for column in y_neg.columns:
                 aColor = next(y_neg_colors)
@@ -502,8 +519,11 @@ class flix_results():
             fig.update_yaxes(title_text=yaxes_title, secondary_y=False)
             fig.update_yaxes(title_text=yaxes2_title, secondary_y=True)      
             fig.update_layout(title=title)
+            
             fig.show()
-        
+            
+            return fig
+
         def plotY_matplotlib(y_pos, y_neg, y_pos_separat, title, yaxes_title, yaxes2_title):
             # Verschmelzen:
             y = pd.concat([y_pos,y_neg],axis=1)
@@ -536,15 +556,19 @@ class flix_results():
             plt.xlabel('Zeit - Woche [h]', fontsize = 'xx-large')                                                 ### x-Achsen-Titel                     
             plt.ylabel(yaxes_title ,fontsize = 'xx-large')                                            ### y-Achsen-Titel  = Leistung immer
             plt.grid()
-            plt.show()      
-            
+            plt.show()
+
+            return fig
             
           
         if plotAsPlotly:
-            plotY_plotly(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title,
+            fig = plotY_plotly(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title,
                          y_in_colors, y_out_colors, y_above_colors)
         else:
-            plotY_matplotlib(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title)
+            fig = plotY_matplotlib(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title)
+        
+        return fig
+            
 
     @staticmethod
     # get values of flow as dataframe and belonging colors:    

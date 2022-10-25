@@ -38,7 +38,7 @@ from flixComps    import *
 ####################### kleine Daten zum Test ###############################
 P_el_Last = [70., 80., 90., 90 , 90 , 90, 90, 90, 90]
 if checkPenalty :
-    Q_th_Last = [30., 0., 90., 110, 160 , 20, 20, 20, 20]
+    Q_th_Last = [30., 0., 90., 110, 2000 , 20, 20, 20, 20]
 else :
     Q_th_Last = [30., 0., 90., 110, 110 , 20, 20, 20, 20]
 # p_el      = [40., 70., 40., 40 , 40, 40, 70, 70, 70]
@@ -76,9 +76,8 @@ Gas        = cBus('fuel'      ,'Gas'       , excessCostsPerFlowHour = excessCost
 costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
 CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen', 
                     specificShareToOtherEffects_operation = {costs: 0.2}, 
-                    specificShareToOtherEffects_invest    = {costs:1000}, 
-                    )#max_Sum=3500, max_operationSum=3500, max_investSum=0.5)  
-PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie'   )
+                    )
+PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie', max_Sum = 3.5e3  )
 
 # definition of components:
 invest_Gaskessel = cInvestArgs(fixCosts = 1000,
