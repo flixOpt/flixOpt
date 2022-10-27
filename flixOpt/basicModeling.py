@@ -192,7 +192,7 @@ class cBaseModel:
     self.noOfVars       = len(self.variables)
     self.noOfSingleVars = sum([var.len for var in self.variables])    
     
-  def solve(self,gapfrac,timelimit, solver_name, displaySolverOutput, **kwargs):        
+  def solve(self,gapfrac,timelimit, solver_name, displaySolverOutput, **solver_opt):        
     self.solver_name = solver_name
     t_start = time.time()
     for variable in self.variables:
@@ -200,7 +200,6 @@ class cBaseModel:
     if self.modType == 'pyomo' :
       solver = pyomoEnv.SolverFactory(solver_name)
       
-      solver_opt = kwargs # kwargs werden schon mal übernommen
       if solver_name == 'cbc':
          solver_opt["ratio"] = gapfrac
          solver_opt["sec"] = timelimit
@@ -212,9 +211,9 @@ class cBaseModel:
          solver_opt["timelimit"] = timelimit
          # todo: threads = ? funktioniert das für cplex?
       elif solver_name == 'glpk':
-          solver_opt = {} # überschreiben, keine kwargs zulässig
-          # solver_opt["mipgap"] = gapfrac 
-          solver_opt =''
+          # solver_opt = {} # überschreiben, keine kwargs zulässig
+           # solver_opt["mipgap"] = gapfrac 
+          solver_opt['mipgap'] = gapfrac
           
 
       logfileName = "flixSolverLog.log"
