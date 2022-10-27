@@ -1869,14 +1869,18 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
     #        none/ 0 -> kein Exzess berücksichtigt
     #        > 0 berücksichtigt
       
-    def __init__(self, typ, label, excessCostsPerFlowHour = 1e5, **kwargs):   
+    def __init__(self, media, label, excessCostsPerFlowHour = 1e5, **kwargs):   
         '''
         
 
         Parameters
         ----------
-        medium : str
-            additional description. no influence
+        media : None, str or set of str            
+            media or set of allowed media of the coupled flows, 
+            if None, then any flow is allowed
+            example 1: media = None -> every media is allowed
+            example 1: media = 'gas'
+            example 2: media = {'gas','biogas','H2'}
         label : str
             name.
         excessCostsPerFlowHour : none or scalar, array or cTSraw
@@ -1891,8 +1895,15 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
 
         '''
         super().__init__(label,**kwargs)  
-        self.typ = typ # TODO: typ mit medium verknüpfen. Typ bisher anscheinend ohne Funktion
-        self.medium = helpers.InfiniteFullSet()
+        if media is None: 
+            self.media = media # alle erlaubt
+        elif isinstance(media,str):
+            self.media = {media} # convert to set
+        elif isinstance(media,set):
+            self.media = media
+        else:
+            raise Exception('no valid input for argument media!')
+            
         if  (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0) :
           self.withExcess = True
           self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)      
@@ -1912,12 +1923,16 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
       # Wenn noch nicht belegt
       if aFlow.medium is not None : 
         # set gemeinsamer Medien:
-        newMedium = self.medium & aFlow.medium
-        # wenn mindestens ein Eintrag:    
-        if newMedium : 
-          self.medium = newMedium
-        else : 
-          raise Exception('in cBus ' + self.label + ' : registerFlow(): medium ' + str(aFlow.medium) + ' of ' + aFlow.label + ' passt nicht zu bisherigen Flows ' + str(self.medium) ) 
+        # commonMedium = self.media & aFlow.medium
+        # wenn leer, d.h. kein gemeinsamer Eintrag:    
+        if (aFlow.medium is not None) and (self.media is not None) and \
+            (not (aFlow.medium in self.media)):
+            raise Exception('in cBus ' + self.label + ' : registerFlow(): medium \'' 
+                            + str(aFlow.medium) + '\' of ' + aFlow.label_full + 
+                            ' and media ' + str(self.media) + ' of bus ' + 
+                            self.label_full + '  have no common medium!' + 
+                            ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
+                            ) 
   
     def declareVarsAndEqs(self, modBox):
       super().declareVarsAndEqs(modBox)
@@ -1962,23 +1977,23 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
  # Medien definieren:
 class cMediumCollection:
     '''
-    define possible domains for flow (not tested!)
+    define possible domains for flow (not tested!) TODO!
     '''
     # single medium:
-    heat    = set(['heat'])
-    cold    = set(['cold'])
-    el      = set(['el'])
-    gas     = set(['gas'])
-    lignite = set(['lignite'])
-    biomass = set(['biomass'])
-    ash     = set(['ash'])
+    heat    = 'heat' # set(['heat'])
+    # cold    = set(['cold'])
+    el      = 'el' # set(['el'])
+    # gas     = set(['gas'])
+    # lignite = set(['lignite'])
+    # biomass = set(['biomass'])
+    # ash     = set(['ash'])
     # groups: 
-    fu        = gas | lignite | biomass
-    fossil_fu = gas | lignite
+    fuel      = 'fuel' # gas | lignite | biomass
+    # fossil_fu = gas | lignite
     
-    # neues Medium hinzufügen:
-    def addMedium(attrName, aSetOfStrs):
-        cMediumCollection.setattr(attrName,aSetOfStrs)
+    # # neues Medium hinzufügen:
+    # def addMedium(attrName, aSetOfStrs):
+    #     cMediumCollection.setattr(attrName,aSetOfStrs)
       
     # checkifFits(medium1,medium2,...)
     def checkIfFits(*args):
@@ -2059,6 +2074,7 @@ class cFlow(cME):
                  sumFlowHours_max = None, sumFlowHours_min = None, 
                  valuesBeforeBegin = [0,0], 
                  val_rel = None, 
+                 medium = None,
                  investArgs = None, 
                  **kwargs):
         '''
@@ -2127,6 +2143,9 @@ class cFlow(cME):
             (min_rel u. max_rel are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
             If the load-profile is just an upper limit, use max_rel instead.
+        medium: string, None
+            medium is relevant, if the linked bus only allows a special defined set of media.
+            If None, any bus can be used.            
         investArgs : None or cInvestargs, optional
             used for investment costs or/and investment-optimization!
         '''
@@ -2175,9 +2194,11 @@ class cFlow(cME):
     
         # zugehörige Komponente (wird später von Komponente gefüllt)
         self.comp = None
-        
+        if (medium is not None) and (not isinstance(medium, str)):
+            raise Exception('medium must be a string or None')
+        else:
+            self.medium = medium
         # defaults:
-        self.medium    = None
                           
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
         self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
@@ -2404,33 +2425,34 @@ class cFlow(cME):
 
 
     def getStrDescr(self, type = 'full'):            
-      aDescr = {}
-      if type == 'for bus-list':
-        # aDescr = str(self.comp.label) + '.'
-        aDescr['comp']=self.comp.label        
-        aDescr = {str(self.label):aDescr} # label in front of
-      elif type == 'for comp-list':
-        # aDescr += ' @Bus ' + str(self.bus.label)      
-        aDescr['bus']=self.bus.label            
-        aDescr = {str(self.label):aDescr} # label in front of
-      elif type == 'full':
-        aDescr['label']=self.label
-        aDescr['comp']=self.comp.label        
-        aDescr['bus']=self.bus.label            
-        aDescr['isInputInComp'] = self.isInputInComp
-      else: 
-        raise Exception('type = \'' + str(type) + '\' is not defined')
-
-      return aDescr
+        aDescr = {}
+        if type == 'for bus-list':
+          # aDescr = str(self.comp.label) + '.'
+          aDescr['comp']=self.comp.label        
+          aDescr = {str(self.label):aDescr} # label in front of
+        elif type == 'for comp-list':
+          # aDescr += ' @Bus ' + str(self.bus.label)      
+          aDescr['bus']=self.bus.label            
+          aDescr = {str(self.label):aDescr} # label in front of
+        elif type == 'full':
+          aDescr['label']=self.label
+          aDescr['comp']=self.comp.label        
+          aDescr['bus']=self.bus.label            
+          aDescr['isInputInComp'] = self.isInputInComp
+        else: 
+          raise Exception('type = \'' + str(type) + '\' is not defined')
+  
+        return aDescr
     
     # def printWithBus(self):
     #   return (str(self.label) + ' @Bus ' + str(self.bus.label))
     # def printWithComp(self):
     #   return (str(self.comp.label) + '.' +  str(self.label))
-    def setMediumIfNotSet(self,medium):
-      # nicht überschreiben, nur wenn leer:
-      if self.medium is None: self.medium = medium
-        
+    
+    # Preset medium (only if not setted explicitly by user)
+    def setMediumIfNotSet(self, medium):
+        # nicht überschreiben, nur wenn leer:
+        if self.medium is None: self.medium = medium
 
 # class cBeforeValue :
   
