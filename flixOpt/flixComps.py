@@ -239,7 +239,7 @@ class cKessel(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(cMediumCollection.fu)
+        Q_fu.setMediumIfNotSet(cMediumCollection.fuel)
         Q_th.setMediumIfNotSet(cMediumCollection.heat)
 
         # Plausibilität eta:
@@ -374,7 +374,7 @@ class cKWK(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(cMediumCollection.fu)
+        Q_fu.setMediumIfNotSet(cMediumCollection.fuel)
         Q_th.setMediumIfNotSet(cMediumCollection.heat)
         P_el.setMediumIfNotSet(cMediumCollection.el)
 
