@@ -287,7 +287,7 @@ class cHeatPump(cBaseLinearTransformer):
         Q_th.setMediumIfNotSet(cMediumCollection.heat)
 
         # Plausibilität eta:
-        self.eta_bounds = [0 + 1e-10, 10 - 1e-10]  # 0 < eta_th < 1
+        self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
