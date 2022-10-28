@@ -206,6 +206,8 @@ class cBaseLinearTransformer(cBaseComponent):
         self.segmentsOfFlows = segmentsOfFlows  # attribute of mother-class
 
 
+            
+
 class cKessel(cBaseLinearTransformer):
     """
     Klasse cKessel
@@ -747,3 +749,110 @@ class cSink(cBaseComponent):
         super().__init__(label)
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
+
+class cTransportation(cBaseComponent):
+    
+    
+    def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=1, loss_abs=0, avoidFlowInBothDirectionsAtOnce = True, **kwargs):
+        '''
+        Rohr with loss (when no flow, then loss is still there (gedanklicher Überströmer)
+
+        Parameters
+        ----------
+        label : TYPE
+            DESCRIPTION.
+        in1 : TYPE
+            DESCRIPTION.
+        out1 : TYPE
+            DESCRIPTION.
+        in2 : TYPE
+            DESCRIPTION.
+        out2 : TYPE
+            DESCRIPTION.
+        loss_rel : TYPE
+            DESCRIPTION.
+        loss_abs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
+        super().__init__(label)
+        
+        self.in1 = in1
+        self.out1 = out1
+        self.in2 = in2
+        self.out2 = out2
+        
+        self.inputs.append(in1)
+        self.outputs.append(out1)
+        if in2 is not None:
+            self.inputs.append(in2)
+            self.outputs.append(out2)        
+            # check buses:
+            assert in2.bus == out1.bus, 'in2.bus is not equal out1.bus!'
+            assert out2.bus == in1.bus, 'out2.bus is not equal in1.bus!'
+            
+            
+        self.loss_rel = cTS_vector('loss_rel', loss_rel, self)#
+        self.loss_abs = cTS_vector('loss_abs', loss_abs, self)#
+        
+        self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
+        
+        if self.avoidFlowInBothDirectionsAtOnce and (in2 is not None):
+            self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
+                                                                 [self.in1, self.in2])
+
+    def declareVarsAndEqs(self, modBox:cModelBoxOfES):
+        """
+        Deklarieren von Variablen und Gleichungen
+
+        :param modBox:
+        :return:
+        """
+        super().declareVarsAndEqs(modBox)        
+
+    def doModeling(self, modBox, timeIndexe):
+        super().doModeling(modBox, timeIndexe)
+
+        # not both directions at once:
+        if self.avoidFlowInBothDirectionsAtOnce and (self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
+
+
+        # first direction
+        # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
+        self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
+        self.eq_dir1.addSummand(self.in1.mod.var_val, 1-self.loss_rel.d_i)
+        self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
+        if self.loss_abs is not None and self.loss_abs!=0 :
+            assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1!'
+            self.eq_dir1.addSummand(self.in1.mod.var_on, -1* self.loss_abs.d_i)
+
+        # second direction:        
+        if self.in2 is not None:
+            # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
+            self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
+            self.eq_dir2.addSummand(self.in2.mod.var_val, 1-self.loss_rel.d_i)
+            self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
+            if self.loss_abs is not None and self.loss_abs!=0:            
+                
+                assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2!'
+                self.eq_dir2.addSummand(self.in2.mod.var_on, -1* self.loss_abs.d_i)
+        
+
+        # equate nominal value of second direction
+        if (self.in2 is not None):
+            oneInFlowHasFeatureInvest = (self.in1.featureInvest is not None) or (self.in1.featureInvest is not None)
+            bothInFlowsHaveFeatureInvest = (self.in1.featureInvest is not None) and (self.in1.featureInvest is not None)
+            if oneInFlowHasFeatureInvest:
+                if bothInFlowsHaveFeatureInvest:
+                    # eq: in1.nom_value = in2.nom_value
+                    self.eq_nom_value = cEquation('equalSizeInBothDirections', self, modBox, eqType='eq')
+                    self.eq_nom_value.addSummand(self.in1.featureInvest.mod.var_investmentSize, 1)            
+                    self.eq_nom_value.addSummand(self.in2.featureInvest.mod.var_investmentSize, -1)
+                else:
+                    raise Exception('define investArgs also for second In-Flow (values can be empty!)') # TODO: anders lösen (automatisiert)!
+            
