@@ -477,7 +477,7 @@ class cEquation :
     
     ## Register Me:   
     # Equation:
-    if eqType == 'ineq':
+    if eqType == 'ineq': # lhs <= rhs
       # myMom .ineqs.append(self) # Komponentenliste
       baseModel   .ineqs.append(self) # baseModel-Liste mit allen ineqs
       myMom.mod.ineqs.append(self)

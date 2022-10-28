@@ -751,11 +751,15 @@ class cSink(cBaseComponent):
         self.inputs.append(sink)  # ein Input-Flow
 
 class cTransportation(cBaseComponent):
+    # TODO: automatic on-Value in Flows if loss_abs
+    # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
+    # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
+    # TODO: loss should be realized from 
     
-    
-    def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=1, loss_abs=0, avoidFlowInBothDirectionsAtOnce = True, **kwargs):
+    def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0, loss_abs=0, isAlwaysOn=True, avoidFlowInBothDirectionsAtOnce = True, **kwargs):
         '''
-        Rohr with loss (when no flow, then loss is still there (gedanklicher Überströmer)
+        Rohr with loss (when no flow, then loss is still there and has to be
+        covered by one in-flow (gedanklicher Überströmer)
 
         Parameters
         ----------
@@ -772,8 +776,11 @@ class cTransportation(cBaseComponent):
         loss_rel : TYPE
             DESCRIPTION.
         loss_abs : TYPE
-            DESCRIPTION.
+            absolut loss. is active until on=0 for in-flows
 
+        ... featureOnVars for Active Transportation:
+        switchOnCosts : 
+            #costs of switch rohr on
         Returns
         -------
         None.
@@ -799,17 +806,19 @@ class cTransportation(cBaseComponent):
             
         self.loss_rel = cTS_vector('loss_rel', loss_rel, self)#
         self.loss_abs = cTS_vector('loss_abs', loss_abs, self)#
-        
+        self.isAlwaysOn = isAlwaysOn
         self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
         
         if self.avoidFlowInBothDirectionsAtOnce and (in2 is not None):
             self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
                                                                  [self.in1, self.in2])
 
+
+
     def declareVarsAndEqs(self, modBox:cModelBoxOfES):
         """
         Deklarieren von Variablen und Gleichungen
-
+        
         :param modBox:
         :return:
         """
@@ -818,6 +827,8 @@ class cTransportation(cBaseComponent):
     def doModeling(self, modBox, timeIndexe):
         super().doModeling(modBox, timeIndexe)
 
+
+            
         # not both directions at once:
         if self.avoidFlowInBothDirectionsAtOnce and (self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
 
@@ -825,10 +836,10 @@ class cTransportation(cBaseComponent):
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
         self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
-        self.eq_dir1.addSummand(self.in1.mod.var_val, 1-self.loss_rel.d_i)
+        self.eq_dir1.addSummand(self.in1.mod.var_val, (1-self.loss_rel.d_i))
         self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
         if self.loss_abs is not None and self.loss_abs!=0 :
-            assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1!'
+            assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
             self.eq_dir1.addSummand(self.in1.mod.var_on, -1* self.loss_abs.d_i)
 
         # second direction:        
@@ -839,9 +850,18 @@ class cTransportation(cBaseComponent):
             self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
             if self.loss_abs is not None and self.loss_abs!=0:            
                 
-                assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2!'
+                assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
                 self.eq_dir2.addSummand(self.in2.mod.var_on, -1* self.loss_abs.d_i)
         
+        # always On (in at least one direction)
+        # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
+        if self.isAlwaysOn:
+            self.eq_alwaysOn = cEquation('alwaysOn',self, modBox,eqType='ineq')
+            self.eq_alwaysOn.addSummand(self.in1.mod.var_on, -1)
+            if (self.in2 is not None) : self.eq_alwaysOn.addSummand(self.in2.mod.var_on, -1)
+            self.eq_alwaysOn.addRightSide(-.5)# wg binärungenauigkeit 0.5 statt 1
+            
+
 
         # equate nominal value of second direction
         if (self.in2 is not None):
