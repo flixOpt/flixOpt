@@ -66,9 +66,9 @@ print('################### start of modeling #################################')
 
 # Bus-Definition:
 #                 Typ         Name              
-Strom      = cBus('el'        ,'Strom'     , excessCostsPerFlowHour = excessCosts);
-Fernwaerme = cBus('heat'        ,'Fernwärme' , excessCostsPerFlowHour = excessCosts);  
-Gas        = cBus('fuel'      ,'Gas'       , excessCostsPerFlowHour = excessCosts);
+Strom = cBus('el', 'Strom', excessCostsPerFlowHour=excessCosts)
+Fernwaerme = cBus('heat', 'Fernwärme', excessCostsPerFlowHour=excessCosts)
+Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=excessCosts)
 
 
 
@@ -205,33 +205,33 @@ aCalc.results_struct
 ## calculation "segmented":
 
 if doSegmentedCalc: 
-  calcSegs = cCalculation('Sim2', es, 'pyomo', chosenEsTimeIndexe)
-  calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen = 6, nrOfUsedSteps = 2, nameSuffix = '_' + solver_name)
+    calcSegs = cCalculation('Sim2', es, 'pyomo', chosenEsTimeIndexe)
+    calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen = 6, nrOfUsedSteps = 2, nameSuffix = '_' + solver_name)
  
 
 ## plotting segmented results 
 #  TODO:    Umzug in Postprocesing!!!
 
 if doSegmentedCalc: 
-  import matplotlib.pyplot as plt
-  # Segment-Plot:
-  for aModBox in calcSegs.segmentModBoxList:  
-    plt.plot(aModBox.timeSeries       , aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
-  plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
-  # plt.plot(calcSegs.timeSeriesWithEnd, calcSegs.results_struct.Speicher.charge_state, ':', label='chargeState') 
-  # plt.plot(mb      .timeSeriesWithEnd, mb      .results_struct.Speicher.charge_state, '-.', label='chargeState') 
-  plt.legend()
-  plt.grid()
-  plt.show()
+    import matplotlib.pyplot as plt
+    # Segment-Plot:
+    for aModBox in calcSegs.segmentModBoxList:  
+        plt.plot(aModBox.timeSeries       , aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
+    plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
+    # plt.plot(calcSegs.timeSeriesWithEnd, calcSegs.results_struct.Speicher.charge_state, ':', label='chargeState') 
+    # plt.plot(mb      .timeSeriesWithEnd, mb      .results_struct.Speicher.charge_state, '-.', label='chargeState') 
+    plt.legend()
+    plt.grid()
+    plt.show()
+    
   
-
-  # Segment-Plot:
-  for aModBox in calcSegs.segmentModBoxList:  
-    plt.plot(aModBox.timeSeries, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs') 
-  plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs') 
-  plt.legend()
-  plt.grid()
-  plt.show()
-  
-  calcSegs.results_struct
+    # Segment-Plot:
+    for aModBox in calcSegs.segmentModBoxList:  
+        plt.plot(aModBox.timeSeries, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs') 
+    plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs') 
+    plt.legend()
+    plt.grid()
+    plt.show()
+    
+    calcSegs.results_struct
 
