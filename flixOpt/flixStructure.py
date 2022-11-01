@@ -876,7 +876,7 @@ class cCalculation :
   
       # timeSeriesOfSim = self.es.timeSeries[from_index:to_index+1]
 
-      self._definePathNames(namePrefix, nameSuffix, aPath, saveResults = True)
+
          
       # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
       nrOfSimSegments = math.ceil((self.nrOfTimeSteps - segmentLen) / nrOfUsedSteps) + 1 
@@ -886,6 +886,8 @@ class cCalculation :
       print('usedSteps     : ' + str(nrOfUsedSteps))
       print('-> nr of Sims : ' + str(nrOfSimSegments))
       print('')
+
+      self._definePathNames(namePrefix, nameSuffix, aPath, saveResults = True, nrOfModBoxes = nrOfSimSegments)
       
       for i in range(nrOfSimSegments):      
         startIndex_calc   = i * nrOfUsedSteps
@@ -894,8 +896,6 @@ class cCalculation :
         startIndex_global = self.chosenEsTimeIndexe[startIndex_calc]
         endIndex_global   = self.chosenEsTimeIndexe[endIndex_calc] # inklusiv
         indexe_global     = self.chosenEsTimeIndexe[startIndex_calc:endIndex_calc + 1] # inklusive endIndex
-  
-  
   
         # new realNrOfUsedSteps:
         # if last Segment:
@@ -934,7 +934,8 @@ class cCalculation :
         
         # Lösen:
         t_start_solving = time.time()
-        segmentModBox.solve(**solverProps, logfileName=self.path_Log)# keine SolverOutput-Anzeige, da sonst zu viel
+        
+        segmentModBox.solve(**solverProps, logfileName=self.paths_Log[i])# keine SolverOutput-Anzeige, da sonst zu viel
         self.durations['solving'] += round(time.time()-t_start_solving,2)
         ## results adding:      
         self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
@@ -1110,18 +1111,18 @@ class cCalculation :
     
     def solve(self, solverProps, namePrefix = '', nameSuffix ='', aPath = 'results/', saveResults = True):
     
-        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults)
+        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults, nrOfModBoxes=1)
 
         if self.calcType not in ['full','aggregated']:            
           raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
         aModbox = self.listOfModbox[0]
-        aModbox.solve(**solverProps, logfileName = self.path_Log)
+        aModbox.solve(**solverProps, logfileName = self.paths_Log[0])
         
         if saveResults:
           self._saveSolveInfos()
 
         
-    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults):
+    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults, nrOfModBoxes=1):
         import datetime
         import pathlib               
 
@@ -1140,12 +1141,16 @@ class cCalculation :
         if saveResults:
             filename_Data = self.nameOfCalc + '_data.pickle'
             filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
-            filename_Log = self.nameOfCalc + '_solver.log'
-            self.path_Log = self.pathForResults / filename_Log
+            if nrOfModBoxes ==1:
+                filenames_Log = [self.nameOfCalc + '_solver.log']
+            else:
+                filenames_Log = [(self.nameOfCalc + '_solver_' + str(i) + '.log') for i in range(nrOfModBoxes)]
+                
+            self.paths_Log = [self.pathForResults / filenames_Log[i] for i in range(nrOfModBoxes)]
             self.path_Data = self.pathForResults / filename_Data
             self.path_Info = self.pathForResults / filename_Info
         else:            
-            self.path_Log = None
+            self.paths_Log = None
             self.path_Data = None
             self.path_Info = None
     
