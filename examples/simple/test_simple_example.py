@@ -12,7 +12,7 @@ calc1_res= simple_example.calc1_res
 print('#############')
 print('## Testing ##')
 objective_value = calc1_res.infos['modboxes']['info'][0]['main_results']['Result of Obj']
-assert round(objective_value, -1) == -10760, '!!!Achtung Ergebnis-Änderung!!!'
+assert round(objective_value, -1) == -11600, '!!!Achtung Ergebnis-Änderung!!!'
 print('##   ok!   ##')
 print('#############')
 
