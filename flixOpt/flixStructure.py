@@ -5,10 +5,8 @@ Created on Wed Dec 16 12:40:23 2020
 @author: Panitz
 """
 
-
-
-#########################
-#### todos
+# ########################
+# ### todos
 
 #  results: Kessel.Q_th und Waermebus.Kessel_Q_th haben noch unterschiedliche IDs!!!
 
@@ -55,7 +53,7 @@ Created on Wed Dec 16 12:40:23 2020
    # Medien-zulässigkeit 
    
 ##########################
-## Features to do:
+# # Features to do:
 # -> Standardbuse festlegen für Komponenten (Wenn Eingabe, dann Überschreiben der alten)
 # -> statt indexen direkt timeseries(ts) als Index überall verwenden 
 #        also: Elemente mit indexe=ts[0,4] statt indexe=range(0,4) aufrufen--> Hätte den Vorteil, dass Fehlermeldungen kommen, falls konkrete Zeit z.B. für eine Variable nicht existiert
@@ -67,226 +65,227 @@ Created on Wed Dec 16 12:40:23 2020
 # --> flows mit Temperaturen (VL/RL vorsehen) -> Buses sind dann mixing points!
 # --> schedule for flow (oemof --> Caterina Köhl von Consolinno!)
 
-# -> sollte man sich mit dem ganzen an solph.network andocken?  
-#    --> dort sind einige coole Features (mapping von nodes und edges), 
+# -> sollte man sich mit dem ganzen an solph.network andocken?
+#    --> dort sind einige coole Features (mapping von nodes und edges),
 #    --> oemof tabular hat das auch gemacht, aber aufwendig (Problem irgendwie das verküpfungen eher erstellt werden als Komponenten)
 
-# SOS - special ordered sets Löser direkt übergeben 
+# SOS - special ordered sets Löser direkt übergeben
 
-import numpy  as np
+import numpy as np
 
-import copy
 import math
 import time
-import yaml #(für json-Schnipsel-print)
+import yaml  # (für json-Schnipsel-print)
 
 import flixOptHelperFcts as helpers
 
 from basicModeling import * # Modelliersprache
-from flixBasics    import *
+from flixBasics import *
 import logging
 
 log = logging.getLogger(__name__)
-# TODO: 
-  # -> results sollte mit objekt und! label mappen, also results[aKWK] und! results['KWK1']
-   
+# TODO:
+# -> results sollte mit objekt und! label mappen, also results[aKWK] und! results['KWK1']
+
 # TODO: 1. cTimePeriodModel -> hat für Zeitbereich die Modellierung timePeriodModel1, timePeriodModel2,...
-class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifischen Sachen rein
-  
-  @property
-  def infos(self):    
-    infos = super().infos
-    # Hauptergebnisse:
-    infos['main_results'] = self.main_results_str # 
-    # unten dran den vorhanden rest:
-    infos.update(self._infos) # da steht schon zeug drin
-  
-    return infos 
-  
-  def __init__(self, label, aModType, es, esTimeIndexe, TS_explicit = None):
-    super().__init__(label, aModType)
-    self.es           : cEnergySystem
-    self.es           = es # energysystem (wäre Attribut von cTimePeriodModel)
-    self.esTimeIndexe = esTimeIndexe
-    self.nrOfTimeSteps = len(esTimeIndexe)
-    self.TS_explicit   = TS_explicit # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-    # self.epsilon    = 1e-5 # 
-    # self.variables  = [] # Liste aller Variablen
-    # self.eqs        = [] # Liste aller Gleichungen
-    # self.ineqs      = [] # Liste aller Ungleichungen
-    self.ME_mod     = {} # dict mit allen mods der MEs
+class cModelBoxOfES(cBaseModel):  
+    '''
+    Hier kommen die ModellingLanguage-spezifischen Sachen rein
+    '''
+    @property
+    def infos(self):
+        infos = super().infos
+        # Hauptergebnisse:
+        infos['main_results'] = self.main_results_str
+        # unten dran den vorhanden rest:
+        infos.update(self._infos)  # da steht schon zeug drin
+
+        return infos
     
-    # self.objective       = None # objective-Function
-    # self.objective_value = None # Ergebnis
-    
-    self.beforeValueSet  = None # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
-    # Zeitdaten generieren:
-    (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) =  es.getTimeDataOfTimeIndexe(esTimeIndexe)
-
-
-  # mod auslesen:
-  def getModOfME(self, aModelingElement):
-    return self.ME_mod[aModelingElement]
-
-  # register ModelingElements and belonging Mod:
-  def registerMEandMod(self, aModelingElement, aMod):
-    # Zuordnung ME -> mod
-    self.ME_mod[aModelingElement] = aMod # aktuelles mod hier speichern
- 
-  # override:
-  def _charactarizeProblem(self): # overriding same method in motherclass!
-      
-    super()._charactarizeProblem()
-    
-    # Systembeschreibung abspeichern: (Beachte: modbox muss aktiviert sein)
-    # self.es.activateModBox()
-    self._infos['str_Eqs']   = self.es.getEqsAsStr()
-    self._infos['str_Vars']  = self.es.getVarsAsStr()
-
+    def __init__(self, label, aModType, es, esTimeIndexe, TS_explicit = None):
+        super().__init__(label, aModType)
+        self.es: cEnergySystem
+        self.es = es  # energysystem (wäre Attribut von cTimePeriodModel)
+        self.esTimeIndexe = esTimeIndexe
+        self.nrOfTimeSteps = len(esTimeIndexe)
+        self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
+        # self.epsilon    = 1e-5 # 
+        # self.variables  = [] # Liste aller Variablen
+        # self.eqs        = [] # Liste aller Gleichungen
+        # self.ineqs      = [] # Liste aller Ungleichungen
+        self.ME_mod = {}  # dict mit allen mods der MEs
+        
+        # self.objective       = None # objective-Function
+        # self.objective_value = None # Ergebnis
+        
+        self.beforeValueSet  = None # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
+        # Zeitdaten generieren:
+        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) =  es.getTimeDataOfTimeIndexe(esTimeIndexe)
   
-  #'gurobi'
-  def solve(self, gapFrac = 0.02,timelimit = 3600, solver ='cbc', displaySolverOutput = True, excessThreshold = 0.1, logfileName = 'solverLog.log', **kwargs):      
-      '''
-      
-
-      Parameters
-      ----------
-      gapFrac : TYPE, optional
-          DESCRIPTION. The default is 0.02.
-      timelimit : TYPE, optional
-          DESCRIPTION. The default is 3600.
-      solver : TYPE, optional
-          DESCRIPTION. The default is 'cbc'.
-      displaySolverOutput : TYPE, optional
-          DESCRIPTION. The default is True.
-      excessThreshold : float, positive!
-          threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
-      **kwargs : TYPE
-          DESCRIPTION.
-
-      Returns
-      -------
-      main_results_str : TYPE
-          DESCRIPTION.
-
-      '''
-      
-          
-      
-      # check auf valide Solver-Optionen:
-      
-      if len(kwargs) > 0 :
-        for key in kwargs.keys():
-          if key not in ['threads']:
-            raise Exception('no allowed arguments for kwargs: ' + str(key) + '(all arguments:' +  str(kwargs) +')')
-      
-      print('')
-      print('##############################################################')
-      print('##################### solving ################################')
-      print('')
-      
-      self.printNoEqsAndVars()            
-      
-      
-      super().solve(gapFrac, timelimit, solver, displaySolverOutput, logfileName, **kwargs)
-      
-      if solver == 'gurobi': 
-          termination_message = self.solver_results['Solver'][0]['Termination message']
-      elif solver == 'glpk':
-          termination_message = self.solver_results['Solver'][0]['Status']
-      else:
-          termination_message = 'not implemented for solver yet'
-      print('termination message: "' + termination_message + '"')    
-      
-      print('')    
-      # Variablen-Ergebnisse abspeichern:      
-      # 1. dict:  
-      (self.results, self.results_var)  = self.es.getResultsAfterSolve()
-      # 2. struct:
-      self.results_struct = helpers.createStructFromDictInDict(self.results)
-      
-
-      print('##############################################################')
-      print('################### finished #################################')
-      print('')
-      for aEffect in self.es.globalComp.listOfEffectTypes:
-        print(aEffect.label +  ' in ' + aEffect.unit + ':')
-        print('  operation: ' + str(aEffect.operation.mod.var_sum.getResult())) 
-        print('  invest   : ' + str(aEffect.invest   .mod.var_sum.getResult())) 
-        print('  sum      : ' + str(aEffect.all      .mod.var_sum.getResult())) 
+  
+    # mod auslesen:
+    def getModOfME(self, aModelingElement):
+        return self.ME_mod[aModelingElement]
+  
+    # register ModelingElements and belonging Mod:
+    def registerMEandMod(self, aModelingElement, aMod):
+        # Zuordnung ME -> mod
+        self.ME_mod[aModelingElement] = aMod # aktuelles mod hier speichern
+   
+    # override:
+    def _charactarizeProblem(self): # overriding same method in motherclass!
+        
+        super()._charactarizeProblem()
+        
+        # Systembeschreibung abspeichern: (Beachte: modbox muss aktiviert sein)
+        # self.es.activateModBox()
+        self._infos['str_Eqs']   = self.es.getEqsAsStr()
+        self._infos['str_Vars']  = self.es.getVarsAsStr()
+  
+    
+    #'gurobi'
+    def solve(self, gapFrac = 0.02,timelimit = 3600, solver ='cbc', displaySolverOutput = True, excessThreshold = 0.1, logfileName = 'solverLog.log', **kwargs):      
+        '''
+        
+  
+        Parameters
+        ----------
+        gapFrac : TYPE, optional
+            DESCRIPTION. The default is 0.02.
+        timelimit : TYPE, optional
+            DESCRIPTION. The default is 3600.
+        solver : TYPE, optional
+            DESCRIPTION. The default is 'cbc'.
+        displaySolverOutput : TYPE, optional
+            DESCRIPTION. The default is True.
+        excessThreshold : float, positive!
+            threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
+        **kwargs : TYPE
+            DESCRIPTION.
+  
+        Returns
+        -------
+        main_results_str : TYPE
+            DESCRIPTION.
+  
+        '''
+        
+            
+        
+        # check auf valide Solver-Optionen:
+        
+        if len(kwargs) > 0 :
+            for key in kwargs.keys():
+                if key not in ['threads']:
+                    raise Exception('no allowed arguments for kwargs: ' + str(key) + '(all arguments:' +  str(kwargs) +')')
+        
+        print('')
+        print('##############################################################')
+        print('##################### solving ################################')
+        print('')
+        
+        self.printNoEqsAndVars()            
         
         
-      print('SUM              : ' + '...todo...')
-      print('penaltyCosts     : ' + str(self.es.globalComp.penalty.mod.var_sum.getResult()  ))
-      print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
-      print('Result of Obj : ' + str(self.objective_value                  ))            
-      try:
-          print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
-      except:
-          print
-      print('')
-      for aBus in self.es.setOfBuses:
-        if aBus.withExcess : 
-          if any(self.results[aBus.label]['excessIn'] > 0) or any(self.results[aBus.label]['excessOut'] > 0):
-          # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
-            print('!!!!! Attention !!!!!')
-            print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')          
-      
-      # Wenn Strafen vorhanden
-      if self.es.globalComp.penalty.mod.var_sum.getResult() > 10 :
-        print('Take care: -> high penalty makes the used gapFrac quite high')
-        print('           -> real costs are not optimized to gapfrac')
+        super().solve(gapFrac, timelimit, solver, displaySolverOutput, logfileName, **kwargs)
         
-      print('')
-      print('##############################################################')            
-
-      # str description of results:
-      # nested fct:
-      def _getMainResultsAsStr():
-        main_results_str = {}
-
+        if solver == 'gurobi': 
+            termination_message = self.solver_results['Solver'][0]['Termination message']
+        elif solver == 'glpk':
+            termination_message = self.solver_results['Solver'][0]['Status']
+        else:
+            termination_message = 'not implemented for solver yet'
+        print('termination message: "' + termination_message + '"')    
+        
+        print('')    
+        # Variablen-Ergebnisse abspeichern:      
+        # 1. dict:  
+        (self.results, self.results_var)  = self.es.getResultsAfterSolve()
+        # 2. struct:
+        self.results_struct = helpers.createStructFromDictInDict(self.results)
+        
   
-        aEffectDict = {}      
-        main_results_str['Effekte'] = aEffectDict
+        print('##############################################################')
+        print('################### finished #################################')
+        print('')
         for aEffect in self.es.globalComp.listOfEffectTypes:
-          aDict = {}
-          aEffectDict[aEffect.label +' ['+ aEffect.unit + ']'] = aDict
-          aDict['operation']= str(aEffect.operation.mod.var_sum.getResult())
-          aDict['invest']   = str(aEffect.invest   .mod.var_sum.getResult())
-          aDict['sum']      = str(aEffect.all      .mod.var_sum.getResult())
-        main_results_str['Effekte']
-        main_results_str['penaltyCosts']  = str(self.es.globalComp.penalty.mod.var_sum.getResult())
-        main_results_str['Result of Obj'] = self.objective_value
-        main_results_str['lower bound']   = self.solver_results['Problem'][0]['Lower bound']
-        
-        busesWithExcess = []
-        main_results_str['busesWithExcess'] = busesWithExcess
+            print(aEffect.label +  ' in ' + aEffect.unit + ':')
+            print('  operation: ' + str(aEffect.operation.mod.var_sum.getResult())) 
+            print('  invest   : ' + str(aEffect.invest   .mod.var_sum.getResult())) 
+            print('  sum      : ' + str(aEffect.all      .mod.var_sum.getResult())) 
+          
+          
+        print('SUM              : ' + '...todo...')
+        print('penaltyCosts     : ' + str(self.es.globalComp.penalty.mod.var_sum.getResult()  ))
+        print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
+        print('Result of Obj : ' + str(self.objective_value                  ))            
+        try:
+            print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
+        except:
+            print
+        print('')
         for aBus in self.es.setOfBuses:
-          if aBus.withExcess : 
-            if sum(self.results[aBus.label]['excessIn']) > excessThreshold or sum(self.results[aBus.label]['excessOut']) > excessThreshold:
-              busesWithExcess.append(aBus.label)      
+            if aBus.withExcess : 
+                if any(self.results[aBus.label]['excessIn'] > 0) or any(self.results[aBus.label]['excessOut'] > 0):
+                    # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
+                    print('!!!!! Attention !!!!!')
+                    print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')          
         
-        aDict = {'invested':{},
-                 'not invested':{}
-                 }
-        main_results_str['Invest-Decisions']=aDict
-        for aInvestFeature in self.es.allInvestFeatures:
-            investValue = aInvestFeature.mod.var_investmentSize.getResult()
-            investValue = float(investValue) # bei np.floats Probleme bei Speichern
-            # umwandeln von numpy:
-            if isinstance(investValue, np.ndarray):
-                investValue = investValue.tolist()
-            label = aInvestFeature.owner.label_full
-            if investValue > 1e-3:
-                aDict['invested'][label] = investValue
-            else:
-                aDict['not invested'][label] = investValue
+        # Wenn Strafen vorhanden
+        if self.es.globalComp.penalty.mod.var_sum.getResult() > 10 :
+            print('Take care: -> high penalty makes the used gapFrac quite high')
+            print('           -> real costs are not optimized to gapfrac')
+          
+        print('')
+        print('##############################################################')            
+  
+        # str description of results:
+        # nested fct:
+        def _getMainResultsAsStr():
+            main_results_str = {}
+    
       
-        return main_results_str
-      
-      self.main_results_str = _getMainResultsAsStr()            
-      helpers.printDictAndList(self.main_results_str)
-      
+            aEffectDict = {}      
+            main_results_str['Effekte'] = aEffectDict
+            for aEffect in self.es.globalComp.listOfEffectTypes:
+                aDict = {}
+                aEffectDict[aEffect.label +' ['+ aEffect.unit + ']'] = aDict
+                aDict['operation']= str(aEffect.operation.mod.var_sum.getResult())
+                aDict['invest']   = str(aEffect.invest   .mod.var_sum.getResult())
+                aDict['sum']      = str(aEffect.all      .mod.var_sum.getResult())
+            main_results_str['Effekte']
+            main_results_str['penaltyCosts']  = str(self.es.globalComp.penalty.mod.var_sum.getResult())
+            main_results_str['Result of Obj'] = self.objective_value
+            main_results_str['lower bound']   = self.solver_results['Problem'][0]['Lower bound']
+            
+            busesWithExcess = []
+            main_results_str['busesWithExcess'] = busesWithExcess
+            for aBus in self.es.setOfBuses:
+                if aBus.withExcess : 
+                    if sum(self.results[aBus.label]['excessIn']) > excessThreshold or sum(self.results[aBus.label]['excessOut']) > excessThreshold:
+                        busesWithExcess.append(aBus.label)      
+              
+            aDict = {'invested':{},
+                     'not invested':{}
+                     }
+            main_results_str['Invest-Decisions']=aDict
+            for aInvestFeature in self.es.allInvestFeatures:
+                investValue = aInvestFeature.mod.var_investmentSize.getResult()
+                investValue = float(investValue) # bei np.floats Probleme bei Speichern
+                # umwandeln von numpy:
+                if isinstance(investValue, np.ndarray):
+                    investValue = investValue.tolist()
+                label = aInvestFeature.owner.label_full
+                if investValue > 1e-3:
+                    aDict['invested'][label] = investValue
+                else:
+                    aDict['not invested'][label] = investValue
+          
+            return main_results_str
+        
+        self.main_results_str = _getMainResultsAsStr()            
+        helpers.printDictAndList(self.main_results_str)
+        
       
 class cEnergySystem:
     
