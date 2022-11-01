@@ -161,7 +161,7 @@ print('################### start of modeling #################################')
 excessCosts = 1e5
 excessCosts = None
 Strom      = cBus('el'        ,'Strom'     , excessCostsPerFlowHour = excessCosts);
-Fernwaerme = cBus('th'        ,'Fernwärme' , excessCostsPerFlowHour = excessCosts);  
+Fernwaerme = cBus('heat'        ,'Fernwärme' , excessCostsPerFlowHour = excessCosts);  
 Gas        = cBus('fuel'      ,'Gas'       , excessCostsPerFlowHour = excessCosts);  
 Kohle      = cBus('fuel'      ,'Kohle'     , excessCostsPerFlowHour = excessCosts);  
 
