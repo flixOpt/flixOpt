@@ -4,13 +4,6 @@ Created on Thu Jun 16 11:19:17 2022
 
 @author: Panitz
 """
-
-# mögliche Testszenarien für testing-tool:
-   # abschnittsweise linear testen
-   # Komponenten mit offenen Flows 
-   # Binärvariablen ohne max-Wert-Vorgabe des Flows (Binärungenauigkeitsproblem)
-   # Medien-zulässigkeit 
-   
 # TODO:
     #  Effektbeispiel mit Anzahl (z.b. Kesselanzahl < 3) 
 
@@ -18,31 +11,34 @@ Created on Thu Jun 16 11:19:17 2022
 # Solver-Inputs:
 displaySolverOutput = False # ausführlicher Solver-Output.
 displaySolverOutput = True  # ausführlicher Solver-Output.
-gapFrac        = 0.0001
-timelimit      = 3600
-solver_name    = 'gurobi'
-nrOfThreads    = 1
+gapFrac = 0.0001
+timelimit = 3600
+
+solver_name = 'glpk'
+# solver_name = 'gurobi'
 # solver_name    = 'cbc'
+nrOfThreads    = 1
 
 ### Durchführungs-Optionen: ###
 # doSegmentedCalc = True
 doSegmentedCalc  = False
 checkPenalty    = False  
-# importbycsv     = True
+excessCosts = None
+excessCosts = 1e5 # default vlaue
 ################
 
-import os
 import matplotlib.pyplot as plt
-import time
-import json
 import numpy as np
 import datetime
+
+from flixStructure import *
+from flixComps    import *
 
 
 ####################### kleine Daten zum Test ###############################
 P_el_Last = [70., 80., 90., 90 , 90 , 90, 90, 90, 90]
 if checkPenalty :
-    Q_th_Last = [30., 0., 90., 110, 160 , 20, 20, 20, 20]
+    Q_th_Last = [30., 0., 90., 110, 2000 , 20, 20, 20, 20]
 else :
     Q_th_Last = [30., 0., 90., 110, 110 , 20, 20, 20, 20]
 # p_el      = [40., 70., 40., 40 , 40, 40, 70, 70, 70]
@@ -64,55 +60,26 @@ aTimeSeries = aTimeSeries[0:nrOfTimeSteps]
 
 ##########################################################################
 
-from flixStructure import *
-from flixComps    import *
-import logging as log
-import os # für logging
-
-root = logging.getLogger()
-root.setLevel(os.environ.get("LOGLEVEL", "DEBUG"))
-root.setLevel(os.environ.get("LOGLEVEL", "INFO"))
-#log.basicConfig(level=logging.DEBUG)
-log.warning('test warning')
-log.info   ('test info')
-log.debug  ('test debug')
-
-
 print('#######################################################################')
 print('################### start of modeling #################################')
 
 
-
-
 # Bus-Definition:
-
-# TODO: '''# Definition default Buses:
-#     defaultBuses.el   = Strom;
-#     defaultBuses.th   = Fernwaerme;
-#     defaultBuses.fuel = Gas;'''
-
-# Busse:
 #                 Typ         Name              
-Strom      = cBus('el'        ,'Strom'     );
-Fernwaerme = cBus('th'        ,'Fernwärme' );  
-Gas        = cBus('fuel'      ,'Gas'       );
+Strom = cBus('el', 'Strom', excessCostsPerFlowHour=excessCosts)
+Fernwaerme = cBus('heat', 'Fernwärme', excessCostsPerFlowHour=excessCosts)
+Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=excessCosts)
 
-# Effects
-# TODO: einen Bus automatisch in cEffect erzeugen.
-# TODO bei flow verhindern, dass der Effekt sich selber gleichen Effekt gibt
-# TODO: für operational-box und invest-box: jeweils cFlow('allCosts', effBus_Costs) bauen -> dort kann man Grenzen einbauen
 
+
+# Effect-Definition:
 costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
 CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen', 
                     specificShareToOtherEffects_operation = {costs: 0.2}, 
-                    specificShareToOtherEffects_invest    = {costs:1000}, 
-                    )#max_Sum=3500, max_operationSum=3500, max_investSum=0.5)  
+                    )
+PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie', max_Sum = 3.5e3  )
 
-
-PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie'   )
-
-# Komponentendefinition:
-
+# definition of components:
 invest_Gaskessel = cInvestArgs(fixCosts = 1000,
                                investmentSize_is_fixed = True,
                                investment_is_optional=False,
@@ -123,7 +90,7 @@ invest_Gaskessel = cInvestArgs(fixCosts = 1000,
 aGaskessel = cKessel('Kessel', eta = 0.5, costsPerRunningHour = {costs:0, CO2:1000},#, switchOnCosts = 0
                     Q_th = cFlow(label   = 'Q_th', 
                                  bus = Fernwaerme, 
-                                 nominal_val = 50 , 
+                                 nominal_val = 50, 
                                  loadFactor_max = 1.0, 
                                  loadFactor_min = 0.1,
                                  min_rel = 5/50, 
@@ -153,11 +120,13 @@ aKWK2 = cKWK('BHKW2', eta_th = 0.5, eta_el=0.4, switchOnCosts = 0.01,
             Q_fu = cFlow('Q_fu',bus = Gas),on_valuesBeforeBegin = [1])
 
 
+# linear segments (eta-definitions than become useless!)
 aKWK2.setLinearSegments({aKWK2.P_el: [5  ,30, 40,60 ], # elemente können auch liste sein!
                          aKWK2.Q_th: [6  ,35, 45,100], 
                          aKWK2.Q_fu: [12 ,70, 90,200]})
-# Anmerkung: Punkte über Segmentstart = Segmentende realisierbar, d.h. z.B. [4,4]
 
+
+# Anmerkung: Punkte über Segmentstart = Segmentende realisierbar, d.h. z.B. [4,4]
 # segmentierte Kosten:
 costsInvestsizeSegments = [[5,25,25,100], #kW
                            {costs:[50,250,250,800],#€
@@ -198,7 +167,7 @@ aGasTarif         = cSource('Gastarif' ,source = cFlow('Q_Gas'     , bus = Gas  
 # aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -0.07*10))
 aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -p_el))
 
-# Zusammenführung:
+# Built energysystem:
 es = cEnergySystem(aTimeSeries, dt_last=None)
 # es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 es.addEffects(costs, CO2, PE)
@@ -208,13 +177,10 @@ es.addComponents(aKWK)
 
 es.addComponents(aSpeicher)
 
-# flix.mainSystem.extractSubSystem([0,1,2])
-
 chosenEsTimeIndexe = None
 # chosenEsTimeIndexe = [1,3,5]
 
-## geschlossene Modellierung:
-
+## modeling "full":
 aCalc = cCalculation('Sim1', es, 'pyomo', chosenEsTimeIndexe)
 aCalc.doModelingAsOneSegment()
 
@@ -227,43 +193,45 @@ solverProps = {'gapFrac': gapFrac,
                'timelimit': timelimit,
                'solver': solver_name, 
                'displaySolverOutput' : displaySolverOutput,
-               'threads': nrOfThreads} # nur gurobi!
+               }
+if solver_name == 'gurobi': solverProps['threads'] = nrOfThreads
 
-## geschlossene Berechnung:
+## calculation "full":
 
 aCalc.solve(solverProps, nameSuffix = '_' + solver_name)
 
 aCalc.results_struct
 
-## segmentierte Berechnung:
+## calculation "segmented":
 
 if doSegmentedCalc: 
-  calcSegs = cCalculation('Sim2', es, 'pyomo', chosenEsTimeIndexe)
-  calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen = 6, nrOfUsedSteps = 2, nameSuffix = '_' + solver_name)
+    calcSegs = cCalculation('Sim2', es, 'pyomo', chosenEsTimeIndexe)
+    calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen = 6, nrOfUsedSteps = 2, nameSuffix = '_' + solver_name)
  
 
-## segmentiertes Plotting -> todo -> Umzug in Postprocesing!!!
+## plotting segmented results 
+#  TODO:    Umzug in Postprocesing!!!
 
 if doSegmentedCalc: 
-  import matplotlib.pyplot as plt
-  # Segment-Plot:
-  for aModBox in calcSegs.segmentModBoxList:  
-    plt.plot(aModBox.timeSeries       , aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
-  plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
-  # plt.plot(calcSegs.timeSeriesWithEnd, calcSegs.results_struct.Speicher.charge_state, ':', label='chargeState') 
-  # plt.plot(mb      .timeSeriesWithEnd, mb      .results_struct.Speicher.charge_state, '-.', label='chargeState') 
-  plt.legend()
-  plt.grid()
-  plt.show()
+    import matplotlib.pyplot as plt
+    # Segment-Plot:
+    for aModBox in calcSegs.segmentModBoxList:  
+        plt.plot(aModBox.timeSeries       , aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
+    plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
+    # plt.plot(calcSegs.timeSeriesWithEnd, calcSegs.results_struct.Speicher.charge_state, ':', label='chargeState') 
+    # plt.plot(mb      .timeSeriesWithEnd, mb      .results_struct.Speicher.charge_state, '-.', label='chargeState') 
+    plt.legend()
+    plt.grid()
+    plt.show()
+    
   
-
-  # Segment-Plot:
-  for aModBox in calcSegs.segmentModBoxList:  
-    plt.plot(aModBox.timeSeries, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs') 
-  plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs') 
-  plt.legend()
-  plt.grid()
-  plt.show()
-  
-  calcSegs.results_struct
+    # Segment-Plot:
+    for aModBox in calcSegs.segmentModBoxList:  
+        plt.plot(aModBox.timeSeries, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs') 
+    plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs') 
+    plt.legend()
+    plt.grid()
+    plt.show()
+    
+    calcSegs.results_struct
 

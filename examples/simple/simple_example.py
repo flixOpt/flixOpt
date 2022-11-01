@@ -13,15 +13,20 @@ else:
   nameOfCalcSegs = None
 print(nameOfCalc)
 
-#####################
-## PostProcessing: ##
-#####################
+# ####################
+# # PostProcessing: ##
+# ####################
 
-###### loading ######
-
+# ##### loading ######
 import flixPostprocessing as flixPost
+# comp_colors = px.colors.qualitative.Plotly + px.colors.qualitative.Bold
+comp_colors = None
+# https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
 
-calc1_res = flixPost.flix_results(nameOfCalc)
+calc1_res = flixPost.flix_results(nameOfCalc, comp_colors = comp_colors)
+
+#explizite Farbänderung
+calc1_res.postObjOfStr('Waermelast').color = '#000000'
 
 if nameOfCalcSegs is not None:  
   calcSegs = flixPost.flix_results(nameOfCalcSegs)
@@ -30,11 +35,19 @@ else:
 
 ##### plotting ######
 
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
-calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True)
+fig1 = calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
+fig1.savefig('test1')
+fig2 = calc1_res.plotInAndOuts('Fernwaerme',plotAsPlotly = True)
+fig2.write_html('test2.html')
+
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast', sortBy='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=False, outFlowCompsAboveXAxis='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast', sortBy='Waermelast')
+calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast')
 calc1_res.plotInAndOuts('BHKW2',stacked=True)
 
-calc1_res.plotShares('Fernwaerme', withoutStorage = True)
+calc1_res.plotShares(['Fernwaerme','Strom'], withoutStorage = True)
 calc1_res.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True, unit='kWh')
 
 import matplotlib.pyplot as plt
@@ -67,6 +80,8 @@ plt.show()
 
 
 # Übersichtsplot:
+import matplotlib.pyplot as plt
+
 
 def uebersichtsPlot(aCalc):
   fig, ax = plt.subplots(figsize=(10, 5))

@@ -199,7 +199,7 @@ class cBaseModel:
     self.noOfVars       = len(self.variables)
     self.noOfSingleVars = sum([var.len for var in self.variables])    
     
-  def solve(self,gapfrac,timelimit, solver_name, displaySolverOutput, **kwargs):        
+  def solve(self,gapfrac,timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt):        
     self.solver_name = solver_name
     t_start = time.time()
     for variable in self.variables:
@@ -207,7 +207,6 @@ class cBaseModel:
     if self.modType == 'pyomo' :
       solver = pyomoEnv.SolverFactory(solver_name)
       
-      solver_opt = kwargs # kwargs werden schon mal übernommen
       if solver_name == 'cbc':
          solver_opt["ratio"] = gapfrac
          solver_opt["sec"] = timelimit
@@ -218,11 +217,17 @@ class cBaseModel:
          solver_opt["mipgap"] = gapfrac
          solver_opt["timelimit"] = timelimit
          # todo: threads = ? funktioniert das für cplex?
+      elif solver_name == 'glpk':
+          # solver_opt = {} # überschreiben, keine kwargs zulässig
+           # solver_opt["mipgap"] = gapfrac 
+          solver_opt['mipgap'] = gapfrac
+          
 
-      logfileName = "flixSolverLog.log"
+      # logfileName = "flixSolverLog.log"
+
       self.solver_results = solver.solve(self.model, options = solver_opt, tee = displaySolverOutput, keepfiles=True, logfile=logfileName)     
 
-      # Log laden:
+      # Log wieder laden:
       self.solverLog = cSolverLog(solver_name,logfileName)
       self.solverLog.parseInfos()
       # Ergebnis Zielfunktion ablegen
@@ -495,7 +500,7 @@ class cEquation :
     
     ## Register Me:   
     # Equation:
-    if eqType == 'ineq':
+    if eqType == 'ineq': # lhs <= rhs
       # myMom .ineqs.append(self) # Komponentenliste
       baseModel   .ineqs.append(self) # baseModel-Liste mit allen ineqs
       myMom.mod.ineqs.append(self)
@@ -852,6 +857,10 @@ class cSolverLog():
           self.presolved_integer     = int(match.group(1))
           self.presolved_binary      = int(match.group(2))   
           self.presolved_continuous  = self.presolved_cols - self.presolved_integer
+      
+      elif self.solver_name == 'glpk':
+          print('######################################################')
+          print('### No solver-log parsing implemented for glpk yet! ###') 
       else :
         raise Exception('cSolverLog.parseInfos() is not defined for solver ' + self.solver_name)
 

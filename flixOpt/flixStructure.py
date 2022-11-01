@@ -5,10 +5,8 @@ Created on Wed Dec 16 12:40:23 2020
 @author: Panitz
 """
 
-
-
-#########################
-#### todos
+# ########################
+# ### todos
 
 #  results: Kessel.Q_th und Waermebus.Kessel_Q_th haben noch unterschiedliche IDs!!!
 
@@ -46,9 +44,16 @@ Created on Wed Dec 16 12:40:23 2020
 #    Speicher, On/Off, 
 #    maximale FlowArbeit,... -> geht wahrscheinlich gar nicht gut!
 #    helpers.checkBoundsOfParameters -> vielleicht besser in cBaseComponent integrieren, weil dort self.label 
+# TODO: einen Bus automatisch in cEffect erzeugen.
 
+# mögliche Testszenarien für testing-tool:
+   # abschnittsweise linear testen
+   # Komponenten mit offenen Flows 
+   # Binärvariablen ohne max-Wert-Vorgabe des Flows (Binärungenauigkeitsproblem)
+   # Medien-zulässigkeit 
+   
 ##########################
-## Features to do:
+# # Features to do:
 # -> Standardbuse festlegen für Komponenten (Wenn Eingabe, dann Überschreiben der alten)
 # -> statt indexen direkt timeseries(ts) als Index überall verwenden 
 #        also: Elemente mit indexe=ts[0,4] statt indexe=range(0,4) aufrufen--> Hätte den Vorteil, dass Fehlermeldungen kommen, falls konkrete Zeit z.B. für eine Variable nicht existiert
@@ -60,219 +65,226 @@ Created on Wed Dec 16 12:40:23 2020
 # --> flows mit Temperaturen (VL/RL vorsehen) -> Buses sind dann mixing points!
 # --> schedule for flow (oemof --> Caterina Köhl von Consolinno!)
 
-# -> sollte man sich mit dem ganzen an solph.network andocken?  
-#    --> dort sind einige coole Features (mapping von nodes und edges), 
+# -> sollte man sich mit dem ganzen an solph.network andocken?
+#    --> dort sind einige coole Features (mapping von nodes und edges),
 #    --> oemof tabular hat das auch gemacht, aber aufwendig (Problem irgendwie das verküpfungen eher erstellt werden als Komponenten)
 
-# SOS - special ordered sets Löser direkt übergeben 
+# SOS - special ordered sets Löser direkt übergeben
 
-import numpy  as np
+import numpy as np
 
-import copy
 import math
 import time
-import yaml #(für json-Schnipsel-print)
-
-import gurobipy as gurobi
-from gurobipy import GRB
-
+import yaml  # (für json-Schnipsel-print)
 
 import flixOptHelperFcts as helpers
 
 from basicModeling import * # Modelliersprache
-from flixBasics    import *
+from flixBasics import *
 import logging
 
 log = logging.getLogger(__name__)
-# TODO: 
-  # -> results sollte mit objekt und! label mappen, also results[aKWK] und! results['KWK1']
-   
+# TODO:
+# -> results sollte mit objekt und! label mappen, also results[aKWK] und! results['KWK1']
+
 # TODO: 1. cTimePeriodModel -> hat für Zeitbereich die Modellierung timePeriodModel1, timePeriodModel2,...
-class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifischen Sachen rein
-  @property
-  def infos(self):    
-    infos = super().infos
-    # Hauptergebnisse:
-    infos['main_results'] = self.main_results_str # 
-    # unten dran den vorhanden rest:
-    infos.update(self._infos) # da steht schon zeug drin
-  
-    return infos 
-  
-  def __init__(self, label, aModType, es, esTimeIndexe, TS_explicit = None):
-    super().__init__(label, aModType)
-    self.es           : cEnergySystem
-    self.es           = es # energysystem (wäre Attribut von cTimePeriodModel)
-    self.esTimeIndexe = esTimeIndexe
-    self.nrOfTimeSteps = len(esTimeIndexe)
-    self.TS_explicit   = TS_explicit # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-    # self.epsilon    = 1e-5 # 
-    # self.variables  = [] # Liste aller Variablen
-    # self.eqs        = [] # Liste aller Gleichungen
-    # self.ineqs      = [] # Liste aller Ungleichungen
-    self.ME_mod     = {} # dict mit allen mods der MEs
+class cModelBoxOfES(cBaseModel):  
+    '''
+    Hier kommen die ModellingLanguage-spezifischen Sachen rein
+    '''
+    @property
+    def infos(self):
+        infos = super().infos
+        # Hauptergebnisse:
+        infos['main_results'] = self.main_results_str
+        # unten dran den vorhanden rest:
+        infos.update(self._infos)  # da steht schon zeug drin
+
+        return infos
     
-    # self.objective       = None # objective-Function
-    # self.objective_value = None # Ergebnis
-    
-    self.beforeValueSet  = None # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
-    # Zeitdaten generieren:
-    (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) =  es.getTimeDataOfTimeIndexe(esTimeIndexe)
-
-
-  # mod auslesen:
-  def getModOfME(self, aModelingElement):
-    return self.ME_mod[aModelingElement]
-
-  # register ModelingElements and belonging Mod:
-  def registerMEandMod(self, aModelingElement, aMod):
-    # Zuordnung ME -> mod
-    self.ME_mod[aModelingElement] = aMod # aktuelles mod hier speichern
- 
-  # override:
-  def _charactarizeProblem(self): # overriding same method in motherclass!
-      
-    super()._charactarizeProblem()
-    
-    # Systembeschreibung abspeichern: (Beachte: modbox muss aktiviert sein)
-    # self.es.activateModBox()
-    self._infos['str_Eqs']   = self.es.getEqsAsStr()
-    self._infos['str_Vars']  = self.es.getVarsAsStr()
-
+    def __init__(self, label, aModType, es, esTimeIndexe, TS_explicit = None):
+        super().__init__(label, aModType)
+        self.es: cEnergySystem
+        self.es = es  # energysystem (wäre Attribut von cTimePeriodModel)
+        self.esTimeIndexe = esTimeIndexe
+        self.nrOfTimeSteps = len(esTimeIndexe)
+        self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
+        # self.epsilon    = 1e-5 # 
+        # self.variables  = [] # Liste aller Variablen
+        # self.eqs        = [] # Liste aller Gleichungen
+        # self.ineqs      = [] # Liste aller Ungleichungen
+        self.ME_mod = {}  # dict mit allen mods der MEs
+        
+        # self.objective       = None # objective-Function
+        # self.objective_value = None # Ergebnis
+        
+        self.beforeValueSet  = None # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
+        # Zeitdaten generieren:
+        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) =  es.getTimeDataOfTimeIndexe(esTimeIndexe)
   
-  #'gurobi'
-  def solve(self, gapFrac = 0.02,timelimit = 3600, solver ='cbc', displaySolverOutput = True, excessThreshold = 0.1, **kwargs):      
-      '''
-      
-
-      Parameters
-      ----------
-      gapFrac : TYPE, optional
-          DESCRIPTION. The default is 0.02.
-      timelimit : TYPE, optional
-          DESCRIPTION. The default is 3600.
-      solver : TYPE, optional
-          DESCRIPTION. The default is 'cbc'.
-      displaySolverOutput : TYPE, optional
-          DESCRIPTION. The default is True.
-      excessThreshold : float, positive!
-          threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
-      **kwargs : TYPE
-          DESCRIPTION.
-
-      Returns
-      -------
-      main_results_str : TYPE
-          DESCRIPTION.
-
-      '''
-      
-          
-      
-      # check auf valide Solver-Optionen:
-      
-      if len(kwargs) > 0 :
-        for key in kwargs.keys():
-          if key not in ['threads']:
-            raise Exception('no allowed arguments for kwargs: ' + str(key) + '(all arguments:' +  str(kwargs) +')')
-      
-      print('')
-      print('##############################################################')
-      print('##################### solving ################################')
-      print('')
-      
-      self.printNoEqsAndVars()            
-      
-      
-      super().solve(gapFrac, timelimit, solver, displaySolverOutput, **kwargs)
-      
-      print('termination message: "' + self.solver_results['Solver'][0]['Termination message'] + '"')
-      print('')    
-      # Variablen-Ergebnisse abspeichern:      
-      # 1. dict:  
-      (self.results, self.results_var)  = self.es.getResultsAfterSolve()
-      # 2. struct:
-      self.results_struct = helpers.createStructFromDictInDict(self.results)
-      
-
-      print('##############################################################')
-      print('################### finished #################################')
-      print('')
-      for aEffect in self.es.globalComp.listOfEffectTypes:
-        print(aEffect.label +  ' in ' + aEffect.unit + ':')
-        print('  operation: ' + str(aEffect.operation.mod.var_sum.getResult())) 
-        print('  invest   : ' + str(aEffect.invest   .mod.var_sum.getResult())) 
-        print('  sum      : ' + str(aEffect.all      .mod.var_sum.getResult())) 
+    # mod auslesen:
+    def getModOfME(self, aModelingElement):
+        return self.ME_mod[aModelingElement]
+  
+    # register ModelingElements and belonging Mod:
+    def registerMEandMod(self, aModelingElement, aMod):
+        # Zuordnung ME -> mod
+        self.ME_mod[aModelingElement] = aMod # aktuelles mod hier speichern
+   
+    # override:
+    def _charactarizeProblem(self): # overriding same method in motherclass!
+        
+        super()._charactarizeProblem()
+        
+        # Systembeschreibung abspeichern: (Beachte: modbox muss aktiviert sein)
+        # self.es.activateModBox()
+        self._infos['str_Eqs']   = self.es.getEqsAsStr()
+        self._infos['str_Vars']  = self.es.getVarsAsStr()
+  
+    
+    #'gurobi'
+    def solve(self, gapFrac = 0.02,timelimit = 3600, solver ='cbc', displaySolverOutput = True, excessThreshold = 0.1, logfileName = 'solverLog.log', **kwargs):      
+        '''
+        
+  
+        Parameters
+        ----------
+        gapFrac : TYPE, optional
+            DESCRIPTION. The default is 0.02.
+        timelimit : TYPE, optional
+            DESCRIPTION. The default is 3600.
+        solver : TYPE, optional
+            DESCRIPTION. The default is 'cbc'.
+        displaySolverOutput : TYPE, optional
+            DESCRIPTION. The default is True.
+        excessThreshold : float, positive!
+            threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
+        **kwargs : TYPE
+            DESCRIPTION.
+  
+        Returns
+        -------
+        main_results_str : TYPE
+            DESCRIPTION.
+  
+        '''
+        
+            
+        
+        # check auf valide Solver-Optionen:
+        
+        if len(kwargs) > 0 :
+            for key in kwargs.keys():
+                if key not in ['threads']:
+                    raise Exception('no allowed arguments for kwargs: ' + str(key) + '(all arguments:' +  str(kwargs) +')')
+        
+        print('')
+        print('##############################################################')
+        print('##################### solving ################################')
+        print('')
+        
+        self.printNoEqsAndVars()            
         
         
-      print('SUM              : ' + '...todo...')
-      print('penaltyCosts     : ' + str(self.es.globalComp.penalty.mod.var_sum.getResult()  ))
-      print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
-      print('Result of Obj : ' + str(self.objective_value                  ))            
-      print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
-      print('')
-      for aBus in self.es.setOfBuses:
-        if aBus.withExcess : 
-          if any(self.results[aBus.label]['excessIn'] > 0) or any(self.results[aBus.label]['excessOut'] > 0):
-          # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
-            print('!!!!! Attention !!!!!')
-            print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')          
-      
-      # Wenn Strafen vorhanden
-      if self.es.globalComp.penalty.mod.var_sum.getResult() > 10 :
-        print('Take care: -> high penalty makes the used gapFrac quite high')
-        print('           -> real costs are not optimized to gapfrac')
+        super().solve(gapFrac, timelimit, solver, displaySolverOutput, logfileName, **kwargs)
         
-      print('')
-      print('##############################################################')            
-
-      # str description of results:
-      # nested fct:
-      def _getMainResultsAsStr():
-        main_results_str = {}
-
+        if solver == 'gurobi': 
+            termination_message = self.solver_results['Solver'][0]['Termination message']
+        elif solver == 'glpk':
+            termination_message = self.solver_results['Solver'][0]['Status']
+        else:
+            termination_message = 'not implemented for solver yet'
+        print('termination message: "' + termination_message + '"')    
+        
+        print('')    
+        # Variablen-Ergebnisse abspeichern:      
+        # 1. dict:  
+        (self.results, self.results_var)  = self.es.getResultsAfterSolve()
+        # 2. struct:
+        self.results_struct = helpers.createStructFromDictInDict(self.results)
+        
   
-        aEffectDict = {}      
-        main_results_str['Effekte'] = aEffectDict
+        print('##############################################################')
+        print('################### finished #################################')
+        print('')
         for aEffect in self.es.globalComp.listOfEffectTypes:
-          aDict = {}
-          aEffectDict[aEffect.label +' ['+ aEffect.unit + ']'] = aDict
-          aDict['operation']= str(aEffect.operation.mod.var_sum.getResult())
-          aDict['invest']   = str(aEffect.invest   .mod.var_sum.getResult())
-          aDict['sum']      = str(aEffect.all      .mod.var_sum.getResult())
-        main_results_str['Effekte']
-        main_results_str['penaltyCosts']  = str(self.es.globalComp.penalty.mod.var_sum.getResult())
-        main_results_str['Result of Obj'] = self.objective_value
-        main_results_str['lower bound']   = self.solver_results['Problem'][0]['Lower bound']
-        
-        busesWithExcess = []
-        main_results_str['busesWithExcess'] = busesWithExcess
+            print(aEffect.label +  ' in ' + aEffect.unit + ':')
+            print('  operation: ' + str(aEffect.operation.mod.var_sum.getResult())) 
+            print('  invest   : ' + str(aEffect.invest   .mod.var_sum.getResult())) 
+            print('  sum      : ' + str(aEffect.all      .mod.var_sum.getResult())) 
+          
+          
+        print('SUM              : ' + '...todo...')
+        print('penaltyCosts     : ' + str(self.es.globalComp.penalty.mod.var_sum.getResult()  ))
+        print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
+        print('Result of Obj : ' + str(self.objective_value                  ))            
+        try:
+            print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
+        except:
+            print
+        print('')
         for aBus in self.es.setOfBuses:
-          if aBus.withExcess : 
-            if sum(self.results[aBus.label]['excessIn']) > excessThreshold or sum(self.results[aBus.label]['excessOut']) > excessThreshold:
-              busesWithExcess.append(aBus.label)      
+            if aBus.withExcess : 
+                if any(self.results[aBus.label]['excessIn'] > 0) or any(self.results[aBus.label]['excessOut'] > 0):
+                    # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
+                    print('!!!!! Attention !!!!!')
+                    print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')          
         
-        aDict = {'invested':{},
-                 'not invested':{}
-                 }
-        main_results_str['Invest-Decisions']=aDict
-        for aInvestFeature in self.es.allInvestFeatures:
-            investValue = aInvestFeature.mod.var_investmentSize.getResult()
-            investValue = float(investValue) # bei np.floats Probleme bei Speichern
-            # umwandeln von numpy:
-            if isinstance(investValue, np.ndarray):
-                investValue = investValue.tolist()
-            label = aInvestFeature.owner.label_full
-            if investValue > 1e-3:
-                aDict['invested'][label] = investValue
-            else:
-                aDict['not invested'][label] = investValue
+        # Wenn Strafen vorhanden
+        if self.es.globalComp.penalty.mod.var_sum.getResult() > 10 :
+            print('Take care: -> high penalty makes the used gapFrac quite high')
+            print('           -> real costs are not optimized to gapfrac')
+          
+        print('')
+        print('##############################################################')            
+  
+        # str description of results:
+        # nested fct:
+        def _getMainResultsAsStr():
+            main_results_str = {}
+    
       
-        return main_results_str
-      
-      self.main_results_str = _getMainResultsAsStr()            
-      helpers.printDictAndList(self.main_results_str)
-      
+            aEffectDict = {}      
+            main_results_str['Effekte'] = aEffectDict
+            for aEffect in self.es.globalComp.listOfEffectTypes:
+                aDict = {}
+                aEffectDict[aEffect.label +' ['+ aEffect.unit + ']'] = aDict
+                aDict['operation']= str(aEffect.operation.mod.var_sum.getResult())
+                aDict['invest']   = str(aEffect.invest   .mod.var_sum.getResult())
+                aDict['sum']      = str(aEffect.all      .mod.var_sum.getResult())
+            main_results_str['Effekte']
+            main_results_str['penaltyCosts']  = str(self.es.globalComp.penalty.mod.var_sum.getResult())
+            main_results_str['Result of Obj'] = self.objective_value
+            main_results_str['lower bound']   = self.solver_results['Problem'][0]['Lower bound']
+            
+            busesWithExcess = []
+            main_results_str['busesWithExcess'] = busesWithExcess
+            for aBus in self.es.setOfBuses:
+                if aBus.withExcess : 
+                    if sum(self.results[aBus.label]['excessIn']) > excessThreshold or sum(self.results[aBus.label]['excessOut']) > excessThreshold:
+                        busesWithExcess.append(aBus.label)      
+              
+            aDict = {'invested':{},
+                     'not invested':{}
+                     }
+            main_results_str['Invest-Decisions']=aDict
+            for aInvestFeature in self.es.allInvestFeatures:
+                investValue = aInvestFeature.mod.var_investmentSize.getResult()
+                investValue = float(investValue) # bei np.floats Probleme bei Speichern
+                # umwandeln von numpy:
+                if isinstance(investValue, np.ndarray):
+                    investValue = investValue.tolist()
+                label = aInvestFeature.owner.label_full
+                if investValue > 1e-3:
+                    aDict['invested'][label] = investValue
+                else:
+                    aDict['not invested'][label] = investValue
+          
+            return main_results_str
+        
+        self.main_results_str = _getMainResultsAsStr()            
+        helpers.printDictAndList(self.main_results_str)
+        
       
 class cEnergySystem:
     
@@ -284,22 +296,29 @@ class cEnergySystem:
   
     @property
     def allMEsOfFirstLayerWithoutFlows(self):
-      allMEs = self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +  list(self.setOfOtherMEs)
-      return allMEs      
+        allMEs = self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +  list(self.setOfOtherMEs)
+        return allMEs      
 
     @property
     def allMEsOfFirstLayer(self):
-      allMEs = self.allMEsOfFirstLayerWithoutFlows + list(self.setOfFlows) 
-      return allMEs    
+        allMEs = self.allMEsOfFirstLayerWithoutFlows + list(self.setOfFlows) 
+        return allMEs    
 
     @property
     def allInvestFeatures(self):
         allInvestFeatures = []
-         
-        for aME in self.allMEsOfFirstLayer: # kann in Komponente (z.B. Speicher) oder Flow stecken
+        
+        def getInvestFeaturesOfME(aME):
+            investFeatures = []
             for aSubComp in aME.subElements_all:
                 if isinstance(aSubComp, cFeatureInvest):
-                    allInvestFeatures.append(aSubComp)
+                    investFeatures.append(aSubComp)
+                investFeatures += getInvestFeaturesOfME(aSubComp)  # recursive!
+            return investFeatures
+        
+        for aME in self.allMEsOfFirstLayer: # kann in Komponente (z.B. Speicher) oder Flow stecken
+            allInvestFeatures += getInvestFeaturesOfME(aME)
+
         return allInvestFeatures
     
     # Achtung: Funktion wird nicht nur für Getter genutzt.
@@ -792,7 +811,7 @@ class cCalculation :
     
     es: cEnergySystem
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, es, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
+    def __init__(self, label, es : cEnergySystem, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
       self.label = label
       self.nameOfCalc = None # name for storing results
       self.es = es
@@ -846,16 +865,18 @@ class cCalculation :
     def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix = '', nameSuffix ='', aPath = 'results/'):
       self.checkIfAlreadyModeled()
       self._infos['segmentedProps'] = {'segmentLen':segmentLen, 'nrUsedSteps':  nrOfUsedSteps}
-  
-      
       self.calcType = 'segmented'
       print('##############################################################')
       print('#################### segmented Solving #######################')
       
       
       t_start = time.time()
+      
       # system finalisieren:
       self.es.finalize()
+
+      if len(self.es.allInvestFeatures) > 0:
+          raise Exception('segmented calculation with Invest-Parameters does not make sense!')
       
       # nrOfTimeSteps = self.to_index - self.from_index +1    
       
@@ -863,6 +884,8 @@ class cCalculation :
       assert segmentLen    <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
   
       # timeSeriesOfSim = self.es.timeSeries[from_index:to_index+1]
+
+
          
       # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
       nrOfSimSegments = math.ceil((self.nrOfTimeSteps - segmentLen) / nrOfUsedSteps) + 1 
@@ -872,6 +895,8 @@ class cCalculation :
       print('usedSteps     : ' + str(nrOfUsedSteps))
       print('-> nr of Sims : ' + str(nrOfSimSegments))
       print('')
+
+      self._definePathNames(namePrefix, nameSuffix, aPath, saveResults = True, nrOfModBoxes = nrOfSimSegments)
       
       for i in range(nrOfSimSegments):      
         startIndex_calc   = i * nrOfUsedSteps
@@ -880,8 +905,6 @@ class cCalculation :
         startIndex_global = self.chosenEsTimeIndexe[startIndex_calc]
         endIndex_global   = self.chosenEsTimeIndexe[endIndex_calc] # inklusiv
         indexe_global     = self.chosenEsTimeIndexe[startIndex_calc:endIndex_calc + 1] # inklusive endIndex
-  
-  
   
         # new realNrOfUsedSteps:
         # if last Segment:
@@ -920,7 +943,8 @@ class cCalculation :
         
         # Lösen:
         t_start_solving = time.time()
-        segmentModBox.solve(**solverProps)# keine SolverOutput-Anzeige, da sonst zu viel
+        
+        segmentModBox.solve(**solverProps, logfileName=self.paths_Log[i])# keine SolverOutput-Anzeige, da sonst zu viel
         self.durations['solving'] += round(time.time()-t_start_solving,2)
         ## results adding:      
         self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
@@ -928,7 +952,7 @@ class cCalculation :
       
       self.durations['model, solve and segmentStuff'] = round(time.time()-t_start,2)
       
-      self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
+      self._saveSolveInfos()
     
     def doAggregatedModeling(self, periodLengthInHours, noTypicalPeriods, 
                              useExtremePeriods, fixStorageFlows,
@@ -1095,49 +1119,63 @@ class cCalculation :
       return aModBox    
     
     def solve(self, solverProps, namePrefix = '', nameSuffix ='', aPath = 'results/', saveResults = True):
-        
-        if self.calcType not in ['full','aggregated']:
-          raise Exeption('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
+    
+        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults, nrOfModBoxes=1)
+
+        if self.calcType not in ['full','aggregated']:            
+          raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
         aModbox = self.listOfModbox[0]
-        aModbox.solve(**solverProps)
+        aModbox.solve(**solverProps, logfileName = self.paths_Log[0])
         
         if saveResults:
-          self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
+          self._saveSolveInfos()
+
         
-    
-    def checkIfAlreadyModeled(self):
-      
-      if self.calcType is not None:
-        raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
-  
-    def _saveSolveInfos(self, namePrefix = '', nameSuffix ='', aPath = 'results/'):
+    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults, nrOfModBoxes=1):
         import datetime
-        import yaml      
-        import pathlib
-        
+        import pathlib               
+
         # wenn "/" am Anfang, dann löschen (sonst kommt pathlib durcheinander):
         aPath = aPath[0].replace("/","") + aPath[1:]
         # absoluter Pfad:
         aPath = pathlib.Path.cwd() / aPath
         # Pfad anlegen, fall noch nicht vorhanden:
         aPath.mkdir(parents=True, exist_ok=True)       
-             
+        self.pathForResults = aPath             
+        
         timestamp = datetime.datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')             
-        self.nameOfCalc = namePrefix.replace(" ","") + timestring + '_' + self.label.replace(" ", "") + nameSuffix.replace(" ","")
-        
-        filename_Data = self.nameOfCalc + '_data.pickle'
-        filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
-              
-        self.path_Data = aPath / filename_Data
-        self.path_Info = aPath / filename_Info
-        
+        timestring = timestamp.strftime('%Y-%m-%d')                     
+        self.nameOfCalc = namePrefix.replace(" ","") + timestring + '_' + self.label.replace(" ", "") + nameSuffix.replace(" ","")        
+    
+        if saveResults:
+            filename_Data = self.nameOfCalc + '_data.pickle'
+            filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
+            if nrOfModBoxes ==1:
+                filenames_Log = [self.nameOfCalc + '_solver.log']
+            else:
+                filenames_Log = [(self.nameOfCalc + '_solver_' + str(i) + '.log') for i in range(nrOfModBoxes)]
+                
+            self.paths_Log = [self.pathForResults / filenames_Log[i] for i in range(nrOfModBoxes)]
+            self.path_Data = self.pathForResults / filename_Data
+            self.path_Info = self.pathForResults / filename_Info
+        else:            
+            self.paths_Log = None
+            self.path_Data = None
+            self.path_Info = None
+    
+    def checkIfAlreadyModeled(self):
+      
+      if self.calcType is not None:
+        raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
+  
+    def _saveSolveInfos(self):
+        import yaml
         #Daten:
         # with open(yamlPath_Data, 'w') as f:
         #   yaml.dump(self.results, f, sort_keys = False)
         import pickle
         with open(self.path_Data,'wb') as f:
-          pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
         
         #Infos:'
         with open(self.path_Info, 'w',encoding='utf-8') as f:
@@ -1150,9 +1188,7 @@ class cCalculation :
         print('#'*len(aStr))      
         print(aStr)
         print('#'*len(aStr))
-             
-      
-    
+
     def __addSegmentResults(self, segment, startIndex_calc, realNrOfUsedSteps):    
       # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
   
@@ -1435,30 +1471,50 @@ class cEffectType(cME):
     Effect, i.g. costs, CO2 emissions, area, ...
     can be used later afterwards for allocating effects to compontents and flows.
     '''
-    new_init_args = [cArg('label'                                ,'param', 'str'     , 'Bezeichnung'),
-                     cArg('unit'                                 , '?'   , 'str'     , 'Einheit des Effekts, z.B. €, kWh,...'),
-                     cArg('description'                          , '?'   , 'str'     , 'Langbezeichnung'),
-                     cArg('isStandard'                           , '?'   , 'boolean' , 'true, wenn Standard-Effekt (wenn direkte Eingabe bei Kostenpositionen ohne dict) , sonst false'),
-                     cArg('isObjective'                          , '?'   , 'boolean' , 'true, wenn Zielfunktion'),
-                     cArg('specificShareToOtherEffects_operation', '?' , '{effectType: TS, ...}'    , 'Beiträge zu anderen Effekten (nur operation), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
-                     cArg('specificShareToOtherEffects_invest'   , '?' , '{effectType: skalar, ...}', 'Beiträge zu anderen Effekten (nur invest), z.B. 180 €/t_CO2, Angabe als {costs: 180}'),
-                     cArg('min_operationSum'                     , '?' , 'skalar' , 'minimale Summe (nur operation) des Effekts'),
-                     cArg('max_operationSum'                     , '?' , 'skalar' , 'maximale Summe (nur operation) des Effekts'),
-                     cArg('min_investSum'                        , '?' , 'skalar' , 'minimale Summe (nur invest) des Effekts'),
-                     cArg('max_investSum'                        , '?' , 'skalar' , 'maximale Summe (nur invest) des Effekts'),
-                     cArg('min_Sum'                              , '?' , 'skalar' , 'minimale Summe des Effekts'),                   
-                     cArg('max_Sum'                              , '?' , 'skalar' , 'maximale Summe des Effekts'),
-                     
-                     ] 
-                     # todo: effects, die noch nicht instanziert sind, können hier auch keine shares zugeordnet werden!
-    not_used_args = ['label']
   
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self, label, unit, description, isStandard = False, isObjective = False, specificShareToOtherEffects_operation = {}, specificShareToOtherEffects_invest = {}, 
                  min_operationSum = None, max_operationSum = None, 
                  min_investSum = None, max_investSum = None,
                  min_Sum = None, max_Sum = None,
-                 **kwargs):    
+                 **kwargs):
+        '''        
+        Parameters
+        ----------
+        label : str
+            name
+        unit : str
+            unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
+        description : str
+            long name
+        isStandard : boolean, optional
+            true, wenn Standard-Effekt (wenn direkte Eingabe bei Kostenpositionen ohne dict) , sonst false
+        isObjective : boolean, optional
+            true, wenn optimization target
+        specificShareToOtherEffects_operation : {effectType: TS, ...}, z.B. 180 €/t_CO2, Angabe als {costs: 180}, optional
+            Beiträge zu anderen Effekten (nur operation)
+        specificShareToOtherEffects_invest : {effectType: TS, ...}, z.B. 180 €/t_CO2, Angabe als {costs: 180}, optional
+            Beiträge zu anderen Effekten (nur invest).
+        min_operationSum : scalar, optional
+            minimale Summe (nur operation) des Effekts
+        max_operationSum : scalar, optional
+            maximale Summe (nur operation) des Effekts.
+        min_investSum : scalar, optional
+            minimale Summe (nur invest) des Effekts
+        max_investSum : scalar, optional
+            maximale Summe (nur invest) des Effekts
+        min_Sum : sclalar, optional
+            minimale Summe des Effekts.
+        max_Sum : scalar, optional
+            maximale Summe des Effekts.
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
         super().__init__(label, **kwargs)    
         self.label       = label
         self.unit        = unit
@@ -1541,39 +1597,56 @@ class cBaseComponent(cME):
     basic component class for all components
     '''    
     modBox : cModelBoxOfES
-  
-    new_init_args = [cArg('on_valuesBeforeBegin', 'initial', 'list', 'Ein(1)/Aus(0)-Wert vor Zeitreihe'),
-                     cArg('switchOnCosts'       , 'costs'  , 'TS'  , 'Einschaltkosten z.B. in €'),
-                     cArg('switchOn_maxNr'      , 'param', 'skalar', 'max. zulässige Anzahl Starts'),
-                     cArg('onHoursSum_min'         , 'param', 'skalar', 'min. Summe Betriebsstunden'),
-                     cArg('onHoursSum_max'         , 'param', 'skalar', 'max. Summe Betriebsstunden'),
-                     cArg('costsPerRunningHour' , 'costs'  , 'TS'  , 'Betriebskosten z.B. in €/h')]
-
-    not_used_args = []
-        
     
     def __init__(self, label, on_valuesBeforeBegin = [0,0], switchOnCosts = None, switchOn_maxNr = None, onHoursSum_min = None, onHoursSum_max = None, costsPerRunningHour = None, **kwargs) :            
-      label    =  helpers.checkForAttributeNameConformity(label)          # todo: indexierbar / eindeutig machen!      
-      super().__init__(label, **kwargs)
-      self.on_valuesBeforeBegin = on_valuesBeforeBegin  
-      self.switchOnCosts        = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
-      self.switchOn_maxNr       = switchOn_maxNr
-      self.onHoursSum_min       = onHoursSum_min
-      self.onHoursSum_max       = onHoursSum_max
-      self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHOur', costsPerRunningHour , self)     
-      
-      ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
-      # % On Werte vorher durch Flow-values bestimmen:    
-      # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(modBox.epsilon,self.flowMin)) für alle Flows!
-           
-      self.inputs   = [] # list of flows
-      self.outputs  = [] # list of flows
-      self.isStorage = False
+        '''
+        
 
-    
-      # self.base = None # Energysystem I Belong to     
-            
-      self.subComps = [] # list of subComponents # für mögliche Baumstruktur!     
+        Parameters
+        ----------
+        label : str
+            name.
+        
+        Parameters of on/off-feature 
+        ----------------------------
+        (component is off, if all flows are zero!)
+
+        on_valuesBeforeBegin :  array (TODO: why not scalar?)
+            Ein(1)/Aus(0)-Wert vor Zeitreihe
+        switchOnCosts : look in cFlow for description
+        switchOn_maxNr : look in cFlow for description
+        onHoursSum_min : look in cFlow for description
+        onHoursSum_max : look in cFlow for description
+        costsPerRunningHour : look in cFlow for description
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        label    =  helpers.checkForAttributeNameConformity(label)          # todo: indexierbar / eindeutig machen!      
+        super().__init__(label, **kwargs)
+        self.on_valuesBeforeBegin = on_valuesBeforeBegin  
+        self.switchOnCosts        = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
+        self.switchOn_maxNr       = switchOn_maxNr
+        self.onHoursSum_min       = onHoursSum_min
+        self.onHoursSum_max       = onHoursSum_max
+        self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHOur', costsPerRunningHour , self)     
+        
+        ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
+        # % On Werte vorher durch Flow-values bestimmen:    
+        # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(modBox.epsilon,self.flowMin)) für alle Flows!
+             
+        self.inputs   = [] # list of flows
+        self.outputs  = [] # list of flows
+        self.isStorage = False
+  
+      
+        # self.base = None # Energysystem I Belong to     
+              
+        self.subComps = [] # list of subComponents # für mögliche Baumstruktur!     
         
     # # TODO: ist das noch notwendig?:
     # def addEnergySystemIBelongTo(self,base): 
@@ -1685,7 +1758,8 @@ class cBaseComponent(cME):
                        
       if self.isStorage :
           inhalt['isStorage'] = self.isStorage
-      
+      inhalt['class'] = type(self).__name__
+        
       return descr
     
     def print(self,shiftChars):
@@ -1812,31 +1886,56 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
     realizing balance of all linked flows
     (penalty flow is excess can be activated)
     '''
-     
-    new_init_args = [cArg('label'                 , 'param', 'str', 'Bezeichnung'),
-                     cArg('typ'                   , 'param', 'str', 'Zusatzbeschreibung, sonst kein Einfluss'),
-                     cArg('excessCostsPerFlowHour', 'costs', 'TS' , 'Exzesskosten (none/ 0 -> kein Exzess; > 0 -> berücksichtigt')]
-  
-    not_used_args = ['label']
   
     # --> excessCostsPerFlowHour
     #        none/ 0 -> kein Exzess berücksichtigt
     #        > 0 berücksichtigt
       
-    def __init__(self, typ, label, excessCostsPerFlowHour = 1e5, **kwargs):   
-      super().__init__(label,**kwargs)  
-      self.typ = typ
-      self.medium = helpers.InfiniteFullSet()
-      if  (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0) :
-        self.withExcess = True
-        self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)      
-      else: 
-        self.withExcess = False
+    def __init__(self, media, label, excessCostsPerFlowHour = 1e5, **kwargs):   
+        '''
+        
+
+        Parameters
+        ----------
+        media : None, str or set of str            
+            media or set of allowed media of the coupled flows, 
+            if None, then any flow is allowed
+            example 1: media = None -> every media is allowed
+            example 1: media = 'gas'
+            example 2: media = {'gas','biogas','H2'}
+        label : str
+            name.
+        excessCostsPerFlowHour : none or scalar, array or cTSraw
+            excess costs / penalty costs
+            (none/ 0 -> no penalty). The default is 1e5.
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        super().__init__(label,**kwargs)  
+        if media is None: 
+            self.media = media # alle erlaubt
+        elif isinstance(media,str):
+            self.media = {media} # convert to set
+        elif isinstance(media,set):
+            self.media = media
+        else:
+            raise Exception('no valid input for argument media!')
+            
+        if  (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0) :
+          self.withExcess = True
+          self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)      
+        else: 
+          self.withExcess = False
   
       
     def registerInputFlow(self, aFlow):
-      self.inputs.append(aFlow)
-      self.checkMedium(aFlow)
+        self.inputs.append(aFlow)
+        self.checkMedium(aFlow)
       
     def registerOutputFlow(self,aFlow):
       self.outputs.append(aFlow) 
@@ -1846,12 +1945,16 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
       # Wenn noch nicht belegt
       if aFlow.medium is not None : 
         # set gemeinsamer Medien:
-        newMedium = self.medium & aFlow.medium
-        # wenn mindestens ein Eintrag:    
-        if newMedium : 
-          self.medium = newMedium
-        else : 
-          raise Exception('in cBus ' + self.label + ' : registerFlow(): medium ' + str(aFlow.medium) + ' of ' + aFlow.label + ' passt nicht zu bisherigen Flows ' + str(self.medium) ) 
+        # commonMedium = self.media & aFlow.medium
+        # wenn leer, d.h. kein gemeinsamer Eintrag:    
+        if (aFlow.medium is not None) and (self.media is not None) and \
+            (not (aFlow.medium in self.media)):
+            raise Exception('in cBus ' + self.label + ' : registerFlow(): medium \'' 
+                            + str(aFlow.medium) + '\' of ' + aFlow.label_full + 
+                            ' and media ' + str(self.media) + ' of bus ' + 
+                            self.label_full + '  have no common medium!' + 
+                            ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
+                            ) 
   
     def declareVarsAndEqs(self, modBox):
       super().declareVarsAndEqs(modBox)
@@ -1896,37 +1999,37 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
  # Medien definieren:
 class cMediumCollection:
     '''
-    define possible domains for flow (not tested!)
+    define possible domains for flow (not tested!) TODO!
     '''
     # single medium:
-    heat    = set(['heat'])
-    cold    = set(['cold'])
-    el      = set(['el'])
-    gas     = set(['gas'])
-    lignite = set(['lignite'])
-    biomass = set(['biomass'])
-    ash     = set(['ash'])
+    heat    = 'heat' # set(['heat'])
+    # cold    = set(['cold'])
+    el      = 'el' # set(['el'])
+    # gas     = set(['gas'])
+    # lignite = set(['lignite'])
+    # biomass = set(['biomass'])
+    # ash     = set(['ash'])
     # groups: 
-    fu        = gas | lignite | biomass
-    fossil_fu = gas | lignite
+    fuel      = 'fuel' # gas | lignite | biomass
+    # fossil_fu = gas | lignite
     
-    # neues Medium hinzufügen:
-    def addMedium(attrName, aSetOfStrs):
-      cMediumCollection.setattr(attrName,aSetOfStrs)
+    # # neues Medium hinzufügen:
+    # def addMedium(attrName, aSetOfStrs):
+    #     cMediumCollection.setattr(attrName,aSetOfStrs)
       
     # checkifFits(medium1,medium2,...)
     def checkIfFits(*args):
-      aCommonMedium = helpers.InfiniteFullSet()
-      for aMedium in args:
-        if aMedium is not None : aCommonMedium = aCommonMedium & aMedium 
-      if aCommonMedium : return True
-      else             : return False
+        aCommonMedium = helpers.InfiniteFullSet()
+        for aMedium in args:
+          if aMedium is not None : aCommonMedium = aCommonMedium & aMedium 
+        if aCommonMedium : return True
+        else             : return False
     
 # input/output-dock (TODO:
 class cIO(): 
-  pass
-  # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
-  # input wären wie cFlow,aber statt bus : connectsTo -> hier andere cIO oder aber Bus (dort keine cIO, weil nicht notwendig)
+    pass
+    # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
+    # input wären wie cFlow,aber statt bus : connectsTo -> hier andere cIO oder aber Bus (dort keine cIO, weil nicht notwendig)
   
   
 # todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
@@ -1934,38 +2037,8 @@ class cIO():
 class cFlow(cME):
     '''
     flows are inputs and outputs of components
-    
-    
     '''
-    ## Parameter       
-    # valuesBeforeBegin -> Liste mit letzten 2 Werten davor!
-    new_init_args = [cArg('label'               , 'param', 'str',        'Bezeichnung'),
-                     cArg('bus'                 , 'bus'  , 'bus',        'Bus-Komponente, mit der der flow verknüpft wird, angeben'),
-                     cArg('min_rel'             , 'param', 'TS',         'minimaler Wert (relativ) := Flow_min/Nominal_val'),
-                     cArg('max_rel'             , 'param', 'TS',         'maximaler Wert (relativ) := Flow_max/Nominal_val; (wenn Nennwert = max, dann max_rel = 1'),
-                     cArg('nominal_val'         , 'param', 'skalar',     'Investgröße/ Nennwert z.B. kW, Fläche, Volumen, Stck,  möglichst immer so stark wie möglich einschränken (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)'),
-                     cArg('loadFactor_min'      , 'param', 'skalar',     'minimaler nomineller Auslastungsgrad (equivalenter Vollbenutzungsgrad), general: avg Flow per Investsize (e.g. solarthermal: kW/m²; def: load_factor:= sumFlowHours/ (nominal_val*dt_tot)'),
-                     cArg('loadFactor_max'      , 'param', 'skalar',     'maximaler nomineller Auslastungsgrad (equivalenter Vollbenutzungsgrad), general: avg Flow per Investsize (e.g. solarthermal: kW/m²; def: load_factor:= sumFlowHours/ (nominal_val*dt_tot)'),                     
-                     cArg('positive_gradient'   , 'param', 'TS',         '! noch nicht implementiert !'),
-                     cArg('costsPerFlowHour'    , 'costs', 'TS',         'Kosten pro Flow-Arbeit, z.B. €/kWh'),
-                     cArg('iCanSwitchOff'       , 'param', 'True/False', 'Kann flow "aus gehen", also auf Null gehen (nur relevant wenn min > 0) -> BinärVariable wird genutzt'),
-                     cArg('onHoursSum_min'         , 'param', 'skalar',     'min. Summe Betriebsstunden'),
-                     cArg('onHoursSum_max'         , 'param', 'skalar',     'max. Summe Betriebsstunden'),                     
-                     cArg('onHours_min'         , 'param', 'TS',         'min. Betriebsstunden'),
-                     cArg('onHours_max'         , 'param', 'TS',         'max. Betriebsstunden'),
-                     cArg('offHours_min'        , 'param', 'TS',         'min. Off-Stunden'),
-                     cArg('offHours_max'        , 'param', 'TS',         'max. Off-Stunden'),
-                     cArg('switchOnCosts'       , 'costs', 'TS'    ,     'Einschaltkosten z.B. in €'),
-                     cArg('switchOn_maxNr'      , 'param', 'skalar',     'max. zulässige Anzahl Starts'),
-                     cArg('costsPerRunningHour' , 'costs', 'TS'    ,     'Kosten für den reinen Betrieb, z.B. €/h'),
-                     cArg('valuesBeforeBegin'   , 'param', 'list'  ,     'Flow-Werte vor Beginn (zur Berechnung verschied. Dinge im ersten Zeitschritt, z.B. switchOn, gradient,...)'),
-                     cArg('val_rel'             , 'param', 'TS'    ,     'fixe Werte für Flow (falls gegeben). Damit ist Flow-Wert dann keine freie Optimierungsvariable mehr.; min_rel u. max_rel werden nicht mehr genutzt'),
-                     cArg('investArgs'          , 'obj'  , 'cInvestArgs','None or Investitionsparameter'),
-                     cArg('sumFlowHours_max'    , 'param', 'skalar',     'maximale FlowHours in Zeitbereich (if nominal_val is not const, better use loadFactor_max!)'),
-                     cArg('sumFlowHours_min'    , 'param', 'skalar',     'minimale FlowHours in Zeitbereich (if nominal_val is not const, better use loadFactor_min!)'),                     
-                     ]
     
-    not_used_args = ['label']   
 
     @property
     def label_full(self):
@@ -2023,11 +2096,83 @@ class cFlow(cME):
                  sumFlowHours_max = None, sumFlowHours_min = None, 
                  valuesBeforeBegin = [0,0], 
                  val_rel = None, 
+                 medium = None,
                  investArgs = None, 
                  **kwargs):
+        '''
+        Parameters
+        ----------
+        label : str
+            name of flow
+        bus : cBus, optional
+            bus to which flow is linked
+        min_rel : scalar, array, cTSraw, optional
+            min value is min_rel multiplied by nominal_val
+        max_rel : scalar, array, cTSraw, optional
+            max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
+        nominal_val : scalar. None if is a nominal value is a opt-variable, optional
+            nominal value/ invest size (linked to min_rel, max_rel and others). 
+            i.g. kW, area, volume, pieces, 
+            möglichst immer so stark wie möglich einschränken 
+            (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)
+        loadFactor_min : scalar, optional
+            minimal load factor  general: avg Flow per nominalVal/investSize 
+            (e.g. boiler, kW/kWh=h; solarthermal: kW/m²; 
+             def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
+        loadFactor_max : scalar, optional
+            maximal load factor (see minimal load factor)
+        positive_gradient : TYPE, optional
+           not implemented yet
+        costsPerFlowHour : scalar, array, cTSraw, optional
+            operational costs, costs per flow-"work"
+        iCanSwitchOff : boolean, optional
+            can flow be off, i.e. be zero (only relevant if min_rel > 0) 
+            Then binary var is used.
+        onHoursSum_min : scalar, optional
+            min. overall sum of operating hours.
+        onHoursSum_max : scalar, optional
+            max. overall sum of operating hours.
+        onHours_min : scalar, optional
+            min sum of operating hours in one piece
+        onHours_max : scalar, optional
+            max sum of operating hours in one piece
+        offHours_min : scalar, optional
+            - not implemented yet - 
+            min sum of non-operating hours in one piece
+        offHours_max : scalar, optional
+            - not implemented yet - 
+            max sum of non-operating hours in one piece
+        switchOnCosts : scalar, array, cTSraw, optional
+            cost of one switch from off (var_on=0) to on (var_on=1), 
+            unit i.g. in Euro
+        switchOn_maxNr : integer, optional
+            max nr of switchOn operations
+        costsPerRunningHour : costs-types, optional
+            costs for operating, i.g. in € per hour
+        sumFlowHours_max : TYPE, optional
+            maximum flow-hours ("flow-work") 
+            (if nominal_val is not const, maybe loadFactor_max fits better for you!)
+        sumFlowHours_min : TYPE, optional
+            minimum flow-hours ("flow-work") 
+            (if nominal_val is not const, maybe loadFactor_min fits better for you!)
+        valuesBeforeBegin : list (TODO: why not scalar?), optional
+            Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'), 
+            # TODO: integration of option for 'first is last'
+        val_rel : scalar, array, cTSraw, optional
+            fixed relative values for flow (if given). 
+            val(t) := val_rel(t) * nominal_val(t)
+            With this value, the flow-value is no opt-variable anymore;
+            (min_rel u. max_rel are making sense anymore)
+            used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
+            If the load-profile is just an upper limit, use max_rel instead.
+        medium: string, None
+            medium is relevant, if the linked bus only allows a special defined set of media.
+            If None, any bus can be used.            
+        investArgs : None or cInvestargs, optional
+            used for investment costs or/and investment-optimization!
+        '''
         
-      
-        
+
         super().__init__(label, **kwargs)   
         # args to attributes:
         self.bus                 = bus
@@ -2071,9 +2216,11 @@ class cFlow(cME):
     
         # zugehörige Komponente (wird später von Komponente gefüllt)
         self.comp = None
-        
+        if (medium is not None) and (not isinstance(medium, str)):
+            raise Exception('medium must be a string or None')
+        else:
+            self.medium = medium
         # defaults:
-        self.medium    = None
                           
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
         self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
@@ -2300,33 +2447,34 @@ class cFlow(cME):
 
 
     def getStrDescr(self, type = 'full'):            
-      aDescr = {}
-      if type == 'for bus-list':
-        # aDescr = str(self.comp.label) + '.'
-        aDescr['comp']=self.comp.label        
-        aDescr = {str(self.label):aDescr} # label in front of
-      elif type == 'for comp-list':
-        # aDescr += ' @Bus ' + str(self.bus.label)      
-        aDescr['bus']=self.bus.label            
-        aDescr = {str(self.label):aDescr} # label in front of
-      elif type == 'full':
-        aDescr['label']=self.label
-        aDescr['comp']=self.comp.label        
-        aDescr['bus']=self.bus.label            
-        aDescr['isInputInComp'] = self.isInputInComp
-      else: 
-        raise Exception('type = \'' + str(type) + '\' is not defined')
-
-      return aDescr
+        aDescr = {}
+        if type == 'for bus-list':
+          # aDescr = str(self.comp.label) + '.'
+          aDescr['comp']=self.comp.label        
+          aDescr = {str(self.label):aDescr} # label in front of
+        elif type == 'for comp-list':
+          # aDescr += ' @Bus ' + str(self.bus.label)      
+          aDescr['bus']=self.bus.label            
+          aDescr = {str(self.label):aDescr} # label in front of
+        elif type == 'full':
+          aDescr['label']=self.label
+          aDescr['comp']=self.comp.label        
+          aDescr['bus']=self.bus.label            
+          aDescr['isInputInComp'] = self.isInputInComp
+        else: 
+          raise Exception('type = \'' + str(type) + '\' is not defined')
+  
+        return aDescr
     
     # def printWithBus(self):
     #   return (str(self.label) + ' @Bus ' + str(self.bus.label))
     # def printWithComp(self):
     #   return (str(self.comp.label) + '.' +  str(self.label))
-    def setMediumIfNotSet(self,medium):
-      # nicht überschreiben, nur wenn leer:
-      if self.medium is None: self.medium = medium
-        
+    
+    # Preset medium (only if not setted explicitly by user)
+    def setMediumIfNotSet(self, medium):
+        # nicht überschreiben, nur wenn leer:
+        if self.medium is None: self.medium = medium
 
 # class cBeforeValue :
   
