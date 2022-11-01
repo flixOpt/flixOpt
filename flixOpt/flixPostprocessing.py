@@ -82,7 +82,7 @@ class flix_results():
         # default value:
         if self.comp_colors == None:
             import plotly.express as px
-            self.comp_colors = px.colors.qualitative.Light24
+            self.comp_colors = px.colors.qualitative.Light24 + px.colors.qualitative.Bold + px.colors.qualitative.Alphabet
             # see: https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
             
         # 'z.B.' 2022-06-14_Sim1_gurobi_SolvingInfos
@@ -141,7 +141,10 @@ class flix_results():
         
         myColorIter = iter(self.comp_colors)
         for label,descr in comp_dict.items():      
-            aComp = cCompOrBus_post(label, descr, self, color = next(myColorIter))
+            try: 
+                aComp = cCompOrBus_post(label, descr, self, color = next(myColorIter))
+            except StopIteration:
+                raise Exception('too less colors defined for printing!')                
             comps.append(aComp)    
         return comps
     
