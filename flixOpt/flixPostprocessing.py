@@ -342,7 +342,7 @@ class flix_results():
             #       verticalalignment='top', horizontalalignment='right',
             #       transform=ax.transAxes,
             #       color='black', fontsize=10)
-            plt.show()            
+            # plt.show()            
             return fig
         
         def plot_plotly(sums, labels,title, aText, colors):            
@@ -352,7 +352,7 @@ class flix_results():
                               annotations = [dict(text=aText, x=0.95, y=0.05, font_size=20, align = 'right', showarrow=False)],
                               )
             
-            fig.show()
+            # fig.show()
             return fig
             
         if plotAsPlotly:
@@ -523,7 +523,7 @@ class flix_results():
             fig.update_yaxes(title_text=yaxes2_title, secondary_y=True)      
             fig.update_layout(title=title)
             
-            fig.show()
+            # fig.show()
             
             return fig
 
@@ -559,7 +559,7 @@ class flix_results():
             plt.xlabel('Zeit - Woche [h]', fontsize = 'xx-large')                                                 ### x-Achsen-Titel                     
             plt.ylabel(yaxes_title ,fontsize = 'xx-large')                                            ### y-Achsen-Titel  = Leistung immer
             plt.grid()
-            plt.show()
+            # plt.show()
 
             return fig
             
