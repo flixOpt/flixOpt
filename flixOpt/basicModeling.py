@@ -192,7 +192,7 @@ class cBaseModel:
     self.noOfVars       = len(self.variables)
     self.noOfSingleVars = sum([var.len for var in self.variables])    
     
-  def solve(self,gapfrac,timelimit, solver_name, displaySolverOutput, **solver_opt):        
+  def solve(self,gapfrac,timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt):        
     self.solver_name = solver_name
     t_start = time.time()
     for variable in self.variables:
@@ -216,11 +216,11 @@ class cBaseModel:
           solver_opt['mipgap'] = gapfrac
           
 
-      logfileName = "flixSolverLog.log"
+      # logfileName = "flixSolverLog.log"
 
       self.solver_results = solver.solve(self.model, options = solver_opt, tee = displaySolverOutput, keepfiles=True, logfile=logfileName)     
 
-      # Log laden:
+      # Log wieder laden:
       self.solverLog = cSolverLog(solver_name,logfileName)
       self.solverLog.parseInfos()
       # Ergebnis Zielfunktion ablegen

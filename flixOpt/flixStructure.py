@@ -145,7 +145,7 @@ class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifische
 
   
   #'gurobi'
-  def solve(self, gapFrac = 0.02,timelimit = 3600, solver ='cbc', displaySolverOutput = True, excessThreshold = 0.1, **kwargs):      
+  def solve(self, gapFrac = 0.02,timelimit = 3600, solver ='cbc', displaySolverOutput = True, excessThreshold = 0.1, logfileName = 'solverLog.log', **kwargs):      
       '''
       
 
@@ -188,7 +188,7 @@ class cModelBoxOfES(cBaseModel): # Hier kommen die ModellingLanguage-spezifische
       self.printNoEqsAndVars()            
       
       
-      super().solve(gapFrac, timelimit, solver, displaySolverOutput, **kwargs)
+      super().solve(gapFrac, timelimit, solver, displaySolverOutput, logfileName, **kwargs)
       
       if solver == 'gurobi': 
           termination_message = self.solver_results['Solver'][0]['Termination message']
@@ -860,8 +860,6 @@ class cCalculation :
     def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix = '', nameSuffix ='', aPath = 'results/'):
       self.checkIfAlreadyModeled()
       self._infos['segmentedProps'] = {'segmentLen':segmentLen, 'nrUsedSteps':  nrOfUsedSteps}
-  
-      
       self.calcType = 'segmented'
       print('##############################################################')
       print('#################### segmented Solving #######################')
@@ -877,6 +875,8 @@ class cCalculation :
       assert segmentLen    <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
   
       # timeSeriesOfSim = self.es.timeSeries[from_index:to_index+1]
+
+      self._definePathNames(namePrefix, nameSuffix, aPath, saveResults = True)
          
       # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
       nrOfSimSegments = math.ceil((self.nrOfTimeSteps - segmentLen) / nrOfUsedSteps) + 1 
@@ -934,7 +934,7 @@ class cCalculation :
         
         # Lösen:
         t_start_solving = time.time()
-        segmentModBox.solve(**solverProps)# keine SolverOutput-Anzeige, da sonst zu viel
+        segmentModBox.solve(**solverProps, logfileName=self.path_Log)# keine SolverOutput-Anzeige, da sonst zu viel
         self.durations['solving'] += round(time.time()-t_start_solving,2)
         ## results adding:      
         self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
@@ -942,7 +942,7 @@ class cCalculation :
       
       self.durations['model, solve and segmentStuff'] = round(time.time()-t_start,2)
       
-      self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
+      self._saveSolveInfos()
     
     def doAggregatedModeling(self, periodLengthInHours, noTypicalPeriods, 
                              useExtremePeriods, fixStorageFlows,
@@ -1109,43 +1109,54 @@ class cCalculation :
       return aModBox    
     
     def solve(self, solverProps, namePrefix = '', nameSuffix ='', aPath = 'results/', saveResults = True):
-        
-        if self.calcType not in ['full','aggregated']:
-          raise Exeption('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
+    
+        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults)
+
+        if self.calcType not in ['full','aggregated']:            
+          raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
         aModbox = self.listOfModbox[0]
-        aModbox.solve(**solverProps)
+        aModbox.solve(**solverProps, logfileName = self.path_Log)
         
         if saveResults:
-          self._saveSolveInfos(namePrefix=namePrefix, nameSuffix=nameSuffix, aPath=aPath)
+          self._saveSolveInfos()
+
         
-    
-    def checkIfAlreadyModeled(self):
-      
-      if self.calcType is not None:
-        raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
-  
-    def _saveSolveInfos(self, namePrefix = '', nameSuffix ='', aPath = 'results/'):
+    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults):
         import datetime
-        import yaml      
-        import pathlib
-        
+        import pathlib               
+
         # wenn "/" am Anfang, dann löschen (sonst kommt pathlib durcheinander):
         aPath = aPath[0].replace("/","") + aPath[1:]
         # absoluter Pfad:
         aPath = pathlib.Path.cwd() / aPath
         # Pfad anlegen, fall noch nicht vorhanden:
         aPath.mkdir(parents=True, exist_ok=True)       
-             
+        self.pathForResults = aPath             
+        
         timestamp = datetime.datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')             
-        self.nameOfCalc = namePrefix.replace(" ","") + timestring + '_' + self.label.replace(" ", "") + nameSuffix.replace(" ","")
-        
-        filename_Data = self.nameOfCalc + '_data.pickle'
-        filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
-              
-        self.path_Data = aPath / filename_Data
-        self.path_Info = aPath / filename_Info
-        
+        timestring = timestamp.strftime('%Y-%m-%d')                     
+        self.nameOfCalc = namePrefix.replace(" ","") + timestring + '_' + self.label.replace(" ", "") + nameSuffix.replace(" ","")        
+    
+        if saveResults:
+            filename_Data = self.nameOfCalc + '_data.pickle'
+            filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
+            filename_Log = self.nameOfCalc + '_solver.log'
+            self.path_Log = self.pathForResults / filename_Log
+            self.path_Data = self.pathForResults / filename_Data
+            self.path_Info = self.pathForResults / filename_Info
+        else:            
+            self.path_Log = None
+            self.path_Data = None
+            self.path_Info = None
+    
+    def checkIfAlreadyModeled(self):
+      
+      if self.calcType is not None:
+        raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
+  
+    def _saveSolveInfos(self):
+        import yaml      
+               
         #Daten:
         # with open(yamlPath_Data, 'w') as f:
         #   yaml.dump(self.results, f, sort_keys = False)
