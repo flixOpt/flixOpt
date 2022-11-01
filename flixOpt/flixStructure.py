@@ -226,7 +226,7 @@ class cModelBoxOfES(cBaseModel):
         print('')
         for aBus in self.es.setOfBuses:
             if aBus.withExcess : 
-                if any(self.results[aBus.label]['excessIn'] > 0) or any(self.results[aBus.label]['excessOut'] > 0):
+                if any(self.results[aBus.label]['excessIn'] > 1e-6) or any(self.results[aBus.label]['excessOut'] > 1e-6):
                     # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
                     print('!!!!! Attention !!!!!')
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')          
