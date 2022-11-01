@@ -297,22 +297,29 @@ class cEnergySystem:
   
     @property
     def allMEsOfFirstLayerWithoutFlows(self):
-      allMEs = self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +  list(self.setOfOtherMEs)
-      return allMEs      
+        allMEs = self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +  list(self.setOfOtherMEs)
+        return allMEs      
 
     @property
     def allMEsOfFirstLayer(self):
-      allMEs = self.allMEsOfFirstLayerWithoutFlows + list(self.setOfFlows) 
-      return allMEs    
+        allMEs = self.allMEsOfFirstLayerWithoutFlows + list(self.setOfFlows) 
+        return allMEs    
 
     @property
     def allInvestFeatures(self):
         allInvestFeatures = []
-         
-        for aME in self.allMEsOfFirstLayer: # kann in Komponente (z.B. Speicher) oder Flow stecken
+        
+        def getInvestFeaturesOfME(aME):
+            investFeatures = []
             for aSubComp in aME.subElements_all:
                 if isinstance(aSubComp, cFeatureInvest):
-                    allInvestFeatures.append(aSubComp)
+                    investFeatures.append(aSubComp)
+                investFeatures += getInvestFeaturesOfME(aSubComp)  # recursive!
+            return investFeatures
+        
+        for aME in self.allMEsOfFirstLayer: # kann in Komponente (z.B. Speicher) oder Flow stecken
+            allInvestFeatures += getInvestFeaturesOfME(aME)
+
         return allInvestFeatures
     
     # Achtung: Funktion wird nicht nur für Getter genutzt.
@@ -805,7 +812,7 @@ class cCalculation :
     
     es: cEnergySystem
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, es, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
+    def __init__(self, label, es : cEnergySystem, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
       self.label = label
       self.nameOfCalc = None # name for storing results
       self.es = es
@@ -865,8 +872,12 @@ class cCalculation :
       
       
       t_start = time.time()
+      
       # system finalisieren:
       self.es.finalize()
+
+      if len(self.es.allInvestFeatures) > 0:
+          raise Exception('segmented calculation with Invest-Parameters does not make sense!')
       
       # nrOfTimeSteps = self.to_index - self.from_index +1    
       
@@ -1159,14 +1170,13 @@ class cCalculation :
         raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
   
     def _saveSolveInfos(self):
-        import yaml      
-               
+        import yaml
         #Daten:
         # with open(yamlPath_Data, 'w') as f:
         #   yaml.dump(self.results, f, sort_keys = False)
         import pickle
         with open(self.path_Data,'wb') as f:
-          pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
         
         #Infos:'
         with open(self.path_Info, 'w',encoding='utf-8') as f:
@@ -1179,9 +1189,7 @@ class cCalculation :
         print('#'*len(aStr))      
         print(aStr)
         print('#'*len(aStr))
-             
-      
-    
+
     def __addSegmentResults(self, segment, startIndex_calc, realNrOfUsedSteps):    
       # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
   
