@@ -225,7 +225,7 @@ class cModelBoxOfES(cBaseModel):
         print('')
         for aBus in self.es.setOfBuses:
             if aBus.withExcess : 
-                if any(self.results[aBus.label]['excessIn'] > 0) or any(self.results[aBus.label]['excessOut'] > 0):
+                if any(self.results[aBus.label]['excessIn'] > 1e-6) or any(self.results[aBus.label]['excessOut'] > 1e-6):
                     # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
                     print('!!!!! Attention !!!!!')
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')          
@@ -811,7 +811,7 @@ class cCalculation :
     
     es: cEnergySystem
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, es : cEnergySystem, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
+    def __init__(self, label, es : cEnergySystem, modType, chosenEsTimeIndexe = None, pathForSaving = '/results',):
       self.label = label
       self.nameOfCalc = None # name for storing results
       self.es = es
