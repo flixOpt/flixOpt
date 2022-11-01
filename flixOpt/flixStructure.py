@@ -812,7 +812,7 @@ class cCalculation :
     
     es: cEnergySystem
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, es : cEnergySystem, modType, pathForSaving = '/results', chosenEsTimeIndexe = None):
+    def __init__(self, label, es : cEnergySystem, modType, chosenEsTimeIndexe = None, pathForSaving = '/results',):
       self.label = label
       self.nameOfCalc = None # name for storing results
       self.es = es

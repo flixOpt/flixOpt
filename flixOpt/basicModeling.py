@@ -233,17 +233,17 @@ class cBaseModel:
 
 
 class cVariable : 
-  def __init__(self, label, len, myMom, baseModel, isBinary = False, indexe = None, value = None, min = None , max = None): # indexe müssen nicht übergeben werden   
+  def __init__(self, label, len, myMom, baseModel, isBinary = False, value = None, min = None , max = None): # indexe müssen nicht übergeben werden   
     self.label = label
     self.len   = len
     self.myMom = myMom
     self.baseModel = baseModel
     self.isBinary = isBinary
-    self.indexe = indexe
     self.value  = value
     self.min    = min
     self.max    = max
-    
+
+    self.indexe = range(self.len)
     self.label_full = myMom.label + '.' + label
     self.fixed = False    
     self.result = None # Ergebnis
@@ -257,16 +257,8 @@ class cVariable :
 
     # Check conformity:
     self.label = helpers.checkForAttributeNameConformity(label)  
-    
-    
-    # Wenn indexe nicht explizit gegeben:     
-    if self.indexe == None:
-      self.indexe = range(self.len)
-    # wenn explizit geben:
-    else :
-      # check len:
-      if len != len(indexe):
-        raise Exception('len und len(indexe) passt nicht zusammen!')
+        
+
     
     # Wenn Vorgabewert vorhanden:
     if not (value is None) :
