@@ -511,7 +511,7 @@ class cFeatureOn(cFeature) :
             firstIndex = timeIndexe[0] # only first element
             eq_onHours_first = cEquation('onHours_firstTimeStep',eqsOwner,modBox)
             eq_onHours_first.addSummand(self.mod.var_onHours, 1, firstIndex)
-            eq_onHours_first.addSummand(self.mod.var_on, modBox.dtInHours[firstIndex], firstIndex)
+            eq_onHours_first.addSummand(self.mod.var_on, -1*modBox.dtInHours[firstIndex], firstIndex)
             # TODO: Verbindung von letzten und ersten Zeitschritt als Option!
         
     
