@@ -21,7 +21,7 @@ gapFrac = 0.0001
 timelimit = 3600
 
 solver_name = 'glpk'
-solver_name = 'gurobi'
+# solver_name = 'gurobi'
 # solver_name    = 'cbc'
 nrOfThreads    = 1
 
