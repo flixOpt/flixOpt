@@ -38,8 +38,7 @@ import numpy as np
 import datetime
 
 from flixStructure import *
-from flixComps    import *
-
+from flixComps import *
 
 ####################### kleine Daten zum Test ###############################
 
@@ -57,9 +56,7 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 # sink1 = Q_th_Last[0:nrOfTimeSteps]
 # source2      = p_el     [0:nrOfTimeSteps]
 # aTimeSeries = aTimeSeries[0:nrOfTimeSteps]
-        
-
-##########################################################################
+# #########################################################################
 
 print('#######################################################################')
 print('################### start of modeling #################################')
