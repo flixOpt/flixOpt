@@ -350,7 +350,7 @@ class cFeatureOn(cFeature) :
         # Var On:
         if self.useOn : 
             #Before-Variable:
-            self.mod.var_on      = cVariableB('on', modBox.nrOfTimeSteps, self.owner, modBox, isBinary = True)
+            self.mod.var_on      = cVariable_TS('on', modBox.nrOfTimeSteps, self.owner, modBox, isBinary = True)
             self.mod.var_on.activateBeforeValues(esBeforeValue = self.on_valuesBeforeBegin[0], beforeValueIsStartValue = False)
             self.mod.var_onHoursSum = cVariable('onHoursSum', 1, self.owner, modBox, min = self.onHoursSum_min, max = self.onHoursSum_max) # wenn max/min = None, dann bleibt das frei
         else :

@@ -509,7 +509,7 @@ class cStorage(cBaseComponent):
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
         # todo: lb und ub muss noch um ein Element (chargeStateEnd_max, chargeStateEnd_min oder aber jeweils None) ergänzt werden!
 
-        self.mod.var_charge_state = cVariableB('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
+        self.mod.var_charge_state = cVariable_TS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
                                                value=fix_value)  # Eins mehr am Ende!
         self.mod.var_charge_state.activateBeforeValues(self.chargeState0_inFlowHours, True)
         self.mod.var_nettoFlow = cVariable('nettoFlow', modBox.nrOfTimeSteps, self, modBox,

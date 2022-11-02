@@ -1216,7 +1216,11 @@ class cCalculation :
             else:
               # Beachte Speicherladezustand und ähnliche Variablen:                      
               aReferedVariable = resultToAppendVar[key]
-              withEnd = isinstance(aReferedVariable, cVariableB) and aReferedVariable.beforeValueIsStartValue
+              aReferedVariable : cVariable_TS
+              withEnd = isinstance(aReferedVariable, cVariable_TS) \
+                  and aReferedVariable.activated_beforeValues \
+                  and aReferedVariable.beforeValueIsStartValue 
+                  
   
             # nested:
             def getValueToAppend(val, withEnd):

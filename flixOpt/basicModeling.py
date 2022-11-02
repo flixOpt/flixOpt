@@ -240,7 +240,7 @@ class cBaseModel:
 
 
 class cVariable : 
-  def __init__(self, label, len, myMom, baseModel, isBinary = False, value = None, min = None , max = None): # indexe müssen nicht übergeben werden   
+  def __init__(self, label, len, myMom, baseModel, isBinary = False, value = None, min = None , max = None): 
     self.label = label
     self.len   = len
     self.myMom = myMom
@@ -367,51 +367,34 @@ class cVariable :
     
     return aStr
   
-class cVariable_TS(cVariable):
-    # def __init__(self, label, len, myMom, baseModel, isBinary = False, indexe = None, value = None, min = None , max = None))
-    def defineTS(self, anyValDependsOnPrevious=True, valuesIsPostTimeStep=False):
-        '''
-        Parameters
-        ----------
-        oneValDependsOnPrevious : Bool, optional
-            if every value depends on previous -> not fixed in aggregation mode. The default is True.
-        valuesIsPostTimeStep : TYPE, optional
-            DESCRIPTION. The default is False.
-        '''
-        self.defined_TS = True
-        self.anyValDependsOnPrevious = anyValDependsOnPrevious
-        self.valuesIsPostTimeStep = valuesIsPostTimeStep
-    def transform2MathModel(self,baseModel):
-        assert hasattr(self, 'defined_TS') and (self.defined_TS),('var_TS ' + self.label + ': defineTS() nicht ausgeführt.')
-        super().transform2MathModel(self,baseModel)
+
 # TODO:
 # class cTS_Variable (cVariable):  
 #   valuesIsPostTimeStep = False # für Speicherladezustände true!!!
+#   oneValDependsOnPrevious : Bool, optional
+#             if every value depends on previous -> not fixed in aggregation mode. The default is True.
 #   # beforeValues 
   
-# TODO man könnten noch dazwischen allgemeine Klasse cTS_Variable bauen
-# variable with Before-Values:
   
-# Variable mit Before-Werten:
-class cVariableB (cVariable_TS): 
-
-  #######################################
-  # gleiches __init__ wie cVariable!
-  #######################################
+# Timeseries-Variable, optional mit Before-Werten:
+class cVariable_TS (cVariable):
+  def __init__(self, label, len, myMom, baseModel, isBinary = False, value = None, min = None , max = None):
+      self.activated_beforeValues = False
+      super().__init__(label, len, myMom, baseModel, isBinary=isBinary, value=value, min=min, max=max)
   
-  # aktiviere Before-Werte. ZWINGENDER BEFEHL bei cVariableB
+  # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
   def activateBeforeValues(self, esBeforeValue, beforeValueIsStartValue):  # beforeValueIsStartValue heißt ob es Speicherladezustand ist oder Nicht
     # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
     self.beforeValueIsStartValue = beforeValueIsStartValue
     self.esBeforeValue  = esBeforeValue  # Standardwerte für Simulationsstart im Energiesystem
-    self.activated_B = True
+    self.activated_beforeValues = True
     
-  def transform2MathModel(self,baseModel):
-    assert hasattr(self, 'activated_B') and (self.activated_B) , ('var ' + self.label + ':activateBeforeValues() nicht ausgeführt.')
+  def transform2MathModel(self,baseModel):    
     super().transform2MathModel(baseModel)
 
   # hole Startwert/letzten Wert vor diesem Segment:
   def beforeVal(self):    
+    assert self.activated_beforeValues, 'activateBeforeValues() not executed'
     # wenn beforeValue-Datensatz für baseModel gegeben:
     if self.baseModel.beforeValueSet is not None   : 
       # für Variable rausziehen: 
@@ -423,6 +406,7 @@ class cVariableB (cVariable_TS):
   
   # hole Startwert/letzten Wert für nächstes Segment:
   def getBeforeValueForNEXTSegment(self, lastUsedIndex):     
+    assert self.activated_beforeValues, 'activateBeforeValues() not executed'
     # Wenn Speicherladezustand o.ä.
     if self.beforeValueIsStartValue : 
       index = lastUsedIndex + 1 # = Ladezustand zum Startzeitpunkt des nächsten Segments
@@ -442,8 +426,9 @@ class cBeforeValueSet :
     # Sieht dann so aus = {(aME1, aVar1.name): (value, time),
     #                      (aME2, aVar2.name): (value, time),
     #                       ...                       }
-    for aVar in self.fromBaseModel.variables :
-      if isinstance(aVar, cVariableB):
+    for aVar in self.fromBaseModel.variables_TSonly :
+      aVar:cVariable_TS
+      if aVar.activated_beforeValues:
          # Before-Value holen:
         (aValue, aTime) = aVar.getBeforeValueForNEXTSegment(lastUsedIndex)   
         self.addBeforeValues(aVar, aValue, aTime)
