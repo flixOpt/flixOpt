@@ -329,6 +329,7 @@ class cFeatureOn(cFeature) :
         paramsForcingOnHours = [self.onHours_min, self.onHours_max] # onHoursSum alway realized
         if any(param is not None for param in paramsForcingOnHours):
           self.useOnHours = True
+        
         paramsForcingOffHours = [self.offHours_min, self.offHours_max] # offHoursSum alway realized
         if any(param is not None for param in paramsForcingOffHours):
           self.useOffHours = True
@@ -383,12 +384,12 @@ class cFeatureOn(cFeature) :
         if self.useOnHours:
             aMax = None if (self.onHours_max is None) else self.onHours_max.d_i
             self.mod.var_onHours = cVariable_TS('onHours', modBox.nrOfTimeSteps, self.owner, modBox,
-                                             max = aMax) # min separat
+                                             min = 0, max = aMax) # min separat
         # offHours:
         if self.useOffHours:
             aMax = None if (self.offHours_max is None) else self.offHours_max.d_i
             self.mod.var_offHours = cVariable_TS('offHours', modBox.nrOfTimeSteps, self.owner, modBox,
-                                             max = aMax) # min separat 
+                                             min = 0, max = aMax) # min separat 
 
 
         # Var SwitchOn
