@@ -2192,8 +2192,8 @@ class cFlow(cME):
         self.onHoursSum_max      = onHoursSum_max
         self.onHours_min         = None if (onHours_min is None) else cTS_vector('onHours_min', onHours_min, self)
         self.onHours_max         = None if (onHours_max is None) else cTS_vector('onHours_max', onHours_max, self)
-        self.offHours_min        = None if (offHours_min is None) else cTS_vector('offHours_min', onHours_min, self)
-        self.offHours_max        = None if (offHours_max is None) else cTS_vector('offHours_max', onHours_max, self)
+        self.offHours_min        = None if (offHours_min is None) else cTS_vector('offHours_min', offHours_min, self)
+        self.offHours_max        = None if (offHours_max is None) else cTS_vector('offHours_max', offHours_max, self)
         self.switchOnCosts       = transFormEffectValuesToTSDict('switchOnCosts'      , switchOnCosts       , self)
         self.switchOn_maxNr      = switchOn_maxNr
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour , self)
