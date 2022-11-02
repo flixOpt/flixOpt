@@ -512,7 +512,7 @@ class cStorage(cBaseComponent):
         self.mod.var_charge_state = cVariable_TS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
                                                value=fix_value)  # Eins mehr am Ende!
         self.mod.var_charge_state.activateBeforeValues(self.chargeState0_inFlowHours, True)
-        self.mod.var_nettoFlow = cVariable('nettoFlow', modBox.nrOfTimeSteps, self, modBox,
+        self.mod.var_nettoFlow = cVariable_TS('nettoFlow', modBox.nrOfTimeSteps, self, modBox,
                                            min=-np.inf)  # negative Werte zulässig!
 
         # erst hier, da definingVar vorher nicht belegt!

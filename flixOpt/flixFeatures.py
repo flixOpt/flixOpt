@@ -205,9 +205,9 @@ class cSegment(cFeature) :
       
     def declareVarsAndEqs(self, modBox):
         aLen          = modBox.nrOfTimeSteps
-        self.mod.var_onSeg   = cVariable('onSeg_'   + str(self.index), aLen, self, modBox, isBinary = True)   # Binär-Variable
-        self.mod.var_lambda1 = cVariable('lambda1_' + str(self.index), aLen, self, modBox, min = 0 , max = 1) # Wertebereich 0..1
-        self.mod.var_lambda2 = cVariable('lambda2_' + str(self.index), aLen, self, modBox, min = 0 , max = 1) # Wertebereich 0..1    
+        self.mod.var_onSeg   = cVariable_TS('onSeg_'   + str(self.index), aLen, self, modBox, isBinary = True)   # Binär-Variable
+        self.mod.var_lambda1 = cVariable_TS('lambda1_' + str(self.index), aLen, self, modBox, min = 0 , max = 1) # Wertebereich 0..1
+        self.mod.var_lambda2 = cVariable_TS('lambda2_' + str(self.index), aLen, self, modBox, min = 0 , max = 1) # Wertebereich 0..1    
 
 
 # Verhindern gleichzeitig mehrere Flows > 0 
@@ -360,7 +360,7 @@ class cFeatureOn(cFeature) :
         # onHours:
         if (self.onHours_min is not None) or (self.onHours_max is not None):
             aMax = None if (self.onHours_max is None) else self.onHours_max.d_i
-            self.mod.var_onHours = cVariable('onHours', modBox.nrOfTimeSteps, self.owner, modBox,
+            self.mod.var_onHours = cVariable_TS('onHours', modBox.nrOfTimeSteps, self.owner, modBox,
                                              max = aMax) # min separat
             # i.g. 
             # var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
@@ -368,13 +368,13 @@ class cFeatureOn(cFeature) :
         # offHours:                           
         if (self.offHours_min is not None) or (self.offHours_max is not None):        
             raise Exception('offHours still not implemented!')
-            # self.mod.var_offHours = cVariable('offHours', modBox.nrOfTimeSteps, self.owner, modBox,
+            # self.mod.var_offHours = cVariable_TS('offHours', modBox.nrOfTimeSteps, self.owner, modBox,
             #                                  max = self.offHours_max) # min separat
           
         # Var SwitchOn
         if self.useSwitchOn:
-            self.mod.var_switchOn  = cVariable('switchOn' , modBox.nrOfTimeSteps, self.owner, modBox, isBinary = True)
-            self.mod.var_switchOff = cVariable('switchOff', modBox.nrOfTimeSteps, self.owner, modBox, isBinary = True)  
+            self.mod.var_switchOn  = cVariable_TS('switchOn' , modBox.nrOfTimeSteps, self.owner, modBox, isBinary = True)
+            self.mod.var_switchOff = cVariable_TS('switchOff', modBox.nrOfTimeSteps, self.owner, modBox, isBinary = True)  
             self.mod.var_nrSwitchOn = cVariable('nrSwitchOn' , 1, self.owner, modBox, max = self.switchOn_maxNr) # wenn max/min = None, dann bleibt das frei
         else:
             self.mod.var_switchOn  = None
@@ -601,7 +601,7 @@ class cFeature_ShareSum(cFeature): #(ME = ModelingElement)
         #   -> aber Beachte Effekt ist nicht einfach gleichzusetzen mit Flow, da hier eine Menge z.b. in € im Zeitschritt übergeben wird
         # variable für alle TS zusammen (TS-Summe):
         if self.sharesAreTS:
-            self.mod.var_sum_TS = cVariable('sum_TS', modBox.nrOfTimeSteps, self, modBox) # TS      
+            self.mod.var_sum_TS = cVariable_TS('sum_TS', modBox.nrOfTimeSteps, self, modBox) # TS      
         
         # Variable für Summe (Skalar-Summe):
         self.mod.var_sum = cVariable('sum', 1                   , self, modBox, min = self.minOfSum, max = self.maxOfSum) # Skalar

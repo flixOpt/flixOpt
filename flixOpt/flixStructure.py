@@ -38,7 +38,7 @@ Created on Wed Dec 16 12:40:23 2020
 # --> eqs sollten in modbox umziehen. Sonst besteht Gefahr, dass zumindest bei printEqs() alte Glg. von Vorgänger-Modbox geprinted werden.
 
 # bei rollierender Optimierung: 
-#  1. Schauen, ob man nicht doch lieber, alle Variablen nur für den Zeitbereich definiert und cVariable.lastValues einrichtet, und dort Vorgängerzeitschritte übergibt
+#  1. Schauen, ob man nicht doch lieber, alle Variablen nur für den Zeitbereich definiert und cVariable_TS.lastValues einrichtet, und dort Vorgängerzeitschritte übergibt
 #     --> Vorteil: Gleiche Prozedur für 1. Zeistreifen wie für alle anderen!
 #  2. Alle Dinge, die auf historische Werte zugreifen kennzeichnen (Attribut) und warnen/sperrenz.B. 
 #    Speicher, On/Off, 
@@ -1965,8 +1965,8 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
       # Fehlerplus/-minus:
       if self.withExcess:
         # Fehlerplus und -minus definieren
-        self.excessIn  =  cVariable('excessIn' , len(modBox.timeSeries), self, modBox, min=0)   
-        self.excessOut =  cVariable('excessOut', len(modBox.timeSeries), self, modBox, min=0)         
+        self.excessIn  =  cVariable_TS('excessIn' , len(modBox.timeSeries), self, modBox, min=0)   
+        self.excessOut =  cVariable_TS('excessOut', len(modBox.timeSeries), self, modBox, min=0)         
       
     def doModeling(self, modBox, timeIndexe):        
       super().doModeling(modBox, timeIndexe)
@@ -2317,7 +2317,7 @@ class cFlow(cME):
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
               
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.mod.var_val = cVariable('val', modBox.nrOfTimeSteps, self, modBox, min = lb, max = ub, value = fix_value)
+        self.mod.var_val = cVariable_TS('val', modBox.nrOfTimeSteps, self, modBox, min = lb, max = ub, value = fix_value)
         self.mod.var_sumFlowHours = cVariable('sumFlowHours', 1, self, modBox, min = self.sumFlowHours_min, max = self.sumFlowHours_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.mod.var_on                               = self.featureOn.getVar_on()           # mit None belegt, falls nicht notwendig           

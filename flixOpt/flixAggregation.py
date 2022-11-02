@@ -324,13 +324,7 @@ class cAggregationModeling(flixStructure.cME):
     
   def declareVarsAndEqs(self, modBox:flixStructure.cModelBoxOfES):
     super().declareVarsAndEqs(modBox)
-
-    # self.modBox = modBox
-             
-    ## Variablen erstellen:
-
-    # self.mod.var_val = cVariable('val', modBox.nrOfTimeSteps, self, modBox, min = lb, max = self.max.d_i, value = self.value.d_i)
-    
+   
       
   def doModeling(self,modBox:flixStructure.cModelBoxOfES,timeIndexe):        
 

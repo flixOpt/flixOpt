@@ -354,11 +354,18 @@ class cVariable :
     
   def getStrDescription(self):
     maxChars = 50 #länge begrenzen falls vector-Darstellung
-    aStr = ''
-    if self.isBinary:        
-      aStr += 'var bin '
+    aStr = 'var'
+
+    if isinstance(self,cVariable_TS):
+      aStr += ' TS'
     else:
-      aStr += 'var     '  
+      aStr += '   '
+    
+    if self.isBinary:        
+      aStr += ' bin '
+    else:
+      aStr += '     '  
+     
     aStr += self.label_full + ': ' + 'len=' + str(self.len)
     if self.fixed :
       aStr += ', fixed =' + str(self.value)[:maxChars]
@@ -379,6 +386,7 @@ class cVariable :
 # Timeseries-Variable, optional mit Before-Werten:
 class cVariable_TS (cVariable):
   def __init__(self, label, len, myMom, baseModel, isBinary = False, value = None, min = None , max = None):
+      assert len>1, 'len is one, that seems not right for CVariable_TS'
       self.activated_beforeValues = False
       super().__init__(label, len, myMom, baseModel, isBinary=isBinary, value=value, min=min, max=max)
   
