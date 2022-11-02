@@ -15,8 +15,8 @@ gapFrac = 0.0001
 timelimit = 3600
 
 # solver_name = 'glpk'
-# solver_name = 'gurobi'
-solver_name    = 'cbc'
+solver_name = 'gurobi'
+# solver_name    = 'cbc'
 nrOfThreads    = 1
 
 ### Durchführungs-Optionen: ###
@@ -99,6 +99,7 @@ aGaskessel = cKessel('Kessel', eta = 0.5, costsPerRunningHour = {costs:0, CO2:10
                                  onHoursSum_min = 0, 
                                  onHoursSum_max = 1000,
                                  onHours_max = 10,
+                                 offHours_max = 10,
                                  switchOnCosts = 0.01, 
                                  switchOn_maxNr = 1000, 
                                  valuesBeforeBegin=[50], 
