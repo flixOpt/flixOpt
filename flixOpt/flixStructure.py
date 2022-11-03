@@ -245,14 +245,13 @@ class cModelBoxOfES(cBaseModel):
     
       
             aEffectDict = {}      
-            main_results_str['Effekte'] = aEffectDict
+            main_results_str['Effects'] = aEffectDict
             for aEffect in self.es.globalComp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label +' ['+ aEffect.unit + ']'] = aDict
                 aDict['operation']= str(aEffect.operation.mod.var_sum.getResult())
                 aDict['invest']   = str(aEffect.invest   .mod.var_sum.getResult())
                 aDict['sum']      = str(aEffect.all      .mod.var_sum.getResult())
-            main_results_str['Effekte']
             main_results_str['penaltyCosts']  = str(self.es.globalComp.penalty.mod.var_sum.getResult())
             main_results_str['Result of Obj'] = self.objective_value
             main_results_str['lower bound']   = self.solver_results['Problem'][0]['Lower bound']

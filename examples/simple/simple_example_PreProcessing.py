@@ -34,19 +34,15 @@ import datetime
 from flixStructure import *
 from flixComps    import *
 
-
 ####################### kleine Daten zum Test ###############################
 P_el_Last = [70., 80., 90., 90 , 90 , 90, 90, 90, 90]
 if checkPenalty :
     Q_th_Last = [30., 0., 90., 110, 2000 , 20, 20, 20, 20]
 else :
     Q_th_Last = [30., 0., 90., 110, 110 , 20, 20, 20, 20]
-# p_el      = [40., 70., 40., 40 , 40, 40, 70, 70, 70]
-p_el      = [40., 40., 40., 40 , 40, 40, 40, 40, 40]
-p_el      = np.array(p_el)
 
+p_el      = [40., 40., 40., 40 , 40, 40, 40, 40, 40]
    
-# todo: ggf. Umstellung auf numpy: aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1)
 aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1)
 aTimeSeries = aTimeSeries.astype('datetime64')
 nrOfTimeSteps = 9
@@ -69,7 +65,6 @@ print('################### start of modeling #################################')
 Strom = cBus('el', 'Strom', excessCostsPerFlowHour=excessCosts)
 Fernwaerme = cBus('heat', 'Fernwärme', excessCostsPerFlowHour=excessCosts)
 Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=excessCosts)
-
 
 
 # Effect-Definition:
@@ -149,24 +144,24 @@ invest_Speicher = cInvestArgs(fixCosts = 0,
 
 
 aSpeicher = cStorage('Speicher',
-                     inFlow  = cFlow('Q_th_load' , bus = Fernwaerme), 
-                     outFlow = cFlow('Q_th_unload',bus = Fernwaerme), 
-                     # capacity_inFlowHours = 30, 
-                     capacity_inFlowHours = None, 
-                     chargeState0_inFlowHours = 0, 
-                     # charge_state_end_min = 3
-                     charge_state_end_max = 10, 
-                     eta_load = 0.9, eta_unload = 1, 
-                     fracLossPerHour = 0.08, 
-                     avoidInAndOutAtOnce= True,
-                     investArgs = invest_Speicher)
+                     inFlow  = cFlow('Q_th_load' , bus = Fernwaerme),
+                     outFlow = cFlow('Q_th_unload',bus = Fernwaerme),
+                     # capacity_inFlowHours = 30,
+                     capacity_inFlowHours=None,
+                     chargeState0_inFlowHours=0,
+                     # charge_state_end_min = 3,
+                     charge_state_end_max=10,
+                     eta_load=0.9, eta_unload=1,
+                     fracLossPerHour=0.08,
+                     avoidInAndOutAtOnce=True,
+                     investArgs=invest_Speicher)
  
 aWaermeLast       = cSink  ('Wärmelast',sink   = cFlow('Q_th_Last' , bus = Fernwaerme, nominal_val = 1, min_rel = 0, val_rel = Q_th_Last))
 
 aGasTarif         = cSource('Gastarif' ,source = cFlow('Q_Gas'     , bus = Gas  , nominal_val = 1000, costsPerFlowHour= {costs: 0.04, CO2: 0.3}))
 
 # aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -0.07*10))
-aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -p_el))
+aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -1*np.array(p_el)))
 
 # Built energysystem:
 es = cEnergySystem(aTimeSeries, dt_last=None)
