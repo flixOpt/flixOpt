@@ -14,8 +14,8 @@ displaySolverOutput = True  # ausführlicher Solver-Output.
 gapFrac = 0.0001
 timelimit = 3600
 
-# solver_name = 'glpk'
-solver_name = 'gurobi'
+solver_name = 'glpk' # warning, glpk quickly has numerical problems with big and epsilon
+# solver_name = 'gurobi'
 # solver_name    = 'cbc'
 nrOfThreads    = 1
 
@@ -106,8 +106,8 @@ aGaskessel = cKessel('Kessel', eta = 0.5, costsPerRunningHour = {costs:0, CO2:10
 
 aKWK  = cKWK('BHKW2', eta_th = 0.5, eta_el = 0.4, switchOnCosts =  0.01,
             P_el = cFlow('P_el',bus = Strom     , nominal_val = 60, min_rel = 5/60, ),
-            Q_th = cFlow('Q_th',bus = Fernwaerme),
-            Q_fu = cFlow('Q_fu',bus = Gas),on_valuesBeforeBegin = [1])
+            Q_th = cFlow('Q_th',bus = Fernwaerme, nominal_val = 1e3),
+            Q_fu = cFlow('Q_fu',bus = Gas, nominal_val = 1e3),on_valuesBeforeBegin = [1])
 
 
 aKWK2 = cKWK('BHKW2', eta_th = 0.5, eta_el=0.4, switchOnCosts = 0.01,
@@ -144,8 +144,8 @@ invest_Speicher = cInvestArgs(fixCosts = 0,
 
 
 aSpeicher = cStorage('Speicher',
-                     inFlow  = cFlow('Q_th_load' , bus = Fernwaerme),
-                     outFlow = cFlow('Q_th_unload',bus = Fernwaerme),
+                     inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),
+                     outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4),
                      # capacity_inFlowHours = 30,
                      capacity_inFlowHours=None,
                      chargeState0_inFlowHours=0,
