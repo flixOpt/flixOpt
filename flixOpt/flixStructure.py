@@ -1088,12 +1088,15 @@ class cCalculation :
       
       
       import matplotlib.pyplot as plt        
+      plt.figure(figsize=(8,6))
       plt.title('aggregated series')
       plt.plot(dfSeries.values)
       for i in range(len(self.TSlistForAggregation)):
-          plt.plot(dataAgg.totalTimeseries[i].values,'--', label = str(i))
+          # aLabel = str(i)
+          aLabel = self.TSlistForAggregation[i].label_full
+          plt.plot(dataAgg.totalTimeseries[i].values,'--', label = aLabel)
       if len(self.TSlistForAggregation) < 10: # wenn nicht zu viele
-          plt.legend()
+          plt.legend(bbox_to_anchor =(0.5,-0.05), loc='upper center')
       plt.show()
       
       ##########################

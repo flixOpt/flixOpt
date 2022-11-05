@@ -61,131 +61,131 @@ class cArgsClass:
       
 # Definiert Input/Argument/Eigenschaft für Komponenten/Flows
 class cArg:
-  def __init__(self, label, propType, dType, description):
-    self.label        = label
-#     self.defaultValue = defaultValue
-    self.dType        = dType    
-    self.description  = description
-    self.propType     = propType # costs, params, initValues
-    
-  def print(self, prefixChars):    
-    print(prefixChars + self.label + ' : ' + self.propType + ' | ' + str(self.dType) + ' | ' + self.description )      
+    def __init__(self, label, propType, dType, description):
+        self.label        = label
+        # self.defaultValue = defaultValue
+        self.dType        = dType    
+        self.description  = description
+        self.propType     = propType # costs, params, initValues
+        
+    def print(self, prefixChars):    
+        print(prefixChars + self.label + ' : ' + self.propType + ' | ' + str(self.dType) + ' | ' + self.description )      
     
     
 # Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
 class cTS_vector:  
-  # create and register in List:
-
-  # gets rawdata only of activated esIndexe:
-  @property
-  def d_i_raw(self):
-    if (np.isscalar(self.d)) or (self.d is None) or (self.__timeIndexe_actual is None):
-      return self.d
-    else:
-      return self.d[self.__timeIndexe_actual]
+    # create and register in List:
   
-  # Vektor:
-  @property  
-  def d_i_raw_vec(self):    
-    vec = helpers.getVector(self.d_i_raw, len(self.__timeIndexe_actual))
-    return vec
+    # gets rawdata only of activated esIndexe:
+    @property
+    def d_i_raw(self):
+      if (np.isscalar(self.d)) or (self.d is None) or (self.__timeIndexe_actual is None):
+        return self.d
+      else:
+        return self.d[self.__timeIndexe_actual]
+    
+    # Vektor:
+    @property  
+    def d_i_raw_vec(self):    
+      vec = helpers.getVector(self.d_i_raw, len(self.__timeIndexe_actual))
+      return vec
+    
+    @property
+    # gets data only of activated esIndexe or explicit data::
+    def d_i(self):
+      # wenn d_i_explicit gesetzt wurde:
+      if self.d_i_explicit is not None:
+        return self.d_i_explicit
+      else:
+        return self.d_i_raw
   
-  @property
-  # gets data only of activated esIndexe or explicit data::
-  def d_i(self):
-    # wenn d_i_explicit gesetzt wurde:
-    if self.d_i_explicit is not None:
-      return self.d_i_explicit
-    else:
-      return self.d_i_raw
-
-
-  @property
-  def isscalar(self):
-    return np.isscalar(self.d)
-  @property 
-  def isArray(self):
-    return (not(self.isscalar)) & (not(self.d is None))
-
-  @property
-  def label_full(self):
-    return self.owner.label_full + '_' + self.label    
-    
-        
-  def __init__(self, label, value, owner):    
-    '''     
-    Parameters
-    ----------
-    value : 
-        scalar, array or cTSraw!
-    owner : 
-    '''
-    self.label  = label
-    self.owner = owner
-    
-    # if value is cTSraw, then extract value:
-    if isinstance(value, cTSraw):
-        self.TSraw = value
-        value = self.TSraw.value # extract value
-    else:
-        self.TSraw = None        
-        
-    
-    self.d = self.__makeSkalarIfPossible(value) # (d wie data), d so knapp wie möglich speichern
-    self.d_i_explicit = None #     
-    
-    self.__timeIndexe_actual = None # aktuelle timeIndexe der modBox
-    
-    owner.TS_list.append(self)    
-    
-    self.weight_agg = 1 # weight for Aggregation method # between 0..1, normally 1
-
-  @staticmethod
-  def __makeSkalarIfPossible(d):        
-    if (np.isscalar(d)) or (d is None):
-      # do nothing
-      pass
-    else :
-      d = np.array(d) # Umwandeln, da einfaches slicing mit Index-Listen nur mit np-Array geht.     
-      # Wenn alle Werte gleich, dann Vektor in Skalar umwandeln:
-      if np.all(d == d[0]):        
-        d = d[0]
-    return d
+  
+    @property
+    def isscalar(self):
+      return np.isscalar(self.d)
+    @property 
+    def isArray(self):
+      return (not(self.isscalar)) & (not(self.d is None))
+  
+    @property
+    def label_full(self):
+      return self.owner.label_full + '_' + self.label    
       
-
-  # define, which timeStep-Set should be transfered in data-request self.d_i()    
-  def activate(self, dataTimeIndexe, d_i_explicit = None):
-    # time-Index:  
-    self.__timeIndexe_actual = dataTimeIndexe
-
-    # explicitData:    
-    if d_i_explicit is not None:
-      assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
-             (len(d_i_explicit) == 1 )) , 'd_i_explicit has not right length!'
-             
-    self.d_i_explicit = self.__makeSkalarIfPossible(d_i_explicit)
-
-  def setAggWeight(self, aWeight):
+          
+    def __init__(self, label, value, owner):    
+      '''     
+      Parameters
+      ----------
+      value : 
+          scalar, array or cTSraw!
+      owner : 
       '''
-      only for aggregation: set weight of timeseries for creating of typical periods!
-      '''
-      self.weight_agg = aWeight
-      if (aWeight > 1) or (aWeight < 0) :
-          raise Exception('weigth must be between 0 and 1!')
+      self.label  = label
+      self.owner = owner
+      
+      # if value is cTSraw, then extract value:
+      if isinstance(value, cTSraw):
+          self.TSraw = value
+          value = self.TSraw.value # extract value
+      else:
+          self.TSraw = None        
+          
+      
+      self.d = self.__makeSkalarIfPossible(value) # (d wie data), d so knapp wie möglich speichern
+      self.d_i_explicit = None #     
+      
+      self.__timeIndexe_actual = None # aktuelle timeIndexe der modBox
+      
+      owner.TS_list.append(self)    
+      
+      self.weight_agg = 1 # weight for Aggregation method # between 0..1, normally 1
   
-  # Rückgabe Maximum
-  def max(self):
-    return cTS_vector.__getMax(self.d)    
+    @staticmethod
+    def __makeSkalarIfPossible(d):        
+      if (np.isscalar(d)) or (d is None):
+        # do nothing
+        pass
+      else :
+        d = np.array(d) # Umwandeln, da einfaches slicing mit Index-Listen nur mit np-Array geht.     
+        # Wenn alle Werte gleich, dann Vektor in Skalar umwandeln:
+        if np.all(d == d[0]):        
+          d = d[0]
+      return d
+        
   
-  # Maximum für indexe:
-  def max_i(self):
-    return cTS_vector.__getMax(self.d_i)    
+    # define, which timeStep-Set should be transfered in data-request self.d_i()    
+    def activate(self, dataTimeIndexe, d_i_explicit = None):
+      # time-Index:  
+      self.__timeIndexe_actual = dataTimeIndexe
   
-  def __getMax(aValue):
-    if np.isscalar(aValue):
-      return aValue
-    else:
-      return max(aValue)
+      # explicitData:    
+      if d_i_explicit is not None:
+        assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
+               (len(d_i_explicit) == 1 )) , 'd_i_explicit has not right length!'
+               
+      self.d_i_explicit = self.__makeSkalarIfPossible(d_i_explicit)
+  
+    def setAggWeight(self, aWeight):
+        '''
+        only for aggregation: set weight of timeseries for creating of typical periods!
+        '''
+        self.weight_agg = aWeight
+        if (aWeight > 1) or (aWeight < 0) :
+            raise Exception('weigth must be between 0 and 1!')
+    
+    # Rückgabe Maximum
+    def max(self):
+      return cTS_vector.__getMax(self.d)    
+    
+    # Maximum für indexe:
+    def max_i(self):
+      return cTS_vector.__getMax(self.d_i)    
+    
+    def __getMax(aValue):
+      if np.isscalar(aValue):
+        return aValue
+      else:
+        return max(aValue)
 
 
 
@@ -284,7 +284,7 @@ class cTS_collection():
                 if not isinstance(aTSraw,cTSraw):
                     raise Exception('addPeak_max/min must be list of cTSraw-objects!')
         
-    def print(self):
+    def print(self): 
         print('used ' + str(len(self.listOfTS_vectors)) + ' TS for aggregation:')    
         for TS in self.listOfTS_vectors : 
             aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_type: ' + str(self._get_agg_type(TS))+ ')'

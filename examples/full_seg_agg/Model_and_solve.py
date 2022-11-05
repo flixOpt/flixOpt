@@ -23,10 +23,10 @@ nameSuffix = '_' + solver_name # for saving-file
 ## Auswahl Rechentypen: ##
 
 doFullCalc = True
-# doFullCalc = False
+doFullCalc = False
 
 doSegmentedCalc = True
-# doSegmentedCalc = False
+doSegmentedCalc = False
 
 doAggregatedCalc = True
 # doAggregatedCalc = False
@@ -43,7 +43,7 @@ periodLengthInHours = 6
 noTypicalPeriods    = 21
 noTypicalPeriods    = 4
 useExtremeValues    = True
-useExtremeValues    = False
+# useExtremeValues    = False
 fixBinaryVarsOnly   = False
 # fixBinaryVarsOnly   = True
 fixStorageFlows     = True
@@ -272,7 +272,10 @@ if doAggregatedCalc :
                                  fixStorageFlows, 
                                  fixBinaryVarsOnly, 
                                  percentageOfPeriodFreedom = percentageOfPeriodFreedom,
-                                 costsOfPeriodFreedom = costsOfPeriodFreedom)
+                                 costsOfPeriodFreedom = costsOfPeriodFreedom,
+                                 addPeakMax=[TS_P_el_Last], # add timeseries of period with maxPeak explicitly
+                                 addPeakMin=[TS_P_el_Last]
+                                 )
     
     es.printVariables()
     es.printEquations()
