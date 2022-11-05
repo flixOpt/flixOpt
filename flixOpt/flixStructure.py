@@ -811,34 +811,49 @@ class cCalculation :
     es: cEnergySystem
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
     def __init__(self, label, es : cEnergySystem, modType, chosenEsTimeIndexe = None, pathForSaving = '/results',):
-      self.label = label
-      self.nameOfCalc = None # name for storing results
-      self.es = es
-      self.modType    = modType
-      self.chosenEsTimeIndexe = chosenEsTimeIndexe
-      self.pathForSaving = pathForSaving
-      self.calcType = None # 'full', 'segmented', 'aggregated'
-      self._infos = {}
-      
-      self.listOfModbox = [] # liste der ModelBoxes (nur bei Segmentweise mehrere!)
-      self.durations = {} # Dauer der einzelnen Dinge
-      self.durations['modeling'] = 0
-      self.durations['solving'] = 0
-      self.TSlistForAggregation = None # list of timeseries for aggregation
-      # assert from_index < to_index
-      # assert from_index >= 0
-      # assert to_index <= len(self.es.timeSeries)-1    
-      
-      # Wenn chosenEsTimeIndexe = None, dann alle nehmen
-      if self.chosenEsTimeIndexe is None : self.chosenEsTimeIndexe = range(len(es.timeSeries))
-      (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)        
-      helpers.checkTimeSeries('chosenEsTimeIndexe', self.timeSeries)
-      
-      self.nrOfTimeSteps = len(self.timeSeries)    
-  
-      self.__results        = None
-      self.__results_struct = None # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
-      self.segmentModBoxList = [] # modBox list
+        '''
+        Parameters
+        ----------
+        label : str
+            name of calculation
+        es : cEnergySystem
+            energysystem which should be calculated
+        modType : 'pyomo','cvxpy' (not implemeted yet)
+            choose optimization modeling language
+        chosenEsTimeIndexe : None, list
+            list with indexe, which should be used for calculation. If None, then all timesteps are used.
+        pathForSaving : str
+            Path for result files. The default is '/results'.
+
+        '''
+        self.label = label
+        self.nameOfCalc = None # name for storing results
+        self.es = es
+        self.modType    = modType
+        self.chosenEsTimeIndexe = chosenEsTimeIndexe
+        self.pathForSaving = pathForSaving
+        self.calcType = None # 'full', 'segmented', 'aggregated'
+        self._infos = {}
+        
+        self.listOfModbox = [] # liste der ModelBoxes (nur bei Segmentweise mehrere!)
+        self.durations = {} # Dauer der einzelnen Dinge
+        self.durations['modeling'] = 0
+        self.durations['solving'] = 0
+        self.TSlistForAggregation = None # list of timeseries for aggregation
+        # assert from_index < to_index
+        # assert from_index >= 0
+        # assert to_index <= len(self.es.timeSeries)-1    
+        
+        # Wenn chosenEsTimeIndexe = None, dann alle nehmen
+        if self.chosenEsTimeIndexe is None : self.chosenEsTimeIndexe = range(len(es.timeSeries))
+        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)        
+        helpers.checkTimeSeries('chosenEsTimeIndexe', self.timeSeries)
+        
+        self.nrOfTimeSteps = len(self.timeSeries)    
+    
+        self.__results        = None
+        self.__results_struct = None # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
+        self.segmentModBoxList = [] # modBox list
     
     # Variante1:
     def doModelingAsOneSegment(self):
@@ -1030,6 +1045,7 @@ class cCalculation :
                                                addPeakMax_TSraw = addPeakMax, 
                                                addPeakMin_TSraw = addPeakMin,
                                                )
+      self.
       self.TScollectionForAgg.print()   
   
       import pandas as pd    
@@ -1479,7 +1495,11 @@ class cEffectType(cME):
     '''
   
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
-    def __init__(self, label, unit, description, isStandard = False, isObjective = False, specificShareToOtherEffects_operation = {}, specificShareToOtherEffects_invest = {}, 
+    def __init__(self, label, unit, description, 
+                 isStandard = False, 
+                 isObjective = False, 
+                 specificShareToOtherEffects_operation = {}, 
+                 specificShareToOtherEffects_invest = {}, 
                  min_operationSum = None, max_operationSum = None, 
                  min_investSum = None, max_investSum = None,
                  min_Sum = None, max_Sum = None,
@@ -1494,25 +1514,25 @@ class cEffectType(cME):
         description : str
             long name
         isStandard : boolean, optional
-            true, wenn Standard-Effekt (wenn direkte Eingabe bei Kostenpositionen ohne dict) , sonst false
+            true, if Standard-Effect (for direct input of value without effect (alternatively to dict)) , else false
         isObjective : boolean, optional
-            true, wenn optimization target
-        specificShareToOtherEffects_operation : {effectType: TS, ...}, z.B. 180 €/t_CO2, Angabe als {costs: 180}, optional
-            Beiträge zu anderen Effekten (nur operation)
-        specificShareToOtherEffects_invest : {effectType: TS, ...}, z.B. 180 €/t_CO2, Angabe als {costs: 180}, optional
-            Beiträge zu anderen Effekten (nur invest).
+            true, if optimization target
+        specificShareToOtherEffects_operation : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
+            share to other effects (only operation)
+        specificShareToOtherEffects_invest : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
+            share to other effects (only invest).
         min_operationSum : scalar, optional
-            minimale Summe (nur operation) des Effekts
+            minimal sum (only operation) of the effect
         max_operationSum : scalar, optional
-            maximale Summe (nur operation) des Effekts.
+            maximal sum (nur operation) of the effect.
         min_investSum : scalar, optional
-            minimale Summe (nur invest) des Effekts
+            minimal sum (only invest) of the effect
         max_investSum : scalar, optional
-            maximale Summe (nur invest) des Effekts
+            maximal sum (only invest) of the effect
         min_Sum : sclalar, optional
-            minimale Summe des Effekts.
+            min sum of effect (invest+operation).
         max_Sum : scalar, optional
-            maximale Summe des Effekts.
+            max sum of effect (invest+operation).
         **kwargs : TYPE
             DESCRIPTION.
 
@@ -1899,8 +1919,6 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
       
     def __init__(self, media, label, excessCostsPerFlowHour = 1e5, **kwargs):   
         '''
-        
-
         Parameters
         ----------
         media : None, str or set of str            
@@ -1912,16 +1930,12 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
         label : str
             name.
         excessCostsPerFlowHour : none or scalar, array or cTSraw
-            excess costs / penalty costs
+            excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
         **kwargs : TYPE
             DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
         '''
+        
         super().__init__(label,**kwargs)  
         if media is None: 
             self.media = media # alle erlaubt
