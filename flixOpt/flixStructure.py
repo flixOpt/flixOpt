@@ -1045,7 +1045,7 @@ class cCalculation :
                                                addPeakMax_TSraw = addPeakMax, 
                                                addPeakMin_TSraw = addPeakMin,
                                                )
-      self.
+
       self.TScollectionForAgg.print()   
   
       import pandas as pd    
