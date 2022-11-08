@@ -838,7 +838,7 @@ class cTransportation(cBaseComponent):
         self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
         self.eq_dir1.addSummand(self.in1.mod.var_val, (1-self.loss_rel.d_i))
         self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
-        if self.loss_abs is not None and self.loss_abs!=0 :
+        if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i!=0) :
             assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
             self.eq_dir1.addSummand(self.in1.mod.var_on, -1* self.loss_abs.d_i)
 
@@ -848,7 +848,7 @@ class cTransportation(cBaseComponent):
             self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
             self.eq_dir2.addSummand(self.in2.mod.var_val, 1-self.loss_rel.d_i)
             self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
-            if self.loss_abs is not None and self.loss_abs!=0:            
+            if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i!=0):            
                 
                 assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
                 self.eq_dir2.addSummand(self.in2.mod.var_on, -1* self.loss_abs.d_i)
