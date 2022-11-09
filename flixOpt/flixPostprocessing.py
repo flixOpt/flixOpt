@@ -21,6 +21,10 @@ class cFlow_post():
         # interaktiv, falls component explizit andere Farbe zugeordnet
         return self._getDefaultColor()        
 
+    @property
+    def label_full(self):
+        return self.comp + '.' + self.label
+
     def __init__(self,aDescr,flixResults):
         self.label = aDescr['label']
         self.bus   = aDescr['bus']
@@ -361,7 +365,30 @@ class flix_results():
             fig = plot_matplotlib(sums, labels, title, aText)
         return fig
                            
-            
+    def to_csv(self, busOrComponent, filename, sep ='\t'):
+        '''
+        saves flow-values to csv # TODO: TEMPORARY function only!
+
+        Parameters
+        ----------
+        busOrComponent : str
+            flows linked to this bus or component are chosen
+        filename : str
+            DESCRIPTION.
+        sep : str
+            separator, i.g. '/t', ';', ...
+        '''
+        
+        
+        (in_flows, out_flows) = self.getFlowsOf(busOrComponent)  
+
+        df = pd.DataFrame(index=self.timeSeries)
+        for flow in in_flows + out_flows:
+            flow:cFlow_post 
+            flow.label_full
+            df[flow.label_full] = flow.results['val']
+        df.to_csv(filename, sep = sep)
+        
     def plotInAndOuts(self, 
                       busOrComponent, 
                       stacked = False, 
@@ -587,7 +614,7 @@ class flix_results():
             assert (values>=0).all(), 'Warning, Zeitreihen '+ aFlow.label_full +' in inputs enthalten neg. Werte -> Darstellung Graph nicht korrekt'
                                 
             if flix_results.isGreaterMinFlowHours(values, dtInHours, minFlowHours): # nur wenn gewisse FlowHours-Sum überschritten
-                y[aFlow.comp + '.' + aFlow.label] = + values # ! positiv!
+                y[aFlow.label_full] = + values # ! positiv!
                 y_color.append(aFlow.color)
         return y, y_color
 

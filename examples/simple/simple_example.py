@@ -119,4 +119,5 @@ def uebersichtsPlot(aCalc):
 uebersichtsPlot(calc1_res)
 if calcSegs is not None : uebersichtsPlot(calcSegs)
 
+calc1_res.to_csv('Fernwaerme', 'FW.csv')
     
