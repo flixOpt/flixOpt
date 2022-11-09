@@ -19,15 +19,14 @@ solver_name = 'glpk' # warning, glpk quickly has numerical problems with big and
 # solver_name    = 'cbc'
 nrOfThreads    = 1
 
-### Durchführungs-Optionen: ###
+### calculation-options: ###
 # doSegmentedCalc = True
 doSegmentedCalc  = False
 checkPenalty    = False  
 excessCosts = None
-excessCosts = 1e5 # default vlaue
+excessCosts = 1e5 # default value
 ################
 
-import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 
@@ -100,7 +99,7 @@ aGaskessel = cKessel('Kessel', eta = 0.5, costsPerRunningHour = {costs:0, CO2:10
                                  valuesBeforeBegin=[50], 
                                  investArgs = invest_Gaskessel,
                                  sumFlowHours_max = 1e6,
-                                 ),       # maxGradient = 5),
+                                 ),
                     Q_fu = cFlow(label   = 'Q_fu', bus = Gas       , nominal_val = 200, min_rel = 0   , max_rel = 1)) 
 
 
@@ -130,7 +129,7 @@ costsInvestsizeSegments = [[5,25,25,100], #kW
                             }
                            ]
 
-# # alternative Angabe nur für Standardeffekt:
+# # alternative input only for standard-effect:
 # costsInvestsizeSegments = [[5,25,25,100], #kW
 #                             [50,250,250,800],#€
 #                           ]
@@ -160,12 +159,10 @@ aWaermeLast       = cSink  ('Wärmelast',sink   = cFlow('Q_th_Last' , bus = Fern
 
 aGasTarif         = cSource('Gastarif' ,source = cFlow('Q_Gas'     , bus = Gas  , nominal_val = 1000, costsPerFlowHour= {costs: 0.04, CO2: 0.3}))
 
-# aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -0.07*10))
 aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -1*np.array(p_el)))
 
 # Built energysystem:
 es = cEnergySystem(aTimeSeries, dt_last=None)
-# es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 es.addEffects(costs, CO2, PE)
 es.addComponents(aGaskessel, aWaermeLast, aGasTarif)
 es.addComponents(aStromEinspeisung)
