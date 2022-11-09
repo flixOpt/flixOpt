@@ -2,7 +2,7 @@
 ## PreProcessing + Solving: ##
 ##############################
 
-import simple_example_PreProcessing as example_pre
+import example_complex_PreProcessing as example_pre
 
 # Name der Rechnung:
 nameOfCalc = example_pre.aCalc.nameOfCalc
@@ -23,10 +23,10 @@ import flixPostprocessing as flixPost
 comp_colors = None
 # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
 
-calc1_res = flixPost.flix_results(nameOfCalc, comp_colors = comp_colors)
+calc1 = flixPost.flix_results(nameOfCalc, comp_colors = comp_colors)
 
 #explizite Farbänderung
-calc1_res.postObjOfStr('Waermelast').color = '#000000'
+calc1.postObjOfStr('Waermelast').color = '#000000'
 
 if nameOfCalcSegs is not None:  
   calcSegs = flixPost.flix_results(nameOfCalcSegs)
@@ -35,27 +35,27 @@ else:
 
 ##### plotting ######
 
-fig1 = calc1_res.plotInAndOuts('Fernwaerme',stacked=True)
+fig1 = calc1.plotInAndOuts('Fernwaerme',stacked=True)
 fig1.savefig('test1')
-fig2 = calc1_res.plotInAndOuts('Fernwaerme',plotAsPlotly = True)
+fig2 = calc1.plotInAndOuts('Fernwaerme',plotAsPlotly = True)
 fig2.write_html('test2.html')
 
-fig = calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast', sortBy='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast', sortBy='Waermelast')
 fig.show()
-fig = calc1_res.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast')
 fig.show()
-fig = calc1_res.plotInAndOuts('Fernwaerme',stacked=False, outFlowCompsAboveXAxis='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=False, outFlowCompsAboveXAxis='Waermelast')
 fig.show()
-fig = calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast', sortBy='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast', sortBy='Waermelast')
 fig.show()
-fig = calc1_res.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast')
 fig.show()
-fig = calc1_res.plotInAndOuts('BHKW2',stacked=True)
+fig = calc1.plotInAndOuts('BHKW2',stacked=True)
 fig.show()
 
-fig = calc1_res.plotShares(['Fernwaerme','Strom'], withoutStorage = True)
+fig = calc1.plotShares(['Fernwaerme','Strom'], withoutStorage = True)
 fig.show()
-fig = calc1_res.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True, unit='kWh')
+fig = calc1.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True, unit='kWh')
 fig.show()
 
 import matplotlib.pyplot as plt
@@ -63,16 +63,16 @@ from flixPlotHelperFcts import *
 
 # Zeitreihe greifen:
 print('Variante 1:')
-print(calc1_res.results['Kessel']['Q_th']['val'])
+print(calc1.results['Kessel']['Q_th']['val'])
 print('Variante 2:')
-print(calc1_res.results_struct.Kessel.Q_th.val)
+print(calc1.results_struct.Kessel.Q_th.val)
 
 
 # Beispiele von Zugriff:
-sum(calc1_res.results_struct.globalComp.costs.operation.sum_TS)
-calc1_res.results_struct.globalComp.costs.operation.sum
+sum(calc1.results_struct.globalComp.costs.operation.sum_TS)
+calc1.results_struct.globalComp.costs.operation.sum
 
-fuel = calc1_res.results_struct.Gastarif.Q_Gas.val * 0.04 - calc1_res.results_struct.Einspeisung.P_el.val * 0.7
+fuel = calc1.results_struct.Gastarif.Q_Gas.val * 0.04 - calc1.results_struct.Einspeisung.P_el.val * 0.7
 print(fuel)
 print(sum(fuel))
 
@@ -80,8 +80,8 @@ print(sum(fuel))
 ## sonstige Plots: ##
 
 # Test abschnittsweise linear:
-plt.plot(calc1_res.results_struct.BHKW2.P_el.val, calc1_res.results_struct.BHKW2.Q_th.val,'.',markersize=4,label='Q_th')
-plt.plot(calc1_res.results_struct.BHKW2.P_el.val, calc1_res.results_struct.BHKW2.Q_fu.val,'.',markersize=4,label='Q_fu')
+plt.plot(calc1.results_struct.BHKW2.P_el.val, calc1.results_struct.BHKW2.Q_th.val,'.',markersize=4,label='Q_th')
+plt.plot(calc1.results_struct.BHKW2.P_el.val, calc1.results_struct.BHKW2.Q_fu.val,'.',markersize=4,label='Q_fu')
 plt.legend()
 plt.grid()
 plt.show()
@@ -116,8 +116,8 @@ def uebersichtsPlot(aCalc):
   plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
   plt.show()
 
-uebersichtsPlot(calc1_res)
+uebersichtsPlot(calc1)
 if calcSegs is not None : uebersichtsPlot(calcSegs)
 
-calc1_res.to_csv('Fernwaerme', 'FW.csv')
+calc1.to_csv('Fernwaerme', 'FW.csv')
     

@@ -5,13 +5,13 @@ Created on Tue Oct  4 14:54:19 2022
 @author: Panitz
 """
 
-import simple_example
+import example_complex
 
-calc1_res= simple_example.calc1_res
+calc1= example_complex.calc1
 # ## TESTING: ##
 print('#############')
 print('## Testing ##')
-objective_value = calc1_res.infos['modboxes']['info'][0]['main_results']['Result of Obj']
+objective_value = calc1.infos['modboxes']['info'][0]['main_results']['Result of Obj']
 assert round(objective_value, -1) == -11600, '!!!Achtung Ergebnis-Änderung!!!'
 print('##   ok!   ##')
 print('#############')
