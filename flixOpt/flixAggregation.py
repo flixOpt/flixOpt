@@ -64,8 +64,11 @@ class flixAggregation:
 
         # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
         self.extremePeriodMethod = 'None'
-        if self.useExtremePeriods:
+        if self.useExtremePeriods:            
             self.extremePeriodMethod = 'new_cluster_center'
+            # check:
+            if self.addPeakMax == [] and self.addPeakMin == []:
+                raise Exception('no addPeakMax or addPeakMin timeseries given for extremePeriods!')
 
         # Initiales Setzen von Zeitreiheninformationen; werden überschrieben, falls Zeitreihenaggregation
         self.numberOfTimeSteps = len(self.timeseries.index)
