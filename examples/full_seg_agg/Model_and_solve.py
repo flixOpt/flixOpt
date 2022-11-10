@@ -12,7 +12,7 @@ Created on Fri Sep  4 11:26:10 2020
    # Medien-zulässigkeit 
 
 # solver:
-gapFrac        = 0.06
+gapFrac        = 0.01
 solver_name    = 'cbc'
 solver_name    = 'gurobi'
 
@@ -23,7 +23,7 @@ nameSuffix = '_' + solver_name # for saving-file
 ## Auswahl Rechentypen: ##
 
 doFullCalc = True
-doFullCalc = False
+# doFullCalc = False
 
 doSegmentedCalc = True
 doSegmentedCalc = False
@@ -355,32 +355,19 @@ if doFullCalc:
     del calcFull
     
     costs = full.results_struct.globalComp.costs.all.sum
-    if (np.round(costs) == np.round(361984.0791699171)):
-        print('################')
-        print('full: test is ok') 
-    else: 
-        raise Exception('test is not ok')
+
 if doAggregatedCalc:
     agg = flixPost.flix_results(calcAgg.nameOfCalc)
     listOfResults.append(agg)
     del calcAgg
     costs = agg.results_struct.globalComp.costs.all.sum
-    if (np.round(costs) == np.round(359613.8834453795)):
-        print('################')
-        print('agg: test is ok')
-    else:
-        raise Exception('test is not ok')
 
 if doSegmentedCalc:
     seg = flixPost.flix_results(calcSegs.nameOfCalc)
     listOfResults.append(seg)
     del calcSegs
     costs = seg.results_struct.globalComp.costs.all.sum
-    if all (np.round(costs) == np.round([210654.98636908, 269804.58925733])):
-        print('################')
-        print('seg: test is ok')    
-    else:
-        raise Exception('test is not ok')        
+
 
 ###### plotting #######
 
