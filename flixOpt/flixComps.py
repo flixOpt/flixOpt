@@ -139,6 +139,18 @@ class cBaseLinearTransformer(cBaseComponent):
 
         # linear segments:
         else:
+            
+            # check if investsize is variable for any flow:            
+            for flow in (self.inputs+self.outputs):
+                if (flow.investArgs is not None) and \
+                    not (flow.investArgs.investmentSize_is_fixed):                
+                        raise Exception('linearSegmentsOfFlows (in '+
+                                        self.label_full +
+                                        ') and variable nominal_value'+
+                                        '(invest_size) (in flow ' + 
+                                        flow.label_full + 
+                                        ') , does not make sense together!')
+            
             # Flow als Keys rauspicken und alle Stützstellen als cTS_Vector:
             self.segmentsOfFlows_TS = self.segmentsOfFlows
             for aFlow in self.segmentsOfFlows.keys():
