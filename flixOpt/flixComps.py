@@ -36,22 +36,52 @@ class cBaseLinearTransformer(cBaseComponent):
                           'Beschreibung-Flow-ZH: Abschnittsweise Lineare Beschreibung, dominant!')]
     not_used_args = []
 
-    def __init__(self, label, inputs, outputs, factor_Sets, segmentsOfFlows=None, **kwargs):
-        # factor_Sets:
-        # Gleichungen: sum (factor * flow_in) = sum (factor * flow_out)
-        # Faktoren können bereits cTS_vector sein!
-        # factor_Sets= [{Q_th: COP_th , Q_0 : 1},                          #
-        #               {P_el: COP_el , Q_0 : 1},                          # COP_th
-        #               {Q_th: 1 , P_el: 1, Q_0 : 1, Q_ab: 1}] # Energiebilanz
+    def __init__(self, label, inputs, outputs, factor_Sets=None, segmentsOfFlows=None, **kwargs):
+        '''
+        
 
-        # segments: Abschnittsweise linear. Anfang und Ende von Abschnitt angeben.
-        #           Faktoren können auch Listen sein!!!
-        #           Wenn Anfang von Abschnitt n+1 nicht Ende von Abschnitt n, dann "Lücke" d.h. nicht zulässiger Bereich
-        # segments = {Q_fu: [ 5  , 10,  10, 22], # Abschnitte von 5 bis 10 und 10 bis 22
-        #             P_el: [ 2  , 5,    5, 8 ],
-        #             Q_fu: [ 2.5, 4,    4, 12]}
-        #             --> auch Punkte können über Segment ausgedrückt werden, d.h. z.B [5, 5]
-        #
+        Parameters
+        ----------
+        label : str
+            name.
+        inputs : list of flows
+            input flows.
+        outputs : list of flows
+            output flows.
+        factor_Sets : list
+            linear relation between flows
+            eq: sum (factor * flow_in) = sum (factor * flow_out)
+            factor can be cTS_vector, scalar or list
+
+            example heat pump:  
+                
+            >>> factor_Sets= [{Q_th: COP_th , Q_0 : 1}
+                              {P_el: COP_el , Q_0 : 1},              # COP_th
+                              {Q_th: 1 , P_el: 1, Q_0 : 1, Q_ab: 1}] # Energiebilanz
+                
+        segmentsOfFlows : dict
+            Segmented linear correlation. begin and end of segment has to be given/defined.
+            factors can be scalar or lists (i.e.timeseries)!
+            if Begin of segment n+1 is not end of segment n, then "gap", i.e. not allowed area
+            
+            example with two segments:
+            
+            >>> #           flow    begin, end, begin, end
+                segments = {Q_fu: [ 5    , 10,  10,    22], # Abschnitte von 5 bis 10 und 10 bis 22
+                            P_el: [ 2    , 5,   5,     8 ],
+                            Q_fu: [ 2.5  , 4,   4,     12]}
+            
+            --> "points" can expressed as segment with same begin and end, i.g. [5, 5]
+
+
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
 
         super().__init__(label, **kwargs)
         # args to attributes:
@@ -59,6 +89,12 @@ class cBaseLinearTransformer(cBaseComponent):
         self.outputs = outputs
         self.factor_Sets = factor_Sets
         self.segmentsOfFlows = segmentsOfFlows
+        if (factor_Sets is None) and (segmentsOfFlows is None):            
+            raise Exception('factor_Sets or segmentsOfFlows must be defined!')
+        elif (factor_Sets is not None) and (segmentsOfFlows is not None):
+            raise Exception('Either factor_Sets or segmentsOfFlows must \
+                            be defined! Not Both!')
+            
 
     def transformFactorsToTS(self, factor_Sets):
         """
@@ -199,10 +235,14 @@ class cBaseLinearTransformer(cBaseComponent):
 
     def setLinearSegments(self, segmentsOfFlows):
         """
-
-        :param segmentsOfFlows:
+        alternative input of segments -> advantage: flows are already integrated
+        
+        segmentsOfFlow: dict
+            description see in arguments of flow
         :return:
         """
+        print('#################')
+        print('warning: function setLinearSegments() will be replaced! Use init argument segmentsOfFlows instead!')
         self.segmentsOfFlows = segmentsOfFlows  # attribute of mother-class
 
 
@@ -758,7 +798,7 @@ class cTransportation(cBaseComponent):
     
     def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0, loss_abs=0, isAlwaysOn=True, avoidFlowInBothDirectionsAtOnce = True, **kwargs):
         '''
-        Rohr with loss (when no flow, then loss is still there and has to be
+        pipe with loss (when no flow, then loss is still there and has to be
         covered by one in-flow (gedanklicher Überströmer)
 
         Parameters

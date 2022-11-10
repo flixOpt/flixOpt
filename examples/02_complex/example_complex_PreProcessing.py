@@ -21,6 +21,7 @@ nrOfThreads    = 1
 
 ### calculation-options: ###
 # doSegmentedCalc = True
+useCHPwithLinearSegments = False
 doSegmentedCalc  = False
 checkPenalty    = False  
 excessCosts = None
@@ -109,16 +110,20 @@ aKWK  = cKWK('BHKW2', eta_th = 0.5, eta_el = 0.4, switchOnCosts =  0.01,
             Q_fu = cFlow('Q_fu',bus = Gas, nominal_val = 1e3),on_valuesBeforeBegin = [1])
 
 
-aKWK2 = cKWK('BHKW2', eta_th = 0.5, eta_el=0.4, switchOnCosts = 0.01,
-            P_el = cFlow('P_el',bus = Strom     , nominal_val = 60, min_rel = 0),
-            Q_th = cFlow('Q_th',bus = Fernwaerme),
-            Q_fu = cFlow('Q_fu',bus = Gas),on_valuesBeforeBegin = [1])
 
 
-# linear segments (eta-definitions than become useless!)
-aKWK2.setLinearSegments({aKWK2.P_el: [5  ,30, 40,60 ], # elemente können auch liste sein!
-                         aKWK2.Q_th: [6  ,35, 45,100], 
-                         aKWK2.Q_fu: [12 ,70, 90,200]})
+# alternative CHP with linear segments :
+P_el = cFlow('P_el', bus=Strom, nominal_val=60, max_rel=55)
+Q_th = cFlow('Q_th', bus=Fernwaerme)
+Q_fu = cFlow('Q_fu', bus=Gas)
+# linear segments (eta-definitions than become useless!):
+segmentsOfFlows = ({P_el: [5  ,30, 40,60 ], # elements an be list (timeseries)
+                   Q_th: [6  ,35, 45,100], 
+                   Q_fu: [12 ,70, 90,200]})
+
+aKWK2 = cBaseLinearTransformer('BHKW2', inputs = [Q_fu], outputs = [P_el, Q_th], segmentsOfFlows = segmentsOfFlows, switchOnCosts = 0.01, on_valuesBeforeBegin = [1])
+
+
 
 
 # Anmerkung: Punkte über Segmentstart = Segmentende realisierbar, d.h. z.B. [4,4]
@@ -166,8 +171,12 @@ es = cEnergySystem(aTimeSeries, dt_last=None)
 es.addEffects(costs, CO2, PE)
 es.addComponents(aGaskessel, aWaermeLast, aGasTarif)
 es.addComponents(aStromEinspeisung)
-es.addComponents(aKWK)
 
+if useCHPwithLinearSegments:
+    es.addComponents(aKWK2)
+else:
+    es.addComponents(aKWK)
+    
 es.addComponents(aSpeicher)
 
 chosenEsTimeIndexe = None
