@@ -109,6 +109,11 @@ solverProps = {'gapFrac': gapFrac,
 
 aCalc.solve(solverProps, nameSuffix = '_' + solver_name)
 # .. results are saved under /results/...
+# these files are written:
+# -> json-file with model- and solve-Informations!
+# -> log-file
+# -> data-file
+
 
 ##############################
 ## direct access to results ##

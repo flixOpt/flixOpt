@@ -639,11 +639,12 @@ class flix_results():
         
         
         def _appendEndIndex(y, lastIndex):   
-            # hänge noch einen Zeitschrtt mit gleichen Werten an (withEnd!) damit vollständige Darstellung
-            lastRow = y.iloc[-1] # kopiere aktuell letzte
+            # append timestep for full visualization in graphs (steps)
+            lastRow = y.iloc[[-1]] # copy last timestep
+            lastRow.index = [lastIndex] # replace index
 
-            lastRow = lastRow.rename(lastIndex) # Index ersetzen -> letzter Zeitschritt als index        
-            y=y.append(lastRow) # anhängen
+            y =pd.concat([y,lastRow]) # append last row
+
             return y
 
         # add last step: (for visu of last timestep-width in plot)
