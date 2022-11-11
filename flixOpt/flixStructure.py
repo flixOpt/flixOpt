@@ -857,6 +857,10 @@ class cCalculation :
     
     # Variante1:
     def doModelingAsOneSegment(self):
+      '''
+        modeling full problem
+
+      '''
       self.checkIfAlreadyModeled()
       self.calcType = 'full'
       # System finalisieren:
@@ -877,6 +881,39 @@ class cCalculation :
     
     # Variante2:
     def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix = '', nameSuffix ='', aPath = 'results/'):
+      '''
+        Dividing and Modeling the problem in (overlapped) time-segments. 
+        Storage values as result of segment n are overtaken 
+        to the next segment n+1 for timestep, which is first in segment n+1
+        
+        Afterwards timesteps of segments (without overlap) 
+        are put together to the full timeseries
+        
+        Because the result of segment n is used in segment n+1, modeling and 
+        solving is both done in this method
+        
+        Take care: 
+        Parameters like investArgs, loadfactor etc. does not make sense in 
+        segmented modeling, cause they are newly defined in each segment
+    
+        Parameters
+        ----------
+        solverProps : TYPE
+            DESCRIPTION.
+        segmentLen : int
+            nr Of Timesteps of Segment.
+        nrOfUsedSteps : int
+            nr of timesteps used/overtaken in resulting complete timeseries
+            (the timesteps after these are "overlap" and used for better 
+            results of chargestate of storages)
+        namePrefix : str
+            prefix-String for name of calculation. The default is ''.
+        nameSuffix : str
+            suffix-String for name of calculation. The default is ''.
+        aPath : str
+            path for output. The default is 'results/'.
+        
+        '''
       self.checkIfAlreadyModeled()
       self._infos['segmentedProps'] = {'segmentLen':segmentLen, 'nrUsedSteps':  nrOfUsedSteps}
       self.calcType = 'segmented'
