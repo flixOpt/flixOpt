@@ -17,11 +17,11 @@ import numpy as np
 def test_full():
     if Model_and_solve.doFullCalc:
         costs = Model_and_solve.full.results_struct.globalComp.costs.all.sum
-        eq_(np.round(costs,-1), np.round(343849,-1))
+        eq_(np.round(costs,-1), np.round(343640,-1))
 def test_agg():
     if Model_and_solve.doAggregatedCalc:
         costs = Model_and_solve.agg.results_struct.globalComp.costs.all.sum
-        eq_(np.round(costs,-1) , np.round(340274.0,-1)) 
+        eq_(np.round(costs,-2) , np.round(340260.0,-2)) 
 def test_segmented():
     if Model_and_solve.doSegmentedCalc:
         costs = Model_and_solve.seg.results_struct.globalComp.costs.all.sum

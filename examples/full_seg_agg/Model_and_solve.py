@@ -12,7 +12,7 @@ Created on Fri Sep  4 11:26:10 2020
    # Medien-zulässigkeit 
 
 # solver:
-gapFrac        = 0.001
+gapFrac        = 0.0005
 solver_name    = 'cbc'
 solver_name    = 'gurobi'
 
