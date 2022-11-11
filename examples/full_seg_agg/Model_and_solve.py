@@ -12,7 +12,7 @@ Created on Fri Sep  4 11:26:10 2020
    # Medien-zulässigkeit 
 
 # solver:
-gapFrac        = 0.01
+gapFrac        = 0.001
 solver_name    = 'cbc'
 solver_name    = 'gurobi'
 
@@ -66,7 +66,8 @@ calcAgg  = None
 # ######################  Data Import  ####################################
 
 # Daten einlesen
-ts_raw = pd.read_csv('Zeitreihen2020.csv', index_col=0)
+filename = os.path.join(os.path.dirname(__file__), "Zeitreihen2020.csv")
+ts_raw = pd.read_csv(filename, index_col=0)
 ts_raw = ts_raw.sort_index()
 
 #ts = ts_raw['2020-01-01 00:00:00':'2020-12-31 23:45:00']  # EDITIEREN FÜR ZEITRAUM
