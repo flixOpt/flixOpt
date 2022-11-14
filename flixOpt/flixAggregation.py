@@ -300,9 +300,37 @@ import flixStructure
 import flixComps
 from basicModeling import *
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
-class cAggregationModeling(flixStructure.cME):  
-   
+class cAggregationModeling(flixStructure.cME):     
   def __init__(self,label, es, indexVectorsOfClusters, fixStorageFlows = True, fixBinaryVarsOnly=True, listOfMEsToClusterize = None, percentageOfPeriodFreedom = 0, costsOfPeriodFreedom = 0, **kwargs):
+      '''
+      
+
+      Parameters
+      ----------
+      label : TYPE
+          DESCRIPTION.
+      es : TYPE
+          DESCRIPTION.
+      indexVectorsOfClusters : TYPE
+          DESCRIPTION.
+      fixStorageFlows : TYPE, optional
+          DESCRIPTION. The default is True.
+      fixBinaryVarsOnly : TYPE, optional
+          DESCRIPTION. The default is True.
+      listOfMEsToClusterize : TYPE, optional
+          DESCRIPTION. The default is None.
+      percentageOfPeriodFreedom : TYPE, optional
+          DESCRIPTION. The default is 0.
+      costsOfPeriodFreedom : TYPE, optional
+          DESCRIPTION. The default is 0.
+      **kwargs : TYPE
+          DESCRIPTION.
+
+      Returns
+      -------
+      None.
+
+      '''
       es: flixStructure.cEnergySystem           
       self.es = es
       self.indexVectorsOfClusters = indexVectorsOfClusters
@@ -441,5 +469,6 @@ class cAggregationModeling(flixStructure.cME):
       for var_K in self.var_K_list:  
         # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!     
         globalComp.objective.addSummandSumOf(var_K, self.costsOfPeriodFreedom)
+
 
 

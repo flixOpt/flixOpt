@@ -1012,34 +1012,46 @@ class cCalculation :
                              addPeakMax = [],
                              addPeakMin = []):
       '''
-        
+        method of aggregated modeling. 
+        1. Finds typical periods.
+        2. Equalizes variables of typical periods. 
   
         Parameters
         ----------
-        periodLengthInHours : TYPE
-            DESCRIPTION.
-        noTypicalPeriods : TYPE
-            DESCRIPTION.
-        useExtremePeriods : TYPE
-            DESCRIPTION.
-        fixStorageFlows : TYPE
-            DESCRIPTION.
-        fixBinaryVarsOnly : TYPE
-            DESCRIPTION.
-        percentageOfPeriodFreedom : TYPE, optional
-            DESCRIPTION. The default is 0.
-        costsOfPeriodFreedom : TYPE, optional
-            DESCRIPTION. The default is 0.
-  
+        periodLengthInHours : float
+            length of one period.
+        noTypicalPeriods : int
+            no of typical periods
+        useExtremePeriods : boolean
+            True, if periods of extreme values should be explicitly chosen
+            Define recognised timeseries in args addPeakMax, addPeakMin!
+        fixStorageFlows : boolean
+            Defines, wether load- and unload-Flow should be also aggregated or not. 
+            If all other flows are fixed, it is mathematically not necessary 
+            to fix them.
+        fixBinaryVarsOnly : boolean
+            True, if only binary var should be aggregated. 
+            Additionally choose, wether orginal or aggregated timeseries should 
+            be chosen for the calculation.
+        percentageOfPeriodFreedom : 0...100
+            Normally timesteps of all periods in one period-collection 
+            are all equalized. Here you can choose, which percentage of values 
+            can maximally deviate from this and be "free variables". The solver
+            chooses the "free variables".
+        costsOfPeriodFreedom : float
+            costs per "free variable". The default is 0.
+            !! Warning: At the moment these costs are allocated to 
+            operation costs, not to penalty!!
+        useOriginalTimeSeries : boolean. 
+            orginal or aggregated timeseries should 
+            be chosen for the calculation. default is False.    
         addPeakMax : list of cTSraw ...
-            
+            list of data-timeseries. The period with the max-value are 
+            chosen as a explicitly period.            
         addPeakMin : list of cTSraw
-            
-  
-        Raises
-        ------
-        Exception
-            DESCRIPTION.
+            list of data-timeseries. The period with the min-value are 
+            chosen as a explicitly period.            
+          
   
         Returns
         -------
