@@ -454,7 +454,7 @@ class cAggregationModeling(flixStructure.cME):
     
       # Begrenzung der Korrektur-Anzahl:
       # eq: sum(K) <= n_Corr_max
-      self.noOfCorrections = round(self.percentageOfPeriodFreedom/100 * var_K.len)              
+      self.noOfCorrections = round(self.percentageOfPeriodFreedom/100 * var_K1.len)              
       eq_max = flixStructure.cEquation('maxNoOfCorrections_' + aVar.label_full, self , modBox, eqType = 'ineq')
       eq_max.addSummandSumOf(var_K1, 1)
       eq_max.addSummandSumOf(var_K0, 1)
