@@ -402,22 +402,35 @@ class cAggregationModeling(flixStructure.cME):
     
     # Korrektur: (bisher nur für Binärvariablen:)
     if aVar.isBinary and self.percentageOfPeriodFreedom > 0:
-      # Korrektur-Variablen (so viele wie Indexe in eq:)
-      var_K = cVariable('Korr_' + aVar.label_full.replace('.','_'), eq.nrOfSingleEquations, self , modBox, isBinary = True)
-      # Gleichung erweitern:
-      # --> Korrektur On(p3) kann wieder 0/1 unabh. von On(p1,t) sein!
-      # eq1: On(p1,t) - On(p3,t) + K(p3,t) = 0 --> Korrektur On(p3) kann wieder 0/1 unabh. von On(p1,t) sein!
-      eq.addSummand(var_K, +1)    
-      self.var_K_list.append(var_K)
+      # correction-vars (so viele wie Indexe in eq:)
+      var_K1 = cVariable('Korr1_' + aVar.label_full.replace('.','_'), eq.nrOfSingleEquations, self , modBox, isBinary = True)
+      var_K0 = cVariable('Korr0_' + aVar.label_full.replace('.','_'), eq.nrOfSingleEquations, self , modBox, isBinary = True)
+      # equation extends ... 
+      # --> On(p3) can be 0/1 independent of On(p1,t)!
+      # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0 
+      # --> correction On(p3) can be:
+      #  On(p1,t) = 1 -> On(p3) can be 0 -> K0=1 (,K1=0)
+      #  On(p1,t) = 0 -> On(p3) can be 1 -> K1=1 (,K0=1)
+      eq.addSummand(var_K1, +1)    
+      eq.addSummand(var_K0, -1)    
+      self.var_K_list.append(var_K1)
+      self.var_K_list.append(var_K0)
+    
+    
+      # interlock var_K1 and var_K2:
+      # eq: var_K0(t)+var_K1(t) <= 1.1
+      eq_lock = flixStructure.cEquation('lock_K0andK1' + aVar.label_full, self , modBox, eqType = 'ineq')
+      eq_lock.addSummand(var_K0,1)
+      eq_lock.addSummand(var_K1,1)
+      eq_lock.addRightSide(1.1)          
     
       # Begrenzung der Korrektur-Anzahl:
       # eq: sum(K) <= n_Corr_max
-      if self.percentageOfPeriodFreedom:
-        self.noOfCorrections = round(self.percentageOfPeriodFreedom/100 * var_K.len)        
-      
-      eq = flixStructure.cEquation('maxNoOfCorrections_' + aVar.label_full, self , modBox, eqType = 'ineq')
-      eq.addSummandSumOf(var_K, 1)
-      eq.addRightSide(self.noOfCorrections)  # Maximum  
+      self.noOfCorrections = round(self.percentageOfPeriodFreedom/100 * var_K.len)              
+      eq_max = flixStructure.cEquation('maxNoOfCorrections_' + aVar.label_full, self , modBox, eqType = 'ineq')
+      eq_max.addSummandSumOf(var_K1, 1)
+      eq_max.addSummandSumOf(var_K0, 1)
+      eq_max.addRightSide(self.noOfCorrections)  # Maximum  
     return eq
 
     
