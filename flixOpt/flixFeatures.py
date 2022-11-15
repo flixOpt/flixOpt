@@ -784,7 +784,7 @@ class cInvestArgs(cArgsClass):
         fixCosts : scalar
             fixed investment-costs if invested 
             
-            (Attention: annualize costs to chosen period!)
+            (Attention: Annualize costs to chosen period!)
             
         investmentSize_is_fixed: boolean
             # True: fixed nominal_value; false: nominal_value as optimization-variable
@@ -792,7 +792,7 @@ class cInvestArgs(cArgsClass):
             if True: investment is not forced.
         specificCosts: scalar or cost-dict, i.g. {costs: 3, CO2: 0.3}      
             specific costs, i.g. in €/kW_nominal or €/m²_nominal    
-            (Attention: annualize costs to chosen period!)
+            (Attention: Annualize costs to chosen period!)
         costsInInvestsizeSegments: 
             linear relation in segments, [invest_segments, cost_segments]
             with this you can also realise valid segments of investSize (and gaps of non-available sizes)
@@ -810,7 +810,8 @@ class cInvestArgs(cArgsClass):
             >>>  [50,250,250,800],#€ 
             >>> ]                
             
-            (Attention: annualize costs to chosen period!)
+            (Attention: Annualize costs to chosen period!)
+            (args 'specificCosts' and 'fixCosts' can be used in parallel to InvestsizeSegments)
         
         min_investmentSize: scalar
             Min nominal value (only if: nominal_val_is_fixed = False)
