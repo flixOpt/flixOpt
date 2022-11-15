@@ -67,8 +67,8 @@ class flixAggregation:
         if self.useExtremePeriods:            
             self.extremePeriodMethod = 'new_cluster_center'
             # check:
-            if self.addPeakMax == [] and self.addPeakMin == []:
-                raise Exception('no addPeakMax or addPeakMin timeseries given for extremePeriods!')
+            if not(self.addPeakMax) and not(self.addPeakMin):
+                raise Exception('addPeakMax or addPeakMin timeseries given if useExtremValues=True!')
 
         # Initiales Setzen von Zeitreiheninformationen; werden überschrieben, falls Zeitreihenaggregation
         self.numberOfTimeSteps = len(self.timeseries.index)
