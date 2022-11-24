@@ -545,6 +545,20 @@ class cEquation :
  
      
   def addRightSide(self,aValue):
+    '''
+      value of the right side, 
+      if method is executed several times, than values are summed up.
+
+      Parameters
+      ----------
+      aValue : TYPE
+          DESCRIPTION.
+
+      Returns
+      -------
+      None.
+
+      '''
     # Wert ablegen    
     self.y_shares.append(aValue)    
 

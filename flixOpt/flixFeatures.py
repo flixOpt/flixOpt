@@ -668,23 +668,41 @@ class cFeatureOn(cFeature) :
 
 # TODO: als cFeature_TSShareSum
 class cFeature_ShareSum(cFeature): #(ME = ModelingElement)
-# sharesAreTS = True : 
-#   Output: 
-#     var_all (TS), var_sum
-#   variables:
-#     sum_TS (Zeitreihe)
-#     sum    (Skalar)
-#   Equations: 
-#     eq_sum_TS : sum_TS = sum(share_TS_i) # Zeitserie
-#     eq_sum    : sum    = sum(sum_TS(t)) # skalar
 
-# sharesAreTS = False: 
-#   Output: 
-#     var_sum
-#   Equations:
-#     eq_sum   : sum     = sum(share_i) # skalar
   
     def __init__(self, label, owner, sharesAreTS, maxOfSum = None, minOfSum = None):
+        '''
+        sharesAreTS = True : 
+          Output: 
+            var_all (TS), var_sum
+          variables:
+            sum_TS (Zeitreihe)
+            sum    (Skalar)
+          Equations: 
+            eq_sum_TS : sum_TS = sum(share_TS_i) # Zeitserie
+            eq_sum    : sum    = sum(sum_TS(t)) # skalar
+
+        # sharesAreTS = False: 
+        #   Output: 
+        #     var_sum
+        #   Equations:
+        #     eq_sum   : sum     = sum(share_i) # skalar
+
+        Parameters
+        ----------
+        label : TYPE
+            DESCRIPTION.
+        owner : TYPE
+            DESCRIPTION.
+        sharesAreTS : TYPE
+            DESCRIPTION.
+        maxOfSum : TYPE, optional
+            DESCRIPTION. The default is None.
+        minOfSum : TYPE, optional
+            DESCRIPTION. The default is None.
+
+
+        '''
         super().__init__(label, owner)
         self.sharesAreTS = sharesAreTS
         self.maxOfSum    = maxOfSum
@@ -723,9 +741,22 @@ class cFeature_ShareSum(cFeature): #(ME = ModelingElement)
             self.eq_sum.addSummand(self.mod.var_sum, -1)
         
     
-    # Beiträge zu Effekt_Sum registrieren:    
-    # factor : TS oder skalar, bei sharesAreTS=False nur skalar
     def addConstantShare(self, factor1, factor2):
+        '''
+        Beiträge zu Effekt_Sum registrieren
+
+        Parameters
+        ----------
+        factor1 : TS oder skalar, bei sharesAreTS=False nur skalar
+            DESCRIPTION.
+        factor2 : TS oder skalar, bei sharesAreTS=False nur skalar
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
         self.addShare(self, None, factor1, factor2)
     
     def addVariableShare(self, variable, factor1, factor2): # if variable = None, then fix Share

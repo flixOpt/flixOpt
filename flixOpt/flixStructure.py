@@ -1631,11 +1631,12 @@ class cEffectType(cME):
         super().declareVarsAndEqs(modBox)
         self.operation.doModeling(modBox, timeIndexe)
         self.invest   .doModeling(modBox, timeIndexe)
-        self.all      .doModeling(modBox, timeIndexe)
+
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
         self.all.addVariableShare(self.operation.mod.var_sum, 1, 1)
         self.all.addVariableShare(self.invest   .mod.var_sum, 1, 1)
+        self.all.doModeling(modBox, timeIndexe)
       
 # ModelingElement (ME) Klasse zum Summieren einzelner Shares
 # geht für skalar und TS
