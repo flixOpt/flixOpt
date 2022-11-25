@@ -1634,8 +1634,8 @@ class cEffectType(cME):
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
-        self.all.addVariableShare(self.operation.mod.var_sum, 1, 1)
-        self.all.addVariableShare(self.invest   .mod.var_sum, 1, 1)
+        self.all.addVariableShare(self.operation.mod.var_sum, 1, 1, None)
+        self.all.addVariableShare(self.invest   .mod.var_sum, 1, 1, None)
         self.all.doModeling(modBox, timeIndexe)
       
 # ModelingElement (ME) Klasse zum Summieren einzelner Shares
@@ -1871,22 +1871,22 @@ class cGlobal(cME):
     #   2. TS oder skalar 
     #     -> Zuweisung zu Standard-EffektType      
       
-    def addShareToOperation(self, aVariable, effect_values, factor):
+    def addShareToOperation(self, nameOfShare, aVariable, effect_values, factor):
       if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
-      self.__addShare('operation', effect_values, factor, aVariable)
+      self.__addShare('operation', nameOfShare, effect_values, factor, aVariable)
   
-    def addConstantShareToOperation(self, effect_values, factor):
-      self.__addShare('operation', effect_values, factor)
+    def addConstantShareToOperation(self, nameOfShare, effect_values, factor):
+      self.__addShare('operation', nameOfShare, effect_values, factor)
       
-    def addShareToInvest   (self, aVariable, effect_values, factor):
+    def addShareToInvest   (self, nameOfShare, aVariable, effect_values, factor):
       if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
-      self.__addShare('invest'   , effect_values, factor, aVariable)
+      self.__addShare('invest'   , nameOfShare, effect_values, factor, aVariable)
       
-    def addConstantShareToInvest   (self, effect_values, factor):
-      self.__addShare('invest'   , effect_values, factor)    
+    def addConstantShareToInvest   (self, nameOfShare, effect_values, factor):
+      self.__addShare('invest'   , nameOfShare, effect_values, factor)    
     
     # wenn aVariable = None, dann constanter Share
-    def __addShare(self, operationOrInvest, effect_values, factor, aVariable = None):
+    def __addShare(self, operationOrInvest, nameOfShare, effect_values, factor, aVariable = None):
       aEffectSum : cFeature_ShareSum
       
       effect_values_dict = getEffectDictOfEffectValues(effect_values)
@@ -1900,9 +1900,9 @@ class cGlobal(cME):
           raise Exception('Effect \'' + effectType.label + '\' was not added to model (but used in some costs)!')        
           
         if operationOrInvest   == 'operation':        
-          effectType.operation.addShare(aVariable, value, factor) # hier darf aVariable auch None sein!
+          effectType.operation.addShare(aVariable, value, factor, nameOfShare) # hier darf aVariable auch None sein!
         elif operationOrInvest == 'invest':
-          effectType.invest   .addShare(aVariable, value, factor) # hier darf aVariable auch None sein!
+          effectType.invest   .addShare(aVariable, value, factor, nameOfShare) # hier darf aVariable auch None sein!
         else:
           raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
   
@@ -1936,14 +1936,15 @@ class cGlobal(cME):
         # Beitrag/Share ergänzen:
         # 1. operation: -> hier sind es Zeitreihen (share_TS)
         # alle specificSharesToOtherEffects durchgehen:
+        nameOfShare = 'fromEffect_' + effectType.label
         for effectTypeOfShare, specShare_TS in effectType.specificShareToOtherEffects_operation.items():               
           # Share anhängen (an jeweiligen Effekt):
-          effectTypeOfShare.operation.addVariableShare(effectType.operation.mod.var_sum_TS, specShare_TS, 1)
+          effectTypeOfShare.operation.addVariableShare(effectType.operation.mod.var_sum_TS, specShare_TS, 1, nameOfShare)
         # 2. invest:    -> hier ist es Skalar (share)
         # alle specificSharesToOtherEffects durchgehen:
         for effectTypeOfShare, specShare in effectType.specificShareToOtherEffects_invest.items():                     
           # Share anhängen (an jeweiligen Effekt):
-          effectTypeOfShare.invest.addVariableShare(effectType.invest.mod.var_sum   , specShare   , 1)
+          effectTypeOfShare.invest.addVariableShare(effectType.invest.mod.var_sum   , specShare   , 1, nameOfShare)
                          
         
       
@@ -2054,8 +2055,9 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
       super().addShareToGlobals(globalComp, modBox)
       # Strafkosten hinzufügen:
       if self.withExcess :      
-        globalComp.penalty.addVariableShare(self.excessIn , self.excessCostsPerFlowHour, modBox.dtInHours)
-        globalComp.penalty.addVariableShare(self.excessOut, self.excessCostsPerFlowHour, modBox.dtInHours)
+        shareHolder = self.label_full
+        globalComp.penalty.addVariableShare(self.excessIn , self.excessCostsPerFlowHour, modBox.dtInHours, shareHolder + '_excessIn')
+        globalComp.penalty.addVariableShare(self.excessOut, self.excessCostsPerFlowHour, modBox.dtInHours, shareHolder + '_excessOut')
         # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
         # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
       
@@ -2487,13 +2489,14 @@ class cFlow(cME):
               
       
     def addShareToGlobals(self, globalComp:cGlobal, modBox) :
+        
         # Arbeitskosten:
         if self.costsPerFlowHour is not None: 
           # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
           # variable_costs          = cVector(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))  
           # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.d_i, modBox.dtInHours)) # np.multiply = elementweise Multiplikation          
-  
-          globalComp.addShareToOperation(self.mod.var_val, self.costsPerFlowHour, modBox.dtInHours)
+          shareHolder = self.label_full
+          globalComp.addShareToOperation(shareHolder + '_perFlowHour', self.mod.var_val, self.costsPerFlowHour, modBox.dtInHours)
             
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
         self.featureOn.addShareToGlobals(globalComp,modBox)
@@ -2558,6 +2561,5 @@ class cFlow(cME):
 #     if 
 
 
-  
 
 
