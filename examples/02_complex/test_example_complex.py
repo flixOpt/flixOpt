@@ -6,7 +6,7 @@ Created on Tue Oct  4 14:54:19 2022
 """
 from nose.tools import eq_
 
-import example_complex
+import example_complex_ModelAndSolve
 
 def test_results():
 
