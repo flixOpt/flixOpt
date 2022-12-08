@@ -22,8 +22,8 @@ nameSuffix = '_' + solver_name # for saving-file
 
 ## Auswahl Rechentypen: ##
 
-doFullCalc = True
-# doFullCalc = False
+# doFullCalc = True
+doFullCalc = False
 
 doSegmentedCalc = True
 doSegmentedCalc = False
@@ -90,22 +90,12 @@ data_sub = data[0:nrOfZeitschritte]
 # data_sub = data['2020-01-01':'2020-01-07 23:45:00']
 data_sub = data['2020-01-01':'2020-01-01 23:45:00']
 data_sub = data['2020-07-01':'2020-07-07 23:45:00']
-# data_sub = data['2020-07-01':'2020-07-02 21:45:00']
 #halbes Jahr:
 data_sub = data['2020-01-01':'2020-06-30 23:45:00']
 data_sub = data
 data_sub = data['2020-01-01':'2020-01-15 23:45:00']
 data_sub = data['2020-01-01':'2020-01-03 23:45:00']
-# data_sub = data['2020-01-01':'2020-01-30 23:45:00']
-#data_sub = data['2020-07-01':'2020-07-03 23:45:00'] # Testrechnung Peter Problem-Lösung: 203 sec, Ergebnis: 367034,07
-#data_sub = data['2020-01-01':'2020-12-31 23:45:00'] # Testrechnung Peter Problem-Lösung: 203 sec, Ergebnis: 367034,07
-# data_sub = data['2020-07-01':'2020-07-03 10:45:00'] # Testrechnung Peter Problem-Lösung: 203 sec, Ergebnis: 367034,07
-# data_sub = data['2020-07-01':'2020-07-01 23:45:00']
-# data_sub = data['2020-07-01':'2020-07-28 23:45:00'] # Testrechnung Peter2
-#data_sub = data['2020-05-01':'2020-05-03 23:45:00']
 
-
-# DH.plotMyData(data_sub)
 
 # Zeit-Index:
 aTimeIndex = data_sub.index
@@ -118,14 +108,10 @@ P_el_Last = data_sub['P_Netz/MW']
 Q_th_Last = data_sub['Q_Netz/MW']
 p_el = data_sub['Strompr.€/MWh']
 
-data_sub['Handelsgrenze_EK_min']=0
-HG_EK_min = data_sub['Handelsgrenze_EK_min']
-data_sub['Handelsgrenze_EK_max']=100000
-HG_EK_max = data_sub['Handelsgrenze_EK_max']
-data_sub['Handelsgrenze_VK_min']=-100000
-HG_VK_min = data_sub['Handelsgrenze_VK_min']
-data_sub['Handelsgrenze_VK_max']=0
-HG_VK_max = data_sub['Handelsgrenze_VK_max']
+HG_EK_min = 0
+HG_EK_max = 100000
+HG_VK_min = -100000
+HG_VK_max = 0
 gP = data_sub['Gaspr.€/MWh']
 
 #############################################################################
@@ -203,7 +189,7 @@ aWaermeLast = cSink  ('Wärmelast',sink   = cFlow('Q_th_Last' , bus = Fernwaerme
 
 # TS with explicit defined weight
 TS_P_el_Last = cTSraw(P_el_Last, agg_weight = 0.7) # explicit defined weight
-aStromLast = cSink('Stromlast',sink   = cFlow('P_el_Last' , bus = Strom, nominal_val = 1,  val_rel = TS_P_el_Last))
+aStromLast = cSink('Stromlast',sink = cFlow('P_el_Last' , bus = Strom, nominal_val = 1,  val_rel = TS_P_el_Last))
 
 aKohleTarif = cSource('Kohletarif' ,source = cFlow('Q_Kohle'     , bus = Kohle  , nominal_val = 1000,  costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
 
@@ -237,7 +223,6 @@ es.addComponents(aSpeicher)
 
 chosenEsTimeIndexe = None
 # chosenEsTimeIndexe = [1,3,5]
-
 
 ########################
 ######## Lösung ########
@@ -274,7 +259,7 @@ if doAggregatedCalc :
                                  fixBinaryVarsOnly, 
                                  percentageOfPeriodFreedom = percentageOfPeriodFreedom,
                                  costsOfPeriodFreedom = costsOfPeriodFreedom,
-                                 addPeakMax=[TS_P_el_Last], # add timeseries of period with maxPeak explicitly
+                                 addPeakMax=[], # add timeseries of period with maxPeak explicitly
                                  addPeakMin=[TS_P_el_Last]
                                  )
     
