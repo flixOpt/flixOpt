@@ -379,6 +379,7 @@ class cEnergySystem:
         self.listOfComponents = []        
         self.setOfOtherMEs    = set()  ## hier kommen zusätzliche MEs rein, z.B. aggregation
         self.listOfEffectTypes  = cEffectTypeList() # Kosten, CO2, Primärenergie, ...
+        self.AllTempMEs       = [] # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         self.standardEffect   = None # Standard-Effekt, zumeist Kosten
         self.objectiveEffect  = None # Zielfunktions-Effekt, z.B. Kosten oder CO2
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
@@ -445,17 +446,54 @@ class cEnergySystem:
                
     # ME registrieren ganz allgemein:
     def addElements(self,*args):
-      newList = list(args)
-      for aNewME in newList:
-        if    isinstance(aNewME, cBaseComponent):
-          self.addComponents(aNewME)
-        elif isinstance(aNewME, cEffectType):
-          self.addEffects(aNewME)
-        else: 
-          # register ME:
-          self.setOfOtherMEs.add(aNewME)
+        '''
+        add all modeling elements, like storages, boilers, heatpumps, buses, ... 
+
+        Parameters
+        ----------
+        *args : childs of   cME like cBoiler, cHeatPump, cBus,...
+            modeling Elements
+
+        '''
         
-      
+        newList = list(args)
+        for aNewME in newList:
+            if    isinstance(aNewME, cBaseComponent):
+                self.addComponents(aNewME)
+            elif isinstance(aNewME, cEffectType):
+                self.addEffects(aNewME)
+            elif isinstance(aNewME, cME) :
+                # register ME:
+                self.setOfOtherMEs.add(aNewME)
+            else: 
+                raise Exception('argument is not instance of a modeling Element (cME)')
+    
+    def addTemporaryElements(self,*args):
+        '''
+        add temporary modeling elements, only valid for one calculation, 
+        i.g. cAggregationModeling-Element
+
+        Parameters
+        ----------
+        *args : cME
+            temporary modeling Elements.
+
+        '''
+
+        self.addElements(*args)
+        self.AllTempMEs += args # Register temporary Elements
+    
+    def deleteTemporaryElements(self): # function just implemented, still not used
+        '''        
+        deletes all temporary Elements
+        '''        
+        for tempME in self.AllTempMEs:
+            # delete them again in the lists:
+            self.listOfComponents.remove(tempME)
+            self.setOfBuses.remove(tempME)
+            self.setOfOtherMEs.remove(tempME)
+            self.listOfEffectTypes.remove(tempME)
+            self.setOfFlows(tempME)
     
     def __plausibilityChecks(self):
       # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
@@ -483,7 +521,9 @@ class cEnergySystem:
       if not self.__finalized:
         # finalize MEs for modeling:
         for aME in self.allMEsOfFirstLayer:
-          aME.finalize() # inklusive subMEs!
+            print(aME.label)
+            type(aME)
+            aME.finalize() # inklusive subMEs!
         self.__finalized = True
       
     def doModelingOfElements(self):                        
@@ -1139,7 +1179,7 @@ class cCalculation :
                                                   costsOfPeriodFreedom = costsOfPeriodFreedom)
       
       # todo: das muss irgendwie nur temporär sein und nicht dauerhaft in es hängen!
-      self.es.addElements(aggregationModel)
+      self.es.addTemporaryElements(aggregationModel)
       
       if fixBinaryVarsOnly:
         TS_explicit = None
@@ -1235,6 +1275,9 @@ class cCalculation :
       if self.calcType is not None:
         raise Exception('An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
   
+      if self.es.AllTempMEs: # if some element in this list
+          raise Exception('the Energysystem has some temporary modelingElements from previous calculation (i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
+          
     def _saveSolveInfos(self):
         import yaml
         #Daten:
