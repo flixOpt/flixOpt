@@ -2,7 +2,7 @@
 ## PreProcessing + Solving: ##
 ##############################
 
-import example_complex_PreProcessing as example_pre
+import example_complex_ModelAndSolve as example_pre
 
 # Name der Rechnung:
 nameOfCalc = example_pre.aCalc.nameOfCalc
@@ -40,17 +40,17 @@ fig1.savefig('test1')
 fig2 = calc1.plotInAndOuts('Fernwaerme',plotAsPlotly = True)
 fig2.write_html('test2.html')
 
-fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast', sortBy='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, flowsAboveXAxis='Waermelast', sortBy='Waermelast')
 fig.show()
-fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, outFlowCompsAboveXAxis='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, flowsAboveXAxis='Waermelast')
 fig.show()
-fig = calc1.plotInAndOuts('Fernwaerme',stacked=False, outFlowCompsAboveXAxis='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=False, flowsAboveXAxis='Waermelast')
 fig.show()
-fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast', sortBy='Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, flowsAboveXAxis = 'Waermelast', sortBy='Waermelast')
 fig.show()
-fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, outFlowCompsAboveXAxis = 'Waermelast')
+fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True, flowsAboveXAxis = 'Waermelast')
 fig.show()
-fig = calc1.plotInAndOuts('BHKW2',stacked=True)
+fig = calc1.plotInAndOuts('BHKW2',stacked=True, inFlowsPositive = False)
 fig.show()
 
 fig = calc1.plotShares(['Fernwaerme','Strom'], withoutStorage = True)
