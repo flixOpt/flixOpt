@@ -1051,179 +1051,181 @@ class cCalculation :
                              costsOfPeriodFreedom = 0,
                              addPeakMax = [],
                              addPeakMin = []):
-      '''
-        method of aggregated modeling. 
-        1. Finds typical periods.
-        2. Equalizes variables of typical periods. 
-  
-        Parameters
-        ----------
-        periodLengthInHours : float
-            length of one period.
-        noTypicalPeriods : int
-            no of typical periods
-        useExtremePeriods : boolean
-            True, if periods of extreme values should be explicitly chosen
-            Define recognised timeseries in args addPeakMax, addPeakMin!
-        fixStorageFlows : boolean
-            Defines, wether load- and unload-Flow should be also aggregated or not. 
-            If all other flows are fixed, it is mathematically not necessary 
-            to fix them.
-        fixBinaryVarsOnly : boolean
-            True, if only binary var should be aggregated. 
-            Additionally choose, wether orginal or aggregated timeseries should 
-            be chosen for the calculation.
-        percentageOfPeriodFreedom : 0...100
-            Normally timesteps of all periods in one period-collection 
-            are all equalized. Here you can choose, which percentage of values 
-            can maximally deviate from this and be "free variables". The solver
-            chooses the "free variables".
-        costsOfPeriodFreedom : float
-            costs per "free variable". The default is 0.
-            !! Warning: At the moment these costs are allocated to 
-            operation costs, not to penalty!!
-        useOriginalTimeSeries : boolean. 
-            orginal or aggregated timeseries should 
-            be chosen for the calculation. default is False.    
-        addPeakMax : list of cTSraw ...
-            list of data-timeseries. The period with the max-value are 
-            chosen as a explicitly period.            
-        addPeakMin : list of cTSraw
-            list of data-timeseries. The period with the min-value are 
-            chosen as a explicitly period.            
-          
-  
-        Returns
-        -------
-        aModBox : TYPE
-            DESCRIPTION.
-  
         '''
-      self.checkIfAlreadyModeled()
-      
+          method of aggregated modeling. 
+          1. Finds typical periods.
+          2. Equalizes variables of typical periods. 
+    
+          Parameters
+          ----------
+          periodLengthInHours : float
+              length of one period.
+          noTypicalPeriods : int
+              no of typical periods
+          useExtremePeriods : boolean
+              True, if periods of extreme values should be explicitly chosen
+              Define recognised timeseries in args addPeakMax, addPeakMin!
+          fixStorageFlows : boolean
+              Defines, wether load- and unload-Flow should be also aggregated or not. 
+              If all other flows are fixed, it is mathematically not necessary 
+              to fix them.
+          fixBinaryVarsOnly : boolean
+              True, if only binary var should be aggregated. 
+              Additionally choose, wether orginal or aggregated timeseries should 
+              be chosen for the calculation.
+          percentageOfPeriodFreedom : 0...100
+              Normally timesteps of all periods in one period-collection 
+              are all equalized. Here you can choose, which percentage of values 
+              can maximally deviate from this and be "free variables". The solver
+              chooses the "free variables".
+          costsOfPeriodFreedom : float
+              costs per "free variable". The default is 0.
+              !! Warning: At the moment these costs are allocated to 
+              operation costs, not to penalty!!
+          useOriginalTimeSeries : boolean. 
+              orginal or aggregated timeseries should 
+              be chosen for the calculation. default is False.    
+          addPeakMax : list of cTSraw ...
+              list of data-timeseries. The period with the max-value are 
+              chosen as a explicitly period.            
+          addPeakMin : list of cTSraw
+              list of data-timeseries. The period with the min-value are 
+              chosen as a explicitly period.            
+            
+    
+          Returns
+          -------
+          aModBox : TYPE
+              DESCRIPTION.
+    
+          '''
+        self.checkIfAlreadyModeled()
+        
+    
+        
+        self._infos['aggregatedProps']={'periodLengthInHours': periodLengthInHours,
+                                         'noTypicalPeriods'   : noTypicalPeriods,
+                                         'useExtremePeriods'  : useExtremePeriods,
+                                         'fixStorageFlows'    : fixStorageFlows,
+                                         'fixBinaryVarsOnly'  : fixBinaryVarsOnly,
+                                         'percentageOfPeriodFreedom' : percentageOfPeriodFreedom,
+                                         'costsOfPeriodFreedom' : costsOfPeriodFreedom}
+        
+        self.calcType = 'aggregated'
+        t_start_agg = time.time()
+        # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
+        self.es.activateInTS(self.chosenEsTimeIndexe)
+            
+        # Zeitdaten generieren:
+        (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)    
+        
+        # check equidistant timesteps:
+        if max(dtInHours)-min(dtInHours) != 0:
+            raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(min(dtInHours)) + ' bis ' + str(max(dtInHours)) + ' h')
+        
+        
+        print('#########################')
+        print('## TS for aggregation ###')
+    
+        ## Daten für Aggregation vorbereiten:    
+        # TSlist and TScollection ohne Skalare:
+        self.TSlistForAggregation = [item for item in self.es.allTSinMEs if item.isArray]
+        self.TScollectionForAgg = cTS_collection(self.TSlistForAggregation, 
+                                                 addPeakMax_TSraw = addPeakMax, 
+                                                 addPeakMin_TSraw = addPeakMin,
+                                                 )
   
+        self.TScollectionForAgg.print()   
+    
+        import pandas as pd    
+        # seriesDict = {i : self.TSlistForAggregation[i].d_i_raw_vec for i in range(len(self.TSlistForAggregation))}    
+        dfSeries = pd.DataFrame(self.TScollectionForAgg.seriesDict, index = chosenTimeSeries)# eigentlich wäre TS als column schön, aber TSAM will die ordnen können.       
+    
+        # Check, if timesteps fit in Period:
+        stepsPerPeriod = periodLengthInHours / self.dtInHours[0] 
+        if not stepsPerPeriod.is_integer():
+          raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
+        
+        import flixAggregation as flixAgg
+        # Aggregation:
+        
+        dataAgg = flixAgg.flixAggregation('aggregation',
+                                          timeseries = dfSeries,
+                                          hoursPerTimeStep = self.dtInHours[0],
+                                          hoursPerPeriod = periodLengthInHours,
+                                          hasTSA = False,
+                                          noTypicalPeriods = noTypicalPeriods,
+                                          useExtremePeriods = useExtremePeriods,
+                                          weightDict = self.TScollectionForAgg.weightDict,
+                                          addPeakMax = self.TScollectionForAgg.addPeak_Max_numbers,
+                                          addPeakMin = self.TScollectionForAgg.addPeak_Min_numbers)
+        
+        
+        
+        dataAgg.cluster()   
+        # dataAgg.aggregation.clusterPeriodIdx
+        # dataAgg.aggregation.clusterOrder
+        # dataAgg.aggregation.clusterPeriodNoOccur
+        # dataAgg.aggregation.predictOriginalData()    
+        # self.periodsOrder = aggregation.clusterOrder
+        # self.periodOccurances = aggregation.clusterPeriodNoOccur
+        
+        aggregationModel = flixAgg.cAggregationModeling('aggregation',self.es,
+                                                    indexVectorsOfClusters = dataAgg.indexVectorsOfClusters,
+                                                    fixBinaryVarsOnly = fixBinaryVarsOnly, 
+                                                    fixStorageFlows   = fixStorageFlows,
+                                                    listOfMEsToClusterize = None,
+                                                    percentageOfPeriodFreedom = percentageOfPeriodFreedom,
+                                                    costsOfPeriodFreedom = costsOfPeriodFreedom)
       
-      self._infos['aggregatedProps']={'periodLengthInHours': periodLengthInHours,
-                                       'noTypicalPeriods'   : noTypicalPeriods,
-                                       'useExtremePeriods'  : useExtremePeriods,
-                                       'fixStorageFlows'    : fixStorageFlows,
-                                       'fixBinaryVarsOnly'  : fixBinaryVarsOnly,
-                                       'percentageOfPeriodFreedom' : percentageOfPeriodFreedom,
-                                       'costsOfPeriodFreedom' : costsOfPeriodFreedom}
-      
-      self.calcType = 'aggregated'
-      t_start_agg = time.time()
-      # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-      self.es.activateInTS(self.chosenEsTimeIndexe)
-          
-      # Zeitdaten generieren:
-      (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.es.getTimeDataOfTimeIndexe(self.chosenEsTimeIndexe)    
-      
-      # check equidistant timesteps:
-      if max(dtInHours)-min(dtInHours) != 0:
-          raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(min(dtInHours)) + ' bis ' + str(max(dtInHours)) + ' h')
-      
-      
-      print('#########################')
-      print('## TS for aggregation ###')
-  
-      ## Daten für Aggregation vorbereiten:    
-      # TSlist and TScollection ohne Skalare:
-      self.TSlistForAggregation = [item for item in self.es.allTSinMEs if item.isArray]
-      self.TScollectionForAgg = cTS_collection(self.TSlistForAggregation, 
-                                               addPeakMax_TSraw = addPeakMax, 
-                                               addPeakMin_TSraw = addPeakMin,
-                                               )
-
-      self.TScollectionForAgg.print()   
-  
-      import pandas as pd    
-      # seriesDict = {i : self.TSlistForAggregation[i].d_i_raw_vec for i in range(len(self.TSlistForAggregation))}    
-      dfSeries = pd.DataFrame(self.TScollectionForAgg.seriesDict, index = chosenTimeSeries)# eigentlich wäre TS als column schön, aber TSAM will die ordnen können.       
-  
-      # Check, if timesteps fit in Period:
-      stepsPerPeriod = periodLengthInHours / self.dtInHours[0] 
-      if not stepsPerPeriod.is_integer():
-        raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
-      
-      import flixAggregation as flixAgg
-      # Aggregation:
-      
-      dataAgg = flixAgg.flixAggregation('aggregation',
-                                        timeseries = dfSeries,
-                                        hoursPerTimeStep = self.dtInHours[0],
-                                        hoursPerPeriod = periodLengthInHours,
-                                        hasTSA = False,
-                                        noTypicalPeriods = noTypicalPeriods,
-                                        useExtremePeriods = useExtremePeriods,
-                                        weightDict = self.TScollectionForAgg.weightDict,
-                                        addPeakMax = self.TScollectionForAgg.addPeak_Max_numbers,
-                                        addPeakMin = self.TScollectionForAgg.addPeak_Min_numbers)
-      
-      
-      
-      dataAgg.cluster()   
-      # dataAgg.aggregation.clusterPeriodIdx
-      # dataAgg.aggregation.clusterOrder
-      # dataAgg.aggregation.clusterPeriodNoOccur
-      # dataAgg.aggregation.predictOriginalData()    
-      # self.periodsOrder = aggregation.clusterOrder
-      # self.periodOccurances = aggregation.clusterPeriodNoOccur
-      
-      aggregationModel = flixAgg.cAggregationModeling('aggregation',self.es,
-                                                  indexVectorsOfClusters = dataAgg.indexVectorsOfClusters,
-                                                  fixBinaryVarsOnly = fixBinaryVarsOnly, 
-                                                  fixStorageFlows   = fixStorageFlows,
-                                                  listOfMEsToClusterize = None,
-                                                  percentageOfPeriodFreedom = percentageOfPeriodFreedom,
-                                                  costsOfPeriodFreedom = costsOfPeriodFreedom)
-      
-      # todo: das muss irgendwie nur temporär sein und nicht dauerhaft in es hängen!
-      self.es.addTemporaryElements(aggregationModel)
-      
-      if fixBinaryVarsOnly:
-        TS_explicit = None
-      else:
-        # neue (Explizit)-Werte für TS sammeln::        
-        TS_explicit = {}
+        import matplotlib.pyplot as plt        
+        plt.figure(figsize=(8,6))
+        plt.title('aggregated series')
+        plt.plot(dfSeries.values)
         for i in range(len(self.TSlistForAggregation)):
-          TS = self.TSlistForAggregation[i]
-          # todo: agg-Wert für TS:
-          TS_explicit[TS] = dataAgg.totalTimeseries[i].values # nur data-array ohne Zeit   
+            # aLabel = str(i)
+            aLabel = self.TSlistForAggregation[i].label_full
+            plt.plot(dataAgg.totalTimeseries[i].values,'--', label = aLabel)
+        if len(self.TSlistForAggregation) < 10: # wenn nicht zu viele
+            plt.legend(bbox_to_anchor =(0.5,-0.05), loc='upper center')
+        plt.show()                                            
       
-      
-      import matplotlib.pyplot as plt        
-      plt.figure(figsize=(8,6))
-      plt.title('aggregated series')
-      plt.plot(dfSeries.values)
-      for i in range(len(self.TSlistForAggregation)):
-          # aLabel = str(i)
-          aLabel = self.TSlistForAggregation[i].label_full
-          plt.plot(dataAgg.totalTimeseries[i].values,'--', label = aLabel)
-      if len(self.TSlistForAggregation) < 10: # wenn nicht zu viele
-          plt.legend(bbox_to_anchor =(0.5,-0.05), loc='upper center')
-      plt.show()
-      
-      ##########################
-      # System finalisieren:
-      self.es.finalize()
-      
-      self.durations['aggregation']= round(time.time()- t_start_agg ,2)
-  
-  
-  
-      t_m_start = time.time()    
-      # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-      aModBox  = cModelBoxOfES(self.label, self.modType, self.es, self.chosenEsTimeIndexe, TS_explicit) # alle Indexe nehmen!               
-      self.listOfModbox.append(aModBox)
-      # modBox aktivieren:
-      self.es.activateModBox(aModBox)
-      # modellieren:
-      self.es.doModelingOfElements()
-      
-      
-      self.durations['modeling'] = round(time.time()-t_m_start,2)
-      return aModBox    
+
+        
+        # temporary Modeling-Element for equalizing indices of aggregation:
+        self.es.addTemporaryElements(aggregationModel)
+        
+        if fixBinaryVarsOnly:
+          TS_explicit = None
+        else:
+          # neue (Explizit)-Werte für TS sammeln::        
+          TS_explicit = {}
+          for i in range(len(self.TSlistForAggregation)):
+            TS = self.TSlistForAggregation[i]
+            # todo: agg-Wert für TS:
+            TS_explicit[TS] = dataAgg.totalTimeseries[i].values # nur data-array ohne Zeit   
+        
+              
+        ##########################
+        # System finalisieren:
+        self.es.finalize()
+        
+        self.durations['aggregation']= round(time.time()- t_start_agg ,2)
+    
+    
+    
+        t_m_start = time.time()    
+        # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
+        aModBox  = cModelBoxOfES(self.label, self.modType, self.es, self.chosenEsTimeIndexe, TS_explicit) # alle Indexe nehmen!               
+        self.listOfModbox.append(aModBox)
+        # modBox aktivieren:
+        self.es.activateModBox(aModBox)
+        # modellieren:
+        self.es.doModelingOfElements()
+        
+        
+        self.durations['modeling'] = round(time.time()-t_m_start,2)
+        return aModBox    
     
     def solve(self, solverProps, namePrefix = '', nameSuffix ='', aPath = 'results/', saveResults = True):
     
