@@ -1679,8 +1679,8 @@ class cEffectType(cME):
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
-        self.all.addVariableShare(self.operation.mod.var_sum, 1, 1, None)
-        self.all.addVariableShare(self.invest   .mod.var_sum, 1, 1, None)
+        self.all.addVariableShare('operation', self, self.operation.mod.var_sum, 1, 1)
+        self.all.addVariableShare('invest', self, self.invest   .mod.var_sum, 1, 1)
         self.all.doModeling(modBox, timeIndexe)
       
 # ModelingElement (ME) Klasse zum Summieren einzelner Shares
@@ -1981,15 +1981,22 @@ class cGlobal(cME):
         # Beitrag/Share ergänzen:
         # 1. operation: -> hier sind es Zeitreihen (share_TS)
         # alle specificSharesToOtherEffects durchgehen:
-        nameOfShare = 'fromEffect_' + effectType.label
+        nameOfShare = 'specificShareToOtherEffects_operation'# + effectType.label
         for effectTypeOfShare, specShare_TS in effectType.specificShareToOtherEffects_operation.items():               
           # Share anhängen (an jeweiligen Effekt):
-          effectTypeOfShare.operation.addVariableShare(effectType.operation.mod.var_sum_TS, specShare_TS, 1, nameOfShare)
+          shareSum_op = effectTypeOfShare.operation
+          shareSum_op : cFeature_ShareSum
+          shareHolder = effectType
+          shareSum_op.addVariableShare(nameOfShare, shareHolder, effectType.operation.mod.var_sum_TS, specShare_TS, 1)
         # 2. invest:    -> hier ist es Skalar (share)
         # alle specificSharesToOtherEffects durchgehen:
+        nameOfShare = 'specificShareToOtherEffects_invest_'# + effectType.label
         for effectTypeOfShare, specShare in effectType.specificShareToOtherEffects_invest.items():                     
           # Share anhängen (an jeweiligen Effekt):
-          effectTypeOfShare.invest.addVariableShare(effectType.invest.mod.var_sum   , specShare   , 1, nameOfShare)
+          shareSum_inv = effectTypeOfShare.invest
+          shareSum_inv : cFeature_ShareSum
+          shareHolder = effectType
+          shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.mod.var_sum   , specShare   , 1, nameOfShare)
                          
         
       
@@ -2100,8 +2107,8 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
       super().addShareToGlobals(globalComp, modBox)
       # Strafkosten hinzufügen:
       if self.withExcess :      
-        globalComp.penalty.addVariableShare(self.excessIn , self.excessCostsPerFlowHour, modBox.dtInHours, 'excessCostsPerFlowHour', self)
-        globalComp.penalty.addVariableShare(self.excessOut, self.excessCostsPerFlowHour, modBox.dtInHours, 'excessCostsPerFlowHour', self)
+        globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessIn , self.excessCostsPerFlowHour, modBox.dtInHours)
+        globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut, self.excessCostsPerFlowHour, modBox.dtInHours)
         # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
         # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
       
@@ -2539,7 +2546,8 @@ class cFlow(cME):
           # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
           # variable_costs          = cVector(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))  
           # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.d_i, modBox.dtInHours)) # np.multiply = elementweise Multiplikation          
-          globalComp.addShareToOperation(shareHolder + '_perFlowHour', self.mod.var_val, self.costsPerFlowHour, modBox.dtInHours, self)
+          shareHolder = self
+          globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.mod.var_val, self.costsPerFlowHour, modBox.dtInHours)
             
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
         self.featureOn.addShareToGlobals(globalComp,modBox)

@@ -24,7 +24,7 @@ class cFeature(cME):
     
     @property
     def label_full(self):
-        return self.owner.label_full + '.' + self.label 
+        return self.owner.label_full + '_' + self.label 
   
     def finalize(self): # TODO: evtl. besser bei cME aufgehoben
           super().finalize()
@@ -655,13 +655,13 @@ class cFeatureOn(cFeature) :
   
     def addShareToGlobals(self,globalComp,modBox) :        
     
-      shareHolder = self.owner.label_full
+      shareHolder = self.owner
       # Anfahrkosten:
       if self.switchOnCosts is not None : #and any(self.switchOnCosts.d_i != 0):        
-        globalComp.addShareToOperation(shareHolder + '_switchOn', self.mod.var_switchOn, self.switchOnCosts, 1)
+        globalComp.addShareToOperation('switchOnCosts', shareHolder, self.mod.var_switchOn, self.switchOnCosts, 1)
       # Betriebskosten:
-      if self.costsPerRunningHour is not None : #and any(self.costPerRunningHour):
-        globalComp.addShareToOperation(shareHolder + '_runningHour', self.mod.var_on, self.costsPerRunningHour, modBox.dtInHours)
+      if self.costsPerRunningHour is not None : #and any(self.costsPerRunningHour):
+        globalComp.addShareToOperation('costsPerRunningHour', shareHolder, self.mod.var_on, self.costsPerRunningHour, modBox.dtInHours)
         # globalComp.costsOfOperating_eq.addSummand(self.mod.var_on, np.multiply(self.costsPerRunningHour.d_i, modBox.dtInHours))# np.multiply = elementweise Multiplikation          
           
       
@@ -746,7 +746,7 @@ class cFeature_ShareSum(cFeature): #(ME = ModelingElement)
             self.eq_sum.addSummand(self.mod.var_sum, -1)
         
     
-    def addConstantShare(self, factor1, factor2, name, shareHolder):
+    def addConstantShare(self, nameOfShare, shareHolder, factor1, factor2):
         '''
         Beiträge zu Effekt_Sum registrieren
 
@@ -762,15 +762,15 @@ class cFeature_ShareSum(cFeature): #(ME = ModelingElement)
         None.
 
         '''
-        self.addShare(self, None, factor1, factor2, name, shareHolder)
+        self.addShare(self, nameOfShare, shareHolder, None, factor1, factor2)
     
-    def addVariableShare(self, variable, factor1, factor2, name, shareHolder): # if variable = None, then fix Share
+    def addVariableShare(self,  nameOfShare, shareHolder, variable, factor1, factor2): # if variable = None, then fix Share
         if variable is None : raise Exception('addVariableShare() needs variable as input or use addConstantShare() instead')
-        self.addShare(variable, factor1, factor2, name, shareHolder)
+        self.addShare(nameOfShare, shareHolder, variable, factor1, factor2)
   
     # allgemein variable oder constant (dann variable = None):
     # if variable = None, then fix Share    
-    def addShare(self, nameOfShare, shareHolder, variable, factor1, factor2, shareHolder):        
+    def addShare(self, nameOfShare, shareHolder, variable, factor1, factor2):        
         '''
         share to a sum
 
@@ -858,7 +858,8 @@ class cFeatureShares(cFeature):
         eq_oneShare : cEquation
 
         '''
-        full_name_of_share = shareHolder.label_full + '_' + nameOfShare
+        try: full_name_of_share = shareHolder.label_full + '_' + nameOfShare
+        except: pass
         var_oneShare = cVariable(full_name_of_share, 1 , self, modBox) # Skalar
         eq_oneShare = cEquation(full_name_of_share, self, modBox)
         eq_oneShare.addSummand(var_oneShare, -1)
@@ -1207,18 +1208,18 @@ class cFeatureInvest(cFeature):
             if self.args.investment_is_optional:
                 # fix Share to InvestCosts: 
                 # share: + isInvested * fixCosts
-                globalComp.addShareToInvest('fixCosts', self, self.mod.var_isInvested, self.args.fixCosts, 1)
+                globalComp.addShareToInvest('fixCosts', self.owner, self.mod.var_isInvested, self.args.fixCosts, 1)
             else:
                 # share: + fixCosts
-                globalComp.addConstantShareToInvest('fixCosts', self, self.args.fixCosts, 1) # fester Wert hinufügen
-lf, self.mod.var_investmentSize, self.args.specificCosts, 1)
+                globalComp.addConstantShareToInvest('fixCosts', self.owner, self.args.fixCosts, 1) # fester Wert hinufügen
+
             
         ## segmentedCosts:
         # # specificCosts:
         # wenn specificCosts vorhanden:
         if not (self.args.specificCosts is None):
             # share: + investmentSize (=var)   * specificCosts
-            globalComp.addShareToInvest('specificCosts', se
+            globalComp.addShareToInvest('specificCosts', self.owner, self.mod.var_investmentSize, self.args.specificCosts, 1)
         if self.featureLinearSegments is not None:
             for effect, var_investSegs in self.investVar_effect_dict.items():
-                globalComp.addShareToInvest('linearSegments', self, var_investSegs, {effect:1},1)
+                globalComp.addShareToInvest('linearSegments', self.owner, var_investSegs, {effect:1},1)
