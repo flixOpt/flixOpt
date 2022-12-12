@@ -79,8 +79,22 @@ class cCompOrBus_post():
         self.color = color
     
 class flix_results():
-    def __init__(self, nameOfCalc, results_folder = None, comp_colors = None): #,timestamp = None):
-  
+    def __init__(self, nameOfCalc, results_folder = 'results', comp_colors = None):
+        '''
+        postprocessing: Create this object to load a solved optimization-calculation into workspace
+
+        Parameters
+        ----------
+        nameOfCalc : str
+            name of calculation which should be loaded
+        results_folder : str
+            location of the result-files
+        comp_colors : list of colors, optional
+            List of colors, which will be used for plotting. If None, than default color list is used.            
+            
+        '''
+        
+        
         self.label = nameOfCalc
         self.comp_colors = comp_colors
         # default value:
@@ -90,8 +104,8 @@ class flix_results():
             # see: https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
             
         # 'z.B.' 2022-06-14_Sim1_gurobi_SolvingInfos
-        filename_infos = 'results/' + nameOfCalc + '_solvingInfos.yaml'
-        filename_data = 'results/' + nameOfCalc + '_data.pickle'
+        filename_infos = results_folder + '/' + nameOfCalc + '_solvingInfos.yaml'
+        filename_data = results_folder + '/' + nameOfCalc + '_data.pickle'
     
     
         with open(filename_infos,'rb') as f:
