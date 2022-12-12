@@ -396,8 +396,9 @@ class flix_results():
                       minFlowHours=0.1,
                       plotAsPlotly = False, 
                       title = None, 
-                      outFlowCompsAboveXAxis=None,
-                      sortBy = None):
+                      flowsAboveXAxis=None,
+                      sortBy = None,
+                      inFlowsPositive = True):
         '''      
         Parameters
         ----------
@@ -414,13 +415,19 @@ class flix_results():
         title : str, optional
             if None, then automatical title is used    
             
-        outFlowCompsAboveXAxis : components
-            End-Components of outflows, which should be shown separately above x-Axis, i.g. heat-load
+        flowsAboveXAxis : list of str (components, buses)
+            End-Nodes (i.e. components, flows) of flows, 
+            which should be shown separately above x-Axis.
+            
+            i.g. flowsAboveXAxis = ["heat_load", "absorptionChiller"]
             
         sortBy : component or None, optional    
             Component-Flow which should be used for sorting the timeseries ("Jahresdauerlinie")
             
-
+        inFlowsPositive: boolean, default: TRUE
+            wether inFlows or outFlows should be positive (above x-Axis)
+            
+            
         Return
         ------
         
@@ -449,23 +456,33 @@ class flix_results():
         else:
             indexSeq = None
             
-        # extract outflows above x-Axis:
-        out_flows_above_x_axis = []
-        if outFlowCompsAboveXAxis is not None:
+        # extract flows eplicitly above x-Axis:
+        flowObjects_above_x_axis = []
+        if flowsAboveXAxis is not None:
             for flow in out_flows:
-                if flow.to_node in outFlowCompsAboveXAxis:
+                if flow.to_node in flowsAboveXAxis:
                     out_flows.remove(flow)
-                    out_flows_above_x_axis.append(flow)
-
+                    flowObjects_above_x_axis.append(flow)
+            for flow in in_flows:
+                if flow.from_node in flowsAboveXAxis:
+                    in_flows.remove(flow)
+                    flowObjects_above_x_axis.append(flow)
 
         
         # Inputs:
-        y_in, y_in_colors,  = self._get_FlowValues_As_DataFrame(in_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
+        if inFlowsPositive:
+            pos_flows = in_flows
+            neg_flows = out_flows
+        else:
+            pos_flows = out_flows
+            neg_flows = in_flows        
+            
+        y_pos, y_pos_colors,  = self._get_FlowValues_As_DataFrame(pos_flows, self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
         # Outputs; als negative Werte interpretiert:
-        y_out, y_out_colors = self._get_FlowValues_As_DataFrame(out_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
-        y_out = -1 * y_out 
+        y_neg, y_neg_colors = self._get_FlowValues_As_DataFrame(neg_flows,self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
+        y_neg = -1 * y_neg 
         # Outputs above X-Axis:
-        y_out_aboveX, y_above_colors = self._get_FlowValues_As_DataFrame(out_flows_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
+        y_neg_aboveX, y_above_colors = self._get_FlowValues_As_DataFrame(flowObjects_above_x_axis,self.timeSeriesWithEnd, self.dtInHours, minFlowHours)
 
         # append excessValues:
         if 'excessIn' in self.results[busOrComponent].keys():
@@ -475,18 +492,18 @@ class flix_results():
             excessOut = - self.results[busOrComponent]['excessOut']
             
             if flix_results.isGreaterMinFlowHours(excessIn, self.dtInHours, minFlowHours):        
-                y_in['excess_in'] = excessIn
-                y_in_colors.append('#FF0000')
+                y_pos['excess_in'] = excessIn
+                y_pos_colors.append('#FF0000')
             if flix_results.isGreaterMinFlowHours(excessOut, self.dtInHours, minFlowHours):        
-                y_out['excess_out'] = excessOut
-                y_out_colors.append('#FF0000')
+                y_neg['excess_out'] = excessOut
+                y_neg_colors.append('#FF0000')
             
         # 1. sorting(if "sortBy") AND
         # 2. appending last index (for visualizing last bar (last timestep-width) in plot)
-        listOfDataFrames = (y_in, y_out, y_out_aboveX)
-        y_in = self._sortDataFramesAndAppendLastStep(y_in, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
-        y_out = self._sortDataFramesAndAppendLastStep(y_out, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
-        y_out_aboveX = self._sortDataFramesAndAppendLastStep(y_out_aboveX, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
+        listOfDataFrames = (y_pos, y_neg, y_neg_aboveX)
+        y_pos = self._sortDataFramesAndAppendLastStep(y_pos, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
+        y_neg = self._sortDataFramesAndAppendLastStep(y_neg, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
+        y_neg_aboveX = self._sortDataFramesAndAppendLastStep(y_neg_aboveX, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)        
     
         # wenn title nicht gegeben
         if title is None:
@@ -502,14 +519,14 @@ class flix_results():
             # Create figure with secondary y-axis
             fig = make_subplots(specs=[[{"secondary_y": True}]])
             
-            # def plotlyPlot(y_in, y_out, stacked, )
+            # def plotlyPlot(y_pos, y_neg, stacked, )
             # input:
             y_pos_colors = iter(y_pos_colors)
             y_neg_colors = iter(y_neg_colors)
             y_above_colors = iter(y_above_colors)
             for column in y_pos.columns:
                 aColor = next(y_pos_colors)
-                # if isGreaterMinAbsSum(y_in[column]):
+                # if isGreaterMinAbsSum(y_pos[column]):
                 if stacked :
                     fig.add_trace(go.Scatter(x=y_pos.index, y=y_pos[column], stackgroup='one', line_shape ='hv', name=column, line_color=aColor))
                 else:
@@ -517,7 +534,7 @@ class flix_results():
             # output:
             for column in y_neg.columns:
                 aColor = next(y_neg_colors)
-                # if isGreaterMinAbsSum(y_out[column]):
+                # if isGreaterMinAbsSum(y_neg[column]):
                 if stacked :
                     fig.add_trace(go.Scatter(x=y_neg.index, y=y_neg[column],stackgroup='two',line_shape ='hv',name=column, line_color = aColor))
                 else:
@@ -592,10 +609,10 @@ class flix_results():
             
           
         if plotAsPlotly:
-            fig = plotY_plotly(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title,
-                         y_in_colors, y_out_colors, y_above_colors)
+            fig = plotY_plotly(y_pos, y_neg, y_neg_aboveX, title, yaxes_title, yaxes2_title,
+                         y_pos_colors, y_neg_colors, y_above_colors)
         else:
-            fig = plotY_matplotlib(y_in, y_out, y_out_aboveX, title, yaxes_title, yaxes2_title)
+            fig = plotY_matplotlib(y_pos, y_neg, y_neg_aboveX, title, yaxes_title, yaxes2_title)
         
         return fig
             
