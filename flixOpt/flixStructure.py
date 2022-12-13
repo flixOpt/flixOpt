@@ -401,7 +401,7 @@ class cEnergySystem:
         # Wenn bereits vorhanden:
         if aNewEffect in self.listOfEffectTypes:
           raise Exception('Effekt bereits in cEnergysystem eingefügt')
-
+          
         # Wenn Standard-Effekt, und schon einer vorhanden:
         if (aNewEffect.isStandard) and (self.listOfEffectTypes.standardType() is not None):
             raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
@@ -1146,9 +1146,10 @@ class cCalculation :
         if not stepsPerPeriod.is_integer():
           raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
         
-        import flixAggregation as flixAgg
-        # Aggregation:
         
+        ##########################################################
+        # ### Aggregation - creation of aggregated timeseries: ###
+        import flixAggregation as flixAgg        
         dataAgg = flixAgg.flixAggregation('aggregation',
                                           timeseries = df_OriginalData,
                                           hoursPerTimeStep = self.dtInHours[0],
@@ -1157,8 +1158,8 @@ class cCalculation :
                                           noTypicalPeriods = noTypicalPeriods,
                                           useExtremePeriods = useExtremePeriods,
                                           weightDict = self.TScollectionForAgg.weightDict,
-                                          addPeakMax = self.TScollectionForAgg.addPeak_Max_numbers,
-                                          addPeakMin = self.TScollectionForAgg.addPeak_Min_numbers)
+                                          addPeakMax = self.TScollectionForAgg.addPeak_Max_labels,
+                                          addPeakMin = self.TScollectionForAgg.addPeak_Min_labels)
         
         
         
@@ -1170,27 +1171,47 @@ class cCalculation :
         # self.periodsOrder = aggregation.clusterOrder
         # self.periodOccurances = aggregation.clusterPeriodNoOccur
         
+
+        # ### Some plot for plausibility check ###
+        
+        import matplotlib.pyplot as plt        
+        plt.figure(figsize=(8,6))
+        plt.title('aggregated series (dashed = aggregated)')
+        plt.plot(df_OriginalData.values)
+        for label_TS, agg_values in dataAgg.totalTimeseries.items():
+            # aLabel = str(i)
+            # aLabel = self.TSlistForAggregation[i].label_full
+            plt.plot(agg_values.values,'--', label = label_TS)
+        if len(self.TSlistForAggregation) < 10: # wenn nicht zu viele
+            plt.legend(bbox_to_anchor =(0.5,-0.05), loc='upper center')
+        plt.show()                                            
+
+        # ### Some infos as print ###
+        
+        print('TS Aggregation:')
+        for i in  range(len(self.TSlistForAggregation)):
+            aLabel = self.TSlistForAggregation[i].label_full
+            print('TS ' + str(aLabel))
+            print('  max_agg:' + str(max(dataAgg.totalTimeseries[aLabel])))
+            print('  max_orig:' + str(max(df_OriginalData[aLabel])))
+            print('  min_agg:' + str(min(dataAgg.totalTimeseries[aLabel])))
+            print('  min_orig:' + str(min(df_OriginalData[aLabel])))
+            
+        print('addpeakmax:')
+        print(self.TScollectionForAgg.addPeak_Max_labels)
+        print('addpeakmin:')
+        print(self.TScollectionForAgg.addPeak_Min_labels)
+        
+        # ################
+        # ### Modeling ###
+        
         aggregationModel = flixAgg.cAggregationModeling('aggregation',self.es,
                                                     indexVectorsOfClusters = dataAgg.indexVectorsOfClusters,
                                                     fixBinaryVarsOnly = fixBinaryVarsOnly, 
                                                     fixStorageFlows   = fixStorageFlows,
                                                     listOfMEsToClusterize = None,
                                                     percentageOfPeriodFreedom = percentageOfPeriodFreedom,
-                                                    costsOfPeriodFreedom = costsOfPeriodFreedom)
-      
-        import matplotlib.pyplot as plt        
-        plt.figure(figsize=(8,6))
-        plt.title('aggregated series (dashed = aggregated)')
-        plt.plot(df_OriginalData.values)
-        for i in range(len(self.TSlistForAggregation)):
-            # aLabel = str(i)
-            aLabel = self.TSlistForAggregation[i].label_full
-            plt.plot(dataAgg.totalTimeseries[i].values,'--', label = aLabel)
-        if len(self.TSlistForAggregation) < 10: # wenn nicht zu viele
-            plt.legend(bbox_to_anchor =(0.5,-0.05), loc='upper center')
-        plt.show()                                            
-      
-
+                                                    costsOfPeriodFreedom = costsOfPeriodFreedom)        
         
         # temporary Modeling-Element for equalizing indices of aggregation:
         self.es.addTemporaryElements(aggregationModel)
@@ -1203,11 +1224,11 @@ class cCalculation :
           for i in range(len(self.TSlistForAggregation)):
             TS = self.TSlistForAggregation[i]
             # todo: agg-Wert für TS:
-            TS_explicit[TS] = dataAgg.totalTimeseries[i].values # nur data-array ohne Zeit   
+            TS_explicit[TS] = dataAgg.totalTimeseries[TS.label_full].values # nur data-array ohne Zeit   
         
               
-        ##########################
-        # System finalisieren:
+        # ##########################
+        # ## System finalizing: ##
         self.es.finalize()
         
         self.durations['aggregation']= round(time.time()- t_start_agg ,2)

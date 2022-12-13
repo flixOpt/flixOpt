@@ -184,8 +184,8 @@ aSpeicher = cStorage('Speicher',
                      avoidInAndOutAtOnce = True)
  
 
-
-aWaermeLast = cSink  ('Wärmelast',sink   = cFlow('Q_th_Last' , bus = Fernwaerme, nominal_val = 1, val_rel = Q_th_Last))
+TS_Q_th_Last = cTSraw(Q_th_Last)
+aWaermeLast = cSink  ('Wärmelast',sink   = cFlow('Q_th_Last' , bus = Fernwaerme, nominal_val = 1, val_rel = TS_Q_th_Last))
 
 # TS with explicit defined weight
 TS_P_el_Last = cTSraw(P_el_Last, agg_weight = 0.7) # explicit defined weight
@@ -259,7 +259,7 @@ if doAggregatedCalc :
                                  fixBinaryVarsOnly, 
                                  percentageOfPeriodFreedom = percentageOfPeriodFreedom,
                                  costsOfPeriodFreedom = costsOfPeriodFreedom,
-                                 addPeakMax=[], # add timeseries of period with maxPeak explicitly
+                                 addPeakMax=[TS_Q_th_Last], # add timeseries of period with maxPeak explicitly
                                  addPeakMin=[TS_P_el_Last]
                                  )
     

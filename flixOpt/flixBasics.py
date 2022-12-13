@@ -193,18 +193,18 @@ class cTS_vector:
 class cTS_collection():
     
     @property
-    def addPeak_Max_numbers(self):
-        if self._addPeakMax_numbers == []:
+    def addPeak_Max_labels(self):
+        if self._addPeakMax_labels == []:
             return None
         else :
-            return self._addPeakMax_numbers 
+            return self._addPeakMax_labels 
 
     @property
-    def addPeak_Min_numbers(self):
-        if self._addPeakMin_numbers == []:
+    def addPeak_Min_labels(self):
+        if self._addPeakMin_labels == []:
             return None
         else :
-            return self._addPeakMin_numbers 
+            return self._addPeakMin_labels 
         
     
     def __init__(self, listOfTS_vectors, addPeakMax_TSraw = [], addPeakMin_TSraw = []):
@@ -218,30 +218,27 @@ class cTS_collection():
         self._checkPeak_TSraw(addPeakMin_TSraw)
         
         # these 4 attributes are now filled:
-        self.seriesDict = None
-        self.weightDict = None
-        self.addPeakMax_numbers = None
-        self.addPeakMin_numbers = None
+        self.seriesDict = {}
+        self.weightDict = {}
+        self._addPeakMax_labels = []
+        self._addPeakMin_labels = []
         self.calculateParametersForTSAM()
 
     def calculateParametersForTSAM(self):
-        # Daten für Aggregation vorbereiten:
-        self.seriesDict = {}
-        self.weightDict = {}
-        self._addPeakMax_numbers = []
-        self._addPeakMin_numbers = []
-                
-        # index i is the key/name of the series!
         for i in range(len(self.listOfTS_vectors)):
             aTS : cTS_vector
             aTS = self.listOfTS_vectors[i]
-            self.seriesDict[i] = aTS.d_i_raw_vec # Vektor zuweisen!# TODO: müsste doch d_i sein, damit abhängig von Auswahlzeitraum, oder???
-            self.weightDict[i] = self._getWeight(aTS) # Wichtung ermitteln!            
+            # check uniqueness of label:
+            if aTS.label_full in self.seriesDict.keys():
+                raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
+            # add to dict:
+            self.seriesDict[aTS.label_full] = aTS.d_i_raw_vec # Vektor zuweisen!# TODO: müsste doch d_i sein, damit abhängig von Auswahlzeitraum, oder???
+            self.weightDict[aTS.label_full] = self._getWeight(aTS) # Wichtung ermitteln!            
             if (aTS.TSraw is not None):
                 if aTS.TSraw in self.addPeakMax_TSraw :
-                    self._addPeakMax_numbers.append(i)
+                    self._addPeakMax_labels.append(aTS.label_full)
                 if aTS.TSraw in self.addPeakMin_TSraw :
-                    self._addPeakMin_numbers.append(i)
+                    self._addPeakMin_labels.append(aTS.label_full)
 
     
     def _get_agg_type_count(self):
