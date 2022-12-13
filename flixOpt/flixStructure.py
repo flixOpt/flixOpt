@@ -2038,7 +2038,7 @@ class cGlobal(cME):
           shareSum_inv = effectTypeOfShare.invest
           shareSum_inv : cFeature_ShareSum
           shareHolder = effectType
-          shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.mod.var_sum   , specShare   , 1, nameOfShare)
+          shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.mod.var_sum   , specShare   , 1)
                          
         
       
