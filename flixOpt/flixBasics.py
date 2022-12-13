@@ -275,7 +275,8 @@ class cTS_collection():
             # i.g. n=3 -> weight=1/3
             weight = 1/self.agg_type_count[aTS.TSraw.agg_type]
         else:
-            raise Exception('TSraw is without weight definition')
+            weight = 1
+            # raise Exception('TSraw is without weight definition.')
         return weight
     
     def _checkPeak_TSraw(self, aTSrawlist):

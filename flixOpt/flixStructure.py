@@ -1103,7 +1103,7 @@ class cCalculation :
         
     
         
-        self._infos['aggregatedProps']={'periodLengthInHours': periodLengthInHours,
+        self._infos['aggregatedProps'] ={'periodLengthInHours': periodLengthInHours,
                                          'noTypicalPeriods'   : noTypicalPeriods,
                                          'useExtremePeriods'  : useExtremePeriods,
                                          'fixStorageFlows'    : fixStorageFlows,
@@ -1139,7 +1139,7 @@ class cCalculation :
     
         import pandas as pd    
         # seriesDict = {i : self.TSlistForAggregation[i].d_i_raw_vec for i in range(len(self.TSlistForAggregation))}    
-        dfSeries = pd.DataFrame(self.TScollectionForAgg.seriesDict, index = chosenTimeSeries)# eigentlich wäre TS als column schön, aber TSAM will die ordnen können.       
+        df_OriginalData = pd.DataFrame(self.TScollectionForAgg.seriesDict, index = chosenTimeSeries)# eigentlich wäre TS als column schön, aber TSAM will die ordnen können.       
     
         # Check, if timesteps fit in Period:
         stepsPerPeriod = periodLengthInHours / self.dtInHours[0] 
@@ -1150,7 +1150,7 @@ class cCalculation :
         # Aggregation:
         
         dataAgg = flixAgg.flixAggregation('aggregation',
-                                          timeseries = dfSeries,
+                                          timeseries = df_OriginalData,
                                           hoursPerTimeStep = self.dtInHours[0],
                                           hoursPerPeriod = periodLengthInHours,
                                           hasTSA = False,
@@ -1180,8 +1180,8 @@ class cCalculation :
       
         import matplotlib.pyplot as plt        
         plt.figure(figsize=(8,6))
-        plt.title('aggregated series')
-        plt.plot(dfSeries.values)
+        plt.title('aggregated series (dashed = aggregated)')
+        plt.plot(df_OriginalData.values)
         for i in range(len(self.TSlistForAggregation)):
             # aLabel = str(i)
             aLabel = self.TSlistForAggregation[i].label_full
