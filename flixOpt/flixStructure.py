@@ -398,14 +398,9 @@ class cEnergySystem:
       aNewEffect : cEffect
       for aNewEffect in newListOfEffects:       
         print('Register new effect ' + aNewEffect.label)
-        # Wenn bereits vorhanden:
-        if aNewEffect in self.listOfEffectTypes:
-          raise Exception('Effekt bereits in cEnergysystem eingefügt')
-
-        # Check if name used already:
-        if aNewEffect.label in [aEffect.label for aEffect in self.listOfEffectTypes]:
-          raise Exception('label of effect \'' + aNewEffect.label + '\' used twice!')  
-          
+        # check if already exists:
+        self._checkIfUniqueElement(aNewEffect, self.listOfEffectTypes)
+        
         # Wenn Standard-Effekt, und schon einer vorhanden:
         if (aNewEffect.isStandard) and (self.listOfEffectTypes.standardType() is not None):
             raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
@@ -418,7 +413,7 @@ class cEnergySystem:
       
       # an globalComp durchreichen: TODO: doppelte Haltung in es und globalComp ist so nicht schick.
       self.globalComp.listOfEffectTypes = self.listOfEffectTypes
-            
+
     # Komponenten registrieren:
     def addComponents(self,*args):
       
@@ -428,12 +423,8 @@ class cEnergySystem:
       for aNewComp in newListOfComps:                      
         # Check ob schon vorhanden:
         print('Register new Component ' + aNewComp.label)
-        if aNewComp in self.listOfComponents:
-          raise Exception('Komponente bereits in cEnergysystem eingefügt!')                
-        
-        # Check ob Name schon vergeben:
-        if aNewComp.label in [aComp.label for aComp in self.listOfComponents]:
-          raise Exception('Komponentenname \'' + aNewComp.label + '\' bereits vergeben!')  
+        # check if already exists:
+        self._checkIfUniqueElement(aNewComp, self.listOfComponents)
 
         # # base in Komponente registrieren:
         # aNewComp.addEnergySystemIBelongTo(self)        
@@ -466,9 +457,12 @@ class cEnergySystem:
                 self.addComponents(aNewME)
             elif isinstance(aNewME, cEffectType):
                 self.addEffects(aNewME)
-            elif isinstance(aNewME, cME) :
+            elif isinstance(aNewME, cME):
+                # check if already exists:
+                self._checkIfUniqueElement(aNewME, self.setOfOtherMEs)
                 # register ME:
                 self.setOfOtherMEs.add(aNewME)
+
             else: 
                 raise Exception('argument is not instance of a modeling Element (cME)')
     
@@ -489,7 +483,7 @@ class cEnergySystem:
     
     def deleteTemporaryElements(self): # function just implemented, still not used
         '''        
-        deletes all temporary Elements
+        deletes all registered temporary Elements
         '''        
         for tempME in self.AllTempMEs:
             # delete them again in the lists:
@@ -498,6 +492,27 @@ class cEnergySystem:
             self.setOfOtherMEs.remove(tempME)
             self.listOfEffectTypes.remove(tempME)
             self.setOfFlows(tempME)
+
+    def _checkIfUniqueElement(self, aElement, listOfExistingLists):
+        '''
+        checks if element or label of element already exists in list
+
+        Parameters
+        ----------
+        aElement : cME
+            new element to check
+        listOfExistingLists : list
+            list of already registered elements
+        '''
+        
+        # check if element is already registered:        
+        if aElement in listOfExistingLists:
+            raise Exception('Element \'' + aElement.label + '\' already added to cEnergysystem!')                
+        
+        # check if name is already used:
+        if aElement.label in [elem.label for elem in listOfExistingLists]:
+            raise Exception('Elementname \'' + aElement.label + '\' already used in another element!')  
+            
     
     def __plausibilityChecks(self):
       # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):

@@ -32,8 +32,6 @@ aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * dateti
 aTimeSeries = aTimeSeries.astype('datetime64')
   
 
-##########################################################################
-
 print('#######################################################################')
 print('################### start of modeling #################################')
 
