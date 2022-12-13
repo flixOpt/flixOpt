@@ -402,6 +402,10 @@ class cEnergySystem:
         if aNewEffect in self.listOfEffectTypes:
           raise Exception('Effekt bereits in cEnergysystem eingefügt')
 
+        # Check if name used already:
+        if aNewEffect.label in [aEffect.label for aEffect in self.listOfEffectTypes]:
+          raise Exception('label of effect \'' + aNewEffect.label + '\' used twice!')  
+          
         # Wenn Standard-Effekt, und schon einer vorhanden:
         if (aNewEffect.isStandard) and (self.listOfEffectTypes.standardType() is not None):
             raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
