@@ -1104,7 +1104,7 @@ class cCalculation :
         useOriginalTimeSeries : boolean. 
             orginal or aggregated timeseries should 
             be chosen for the calculation. default is False.    
-        addPeakMax : list of cTSraw ...
+        addPeakMax : list of cTSraw 
             list of data-timeseries. The period with the max-value are 
             chosen as a explicitly period.            
         addPeakMin : list of cTSraw
@@ -1215,6 +1215,8 @@ class cCalculation :
             print('  max_orig:' + str(max(df_OriginalData[aLabel])))
             print('  min_agg:' + str(min(dataAgg.totalTimeseries[aLabel])))
             print('  min_orig:' + str(min(df_OriginalData[aLabel])))
+            print('  sum_agg:' + str(sum(dataAgg.totalTimeseries[aLabel])))
+            print('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
             
         print('addpeakmax:')
         print(self.TScollectionForAgg.addPeak_Max_labels)
