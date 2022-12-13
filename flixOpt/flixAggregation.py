@@ -105,7 +105,7 @@ class flixAggregation:
         # Neu berechnen der numberOfTimeStepsPerPeriod
         self.numberOfTimeStepsPerPeriod = int(self.hoursPerPeriod / self.hoursPerTimeStep)
 
-       # Erstellen des aggregation objects
+        # Erstellen des aggregation objects
         aggregation = tsam.TimeSeriesAggregation(self.timeseries,
                                                  noTypicalPeriods=self.noTypicalPeriods,
                                                  hoursPerPeriod=self.hoursPerPeriod,

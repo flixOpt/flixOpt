@@ -260,7 +260,7 @@ if doAggregatedCalc :
                                  percentageOfPeriodFreedom = percentageOfPeriodFreedom,
                                  costsOfPeriodFreedom = costsOfPeriodFreedom,
                                  addPeakMax=[TS_Q_th_Last], # add timeseries of period with maxPeak explicitly
-                                 addPeakMin=[TS_P_el_Last]
+                                 addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
                                  )
     
     es.printVariables()
