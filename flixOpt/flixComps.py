@@ -475,26 +475,45 @@ class cStorage(cBaseComponent):
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self, label, inFlow, outFlow, capacity_inFlowHours, min_rel_chargeState=0, max_rel_chargeState=1,
                  chargeState0_inFlowHours=0, charge_state_end_min=0, charge_state_end_max=None, eta_load=1,
-                 eta_unload=1, fracLossPerHour=0, avoidInAndOutAtOnce=False, investArgs=None, **kwargs):
-        """
-        Konstruktor für Instanzen der Klasse cStorage
+                 eta_unload=1, fracLossPerHour=0, avoidInAndOutAtOnce=True, investArgs=None, **kwargs):
+        '''
+        constructor of storage
 
-        :param str label: Bezeichnung
-        :param cFlow inFlow: eingehender Flow
-        :param cFlow outFlow: ausgehender Flow
-        :param int or float capacity_inFlowHours: Speicherkapazität in kWh
-        :param int or float min_rel_chargeState:
-        :param int or float max_rel_chargeState:
-        :param int or float chargeState0_inFlowHours: Speicherkapazität in kWh zu Beginn des Betrachtungszeitraums
-        :param float charge_state_end_min: minimaler relativer (?) Speicherstand zum Ende des Betrachtungszeitraums (0...1)
-        :param float charge_state_end_max: maximaler relativer (?) Speicherstand zum Ende des Betrachtungszeitraums (0...1)
-        :param int or float eta_load: Wirkungsgrad beim Laden (0...1)
-        :param int or float eta_unload: Wirkungsgrad beim Entladen (0...1)
-        :param int or float fracLossPerHour: Verlust pro Speichereinheit und Stunde TODO: pro Stunde oder pro Zeitschritt?
-        :param bool avoidInAndOutAtOnce: soll gleichzeitiges Be- und Entladen vermieden werden? (Achtung, Performance wird ggf. schlechter)
-        :param cInvestArgs investArgs:
-        :param kwargs:
-        """
+        Parameters
+        ----------
+        label : str
+            description.
+        inFlow : cFlow
+            ingoing flow.
+        outFlow : cFlow
+            outgoing flow.
+        capacity_inFlowHours : float
+            Speicherkapazität in kWh.
+        min_rel_chargeState : float or TS, optional
+            minimum relative charge state. The default is 0.
+        max_rel_chargeState : float or TS, optional
+            maximum relative charge state. The default is 1.
+        chargeState0_inFlowHours : float (0...1), optional
+            Speicherkapazität in kWh zu Beginn des Betrachtungszeitraums. The default is 0.
+        charge_state_end_min : float, optional
+            minimaler relativer (?) Speicherstand zum Ende des Betrachtungszeitraums (0...1). The default is 0.
+        charge_state_end_max : float, optional
+            maximaler relativer (?) Speicherstand zum Ende des Betrachtungszeitraums (0...1). The default is None.
+        eta_load : float, optional
+            Wirkungsgrad beim Laden (0...1). The default is 1.
+        eta_unload : TYPE, optional
+            Wirkungsgrad beim Entladen (0...1). The default is 1.
+        fracLossPerHour : float or TS. optional
+            Verlust pro Speichereinheit und Stunde TODO: pro Stunde oder pro Zeitschritt?. The default is 0.
+        avoidInAndOutAtOnce : boolean, optional
+            should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
+        investArgs : cInvestArgs, optional
+            invest arguments. The default is None.
+        
+        **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
+            DESCRIPTION.
+        '''
+        
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
         super().__init__(label, **kwargs)
 
