@@ -551,8 +551,8 @@ class cEquation :
 
       Parameters
       ----------
-      aValue : TYPE
-          DESCRIPTION.
+      aValue : float or array
+          y-value of equation [A*x = y] or [A*x <= y]
 
       Returns
       -------

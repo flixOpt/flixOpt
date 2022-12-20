@@ -1471,7 +1471,7 @@ class cME(cArgsClass):
     """
     modBox : cModelBoxOfES
     
-    new_init_args = [cArg('label','param','str', 'Bezeichnung')]
+    new_init_args = ['label']
     not_used_args = [] 
   
     @property
@@ -1760,7 +1760,8 @@ class cBaseComponent(cME):
     basic component class for all components
     '''    
     modBox : cModelBoxOfES
-    
+    new_init_args = ['label', 'on_valuesBeforeBegin', 'switchOnCosts', 'switchOn_maxNr', 'onHoursSum_min','onHoursSum_max', 'costsPerRunningHour']
+    not_used_args = ['label']
     def __init__(self, label, on_valuesBeforeBegin = [0,0], switchOnCosts = None, switchOn_maxNr = None, onHoursSum_min = None, onHoursSum_max = None, costsPerRunningHour = None, **kwargs) :            
         '''
         
@@ -2062,6 +2063,9 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
     #        none/ 0 -> kein Exzess berücksichtigt
     #        > 0 berücksichtigt
       
+    new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
+    not_used_args = ['label']    
+    
     def __init__(self, media, label, excessCostsPerFlowHour = 1e5, **kwargs):   
         '''
         Parameters
@@ -2070,8 +2074,8 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
             media or set of allowed media of the coupled flows, 
             if None, then any flow is allowed
             example 1: media = None -> every media is allowed
-            example 1: media = 'gas'
-            example 2: media = {'gas','biogas','H2'}
+            example 1: media = 'gas' -> flows with medium 'gas' are allowed
+            example 2: media = {'gas','biogas','H2'} -> flows of these media are allowed
         label : str
             name.
         excessCostsPerFlowHour : none or scalar, array or cTSraw

@@ -13,14 +13,7 @@ from flixBasicsPublic import cTSraw
 # gibt Warnung, falls unbenutzte kwargs vorhanden!
 class cArgsClass:
   
-    # diese Klassen-Methode holt aus dieser und den Kindklassen alle zulässigen Argumente der Kindklasse! 
-    @classmethod
-    def printInitArgs(cls):
-      print('init-args of ' + cls.__name__ + ':')
-      listOfInitArgs = cls.getInitArgs()
-      for aProp in listOfInitArgs:
-        aProp.print('  ')
-        
+    # diese Klassen-Methode holt aus dieser und den Kindklassen alle zulässigen Argumente der Kindklasse!         
     @classmethod  
     def getInitArgs(cls):        
   
@@ -41,7 +34,7 @@ class cArgsClass:
   
       ### 2. Abziehen der nicht durchgereichten Argumente ###
       # delete not Transfered Args:
-      allArgsFromMotherClass = [prop for prop in allArgsFromMotherClass if prop.label not in notTransferedMotherArgs]
+      allArgsFromMotherClass = [prop for prop in allArgsFromMotherClass if prop not in notTransferedMotherArgs]
          
       
       ### 3. Ergänzen der neuen Argumente ###
@@ -58,19 +51,7 @@ class cArgsClass:
         # wenn hier kwargs auftauchen, dann wurde zuviel übergeben:
         if len(kwargs) > 0 :
                                             raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
-      
-# Definiert Input/Argument/Eigenschaft für Komponenten/Flows
-class cArg:
-    def __init__(self, label, propType, dType, description):
-        self.label        = label
-        # self.defaultValue = defaultValue
-        self.dType        = dType    
-        self.description  = description
-        self.propType     = propType # costs, params, initValues
-        
-    def print(self, prefixChars):    
-        print(prefixChars + self.label + ' : ' + self.propType + ' | ' + str(self.dType) + ' | ' + self.description )      
-    
+     
     
 # Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
 class cTS_vector:  

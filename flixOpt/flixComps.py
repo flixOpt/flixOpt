@@ -28,18 +28,10 @@ class cBaseLinearTransformer(cBaseComponent):
     """
     Klasse cBaseLinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
-    new_init_args = [cArg('inputs', 'flowList', 'flowList', 'Liste aller Input-Flows'),
-                     cArg('outputs', 'flowList', 'flowList', 'Liste aller Output-Flows'),
-                     cArg('factor_Sets', 'factor_Sets', 'factor_Sets',
-                          'Beschreibungs-Flow-ZH: Gleichungen via factor_Sets, rezessiv!'),
-                     cArg('segmentsOfFlows', 'segmentsOfFlows', 'segmentsOfFlows',
-                          'Beschreibung-Flow-ZH: Abschnittsweise Lineare Beschreibung, dominant!')]
-    not_used_args = []
-
+    new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
+    not_used_args = ['label']
     def __init__(self, label, inputs, outputs, factor_Sets=None, segmentsOfFlows=None, **kwargs):
         '''
-        
-
         Parameters
         ----------
         label : str
@@ -51,7 +43,8 @@ class cBaseLinearTransformer(cBaseComponent):
         factor_Sets : list
             linear relation between flows
             eq: sum (factor * flow_in) = sum (factor * flow_out)
-            factor can be cTS_vector, scalar or list
+            factor can be cTS_vector, scalar or list.
+            Either 'factor_Sets' or 'segmentsOfFlows' can be used!
 
             example heat pump:  
                 
@@ -63,7 +56,7 @@ class cBaseLinearTransformer(cBaseComponent):
             Segmented linear correlation. begin and end of segment has to be given/defined.
             factors can be scalar or lists (i.e.timeseries)!
             if Begin of segment n+1 is not end of segment n, then "gap", i.e. not allowed area
-            
+            Either 'segmentsOfFlows' or 'factor_Sets' can be used!
             example with two segments:
             
             >>> #           flow    begin, end, begin, end
@@ -262,25 +255,29 @@ class cBaseLinearTransformer(cBaseComponent):
 
 class cKessel(cBaseLinearTransformer):
     """
-    Klasse cKessel
+    class cKessel
     """
-    new_init_args = [cArg('label', 'param', 'str', 'Bezeichnung'),
-                     cArg('eta', 'param', 'TS', 'Wirkungsgrad'),
-                     cArg('Q_fu', 'flow', 'flow', 'input-Flow Brennstoff'),
-                     cArg('Q_th', 'flow', 'flow', 'output-Flow Wärme')]
-
+    new_init_args = ['label', 'eta', 'Q_fu', 'Q_th',]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
-
+    
     def __init__(self, label, eta, Q_fu, Q_th, **kwargs):
-        """
-        Konstruktor für Instanzen der Klasse cKessel
+        '''
+        constructor for boiler
 
-        :param str label: Bezeichnung
-        :param int or float eta: Wirkungsgrad
-        :param cFlow Q_fu: input-Flow Brennstoff
-        :param cFlow Q_th: output-Flow Wärme
-        :param kwargs:
-        """
+        Parameters
+        ----------
+        label : str
+            name of bolier.
+        eta : float or TS
+            thermal efficiency.
+        Q_fu : cFlow
+            fuel input-flow
+        Q_th : cFlow
+            thermal output-flow.
+        **kwargs : see mother classes!
+        
+
+        '''
         # super:
         kessel_bilanz = {Q_fu: eta,
                          Q_th: 1}  # eq: eta * Q_fu = 1 * Q_th # TODO: Achtung eta ist hier noch nicht TS-vector!!!
@@ -306,25 +303,26 @@ class cKessel(cBaseLinearTransformer):
 
 class cHeatPump(cBaseLinearTransformer):
     """
-    Klasse cHeatPump
+    class cHeatPump
     """
-    new_init_args = [cArg('label', 'param', 'str', 'Bezeichnung'),
-                     cArg('COP', 'param', 'TS', 'Coefficient of Performance'),
-                     cArg('P_el', 'flow', 'flow', 'input-Flow Strom'),
-                     cArg('Q_th', 'flow', 'flow', 'output-Flow Wärme')]
-
+    new_init_args = ['label', 'COP', 'P_el', 'Q_th',]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
-
+    
     def __init__(self, label, COP, P_el, Q_th, **kwargs):
-        """
-        Konstruktor für Instanzen der Klasse cHeatPump
-
-        :param label:
-        :param COP:
-        :param P_el:
-        :param Q_th:
-        :param kwargs:
-        """
+        '''
+        Parameters
+        ----------
+        label : str
+            name of heatpump.
+        COP : float or TS
+            Coefficient of performance.
+        P_el : cFlow
+            electricity input-flow.
+        Q_th : cFlow
+            thermal output-flow.
+        **kwargs : see motherclasses
+        '''
+        
         # super:
         heatPump_bilanz = {P_el: COP, Q_th: 1}  # TODO: Achtung eta ist hier noch nicht TS-vector!!!
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[heatPump_bilanz], **kwargs)
@@ -347,24 +345,24 @@ class cCoolingTower(cBaseLinearTransformer):
     """
     Klasse cCoolingTower
     """
-    new_init_args = [cArg('label', 'param', 'str', 'Bezeichnung'),
-                     cArg('specificElectricityDemand', 'param', 'TS',
-                          'spezifischer Hilfsenergiebedarf, z.B. 0.02 (2 %) der Wärmeleistung'),
-                     cArg('P_el', 'flow', 'flow', 'input-Flow: Strom (Hilfsenergiebedarf)'),
-                     cArg('Q_th', 'flow', 'flow', 'input-Flow: Abwärme')]
-
+    new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th',]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
     def __init__(self, label, specificElectricityDemand, P_el, Q_th, **kwargs):
-        """
-        Konstruktor für Instanzen der Klasse cCoolingTower
-
-        :param label:
-        :param specificElectricityDemand:
-        :param P_el:
-        :param Q_th:
-        :param kwargs:
-        """
+        '''
+        Parameters
+        ----------
+        label : str
+            name of cooling tower.
+        specificElectricityDemand : float or TS
+            auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
+        P_el : cFlow
+            electricity input-flow.
+        Q_th : cFlow
+            thermal input-flow.
+        **kwargs : see getKwargs() and their description in motherclasses
+            
+        '''
         # super:         
         auxElectricity_eq = {P_el: 1,
                              Q_th: -specificElectricityDemand}  # eq: 1 * P_el - specificElectricityDemand * Q_th = 0  # TODO: Achtung eta ist hier noch nicht TS-vector!!!
@@ -388,32 +386,37 @@ class cCoolingTower(cBaseLinearTransformer):
 
 class cKWK(cBaseLinearTransformer):
     """
-    Klasse cKWK
+    class of combined heat and power unit (CHP)
     """
-    new_init_args = [cArg('label', 'param', 'str', 'Bezeichnung'),
-                     cArg('eta_th', 'param', 'TS', 'el. Wirkungsgrad'),
-                     cArg('eta_el', 'param', 'TS', 'th. Wirkungsgrad'),
-                     cArg('Q_fu', 'flow', 'flow', 'in-Flow Brennstoff'),
-                     cArg('P_el', 'flow', 'flow', 'out-Flow Strom'),
-                     cArg('Q_th', 'flow', 'flow', 'out-Flow Wärme')]
-
+    new_init_args = ['label', 'eta_th', 'eta_el', 'Q_fu', 'P_el', 'Q_th']
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
     # eta = 1 # Thermischer Wirkungsgrad
     # __eta_bound = [0,1]
 
     def __init__(self, label, eta_th, eta_el, Q_fu, P_el, Q_th, **kwargs):
-        """
-        Konstruktor für Instanzen der Klasse cKWK
+        '''
+        constructor of cCHP
 
-        :param str label: Bezeichnung
-        :param int or float eta_th: thermischer Wirkungsgrad (0 ... 1)
-        :param int or float eta_el: elektrischer Wirkungsgrad (0 ... 1)
-        :param cFlow Q_fu: in-Flow Brennstoff
-        :param cFlow P_el: out-Flow Strom
-        :param cFlow Q_th: out-Flow Wärme
-        :param kwargs: see mother classes ...
-        """
+        Parameters
+        ----------
+        label : str
+            name of CHP-unit.
+        eta_th : float or TS
+            thermal efficiency.
+        eta_el : float or TS
+            electrical efficiency.
+        Q_fu : cFlow
+            fuel input-flow.
+        P_el : cFlow
+            electricity output-flow.
+        Q_th : cFlow
+            heat output-flow.
+        **kwargs : 
+        
+        '''
+        
+
         # super:
         waerme_glg = {Q_fu: eta_th, Q_th: 1}
         strom_glg = {Q_fu: eta_el, P_el: 1}
@@ -456,19 +459,9 @@ class cStorage(cBaseComponent):
     # costs_default = property(get_costs())
     # param_defalt  = property(get_params())
 
-    new_init_args = [cArg('label'               , 'param', 'str',   'Bezeichnung'),
-                     cArg('capacity_inFlowHours', 'param', 'skalar', 'speicherbare Menge, z.B. kWh, m³'),
-                     cArg('max_rel_chargeState' , 'param', 'TS'  , 'relative Max-Füllstand'),
-                     cArg('min_rel_chargeState' , 'param', 'TS'  , 'relative Min-Füllstand'),
-                     cArg('charge_state_end_min', 'param', 'skalar','minimaler Speicherzustand am Ende (nach letztem Zeitschritt)'),
-                     cArg('charge_state_end_max', 'param', 'skalar','maximaler Speicherzustand am Ende (nach letztem Zeitschritt)'),
-                     cArg('eta_load'            , 'param', 'TS',    'Belade-Wirkungsgrad'),
-                     cArg('eta_unload'          , 'param', 'TS',    'Entlade-Wirkungsgrad'),
-                     cArg('fracLossPerHour'     , 'param', 'TS',    'Verlust pro Speicherinhalt und Stunde, z.B. 0.02 (= 2 %) pro Stunde'),
-                     cArg('avoidInAndOutAtOnce' , 'param', 'boolean', 'soll gleichzeitiges Be- und Entladen vermieden werden? (Achtung Performance wird ggf. kleiner)'),
-                     cArg('costsIfVariableCapacity_perFlowHour', 'costs', 'skalar', 'spezifische Speicherkosten (z.B. €/kWh) --> Eingabe nur wenn Speichergröße freie Optimierungsgröße'),
-                     cArg('inFlow'              , 'flow',  'flow',  'in-Flow Beladung'),
-                     cArg('outFlow'             , 'flow',  'flow',  'out-Flow Entladung')]
+    new_init_args = ['label', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
+                 'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
+                 'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce' 'investArgs']
 
     not_used_args = ['label']
 
@@ -725,29 +718,38 @@ class cStorage(cBaseComponent):
 
 class cSourceAndSink(cBaseComponent):
     """
-    Klasse cSourceAndSink: alternativer Betrieb als Quelle oder Senke
+    class for source (output-flow) and sink (input-flow) in one commponent
     """
     # source : cFlow
     # sink   : cFlow
 
-    new_init_args = [cArg('label', 'param', 'str', 'Bezeichnung'),
-                     cArg('source', 'flow', 'flow', 'flow-output Quelle'),
-                     cArg('sink  ', 'flow', 'flow', 'flow-input  Senke')]
+    new_init_args = ['label', 'source', 'sink','avoidInAndOutAtOnce']
 
     not_used_args = ['label']
 
-    def __init__(self, label, source, sink, **kwargs):
-        """
-        Konstruktor für Instanzen der Klasse cSourceAndSink
+    def __init__(self, label, source, sink, avoidInAndOutAtOnce = True, **kwargs):
+        '''
+        Parameters
+        ----------
+        label : str
+            name of sourceAndSink
+        source : cFlow
+            output-flow of this component
+        sink : cFlow
+            input-flow of this component
+        avoidInAndOutAtOnce: boolean. Default ist True.
+            True: inflow and outflow are not allowed to be both non-zero at same timestep.
+            False: inflow and outflow are working independently.
+            
+        **kwargs : TYPE
+            DESCRIPTION.
 
-        :param label:
-        :param source:
-        :param sink:
-        :param kwargs:
-        """
+
+        '''
         super().__init__(label, **kwargs)
         self.source = source
         self.sink = sink
+        self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
         self.outputs.append(source)  # ein Output-Flow
         self.inputs.append(sink)
 
@@ -755,7 +757,10 @@ class cSourceAndSink(cBaseComponent):
         self.source.activateOnValue()
         self.sink.activateOnValue()
 
-        self.featureAvoidInAndOutAtOnce = cFeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])
+        if self.avoidInAndOutAtOnce: 
+            self.featureAvoidInAndOutAtOnce = cFeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])
+        else: 
+            self.featureAvoidInAndOutAtOnce = None
 
     def declareVarsAndEqs(self, modBox):
         """
@@ -776,18 +781,33 @@ class cSourceAndSink(cBaseComponent):
         """
         super().doModeling(modBox, timeIndexe)
         # Entweder Sink-Flow oder Source-Flow aktiv. Nicht beide Zeitgleich!
-        self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
+        if self.featureAvoidInAndOutAtOnce is not None: 
+            self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
 class cSource(cBaseComponent):
     """
-    Klasse cSource
+    class of a source
     """
-    new_init_args = [cArg('label', 'param', 'str', 'Bezeichnung'),
-                     cArg('source', 'flow', 'flow', 'flow-output Quelle')]
+    new_init_args = ['label', 'source']
     not_used_args = ['label']
 
     def __init__(self, label, source, **kwargs):
+        '''       
+        Parameters
+        ----------
+        label : str
+            name of source
+        source : cFlow
+            output-flow of source
+        **kwargs : TYPE
+
+        Returns
+        -------
+        None.
+
+        '''
+        
         """
         Konstruktor für Instanzen der Klasse cSource
 
@@ -804,19 +824,28 @@ class cSink(cBaseComponent):
     """
     Klasse cSink
     """
-    new_init_args = [cArg('label', 'param', 'str', 'Bezeichnung'),
-                     cArg('sink', 'flow', 'flow', 'flow-input Senke')]
-
+    new_init_args = ['label', 'source']
     not_used_args = ['label']
 
     def __init__(self, label, sink, **kwargs):
-        """
-        Konstruktor für Instanzen der Klasse cSink
+        '''
+        constructor of sink 
 
-        :param str label: Bezeichnung
-        :param cFlow sink: flow-input Senke
-        :param kwargs:
-        """
+        Parameters
+        ----------
+        label : str
+            name of sink.
+        sink : cFlow
+            input-flow of sink
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
         super().__init__(label)
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
