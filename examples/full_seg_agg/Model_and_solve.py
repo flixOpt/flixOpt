@@ -402,4 +402,9 @@ for aResult in listOfResults:
   print('Kosten penalty Sim1: ',sum(aResult.results_struct.globalComp.penalty.sum_TS))
 
 
+# loading yaml-datei:
+with open(agg.filename_infos,'rb') as f:
+    infos = yaml.safe_load(f)
 
+# periods order of aggregated calculation:
+print('periodsOrder of aggregated calc: ' + str(infos['calculation']['aggregatedProps']['periodsOrder']))

@@ -121,3 +121,6 @@ if calcSegs is not None : uebersichtsPlot(calcSegs)
 
 calc1.to_csv('Fernwaerme', 'FW.csv')
     
+# loading yaml-datei:
+with open(calc1.filename_infos,'rb') as f:
+    infos = yaml.safe_load(f)

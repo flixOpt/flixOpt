@@ -913,6 +913,7 @@ class cCalculation :
         self.__results        = None
         self.__results_struct = None # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
         self.segmentModBoxList = [] # modBox list
+        self.dataAgg = None # aggregationStuff (if calcType = 'aggregated')
     
     # Variante1:
     def doModelingAsOneSegment(self):
@@ -1180,9 +1181,12 @@ class cCalculation :
                                           addPeakMax = self.TScollectionForAgg.addPeak_Max_labels,
                                           addPeakMin = self.TScollectionForAgg.addPeak_Min_labels)
         
-        
-        
+                
         dataAgg.cluster()   
+        self.dataAgg = dataAgg
+        
+        self._infos['aggregatedProps']['periodsOrder'] = str(list(dataAgg.aggregation.clusterOrder))
+        
         # dataAgg.aggregation.clusterPeriodIdx
         # dataAgg.aggregation.clusterOrder
         # dataAgg.aggregation.clusterPeriodNoOccur

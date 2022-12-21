@@ -104,15 +104,15 @@ class flix_results():
             # see: https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
             
         # 'z.B.' 2022-06-14_Sim1_gurobi_SolvingInfos
-        filename_infos = results_folder + '/' + nameOfCalc + '_solvingInfos.yaml'
-        filename_data = results_folder + '/' + nameOfCalc + '_data.pickle'
+        self.filename_infos = results_folder + '/' + nameOfCalc + '_solvingInfos.yaml'
+        self.filename_data = results_folder + '/' + nameOfCalc + '_data.pickle'
+        
     
-    
-        with open(filename_infos,'rb') as f:
+        with open(self.filename_infos,'rb') as f:
             self.infos = yaml.safe_load(f)
             self.infos_system = self.infos['system_description']
     
-        with open(filename_data,'rb') as f:
+        with open(self.filename_data,'rb') as f:
             self.results = pickle.load(f)          
         self.results_struct = helpers.createStructFromDictInDict(self.results)
         
