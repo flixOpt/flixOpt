@@ -634,6 +634,7 @@ class flix_results():
     @staticmethod
     # get values of flow as dataframe and belonging colors:    
     def _get_FlowValues_As_DataFrame(flows, timeSeriesWithEnd ,dtInHours, minFlowHours):
+        numericalZero = -1e-4
         # Dataframe mit Inputs (+) und Outputs (-) erstellen:
         y = pd.DataFrame() # letzten Zeitschritt vorerst weglassen
         y.index = timeSeriesWithEnd[0:-1] # letzten Zeitschritt vorerst weglassen       
@@ -641,8 +642,8 @@ class flix_results():
         # Beachte: hier noch nicht als df-Index, damit sortierbar
         for aFlow in flows:        
             values = aFlow.results['val'] # 
-            values[np.logical_and(values<0, values>-1e-5)] = 0 # negative Werte durch numerische Auflösung löschen 
-            assert (values>=0).all(), 'Warning, Zeitreihen '+ aFlow.label_full +' in inputs enthalten neg. Werte -> Darstellung Graph nicht korrekt'
+            values[np.logical_and(values<0, values>numericalZero)] = 0 # negative Werte durch numerische Auflösung löschen 
+            assert (values>=numericalZero).all(), 'Warning, Zeitreihen '+ aFlow.label_full +' in inputs enthalten neg. Werte -> Darstellung Graph nicht korrekt'
                                 
             if flix_results.isGreaterMinFlowHours(values, dtInHours, minFlowHours): # nur wenn gewisse FlowHours-Sum überschritten
                 y[aFlow.label_full] = + values # ! positiv!
