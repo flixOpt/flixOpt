@@ -30,7 +30,7 @@ You can choose between three calculation modes:
   * **segmented** (with variable time overlap) -> fast but not exact for big storages
   * **aggregated** (automatically creation of typical periods via [TSAM](https://github.com/FZJ-IEK3-VSA/tsam "more info")) -> fast, quite exact
 ## architecture
-  * interlayer flixBase for modeling and good overview of variables and equations
+  * interlayer flixBase for modeling and good overview of (vectorized) variables and equations
   * postprocessing unit  
   * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
 <img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
