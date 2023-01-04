@@ -28,7 +28,9 @@ flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU
   * others
     * non-equidistant timesteps possible
     * investment and flow-on/off variables in one model
-
+## architecture
+![architecture](/repository/pics/architecture_flixOpt.png?raw=true "architecture of flixOpt")
+architecture_flixOpt.png
 ## performance issues
 You can choose between three calculation modes:
   * **full** -> exact and slow
