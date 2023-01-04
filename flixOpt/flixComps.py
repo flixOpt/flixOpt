@@ -506,7 +506,7 @@ class cStorage(cBaseComponent):
         **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
             DESCRIPTION.
         '''
-        # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch val_rel_chargeState implementieren damit konsistent zu flow (max_rel, min_rel, val_re)
+        # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch "val_rel_chargeState" implementieren damit konsistent zu flow (max_rel, min_rel, val_re)
 
         
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
