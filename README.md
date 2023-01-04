@@ -21,15 +21,13 @@ flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU
     * effects coupleable, i.g. specific costs of CO2-emissions
     * constraints, i.g. max sum of CO2 emissions
     * simply switch effect, which should be minimized (optimization target)
-  * architecture
-    * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
-    * interlayer flixBase for modeling and good overview of variables and equations
-    * postprocessing unit
   * others
     * non-equidistant timesteps possible
     * investment and flow-on/off variables in one model
 ## architecture
-  
+  * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
+  * interlayer flixBase for modeling and good overview of variables and equations
+  * postprocessing unit  
 <img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
 
 ## performance issues
