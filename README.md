@@ -25,9 +25,9 @@ flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU
     * non-equidistant timesteps possible
     * investment and flow-on/off variables in one model
 ## architecture
-  * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
   * interlayer flixBase for modeling and good overview of variables and equations
   * postprocessing unit  
+  * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
 <img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
 
 ## performance issues
