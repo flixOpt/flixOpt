@@ -34,6 +34,7 @@ You can choose between three calculation modes:
   * postprocessing unit  
   * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
 <img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
+
 ## citing
 For explicitly citing, a link to a paper is coming soon ...
 
