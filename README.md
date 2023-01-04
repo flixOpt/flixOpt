@@ -24,17 +24,16 @@ flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU
   * others
     * non-equidistant timesteps possible
     * investment and flow-on/off variables in one model
-## architecture
-  * interlayer flixBase for modeling and good overview of variables and equations
-  * postprocessing unit  
-  * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
-<img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
-
 ## performance issues
 You can choose between three calculation modes:
   * **full** -> exact and slow
   * **segmented** (with variable time overlap) -> fast but not exact for big storages
   * **aggregated** (automatically creation of typical periods via [TSAM](https://github.com/FZJ-IEK3-VSA/tsam "more info")) -> fast, quite exact
+## architecture
+  * interlayer flixBase for modeling and good overview of variables and equations
+  * postprocessing unit  
+  * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
+<img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
 ## citing
 For explicitly citing, a link to a paper is coming soon ...
 
