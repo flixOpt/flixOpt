@@ -35,6 +35,9 @@ You can choose between three calculation modes:
   * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
 <img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
 
+## solver 
+  * you need to install a solver. Opensource solvers are CBC() and GLPK((https://sourceforge.net/projects/winglpk/). 
+
 ## citing
 For explicitly citing, a link to a paper is coming soon ...
 
