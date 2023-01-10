@@ -36,7 +36,7 @@ You can choose between three calculation modes:
 <img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
 
 ## solver 
-  * you need to install a solver. Opensource solvers are CBC() and GLPK((https://sourceforge.net/projects/winglpk/). 
+  * You need to install a solver. Various solvers are usable. Recommended opensource solvers are [CBC](https://github.com/coin-or/Cbc) and [GLPK](https://www.gnu.org/software/glpk/). Executables can be found for example  [here for CBC](https://portal.ampl.com/dl/open/cbc/) and [here for GLPK](https://sourceforge.net/projects/winglpk/) (Windows: You have to put solver-executables to the PATH-variable)
 
 ## citing
 For explicitly citing, a link to a paper is coming soon ...
