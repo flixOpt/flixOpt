@@ -10,6 +10,7 @@ Created on Thu Mar 18 18:43:55 2021
     # neue Variante (typ="new") austesten
       
 from flixStructure  import * # Grundstruktur
+from flixBasicsPublic import *
 
 ##############################################################  
 ## Funktionalität/Features zum Anhängen an die Komponenten: ##  
@@ -866,72 +867,6 @@ class cFeatureShares(cFeature):
         
         return eq_oneShare
     
-
-# Sammlung von Props für Investitionskosten (für cFeatureInvest)
-class cInvestArgs(cArgsClass):
-    '''
-    collects arguments for invest-stuff
-    '''
-    def __init__(self, 
-                 fixCosts = 0,             
-                 investmentSize_is_fixed = True, 
-                 investment_is_optional = True,  # Investition ist weglassbar
-                 specificCosts = 0,        # costs per Flow-Unit/Storage-Size/...
-                 costsInInvestsizeSegments = None,
-                 min_investmentSize = 0,   # nur wenn nominal_val_is_fixed = False
-                 max_investmentSize = 1e9, # nur wenn nominal_val_is_fixed = False
-                 **kwargs):
-        '''
-        Parameters
-        ----------
-        fixCosts : scalar
-            fixed investment-costs if invested 
-            
-            (Attention: Annualize costs to chosen period!)
-            
-        investmentSize_is_fixed: boolean
-            # True: fixed nominal_value; false: nominal_value as optimization-variable
-        investment_is_optional: boolean
-            if True: investment is not forced.
-        specificCosts: scalar or cost-dict, i.g. {costs: 3, CO2: 0.3}      
-            specific costs, i.g. in €/kW_nominal or €/m²_nominal    
-            (Attention: Annualize costs to chosen period!)
-        costsInInvestsizeSegments: 
-            linear relation in segments, [invest_segments, cost_segments]
-            with this you can also realise valid segments of investSize (and gaps of non-available sizes)
-            
-            example 1:
-                
-            >>> [[5,25,25,100], # nominal_value in kW
-            >>>  {costs:[50,250,250,800], # €
-            >>>   PE:[5,25,25,100]} # kWh_PrimaryEnergy
-            >>> ]
-            
-            example 2 (if only standard-effect):
-                
-            >>> [[5,25,25,100], #kW # nominal_value in kW
-            >>>  [50,250,250,800],#€ 
-            >>> ]                
-            
-            (Attention: Annualize costs to chosen period!)
-            (args 'specificCosts' and 'fixCosts' can be used in parallel to InvestsizeSegments)
-        
-        min_investmentSize: scalar
-            Min nominal value (only if: nominal_val_is_fixed = False)
-        max_investmentSize: scalar
-            Max nominal value (only if: nominal_val_is_fixed = False)
-  
-        '''
-        
-        self.fixCosts = fixCosts
-        self.investmentSize_is_fixed = investmentSize_is_fixed
-        self.investment_is_optional = investment_is_optional
-        self.specificCosts = specificCosts
-        self.costsInInvestsizeSegments = costsInInvestsizeSegments
-        self.min_investmentSize = min_investmentSize
-        self.max_investmentSize = max_investmentSize
-              
-        super().__init__(**kwargs)
         
 
 class cFeatureInvest(cFeature):         

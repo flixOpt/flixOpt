@@ -32,7 +32,8 @@ import numpy as np
 import datetime
 
 from flixStructure import *
-from flixComps    import *
+from flixComps import *
+from flixBasicsPublic import *
 
 ####################### kleine Daten zum Test ###############################
 P_el_Last = [70., 80., 90., 90 , 90 , 90, 90, 90, 90]

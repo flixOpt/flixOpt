@@ -9,8 +9,8 @@ import numpy as np
 import flixOptHelperFcts as helpers
 from flixBasicsPublic import cTSraw
 
-# stellt Infrastruktur printInitArgs() etc zur Verfügung:
-# gibt Warnung, falls unbenutzte kwargs vorhanden!
+# stellt Infrastruktur getInitArgs() etc zur Verfügung: TODO: geht das nicht irgendwie nativ?
+# gibt Warnung, falls unbenutzte kwargs vorhanden! 
 class cArgsClass:
   
     # diese Klassen-Methode holt aus dieser und den Kindklassen alle zulässigen Argumente der Kindklasse!         
@@ -52,6 +52,7 @@ class cArgsClass:
         if len(kwargs) > 0 :
                                             raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
      
+
     
 # Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
 class cTS_vector:  

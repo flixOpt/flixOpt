@@ -2650,6 +2650,7 @@ class cFlow(cME):
         # nicht überschreiben, nur wenn leer:
         if self.medium is None: self.medium = medium
 
+
 # class cBeforeValue :
   
 #   def __init__(self, modelingElement, var, esBeforeValues, beforeValueIsStartValue):
