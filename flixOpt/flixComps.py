@@ -480,8 +480,9 @@ class cStorage(cBaseComponent):
             ingoing flow.
         outFlow : cFlow
             outgoing flow.
-        capacity_inFlowHours : float
-            Speicherkapazität in kWh.
+        capacity_inFlowHours : float or None
+            float: Speicherkapazität in kWh. 
+            None:  if investArgs.investmentSize_is_fixed = False
         min_rel_chargeState : float or TS, optional
             minimum relative charge state. The default is 0.
         max_rel_chargeState : float or TS, optional

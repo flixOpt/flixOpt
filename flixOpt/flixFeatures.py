@@ -949,6 +949,38 @@ class cFeatureInvest(cFeature):
         return existOn
           
     def __init__(self, nameOfInvestmentSize, owner, investArgs:cInvestArgs, min_rel, max_rel, val_rel, investmentSize, featureOn = None):
+        '''
+        
+
+        Parameters
+        ----------
+        nameOfInvestmentSize : TYPE
+            DESCRIPTION.
+        owner : TYPE
+            owner of this ME
+        investArgs : cInvestArgs
+            arguments for modeling
+        min_rel : scalar or TS
+            given min_rel of definingVar 
+            (min = min_rel * investmentSize)
+        max_rel : scalar or TS        
+            given max_rel of definingVar
+            (max = max_rel * investmentSize)
+        val_rel : scalar or TS
+            given val_rel of definingVar
+            (val = val_rel * investmentSize)
+        investmentSize : scalar or None
+            value of fixed investmentSize (None if no fixed investmentSize)
+            cFlow: investmentSize = nominal_val
+            cStorage: investmentSize = 
+        featureOn : cFeatureOn
+            cFeatureOn of the definingVar (if it has a cFeatureOn)
+
+        Returns
+        -------
+        None.
+
+        '''
         super().__init__('invest', owner)
         self.nameOfInvestmentSize = nameOfInvestmentSize
         self.owner = owner
@@ -986,16 +1018,20 @@ class cFeatureInvest(cFeature):
             min_rel_eff = self.min_rel.d_i
             max_rel_eff = self.max_rel.d_i
       
-        valIsNotFixAndOnIsUsed = (self.val_rel is None) and ((self.featureOn is not None) and (self.featureOn.useOn))
+        onIsUsed = ((self.featureOn is not None) and (self.featureOn.useOn))
+        onIsUsedAndvalIsNotFix = (self.val_rel is None) and onIsUsed
               
         # min-Wert:
-        if valIsNotFixAndOnIsUsed or self.args.investment_is_optional: 
-            lb = 0 # kann ausgehen bzw. (immer) null sein
+        if self.args.investment_is_optional: 
+            lb = 0 # can be zero (if no invest) (than for all timesteps)
+        elif onIsUsedAndvalIsNotFix:
+            lb = 0 # can switch off and therefore be zero
         else :
             if self.args.investmentSize_is_fixed:
                 lb = min_rel_eff * self.fixedInvestmentSize # immer an
             else:
                 lb = min_rel_eff * self.args.min_investmentSize # investSize is variabel
+                
         #  max-Wert:
         if self.args.investmentSize_is_fixed:
             ub = max_rel_eff * self.fixedInvestmentSize
