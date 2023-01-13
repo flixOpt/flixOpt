@@ -41,7 +41,8 @@ class cInvestArgs:
     collects arguments for invest-stuff
     '''
     def __init__(self, 
-                 fixCosts = 0,             
+                 fixCosts = None, 
+                 divestCosts = None,
                  investmentSize_is_fixed = True, 
                  investment_is_optional = True,  # Investition ist weglassbar
                  specificCosts = 0,        # costs per Flow-Unit/Storage-Size/...
@@ -52,11 +53,11 @@ class cInvestArgs:
         '''
         Parameters
         ----------
-        fixCosts : scalar
-            fixed investment-costs if invested 
-            
+        fixCosts : None ore scalar
+            fixed investment-costs if invested             
             (Attention: Annualize costs to chosen period!)
-            
+        divestCosts : None or scalar 
+            fixed divestment-costs (if not invested, i.g. demolition costs or contractual penalty)
         investmentSize_is_fixed: boolean
             # True: fixed nominal_value; false: nominal_value as optimization-variable
         investment_is_optional: boolean
@@ -92,6 +93,7 @@ class cInvestArgs:
         '''
         
         self.fixCosts = fixCosts
+        self.divestCosts = divestCosts
         self.investmentSize_is_fixed = investmentSize_is_fixed
         self.investment_is_optional = investment_is_optional
         self.specificCosts = specificCosts

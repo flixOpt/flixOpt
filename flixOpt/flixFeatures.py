@@ -1184,6 +1184,21 @@ class cFeatureInvest(cFeature):
                 # share: + fixCosts
                 globalComp.addConstantShareToInvest('fixCosts', self.owner, self.args.fixCosts, 1) # fester Wert hinufügen
 
+        # # divestCosts:
+
+        if not(self.args.divestCosts is None) and self.args.divestCost != 0:
+            if self.args.investment_is_optional:
+                # fix Share to InvestCosts: 
+                # share: [(1- isInvested) * divestCosts]
+                # share: [divestCosts - isInvested * divestCosts]
+                # 1. part of share [+ divestCosts]:
+                globalComp.addConstantShareToInvest('divestCosts', self.owner, self.args.divestCosts, 1)
+                # 2. part of share [- isInvested * divestCosts]:
+                globalComp.addShareToInvest('divestCosts_cancellation', self.owner, self.mod.var_isInvested, self.args.divestCosts, -1)
+                # TODO : these 2 parts should be one share!
+            else:
+                pass # no divest costs if invest is not optional
+            
             
         ## segmentedCosts:
         # # specificCosts:
