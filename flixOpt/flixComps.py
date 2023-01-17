@@ -487,8 +487,11 @@ class cStorage(cBaseComponent):
             minimum relative charge state. The default is 0.
         max_rel_chargeState : float or TS, optional
             maximum relative charge state. The default is 1.
-        chargeState0_inFlowHours : float (0...1), optional
-            Speicherkapazität in kWh zu Beginn des Betrachtungszeitraums. The default is 0.
+        chargeState0_inFlowHours : None, float (0...1), 'lastValueOfSim',  optional
+            storage capacity in Flowhours at the beginning. The default is 0.
+            float: defined capacity at start of first timestep
+            None: free to choose by optimizer
+            'lastValueOfSim': chargeState0 is equal to chargestate of last timestep ("closed simulation")
         charge_state_end_min : float, optional
             minimaler relativer (?) Speicherstand zum Ende des Betrachtungszeitraums (0...1). The default is 0.
         charge_state_end_max : float, optional
@@ -934,7 +937,6 @@ class cTransportation(cBaseComponent):
             
         # not both directions at once:
         if self.avoidFlowInBothDirectionsAtOnce and (self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
-
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
