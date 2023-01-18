@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jun 16 11:19:17 2022
-
-@author: Panitz
+developed by Felix Panitz* and Peter Stange*
+* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 # TODO:
     #  Effektbeispiel mit Anzahl (z.b. Kesselanzahl < 3) 
