@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Nov 17 14:09:02 2020
-
-@author: Panitz
+developed by Felix Panitz* and Peter Stange*
+* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
 # todo:

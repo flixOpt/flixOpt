@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Sep 10 13:45:12 2020
-
-@author: Panitz
-
-# references: 
-#   from flixoptmat 1.0  : structure / features / math, constraints, ...
-#   from oemof        : some name-definition/ some structure
+developed by Felix Panitz* and Peter Stange*
+* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
 # TODO:
@@ -467,7 +463,7 @@ class cStorage(cBaseComponent):
 
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self, label, inFlow, outFlow, capacity_inFlowHours, min_rel_chargeState=0, max_rel_chargeState=1,
-                 chargeState0_inFlowHours=0, charge_state_end_min=0, charge_state_end_max=None, eta_load=1,
+                 chargeState0_inFlowHours=0, charge_state_end_min=None, charge_state_end_max=None, eta_load=1,
                  eta_unload=1, fracLossPerHour=0, avoidInAndOutAtOnce=True, investArgs=None, **kwargs):
         '''
         constructor of storage
@@ -481,7 +477,8 @@ class cStorage(cBaseComponent):
         outFlow : cFlow
             outgoing flow.
         capacity_inFlowHours : float or None
-            float: Speicherkapazität in kWh. 
+            nominal capacity of the storage 
+            float: capacity in FlowHours
             None:  if investArgs.investmentSize_is_fixed = False
         min_rel_chargeState : float or TS, optional
             minimum relative charge state. The default is 0.
@@ -492,16 +489,16 @@ class cStorage(cBaseComponent):
             float: defined capacity at start of first timestep
             None: free to choose by optimizer
             'lastValueOfSim': chargeState0 is equal to chargestate of last timestep ("closed simulation")
-        charge_state_end_min : float, optional
-            minimaler relativer (?) Speicherstand zum Ende des Betrachtungszeitraums (0...1). The default is 0.
-        charge_state_end_max : float, optional
-            maximaler relativer (?) Speicherstand zum Ende des Betrachtungszeitraums (0...1). The default is None.
+        charge_state_end_min : float or None, optional
+            minimal value of chargeState at the end of timeseries. 
+        charge_state_end_max : float or None, optional
+            maximal value of chargeState at the end of timeseries. 
         eta_load : float, optional
-            Wirkungsgrad beim Laden (0...1). The default is 1.
+            efficiency factor of charging/loading. The default is 1.
         eta_unload : TYPE, optional
-            Wirkungsgrad beim Entladen (0...1). The default is 1.
+            efficiency factor of uncharging/unloading. The default is 1.
         fracLossPerHour : float or TS. optional
-            Verlust pro Speichereinheit und Stunde TODO: pro Stunde oder pro Zeitschritt?. The default is 0.
+            loss per chargeState-Unit per hour. The default is 0.
         avoidInAndOutAtOnce : boolean, optional
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
         investArgs : cInvestArgs, optional
@@ -665,14 +662,16 @@ class cStorage(cBaseComponent):
         # Speicherladezustand am Ende
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
         # 1: eq:  Q_charge_state(end) <= Q_max
-        self.eq_charge_state_end_max = cEquation('eq_charge_state_end_max', self, modBox, eqType='ineq')
-        self.eq_charge_state_end_max.addSummand(self.mod.var_charge_state, 1, timeIndexeChargeState[-1])
-        self.eq_charge_state_end_max.addRightSide(self.charge_state_end_max)
+        if self.charge_state_end_max is not none:
+            self.eq_charge_state_end_max = cEquation('eq_charge_state_end_max', self, modBox, eqType='ineq')
+            self.eq_charge_state_end_max.addSummand(self.mod.var_charge_state, 1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_max.addRightSide(self.charge_state_end_max)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
-        self.eq_charge_state_end_min = cEquation('eq_charge_state_end_min', self, modBox, eqType='ineq')
-        self.eq_charge_state_end_min.addSummand(self.mod.var_charge_state, -1, timeIndexeChargeState[-1])
-        self.eq_charge_state_end_min.addRightSide(- self.charge_state_end_min)
+        if self.charge_state_end_min is not None:
+            self.eq_charge_state_end_min = cEquation('eq_charge_state_end_min', self, modBox, eqType='ineq')
+            self.eq_charge_state_end_min.addSummand(self.mod.var_charge_state, -1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_min.addRightSide(- self.charge_state_end_min)
 
         # nettoflow:
         # eq: nettoFlow(t) - outFlow(t) + inFlow(t) = 0
