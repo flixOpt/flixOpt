@@ -662,7 +662,7 @@ class cStorage(cBaseComponent):
         # Speicherladezustand am Ende
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
         # 1: eq:  Q_charge_state(end) <= Q_max
-        if self.charge_state_end_max is not none:
+        if self.charge_state_end_max is not None:
             self.eq_charge_state_end_max = cEquation('eq_charge_state_end_max', self, modBox, eqType='ineq')
             self.eq_charge_state_end_max.addSummand(self.mod.var_charge_state, 1, timeIndexeChargeState[-1])
             self.eq_charge_state_end_max.addRightSide(self.charge_state_end_max)
