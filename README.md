@@ -7,8 +7,8 @@ Collaboration is welcome!
 ## introduction
 **flixOpt** is an vector based optimization framework creating and solving mixed-integer programming problems (MILP). It is created with focus on energy flows but can be used for material flows as well.
 
-flixOpt was developed in project SMARTBIOGRID (FKZ 03KB159B) by [TU Dresden](https://github.com/gewv-tu-dresden).
-This project was founded by the German Federal Ministry for Economic Affairs and Energy (FKZ: 03KB159B).
+flixOpt was developed in project SMARTBIOGRID by [TU Dresden](https://github.com/gewv-tu-dresden).
+This project was funded by the German Federal Ministry for Economic Affairs and Energy (FKZ: 03KB159B).
 
 flixOpt is based on matlab framework flixOptMat developed in project FAKS by [TU Dresden](https://github.com/gewv-tu-dresden) and has a few influences from [oemof/solph](https://github.com/oemof/oemof-solph) (Great thanks for your tool!)
 ## key features
