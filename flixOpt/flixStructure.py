@@ -5,74 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-# ########################
-# ### todos
-
-#  results: Kessel.Q_th und Waermebus.Kessel_Q_th haben noch unterschiedliche IDs!!!
-
-# -> Bei MultiPeriod-Simulation sollten in results Skalare nicht jeweils angehangen werden, z.B. bei invest.var_sum (-> wenn man Variablen definiert als entweder timeseries oder summe, dann sollte das gehen)
-
-# -> STruktur nochmal überlegen. Vielleicht doch edges, bzw. flows, die sich Variablen teilen, wenn Komponenten direkt gekoppelt werden.
-
-# -> sauberes Erstellen von Listen in cEnergysystem für Busse, Flows und Components in !!!
-#    eventuell mit Knode als Unterklasse, mit Methoden: .getBuses(), .getFlows()
-
-# -> make flows unidirectional (min = 0)
-
-# -> flow.doModeling() sollte nur einmal aufgerufen werden können!!!
-
-# -> Trennung von bus und Brennstoff!
-
-# -> maximum -> verpflichtend setzen (oemof macht das m.e. mit nominalValue. Dann hat man immer ein Maximum, was man in den gleichungne benutzen kann)
-
-# -> überall korrigieren: self.__dict__.update(**locals()) erstellt auch self.self --> sinnlows
-
-# -> epsilon variabel gestalten (anpassen an Problem)
-
-# --> addShareToGlobalsOfFlows (-> sollte wirklcih modBox übergeben werden, oder sollte einfach jeder Flow sein timeIndexe und dt haben --> vermutlich generischer!)
-
-# -> wenn Flow fixed, dann lieber als Wert statt Variable an pyomo übergeben (peter: weil sonst variable(fix)*variable(nonfix) nicht geht) + Performance!!
-
-# --> Komponenten können aktuell noch gleiche Labels haben (getestet im Beispiel)
-
-# --> eqs sollten in modbox umziehen. Sonst besteht Gefahr, dass zumindest bei printEqs() alte Glg. von Vorgänger-Modbox geprinted werden.
-
-# bei rollierender Optimierung: 
-#  1. Schauen, ob man nicht doch lieber, alle Variablen nur für den Zeitbereich definiert und cVariable_TS.lastValues einrichtet, und dort Vorgängerzeitschritte übergibt
-#     --> Vorteil: Gleiche Prozedur für 1. Zeistreifen wie für alle anderen!
-#  2. Alle Dinge, die auf historische Werte zugreifen kennzeichnen (Attribut) und warnen/sperrenz.B. 
-#    Speicher, On/Off, 
-#    maximale FlowArbeit,... -> geht wahrscheinlich gar nicht gut!
-#    helpers.checkBoundsOfParameters -> vielleicht besser in cBaseComponent integrieren, weil dort self.label 
-# TODO: einen Bus automatisch in cEffect erzeugen.
-
-# mögliche Testszenarien für testing-tool:
-   # abschnittsweise linear testen
-   # Komponenten mit offenen Flows 
-   # Binärvariablen ohne max-Wert-Vorgabe des Flows (Binärungenauigkeitsproblem)
-   # Medien-zulässigkeit 
-   
-##########################
-# # Features to do:
-# -> Standardbuse festlegen für Komponenten (Wenn Eingabe, dann Überschreiben der alten)
-# -> statt indexen direkt timeseries(ts) als Index überall verwenden 
-#        also: Elemente mit indexe=ts[0,4] statt indexe=range(0,4) aufrufen--> Hätte den Vorteil, dass Fehlermeldungen kommen, falls konkrete Zeit z.B. für eine Variable nicht existiert
-# -> kosten als flows mit bus und dann vielleicht auch zielfunktion als Komponent --> damit könnte man Kosten sogar zeitlich auflösen!
-# -> Kosten als Variable!
-# -> Verbindungen mit VL / RL definieren. RL optional. Dann mit Enthalpien rechnen. mulitlayered storage
-# -> Integrate pytest!!!
-# --> Komponenten sollten ohne Buse verbunden werden können.
-# --> flows mit Temperaturen (VL/RL vorsehen) -> Buses sind dann mixing points!
-# --> schedule for flow (oemof --> Caterina Köhl von Consolinno!)
-
-# -> sollte man sich mit dem ganzen an solph.network andocken?
-#    --> dort sind einige coole Features (mapping von nodes und edges),
-#    --> oemof tabular hat das auch gemacht, aber aufwendig (Problem irgendwie das verküpfungen eher erstellt werden als Komponenten)
-
-# SOS - special ordered sets Löser direkt übergeben
-
 import numpy as np
-
 import math
 import time
 import yaml  # (für json-Schnipsel-print)
@@ -84,10 +17,7 @@ from flixBasics import *
 import logging
 
 log = logging.getLogger(__name__)
-# TODO:
-# -> results sollte mit objekt und! label mappen, also results[aKWK] und! results['KWK1']
 
-# TODO: 1. cTimePeriodModel -> hat für Zeitbereich die Modellierung timePeriodModel1, timePeriodModel2,...
 class cModelBoxOfES(cBaseModel):  
     '''
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
@@ -99,7 +29,6 @@ class cModelBoxOfES(cBaseModel):
         infos['main_results'] = self.main_results_str
         # unten dran den vorhanden rest:
         infos.update(self._infos)  # da steht schon zeug drin
-
         return infos
     
     def __init__(self, label, aModType, es, esTimeIndexe, TS_explicit = None):
@@ -122,13 +51,13 @@ class cModelBoxOfES(cBaseModel):
         # Zeitdaten generieren:
         (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) =  es.getTimeDataOfTimeIndexe(esTimeIndexe)
   
-    # mod auslesen:
+    # extract mod of ME:
     def getModOfME(self, aModelingElement):
         return self.ME_mod[aModelingElement]
   
     # register ModelingElements and belonging Mod:
     def registerMEandMod(self, aModelingElement, aMod):
-        # Zuordnung ME -> mod
+        # allocation ME -> mod
         self.ME_mod[aModelingElement] = aMod # aktuelles mod hier speichern
    
     # override:
@@ -144,9 +73,7 @@ class cModelBoxOfES(cBaseModel):
     
     #'gurobi'
     def solve(self, gapFrac = 0.02,timelimit = 3600, solver ='cbc', displaySolverOutput = True, excessThreshold = 0.1, logfileName = 'solverLog.log', **kwargs):      
-        '''
-        
-  
+        '''        
         Parameters
         ----------
         gapFrac : TYPE, optional
@@ -169,10 +96,8 @@ class cModelBoxOfES(cBaseModel):
   
         '''
         
-            
-        
-        # check auf valide Solver-Optionen:
-        
+                    
+        # check valid solver options:        
         if len(kwargs) > 0 :
             for key in kwargs.keys():
                 if key not in ['threads']:
@@ -230,7 +155,7 @@ class cModelBoxOfES(cBaseModel):
                     print('!!!!! Attention !!!!!')
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')          
         
-        # Wenn Strafen vorhanden
+        # if penalties exist
         if self.es.globalComp.penalty.mod.var_sum.getResult() > 10 :
             print('Take care: -> high penalty makes the used gapFrac quite high')
             print('           -> real costs are not optimized to gapfrac')
@@ -335,7 +260,7 @@ class cEnergySystem:
     setOfFlows = property(getFlows)
 
     
-    # get all TS in one lis:
+    # get all TS in one list:
     @property
     def allTSinMEs(self):
         ME : cMEModel
@@ -661,13 +586,6 @@ class cEnergySystem:
       print('')                     
       
       print(yaml.dump(self.getSystemDescr()))
-      # print('buses: ')
-      # for aBus in self.setOfBuses:     
-      #   aBus.print('  ')
-
-      # print('components: ')
-      # for aComp in self.listOfComponents:
-      #   aComp.print('  ')
     
     def getSystemDescr(self, flowsWithBusInfo = False):
       modelDescription = {}
@@ -695,8 +613,6 @@ class cEnergySystem:
       return modelDescription
       
     def getEqsAsStr(self):
-
-
       aDict = {}
 
       # comps:
@@ -1599,8 +1515,7 @@ class cME(cArgsClass):
     
   
     def getVarsAsStr(self):
-        aList = []
-        
+        aList = []        
         aList += self.mod.getVarsAsStr()    
         for aSubElement in self.subElements:      
           aList += aSubElement.getVarsAsStr() # rekursiv   
@@ -1627,7 +1542,7 @@ class cME(cArgsClass):
         aDict['no vars single']  =  sum([var.len for var in self.mod.variables])  
         return aDict
 
-    
+
 class cEffectType(cME):
     '''
     Effect, i.g. costs, CO2 emissions, area, ...
@@ -1811,7 +1726,6 @@ class cBaseComponent(cME):
         self.outputs  = [] # list of flows
         self.isStorage = False
   
-      
         # self.base = None # Energysystem I Belong to     
               
         self.subComps = [] # list of subComponents # für mögliche Baumstruktur!     
@@ -2172,23 +2086,25 @@ class cBus(cBaseComponent): # sollte das wirklich geerbt werden oder eher nur cM
  # Medien definieren:
 class cMediumCollection:
     '''
-    define possible domains for flow (not tested!) TODO!
+    attributes are defined possible media for flow (not tested!) TODO!
+    you can use them, i.g. cMediumCollection.heat or you can explicitly work with strings (i.g. 'heat')
     '''
-    # single medium:
+    # predefined medium: (just the string is used for comparison)
     heat    = 'heat' # set(['heat'])
-    # cold    = set(['cold'])
     el      = 'el' # set(['el'])
-    # gas     = set(['gas'])
-    # lignite = set(['lignite'])
-    # biomass = set(['biomass'])
-    # ash     = set(['ash'])
-    # groups: 
-    fuel      = 'fuel' # gas | lignite | biomass
-    # fossil_fu = gas | lignite
+    fuel    = 'fuel' # gas | lignite | biomass
     
-    # # neues Medium hinzufügen:
-    # def addMedium(attrName, aSetOfStrs):
-    #     cMediumCollection.setattr(attrName,aSetOfStrs)
+    # neues Medium hinzufügen:
+    def addMedium(attrName, strOfMedium):
+        '''
+        add new medium to predefined media
+        
+        Parameters
+        ----------
+        attrName : str
+        strOfMedium : str
+        '''
+        cMediumCollection.setattr(attrName, strOfMedium)
       
     # checkifFits(medium1,medium2,...)
     def checkIfFits(*args):
@@ -2341,7 +2257,7 @@ class cFlow(cME):
         medium: string, None
             medium is relevant, if the linked bus only allows a special defined set of media.
             If None, any bus can be used.            
-        investArgs : None or cInvestargs, optional
+        investArgs : None or cInvestArgs, optional
             used for investment costs or/and investment-optimization!
         '''
         
