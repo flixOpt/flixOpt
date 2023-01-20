@@ -15,18 +15,18 @@ developed by Felix Panitz* and Peter Stange*
 gapFrac        = 0.0005
 solver_name    = 'cbc'
 solver_name    = 'gurobi'
-
+# solver_name    = 'glpk'
 solverProps = {'gapFrac': gapFrac, 'solver': solver_name, 'displaySolverOutput' : True, 'threads':16}   
 
 nameSuffix = '_' + solver_name # for saving-file
 
 ## Auswahl Rechentypen: ##
 
-# doFullCalc = True
-doFullCalc = False
+doFullCalc = True
+# doFullCalc = False
 
 doSegmentedCalc = True
-doSegmentedCalc = False
+# doSegmentedCalc = False
 
 doAggregatedCalc = True
 # doAggregatedCalc = False
@@ -323,8 +323,6 @@ for aResult in listOfCalcs:
   # print(aResult.duration)
   print('costs: ' + str(aResult.results_struct.globalComp.costs.all.sum))
 
-  
-
 #######################
 ### post processing ###
 #######################
@@ -338,25 +336,24 @@ listOfResults = []
 if doFullCalc:
     full = flixPost.flix_results(calcFull.nameOfCalc)
     listOfResults.append(full)
-    del calcFull
+    # del calcFull
     
     costs = full.results_struct.globalComp.costs.all.sum
 
 if doAggregatedCalc:
     agg = flixPost.flix_results(calcAgg.nameOfCalc)
     listOfResults.append(agg)
-    del calcAgg
+    # del calcAgg
     costs = agg.results_struct.globalComp.costs.all.sum
 
 if doSegmentedCalc:
     seg = flixPost.flix_results(calcSegs.nameOfCalc)
     listOfResults.append(seg)
-    del calcSegs
+    # del calcSegs
     costs = seg.results_struct.globalComp.costs.all.sum
 
 
 ###### plotting #######
-
 
 import matplotlib.pyplot as plt
 from flixPlotHelperFcts import *
