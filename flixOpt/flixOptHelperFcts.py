@@ -13,13 +13,17 @@ import re
 import math # für nan
 import matplotlib.pyplot as plt
 
-# Macht aus Skalar einen Vektor. Vektor bleibt Vektor. 
-# -> Idee dahinter: Aufruf aus abgespeichertem Vektor schneller, als für jede i-te Gleichung zu Checken ob Vektor oder Skalar)
+
 def getVector(aValue,aLen):  
   '''
-    zulässige Werte:
-    aValue: skalar, list, np.array
-    aLen  : skalar
+  Macht aus Skalar einen Vektor. Vektor bleibt Vektor. 
+  -> Idee dahinter: Aufruf aus abgespeichertem Vektor schneller, als für jede i-te Gleichung zu Checken ob Vektor oder Skalar)
+  
+  Parameters
+  ----------
+  
+  aValue: skalar, list, np.array
+  aLen  : skalar
   '''
   # dtype = 'float64' # -> muss mit übergeben werden, sonst entstehen evtl. int32 Reihen (dort ist kein +/-inf möglich)
   

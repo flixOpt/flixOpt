@@ -5,21 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-# todo:
-
-# timesteps als pyomo-RangeSet für alle festlegen, damit keine redundanten Sets für jede Variable
-# -> overloaded Operators für Summanden/Vektoren
-
-# -> sollte man alles auf np.arrays umstellen? z.B. helpers.getVector()
-
-# -> ist das fixing der Variablen eigentlich performance-Aufwändig --> ggf. Umsetzung ändern? (erweitert das erstmal die Matrix oder wird die vorher verkürzt?)
-
-# -> cVariable nicht beides lagern: min_vec, -> nur zweites nutzen
-
-# für pyomo-Modelliierung: Verhindern, dass time-index für jede Variable separat erzeugt wird!
-
-# binäre Variablen, immer zwei Ergebniss-Varianten angeben: on = 0/1 , on_nan = nan/1 (wie in FAkS)
-  
+ 
 import logging
 import numpy as np
 import importlib
@@ -31,20 +17,21 @@ pyomoEnv = None # das ist module, das nur bei Bedarf belegt wird
 log = logging.getLogger(__name__)
 
 import flixOptHelperFcts as helpers
-
-# Klasse für Gleichungen a_1.*x_1+a_2.*x_2 = y 
-# x_1, a_1 können Vektoren oder Skalare sein.
-
-# Modell zum Addieren von Vektor-Variablen und Skalaren : 
-# zulässige Summanden:
-# + var_vec * factor_vec
-# + var_vec * factor 
-# +           factor 
-# + var     * factor
-# + var     * factor_vec  # macht das Sinn? Ist das überhaupt implementiert?
-
       
 class cBaseModel:
+  '''
+  Klasse für Gleichungen a_1.*x_1+a_2.*x_2 = y 
+  x_1, a_1 können Vektoren oder Skalare sein.
+  
+  Modell zum Addieren von Vektor-Variablen und Skalaren : 
+  zulässige Summanden:
+  + var_vec * factor_vec
+  + var_vec * factor 
+  +           factor 
+  + var     * factor
+  + var     * factor_vec  # macht das Sinn? Ist das überhaupt implementiert?
+  '''
+    
   
   @property
   def infos(self):    
@@ -107,7 +94,7 @@ class cBaseModel:
       # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchlaufe immer wieder genutzt wird.
       self.model     = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)") 
 
-      # todo, generelles timestep-Set für alle
+      # TODO: generelles timestep-Set für alle (-> bringt das wirklich was?)
       # self.timesteps = pyomoEnv.RangeSet(0,len(self.timeSeries)-1) # Start-index = 0, weil np.arrays auch so
       # # initialisieren:
       # self.registerPyComp(self.timesteps)             
@@ -291,7 +278,6 @@ class cVariable :
     
     # TODO: self.var ist hier einziges Attribut, das baseModel-spezifisch ist: --> umbetten in baseModel!
     if baseModel.modType == 'pyomo':
-      
       if self.isBinary:
         self.var = pyomoEnv.Var(self.indexe, domain = pyomoEnv.Binary)
         # self.var = Var(baseModel.timesteps,domain=Binary)

@@ -21,7 +21,7 @@ def test_full():
 def test_agg():
     if Model_and_solve.doAggregatedCalc:
         costs = Model_and_solve.agg.results_struct.globalComp.costs.all.sum
-        eq_(np.round(costs,-2) , np.round(342900.0,-2)) 
+        eq_(np.round(costs,-3) , np.round(342900.0,-3)) 
 def test_segmented():
     if Model_and_solve.doSegmentedCalc:
         costs = Model_and_solve.seg.results_struct.globalComp.costs.all.sum

@@ -5,7 +5,6 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 ## TODO:
-  
   # featureAvoidFlowsAtOnce:
     # neue Variante (typ="new") austesten
       

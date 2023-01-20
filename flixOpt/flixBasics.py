@@ -9,13 +9,21 @@ import numpy as np
 import flixOptHelperFcts as helpers
 from flixBasicsPublic import cTSraw
 
-# stellt Infrastruktur getInitArgs() etc zur Verfügung: TODO: geht das nicht irgendwie nativ?
-# gibt Warnung, falls unbenutzte kwargs vorhanden! 
+
 class cArgsClass:
+    '''
+    stellt Infrastruktur getInitArgs() etc zur Verfügung: 
+        TODO: geht das nicht irgendwie nativ? noch notwendig?
+    gibt Warnung, falls unbenutzte kwargs vorhanden! 
+    '''
   
-    # diese Klassen-Methode holt aus dieser und den Kindklassen alle zulässigen Argumente der Kindklasse!         
+    
     @classmethod  
     def getInitArgs(cls):        
+      '''
+      diese (Klassen-)Methode holt aus dieser und den Kindklassen 
+      alle zulässigen Argumente der Kindklasse!         
+      '''
   
       ### 1. Argumente der Mutterklasse (rekursiv) ###
       # wird rekursiv aufgerufen bis man bei Mutter-Klasse cModelingElement ankommt.
@@ -53,9 +61,11 @@ class cArgsClass:
                                             raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
      
 
-    
-# Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
 class cTS_vector:  
+    '''
+    Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
+    '''
+    
     # create and register in List:
   
     # gets rawdata only of activated esIndexe:
@@ -170,9 +180,10 @@ class cTS_vector:
         return max(aValue)
 
 
-
-# calculates weights of TS_vector for being in that collection (depending on )
 class cTS_collection():
+    '''
+    calculates weights of TS_vector for being in that collection (depending on)
+    '''
     
     @property
     def addPeak_Max_labels(self):
@@ -275,11 +286,27 @@ class cTS_collection():
             print('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
                                 
 
-# if costs is given without effectType, standardeffect is related
-  # costs = {20}                      -> {None:20}
-  # costs = None                      -> no change
-  # costs = {effect1:20, effect2:0.3} -> no change  
+
 def getEffectDictOfEffectValues(effect_values):
+    '''
+    if costs is given without effectType, standardeffect is related
+    examples:
+      costs = 20                        -> {None:20}
+      costs = None                      -> no change
+      costs = {effect1:20, effect2:0.3} -> no change      
+
+    Parameters
+    ----------
+    effect_values : None, scalar or TS, dict
+        see examples
+        
+    Returns
+    -------
+    effect_values_dict : dict
+        see examples
+    '''
+    
+    
     ## Umwandlung in dict:
     # Wenn schon dict:
     if isinstance(effect_values, dict):
@@ -296,33 +323,70 @@ def getEffectDictOfEffectValues(effect_values):
 
 
 
-# macht alle Effekt-Wert-dicts, aus Wert cTS_vector 
 def transformDictValuesToTS(nameOfParam, aDict, owner):
+  '''
+    transformiert Wert -> cTS_vector   
+    für alle {Effekt:Wert}-couples in dict, 
+
+    Parameters
+    ----------
+    nameOfParam : str
+        
+    aDict : dict
+        {Effect:value}-couples
+    owner : class
+        class where cTS_vector belongs to
+
+    Returns
+    -------
+    aDict_TS : dict
+       {Effect:TS_value}-couples
+
+    '''  
+    
   # Einzelne Faktoren zu Vektoren: 
   aDict_TS = {}#
   # für jedes Dict -> Values (=Faktoren) zu Vektoren umwandeln:         
   if aDict is None:
     aDict_TS = None
   else:
-    for key, value in aDict.items():
+    for effect, value in aDict.items():
       if not isinstance(value, cTS_vector):
         # Subnamen aus key:
-        if key is None:
+        if effect is None:
           subname = 'standard' # Standard-Effekt o.ä. # todo: das ist nicht schön, weil costs in Namen nicht auftaucht
         else:
-          subname = key.label # z.B. costs, Q_th,...
+          subname = effect.label # z.B. costs, Q_th,...
         nameOfParam_full   = nameOfParam + '_' + subname # name ergänzen mit key.label
-        aDict_TS[key] = cTS_vector(nameOfParam_full, value, owner) # Transform to TS    
+        aDict_TS[effect] = cTS_vector(nameOfParam_full, value, owner) # Transform to TS    
     return aDict_TS
   
-# Transforms effect/cost-input to dict of TS, 
-#   wenn nur wert gegeben, dann wird gegebener effect zugeordnet
-#   effectToUseIfOnlyValue = None -> Standard-EffektType wird genommen
-# Fall 1:
-#     output = {effect1 : TS1, effects2: TS2}
-# Fall2 (falls Skalar übergeben):
-#     output = {standardEffect : TS1}
+
 def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):  
+    '''
+    Transforms effect/cost-input to dict of TS, 
+      wenn nur wert gegeben, dann wird gegebener effect zugeordnet
+      effectToUseIfOnlyValue = None -> Standard-EffektType wird genommen
+    Fall 1:
+        output = {effect1 : TS1, effects2: TS2}
+    Fall2 (falls Skalar übergeben):
+        output = {standardEffect : TS1}
+
+    Parameters
+    ----------
+    nameOfParam : str
+    aEffectsValue : TYPE
+        DESCRIPTION.
+    ownerOfParam : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    effectsDict_TS : TYPE
+        DESCRIPTION.
+
+    '''
+    
 
     # add standardeffect if only value is given:
     effectsDict = getEffectDictOfEffectValues(aEffectsValue)

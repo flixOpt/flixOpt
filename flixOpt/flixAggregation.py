@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 # -*- coding: utf-8 -*-
 
 """
-Modul zur Berechnung eines Energiesystemmodells.
+Modul zur aggregierten Berechnung eines Energiesystemmodells.
 """
 
 # Paket-Importe
@@ -29,7 +29,7 @@ import copy
 
 class flixAggregation:
     """
-    Klasse EnergySystemModel
+    aggregation organizing class
     """
 
     def __init__(self,
@@ -303,6 +303,7 @@ from basicModeling import *
 class cAggregationModeling(flixStructure.cME):     
   def __init__(self,label, es, indexVectorsOfClusters, fixStorageFlows = True, fixBinaryVarsOnly=True, listOfMEsToClusterize = None, percentageOfPeriodFreedom = 0, costsOfPeriodFreedom = 0, **kwargs):
       '''
+      Modeling-Element for "index-equating"-equations
       
 
       Parameters

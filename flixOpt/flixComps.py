@@ -5,15 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-# TODO:
-#  optionale Flows einführen -> z.b. Asche: --> Bei denen kommt keine Fehlermeldung, wenn nicht verknüpft und nicht aktiviert/genutzt
-#  cVariable(,...,self,modBox,...) -> modBox entfernen und lieber über self.modBox aufrufen -> kürzer!
-#  Hilfsenergiebedarf als Feature einführen?
-#  self.xy = cVariable('xy'), -> kürzer möglich, in cVariabe() über aComponent.addAttribute()
-#  Variablen vielleicht doch bei allen Komponenten lieber unter var_struct abspeichern ?
-
 import numpy as np
-
 import flixOptHelperFcts as helpers
 from basicModeling import *  # Modelliersprache
 from flixStructure import *  # Grundstruktur
