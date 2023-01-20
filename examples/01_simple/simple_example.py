@@ -139,10 +139,10 @@ calc1 = flixPost.flix_results(nameOfCalc)
 # #### plotting ######
 
 fig1 = calc1.plotInAndOuts('Fernwaerme',stacked=True)
-fig1.savefig('test1')
+fig1.savefig('results/test1')
 fig2 = calc1.plotInAndOuts('Fernwaerme',stacked=True, plotAsPlotly = True)
 fig2.show()
-fig2.write_html('test2.html')
+fig2.write_html('results/test2.html')
 fig3 = calc1.plotInAndOuts('Strom',stacked=True, plotAsPlotly = True)
 fig3.show()
 
@@ -155,6 +155,5 @@ print(calc1.results_struct.Kessel.Q_th.val)
 
 
 ## saving csv of special flows of Fernwaerme ##
-
-calc1.to_csv('Fernwaerme', 'FW.csv')
+calc1.to_csv('Fernwaerme', 'results/FW.csv')
     

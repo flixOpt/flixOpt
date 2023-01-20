@@ -36,9 +36,9 @@ else:
 ##### plotting ######
 
 fig1 = calc1.plotInAndOuts('Fernwaerme',stacked=True)
-fig1.savefig('test1')
+fig1.savefig('results/test1')
 fig2 = calc1.plotInAndOuts('Fernwaerme',plotAsPlotly = True)
-fig2.write_html('test2.html')
+fig2.write_html('results/test2.html')
 
 fig = calc1.plotInAndOuts('Fernwaerme',stacked=True, flowsAboveXAxis='Waermelast', sortBy='Waermelast')
 fig.show()
@@ -119,7 +119,7 @@ def uebersichtsPlot(aCalc):
 uebersichtsPlot(calc1)
 if calcSegs is not None : uebersichtsPlot(calcSegs)
 
-calc1.to_csv('Fernwaerme', 'FW.csv')
+calc1.to_csv('Fernwaerme', 'results/FW.csv')
     
 # loading yaml-datei:
 with open(calc1.filename_infos,'rb') as f:
