@@ -4,11 +4,13 @@ Created on Thu Jun 16 11:19:17 2022
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-# TODO:
-    #  Effektbeispiel mit Anzahl (z.b. Kesselanzahl < 3) 
+import numpy as np
+import datetime
+from flixStructure import *
+from flixComps import *
+from flixBasicsPublic import *
 
-### Inputs: ####
-# Solver-Inputs:
+# ## Solver-Inputs:##
 displaySolverOutput = False # ausführlicher Solver-Output.
 displaySolverOutput = True  # ausführlicher Solver-Output.
 gapFrac = 0.0001
@@ -19,23 +21,16 @@ solver_name = 'glpk' # warning, glpk quickly has numerical problems with big and
 # solver_name    = 'cbc'
 nrOfThreads    = 1
 
-### calculation-options: ###
-# doSegmentedCalc = True
+# ## calculation-options - you can vary! ###
 useCHPwithLinearSegments = False
-doSegmentedCalc  = False
+# useCHPwithLinearSegments = True
 checkPenalty    = False  
 excessCosts = None
-excessCosts = 1e5 # default value
+# excessCosts = 1e5 # default value
 ################
 
-import numpy as np
-import datetime
 
-from flixStructure import *
-from flixComps import *
-from flixBasicsPublic import *
-
-####################### kleine Daten zum Test ###############################
+# ## timeseries ##
 P_el_Last = [70., 80., 90., 90 , 90 , 90, 90, 90, 90]
 if checkPenalty :
     Q_th_Last = [30., 0., 90., 110, 2000 , 20, 20, 20, 20]
@@ -45,15 +40,7 @@ else :
 p_el      = [40., 40., 40., 40 , 40, 40, 40, 40, 40]
    
 aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1)
-aTimeSeries = aTimeSeries.astype('datetime64')
-nrOfTimeSteps = 9
-    
-# DAtenreihen kürzen:
-P_el_Last = P_el_Last[0:nrOfTimeSteps]
-Q_th_Last = Q_th_Last[0:nrOfTimeSteps]
-p_el      = p_el     [0:nrOfTimeSteps]
-aTimeSeries = aTimeSeries[0:nrOfTimeSteps]
-        
+aTimeSeries = aTimeSeries.astype('datetime64')     
 
 ##########################################################################
 
@@ -167,7 +154,7 @@ aGasTarif         = cSource('Gastarif' ,source = cFlow('Q_Gas'     , bus = Gas  
 
 aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, costsPerFlowHour = -1*np.array(p_el)))
 
-# Built energysystem:
+# ## Build energysystem ##
 es = cEnergySystem(aTimeSeries, dt_last=None)
 es.addEffects(costs, CO2, PE)
 es.addComponents(aGaskessel, aWaermeLast, aGasTarif)
@@ -183,11 +170,11 @@ es.addComponents(aSpeicher)
 chosenEsTimeIndexe = None
 # chosenEsTimeIndexe = [1,3,5]
 
-## modeling "full":
+# ## modeling "full" calculation:
 aCalc = cCalculation('Sim1', es, 'pyomo', chosenEsTimeIndexe)
 aCalc.doModelingAsOneSegment()
 
-# PRINT Model-Charactaricstics:
+# print Model-Charactaricstics:
 es.printModel()
 es.printVariables()
 es.printEquations()
@@ -199,42 +186,8 @@ solverProps = {'gapFrac': gapFrac,
                }
 if solver_name == 'gurobi': solverProps['threads'] = nrOfThreads
 
-## calculation "full":
+# ## solving calculation ##
 
 aCalc.solve(solverProps, nameSuffix = '_' + solver_name)
 
-aCalc.results_struct
-
-## calculation "segmented":
-
-if doSegmentedCalc: 
-    calcSegs = cCalculation('Sim2', es, 'pyomo', chosenEsTimeIndexe)
-    calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen = 6, nrOfUsedSteps = 2, nameSuffix = '_' + solver_name)
- 
-
-## plotting segmented results 
-#  TODO:    Umzug in Postprocesing!!!
-
-if doSegmentedCalc: 
-    import matplotlib.pyplot as plt
-    # Segment-Plot:
-    for aModBox in calcSegs.segmentModBoxList:  
-        plt.plot(aModBox.timeSeries       , aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
-    plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
-    # plt.plot(calcSegs.timeSeriesWithEnd, calcSegs.results_struct.Speicher.charge_state, ':', label='chargeState') 
-    # plt.plot(mb      .timeSeriesWithEnd, mb      .results_struct.Speicher.charge_state, '-.', label='chargeState') 
-    plt.legend()
-    plt.grid()
-    plt.show()
-    
-  
-    # Segment-Plot:
-    for aModBox in calcSegs.segmentModBoxList:  
-        plt.plot(aModBox.timeSeries, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs') 
-    plt.plot(calcSegs.timeSeries       , calcSegs.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs') 
-    plt.legend()
-    plt.grid()
-    plt.show()
-    
-    calcSegs.results_struct
-
+# -> for analysis of results, see postprocessing-script!
