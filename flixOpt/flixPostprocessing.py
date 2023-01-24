@@ -176,6 +176,25 @@ class flix_results():
         
     
     def getFlowsOf(self, node, node2=None):
+        '''
+        
+
+        Parameters
+        ----------
+        node : str
+            component or bus where flow is linked to
+        node2 : str, optional
+            component or bus where flow is linked to
+
+        Returns
+        -------
+        inputs_node : array
+            flows, which are input to node (and output to node2)
+        outputs_node : array
+            flows, which are output to node (and input to node2)
+
+        '''      
+        
         inputs_node = []
         outputs_node = []
         
