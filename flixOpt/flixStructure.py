@@ -2215,8 +2215,10 @@ class cFlow(cME):
         costsPerFlowHour : scalar, array, cTSraw, optional
             operational costs, costs per flow-"work"
         iCanSwitchOff : boolean, optional
-            can flow be off, i.e. be zero (only relevant if min_rel > 0) 
-            Then binary var is used.
+            flow can be "off", i.e. be zero (only relevant if min_rel > 0) 
+            Then a binary var "on" is used. 
+            If any on/off-forcing parameters like "switchOnCosts", "onHours_min" etc. are used, then 
+            this is automatically forced.
         onHoursSum_min : scalar, optional
             min. overall sum of operating hours.
         onHoursSum_max : scalar, optional
