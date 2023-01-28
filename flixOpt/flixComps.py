@@ -850,30 +850,43 @@ class cSink(cBaseComponent):
 class cTransportation(cBaseComponent):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
+    # TODO: investmentsize only on 1 flow
     # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
-    # TODO: loss should be realized from 
+    # TODO: optional: capacities should be recognised for losses
     
-    def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0, loss_abs=0, isAlwaysOn=True, avoidFlowInBothDirectionsAtOnce = True, **kwargs):
+    def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0,
+                 loss_abs=0, isAlwaysOn=True, 
+                 avoidFlowInBothDirectionsAtOnce=True, **kwargs):
         '''
-        pipe with loss (when no flow, then loss is still there and has to be
+        pipe/cable/connector between side A and side B
+        losses can be modelled
+        investmentsize is recognised
+        for investment_size use investArgs of in1 and in2-flows. 
+        (The investment_size of the both directions (in-flows) is equated)
+        
+        (when no flow through it, then loss is still there and has to be
         covered by one in-flow (gedanklicher Überströmer)
-
+                         side A ... side B
+        first  direction: in1   -> out1
+        second direction: out2  <- in2
+        
         Parameters
         ----------
-        label : TYPE
-            DESCRIPTION.
-        in1 : TYPE
-            DESCRIPTION.
-        out1 : TYPE
-            DESCRIPTION.
-        in2 : TYPE
-            DESCRIPTION.
-        out2 : TYPE
-            DESCRIPTION.
-        loss_rel : TYPE
-            DESCRIPTION.
-        loss_abs : TYPE
+        label : str
+            name of cTransportation.
+        in1 : cFlow
+            inflow of input at side A
+        out1 : cFlow
+            outflow (of in1) at side B
+        in2 : cFlow, optional
+            optional inflow of side B
+        out2 : cFlow, optional
+            outflow (of in2) at side A            
+        loss_rel : float, TS
+            relative loss between in and out, i.g. 0.02 i.e. 2 % loss
+        loss_abs : float, TS
             absolut loss. is active until on=0 for in-flows
+            example: loss_abs=2 -> 2 kW fix loss on transportation
 
         ... featureOnVars for Active Transportation:
         switchOnCosts : 
