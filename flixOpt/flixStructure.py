@@ -2314,7 +2314,7 @@ class cFlow(cME):
         # defaults:
                           
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
+        self.__useOn_fromProps = iCanSwitchOff & np.all(self.min_rel.d_i_raw > 0)
         
                        
         # self.prepared          = False # ob __declareVarsAndEqs() ausgeführt
