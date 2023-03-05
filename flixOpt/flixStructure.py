@@ -2238,7 +2238,7 @@ class cFlow(cME):
             unit i.g. in Euro
         switchOn_maxNr : integer, optional
             max nr of switchOn operations
-        costsPerRunningHour : costs-types, optional
+        costsPerRunningHour : scalar or TS, optional
             costs for operating, i.g. in € per hour
         sumFlowHours_max : TYPE, optional
             maximum flow-hours ("flow-work") 

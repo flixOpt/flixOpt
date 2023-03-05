@@ -9,7 +9,7 @@ developed by Felix Panitz* and Peter Stange*
 import logging
 import numpy as np
 import importlib
-import gurobipy
+#import gurobipy
 import time
 
 pyomoEnv = None # das ist module, das nur bei Bedarf belegt wird
