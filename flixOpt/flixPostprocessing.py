@@ -280,6 +280,8 @@ class flix_results():
     
     def plotShares(self, busesOrComponents, useInputs=True, withoutStorage = True, minSum=.1, othersMax_rel=0.05, plotAsPlotly = False, title = None, unit = 'FlowHours'):      
         '''     
+        plots FlowHours in pie-plot
+        
         Parameters
         ----------
         busesOrComponents : str or list of str
@@ -333,13 +335,16 @@ class flix_results():
         sums = np.array([])
         labels = []
         colors = []
+        
+        # total flowhours of chosen balance:
         totalSum = 0
         for aFlow in flows:
-          totalSum +=sum(aFlow.results['val'])
-          
+          totalSum +=sum(aFlow.results['val'] * self.dtInHours) # Flow-Hours
+        
+        # single shares of total flowhours:
         others_Sum = 0
         for aFlow in flows:
-          aSum = sum(aFlow.results['val'])
+          aSum = sum(aFlow.results['val']* self.dtInHours) # flow-hours
           if aSum >minSum:
             if aSum/totalSum < othersMax_rel:
               others_Sum += aSum
