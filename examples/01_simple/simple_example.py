@@ -186,6 +186,9 @@ fig2.show()
 fig2.write_html('results/test2.html')
 fig3 = aCalc_post.plotInAndOuts('Strom',stacked=True, plotAsPlotly = True)
 fig3.show()
+fig4 = aCalc_post.plotShares('Fernwaerme',plotAsPlotly=True)
+fig4.show()
+
 
 ##############################
 # ## access to timeseries: ##
