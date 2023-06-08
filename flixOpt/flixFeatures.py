@@ -562,28 +562,28 @@ class cFeatureOn(cFeature) :
     #             raise Exception ('constraints for off Hours not defined yet')
                 
     @staticmethod # to be sure not using any self-Variables       
-    def __addConstraintsForOnTimeOfBinary(var_onTime, var_on, onHours_min, eqsOwner, modBox, timeIndexe):
+    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, onHours_min, eqsOwner, modBox, timeIndexe):
         '''
         i.g. 
-        var_on      = [0 0 1 1 1 1 0 1 1 1 0 ...]
-        var_onHours = [0 0 1 2 3 4 0 1 2 3 0 ...] (bei dt=1)
-                                          |-> min_onHours = 3!
+        var_bin        = [0 0 1 1 1 1 0 1 1 1 0 ...]
+        var_bin_onTime = [0 0 1 2 3 4 0 1 2 3 0 ...] (bei dt=1)
+                                            |-> min_onHours = 3!
         
-        if you wanna count zeros, define var_off: = 1-var_on before!
+        if you wanna count zeros, define var_bin_off: = 1-var_bin before!
         '''
         #1) eq: onHours(t) <= On(t)*Big | On(t)=0 -> onHours(t) = 0
         # mit Big = dtInHours_tot
-        aLabel = var_onTime.label
+        aLabel = var_bin_onTime.label
         ineq_1 = cEquation(aLabel+'_constraint_1', eqsOwner, modBox, eqType = 'ineq')
-        ineq_1.addSummand(var_onTime,1)
-        ineq_1.addSummand(var_on,-1* modBox.dtInHours_tot)
+        ineq_1.addSummand(var_bin_onTime,1)
+        ineq_1.addSummand(var_bin,-1* modBox.dtInHours_tot)
                     
         #2a) eq: onHours(t) - onHours(t-1) <= dt(t)
         #    on(t)=1 -> ...<= dt(t)
         #    on(t)=0 -> onHours(t-1)>=
         ineq_2a = cEquation(aLabel+'_constraint_2a', eqsOwner, modBox, eqType = 'ineq')
-        ineq_2a.addSummand(var_onTime,1,timeIndexe[1:]) # onHours(t)
-        ineq_2a.addSummand(var_onTime,-1,timeIndexe[0:-1]) # onHours(t-1)
+        ineq_2a.addSummand(var_bin_onTime,1,timeIndexe[1:]) # onHours(t)
+        ineq_2a.addSummand(var_bin_onTime,-1,timeIndexe[0:-1]) # onHours(t-1)
         ineq_2a.addRightSide(modBox.dtInHours[1:]) # dt(t)
         
         #2b) eq:  onHours(t) - onHours(t-1)             >=  dt(t) - Big*(1-On(t)))      
@@ -591,27 +591,28 @@ class cFeatureOn(cFeature) :
         # with Big = dtInHours_tot # (Big = maxOnHours, should be usable, too!)
         Big = modBox.dtInHours_tot
         ineq_2b = cEquation(aLabel+'_constraint_2b', eqsOwner, modBox, eqType = 'ineq')
-        ineq_2b.addSummand(var_onTime,-1,timeIndexe[1:]) # onHours(t)
-        ineq_2b.addSummand(var_onTime, 1,timeIndexe[0:-1]) # onHours(t-1)
-        ineq_2b.addSummand(var_on     , Big,timeIndexe[1:]) # on(t)
+        ineq_2b.addSummand(var_bin_onTime,-1,timeIndexe[1:]) # onHours(t)
+        ineq_2b.addSummand(var_bin_onTime, 1,timeIndexe[0:-1]) # onHours(t-1)
+        ineq_2b.addSummand(var_bin     , Big,timeIndexe[1:]) # on(t)
         ineq_2b.addRightSide(-modBox.dtInHours[1:] + Big) # dt(t)
         
         # 3) check onHours_min before switchOff-step
+        # (last on-time period of timeseries is not checked and can be shorter)
         if onHours_min is not None:          
             # eq:  onHours(t-1) >= minOnHours * (On(t)-On(t-1))
             # eq: -onHours(t-1) - onHours_min * On(t) + onHours_min*On(t-1) <= 0
             ineq_min = cEquation(aLabel+'_min', eqsOwner, modBox, eqType='ineq')
-            ineq_min.addSummand(var_onTime,-1,timeIndexe[0:-1]) # onHours(t-1)
-            ineq_min.addSummand(var_on,-1*onHours_min.d_i, timeIndexe[1:]) # on(t)
-            ineq_min.addSummand(var_on, onHours_min.d_i, timeIndexe[0:-1]) # on(t-1)
-  
+            ineq_min.addSummand(var_bin_onTime,-1,timeIndexe[0:-1]) # onHours(t-1)
+            ineq_min.addSummand(var_bin,-1*onHours_min.d_i, timeIndexe[1:]) # on(t)
+            ineq_min.addSummand(var_bin, onHours_min.d_i, timeIndexe[0:-1]) # on(t-1)
+            
             
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)
         firstIndex = timeIndexe[0] # only first element
         eq_first = cEquation(aLabel+'_firstTimeStep',eqsOwner,modBox)
-        eq_first.addSummand(var_onTime, 1, firstIndex)
-        eq_first.addSummand(var_on, -1*modBox.dtInHours[firstIndex], firstIndex)
+        eq_first.addSummand(var_bin_onTime, 1, firstIndex)
+        eq_first.addSummand(var_bin, -1*modBox.dtInHours[firstIndex], firstIndex)
         
     
     def __addConstraintsForSwitchOnSwitchOff(self,eqsOwner, modBox, timeIndexe):
