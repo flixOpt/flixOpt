@@ -2225,13 +2225,13 @@ class cFlow(cME):
             max. overall sum of operating hours.
         onHours_min : scalar, optional
             min sum of operating hours in one piece
+            (last on-time period of timeseries is not checked and can be shorter)
         onHours_max : scalar, optional
             max sum of operating hours in one piece
         offHours_min : scalar, optional
-            - not implemented yet - 
             min sum of non-operating hours in one piece
+            (last off-time period of timeseries is not checked and can be shorter)
         offHours_max : scalar, optional
-            - not implemented yet - 
             max sum of non-operating hours in one piece
         switchOnCosts : scalar, array, cTSraw, optional
             cost of one switch from off (var_on=0) to on (var_on=1), 
