@@ -564,10 +564,30 @@ class cStorage(cBaseComponent):
             lb = self.min_rel_chargeState.d_i * self.capacity_inFlowHours
             ub = self.max_rel_chargeState.d_i * self.capacity_inFlowHours
             fix_value = None
+            
+            if np.isscalar(lb):
+                pass
+            else:
+                lb=np.append(lb,0)#self.charge_state_end_min)
+            if np.isscalar(ub):
+                pass
+            else:
+                ub=np.append(ub,self.capacity_inFlowHours)#charge_state_end_max)  
+            
         else:
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
+            
+            if np.isscalar(lb):
+                pass
+            else:
+                lb=np.append(lb,0)#self.charge_state_end_min)
+            if np.isscalar(ub):
+                pass
+            else:
+                ub=np.append(ub,self.capacity_inFlowHours)#charge_state_end_max)  
         # todo: lb und ub muss noch um ein Element (chargeStateEnd_max, chargeStateEnd_min oder aber jeweils None) ergänzt werden!
 
+            
         self.mod.var_charge_state = cVariable_TS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
                                                value=fix_value)  # Eins mehr am Ende!
         self.mod.var_charge_state.activateBeforeValues(self.chargeState0_inFlowHours, True)
