@@ -646,15 +646,14 @@ class cStorage(cBaseComponent):
         else:
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
             
-            if np.isscalar(lb):
-                pass
-            else:
-                lb=np.append(lb,0)#self.charge_state_end_min)
-            if np.isscalar(ub):
-                pass
-            else:
-                ub=np.append(ub,self.capacity_inFlowHours)#charge_state_end_max)  
-        # todo: lb und ub muss noch um ein Element (chargeStateEnd_max, chargeStateEnd_min oder aber jeweils None) ergänzt werden!
+        if np.isscalar(lb):
+            pass
+        else:
+            lb = np.append(lb, lb[-1])  # self.charge_state_end_min)
+        if np.isscalar(ub):
+            pass
+        else:
+            ub = np.append(ub, ub[-1])  # charge_state_end_max)
 
             
         self.mod.var_charge_state = cVariable_TS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
