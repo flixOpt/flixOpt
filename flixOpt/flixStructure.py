@@ -1716,7 +1716,7 @@ class cBaseComponent(cME):
         self.switchOn_maxNr       = switchOn_maxNr
         self.onHoursSum_min       = onHoursSum_min
         self.onHoursSum_max       = onHoursSum_max
-        self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHOur', costsPerRunningHour , self)     
+        self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour , self)
         
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
