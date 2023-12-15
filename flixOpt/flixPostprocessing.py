@@ -473,7 +473,7 @@ class flix_results():
         '''
         
         if not (busOrComponent in self.results.keys()):
-            raise Exception(str(busOrComp) + 'is no valid bus or component name')
+            raise Exception(str(busOrComponent) + 'is no valid bus or component name')
         
         import plotly.io as pio            
         pio.renderers.default = renderer # 'browser', 'svg',...
