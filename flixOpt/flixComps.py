@@ -1073,4 +1073,54 @@ class cTransportation(cBaseComponent):
                     self.eq_nom_value.addSummand(self.in2.featureInvest.mod.var_investmentSize, -1)
                 else:
                     raise Exception('define investArgs also for second In-Flow (values can be empty!)') # TODO: anders lösen (automatisiert)!
-            
+
+
+# Added by FB
+class cAbwaermeHP(cBaseLinearTransformer):
+    """
+    class cAbwaermeHP
+    """
+    new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
+    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+
+    def __init__(self, label, COP, P_el, Q_ab, Q_th, **kwargs):
+        '''
+        Parameters
+        ----------
+        label : str
+            name of heatpump.
+        COP : float, TS
+            Coefficient of performance.
+        Q_ab : cFlow
+            Heatsource input-flow.
+        P_el : cFlow
+            electricity input-flow.
+        Q_th : cFlow
+            thermal output-flow.
+        **kwargs : see motherclasses
+        '''
+
+        # super:
+        heatPump_bilanzEl = {P_el: COP, Q_th: 1}
+        if isinstance(COP,cTSraw):
+            COP=COP.value
+            heatPump_bilanzAb = {Q_ab: COP / (COP - 1), Q_th: 1}
+        else:
+            heatPump_bilanzAb = {Q_ab: COP/(COP-1), Q_th: 1}
+        super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
+                         factor_Sets=[heatPump_bilanzEl,heatPump_bilanzAb], **kwargs)
+
+        # args to attributes:
+        self.COP = cTS_vector('COP', COP, self)  # thermischer Wirkungsgrad
+        self.P_el = P_el
+        self.Q_ab = Q_ab
+        self.Q_th = Q_th
+
+        # allowed medium:
+        P_el.setMediumIfNotSet(cMediumCollection.el)
+        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        Q_ab.setMediumIfNotSet(cMediumCollection.heat)
+
+        # Plausibilität eta:
+        self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
+        helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
