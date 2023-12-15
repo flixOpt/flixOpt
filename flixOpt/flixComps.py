@@ -520,7 +520,8 @@ class cStorage(cBaseComponent):
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self, label, inFlow, outFlow, capacity_inFlowHours, min_rel_chargeState=0, max_rel_chargeState=1,
                  chargeState0_inFlowHours=0, charge_state_end_min=None, charge_state_end_max=None, eta_load=1,
-                 eta_unload=1, fracLossPerHour=0, avoidInAndOutAtOnce=True, investArgs=None, **kwargs):
+                 eta_unload=1, fracLossPerHour=0, avoidInAndOutAtOnce=True, investArgs=None,
+                 exists = None, **kwargs):
         '''
         constructor of storage
 
@@ -577,6 +578,10 @@ class cStorage(cBaseComponent):
         self.capacity_inFlowHours = capacity_inFlowHours
         self.max_rel_chargeState = cTS_vector('max_rel_chargeState', max_rel_chargeState, self)
         self.min_rel_chargeState = cTS_vector('min_rel_chargeState', min_rel_chargeState, self)
+
+        self.exists = None if (exists is None) else cTS_vector('exists', exists, self)  # TODO: Added by FB
+        if (exists is not None): self.max_rel_chargeState = cTS_vector('max_rel_chargeState', self.max_rel_chargeState.d_i * self.exists.d_i, self) #TODO: added by FB
+
         self.chargeState0_inFlowHours = chargeState0_inFlowHours
         self.charge_state_end_min = charge_state_end_min
 
@@ -628,7 +633,7 @@ class cStorage(cBaseComponent):
             lb = self.min_rel_chargeState.d_i * self.capacity_inFlowHours
             ub = self.max_rel_chargeState.d_i * self.capacity_inFlowHours
             fix_value = None
-            
+
             if np.isscalar(lb):
                 pass
             else:
@@ -636,8 +641,8 @@ class cStorage(cBaseComponent):
             if np.isscalar(ub):
                 pass
             else:
-                ub=np.append(ub,self.capacity_inFlowHours)#charge_state_end_max)  
-            
+                ub=np.append(ub,self.capacity_inFlowHours)#charge_state_end_max)
+
         else:
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
             
