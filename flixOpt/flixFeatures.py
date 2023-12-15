@@ -10,6 +10,7 @@ developed by Felix Panitz* and Peter Stange*
       
 from flixStructure  import * # Grundstruktur
 from flixBasicsPublic import *
+import numpy as np
 
 ##############################################################  
 ## Funktionalität/Features zum Anhängen an die Komponenten: ##  
