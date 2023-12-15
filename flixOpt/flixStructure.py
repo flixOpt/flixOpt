@@ -1485,6 +1485,16 @@ class cME(cArgsClass):
           aData[aVar.label + '_'] = helpers.zerosToNans(aVar.getResult())   
           aVars[aVar.label + '_'] = aVar # link zur Variable
   
+      # 3. Alle TS übergeben
+      # TODO: FB: Ganze TS_list übergeben
+      aTS : cTS_vector
+      for aTS in self.TS_list :
+        # print(aVar.label)
+        aData[aTS.label] = aTS.d
+        aVars[aTS.label] = aTS # link zur Variable
+      # TODO: FB: Ganze TS_list übergeben
+
+
       return aData, aVars
   
     # so kurze Schreibweise wie möglich, daher:
