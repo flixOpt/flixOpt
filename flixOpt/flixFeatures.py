@@ -484,9 +484,18 @@ class cFeatureOn(cFeature) :
             else: 
                 sumOfFlowMax += aFlow.max_rel.d_i * aFlow.nominal_val
           
-        eq2.addSummand(self.mod.var_on , - sumOfFlowMax/ nrOfFlows, timeIndexe) #         
-        if sumOfFlowMax / nrOfFlows > 1000 : log.warning('!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert ('+str(int(sumOfFlowMax / nrOfFlows))+'). Ggf. falsche Ergebnisse !!!')
-    
+        eq2.addSummand(self.mod.var_on , - sumOfFlowMax/ nrOfFlows, timeIndexe) #
+
+        if isinstance(sumOfFlowMax, (np.ndarray,list)):
+            if max(sumOfFlowMax) / nrOfFlows > 1000: log.warning(
+                '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
+                    int(max(sumOfFlowMax) / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
+        else:
+            if sumOfFlowMax / nrOfFlows > 1000: log.warning(
+                '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
+                    int(sumOfFlowMax / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
+
+
     def __addConstraintsForOff(self, eqsOwner, modBox, timeIndexe):       
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
