@@ -708,6 +708,58 @@ class flix_results():
     
         return y
 
+    def to_dataFrame(self, busOrComponent:str, direction:str, invert_Output:bool=False)->pd.DataFrame:
+        '''
+        This Function returns a pd.dataframe containing the OutFlows of the Bus or Comp
+
+        Parameters
+        ----------
+        busOrComponent : str
+            flows linked to this bus or component are chosen
+        direction : str ("in","out","inout")
+            Direction of the flows to look at. Choose one of "in","out","inout"
+        invert_Output : bool
+            Wether the output flows should be inverted or not (multiplied by -1)
+
+        Returns
+        ---------
+        pd.DataFrame
+        '''
+
+        (in_flows, out_flows) = self.getFlowsOf(busOrComponent)
+
+        df = pd.DataFrame(index=self.timeSeries)
+        if direction=="in":
+            flows=in_flows
+            for flow in flows:
+                flow: cFlow_post
+                flow.label_full
+                df[flow.label_full] = flow.results['val']
+        elif direction=="out":
+            flows=out_flows
+            for flow in flows:
+                flow: cFlow_post
+                flow.label_full
+                if invert_Output:
+                    df[flow.label_full] = flow.results['val'] * -1
+                else:
+                    df[flow.label_full] = flow.results['val']
+        elif direction=="inout":
+            for flow in in_flows:
+                flow: cFlow_post
+                flow.label_full
+                df[flow.label_full] = flow.results['val']
+            for flow in out_flows:
+                flow: cFlow_post
+                flow.label_full
+                if invert_Output:
+                    df[flow.label_full] = flow.results['val']*-1
+                else:
+                    df[flow.label_full] = flow.results['val']
+        else:
+            raise Exception(direction+' is no valid arg for "direction" ')
+        return df
+
                              
 # self.results[]
 ## ideen: kosten-übersicht, JDL, Torten-Diag für Busse
