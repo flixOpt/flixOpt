@@ -2181,7 +2181,8 @@ class cFlow(cME):
     def __init__(self,label, 
                  bus:cBus=None , 
                  min_rel = 0, max_rel = 1, 
-                 nominal_val = __nominal_val_default , 
+                 exists=None,
+                 nominal_val = __nominal_val_default ,
                  loadFactor_min = None, loadFactor_max = None, 
                  positive_gradient = None, 
                  costsPerFlowHour = None ,
@@ -2209,6 +2210,9 @@ class cFlow(cME):
             min value is min_rel multiplied by nominal_val
         max_rel : scalar, array, cTSraw, optional
             max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
+        exists : None, array, cTSraw, optional
+            corrects max_rel to new value by multiplying max_rel = max_rel * exists
+            Only contains blocks of 0 and 1.
         nominal_val : scalar. None if is a nominal value is a opt-variable, optional
             nominal value/ invest size (linked to min_rel, max_rel and others). 
             i.g. kW, area, volume, pieces, 
@@ -2278,8 +2282,11 @@ class cFlow(cME):
         # args to attributes:
         self.bus                 = bus
         self.nominal_val         = nominal_val # skalar!
-        self.min_rel             = cTS_vector('min_rel', min_rel              , self)        
-        self.max_rel             = cTS_vector('max_rel', max_rel              , self)
+        self.min_rel = cTS_vector('min_rel', min_rel, self)
+        self.max_rel = cTS_vector('max_rel', max_rel, self)
+        self.exists = None if (exists is None) else cTS_vector('exists', exists, self)  # TODO: Added by FB
+        if (exists is not None): self.max_rel = cTS_vector('max_rel', self.max_rel.d_i * self.exists.d_i, self) #TODO: added by FB
+
         self.loadFactor_min      = loadFactor_min
         self.loadFactor_max      = loadFactor_max
         self.positive_gradient   = cTS_vector('positive_gradient', positive_gradient, self)
