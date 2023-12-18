@@ -2331,7 +2331,7 @@ class cFlow(cME):
         # defaults:
                           
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        if isInstance(min_rel, (np.ndarray, list)):
+        if isinstance(min_rel, (np.ndarray, list)):
             self.__useOn_fromProps = iCanSwitchOff & (any(min_rel) > 0)
         else:
             self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
