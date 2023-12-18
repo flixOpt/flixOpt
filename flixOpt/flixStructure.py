@@ -10,10 +10,10 @@ import math
 import time
 import yaml  # (für json-Schnipsel-print)
 
-import flixOptHelperFcts as helpers
+from . import flixOptHelperFcts as helpers
 
-from basicModeling import * # Modelliersprache
-from flixBasics import *
+from .basicModeling import * # Modelliersprache
+from .flixBasics import *
 import logging
 
 log = logging.getLogger(__name__)
@@ -1085,7 +1085,7 @@ class cCalculation :
         
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
-        import flixAggregation as flixAgg        
+        from . import flixAggregation as flixAgg
         dataAgg = flixAgg.flixAggregation('aggregation',
                                           timeseries = df_OriginalData,
                                           hoursPerTimeStep = self.dtInHours[0],
@@ -1682,7 +1682,7 @@ class cEffectTypeList(list):
         return aObjectiveEffect
       
     
-from flixFeatures import * 
+from .flixFeatures import *
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class cBaseComponent(cME):
     ''' 

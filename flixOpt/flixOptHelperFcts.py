@@ -13,7 +13,7 @@ import re
 import math # für nan
 import matplotlib.pyplot as plt
 
-from flixBasicsPublic import cTSraw
+from .flixBasicsPublic import cTSraw
 
 
 def getVector(aValue,aLen):  

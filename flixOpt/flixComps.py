@@ -6,11 +6,11 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import numpy as np
-import flixOptHelperFcts as helpers
-from basicModeling import *  # Modelliersprache
-from flixStructure import *  # Grundstruktur
-from flixFeatures import *
 
+from . import flixOptHelperFcts as helpers
+from .basicModeling import *
+from .flixStructure import *
+from .flixFeatures import *
 
 class cBaseLinearTransformer(cBaseComponent):
     """
