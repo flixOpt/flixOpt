@@ -432,6 +432,70 @@ class cKWK(cBaseLinearTransformer):
         if eta_th + eta_el > 1:
             raise Exception('Fehler in ' + self.label + ': eta_th + eta_el > 1 !')
 
+class cKWKekt:
+
+    # TODO: Not Working yet
+    #aKWKekt = cKWKekt(label="EKT", eta_th=[0.00001, 0.60], eta_el=[0.18, 0.10],
+    #              Q_fu=cFlow(label="Qfu", bus=Gas, nominal_val=59.2, min_rel=0.7),
+    #              Q_th=[cFlow(label="Qth", bus=Fernwaerme),
+    #                    cFlow(label="Qth", bus=Fernwaerme)],
+    #              P_el=[cFlow(label="Pel", bus=Strom),
+    #                    cFlow(label="Pel", bus=Strom)],
+    #              )
+
+    ##
+    """
+    class of combined heat and power unit (CHP) with variable Ratio between Power and Heat
+    Consists of 2 seperate CHP instances between the Unit interpolates
+    """
+    new_init_args = ['label', 'eta_th', 'eta_el', 'Q_fu', 'P_el', 'Q_th']
+    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+
+    # eta = 1 # Thermischer Wirkungsgrad
+    # __eta_bound = [0,1]
+
+    def __init__(self, label, eta_th, eta_el, Q_fu, P_el, Q_th, **kwargs):
+        '''
+        constructor of cCHP with variable Ratio between Power and Heat
+
+        Use in Following manner:
+            >>> #  KWK_poweroriented    KWK_heatoriented,
+        eta_th =   [0.00001,            0.9 ]
+        eta_el =   [0.2,                0.1 ]
+        Q_th =   [ cFlow(),            cFlow() ]
+        P_el =   [ cFlow(),            cFlow() ]
+
+        Parameters
+        ----------
+        label : str
+            name of CHP-unit.
+        eta_th : list of float or TS
+            thermal efficiency.
+        eta_el : list of float or TS
+            electrical efficiency.
+        Q_fu : cFlow
+            fuel input-flow.
+        P_el : list of cFlow
+            electricity output-flow.
+        Q_th : list of cFlow
+            heat output-flow.
+        **kwargs :
+
+        '''
+
+        HilfEKT = cBus(label='Hilf'+label, media=None)  # balancing node/bus of electricity
+
+        # Transformer 1
+        Qout = cFlow(label="Hilf"+label+"out", bus=HilfEKT)
+        EKThilf = cBaseLinearTransformer(label=label+'fu',
+                                         inputs=[Q_fu], outputs=[Qout], factor_Sets=[{Q_fu: 1, Qout: 1}])
+
+        EKTel = cKWK(label=label+"el", eta_th=eta_th[0], eta_el=eta_el[0], P_el=P_el[0],Q_th=Q_th[0],
+                     Q_fu=cFlow(label="Hilf"+label+"inEL", bus=HilfEKT))
+
+        EKTth = cKWK(label=label+"th", eta_th=eta_th[1], eta_el=eta_el[1], P_el=P_el[1],Q_th=Q_th[1],
+                     Q_fu=cFlow(label="Hilf"+label+"inTH", bus=HilfEKT))
+
 
 class cStorage(cBaseComponent):
     """

@@ -10,6 +10,7 @@ developed by Felix Panitz* and Peter Stange*
       
 from flixStructure  import * # Grundstruktur
 from flixBasicsPublic import *
+import numpy as np
 
 ##############################################################  
 ## Funktionalität/Features zum Anhängen an die Komponenten: ##  
@@ -484,9 +485,18 @@ class cFeatureOn(cFeature) :
             else: 
                 sumOfFlowMax += aFlow.max_rel.d_i * aFlow.nominal_val
           
-        eq2.addSummand(self.mod.var_on , - sumOfFlowMax/ nrOfFlows, timeIndexe) #         
-        if sumOfFlowMax / nrOfFlows > 1000 : log.warning('!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert ('+str(int(sumOfFlowMax / nrOfFlows))+'). Ggf. falsche Ergebnisse !!!')
-    
+        eq2.addSummand(self.mod.var_on , - sumOfFlowMax/ nrOfFlows, timeIndexe) #
+
+        if isinstance(sumOfFlowMax, (np.ndarray,list)):
+            if max(sumOfFlowMax) / nrOfFlows > 1000: log.warning(
+                '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
+                    int(max(sumOfFlowMax) / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
+        else:
+            if sumOfFlowMax / nrOfFlows > 1000: log.warning(
+                '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
+                    int(sumOfFlowMax / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
+
+
     def __addConstraintsForOff(self, eqsOwner, modBox, timeIndexe):       
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
@@ -1044,8 +1054,10 @@ class cFeatureInvest(cFeature):
         # eq: P(t) <= max_rel(t) * P_inv    
         self.eq_max_via_investmentSize = cEquation('max_via_InvestmentSize',self, modBox, 'ineq')
         self.eq_max_via_investmentSize.addSummand(self.definingVar, 1)
-        self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.d_i))
-        
+        # TODO: Changed by FB
+        #self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.d_i))
+        self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.d))
+        # TODO: Changed by FB
            
         ## 2. Gleichung: Minimum durch Investmentgröße ##        
         

@@ -1485,6 +1485,16 @@ class cME(cArgsClass):
           aData[aVar.label + '_'] = helpers.zerosToNans(aVar.getResult())   
           aVars[aVar.label + '_'] = aVar # link zur Variable
   
+      # 3. Alle TS übergeben
+      # TODO: FB: Ganze TS_list übergeben
+      aTS : cTS_vector
+      for aTS in self.TS_list :
+        # print(aVar.label)
+        aData[aTS.label] = aTS.d
+        aVars[aTS.label] = aTS # link zur Variable
+      # TODO: FB: Ganze TS_list übergeben
+
+
       return aData, aVars
   
     # so kurze Schreibweise wie möglich, daher:
@@ -1716,7 +1726,7 @@ class cBaseComponent(cME):
         self.switchOn_maxNr       = switchOn_maxNr
         self.onHoursSum_min       = onHoursSum_min
         self.onHoursSum_max       = onHoursSum_max
-        self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHOur', costsPerRunningHour , self)     
+        self.costsPerRunningHour  = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour , self)
         
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
@@ -2314,8 +2324,10 @@ class cFlow(cME):
         # defaults:
                           
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        self.__useOn_fromProps = iCanSwitchOff & np.any(self.min_rel.d_i_raw > 0)
-        
+        if isInstance(min_rel, (np.ndarray, list)):
+            self.__useOn_fromProps = iCanSwitchOff & (any(min_rel) > 0)
+        else:
+            self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
                        
         # self.prepared          = False # ob __declareVarsAndEqs() ausgeführt
     
