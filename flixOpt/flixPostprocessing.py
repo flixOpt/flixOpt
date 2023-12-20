@@ -29,6 +29,8 @@ class cFlow_post():
         self.label = aDescr['label']
         self.bus   = aDescr['bus']
         self.comp  = aDescr['comp']
+        if "group" in aDescr:
+            self.group = aDescr['group']
         self.descr = aDescr
         self.flixResults = flixResults
         self.comp_post = flixResults.postObjOfStr(self.comp)
