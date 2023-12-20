@@ -2192,9 +2192,7 @@ class cFlow(cME):
     
     def __init__(self,label, 
                  bus:cBus=None , 
-                 min_rel = 0, max_rel = 1, 
-                 exists=None,
-                 group=None,
+                 min_rel = 0, max_rel = 1,
                  nominal_val = __nominal_val_default ,
                  loadFactor_min = None, loadFactor_max = None, 
                  positive_gradient = None, 
@@ -2223,11 +2221,6 @@ class cFlow(cME):
             min value is min_rel multiplied by nominal_val
         max_rel : scalar, array, cTSraw, optional
             max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
-        exists : array, list, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplid with this value before the solve
-        group: str, None
-            group name to assign components to groups. Used for later analysis of the results
         nominal_val : scalar. None if is a nominal value is a opt-variable, optional
             nominal value/ invest size (linked to min_rel, max_rel and others). 
             i.g. kW, area, volume, pieces, 
