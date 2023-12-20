@@ -96,6 +96,7 @@ class cBaseLinearTransformer(cBaseComponent):
             else:
                 flow.exists = cTS_vector('exists', exists, flow)
                 flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+                flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
 
     def transformFactorsToTS(self, factor_Sets):
@@ -691,8 +692,10 @@ class cStorage(cBaseComponent):
             self.exists = cTS_vector('exists', exists, self)
             self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
                                                   self.max_rel_chargeState.d_i * self.exists.d_i, self)
+            self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
+                                                  self.min_rel_chargeState.d_i * self.exists.d_i, self)
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of "group" and "exists" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
 
             flow.group = self.group
@@ -702,9 +705,7 @@ class cStorage(cBaseComponent):
             else:
                 flow.exists = cTS_vector('exists', exists, flow)
                 flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-
-        self.exists = None if (exists is None) else cTS_vector('exists', exists, self)  # TODO: Added by FB
-        if (exists is not None): self.max_rel_chargeState = cTS_vector('max_rel_chargeState', self.max_rel_chargeState.d_i * self.exists.d_i, self) #TODO: added by FB
+                flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         self.chargeState0_inFlowHours = chargeState0_inFlowHours
         self.charge_state_end_min = charge_state_end_min
