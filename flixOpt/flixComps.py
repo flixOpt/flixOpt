@@ -453,69 +453,147 @@ class cKWK(cBaseLinearTransformer):
         if eta_th + eta_el > 1:
             raise Exception('Fehler in ' + self.label + ': eta_th + eta_el > 1 !')
 
-class cKWKekt:
+def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
+            eta_th: list, eta_el: list, exists=None, group = None, **kwargs)->list:
+    '''
+    EKT A - Modulation, linear interpolation
 
-    # TODO: Not Working yet
-    #aKWKekt = cKWKekt(label="EKT", eta_th=[0.00001, 0.60], eta_el=[0.18, 0.10],
-    #              Q_fu=cFlow(label="Qfu", bus=Gas, nominal_val=59.2, min_rel=0.7),
-    #              Q_th=[cFlow(label="Qth", bus=Fernwaerme),
-    #                    cFlow(label="Qth", bus=Fernwaerme)],
-    #              P_el=[cFlow(label="Pel", bus=Strom),
-    #                    cFlow(label="Pel", bus=Strom)],
-    #              )
+    Creates a KWK with a variable rate between electricity and heat production.
+    Properties:
+        Modulation of Total Power (Fuel) [min_rel, max_rel, nominal value]
+        linear interpolation between efficiencies A and B
 
-    ##
-    """
-    class of combined heat and power unit (CHP) with variable Ratio between Power and Heat
-    Consists of 2 seperate CHP instances between the Unit interpolates
-    """
-    new_init_args = ['label', 'eta_th', 'eta_el', 'Q_fu', 'P_el', 'Q_th']
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+        Not working: Investment with variable Size
 
-    # eta = 1 # Thermischer Wirkungsgrad
-    # __eta_bound = [0,1]
+    Use in Following manner:
+        #  KWK_poweroriented    KWK_heatoriented,
+    eta_th =   [0.00001,            0.9 ]
+    eta_el =   [0.2,                0.1 ]
+    Q_th =   [ cFlow(),            cFlow() ]
+    P_el =   [ cFlow(),            cFlow() ]
 
-    def __init__(self, label, eta_th, eta_el, Q_fu, P_el, Q_th, **kwargs):
-        '''
-        constructor of cCHP with variable Ratio between Power and Heat
+    Parameters
+    ----------
+    label : str
+        name of CHP-unit.
+    eta_th : list of float or array
+        thermal efficiency of poweroriented (po) and heatoriented (ho) operation
+        passed in a list [eta_th_po, eta_th_ho]. the elements can be float or array
+    eta_el : list of float or array
+        electrical efficiency of poweroriented (po) and heatoriented (ho) operation.
+        passed in a list [eta_th_po, eta_th_ho]. the elements can be float or array
+    Q_fu : cFlow
+        fuel input-flow.
+    P_el : list of cFlow
+        electricity output-flow.
+    Q_th : list of cFlow
+        heat output-flow.
+    **kwargs :
+        Additional keyword arguments. Passed to the fule input flow!!
 
-        Use in Following manner:
-            >>> #  KWK_poweroriented    KWK_heatoriented,
-        eta_th =   [0.00001,            0.9 ]
-        eta_el =   [0.2,                0.1 ]
-        Q_th =   [ cFlow(),            cFlow() ]
-        P_el =   [ cFlow(),            cFlow() ]
+    Returns
+    -------
+    list(cBaseLinearTransformer, cKWK, cKWK)
+            a list of Components that need to be added to the cEnergySystem
+    '''
 
-        Parameters
-        ----------
-        label : str
-            name of CHP-unit.
-        eta_th : list of float or TS
-            thermal efficiency.
-        eta_el : list of float or TS
-            electrical efficiency.
-        Q_fu : cFlow
-            fuel input-flow.
-        P_el : list of cFlow
-            electricity output-flow.
-        Q_th : list of cFlow
-            heat output-flow.
-        **kwargs :
+    # filtering,because eta can not be 0
+    for eta in [eta_el, eta_th]:
+        for i in range(len(eta)):
+            if isinstance(eta[i] , (float, int)) and eta[i]==0:
+                eta[i]=0.0000001
+            elif isinstance(eta[i] , (np.ndarray)):
+                eta[i][ eta[i] ==0 ] = 0.0000001
 
-        '''
+    eta_thA = eta_th[0]
+    eta_thB = eta_th[1]
+    eta_elB = eta_el[0]
+    eta_elA = eta_el[1]
 
-        HilfEKT = cBus(label='Hilf'+label, media=None)  # balancing node/bus of electricity
+    HelperBus = cBus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
 
-        # Transformer 1
-        Qout = cFlow(label="Hilf"+label+"out", bus=HilfEKT)
-        EKThilf = cBaseLinearTransformer(label=label+'fu',
-                                         inputs=[Q_fu], outputs=[Qout], factor_Sets=[{Q_fu: 1, Qout: 1}])
+    # Transformer 1
+    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=nominal_val, min_rel=1, **kwargs)
+    Qout = cFlow(label="Helper" + label + 'Fu', bus=HelperBus)
+    EKTIn = cBaseLinearTransformer(label=label + "In", exists= exists, group = group,
+                                   inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+    # EKT A
+    EKTA = cKWK(label=label + "A", exists= exists, group = group,
+                eta_th=eta_thA, eta_el=eta_elA,
+                P_el=cFlow(label="Pel", bus=BusEl),
+                Q_fu=cFlow(label="Helper" + label + 'A', bus=HelperBus),
+                Q_th=cFlow(label="Qth", bus=BusTh))
+    # EKT B
+    EKTB = cKWK(label=label + "B", exists= exists, group = group,
+                eta_th=eta_thB, eta_el=eta_elB,
+                P_el=cFlow(label="Pel", bus=BusEl),
+                Q_fu=cFlow(label="Helper" + label + 'B', bus=HelperBus),
+                Q_th=cFlow(label="Qth", bus=BusTh))
+    return [EKTIn, EKTA, EKTB]
 
-        EKTel = cKWK(label=label+"el", eta_th=eta_th[0], eta_el=eta_el[0], P_el=P_el[0],Q_th=Q_th[0],
-                     Q_fu=cFlow(label="Hilf"+label+"inEL", bus=HilfEKT))
+def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
+            segQfu: list[float], segQth: list[float], segPel: list[float], minmax_rel:[int,list]=1,
+            exists=None, group = None,**kwargs)->list:
+    '''
+    EKT B - On/Off, interpolation with Base Points
+    Creates a KWK with a variable rate between electricity and heat production
 
-        EKTth = cKWK(label=label+"th", eta_th=eta_th[1], eta_el=eta_el[1], P_el=P_el[1],Q_th=Q_th[1],
-                     Q_fu=cFlow(label="Hilf"+label+"inTH", bus=HilfEKT))
+    Properties:
+        On/Off-operation
+        Interpolation with Base Points between efficiencies A and B
+
+        Not working:
+        Investment with variable Size
+        Variation of total Power
+
+    Nominal Value is equal to the max of seqFu
+
+    Parameters
+    ----------
+    segQfu: list[float]
+        Expression with Base Points
+        [0, 5, 5, 10]
+    segQth: list[float]
+        Expression with Base Points
+        [0, 3, 3, 9]
+    segPel: list[float]
+        Expression with Base Points
+        [0, 1, 1, 3]
+
+    Returns
+    -------
+    list(cBaseLinearTransformer, cBaseLinearTransformer, cBaseLinearTransformer)
+        a list of Components that need to be added to the cEnergySystem
+    '''
+    # Testinf for min_rel to only be 0 or 1
+    if isinstance(minmax_rel, (float,int)):
+        if minmax_rel!=1: raise Exception("min_rel has to be 1, otherwise "+label+" will behave unexpectetly")
+    elif all(item == 0 or item == 1 for item in minmax_rel): pass
+    else: raise Exception("min_rel must contain only 1 and 0, otherwise "+label+" will behave unexpectetly")
+
+    HelperBus = cBus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
+
+    # Transformer 1
+    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=max(segQfu), min_rel=minmax_rel, max_rel=minmax_rel, **kwargs)
+    Qout = cFlow(label="Helper" + label + 'Fu', bus=HelperBus)
+    EKTIn = cBaseLinearTransformer(label=label + "In", exists= exists, group = group,
+                                   inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+
+    # Transformer Strom
+    P_el = cFlow(label="Pel", bus=BusEl)
+    Q_fu = cFlow(label="Helper" + label + 'A', bus=HelperBus)
+    segs = {Q_fu: segQfu.copy(), P_el: segPel.copy()}
+    EKTA = cBaseLinearTransformer(label=label + "A", exists= exists, group = group,
+                                  outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs)
+
+    # Transformer Wärme
+    Q_th = cFlow(label="Qth", bus=BusTh)
+    Q_fu = cFlow(label="Helper" + label + 'B', bus=HelperBus)
+    segs = {Q_fu: segQfu.copy(), Q_th: segQth.copy()}
+    EKTB = cBaseLinearTransformer(label=label + "B", exists= exists, group = group,
+                                  outputs=[Q_th], inputs=[Q_fu], segmentsOfFlows=segs)
+
+    return [EKTIn, EKTA, EKTB]
 
 
 class cStorage(cBaseComponent):
