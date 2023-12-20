@@ -18,7 +18,7 @@ class cBaseLinearTransformer(cBaseComponent):
     """
     new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
     not_used_args = ['label']
-    def __init__(self, label, inputs, outputs, factor_Sets=None, segmentsOfFlows=None, **kwargs):
+    def __init__(self, label:str, inputs:list, outputs:list, exists=None, group:str=None, factor_Sets=None, segmentsOfFlows=None, **kwargs):
         '''
         Parameters
         ----------
@@ -28,6 +28,11 @@ class cBaseLinearTransformer(cBaseComponent):
             input flows.
         outputs : list of flows
             output flows.
+        exists : array, list, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplid with this value before the solve
+        group: str, None
+            group name to assign components to groups. Used for later analysis of the results
         factor_Sets : list
             linear relation between flows
             eq: sum (factor * flow_in) = sum (factor * flow_out)
@@ -76,6 +81,22 @@ class cBaseLinearTransformer(cBaseComponent):
             raise Exception('Either factor_Sets or segmentsOfFlows must \
                             be defined! Not Both!')
             
+
+
+        self.group = group
+        self.exists = cTS_vector('exists', exists, self) if (exists is not None) else None
+
+        # copy information of group and exists to in-flows and out-flows
+        for flow in self.inputs+self.outputs:
+
+            flow.group = self.group
+
+            if (exists is None):
+                flow.exists = None
+            else:
+                flow.exists = cTS_vector('exists', exists, flow)
+                flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+
 
     def transformFactorsToTS(self, factor_Sets):
         """
@@ -518,10 +539,10 @@ class cStorage(cBaseComponent):
     not_used_args = ['label']
 
     # capacity_inFlowHours: float, 'lastValueOfSim', None
-    def __init__(self, label, inFlow, outFlow, capacity_inFlowHours, min_rel_chargeState=0, max_rel_chargeState=1,
-                 chargeState0_inFlowHours=0, charge_state_end_min=None, charge_state_end_max=None, eta_load=1,
-                 eta_unload=1, fracLossPerHour=0, avoidInAndOutAtOnce=True, investArgs=None,
-                 exists = None, **kwargs):
+    def __init__(self, label, inFlow, outFlow, capacity_inFlowHours, exists = None, group = None,
+                 min_rel_chargeState=0, max_rel_chargeState=1, chargeState0_inFlowHours=0,
+                 charge_state_end_min=None, charge_state_end_max=None, eta_load=1, eta_unload=1,
+                 fracLossPerHour=0, avoidInAndOutAtOnce=True, investArgs=None, **kwargs):
         '''
         constructor of storage
 
@@ -533,6 +554,11 @@ class cStorage(cBaseComponent):
             ingoing flow.
         outFlow : cFlow
             outgoing flow.
+        exists : array, list, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            Has to be one step longer than the number of Timesteps of the calculation
+        group: str, None
+            group name to assign components to groups. Used for later analysis of the results
         capacity_inFlowHours : float or None
             nominal capacity of the storage 
             float: capacity in FlowHours
@@ -578,6 +604,26 @@ class cStorage(cBaseComponent):
         self.capacity_inFlowHours = capacity_inFlowHours
         self.max_rel_chargeState = cTS_vector('max_rel_chargeState', max_rel_chargeState, self)
         self.min_rel_chargeState = cTS_vector('min_rel_chargeState', min_rel_chargeState, self)
+
+        self.group = group
+
+        if exists is None:
+            self.exists = None
+        else:
+            self.exists = cTS_vector('exists', exists, self)
+            self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
+                                                  self.max_rel_chargeState.d_i * self.exists.d_i, self)
+
+        # copy information of group and exists to in-flows and out-flows
+        for flow in self.inputs + self.outputs:
+
+            flow.group = self.group
+
+            if (self.exists is None):
+                flow.exists = None
+            else:
+                flow.exists = cTS_vector('exists', exists, flow)
+                flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
 
         self.exists = None if (exists is None) else cTS_vector('exists', exists, self)  # TODO: Added by FB
         if (exists is not None): self.max_rel_chargeState = cTS_vector('max_rel_chargeState', self.max_rel_chargeState.d_i * self.exists.d_i, self) #TODO: added by FB
