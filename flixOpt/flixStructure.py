@@ -2208,7 +2208,9 @@ class cFlow(cME):
                  valuesBeforeBegin = [0,0], 
                  val_rel = None, 
                  medium = None,
-                 investArgs = None, 
+                 investArgs = None,
+                 exists = None,
+                 group = None,
                  **kwargs):
         '''
         Parameters
