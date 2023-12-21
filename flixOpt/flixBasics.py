@@ -5,9 +5,10 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
+
 import numpy as np
-import flixOptHelperFcts as helpers
-from flixBasicsPublic import cTSraw
+from . import flixOptHelperFcts as helpers
+from .flixBasicsPublic import cTSraw
 
 
 class cArgsClass:

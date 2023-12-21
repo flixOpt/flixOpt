@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 import pickle
 import yaml
-import flixOptHelperFcts as helpers
+from . import flixOptHelperFcts as helpers
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt # für Plots im Postprocessing
@@ -23,12 +23,14 @@ class cFlow_post():
 
     @property
     def label_full(self):
-        return self.comp + '.' + self.label
+        return self.comp + '_' + self.label
 
     def __init__(self,aDescr,flixResults):
         self.label = aDescr['label']
         self.bus   = aDescr['bus']
         self.comp  = aDescr['comp']
+        if "group" in aDescr:
+            self.group = aDescr['group']
         self.descr = aDescr
         self.flixResults = flixResults
         self.comp_post = flixResults.postObjOfStr(self.comp)

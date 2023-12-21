@@ -7,9 +7,9 @@ developed by Felix Panitz* and Peter Stange*
 ## TODO:
   # featureAvoidFlowsAtOnce:
     # neue Variante (typ="new") austesten
-      
-from flixStructure  import * # Grundstruktur
-from flixBasicsPublic import *
+
+from .flixStructure import * # Grundstruktur
+from .flixBasicsPublic import *
 import numpy as np
 
 ##############################################################  

@@ -10,7 +10,7 @@ import numpy as np
 import math # für nan
 import matplotlib.pyplot as plt
 import pandas as pd
-from flixStructure import *
+from .flixStructure import *
 
 
 def plotFlow(calc, aFlow_value, label, withPoints = True):    

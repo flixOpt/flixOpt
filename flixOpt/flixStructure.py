@@ -10,10 +10,10 @@ import math
 import time
 import yaml  # (für json-Schnipsel-print)
 
-import flixOptHelperFcts as helpers
+from . import flixOptHelperFcts as helpers
 
-from basicModeling import * # Modelliersprache
-from flixBasics import *
+from .basicModeling import * # Modelliersprache
+from .flixBasics import *
 import logging
 
 log = logging.getLogger(__name__)
@@ -1085,7 +1085,7 @@ class cCalculation :
         
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
-        import flixAggregation as flixAgg        
+        from . import flixAggregation as flixAgg
         dataAgg = flixAgg.flixAggregation('aggregation',
                                           timeseries = df_OriginalData,
                                           hoursPerTimeStep = self.dtInHours[0],
@@ -1486,13 +1486,20 @@ class cME(cArgsClass):
           aVars[aVar.label + '_'] = aVar # link zur Variable
   
       # 3. Alle TS übergeben
-      # TODO: FB: Ganze TS_list übergeben
       aTS : cTS_vector
       for aTS in self.TS_list :
         # print(aVar.label)
         aData[aTS.label] = aTS.d
         aVars[aTS.label] = aTS # link zur Variable
-      # TODO: FB: Ganze TS_list übergeben
+
+        # 4. Attribut Group übergeben, wenn vorhanden
+        aGroup : str
+        if hasattr(self, 'group'):
+            if self.group is not None:
+                aData["group"] = self.group
+                aVars["group"] = self.group
+
+
 
 
       return aData, aVars
@@ -1682,7 +1689,7 @@ class cEffectTypeList(list):
         return aObjectiveEffect
       
     
-from flixFeatures import * 
+from .flixFeatures import *
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class cBaseComponent(cME):
     ''' 
@@ -1852,6 +1859,11 @@ class cBaseComponent(cME):
           inhalt['isStorage'] = self.isStorage
       inhalt['class'] = type(self).__name__
         
+      if hasattr(self, 'group'):
+          if self.group is not None:
+              inhalt['group'] = self.group
+
+
       return descr
     
     def print(self,shiftChars):
@@ -2180,8 +2192,7 @@ class cFlow(cME):
     
     def __init__(self,label, 
                  bus:cBus=None , 
-                 min_rel = 0, max_rel = 1, 
-                 exists=None,
+                 min_rel = 0, max_rel = 1,
                  nominal_val = __nominal_val_default ,
                  loadFactor_min = None, loadFactor_max = None, 
                  positive_gradient = None, 
@@ -2197,7 +2208,9 @@ class cFlow(cME):
                  valuesBeforeBegin = [0,0], 
                  val_rel = None, 
                  medium = None,
-                 investArgs = None, 
+                 investArgs = None,
+                 exists = None,
+                 group = None,
                  **kwargs):
         '''
         Parameters
@@ -2210,9 +2223,6 @@ class cFlow(cME):
             min value is min_rel multiplied by nominal_val
         max_rel : scalar, array, cTSraw, optional
             max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
-        exists : None, array, cTSraw, optional
-            corrects max_rel to new value by multiplying max_rel = max_rel * exists
-            Only contains blocks of 0 and 1.
         nominal_val : scalar. None if is a nominal value is a opt-variable, optional
             nominal value/ invest size (linked to min_rel, max_rel and others). 
             i.g. kW, area, volume, pieces, 
@@ -2284,8 +2294,6 @@ class cFlow(cME):
         self.nominal_val         = nominal_val # skalar!
         self.min_rel = cTS_vector('min_rel', min_rel, self)
         self.max_rel = cTS_vector('max_rel', max_rel, self)
-        self.exists = None if (exists is None) else cTS_vector('exists', exists, self)  # TODO: Added by FB
-        if (exists is not None): self.max_rel = cTS_vector('max_rel', self.max_rel.d_i * self.exists.d_i, self) #TODO: added by FB
 
         self.loadFactor_min      = loadFactor_min
         self.loadFactor_max      = loadFactor_max
@@ -2331,7 +2339,7 @@ class cFlow(cME):
         # defaults:
                           
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        if isInstance(min_rel, (np.ndarray, list)):
+        if isinstance(min_rel, (np.ndarray, list)):
             self.__useOn_fromProps = iCanSwitchOff & (any(min_rel) > 0)
         else:
             self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
@@ -2572,7 +2580,10 @@ class cFlow(cME):
           aDescr['comp']=self.comp.label        
           aDescr['bus']=self.bus.label            
           aDescr['isInputInComp'] = self.isInputInComp
-        else: 
+          if hasattr(self, 'group'):
+              if self.group is not None:
+                  aDescr["group"] = self.group
+        else:
           raise Exception('type = \'' + str(type) + '\' is not defined')
   
         return aDescr

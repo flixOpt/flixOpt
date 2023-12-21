@@ -16,7 +16,7 @@ pyomoEnv = None # das ist module, das nur bei Bedarf belegt wird
 
 log = logging.getLogger(__name__)
 
-import flixOptHelperFcts as helpers
+from . import flixOptHelperFcts as helpers
       
 class cBaseModel:
   '''
