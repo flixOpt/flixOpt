@@ -18,7 +18,7 @@ print(nameOfCalc)
 # ####################
 
 # ##### loading ######
-import flixPostprocessing as flixPost
+import flixOpt.flixOpt.flixPostprocessing as flixPost
 # comp_colors = px.colors.qualitative.Plotly + px.colors.qualitative.Bold
 comp_colors = None
 # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
@@ -59,7 +59,7 @@ fig = calc1.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True
 fig.show()
 
 import matplotlib.pyplot as plt
-from flixPlotHelperFcts import *
+from flixOpt.flixOpt.flixPlotHelperFcts import *
 
 # Zeitreihe greifen:
 print('Variante 1:')

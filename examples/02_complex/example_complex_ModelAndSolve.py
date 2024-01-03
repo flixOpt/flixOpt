@@ -4,11 +4,12 @@ Created on Thu Jun 16 11:19:17 2022
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+
 import numpy as np
 import datetime
-from flixStructure import *
-from flixComps import *
-from flixBasicsPublic import *
+from flixOpt.flixOpt.flixStructure import *
+from flixOpt.flixOpt.flixComps import *
+from flixOpt.flixOpt.flixBasicsPublic import *
 
 # ## Solver-Inputs:##
 displaySolverOutput = False # ausführlicher Solver-Output.
@@ -16,8 +17,8 @@ displaySolverOutput = True  # ausführlicher Solver-Output.
 gapFrac = 0.0001
 timelimit = 3600
 
-solver_name = 'glpk' # warning, glpk quickly has numerical problems with big and epsilon
-# solver_name = 'gurobi'
+# solver_name = 'glpk' # warning, glpk quickly has numerical problems with big and epsilon
+solver_name = 'gurobi'
 # solver_name    = 'cbc'
 nrOfThreads    = 1
 
@@ -26,7 +27,7 @@ useCHPwithLinearSegments = False
 # useCHPwithLinearSegments = True
 checkPenalty    = False  
 excessCosts = None
-# excessCosts = 1e5 # default value
+excessCosts = 1e5 # default value
 ################
 
 

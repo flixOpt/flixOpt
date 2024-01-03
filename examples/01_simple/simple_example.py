@@ -8,8 +8,8 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import datetime
-from flixStructure import *
-from flixComps    import *
+from flixOpt.flixOpt.flixStructure import *
+from flixOpt.flixOpt.flixComps    import *
 
 ### some Solver-Inputs: ###
 displaySolverOutput = False # ausführlicher Solver-Output.
@@ -17,9 +17,9 @@ displaySolverOutput = True  # ausführlicher Solver-Output.
 gapFrac = 0.0001 # solver-gap
 timelimit = 3600 # seconds until solver abort
 # choose the solver, you have installed:
-solver_name = 'glpk' # warning, glpk quickly has numerical problems with binaries (big and epsilon)
-# solver_name = 'gurobi'
-# solver_name    = 'cbc'
+# solver_name = 'glpk' # warning, glpk quickly has numerical problems with binaries (big and epsilon)
+solver_name = 'gurobi'
+# solver_name = 'cbc'
 solverProps = {'gapFrac': gapFrac, 
                'timelimit': timelimit,
                'solver': solver_name, 
@@ -86,9 +86,13 @@ aSpeicher = cStorage('Speicher',
                      outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4), # unload-flow, maximum load-power: 1e4 kW
                      capacity_inFlowHours=30, # 30 kWh; storage capacity
                      chargeState0_inFlowHours=0, # empty storage at first time step
+                     max_rel_chargeState = 1/100*np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
                      eta_load=0.9, eta_unload=1, #loading efficiency factor, unloading efficiency factor
                      fracLossPerHour=0.08, # 8 %/h; 8 percent of storage loading level is lossed every hour 
-                     avoidInAndOutAtOnce=True # no parallel loading and unloading at one time
+                     avoidInAndOutAtOnce=True, # no parallel loading and unloading at one time
+                     investArgs=cInvestArgs(fixCosts=20,
+                                            investmentSize_is_fixed=True,
+                                            investment_is_optional=False)
                      )
  
 # # 3. sinks and sources #
@@ -125,11 +129,12 @@ aStromEinspeisung = cSink('Einspeisung',
 # ## Build energysystem - Registering of all elements ##
 
 es = cEnergySystem(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
+es.addComponents(aSpeicher) # adding components
 es.addEffects(costs, CO2) # adding defined effects
 es.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
 es.addComponents(aStromEinspeisung) # adding components
 es.addComponents(aKWK) # adding components
-es.addComponents(aSpeicher) # adding components
+
 
 # choose used timeindexe:
 chosenEsTimeIndexe = None # all timeindexe are used
@@ -170,7 +175,7 @@ aCalc.solve(solverProps, # some solver options
 
 
 # ##### loading results from output-files ######
-import flixPostprocessing as flixPost
+import flixOpt.flixOpt.flixPostprocessing as flixPost
 
 nameOfCalc = aCalc.nameOfCalc
 print(nameOfCalc)

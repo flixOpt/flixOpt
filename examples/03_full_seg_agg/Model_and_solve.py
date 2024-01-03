@@ -122,9 +122,9 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 
 ##########################################################################
 
-from flixStructure import *
-from flixComps    import *
-from flixBasicsPublic import *
+from flixOpt.flixOpt.flixStructure import *
+from flixOpt.flixOpt.flixComps    import *
+from flixOpt.flixOpt.flixBasicsPublic import *
 
 import pandas as pd
 import logging as log
@@ -329,7 +329,7 @@ for aResult in listOfCalcs:
 
 ####### loading #######
 
-import flixPostprocessing as flixPost
+import flixOpt.flixOpt.flixPostprocessing as flixPost
 
 listOfResults = []
 
