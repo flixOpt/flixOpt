@@ -2212,7 +2212,7 @@ class cFlow(cME):
                  val_rel = None, 
                  medium = None,
                  investArgs = None,
-                 exists = None,
+                 exists = 1,
                  group = None,
                  **kwargs):
         '''
