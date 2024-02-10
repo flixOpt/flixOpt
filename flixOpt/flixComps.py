@@ -322,6 +322,54 @@ class cKessel(cBaseLinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
+class cEHK(cBaseLinearTransformer):
+    """
+    class cEHK
+    """
+    new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
+    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+
+    def __init__(self, label, eta, P_el, Q_th, **kwargs):
+        '''
+        constructor for boiler
+
+        Parameters
+        ----------
+        label : str
+            name of bolier.
+        eta : float or TS
+            thermal efficiency.
+        P_el : cFlow
+            electric input-flow
+        Q_th : cFlow
+            thermal output-flow.
+        **kwargs : see mother classes!
+
+
+        '''
+        # super:
+        kessel_bilanz = {P_el: eta,
+                         Q_th: 1}  # eq: eta * Q_fu = 1 * Q_th # TODO: Achtung eta ist hier noch nicht TS-vector!!!
+
+        super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
+
+        # args to attributes:
+        self.eta = cTS_vector('eta', eta, self)  # thermischer Wirkungsgrad
+        self.P_el = P_el
+        self.Q_th = Q_th
+
+        # allowed medium:
+        P_el.setMediumIfNotSet(cMediumCollection.el)
+        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+
+        # Plausibilität eta:
+        self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
+        helpers.checkBoundsOfParameter(eta, 'eta', self.eta_bounds, self)
+
+        # # generische property für jeden Koeffizienten
+        # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
+
+
 class cHeatPump(cBaseLinearTransformer):
     """
     class cHeatPump
