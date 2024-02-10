@@ -2161,7 +2161,7 @@ class cFlow(cME):
             comp_label = 'unknownComp'
         else:
             comp_label = self.comp.label
-        separator = '_' # wichtig, sonst geht results_struct nicht
+        separator = '__' # wichtig, sonst geht results_struct nicht
         return comp_label + separator + self.label # z.B. für results_struct (deswegen auch _  statt . dazwischen)
 
     @property #Richtung
