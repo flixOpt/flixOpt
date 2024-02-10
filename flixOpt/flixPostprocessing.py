@@ -169,7 +169,8 @@ class flix_results():
                 aComp = cCompOrBus_post(label, descr, self, color = next(myColorIter))
             except StopIteration:
                 raise Exception('too less colors defined for printing!')                
-            comps.append(aComp)    
+            # TODO: extract Results similar to cFlow_post
+            comps.append(aComp)
         return comps
     
     def __getAllBuses(self):
