@@ -785,7 +785,7 @@ class cCalculation :
     
     es: cEnergySystem
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, es : cEnergySystem, modType, chosenEsTimeIndexe = None, pathForSaving = '/results',):
+    def __init__(self, label, es : cEnergySystem, modType, chosenEsTimeIndexe = None, pathForSaving = 'results',):
         '''
         Parameters
         ----------
@@ -798,7 +798,7 @@ class cCalculation :
         chosenEsTimeIndexe : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
         pathForSaving : str
-            Path for result files. The default is '/results'.
+            Path for result files. The default is 'results'.
 
         '''
         self.label = label
@@ -1206,8 +1206,6 @@ class cCalculation :
         import datetime
         import pathlib               
 
-        # wenn "/" am Anfang, dann löschen (sonst kommt pathlib durcheinander):
-        aPath = aPath[0].replace("/","") + aPath[1:]
         # absoluter Pfad:
         aPath = pathlib.Path.cwd() / aPath
         # Pfad anlegen, fall noch nicht vorhanden:
