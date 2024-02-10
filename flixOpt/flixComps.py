@@ -1032,7 +1032,7 @@ class cSource(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label, source, **kwargs):
+    def __init__(self, label, source, exists=1, group:str=None, **kwargs):
         '''       
         Parameters
         ----------
@@ -1040,6 +1040,11 @@ class cSource(cBaseComponent):
             name of source
         source : cFlow
             output-flow of source
+        exists : array, int, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplied with this value before the solve
+        group: str, None
+            group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
 
         Returns
@@ -1059,6 +1064,21 @@ class cSource(cBaseComponent):
         self.source = source
         self.outputs.append(source)  # ein Output-Flow
 
+        self.group = group
+        # type checking
+        if isinstance(exists,int) or (isinstance(exists,(list,np.ndarray)) and all(item in {0, 1} for item in exists)):
+            self.exists = cTS_vector('exists', exists, self)
+        else:
+            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+
+        # copy information of group and exists to in-flows and out-flows
+        for flow in self.inputs+self.outputs:
+            flow.group = self.group
+
+            flow.exists = cTS_vector('exists', exists, flow)
+            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
+
 
 class cSink(cBaseComponent):
     """
@@ -1067,7 +1087,7 @@ class cSink(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label, sink, **kwargs):
+    def __init__(self, label, sink, exists=1, group:str=None, **kwargs):
         '''
         constructor of sink 
 
@@ -1077,6 +1097,11 @@ class cSink(cBaseComponent):
             name of sink.
         sink : cFlow
             input-flow of sink
+        exists : array, int, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplied with this value before the solve
+        group: str, None
+            group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
             DESCRIPTION.
 
@@ -1089,6 +1114,22 @@ class cSink(cBaseComponent):
         super().__init__(label)
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
+
+        self.group = group
+        # type checking
+        if isinstance(exists,int) or (isinstance(exists,(list,np.ndarray)) and all(item in {0, 1} for item in exists)):
+            self.exists = cTS_vector('exists', exists, self)
+        else:
+            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+
+        # copy information of group and exists to in-flows and out-flows
+        for flow in self.inputs+self.outputs:
+            flow.group = self.group
+
+            flow.exists = cTS_vector('exists', exists, flow)
+            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
+
 
 class cTransportation(cBaseComponent):
     # TODO: automatic on-Value in Flows if loss_abs
