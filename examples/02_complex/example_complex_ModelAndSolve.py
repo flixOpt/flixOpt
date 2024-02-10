@@ -7,9 +7,9 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import datetime
-from flixOpt.flixOpt.flixStructure import *
-from flixOpt.flixOpt.flixComps import *
-from flixOpt.flixOpt.flixBasicsPublic import *
+from flixOpt.flixStructure import *
+from flixOpt.flixComps import *
+from flixOpt.flixBasicsPublic import *
 
 # ## Solver-Inputs:##
 displaySolverOutput = False # ausführlicher Solver-Output.
@@ -18,8 +18,8 @@ gapFrac = 0.0001
 timelimit = 3600
 
 # solver_name = 'glpk' # warning, glpk quickly has numerical problems with big and epsilon
-solver_name = 'gurobi'
-# solver_name    = 'cbc'
+# solver_name = 'gurobi'
+solver_name    = 'cbc'
 nrOfThreads    = 1
 
 # ## calculation-options - you can vary! ###

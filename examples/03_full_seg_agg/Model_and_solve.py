@@ -14,7 +14,7 @@ developed by Felix Panitz* and Peter Stange*
 # solver:
 gapFrac        = 0.0005
 solver_name    = 'cbc'
-solver_name    = 'gurobi'
+# solver_name    = 'gurobi'
 # solver_name    = 'glpk'
 solverProps = {'gapFrac': gapFrac, 'solver': solver_name, 'displaySolverOutput' : True, 'threads':16}   
 
@@ -122,9 +122,9 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 
 ##########################################################################
 
-from flixOpt.flixOpt.flixStructure import *
-from flixOpt.flixOpt.flixComps    import *
-from flixOpt.flixOpt.flixBasicsPublic import *
+from flixOpt.flixStructure import *
+from flixOpt.flixComps    import *
+from flixOpt.flixBasicsPublic import *
 
 import pandas as pd
 import logging as log
@@ -329,7 +329,7 @@ for aResult in listOfCalcs:
 
 ####### loading #######
 
-import flixOpt.flixOpt.flixPostprocessing as flixPost
+import flixOpt.flixPostprocessing as flixPost
 
 listOfResults = []
 
@@ -356,7 +356,7 @@ if doSegmentedCalc:
 ###### plotting #######
 
 import matplotlib.pyplot as plt
-from flixPlotHelperFcts import *
+from flixOpt.flixPlotHelperFcts import *
 
 # Übersichtsplot:
 
