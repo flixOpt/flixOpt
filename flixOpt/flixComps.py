@@ -101,6 +101,14 @@ class cBaseLinearTransformer(cBaseComponent):
             flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
             flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
+        # copy information about exists into segments of flows
+        if self.segmentsOfFlows is not None:
+            if isinstance(self.exists.d_i, (np.ndarray, list)):
+                for key, item in self.segmentsOfFlows.items():
+                    self.segmentsOfFlows[key] = [list(np.array(item) * factor) for factor in self.exists.d_i]
+            elif isinstance(self.exists.d_i, (int, float)):
+                for key, item in self.segmentsOfFlows.items():
+                    self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
 
     def transformFactorsToTS(self, factor_Sets):
         """
