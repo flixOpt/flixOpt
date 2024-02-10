@@ -1415,7 +1415,9 @@ class cME(cArgsClass):
       self.mod         = None # hier kommen alle Glg und Vars rein
       super().__init__(**kwargs)
           
-      
+    def __repr__(self):
+        return f"{self.__class__.__name__}: {self.label}; TS: {self.TS_list}"
+
     # activate inkl. subMEs:
     def activateModbox(self, modBox):
       
