@@ -1863,6 +1863,9 @@ class cBaseComponent(cME):
           if self.group is not None:
               inhalt['group'] = self.group
 
+      if hasattr(self, 'color'):
+          if self.color is not None:
+              inhalt['color'] = str(self.color)
 
       return descr
     
@@ -2583,6 +2586,11 @@ class cFlow(cME):
           if hasattr(self, 'group'):
               if self.group is not None:
                   aDescr["group"] = self.group
+
+          if hasattr(self, 'color'):
+              if self.color is not None:
+                  aDescr['color'] = str(self.color)
+
         else:
           raise Exception('type = \'' + str(type) + '\' is not defined')
   
