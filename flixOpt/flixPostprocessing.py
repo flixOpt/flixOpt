@@ -102,7 +102,9 @@ class flix_results():
         # default value:
         if self.comp_colors == None:
             import plotly.express as px
-            self.comp_colors = px.colors.qualitative.Light24 + px.colors.qualitative.Bold + px.colors.qualitative.Alphabet
+            self.comp_colors = (px.colors.qualitative.Light24 + px.colors.qualitative.Bold +
+                                px.colors.qualitative.Alphabet + px.colors.qualitative.Dark24 +
+                                px.colors.qualitative.Light24 * 10)
             # see: https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
             
         # 'z.B.' 2022-06-14_Sim1_gurobi_SolvingInfos
