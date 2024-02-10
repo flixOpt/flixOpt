@@ -23,7 +23,7 @@ class cFlow_post():
 
     @property
     def label_full(self):
-        return self.comp + '_' + self.label
+        return self.comp + '__' + self.label
 
     def __init__(self,aDescr,flixResults):
         self.label = aDescr['label']
