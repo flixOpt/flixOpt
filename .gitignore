@@ -1,2 +1,7 @@
 *.pyc
 results/
+.idea/
+.venv/
+venv/
+.DS_Store
+examples/*/results/
