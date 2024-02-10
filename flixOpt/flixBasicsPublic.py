@@ -5,6 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
+
 # Anmerkung: cTSraw separat von cTS_vector wg. Einfachheit für Anwender
 class cTSraw:
     '''
@@ -25,30 +26,31 @@ class cTSraw:
         scalar, array, np.array.
     agg_weight: 
         weight for calcType 'aggregated'; between 0..1, normally 1.    
-    '''    
-    
-    def __init__(self, value, agg_type = None, agg_weight= None):
+    '''
+
+    def __init__(self, value, agg_type=None, agg_weight=None):
         self.value = value
         self.agg_type = agg_type
-        self.agg_weight = agg_weight        
+        self.agg_weight = agg_weight
         if (agg_type is not None) and (agg_weight is not None):
             raise Exception('Either <agg_type> or explicit <agg_weigth> can be set. Not both!')
-    
+
 
 # Sammlung von Props für Investitionskosten (für cFeatureInvest)
 class cInvestArgs:
     '''
     collects arguments for invest-stuff
     '''
-    def __init__(self, 
-                 fixCosts = None, 
-                 divestCosts = None,
-                 investmentSize_is_fixed = True, 
-                 investment_is_optional = True,  # Investition ist weglassbar
-                 specificCosts = 0,        # costs per Flow-Unit/Storage-Size/...
-                 costsInInvestsizeSegments = None,
-                 min_investmentSize = 0,   # nur wenn nominal_val_is_fixed = False
-                 max_investmentSize = 1e9, # nur wenn nominal_val_is_fixed = False
+
+    def __init__(self,
+                 fixCosts=None,
+                 divestCosts=None,
+                 investmentSize_is_fixed=True,
+                 investment_is_optional=True,  # Investition ist weglassbar
+                 specificCosts=0,  # costs per Flow-Unit/Storage-Size/...
+                 costsInInvestsizeSegments=None,
+                 min_investmentSize=0,  # nur wenn nominal_val_is_fixed = False
+                 max_investmentSize=1e9,  # nur wenn nominal_val_is_fixed = False
                  **kwargs):
         '''
         Parameters
@@ -91,7 +93,7 @@ class cInvestArgs:
             Max nominal value (only if: nominal_val_is_fixed = False)
   
         '''
-        
+
         self.fixCosts = fixCosts
         self.divestCosts = divestCosts
         self.investmentSize_is_fixed = investmentSize_is_fixed
@@ -100,6 +102,5 @@ class cInvestArgs:
         self.costsInInvestsizeSegments = costsInInvestsizeSegments
         self.min_investmentSize = min_investmentSize
         self.max_investmentSize = max_investmentSize
-              
+
         super().__init__(**kwargs)
-    
