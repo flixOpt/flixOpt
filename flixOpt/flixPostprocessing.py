@@ -76,6 +76,8 @@ class cCompOrBus_post():
     def __init__(self,label, aDescr, flixResults, color = None):
         self.label = label
         self.type  = aDescr['class']
+        if "group" in aDescr:
+            self.group = aDescr['group']
         self.descr = aDescr
         self.flixResults = flixResults
         self.color = color
