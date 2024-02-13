@@ -1548,8 +1548,8 @@ class cEffectType(cME):
     def __init__(self, label, unit, description,
                  isStandard=False,
                  isObjective=False,
-                 specificShareToOtherEffects_operation={},
-                 specificShareToOtherEffects_invest={},
+                 specificShareToOtherEffects_operation=None,
+                 specificShareToOtherEffects_invest=None,
                  min_operationSum=None, max_operationSum=None,
                  min_investSum=None, max_investSum=None,
                  min_Sum=None, max_Sum=None,
@@ -1598,8 +1598,14 @@ class cEffectType(cME):
         self.description = description
         self.isStandard = isStandard
         self.isObjective = isObjective
-        self.specificShareToOtherEffects_operation = specificShareToOtherEffects_operation
-        self.specificShareToOtherEffects_invest = specificShareToOtherEffects_invest
+        if specificShareToOtherEffects_operation is None:
+            self.specificShareToOtherEffects_operation = {}
+        else:
+            self.specificShareToOtherEffects_operation = specificShareToOtherEffects_operation
+        if specificShareToOtherEffects_invest is None:
+            self.specificShareToOtherEffects_invest = {}
+        else:
+            self.specificShareToOtherEffects_invest = specificShareToOtherEffects_invest
 
         self.min_operationSum = min_operationSum
         self.max_operationSum = max_operationSum
