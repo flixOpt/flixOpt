@@ -7,6 +7,7 @@ def read_requirements(file_path):
 setup(
     name='flixOpt',
     version='0.1.0',
+    python_requires='>=3.9, <3.12',
     author='Felix Bumann',
     author_email='felixbumann387@gmail.com',
     description='Vector based energy and material flow optimization framework in python.',
