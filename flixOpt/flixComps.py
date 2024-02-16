@@ -814,7 +814,7 @@ class cStorage(cBaseComponent):
             self.eq_charge_state_start.addSummand(self.mod.var_charge_state, 1, timeIndexe[0])
             self.eq_charge_state_start.addSummand(self.mod.var_charge_state, -1, timeIndexe[-1])
         else:
-            raise Exception('chargeState0_inFlowHours has undefined value = ' + str(chargeState0_inFlowHours))
+            raise Exception('chargeState0_inFlowHours has undefined value = ' + str(self.chargeState0_inFlowHours))
 
         # Speicherleistung / Speicherladezustand / Speicherverlust
         #                                                                          | Speicher-Beladung       |   |Speicher-Entladung                |
