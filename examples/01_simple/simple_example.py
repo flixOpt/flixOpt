@@ -8,8 +8,8 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import datetime
-from flixOpt.flixOpt.flixStructure import *
-from flixOpt.flixOpt.flixComps    import *
+from flixOpt.flixStructure import *
+from flixOpt.flixComps    import *
 
 ### some Solver-Inputs: ###
 displaySolverOutput = False # ausführlicher Solver-Output.
@@ -18,8 +18,8 @@ gapFrac = 0.0001 # solver-gap
 timelimit = 3600 # seconds until solver abort
 # choose the solver, you have installed:
 # solver_name = 'glpk' # warning, glpk quickly has numerical problems with binaries (big and epsilon)
-solver_name = 'gurobi'
-# solver_name = 'cbc'
+# solver_name = 'gurobi'
+solver_name = 'cbc'
 solverProps = {'gapFrac': gapFrac, 
                'timelimit': timelimit,
                'solver': solver_name, 
@@ -175,7 +175,7 @@ aCalc.solve(solverProps, # some solver options
 
 
 # ##### loading results from output-files ######
-import flixOpt.flixOpt.flixPostprocessing as flixPost
+import flixOpt.flixPostprocessing as flixPost
 
 nameOfCalc = aCalc.nameOfCalc
 print(nameOfCalc)

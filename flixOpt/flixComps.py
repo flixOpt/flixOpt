@@ -12,13 +12,16 @@ from .basicModeling import *
 from .flixStructure import *
 from .flixFeatures import *
 
+
 class cBaseLinearTransformer(cBaseComponent):
     """
     Klasse cBaseLinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
     new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
     not_used_args = ['label']
-    def __init__(self, label:str, inputs:list, outputs:list, exists=None, group:str=None, factor_Sets=None, segmentsOfFlows=None, **kwargs):
+
+    def __init__(self, label: str, inputs: list, outputs: list, exists=1, group: str = None, factor_Sets=None,
+                 segmentsOfFlows=None, **kwargs):
         '''
         Parameters
         ----------
@@ -28,9 +31,9 @@ class cBaseLinearTransformer(cBaseComponent):
             input flows.
         outputs : list of flows
             output flows.
-        exists : array, list, None
+        exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplid with this value before the solve
+            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         factor_Sets : list
@@ -75,29 +78,36 @@ class cBaseLinearTransformer(cBaseComponent):
         self.outputs = outputs
         self.factor_Sets = factor_Sets
         self.segmentsOfFlows = segmentsOfFlows
-        if (factor_Sets is None) and (segmentsOfFlows is None):            
+        if (factor_Sets is None) and (segmentsOfFlows is None):
             raise Exception('factor_Sets or segmentsOfFlows must be defined!')
         elif (factor_Sets is not None) and (segmentsOfFlows is not None):
             raise Exception('Either factor_Sets or segmentsOfFlows must \
                             be defined! Not Both!')
-            
-
 
         self.group = group
-        self.exists = cTS_vector('exists', exists, self) if (exists is not None) else None
+        # type checking
+        if isinstance(exists, int) or (
+                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
+            self.exists = cTS_vector('exists', exists, self)
+        else:
+            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
         # copy information of group and exists to in-flows and out-flows
-        for flow in self.inputs+self.outputs:
-
+        for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            if (exists is None):
-                flow.exists = None
-            else:
-                flow.exists = cTS_vector('exists', exists, flow)
-                flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-                flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
+            flow.exists = cTS_vector('exists', exists, flow)
+            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
+        # copy information about exists into segments of flows
+        if self.segmentsOfFlows is not None:
+            if isinstance(self.exists.d_i, (np.ndarray, list)):
+                for key, item in self.segmentsOfFlows.items():
+                    self.segmentsOfFlows[key] = [list(np.array(item) * factor) for factor in self.exists.d_i]
+            elif isinstance(self.exists.d_i, (int, float)):
+                for key, item in self.segmentsOfFlows.items():
+                    self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
 
     def transformFactorsToTS(self, factor_Sets):
         """
@@ -138,22 +148,22 @@ class cBaseLinearTransformer(cBaseComponent):
             self.degreesOfFreedom = (len(self.inputs) + len(self.outputs)) - len(self.factor_Sets)
             if self.degreesOfFreedom <= 0:
                 raise Exception(self.label + ': ' + str(len(self.factor_Sets)) + ' Gleichungen VERSUS '
-                                + str(len(self.inputs+self.outputs)) + ' Variablen!!!')
+                                + str(len(self.inputs + self.outputs)) + ' Variablen!!!')
 
         # linear segments:
         else:
-            
+
             # check if investsize is variable for any flow:            
-            for flow in (self.inputs+self.outputs):
+            for flow in (self.inputs + self.outputs):
                 if (flow.investArgs is not None) and \
-                    not (flow.investArgs.investmentSize_is_fixed):                
-                        raise Exception('linearSegmentsOfFlows (in '+
-                                        self.label_full +
-                                        ') and variable nominal_value'+
-                                        '(invest_size) (in flow ' + 
-                                        flow.label_full + 
-                                        ') , does not make sense together!')
-            
+                        not (flow.investArgs.investmentSize_is_fixed):
+                    raise Exception('linearSegmentsOfFlows (in ' +
+                                    self.label_full +
+                                    ') and variable nominal_value' +
+                                    '(invest_size) (in flow ' +
+                                    flow.label_full +
+                                    ') , does not make sense together!')
+
             # Flow als Keys rauspicken und alle Stützstellen als cTS_Vector:
             self.segmentsOfFlows_TS = self.segmentsOfFlows
             for aFlow in self.segmentsOfFlows.keys():
@@ -169,7 +179,7 @@ class cBaseLinearTransformer(cBaseComponent):
                                                                 get_var_on=get_var_on,
                                                                 checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
 
-    def declareVarsAndEqs(self,modBox:cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
         """
         Deklarieren von Variablen und Gleichungen
 
@@ -185,7 +195,7 @@ class cBaseLinearTransformer(cBaseComponent):
         else:
             self.feature_linSegments.declareVarsAndEqs(modBox)
 
-    def doModeling(self,modBox:cModelBoxOfES,timeIndexe):
+    def doModeling(self, modBox: cModelBoxOfES, timeIndexe):
         """
         Durchführen der Modellierung?
 
@@ -261,15 +271,13 @@ class cBaseLinearTransformer(cBaseComponent):
         self.segmentsOfFlows = segmentsOfFlows  # attribute of mother-class
 
 
-            
-
 class cKessel(cBaseLinearTransformer):
     """
     class cKessel
     """
-    new_init_args = ['label', 'eta', 'Q_fu', 'Q_th',]
+    new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
-    
+
     def __init__(self, label, eta, Q_fu, Q_th, **kwargs):
         '''
         constructor for boiler
@@ -311,13 +319,61 @@ class cKessel(cBaseLinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
+class cEHK(cBaseLinearTransformer):
+    """
+    class cEHK
+    """
+    new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
+    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+
+    def __init__(self, label, eta, P_el, Q_th, **kwargs):
+        '''
+        constructor for boiler
+
+        Parameters
+        ----------
+        label : str
+            name of bolier.
+        eta : float or TS
+            thermal efficiency.
+        P_el : cFlow
+            electric input-flow
+        Q_th : cFlow
+            thermal output-flow.
+        **kwargs : see mother classes!
+
+
+        '''
+        # super:
+        kessel_bilanz = {P_el: eta,
+                         Q_th: 1}  # eq: eta * Q_fu = 1 * Q_th # TODO: Achtung eta ist hier noch nicht TS-vector!!!
+
+        super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
+
+        # args to attributes:
+        self.eta = cTS_vector('eta', eta, self)  # thermischer Wirkungsgrad
+        self.P_el = P_el
+        self.Q_th = Q_th
+
+        # allowed medium:
+        P_el.setMediumIfNotSet(cMediumCollection.el)
+        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+
+        # Plausibilität eta:
+        self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
+        helpers.checkBoundsOfParameter(eta, 'eta', self.eta_bounds, self)
+
+        # # generische property für jeden Koeffizienten
+        # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
+
+
 class cHeatPump(cBaseLinearTransformer):
     """
     class cHeatPump
     """
-    new_init_args = ['label', 'COP', 'P_el', 'Q_th',]
+    new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
-    
+
     def __init__(self, label, COP, P_el, Q_th, **kwargs):
         '''
         Parameters
@@ -332,7 +388,7 @@ class cHeatPump(cBaseLinearTransformer):
             thermal output-flow.
         **kwargs : see motherclasses
         '''
-        
+
         # super:
         heatPump_bilanz = {P_el: COP, Q_th: 1}  # TODO: Achtung eta ist hier noch nicht TS-vector!!!
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[heatPump_bilanz], **kwargs)
@@ -355,7 +411,7 @@ class cCoolingTower(cBaseLinearTransformer):
     """
     Klasse cCoolingTower
     """
-    new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th',]
+    new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
     def __init__(self, label, specificElectricityDemand, P_el, Q_th, **kwargs):
@@ -425,7 +481,6 @@ class cKWK(cBaseLinearTransformer):
         **kwargs : 
         
         '''
-        
 
         # super:
         waerme_glg = {Q_fu: eta_th, Q_th: 1}
@@ -454,8 +509,9 @@ class cKWK(cBaseLinearTransformer):
         if eta_th + eta_el > 1:
             raise Exception('Fehler in ' + self.label + ': eta_th + eta_el > 1 !')
 
+
 def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
-            eta_th: list, eta_el: list, exists=None, group = None, **kwargs)->list:
+            eta_th: list, eta_el: list, exists=None, group=None, **kwargs) -> list:
     '''
     EKT A - Modulation, linear interpolation
 
@@ -501,10 +557,10 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
     # filtering,because eta can not be 0
     for eta in [eta_el, eta_th]:
         for i in range(len(eta)):
-            if isinstance(eta[i] , (float, int)) and eta[i]==0:
-                eta[i]=0.0000001
-            elif isinstance(eta[i] , (np.ndarray)):
-                eta[i][ eta[i] ==0 ] = 0.0000001
+            if isinstance(eta[i], (float, int)) and eta[i] == 0:
+                eta[i] = 0.0000001
+            elif isinstance(eta[i], (np.ndarray)):
+                eta[i][eta[i] == 0] = 0.0000001
 
     eta_thA = eta_th[0]
     eta_thB = eta_th[1]
@@ -516,25 +572,27 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
     # Transformer 1
     Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=nominal_val, min_rel=1, **kwargs)
     Qout = cFlow(label="Helper" + label + 'Fu', bus=HelperBus)
-    EKTIn = cBaseLinearTransformer(label=label + "In", exists= exists, group = group,
+    EKTIn = cBaseLinearTransformer(label=label + "In", exists=exists, group=group,
                                    inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
     # EKT A
-    EKTA = cKWK(label=label + "A", exists= exists, group = group,
+    EKTA = cKWK(label=label + "A", exists=exists, group=group,
                 eta_th=eta_thA, eta_el=eta_elA,
                 P_el=cFlow(label="Pel", bus=BusEl),
                 Q_fu=cFlow(label="Helper" + label + 'A', bus=HelperBus),
                 Q_th=cFlow(label="Qth", bus=BusTh))
     # EKT B
-    EKTB = cKWK(label=label + "B", exists= exists, group = group,
+    EKTB = cKWK(label=label + "B", exists=exists, group=group,
                 eta_th=eta_thB, eta_el=eta_elB,
                 P_el=cFlow(label="Pel", bus=BusEl),
                 Q_fu=cFlow(label="Helper" + label + 'B', bus=HelperBus),
                 Q_th=cFlow(label="Qth", bus=BusTh))
     return [EKTIn, EKTA, EKTB]
 
+
 def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
-            segQfu: list[float], segQth: list[float], segPel: list[float], minmax_rel:[int,list]=1,
-            exists=None, group = None,**kwargs)->list:
+            nominal_val_Qfu: float, segQth: list[float], segPel: list[float],
+            costsPerFlowHour_fuel: dict = None, costsPerFlowHour_th: dict = None, costsPerFlowHour_el: dict = None,
+            iCanSwitchOff=True, exists=None, group=None, investArgs: cInvestArgs = None, **kwargs) -> list:
     '''
     EKT B - On/Off, interpolation with Base Points
     Creates a KWK with a variable rate between electricity and heat production
@@ -551,50 +609,148 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
 
     Parameters
     ----------
-    segQfu: list[float]
-        Expression with Base Points
-        [0, 5, 5, 10]
+    label: str
+        A string representing the label for the component.
+    BusFuel: cBus
+        The bus representing the fuel input for the component.
+    BusTh: cBus
+        The bus representing the thermal output for the component.
+    BusEl: cBus
+        The bus representing the electrical output for the component.
+    nominal_val_Qfu: float
+        Fuel flow. Constant, But iCanSwitchOff=True
     segQth: list[float]
-        Expression with Base Points
-        [0, 3, 3, 9]
+        Expression with Base Points for thermal flow.
+        [2, 5, 9]
     segPel: list[float]
-        Expression with Base Points
-        [0, 1, 1, 3]
+        Expression with Base Points for electrical power.
+        [3, 1, 0]
+    costsPerFlowHour_fuel: dict
+        A dictionary representing the costs associated with fuel input. cEffect as keys
+    costsPerFlowHour_el: dict
+        A dictionary representing the costs associated with electricity output. cEffect as keys
+    costsPerFlowHour_th: dict
+        A dictionary representing the costs associated with thermal output. cEffect as keys
+    iCanSwitchOff: bool, optional
+        Wether the Component can be switched off. Default True
+    exists: any, optional
+        A parameter specifying when the component exists. Defaults to None.
+    group: any, optional
+        A parameter specifying the group to which the component belongs. Defaults to None.
+    investArgs: cInvestArgs, optional
+        An object containing investment-related parameters. Defaults to None. Passed to the thermal output flow
+    **kwargs
+        Additional keyword arguments. Passed to the input fuel flow. Allowed keywords see documentation of cFlow
 
     Returns
     -------
     list(cBaseLinearTransformer, cBaseLinearTransformer, cBaseLinearTransformer)
         a list of Components that need to be added to the cEnergySystem
-    '''
-    # Testinf for min_rel to only be 0 or 1
-    if isinstance(minmax_rel, (float,int)):
-        if minmax_rel!=1: raise Exception("min_rel has to be 1, otherwise "+label+" will behave unexpectetly")
-    elif all(item == 0 or item == 1 for item in minmax_rel): pass
-    else: raise Exception("min_rel must contain only 1 and 0, otherwise "+label+" will behave unexpectetly")
 
-    HelperBus = cBus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
+    Raises
+    ------
+    Exception
+        Raised if minmax_rel is not 0 or 1, or if minmax_rel contains values other than 0 and 1.
+    '''
+
+    # Create Lists for segments_of_flows
+    segQfu_el = np.linspace(start=0.0001, stop=nominal_val_Qfu, num=len(segPel)).tolist()
+    segQfu_th = segQfu_el[::-1]  # reversed
+    # Apply proper formating for segments of flows, rounding to avoid numerical error, which leads to excess in HelperBus
+    # TODO: Is this necessary?
+    nominal_val_Qfu = round(nominal_val_Qfu, 4)
+    segQfu_el = [num for num in segQfu_el for _ in range(2)][1:-1]
+    segQfu_th = [num for num in segQfu_th for _ in range(2)][1:-1]
+    segQth = [num for num in segQth for _ in range(2)][1:-1]
+    segPel = [num for num in segPel for _ in range(2)][1:-1]
+
+    segQfu_el = [round(num, 4) for num in segQfu_el]
+    segQfu_th = [round(num, 4) for num in segQfu_th]
+    segQth = [round(num, 4) for num in segQth]
+    segPel = [round(num, 4) for num in segPel]
+
+    if iCanSwitchOff:
+        segQfu_el = [0, 0] + segQfu_el
+        segQfu_th = [0, 0] + segQfu_th
+        segQth = [0, 0] + segQth
+        segPel = [0, 0] + segPel
+
+    HelperBus = cBus(label='Helper' + label + 'In', media=None,
+                     excessCostsPerFlowHour=None)  # balancing node/bus of electricity
 
     # Transformer 1
-    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=max(segQfu), min_rel=minmax_rel, max_rel=minmax_rel, **kwargs)
+    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=1, max_rel=1,
+                costsPerFlowHour=costsPerFlowHour_fuel, **kwargs)
     Qout = cFlow(label="Helper" + label + 'Fu', bus=HelperBus)
-    EKTIn = cBaseLinearTransformer(label=label + "In", exists= exists, group = group,
+    EKTIn = cBaseLinearTransformer(label=label + "In", exists=exists, group=group,
                                    inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
 
     # Transformer Strom
-    P_el = cFlow(label="Pel", bus=BusEl)
-    Q_fu = cFlow(label="Helper" + label + 'A', bus=HelperBus)
-    segs = {Q_fu: segQfu.copy(), P_el: segPel.copy()}
-    EKTA = cBaseLinearTransformer(label=label + "A", exists= exists, group = group,
-                                  outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs)
+    P_el = cFlow(label="Pel", bus=BusEl, nominal_val=max(segPel), costsPerFlowHour=costsPerFlowHour_el)
+    Q_fu = cFlow(label="Helper" + label + 'A', bus=HelperBus, nominal_val=nominal_val_Qfu)
+    segs_el = {Q_fu: segQfu_el, P_el: segPel.copy()}
+    EKTA = cBaseLinearTransformer(label=label + "A", exists=exists, group=group,
+                                  outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs_el)
 
     # Transformer Wärme
-    Q_th = cFlow(label="Qth", bus=BusTh)
-    Q_fu = cFlow(label="Helper" + label + 'B', bus=HelperBus)
-    segs = {Q_fu: segQfu.copy(), Q_th: segQth.copy()}
-    EKTB = cBaseLinearTransformer(label=label + "B", exists= exists, group = group,
-                                  outputs=[Q_th], inputs=[Q_fu], segmentsOfFlows=segs)
+    Q_th = cFlow(label="Qth", bus=BusTh, nominal_val=max(segQth), costsPerFlowHour=costsPerFlowHour_th,
+                 investArgs=investArgs)
+    Q_fu2 = cFlow(label="Helper" + label + 'B', bus=HelperBus)
+    segments = {Q_fu2: segQfu_th, Q_th: segQth}
+    EKTB = cBaseLinearTransformer(label=label + "B", exists=exists, group=group,
+                                  outputs=[Q_th], inputs=[Q_fu2], segmentsOfFlows=segments)
 
     return [EKTIn, EKTA, EKTB]
+
+
+class cAbwaermeHP(cBaseLinearTransformer):
+    """
+    class cAbwaermeHP
+    """
+    new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
+    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+
+    def __init__(self, label, COP, P_el, Q_ab, Q_th, **kwargs):
+        '''
+        Parameters
+        ----------
+        label : str
+            name of heatpump.
+        COP : float, TS
+            Coefficient of performance.
+        Q_ab : cFlow
+            Heatsource input-flow.
+        P_el : cFlow
+            electricity input-flow.
+        Q_th : cFlow
+            thermal output-flow.
+        **kwargs : see motherclasses
+        '''
+
+        # super:
+        heatPump_bilanzEl = {P_el: COP, Q_th: 1}
+        if isinstance(COP, cTSraw):
+            COP = COP.value
+            heatPump_bilanzAb = {Q_ab: COP / (COP - 1), Q_th: 1}
+        else:
+            heatPump_bilanzAb = {Q_ab: COP / (COP - 1), Q_th: 1}
+        super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
+                         factor_Sets=[heatPump_bilanzEl, heatPump_bilanzAb], **kwargs)
+
+        # args to attributes:
+        self.COP = cTS_vector('COP', COP, self)  # thermischer Wirkungsgrad
+        self.P_el = P_el
+        self.Q_ab = Q_ab
+        self.Q_th = Q_th
+
+        # allowed medium:
+        P_el.setMediumIfNotSet(cMediumCollection.el)
+        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        Q_ab.setMediumIfNotSet(cMediumCollection.heat)
+
+        # Plausibilität eta:
+        self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
+        helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
 class cStorage(cBaseComponent):
@@ -612,13 +768,13 @@ class cStorage(cBaseComponent):
     # param_defalt  = property(get_params())
 
     new_init_args = ['label', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
-                 'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
-                 'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce' 'investArgs']
+                     'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
+                     'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce' 'investArgs']
 
     not_used_args = ['label']
 
     # capacity_inFlowHours: float, 'lastValueOfSim', None
-    def __init__(self, label, inFlow, outFlow, capacity_inFlowHours, exists = None, group = None,
+    def __init__(self, label, inFlow, outFlow, capacity_inFlowHours, exists=1, group=None,
                  min_rel_chargeState=0, max_rel_chargeState=1, chargeState0_inFlowHours=0,
                  charge_state_end_min=None, charge_state_end_max=None, eta_load=1, eta_unload=1,
                  fracLossPerHour=0, avoidInAndOutAtOnce=True, investArgs=None, **kwargs):
@@ -633,7 +789,7 @@ class cStorage(cBaseComponent):
             ingoing flow.
         outFlow : cFlow
             outgoing flow.
-        exists : array, list, None
+        exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
             Has to be one step longer than the number of Timesteps of the calculation
         group: str, None
@@ -671,7 +827,6 @@ class cStorage(cBaseComponent):
         '''
         # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch "val_rel_chargeState" implementieren damit konsistent zu flow (max_rel, min_rel, val_re)
 
-        
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
         super().__init__(label, **kwargs)
 
@@ -686,26 +841,32 @@ class cStorage(cBaseComponent):
 
         self.group = group
 
-        if exists is None:
-            self.exists = None
-        else:
-            self.exists = cTS_vector('exists', exists, self)
+        # type checking
+        if isinstance(exists, int):
+            if exists in (0, 1):
+                self.exists = cTS_vector('exists', exists, self)
+            else:
+                raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+        elif isinstance(exists, (list, np.ndarray)):
+            if all(item in {0, 1} for item in exists):
+                self.exists = cTS_vector('exists', np.append(exists, exists[-1]), self)
+            else:
+                raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+
             self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
                                                   self.max_rel_chargeState.d_i * self.exists.d_i, self)
             self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
                                                   self.min_rel_chargeState.d_i * self.exists.d_i, self)
+        else:
+            raise TypeError()
 
         # copy information of "group" and "exists" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
-
             flow.group = self.group
 
-            if (self.exists is None):
-                flow.exists = None
-            else:
-                flow.exists = cTS_vector('exists', exists, flow)
-                flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-                flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
+            flow.exists = cTS_vector('exists', exists, flow)
+            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         self.chargeState0_inFlowHours = chargeState0_inFlowHours
         self.charge_state_end_min = charge_state_end_min
@@ -743,7 +904,7 @@ class cStorage(cBaseComponent):
 
         self.isStorage = True  # for postprocessing
 
-    def declareVarsAndEqs(self, modBox:cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
         """
         Deklarieren von Variablen und Gleichungen
 
@@ -762,15 +923,15 @@ class cStorage(cBaseComponent):
             if np.isscalar(lb):
                 pass
             else:
-                lb=np.append(lb,0)#self.charge_state_end_min)
+                lb = np.append(lb, 0)  # self.charge_state_end_min)
             if np.isscalar(ub):
                 pass
             else:
-                ub=np.append(ub,self.capacity_inFlowHours)#charge_state_end_max)
+                ub = np.append(ub, self.capacity_inFlowHours)  # charge_state_end_max)
 
         else:
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
-            
+
         if np.isscalar(lb):
             pass
         else:
@@ -780,12 +941,11 @@ class cStorage(cBaseComponent):
         else:
             ub = np.append(ub, ub[-1])  # charge_state_end_max)
 
-            
         self.mod.var_charge_state = cVariable_TS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
-                                               value=fix_value)  # Eins mehr am Ende!
+                                                 value=fix_value)  # Eins mehr am Ende!
         self.mod.var_charge_state.activateBeforeValues(self.chargeState0_inFlowHours, True)
         self.mod.var_nettoFlow = cVariable_TS('nettoFlow', modBox.nrOfTimeSteps, self, modBox,
-                                           min=-np.inf)  # negative Werte zulässig!
+                                              min=-np.inf)  # negative Werte zulässig!
 
         # erst hier, da definingVar vorher nicht belegt!
         if self.featureInvest is not None:
@@ -858,7 +1018,8 @@ class cStorage(cBaseComponent):
         self.eq_charge_state = cEquation('charge_state', self, modBox, eqType='eq')
         self.eq_charge_state.addSummand(self.mod.var_charge_state,
                                         -1 * (1 - self.fracLossPerHour.d_i * modBox.dtInHours),
-                                        timeIndexeChargeState[:-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
+                                        timeIndexeChargeState[
+                                        :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
         self.eq_charge_state.addSummand(self.mod.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
         self.eq_charge_state.addSummand(self.inFlow.mod.var_val, -1 * self.eta_load.d_i * modBox.dtInHours)
         self.eq_charge_state.addSummand(self.outFlow.mod.var_val,
@@ -933,11 +1094,11 @@ class cSourceAndSink(cBaseComponent):
     # source : cFlow
     # sink   : cFlow
 
-    new_init_args = ['label', 'source', 'sink','avoidInAndOutAtOnce']
+    new_init_args = ['label', 'source', 'sink', 'avoidInAndOutAtOnce']
 
     not_used_args = ['label']
 
-    def __init__(self, label, source, sink, avoidInAndOutAtOnce = True, **kwargs):
+    def __init__(self, label, source, sink, exists=1, group: str = None, avoidInAndOutAtOnce=True, **kwargs):
         '''
         Parameters
         ----------
@@ -947,6 +1108,11 @@ class cSourceAndSink(cBaseComponent):
             output-flow of this component
         sink : cFlow
             input-flow of this component
+        exists : array, int, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplied with this value before the solve
+        group: str, None
+            group name to assign components to groups. Used for later analysis of the results
         avoidInAndOutAtOnce: boolean. Default ist True.
             True: inflow and outflow are not allowed to be both non-zero at same timestep.
             False: inflow and outflow are working independently.
@@ -963,13 +1129,29 @@ class cSourceAndSink(cBaseComponent):
         self.outputs.append(source)  # ein Output-Flow
         self.inputs.append(sink)
 
+        self.group = group
+        # type checking
+        if isinstance(exists, int) or (
+                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
+            self.exists = cTS_vector('exists', exists, self)
+        else:
+            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+
+        # copy information of group and exists to in-flows and out-flows
+        for flow in self.inputs + self.outputs:
+            flow.group = self.group
+
+            flow.exists = cTS_vector('exists', exists, flow)
+            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
+
         # Erzwinge die Erstellung der On-Variablen, da notwendig für gleichung
         self.source.activateOnValue()
         self.sink.activateOnValue()
 
-        if self.avoidInAndOutAtOnce: 
+        if self.avoidInAndOutAtOnce:
             self.featureAvoidInAndOutAtOnce = cFeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])
-        else: 
+        else:
             self.featureAvoidInAndOutAtOnce = None
 
     def declareVarsAndEqs(self, modBox):
@@ -991,7 +1173,7 @@ class cSourceAndSink(cBaseComponent):
         """
         super().doModeling(modBox, timeIndexe)
         # Entweder Sink-Flow oder Source-Flow aktiv. Nicht beide Zeitgleich!
-        if self.featureAvoidInAndOutAtOnce is not None: 
+        if self.featureAvoidInAndOutAtOnce is not None:
             self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
@@ -1002,7 +1184,7 @@ class cSource(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label, source, **kwargs):
+    def __init__(self, label, source, exists=1, group: str = None, **kwargs):
         '''       
         Parameters
         ----------
@@ -1010,6 +1192,11 @@ class cSource(cBaseComponent):
             name of source
         source : cFlow
             output-flow of source
+        exists : array, int, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplied with this value before the solve
+        group: str, None
+            group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
 
         Returns
@@ -1017,7 +1204,7 @@ class cSource(cBaseComponent):
         None.
 
         '''
-        
+
         """
         Konstruktor für Instanzen der Klasse cSource
 
@@ -1029,6 +1216,22 @@ class cSource(cBaseComponent):
         self.source = source
         self.outputs.append(source)  # ein Output-Flow
 
+        self.group = group
+        # type checking
+        if isinstance(exists, int) or (
+                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
+            self.exists = cTS_vector('exists', exists, self)
+        else:
+            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+
+        # copy information of group and exists to in-flows and out-flows
+        for flow in self.inputs + self.outputs:
+            flow.group = self.group
+
+            flow.exists = cTS_vector('exists', exists, flow)
+            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
+
 
 class cSink(cBaseComponent):
     """
@@ -1037,7 +1240,7 @@ class cSink(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label, sink, **kwargs):
+    def __init__(self, label, sink, exists=1, group: str = None, **kwargs):
         '''
         constructor of sink 
 
@@ -1047,6 +1250,11 @@ class cSink(cBaseComponent):
             name of sink.
         sink : cFlow
             input-flow of sink
+        exists : array, int, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplied with this value before the solve
+        group: str, None
+            group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
             DESCRIPTION.
 
@@ -1055,10 +1263,27 @@ class cSink(cBaseComponent):
         None.
 
         '''
-        
+
         super().__init__(label)
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
+
+        self.group = group
+        # type checking
+        if isinstance(exists, int) or (
+                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
+            self.exists = cTS_vector('exists', exists, self)
+        else:
+            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+
+        # copy information of group and exists to in-flows and out-flows
+        for flow in self.inputs + self.outputs:
+            flow.group = self.group
+
+            flow.exists = cTS_vector('exists', exists, flow)
+            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
+            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
+
 
 class cTransportation(cBaseComponent):
     # TODO: automatic on-Value in Flows if loss_abs
@@ -1066,9 +1291,9 @@ class cTransportation(cBaseComponent):
     # TODO: investmentsize only on 1 flow
     # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
     # TODO: optional: capacities should be recognised for losses
-    
+
     def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0,
-                 loss_abs=0, isAlwaysOn=True, 
+                 loss_abs=0, isAlwaysOn=True,
                  avoidFlowInBothDirectionsAtOnce=True, **kwargs):
         '''
         pipe/cable/connector between side A and side B
@@ -1109,81 +1334,74 @@ class cTransportation(cBaseComponent):
         None.
 
         '''
-        
+
         super().__init__(label)
-        
+
         self.in1 = in1
         self.out1 = out1
         self.in2 = in2
         self.out2 = out2
-        
+
         self.inputs.append(in1)
         self.outputs.append(out1)
         if in2 is not None:
             self.inputs.append(in2)
-            self.outputs.append(out2)        
+            self.outputs.append(out2)
             # check buses:
             assert in2.bus == out1.bus, 'in2.bus is not equal out1.bus!'
             assert out2.bus == in1.bus, 'out2.bus is not equal in1.bus!'
-            
-            
-        self.loss_rel = cTS_vector('loss_rel', loss_rel, self)#
-        self.loss_abs = cTS_vector('loss_abs', loss_abs, self)#
+
+        self.loss_rel = cTS_vector('loss_rel', loss_rel, self)  #
+        self.loss_abs = cTS_vector('loss_abs', loss_abs, self)  #
         self.isAlwaysOn = isAlwaysOn
         self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
-        
+
         if self.avoidFlowInBothDirectionsAtOnce and (in2 is not None):
             self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
-                                                                 [self.in1, self.in2])
+                                                                             [self.in1, self.in2])
 
-
-
-    def declareVarsAndEqs(self, modBox:cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
         """
         Deklarieren von Variablen und Gleichungen
         
         :param modBox:
         :return:
         """
-        super().declareVarsAndEqs(modBox)        
+        super().declareVarsAndEqs(modBox)
 
     def doModeling(self, modBox, timeIndexe):
         super().doModeling(modBox, timeIndexe)
 
-
-            
         # not both directions at once:
-        if self.avoidFlowInBothDirectionsAtOnce and (self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
+        if self.avoidFlowInBothDirectionsAtOnce and (
+                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
         self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
-        self.eq_dir1.addSummand(self.in1.mod.var_val, (1-self.loss_rel.d_i))
+        self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.d_i))
         self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
-        if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i!=0) :
+        if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
             assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
-            self.eq_dir1.addSummand(self.in1.mod.var_on, -1* self.loss_abs.d_i)
+            self.eq_dir1.addSummand(self.in1.mod.var_on, -1 * self.loss_abs.d_i)
 
         # second direction:        
         if self.in2 is not None:
             # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
             self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
-            self.eq_dir2.addSummand(self.in2.mod.var_val, 1-self.loss_rel.d_i)
+            self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.d_i)
             self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
-            if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i!=0):            
-                
+            if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
                 assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
-                self.eq_dir2.addSummand(self.in2.mod.var_on, -1* self.loss_abs.d_i)
-        
+                self.eq_dir2.addSummand(self.in2.mod.var_on, -1 * self.loss_abs.d_i)
+
         # always On (in at least one direction)
         # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
         if self.isAlwaysOn:
-            self.eq_alwaysOn = cEquation('alwaysOn',self, modBox,eqType='ineq')
+            self.eq_alwaysOn = cEquation('alwaysOn', self, modBox, eqType='ineq')
             self.eq_alwaysOn.addSummand(self.in1.mod.var_on, -1)
-            if (self.in2 is not None) : self.eq_alwaysOn.addSummand(self.in2.mod.var_on, -1)
-            self.eq_alwaysOn.addRightSide(-.5)# wg binärungenauigkeit 0.5 statt 1
-            
-
+            if (self.in2 is not None): self.eq_alwaysOn.addSummand(self.in2.mod.var_on, -1)
+            self.eq_alwaysOn.addRightSide(-.5)  # wg binärungenauigkeit 0.5 statt 1
 
         # equate nominal value of second direction
         if (self.in2 is not None):
@@ -1193,58 +1411,8 @@ class cTransportation(cBaseComponent):
                 if bothInFlowsHaveFeatureInvest:
                     # eq: in1.nom_value = in2.nom_value
                     self.eq_nom_value = cEquation('equalSizeInBothDirections', self, modBox, eqType='eq')
-                    self.eq_nom_value.addSummand(self.in1.featureInvest.mod.var_investmentSize, 1)            
+                    self.eq_nom_value.addSummand(self.in1.featureInvest.mod.var_investmentSize, 1)
                     self.eq_nom_value.addSummand(self.in2.featureInvest.mod.var_investmentSize, -1)
                 else:
-                    raise Exception('define investArgs also for second In-Flow (values can be empty!)') # TODO: anders lösen (automatisiert)!
-
-
-# Added by FB
-class cAbwaermeHP(cBaseLinearTransformer):
-    """
-    class cAbwaermeHP
-    """
-    new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
-
-    def __init__(self, label, COP, P_el, Q_ab, Q_th, **kwargs):
-        '''
-        Parameters
-        ----------
-        label : str
-            name of heatpump.
-        COP : float, TS
-            Coefficient of performance.
-        Q_ab : cFlow
-            Heatsource input-flow.
-        P_el : cFlow
-            electricity input-flow.
-        Q_th : cFlow
-            thermal output-flow.
-        **kwargs : see motherclasses
-        '''
-
-        # super:
-        heatPump_bilanzEl = {P_el: COP, Q_th: 1}
-        if isinstance(COP,cTSraw):
-            COP=COP.value
-            heatPump_bilanzAb = {Q_ab: COP / (COP - 1), Q_th: 1}
-        else:
-            heatPump_bilanzAb = {Q_ab: COP/(COP-1), Q_th: 1}
-        super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
-                         factor_Sets=[heatPump_bilanzEl,heatPump_bilanzAb], **kwargs)
-
-        # args to attributes:
-        self.COP = cTS_vector('COP', COP, self)  # thermischer Wirkungsgrad
-        self.P_el = P_el
-        self.Q_ab = Q_ab
-        self.Q_th = Q_th
-
-        # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
-        Q_ab.setMediumIfNotSet(cMediumCollection.heat)
-
-        # Plausibilität eta:
-        self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
-        helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
+                    raise Exception(
+                        'define investArgs also for second In-Flow (values can be empty!)')  # TODO: anders lösen (automatisiert)!

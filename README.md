@@ -13,6 +13,10 @@ flixOpt was developed in project SMARTBIOGRID by [TU Dresden](https://github.com
 This project was funded by the German Federal Ministry for Economic Affairs and Energy (FKZ: 03KB159B).
 
 flixOpt development is based on matlab framework flixOptMat developed in project FAKS by [TU Dresden](https://github.com/gewv-tu-dresden) and has a few influences from [oemof/solph](https://github.com/oemof/oemof-solph) (Great thanks for your tool!)
+
+## Useage
+Install this package via pip in to your environment: `pip install git+https://github.com/flixOpt/flixOpt.git`
+
 ## key features
   * various constraints available
   * operation optimization optionally combined with investment optimization
