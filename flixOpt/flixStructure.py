@@ -9,6 +9,7 @@ import numpy as np
 import math
 import time
 import yaml  # (für json-Schnipsel-print)
+import pprintpp
 
 from . import flixOptHelperFcts as helpers
 
@@ -1399,8 +1400,6 @@ class cME(cArgsClass):
         self.mod = None  # hier kommen alle Glg und Vars rein
         super().__init__(**kwargs)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}: {self.label}; TS: {self.TS_list}"
 
     # activate inkl. subMEs:
     def activateModbox(self, modBox):
@@ -1537,12 +1536,30 @@ class cME(cArgsClass):
         aDict['no vars single'] = sum([var.len for var in self.mod.variables])
         return aDict
 
+    def __str__(self):
+        not_printed_attrs = ['TS_list', 'modBox', 'mod']
+        data = {k: v for k, v in self.__dict__.items()
+                if v is not None
+                and k not in not_printed_attrs
+                and not k.startswith('_')
+                and not isinstance(v, list)
+                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
+                }
+        return pprintpp.pformat(data)
+
+    def __repr__(self):
+        return f"{self.label}<{self.__class__.__name__}>"
+
 
 class cEffectType(cME):
     '''
     Effect, i.g. costs, CO2 emissions, area, ...
     can be used later afterwards for allocating effects to compontents and flows.
     '''
+    def __str__(self):
+        data = {k: v for k, v in self.__dict__.items()
+                if isinstance(v, (int, float, str, bool, dict))}
+        return pprintpp.pformat(data)
 
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self, label, unit, description,
@@ -2375,6 +2392,18 @@ class cFlow(cME):
                                                 val_rel=self.val_rel,
                                                 investmentSize=self.nominal_val,
                                                 featureOn=self.featureOn)
+
+    def __repr__(self):
+        not_printed_attrs = ['TS_list', 'modBox', 'mod']
+        data = {k: v for k, v in self.__dict__.items()
+                if v is not None
+                and k not in not_printed_attrs
+                and not k.startswith('_')
+                and not isinstance(v, list)
+                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
+                }
+        return pprintpp.pformat(data)
+
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausiTest(self):

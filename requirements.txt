@@ -7,3 +7,4 @@ plotly >= 5.9.0
 Pyomo >= 6.4.2
 PyYAML >= 6.0
 tsam >= 2.3.1
+pprintpp >= 0.4.0

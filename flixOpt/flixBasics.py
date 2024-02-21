@@ -130,13 +130,7 @@ class cTS_vector:
         self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
-        text = f"{self.label} = "
-        if self.isscalar:
-            return text + f"{self.d_i}"
-        elif self.isArray:
-            return text + f"{self.d_i.min()}-{self.d_i.max()}"
-        else:
-            return text + f"None"
+        return f"{self.d}"
 
     @staticmethod
     def __makeSkalarIfPossible(d):
