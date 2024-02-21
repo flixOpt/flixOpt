@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 from .flixStructure import *
 from .flixFeatures import *
-from flixComps import cBaseLinearTransformer, cKWK
+from .flixComps import cBaseLinearTransformer, cKWK
 
 
 def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
@@ -92,7 +92,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
 def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
             nominal_val_Qfu: float, segQth: list[float], segPel: list[float],
             costsPerFlowHour_fuel: dict = None, costsPerFlowHour_th: dict = None, costsPerFlowHour_el: dict = None,
-            iCanSwitchOff=True, exists=None, group=None, investArgs: cInvestArgs = None, **kwargs) -> list:
+            iCanSwitchOff=True, exists=1, group=None, investArgs: cInvestArgs = None, **kwargs) -> list:
     '''
     EKT B - On/Off, interpolation with Base Points
     Creates a KWK with a variable rate between electricity and heat production
@@ -134,7 +134,7 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
     iCanSwitchOff: bool, optional
         Wether the Component can be switched off. Default True
     exists: any, optional
-        A parameter specifying when the component exists. Defaults to None.
+        A parameter specifying when the component exists. Defaults to 1.
     group: any, optional
         A parameter specifying the group to which the component belongs. Defaults to None.
     investArgs: cInvestArgs, optional
