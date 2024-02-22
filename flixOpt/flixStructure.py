@@ -9,7 +9,7 @@ import numpy as np
 import math
 import time
 import yaml  # (für json-Schnipsel-print)
-import pprintpp
+import pprint
 
 from . import flixOptHelperFcts as helpers
 
@@ -1545,7 +1545,7 @@ class cME(cArgsClass):
                 and not isinstance(v, list)
                 and not (isinstance(v, dict) and not v)  # list and dict only if not empty
                 }
-        return pprintpp.pformat(data)
+        return pprint.pformat(data)
 
     def __repr__(self):
         return f"{self.label}<{self.__class__.__name__}>"
@@ -1559,7 +1559,7 @@ class cEffectType(cME):
     def __str__(self):
         data = {k: v for k, v in self.__dict__.items()
                 if isinstance(v, (int, float, str, bool, dict))}
-        return pprintpp.pformat(data)
+        return pprint.pformat(data)
 
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self, label, unit, description,
@@ -2402,7 +2402,7 @@ class cFlow(cME):
                 and not isinstance(v, list)
                 and not (isinstance(v, dict) and not v)  # list and dict only if not empty
                 }
-        return pprintpp.pformat(data)
+        return pprint.pformat(data)
 
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
