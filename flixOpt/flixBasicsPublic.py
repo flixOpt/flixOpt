@@ -4,7 +4,7 @@ Created on Tue Sep  6 15:25:43 2022
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-
+import pprint
 
 # Anmerkung: cTSraw separat von cTS_vector wg. Einfachheit für Anwender
 class cTSraw:
@@ -104,3 +104,15 @@ class cInvestArgs:
         self.max_investmentSize = max_investmentSize
 
         super().__init__(**kwargs)
+
+    def __repr__(self):
+        not_printed_attrs = ['TS_list', 'modBox', 'mod']
+        data = {k: v for k, v in self.__dict__.items()
+                if v is not None
+                and k not in not_printed_attrs
+                and not k.startswith('_')
+                and not isinstance(v, list)
+                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
+                }
+        return pprint.pformat(data)
+
