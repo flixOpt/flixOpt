@@ -506,8 +506,7 @@ class cKWK(cBaseLinearTransformer):
 
         helpers.checkBoundsOfParameter(eta_th, 'eta_th', self.eta_th_bounds, self)
         helpers.checkBoundsOfParameter(eta_el, 'eta_el', self.eta_el_bounds, self)
-        if eta_th + eta_el > 1:
-            raise Exception('Fehler in ' + self.label + ': eta_th + eta_el > 1 !')
+        helpers.checkBoundsOfParameter(eta_th + eta_el, 'eta_th+eta_el', [0 + 1e-10, 1 - 1e-10], self)
 
 
 class cAbwaermeHP(cBaseLinearTransformer):
