@@ -2400,10 +2400,26 @@ class cFlow(cME):
                                                 featureOn=self.featureOn)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} label={self.label!r}, bus={self.bus.label!r}>"
+        return (
+            f"<cFlow(label={self.label!r}, bus={self.bus.label if self.bus else 'None'}, "
+            f"nominal_val={self.nominal_val}, medium={self.medium})>"
+        )
 
     def __str__(self):
-        return f"Flow '{self.label}' connected to bus '{self.bus.label}'"
+        details = [
+            f"Label: {self.label}",
+            f"Bus: {self.bus.label if self.bus else 'None'}",
+            f"Nominal Value: {self.nominal_val}",
+            f"Min Relative: {self.min_rel}",
+            f"Max Relative: {self.max_rel}",
+            f"Medium: {self.medium}",
+            f"Investment Arguments: {'Present' if self.investArgs else 'None'}"
+        ]
+        if self.val_rel is not None:
+            details.append(f"Fixed Relative Values: Yes")
+        else:
+            details.append(f"Fixed Relative Values: No")
+        return "Flow Details:\n" + "\n".join(details)
 
 
 
