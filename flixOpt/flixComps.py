@@ -109,6 +109,15 @@ class cBaseLinearTransformer(cBaseComponent):
                 for key, item in self.segmentsOfFlows.items():
                     self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
 
+    def __repr__(self):
+        return (f"{self.__class__.__name__}(label={self.label!r}, inputs={self.inputs}, outputs={self.outputs}, "
+                f"exists={self.exists}, group={self.group}, factor_Sets={self.factor_Sets}, "
+                f"segmentsOfFlows={self.segmentsOfFlows})")
+
+    def __str__(self):
+        return (f"{self.__class__.__name__}: {self.label}, Group: {self.group}, Inputs: {len(self.inputs)}, "
+                f"Outputs: {len(self.outputs)}")
+
     def transformFactorsToTS(self, factor_Sets):
         """
         macht alle Faktoren, die nicht cTS_vector sind, zu cTS_vector
@@ -709,6 +718,14 @@ class cStorage(cBaseComponent):
         # TODO: chargeState0 darf nicht größer max usw. abfangen!
 
         self.isStorage = True  # for postprocessing
+
+    def __repr__(self):
+        return (f"{self.__class__.__name__}(label={self.label!r}, capacity_inFlowHours={self.capacity_inFlowHours}, "
+                f"min/max charge state={self.min_rel_chargeState}-{self.max_rel_chargeState})")
+
+    def __str__(self):
+        return (f"{self.__class__.__name__}: {self.label}, Capacity: {self.capacity_inFlowHours} FlowHours, "
+                f"Min/Max Charge State: {self.min_rel_chargeState}-{self.max_rel_chargeState}")
 
     def declareVarsAndEqs(self, modBox: cModelBoxOfES):
         """

@@ -314,6 +314,13 @@ class cEnergySystem:
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können: 
         # self.addComponents(self.globalComp)
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} with {len(self.listOfComponents)} components>"
+
+    def __str__(self):
+        components = ', '.join(component.label for component in self.listOfComponents)
+        return f"Energy System with components: {components}"
+
     # Effekte registrieren:
     def addEffects(self, *args):
         newListOfEffects = list(args)
@@ -1400,6 +1407,11 @@ class cME(cArgsClass):
         self.mod = None  # hier kommen alle Glg und Vars rein
         super().__init__(**kwargs)
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} label={self.label!r}>"
+
+    def __str__(self):
+        return f"{self.__class__.__name__} '{self.label}'"
 
     # activate inkl. subMEs:
     def activateModbox(self, modBox):
@@ -1535,20 +1547,6 @@ class cME(cArgsClass):
         aDict['no vars'] = len(self.mod.variables)
         aDict['no vars single'] = sum([var.len for var in self.mod.variables])
         return aDict
-
-    def __str__(self):
-        not_printed_attrs = ['TS_list', 'modBox', 'mod']
-        data = {k: v for k, v in self.__dict__.items()
-                if v is not None
-                and k not in not_printed_attrs
-                and not k.startswith('_')
-                and not isinstance(v, list)
-                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
-                }
-        return pprint.pformat(data)
-
-    def __repr__(self):
-        return f"{self.label}<{self.__class__.__name__}>"
 
 
 class cEffectType(cME):
@@ -1766,6 +1764,14 @@ class cBaseComponent(cME):
     #   # falls subComps existieren:
     #   for aComp in self.subComps :
     #     aComp.addEnergySystemIBelongTo(base)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} label={self.label!r}, inputs={len(self.inputs)}, outputs={len(self.outputs)}>"
+
+    def __str__(self):
+        input_labels = ', '.join(input.label for input in self.inputs)
+        output_labels = ', '.join(output.label for output in self.outputs)
+        return f"{self.__class__.__name__} '{self.label}' with inputs [{input_labels}] and outputs [{output_labels}]"
 
     def registerMeInFlows(self):
         for aFlow in self.inputs + self.outputs:
@@ -2394,15 +2400,11 @@ class cFlow(cME):
                                                 featureOn=self.featureOn)
 
     def __repr__(self):
-        not_printed_attrs = ['TS_list', 'modBox', 'mod']
-        data = {k: v for k, v in self.__dict__.items()
-                if v is not None
-                and k not in not_printed_attrs
-                and not k.startswith('_')
-                and not isinstance(v, list)
-                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
-                }
-        return pprint.pformat(data)
+        return f"<{self.__class__.__name__} label={self.label!r}, bus={self.bus.label!r}>"
+
+    def __str__(self):
+        return f"Flow '{self.label}' connected to bus '{self.bus.label}'"
+
 
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
