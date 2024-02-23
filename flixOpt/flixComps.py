@@ -110,9 +110,20 @@ class cBaseLinearTransformer(cBaseComponent):
                     self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}(label={self.label!r}, inputs={self.inputs}, outputs={self.outputs}, "
-                f"exists={self.exists}, group={self.group}, factor_Sets={self.factor_Sets}, "
-                f"segmentsOfFlows={self.segmentsOfFlows})")
+        # Creating a representation for factor_Sets with flow labels and their corresponding values
+        factor_sets_repr = []
+        for factor_set in self.factor_Sets:
+            factor_set_repr = {flow.label: value for flow, value in factor_set.items()}
+            factor_sets_repr.append(factor_set_repr)
+
+        # Representing inputs and outputs by their labels
+        inputs_repr = [flow.label for flow in self.inputs]
+        outputs_repr = [flow.label for flow in self.outputs]
+
+        return (f"{self.__class__.__name__}(label={self.label!r}, "
+                f"inputs={inputs_repr}, outputs={outputs_repr}, "
+                f"exists={self.exists}, group={self.group!r}, "
+                f"factor_Sets={factor_sets_repr}, segmentsOfFlows={self.segmentsOfFlows})")
 
     def __str__(self):
         return (f"{self.__class__.__name__}: {self.label}, Group: {self.group}, Inputs: {len(self.inputs)}, "
