@@ -315,11 +315,12 @@ class cEnergySystem:
         # self.addComponents(self.globalComp)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} with {len(self.listOfComponents)} components>"
+        return f"<{self.__class__.__name__} with {len(self.listOfComponents)} components and {len(self.listOfEffectTypes)} effects>"
 
     def __str__(self):
-        components = ', '.join(component.label for component in self.listOfComponents)
-        return f"Energy System with components: {components}"
+        components = '\n'.join(component.__str__() for component in self.listOfComponents)
+        effects = '\n'.join(effect.__str__() for effect in self.listOfEffectTypes)
+        return f"Energy System with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
     def addEffects(self, *args):
@@ -1555,9 +1556,26 @@ class cEffectType(cME):
     can be used later afterwards for allocating effects to compontents and flows.
     '''
     def __str__(self):
-        data = {k: v for k, v in self.__dict__.items()
-                if isinstance(v, (int, float, str, bool, dict))}
-        return pprint.pformat(data)
+        objective = "Objective" if self.isObjective else ""
+        standart = "Standardeffect" if self.isStandard else ""
+        op_sum = f"OperationSum: {self.min_operationSum}-{self.max_operationSum}" \
+            if self.min_operationSum is not None or self.max_operationSum is not None else ""
+        inv_sum = f"InvestSum: {self.min_investSum}-{self.max_investSum}" \
+            if self.min_investSum is not None or self.max_investSum is not None else ""
+        tot_sum = f"TotalSum: {self.min_Sum}-{self.max_Sum}" \
+            if self.min_Sum is not None or self.max_Sum is not None else ""
+        label_unit = f"{self.label} [{self.unit}]:"
+        desc = f"({self.description})"
+        shares_op = f"Operation Shares: {self.specificShareToOtherEffects_operation}" \
+            if self.specificShareToOtherEffects_operation != {} else ""
+        shares_inv = f"Invest Shares: {self.specificShareToOtherEffects_invest}"\
+            if self.specificShareToOtherEffects_invest != {} else ""
+
+        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
+
+        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
+
+        return f"{self.__class__.__name__} {full_str}"
 
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self, label, unit, description,
