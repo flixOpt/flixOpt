@@ -113,23 +113,33 @@ class cInvestArgs:
         super().__init__(**kwargs)
 
     def __repr__(self):
-        args = [
-            f"fixCosts={self.fixCosts}",
-            f"divestCosts={self.divestCosts}",
-            f"investmentSize_is_fixed={self.investmentSize_is_fixed}",
-            f"investment_is_optional={self.investment_is_optional}",
-            f"specificCosts={self.specificCosts}",
-            f"min_investmentSize={self.min_investmentSize}",
-            f"max_investmentSize={self.max_investmentSize}",
-        ]
-        return f"<cInvestArgs {' '.join(args)}>"
+        return f"<{self.__class__.__name__}>: {self.__dict__}"
 
     def __str__(self):
+        details = [
+            f"fixCosts={self.fixCosts}" if self.fixCosts else ""
+            f"divestCosts={self.divestCosts}" if self.divestCosts else ""
+            f"specificCosts={self.specificCosts}" if self.specificCosts else ""
+            f"Fixed Size" if self.investmentSize_is_fixed else ""
+            f"Optional" if self.investment_is_optional else ""
+            f"min/max_Size=[{self.min_investmentSize}-{self.max_investmentSize}]"
+            f"costsInInvestsizeSegments={self.costsInInvestsizeSegments}, " if self.costsInInvestsizeSegments else ""
+        ]
+
+        all_relevant_parts = [part for part in details if part != ""]
+
+        full_str =f"{', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}>: {full_str}"
+
+
+
         return (
+            f"<{self.__class__.__name__}>: "
             f"Investment Args: fixed={self.investmentSize_is_fixed}, "
             f"optional={self.investment_is_optional}, "
             f"costs={self.specificCosts}, "
-            f"range=[{self.min_investmentSize}, {self.max_investmentSize}]"
+            f"min/max_Size={self.min_investmentSize}-{self.max_investmentSize}]"
         )
 
 

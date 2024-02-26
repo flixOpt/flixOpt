@@ -110,24 +110,21 @@ class cBaseLinearTransformer(cBaseComponent):
                     self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
 
     def __repr__(self):
-        # Creating a representation for factor_Sets with flow labels and their corresponding values
-        factor_sets_repr = []
-        for factor_set in self.factor_Sets:
-            factor_set_repr = {flow.label: value for flow, value in factor_set.items()}
-            factor_sets_repr.append(factor_set_repr)
-
-        # Representing inputs and outputs by their labels
-        inputs_repr = [flow.label for flow in self.inputs]
-        outputs_repr = [flow.label for flow in self.outputs]
-
-        return (f"{self.__class__.__name__}(label={self.label!r}, "
-                f"inputs={inputs_repr}, outputs={outputs_repr}, "
-                f"exists={self.exists}, group={self.group!r}, "
-                f"factor_Sets={factor_sets_repr}, segmentsOfFlows={self.segmentsOfFlows})")
+        return f"<{self.__class__.__name__}> {self.__dict__}"
 
     def __str__(self):
-        return (f"{self.__class__.__name__}: {self.label}, Group: {self.group}, Inputs: {len(self.inputs)}, "
-                f"Outputs: {len(self.outputs)}")
+        # Creating a representation for factor_Sets with flow labels and their corresponding values
+        for factor_set in self.factor_Sets:
+            factor_set_str = {flow.label: value for flow, value in factor_set.items()}
+
+        # Representing inputs and outputs by their labels
+        inputs_str = [flow.__str__() for flow in self.inputs]
+        outputs_str = [flow.__str__() for flow in self.outputs]
+
+        return (f"<{self.__class__.__name__}> {self.label}: "
+                f"exists={self.exists}, group={self.group}, "
+                f"factor_Sets={factor_set_str}, segmentsOfFlows={self.segmentsOfFlows}, "
+                f"\n  inputs={inputs_str}, \n  outputs={outputs_str})")
 
     def transformFactorsToTS(self, factor_Sets):
         """
@@ -731,12 +728,22 @@ class cStorage(cBaseComponent):
         self.isStorage = True  # for postprocessing
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}(label={self.label!r}, capacity_inFlowHours={self.capacity_inFlowHours}, "
-                f"min/max charge state={self.min_rel_chargeState}-{self.max_rel_chargeState})")
+        return f"<{self.__class__.__name__}> {self.__dict__}"
 
     def __str__(self):
-        return (f"{self.__class__.__name__}: {self.label}, Capacity: {self.capacity_inFlowHours} FlowHours, "
-                f"Min/Max Charge State: {self.min_rel_chargeState}-{self.max_rel_chargeState}")
+
+        # Representing inputs and outputs by their labels
+        inputs_str = [flow.__str__() for flow in self.inputs]
+        outputs_str = [flow.__str__() for flow in self.outputs]
+
+        return (f"<{self.__class__.__name__}> {self.label}: "
+                f"exists={self.exists}, group={self.group}, "
+                f"capacity={self.capacity_inFlowHours} FlowHours, "
+                f"Min/Max Charge State={self.min_rel_chargeState}-{self.max_rel_chargeState}, "
+                f"fracLossPerHour={self.fracLossPerHour}, "
+                f"eta_load={self.eta_load}, eta_unload={self.eta_unload}, "
+                f"investArgs={self.investArgs.__str__()}, "
+                f"inputs={inputs_str}, outputs={outputs_str})")
 
     def declareVarsAndEqs(self, modBox: cModelBoxOfES):
         """

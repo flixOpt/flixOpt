@@ -1412,7 +1412,7 @@ class cME(cArgsClass):
         return f"<{self.__class__.__name__} label={self.label!r}>"
 
     def __str__(self):
-        return f"{self.__class__.__name__} '{self.label}'"
+        return f"<{self.__class__.__name__}> {self.label}"
 
     # activate inkl. subMEs:
     def activateModbox(self, modBox):
@@ -1558,24 +1558,24 @@ class cEffectType(cME):
     def __str__(self):
         objective = "Objective" if self.isObjective else ""
         standart = "Standardeffect" if self.isStandard else ""
-        op_sum = f"OperationSum: {self.min_operationSum}-{self.max_operationSum}" \
+        op_sum = f"OperationSum={self.min_operationSum}-{self.max_operationSum}" \
             if self.min_operationSum is not None or self.max_operationSum is not None else ""
-        inv_sum = f"InvestSum: {self.min_investSum}-{self.max_investSum}" \
+        inv_sum = f"InvestSum={self.min_investSum}-{self.max_investSum}" \
             if self.min_investSum is not None or self.max_investSum is not None else ""
-        tot_sum = f"TotalSum: {self.min_Sum}-{self.max_Sum}" \
+        tot_sum = f"TotalSum={self.min_Sum}-{self.max_Sum}" \
             if self.min_Sum is not None or self.max_Sum is not None else ""
         label_unit = f"{self.label} [{self.unit}]:"
         desc = f"({self.description})"
-        shares_op = f"Operation Shares: {self.specificShareToOtherEffects_operation}" \
+        shares_op = f"Operation Shares={self.specificShareToOtherEffects_operation}" \
             if self.specificShareToOtherEffects_operation != {} else ""
-        shares_inv = f"Invest Shares: {self.specificShareToOtherEffects_invest}"\
+        shares_inv = f"Invest Shares={self.specificShareToOtherEffects_invest}"\
             if self.specificShareToOtherEffects_invest != {} else ""
 
         all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
 
         full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
 
-        return f"{self.__class__.__name__} {full_str}"
+        return f"<{self.__class__.__name__}> {full_str}"
 
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self, label, unit, description,
@@ -1784,12 +1784,18 @@ class cBaseComponent(cME):
     #     aComp.addEnergySystemIBelongTo(base)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} label={self.label!r}, inputs={len(self.inputs)}, outputs={len(self.outputs)}>"
+        return f"<{self.__class__.__name__}> {self.__dict__}"
 
     def __str__(self):
-        input_labels = ', '.join(input.label for input in self.inputs)
-        output_labels = ', '.join(output.label for output in self.outputs)
-        return f"{self.__class__.__name__} '{self.label}' with inputs [{input_labels}] and outputs [{output_labels}]"
+        # Representing inputs and outputs by their labels
+        inputs_str = [flow.__str__() for flow in self.inputs]
+        outputs_str = [flow.__str__() for flow in self.outputs]
+
+        return (f"<{self.__class__.__name__}> {self.label}:\n"
+                f"  inputs={inputs_str},\n"
+                f"  outputs={outputs_str}")
+
+
 
     def registerMeInFlows(self):
         for aFlow in self.inputs + self.outputs:
@@ -2418,26 +2424,24 @@ class cFlow(cME):
                                                 featureOn=self.featureOn)
 
     def __repr__(self):
-        return (
-            f"<cFlow(label={self.label!r}, bus={self.bus.label if self.bus else 'None'}, "
-            f"nominal_val={self.nominal_val}, medium={self.medium})>"
-        )
+        return f"<{self.__class__.__name__}>: {self.__dict__}"
+
 
     def __str__(self):
         details = [
-            f"Label: {self.label}",
-            f"Bus: {self.bus.label if self.bus else 'None'}",
-            f"Nominal Value: {self.nominal_val}",
-            f"Min Relative: {self.min_rel}",
-            f"Max Relative: {self.max_rel}",
-            f"Medium: {self.medium}",
-            f"Investment Arguments: {'Present' if self.investArgs else 'None'}"
+            f"bus={self.bus.label if self.bus else 'None'}",
+            f"nominal_val={self.nominal_val}",
+            f"min/max_rel={self.min_rel}-{self.max_rel}",
+            f"medium={self.medium}",
+            f"investArgs={self.investArgs.__str__()}" if self.investArgs else "",
+            f"val_rel={self.val_rel}" if self.val_rel else ""
         ]
-        if self.val_rel is not None:
-            details.append(f"Fixed Relative Values: Yes")
-        else:
-            details.append(f"Fixed Relative Values: No")
-        return "Flow Details:\n" + "\n".join(details)
+
+        all_relevant_parts = [part for part in details if part != ""]
+
+        full_str =f"{', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}> {self.label}: {full_str}"
 
 
 
