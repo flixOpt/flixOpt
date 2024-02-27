@@ -114,8 +114,9 @@ class cBaseLinearTransformer(cBaseComponent):
 
     def __str__(self):
         # Creating a representation for factor_Sets with flow labels and their corresponding values
+        factor_str_rep = []
         for factor_set in self.factor_Sets:
-            factor_set_str = {flow.label: value for flow, value in factor_set.items()}
+            factor_str_rep.append({flow.label: value for flow, value in factor_set.items()})
 
         # Representing inputs and outputs by their labels
         inputs_str = [flow.__str__() for flow in self.inputs]
@@ -123,7 +124,7 @@ class cBaseLinearTransformer(cBaseComponent):
 
         return (f"<{self.__class__.__name__}> {self.label}: "
                 f"exists={self.exists}, group={self.group}, "
-                f"factor_Sets={factor_set_str}, segmentsOfFlows={self.segmentsOfFlows}, "
+                f"factor_Sets={factor_str_rep}, segmentsOfFlows={self.segmentsOfFlows}, "
                 f"\n  inputs={inputs_str}, \n  outputs={outputs_str})")
 
     def transformFactorsToTS(self, factor_Sets):
