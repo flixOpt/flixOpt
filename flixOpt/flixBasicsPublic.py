@@ -133,13 +133,3 @@ class cInvestArgs:
         return f"<{self.__class__.__name__}>: {full_str}"
 
 
-
-        return (
-            f"<{self.__class__.__name__}>: "
-            f"Investment Args: fixed={self.investmentSize_is_fixed}, "
-            f"optional={self.investment_is_optional}, "
-            f"costs={self.specificCosts}, "
-            f"min/max_Size={self.min_investmentSize}-{self.max_investmentSize}]"
-        )
-
-
