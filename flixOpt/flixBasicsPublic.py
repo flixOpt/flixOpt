@@ -35,6 +35,13 @@ class cTSraw:
         if (agg_type is not None) and (agg_weight is not None):
             raise Exception('Either <agg_type> or explicit <agg_weigth> can be set. Not both!')
 
+    def __repr__(self):
+        return f"<cTSraw agg_type={self.agg_type!r}, agg_weight={self.agg_weight!r}>"
+
+    def __str__(self):
+        agg_info = f"agg_type={self.agg_type}, agg_weight={self.agg_weight}" if self.agg_type or self.agg_weight else "no aggregation info"
+        return f"Timeseries: {agg_info}"
+
 
 # Sammlung von Props für Investitionskosten (für cFeatureInvest)
 class cInvestArgs:
@@ -106,13 +113,23 @@ class cInvestArgs:
         super().__init__(**kwargs)
 
     def __repr__(self):
-        not_printed_attrs = ['TS_list', 'modBox', 'mod']
-        data = {k: v for k, v in self.__dict__.items()
-                if v is not None
-                and k not in not_printed_attrs
-                and not k.startswith('_')
-                and not isinstance(v, list)
-                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
-                }
-        return pprint.pformat(data)
+        return f"<{self.__class__.__name__}>: {self.__dict__}"
+
+    def __str__(self):
+        details = [
+            f"fixCosts={self.fixCosts}" if self.fixCosts else ""
+            f"divestCosts={self.divestCosts}" if self.divestCosts else ""
+            f"specificCosts={self.specificCosts}" if self.specificCosts else ""
+            f"Fixed Size" if self.investmentSize_is_fixed else ""
+            f"Optional" if self.investment_is_optional else ""
+            f"min/max_Size=[{self.min_investmentSize}-{self.max_investmentSize}]"
+            f"costsInInvestsizeSegments={self.costsInInvestsizeSegments}, " if self.costsInInvestsizeSegments else ""
+        ]
+
+        all_relevant_parts = [part for part in details if part != ""]
+
+        full_str =f"{', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}>: {full_str}"
+
 

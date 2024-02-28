@@ -314,6 +314,14 @@ class cEnergySystem:
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können: 
         # self.addComponents(self.globalComp)
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} with {len(self.listOfComponents)} components and {len(self.listOfEffectTypes)} effects>"
+
+    def __str__(self):
+        components = '\n'.join(component.__str__() for component in self.listOfComponents)
+        effects = '\n'.join(effect.__str__() for effect in self.listOfEffectTypes)
+        return f"Energy System with components:\n{components}\nand effects:\n{effects}"
+
     # Effekte registrieren:
     def addEffects(self, *args):
         newListOfEffects = list(args)
@@ -1400,6 +1408,11 @@ class cME(cArgsClass):
         self.mod = None  # hier kommen alle Glg und Vars rein
         super().__init__(**kwargs)
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__}> {self.label}"
+
+    def __str__(self):
+        return f"<{self.__class__.__name__}> {self.label}"
 
     # activate inkl. subMEs:
     def activateModbox(self, modBox):
@@ -1536,20 +1549,6 @@ class cME(cArgsClass):
         aDict['no vars single'] = sum([var.len for var in self.mod.variables])
         return aDict
 
-    def __str__(self):
-        not_printed_attrs = ['TS_list', 'modBox', 'mod']
-        data = {k: v for k, v in self.__dict__.items()
-                if v is not None
-                and k not in not_printed_attrs
-                and not k.startswith('_')
-                and not isinstance(v, list)
-                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
-                }
-        return pprint.pformat(data)
-
-    def __repr__(self):
-        return f"{self.label}<{self.__class__.__name__}>"
-
 
 class cEffectType(cME):
     '''
@@ -1557,9 +1556,26 @@ class cEffectType(cME):
     can be used later afterwards for allocating effects to compontents and flows.
     '''
     def __str__(self):
-        data = {k: v for k, v in self.__dict__.items()
-                if isinstance(v, (int, float, str, bool, dict))}
-        return pprint.pformat(data)
+        objective = "Objective" if self.isObjective else ""
+        standart = "Standardeffect" if self.isStandard else ""
+        op_sum = f"OperationSum={self.min_operationSum}-{self.max_operationSum}" \
+            if self.min_operationSum is not None or self.max_operationSum is not None else ""
+        inv_sum = f"InvestSum={self.min_investSum}-{self.max_investSum}" \
+            if self.min_investSum is not None or self.max_investSum is not None else ""
+        tot_sum = f"TotalSum={self.min_Sum}-{self.max_Sum}" \
+            if self.min_Sum is not None or self.max_Sum is not None else ""
+        label_unit = f"{self.label} [{self.unit}]:"
+        desc = f"({self.description})"
+        shares_op = f"Operation Shares={self.specificShareToOtherEffects_operation}" \
+            if self.specificShareToOtherEffects_operation != {} else ""
+        shares_inv = f"Invest Shares={self.specificShareToOtherEffects_invest}"\
+            if self.specificShareToOtherEffects_invest != {} else ""
+
+        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
+
+        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}> {full_str}"
 
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self, label, unit, description,
@@ -1766,6 +1782,20 @@ class cBaseComponent(cME):
     #   # falls subComps existieren:
     #   for aComp in self.subComps :
     #     aComp.addEnergySystemIBelongTo(base)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}> {self.label}"
+
+    def __str__(self):
+        # Representing inputs and outputs by their labels
+        inputs_str = [flow.__str__() for flow in self.inputs]
+        outputs_str = [flow.__str__() for flow in self.outputs]
+
+        return (f"<{self.__class__.__name__}> {self.label}:"
+                f"\n    inputs={inputs_str},"
+                f"\n    outputs={outputs_str}")
+
+
 
     def registerMeInFlows(self):
         for aFlow in self.inputs + self.outputs:
@@ -2394,15 +2424,27 @@ class cFlow(cME):
                                                 featureOn=self.featureOn)
 
     def __repr__(self):
-        not_printed_attrs = ['TS_list', 'modBox', 'mod']
-        data = {k: v for k, v in self.__dict__.items()
-                if v is not None
-                and k not in not_printed_attrs
-                and not k.startswith('_')
-                and not isinstance(v, list)
-                and not (isinstance(v, dict) and not v)  # list and dict only if not empty
-                }
-        return pprint.pformat(data)
+        return f"<{self.__class__.__name__}> {self.label}"
+
+
+    def __str__(self):
+        details = [
+            f"bus={self.bus.label if self.bus else 'None'}",
+            f"nominal_val={self.nominal_val}",
+            f"min/max_rel={self.min_rel}-{self.max_rel}",
+            f"medium={self.medium}",
+            f"investArgs={self.investArgs.__str__()}" if self.investArgs else "",
+            f"val_rel={self.val_rel}" if self.val_rel else "",
+            f"costsPerFlowHour={self.costsPerFlowHour}" if self.costsPerFlowHour else "",
+            f"costsPerRunningHour={self.costsPerRunningHour}" if self.costsPerRunningHour else "",
+        ]
+
+        all_relevant_parts = [part for part in details if part != ""]
+
+        full_str =f"{', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}> {self.label}: {full_str}"
+
 
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
