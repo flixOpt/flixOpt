@@ -1409,7 +1409,7 @@ class cME(cArgsClass):
         super().__init__(**kwargs)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} label={self.label!r}>"
+        return f"<{self.__class__.__name__}> {self.label}"
 
     def __str__(self):
         return f"<{self.__class__.__name__}> {self.label}"
@@ -1784,16 +1784,16 @@ class cBaseComponent(cME):
     #     aComp.addEnergySystemIBelongTo(base)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.__dict__}"
+        return f"<{self.__class__.__name__}> {self.label}"
 
     def __str__(self):
         # Representing inputs and outputs by their labels
         inputs_str = [flow.__str__() for flow in self.inputs]
         outputs_str = [flow.__str__() for flow in self.outputs]
 
-        return (f"<{self.__class__.__name__}> {self.label}:\n"
-                f"  inputs={inputs_str},\n"
-                f"  outputs={outputs_str}")
+        return (f"<{self.__class__.__name__}> {self.label}:"
+                f"\n    inputs={inputs_str},"
+                f"\n    outputs={outputs_str}")
 
 
 
@@ -2424,7 +2424,7 @@ class cFlow(cME):
                                                 featureOn=self.featureOn)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}>: {self.__dict__}"
+        return f"<{self.__class__.__name__}> {self.label}"
 
 
     def __str__(self):
@@ -2434,7 +2434,9 @@ class cFlow(cME):
             f"min/max_rel={self.min_rel}-{self.max_rel}",
             f"medium={self.medium}",
             f"investArgs={self.investArgs.__str__()}" if self.investArgs else "",
-            f"val_rel={self.val_rel}" if self.val_rel else ""
+            f"val_rel={self.val_rel}" if self.val_rel else "",
+            f"costsPerFlowHour={self.costsPerFlowHour}" if self.costsPerFlowHour else "",
+            f"costsPerRunningHour={self.costsPerRunningHour}" if self.costsPerRunningHour else "",
         ]
 
         all_relevant_parts = [part for part in details if part != ""]
