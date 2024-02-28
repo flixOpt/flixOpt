@@ -109,14 +109,15 @@ class cBaseLinearTransformer(cBaseComponent):
                 for key, item in self.segmentsOfFlows.items():
                     self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.__dict__}"
-
     def __str__(self):
         # Creating a representation for factor_Sets with flow labels and their corresponding values
-        factor_str_rep = []
-        for factor_set in self.factor_Sets:
-            factor_str_rep.append({flow.label: value for flow, value in factor_set.items()})
+
+        if self.factor_Sets:
+            factor_sets_rep = []
+            for factor_set in self.factor_Sets:
+                factor_sets_rep.append({flow.label: value for flow, value in factor_set.items()})
+        else:
+            factor_sets_rep = "None"
 
         # Representing inputs and outputs by their labels
         inputs_str = [flow.__str__() for flow in self.inputs]
@@ -124,8 +125,9 @@ class cBaseLinearTransformer(cBaseComponent):
 
         return (f"<{self.__class__.__name__}> {self.label}: "
                 f"exists={self.exists}, group={self.group}, "
-                f"factor_Sets={factor_str_rep}, segmentsOfFlows={self.segmentsOfFlows}, "
-                f"\n  inputs={inputs_str}, \n  outputs={outputs_str})")
+                f"factor_Sets={factor_sets_rep}, segmentsOfFlows={self.segmentsOfFlows}, "
+                f"\n    inputs={inputs_str}, "
+                f"\n    outputs={outputs_str})")
 
     def transformFactorsToTS(self, factor_Sets):
         """
@@ -728,9 +730,6 @@ class cStorage(cBaseComponent):
 
         self.isStorage = True  # for postprocessing
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.__dict__}"
-
     def __str__(self):
 
         # Representing inputs and outputs by their labels
@@ -744,7 +743,8 @@ class cStorage(cBaseComponent):
                 f"fracLossPerHour={self.fracLossPerHour}, "
                 f"eta_load={self.eta_load}, eta_unload={self.eta_unload}, "
                 f"investArgs={self.investArgs.__str__()}, "
-                f"inputs={inputs_str}, outputs={outputs_str})")
+                f"\n    inputs={inputs_str},"
+                f"\n    outputs={outputs_str}")
 
     def declareVarsAndEqs(self, modBox: cModelBoxOfES):
         """
