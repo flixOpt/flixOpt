@@ -1947,7 +1947,7 @@ class cGlobal(cME):
         self.__addShare('operation', nameOfShare, shareHolder, effect_values, factor)
 
     def addShareToInvest(self, nameOfShare, shareHolder, aVariable, effect_values, factor):
-        if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
+        if aVariable is None: raise Exception('addShareToInvest() needs variable or use addConstantShare instead')
         self.__addShare('invest', nameOfShare, shareHolder, effect_values, factor, aVariable)
 
     def addConstantShareToInvest(self, nameOfShare, shareHolder, effect_values, factor):
