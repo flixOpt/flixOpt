@@ -1999,6 +1999,7 @@ class cGlobal(cME):
 
         self.penalty.doModeling(modBox, timeIndexe)
         ## Gleichungen bauen für Effekte: ##
+        effect : cEffectType
         for effect in self.listOfEffectTypes:
             effect.doModeling(modBox, timeIndexe)
 
