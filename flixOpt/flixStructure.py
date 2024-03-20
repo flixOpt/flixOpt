@@ -304,6 +304,7 @@ class cME(cArgsClass):
     def finalize(self) -> None:
         # print('finalize ' + self.label)
         # gleiches für alle sub MEs:
+        aME : cME
         for aME in self.subElements:
             aME.finalize()
 
@@ -1285,15 +1286,20 @@ class cFlow(cME):
             If None, any bus can be used.            
         investArgs : None or cInvestArgs, optional
             used for investment costs or/and investment-optimization!
+        exists : int, array, None
+            indicates when a flow is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplied with this value before the solve
+        group: str, None
+            group name to assign flows to groups. Used for later analysis of the results
         '''
 
         super().__init__(label, **kwargs)
         # args to attributes:
         self.bus = bus
         self.nominal_val = nominal_val  # skalar!
-        self.min_rel = cTS_vector('min_rel', min_rel, self)
-        self.max_rel = cTS_vector('max_rel', max_rel, self)
-
+        self.min_rel_explicit = cTS_vector('min_rel_explicit', min_rel, self)
+        self.max_rel_explicit = cTS_vector('max_rel_explicit', max_rel, self)
+        # self.max_rel und self.min_rel wird in finalize() erstellt
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
         #self.positive_gradient = cTS_vector('positive_gradient', positive_gradient, self)
@@ -1366,15 +1372,6 @@ class cFlow(cME):
                                     switchOn_maxNr=self.switchOn_maxNr,
                                     useOn_explicit=self.__useOn_fromProps)
 
-        if self.investArgs is None:
-            self.featureInvest = None  #
-        else:
-            self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs,
-                                                min_rel=self.min_rel,
-                                                max_rel=self.max_rel,
-                                                val_rel=self.val_rel,
-                                                investmentSize=self.nominal_val,
-                                                featureOn=self.featureOn)
 
     def __str__(self):
         details = [
@@ -1399,7 +1396,7 @@ class cFlow(cME):
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausiTest(self) -> None:
         # Plausi-Check min < max:
-        if np.any(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d)):
+        if np.any(np.asarray(self.min_rel_explicit.d) > np.asarray(self.max_rel_explicit.d)):
             # if np.any(np.asarray(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d) )):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
@@ -1409,7 +1406,29 @@ class cFlow(cME):
 
     def finalize(self) -> None:
         self.plausiTest()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
+
+
+        # exist-merge aus Flow.exist und Comp.exist
+        exist_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
+        # create max_rel from max_rel_explicit and  exist_global:
+        self.max_rel = cTS_vector('max_rel', np.multiply(self.max_rel_explicit.d, exist_global), self)
+        self.min_rel = cTS_vector('min_rel', np.multiply(self.min_rel_explicit.d, exist_global), self)
+
+        # prepare invest Feature:
+        if self.investArgs is None:
+            self.featureInvest = None  #
+        else:
+            self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs,
+                                                min_rel=self.min_rel,
+                                                max_rel=self.max_rel,
+                                                val_rel=self.val_rel,
+                                                investmentSize=self.nominal_val,
+                                                featureOn=self.featureOn)
+
+
+
         super().finalize()
+
 
     def declareVarsAndEqs(self, modBox: cModelBoxOfES) -> None:
         print('declareVarsAndEqs ' + self.label)

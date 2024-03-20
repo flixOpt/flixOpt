@@ -34,7 +34,7 @@ class cBaseLinearTransformer(cBaseComponent):
             output flows.
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
+            max_rel of all flows is multiplied with this value before the solve!
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         factor_Sets : list
@@ -93,13 +93,9 @@ class cBaseLinearTransformer(cBaseComponent):
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         # copy information about exists into segments of flows
         if self.segmentsOfFlows is not None:
@@ -723,13 +719,9 @@ class cStorage(cBaseComponent):
         else:
             raise TypeError()
 
-        # copy information of "group" and "exists" to in-flows and out-flows
+        # copy information of "group" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         self.chargeState0_inFlowHours = chargeState0_inFlowHours
         self.charge_state_end_min = charge_state_end_min
@@ -1001,13 +993,9 @@ class cSourceAndSink(cBaseComponent):
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         # Erzwinge die Erstellung der On-Variablen, da notwendig für gleichung
         self.source.activateOnValue()
@@ -1088,13 +1076,9 @@ class cSource(cBaseComponent):
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
 
 class cSink(cBaseComponent):
@@ -1140,13 +1124,10 @@ class cSink(cBaseComponent):
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
 
 class cTransportation(cBaseComponent):

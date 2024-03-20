@@ -1174,13 +1174,14 @@ class cFeatureInvest(cFeature):
             else:
                 pass  # no divest costs if invest is not optional
 
-        ## segmentedCosts:
         # # specificCosts:
         # wenn specificCosts vorhanden:
         if not (self.args.specificCosts is None):
             # share: + investmentSize (=var)   * specificCosts
             globalComp.addShareToInvest('specificCosts', self.owner, self.mod.var_investmentSize,
                                         self.args.specificCosts, 1)
+
+        # # segmentedCosts:                                        
         if self.featureLinearSegments is not None:
             for effect, var_investSegs in self.investVar_effect_dict.items():
                 globalComp.addShareToInvest('linearSegments', self.owner, var_investSegs, {effect: 1}, 1)
