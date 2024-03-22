@@ -635,7 +635,9 @@ class cBaseComponent(cME):
                  switchOn_maxNr: Optional[Skalar] = None,
                  onHoursSum_min: Optional[Skalar] = None,
                  onHoursSum_max: Optional[Skalar] = None,
-                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric]] = None, **kwargs):
+                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric]] = None,
+                 exists=1,
+                 **kwargs):
         '''
         
 
@@ -655,6 +657,8 @@ class cBaseComponent(cME):
         onHoursSum_min : look in cFlow for description
         onHoursSum_max : look in cFlow for description
         costsPerRunningHour : look in cFlow for description
+        exists : array, int, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
         **kwargs : TYPE
             DESCRIPTION.
 
@@ -671,6 +675,7 @@ class cBaseComponent(cME):
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
@@ -959,7 +964,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
     new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
     not_used_args = ['label']
 
-    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric = 1e5, **kwargs):
+    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric = 1e5, exists=1, **kwargs):
         '''
         Parameters
         ----------
@@ -974,11 +979,12 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
         excessCostsPerFlowHour : none or scalar, array or cTSraw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
+        exists : not implemented yet for cBus!
         **kwargs : TYPE
             DESCRIPTION.
         '''
 
-        super().__init__(label, **kwargs)
+        super().__init__(label, exists=exists, **kwargs)
         if media is None:
             self.media = media  # alle erlaubt
         elif isinstance(media, str):
