@@ -2365,6 +2365,8 @@ class cFlow(cME):
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
+        self.group = group # TODO: wird überschrieben von Component!
         self.valuesBeforeBegin = np.array(valuesBeforeBegin)  # list -> np-array
 
         if val_rel is None:

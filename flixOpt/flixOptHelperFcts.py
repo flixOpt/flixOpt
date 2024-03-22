@@ -94,6 +94,16 @@ def checkForAttributeNameConformity(aName):
                      (no number first, no special characteres etc.)')
     return newName
 
+def checkExists(exists):
+    # type checking for argumen "exist"
+    if isinstance(exists, int) or (
+            isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
+        pass
+    else:
+        raise ValueError("Invalid value for exists. Must contain only 0 and 1")        
+    return exists
+
+
 
 class InfiniteFullSet(object):
     def __and__(self, item):  # left operand of &
