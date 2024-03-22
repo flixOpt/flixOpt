@@ -85,13 +85,8 @@ class cBaseLinearTransformer(cBaseComponent):
             raise Exception('Either factor_Sets or segmentsOfFlows must \
                             be defined! Not Both!')
 
-        self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+        self.group = group        
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -699,25 +694,14 @@ class cStorage(cBaseComponent):
         self.min_rel_chargeState = cTS_vector('min_rel_chargeState', min_rel_chargeState, self)
 
         self.group = group
-
-        # type checking
-        if isinstance(exists, int):
-            if exists in (0, 1):
-                self.exists = cTS_vector('exists', exists, self)
-            else:
-                raise ValueError("Invalid value for exists. Must contain only 0 and 1")
-        elif isinstance(exists, (list, np.ndarray)):
-            if all(item in {0, 1} for item in exists):
-                self.exists = cTS_vector('exists', np.append(exists, exists[-1]), self)
-            else:
-                raise ValueError("Invalid value for exists. Must contain only 0 and 1")
-
-            self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
-                                                  self.max_rel_chargeState.d_i * self.exists.d_i, self)
-            self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
-                                                  self.min_rel_chargeState.d_i * self.exists.d_i, self)
-        else:
-            raise TypeError()
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)        
+        
+        # add last time step (if not scalar):
+        existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else (self.exists.d_i + self.exists.d_i[-1])
+        self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
+                                                  self.max_rel_chargeState.d_i * existsWithEndTimestep, self)
+        self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
+                                                  self.min_rel_chargeState.d_i * existsWithEndTimestep, self)
 
         # copy information of "group" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -986,12 +970,7 @@ class cSourceAndSink(cBaseComponent):
         self.inputs.append(sink)
 
         self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -1069,13 +1048,7 @@ class cSource(cBaseComponent):
         self.outputs.append(source)  # ein Output-Flow
 
         self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
-
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
@@ -1117,12 +1090,7 @@ class cSink(cBaseComponent):
         self.inputs.append(sink)  # ein Input-Flow
 
         self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
