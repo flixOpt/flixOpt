@@ -1160,6 +1160,7 @@ class cFlow(cME):
                  switchOn_maxNr: Optional[Skalar] = None,
                  costsPerRunningHour: Optional[Union[Numeric, EffectTypeDict]] = None,
                  costsPerHour: Optional[Union[Numeric, EffectTypeDict]] = None,
+                 costsPerHour_rel: Optional[Union[Numeric, EffectTypeDict]] = None,
                  sumFlowHours_max: Optional[Skalar] = None, sumFlowHours_min: Optional[Skalar] = None,
                  valuesBeforeBegin: Optional[List[Skalar]] = None,
                  val_rel: Optional[Numeric] = None,
@@ -1221,7 +1222,11 @@ class cFlow(cME):
         costsPerRunningHour : scalar or TS, optional
             costs for operating, i.g. in € per hour
         costsPerHour : scalar or TS, optional
-            costs for "existing", i.g. in € per hour NOT IMPLEMENTED YET!
+            costs for all timesteps, where flow "exists" (see argument "exists"), i.g. in € per hour
+            costs_i = costsPerHour * dt_i
+        costsPerHour_rel: scalar or TS, optional
+            costs for all timesteps, where flow "exists" (see argument "exists"), i.g. in € per hour and kW;
+            costs_i = costsPerHour_rel * nominal_value * dt_i
         sumFlowHours_max : TYPE, optional
             maximum flow-hours ("flow-work") 
             (if nominal_val is not const, maybe loadFactor_max fits better for you!)
@@ -1267,6 +1272,7 @@ class cFlow(cME):
         self.switchOn_maxNr = switchOn_maxNr
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
         self.costsPerHour = transFormEffectValuesToTSDict('costsPerHour', costsPerHour, self)
+        self.costsPerHour_rel = transFormEffectValuesToTSDict('costsPerHour', costsPerHour_rel, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
@@ -1527,9 +1533,9 @@ class cFlow(cME):
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.mod.var_val, self.costsPerFlowHour,
                                            modBox.dtInHours)
-
-        # Betriebskosten:
-        #   wenn Variable vorhanden:
+        
+        # Betriebskosten absolut:
+        #   wenn Variable isInvested vorhanden:
         if self.costsPerHour is not None:
             if (self.featureInvest is not None) and self.featureInvest.investment_is_optional:
                 globalComp.addShareToOperation('costsPerHour', shareHolder, featureInvest.mod.var_isInvested ,self.costsPerHour,
@@ -1538,6 +1544,14 @@ class cFlow(cME):
                 globalComp.addConstantShareToOperation('costsPerHour', shareHolder, self.costsPerHour,
                                                np.multiply(modBox.dtInHours, self.exists))
 
+                                                       # Betriebskosten relativ:                                     np.multiply(modBox.dtInHours, self.exists))
+        if self.costsPerHour_rel is not None:
+            if (self.featureInvest is not None):
+                globalComp.addShareToOperation('costsPerHour_rel', shareHolder, featureInvest.mod.var_investmentSize ,self.costsPerHour_rel,
+                                               np.multiply(modBox.dtInHours, self.exists))
+            else:
+                globalComp.addConstantShareToOperation('costsPerHour_rel', shareHolder, self.costsPerHour_rel,
+                                               np.multiply(modBox.dtInHours, self.exists, self.nominal_val))
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
         self.featureOn.addShareToGlobals(globalComp, modBox)
