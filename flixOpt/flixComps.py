@@ -72,7 +72,7 @@ class cBaseLinearTransformer(cBaseComponent):
 
         '''
 
-        super().__init__(label, **kwargs)
+        super().__init__(label, exists=exists, **kwargs)
         # args to attributes:
         self.inputs = inputs
         self.outputs = outputs
@@ -85,7 +85,6 @@ class cBaseLinearTransformer(cBaseComponent):
                             be defined! Not Both!')
 
         self.group = group        
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -645,7 +644,7 @@ class cStorage(cBaseComponent):
         # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch "val_rel_chargeState" implementieren damit konsistent zu flow (max_rel, min_rel, val_re)
 
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
-        super().__init__(label, **kwargs)
+        super().__init__(label, exists=exists, **kwargs)
 
         # args to attributes:
         self.inputs = [inFlow]
@@ -657,7 +656,6 @@ class cStorage(cBaseComponent):
         self.min_rel_chargeState = cTS_vector('min_rel_chargeState', min_rel_chargeState, self)
 
         self.group = group
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)        
         
         # add last time step (if not scalar):
         existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else (self.exists.d_i + self.exists.d_i[-1])
@@ -940,7 +938,7 @@ class cSourceAndSink(cBaseComponent):
 
 
         '''
-        super().__init__(label, **kwargs)
+        super().__init__(label, exists=exists, **kwargs)
         self.source = source
         self.sink = sink
         self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
@@ -948,7 +946,6 @@ class cSourceAndSink(cBaseComponent):
         self.inputs.append(sink)
 
         self.group = group
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -990,8 +987,8 @@ class cSource(cBaseComponent):
     """
     class of a source
     """
-    new_init_args = ['label', 'source']
-    not_used_args = ['label']
+    new_init_args = ['label', 'source', 'exists']
+    not_used_args = ['label', 'exists']
 
     def __init__(self, label, source, exists=1, group: str = None, **kwargs):
         '''       
@@ -1021,12 +1018,12 @@ class cSource(cBaseComponent):
         :param cFlow source: flow-output Quelle
         :param kwargs:
         """
-        super().__init__(label, **kwargs)
+        super().__init__(label, exists=exists, **kwargs)
         self.source = source
         self.outputs.append(source)  # ein Output-Flow
 
         self.group = group
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
+
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
@@ -1036,8 +1033,8 @@ class cSink(cBaseComponent):
     """
     Klasse cSink
     """
-    new_init_args = ['label', 'source']
-    not_used_args = ['label']
+    new_init_args = ['label', 'source', 'exists']
+    not_used_args = ['label', 'exists']
 
     def __init__(self, label, sink, exists=1, group: str = None, **kwargs):
         '''
@@ -1063,12 +1060,11 @@ class cSink(cBaseComponent):
 
         '''
 
-        super().__init__(label)
+        super().__init__(label, exists=exists, **kwargs)
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
 
         self.group = group
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -1085,7 +1081,7 @@ class cTransportation(cBaseComponent):
 
     def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0,
                  loss_abs=0, isAlwaysOn=True,
-                 avoidFlowInBothDirectionsAtOnce=True, **kwargs):
+                 avoidFlowInBothDirectionsAtOnce=True, exists=1, **kwargs):
         '''
         pipe/cable/connector between side A and side B
         losses can be modelled
@@ -1116,17 +1112,18 @@ class cTransportation(cBaseComponent):
         loss_abs : float, TS
             absolut loss. is active until on=0 for in-flows
             example: loss_abs=2 -> 2 kW fix loss on transportation
-
         ... featureOnVars for Active Transportation:
         switchOnCosts : 
             #costs of switch rohr on
+        exists : Warning! Functionality not implemented!
+        
         Returns
         -------
         None.
 
         '''
 
-        super().__init__(label)
+        super().__init__(label, exists=exists, **kwargs)
 
         self.in1 = in1
         self.out1 = out1
