@@ -217,51 +217,6 @@ class cModelBoxOfES(cBaseModel):
         helpers.printDictAndList(self.main_results_str)
 
 
-class cMEModel:
-    '''
-    is existing in every cME and owns eqs and vars of the activated calculation
-    '''
-
-    def __init__(self, ME):
-        self.ME = ME
-        self.variables = []
-        self.eqs = []
-        self.ineqs = []
-        self.objective = None
-
-    def getVar(self, label):
-        return next((x for x in self.variables if x.label == label), None)
-
-    def getEq(self, label):
-        return next((x for x in (self.eqs + self.ineqs) if x.label == label), None)
-
-    # Eqs, Ineqs und Objective als Str-Description:
-    def getEqsAsStr(self):
-        # Wenn Glg vorhanden:    
-        eq: cEquation
-        aList = []
-        if (len(self.eqs) + len(self.ineqs)) > 0:
-            for eq in (self.eqs + self.ineqs):
-                aList.append(eq.getStrDescription())
-        if not (self.objective is None):
-            aList.append(self.objective.getStrDescription())
-        return aList
-
-    def getVarsAsStr(self):
-        aList = []
-        for aVar in self.variables:
-            aList.append(aVar.getStrDescription())
-        return aList
-
-    def printEqs(self, shiftChars):
-        yaml.dump(self.getEqsAsStr(),
-                  allow_unicode=True)
-
-    def printVars(self, shiftChars):
-        yaml.dump(self.getVarsAsStr(),
-                  allow_unicode=True)
-
-
 class cME(cArgsClass):
     """
     Element mit Variablen und Gleichungen (ME = Modeling Element)
@@ -439,6 +394,51 @@ class cME(cArgsClass):
         aDict['no vars'] = len(self.mod.variables)
         aDict['no vars single'] = sum([var.len for var in self.mod.variables])
         return aDict
+
+
+class cMEModel:
+    '''
+    is existing in every cME and owns eqs and vars of the activated calculation
+    '''
+
+    def __init__(self, ME):
+        self.ME = ME
+        self.variables = []
+        self.eqs = []
+        self.ineqs = []
+        self.objective = None
+
+    def getVar(self, label):
+        return next((x for x in self.variables if x.label == label), None)
+
+    def getEq(self, label):
+        return next((x for x in (self.eqs + self.ineqs) if x.label == label), None)
+
+    # Eqs, Ineqs und Objective als Str-Description:
+    def getEqsAsStr(self):
+        # Wenn Glg vorhanden:
+        eq: cEquation
+        aList = []
+        if (len(self.eqs) + len(self.ineqs)) > 0:
+            for eq in (self.eqs + self.ineqs):
+                aList.append(eq.getStrDescription())
+        if not (self.objective is None):
+            aList.append(self.objective.getStrDescription())
+        return aList
+
+    def getVarsAsStr(self):
+        aList = []
+        for aVar in self.variables:
+            aList.append(aVar.getStrDescription())
+        return aList
+
+    def printEqs(self, shiftChars):
+        yaml.dump(self.getEqsAsStr(),
+                  allow_unicode=True)
+
+    def printVars(self, shiftChars):
+        yaml.dump(self.getVarsAsStr(),
+                  allow_unicode=True)
 
 
 class cEffectType(cME):
