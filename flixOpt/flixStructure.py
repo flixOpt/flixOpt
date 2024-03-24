@@ -20,6 +20,9 @@ import logging
 
 log = logging.getLogger(__name__)
 
+Skalar = Union[int, float]  # Datatype
+Numeric = Union[int, float, np.ndarray, cTSraw]  # Datatype
+
 
 class cModelBoxOfES(cBaseModel):
     '''
@@ -599,7 +602,7 @@ class cEffectTypeList(List[cEffectType]):
 
 
 from .flixFeatures import *
-
+EffectTypeDict = Dict[cEffectType, Numeric]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class cBaseComponent(cME):
