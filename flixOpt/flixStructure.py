@@ -940,7 +940,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
     new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
     not_used_args = ['label']
 
-    def __init__(self, media, label, excessCostsPerFlowHour=1e5, **kwargs):
+    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric = 1e5, **kwargs):
         '''
         Parameters
         ----------
@@ -975,15 +975,15 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
         else:
             self.withExcess = False
 
-    def registerInputFlow(self, aFlow):
+    def registerInputFlow(self, aFlow) -> None:
         self.inputs.append(aFlow)
         self.checkMedium(aFlow)
 
-    def registerOutputFlow(self, aFlow):
+    def registerOutputFlow(self, aFlow) -> None:
         self.outputs.append(aFlow)
         self.checkMedium(aFlow)
 
-    def checkMedium(self, aFlow):
+    def checkMedium(self, aFlow) -> None:
         # Wenn noch nicht belegt
         if aFlow.medium is not None:
             # set gemeinsamer Medien:
@@ -998,7 +998,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
                                 ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
                                 )
 
-    def declareVarsAndEqs(self, modBox):
+    def declareVarsAndEqs(self, modBox) -> None:
         super().declareVarsAndEqs(modBox)
         # Fehlerplus/-minus:
         if self.withExcess:
@@ -1006,7 +1006,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
             self.excessIn = cVariable_TS('excessIn', len(modBox.timeSeries), self, modBox, min=0)
             self.excessOut = cVariable_TS('excessOut', len(modBox.timeSeries), self, modBox, min=0)
 
-    def doModeling(self, modBox, timeIndexe):
+    def doModeling(self, modBox, timeIndexe) -> None:
         super().doModeling(modBox, timeIndexe)
 
         # inputs = outputs
@@ -1022,7 +1022,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
             eq_busbalance.addSummand(self.excessOut, -1)
             eq_busbalance.addSummand(self.excessIn, 1)
 
-    def addShareToGlobals(self, globalComp, modBox):
+    def addShareToGlobals(self, globalComp, modBox) -> None:
         super().addShareToGlobals(globalComp, modBox)
         # Strafkosten hinzufügen:
         if self.withExcess:
@@ -1033,7 +1033,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
             # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
             # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
 
-    def print(self, shiftChars):
+    def print(self, shiftChars) -> None:
         print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
             len(self.outputs)) + ' Out-Flows registered')
 
