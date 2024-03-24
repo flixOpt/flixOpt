@@ -468,14 +468,14 @@ class cEffectType(cME):
         return f"<{self.__class__.__name__}> {full_str}"
 
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
-    def __init__(self, label, unit, description,
-                 isStandard=False,
-                 isObjective=False,
-                 specificShareToOtherEffects_operation=None,
-                 specificShareToOtherEffects_invest=None,
-                 min_operationSum=None, max_operationSum=None,
-                 min_investSum=None, max_investSum=None,
-                 min_Sum=None, max_Sum=None,
+    def __init__(self, label: str, unit: str, description: str,
+                 isStandard: bool = False,
+                 isObjective: bool = False,
+                 specificShareToOtherEffects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
+                 specificShareToOtherEffects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
+                 min_operationSum: Optional[Skalar] = None, max_operationSum: Optional[Skalar] = None,
+                 min_investSum: Optional[Skalar] = None, max_investSum: Optional[Skalar] = None,
+                 min_Sum: Optional[Skalar]=None, max_Sum: Optional[Skalar]=None,
                  **kwargs):
         '''        
         Parameters
@@ -553,13 +553,13 @@ class cEffectType(cME):
         self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.min_Sum,
                                      maxOfSum=self.max_Sum)
 
-    def declareVarsAndEqs(self, modBox):
+    def declareVarsAndEqs(self, modBox) -> None:
         super().declareVarsAndEqs(modBox)
         self.operation.declareVarsAndEqs(modBox)
         self.invest.declareVarsAndEqs(modBox)
         self.all.declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox, timeIndexe):
+    def doModeling(self, modBox, timeIndexe) -> None:
         print('modeling ' + self.label)
         super().declareVarsAndEqs(modBox)
         self.operation.doModeling(modBox, timeIndexe)
