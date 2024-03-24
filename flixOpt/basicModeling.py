@@ -10,6 +10,7 @@ import numpy as np
 import importlib
 # import gurobipy
 import time
+from typing import List, Dict, Optional, Union
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
@@ -33,7 +34,7 @@ class cBaseModel:
     '''
 
     @property
-    def infos(self):
+    def infos(self) -> Dict:
         infos = {}
         infos['Solver'] = self.solver_name
 
@@ -53,11 +54,11 @@ class cBaseModel:
         return infos
 
     @property
-    def variables_TSonly(self):
+    def variables_TSonly(self) -> List:
         variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, cVariable_TS)]
         return variables_TSonly
 
-    def __init__(self, label, aModType):
+    def __init__(self, label: str, aModType):
         self._infos = {}
         self.label = label
         self.modType = aModType
@@ -101,7 +102,7 @@ class cBaseModel:
         else:
             pass
 
-    def printNoEqsAndVars(self):
+    def printNoEqsAndVars(self) -> None:
         print('no of Eqs   (single):' + str(self.noOfEqs) + ' (' + str(self.noOfSingleEqs) + ')')
         print('no of InEqs (single):' + str(self.noOfIneqs) + ' (' + str(self.noOfSingleIneqs) + ')')
         print('no of Vars  (single):' + str(self.noOfVars) + ' (' + str(self.noOfSingleVars) + ')')
@@ -109,7 +110,7 @@ class cBaseModel:
     ##############################################################################################
     ################ pyomo-Spezifisch
     # alle Pyomo Elemente müssen im model registriert sein, sonst werden sie nicht berücksichtigt
-    def registerPyComp(self, py_comp, aStr='', oldPyCompToOverwrite=None):
+    def registerPyComp(self, py_comp, aStr='', oldPyCompToOverwrite=None) -> None:
         # neu erstellen
         if oldPyCompToOverwrite == None:
             self.countComp += 1
@@ -123,7 +124,7 @@ class cBaseModel:
 
             # Komponente löschen:
 
-    def deletePyComp(self, py_comp):
+    def deletePyComp(self, py_comp) -> None:
         aName = self.getPyCompStr(old_py_comp)
         aNameOfAdditionalComp = aName + '_index'  # sowas wird bei manchen Komponenten als Komponente automatisch mit erzeugt.
         # sonstige zugehörige Variablen löschen:
@@ -133,7 +134,7 @@ class cBaseModel:
 
         # name of component
 
-    def getPyCompStr(self, aComp):
+    def getPyCompStr(self, aComp) -> str:
         for key, val in self.model.component_map().iteritems():
             if aComp == val:
                 return key
@@ -142,14 +143,14 @@ class cBaseModel:
         return self.model.component_map()[aStr]
 
     # gleichnamige Pyomo-Komponente überschreiben (wenn schon vorhanden, sonst neu)
-    def __overwritePyComp(self, py_comp, old_py_comp):
+    def __overwritePyComp(self, py_comp, old_py_comp) -> None:
         aName = self.getPyCompStr(old_py_comp)
         # alles alte löschen:
         self.deletePyComp(old_py_comp)
         # überschreiben:
         self.model.add_component(aName, py_comp)
 
-    def transform2MathModel(self):
+    def transform2MathModel(self) -> None:
 
         self._charactarizeProblem()
 
@@ -170,7 +171,7 @@ class cBaseModel:
         self.duration['transform2MathModel'] = round(time.time() - t_start, 2)
 
     # Attention: is overrided by childclass:
-    def _charactarizeProblem(self):
+    def _charactarizeProblem(self) -> None:
         eq: cEquation
         var: cVariable
 
@@ -183,7 +184,7 @@ class cBaseModel:
         self.noOfVars = len(self.variables)
         self.noOfSingleVars = sum([var.len for var in self.variables])
 
-    def solve(self, gapfrac, timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt):
+    def solve(self, gapfrac, timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt) -> None:
         self.solver_name = solver_name
         t_start = time.time()
         for variable in self.variables:
