@@ -401,7 +401,7 @@ class cMEModel:
     is existing in every cME and owns eqs and vars of the activated calculation
     '''
 
-    def __init__(self, ME):
+    def __init__(self, ME: cME):
         self.ME = ME
         self.variables = []
         self.eqs = []
@@ -415,7 +415,7 @@ class cMEModel:
         return next((x for x in (self.eqs + self.ineqs) if x.label == label), None)
 
     # Eqs, Ineqs und Objective als Str-Description:
-    def getEqsAsStr(self):
+    def getEqsAsStr(self) -> List:
         # Wenn Glg vorhanden:
         eq: cEquation
         aList = []
@@ -426,17 +426,17 @@ class cMEModel:
             aList.append(self.objective.getStrDescription())
         return aList
 
-    def getVarsAsStr(self):
+    def getVarsAsStr(self) -> List:
         aList = []
         for aVar in self.variables:
             aList.append(aVar.getStrDescription())
         return aList
 
-    def printEqs(self, shiftChars):
+    def printEqs(self, shiftChars) -> None:
         yaml.dump(self.getEqsAsStr(),
                   allow_unicode=True)
 
-    def printVars(self, shiftChars):
+    def printVars(self, shiftChars) -> None:
         yaml.dump(self.getVarsAsStr(),
                   allow_unicode=True)
 
