@@ -16,6 +16,7 @@ from . import flixOptHelperFcts as helpers
 
 from .basicModeling import *  # Modelliersprache
 from .flixBasics import *
+from .flixBasicsPublic import cInvestArgs, cTSraw
 import logging
 
 log = logging.getLogger(__name__)
