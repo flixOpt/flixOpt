@@ -614,8 +614,12 @@ class cBaseComponent(cME):
                      'onHoursSum_max', 'costsPerRunningHour']
     not_used_args = ['label']
 
-    def __init__(self, label, on_valuesBeforeBegin=[0, 0], switchOnCosts=None, switchOn_maxNr=None, onHoursSum_min=None,
-                 onHoursSum_max=None, costsPerRunningHour=None, **kwargs):
+    def __init__(self, label: str, on_valuesBeforeBegin=[0, 0],  # TODO: Move to __init__, leads to unexpected Behavours (Mutable)!!!
+                 switchOnCosts: Optional[Union[EffectTypeDict, Numeric]] = None,
+                 switchOn_maxNr: Optional[Skalar] = None,
+                 onHoursSum_min: Optional[Skalar] = None,
+                 onHoursSum_max: Optional[Skalar] = None,
+                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric]] = None, **kwargs):
         '''
         
 
@@ -686,12 +690,11 @@ class cBaseComponent(cME):
                 f"\n    outputs={outputs_str}")
 
 
-
-    def registerMeInFlows(self):
+    def registerMeInFlows(self) -> None:
         for aFlow in self.inputs + self.outputs:
             aFlow.comp = self
 
-    def registerFlowsInBus(self):  # todo: macht aber bei Kindklasse cBus keinen Sinn!
+    def registerFlowsInBus(self) -> None:  # todo: macht aber bei Kindklasse cBus keinen Sinn!
         #
         # ############## register in Bus: ##############
         #
@@ -702,17 +705,17 @@ class cBaseComponent(cME):
         for aFlow in self.outputs:
             aFlow.bus.registerInputFlow(aFlow)
 
-    def declareVarsAndEqsOfFlows(self, modBox):  # todo: macht aber bei Kindklasse cBus keinen Sinn!
+    def declareVarsAndEqsOfFlows(self, modBox) -> None:  # todo: macht aber bei Kindklasse cBus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
             aFlow.declareVarsAndEqs(modBox)
 
-    def doModelingOfFlows(self, modBox, timeIndexe):  # todo: macht aber bei Kindklasse cBus keinen Sinn!
+    def doModelingOfFlows(self, modBox, timeIndexe) -> None:  # todo: macht aber bei Kindklasse cBus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
             aFlow.doModeling(modBox, timeIndexe)
 
-    def getResults(self):
+    def getResults(self) -> Tuple[Dict, Dict]:
         # Variablen der Komponente:
         (results, results_var) = super().getResults()
 
@@ -726,7 +729,7 @@ class cBaseComponent(cME):
             (results[flowLabel], results_var[flowLabel]) = aFlow.getResults()
         return results, results_var
 
-    def finalize(self):
+    def finalize(self) -> None:
         super().finalize()
 
         # feature for: On and SwitchOn Vars
@@ -736,7 +739,7 @@ class cBaseComponent(cME):
                                     self.costsPerRunningHour, onHoursSum_min=self.onHoursSum_min,
                                     onHoursSum_max=self.onHoursSum_max, switchOn_maxNr=self.switchOn_maxNr)
 
-    def declareVarsAndEqs(self, modBox):
+    def declareVarsAndEqs(self, modBox) -> None:
         super().declareVarsAndEqs(modBox)
 
         self.featureOn.declareVarsAndEqs(modBox)
@@ -748,7 +751,7 @@ class cBaseComponent(cME):
 
         # super().declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox, timeIndexe):
+    def doModeling(self, modBox, timeIndexe) -> None:
         log.debug(str(self.label) + 'doModeling()')
         # super().doModeling(modBox,timeIndexe)
 
@@ -757,16 +760,16 @@ class cBaseComponent(cME):
         #
         self.featureOn.doModeling(modBox, timeIndexe)
 
-    def addShareToGlobalsOfFlows(self, globalComp, modBox):
+    def addShareToGlobalsOfFlows(self, globalComp, modBox) -> None:
         for aFlow in self.inputs + self.outputs:
             aFlow.addShareToGlobals(globalComp, modBox)
 
     # wird von Kindklassen überschrieben:
-    def addShareToGlobals(self, globalComp, modBox):
+    def addShareToGlobals(self, globalComp, modBox) -> None:
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
         self.featureOn.addShareToGlobals(globalComp, modBox)
 
-    def getDescrAsStr(self):
+    def getDescrAsStr(self) -> Dict:
 
         descr = {}
         inhalt = {'In-Flows': [], 'Out-Flows': []}
@@ -798,7 +801,7 @@ class cBaseComponent(cME):
 
         return descr
 
-    def print(self, shiftChars):
+    def print(self, shiftChars) -> None:
         aFlow: cFlow
         print(yaml.dump(self.getDescrAsStr(), allow_unicode=True))
 
@@ -809,14 +812,14 @@ class cGlobal(cME):
     storing global modeling stuff like effect equations and optimization target
     '''
 
-    def __init__(self, label, **kwargs):
+    def __init__(self, label: str, **kwargs):
         super().__init__(label, **kwargs)
 
         self.listOfEffectTypes = []  # wird überschrieben mit spezieller Liste
 
         self.objective = None
 
-    def finalize(self):
+    def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
         self.penalty = cFeature_ShareSum('penalty', self, sharesAreTS=True)
 
@@ -829,23 +832,23 @@ class cGlobal(cME):
     #   2. TS oder skalar 
     #     -> Zuweisung zu Standard-EffektType      
 
-    def addShareToOperation(self, nameOfShare, shareHolder, aVariable, effect_values, factor):
+    def addShareToOperation(self, nameOfShare, shareHolder, aVariable, effect_values, factor) -> None:
         if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
         self.__addShare('operation', nameOfShare, shareHolder, effect_values, factor, aVariable)
 
-    def addConstantShareToOperation(self, nameOfShare, shareHolder, effect_values, factor):
+    def addConstantShareToOperation(self, nameOfShare, shareHolder, effect_values, factor) -> None:
         self.__addShare('operation', nameOfShare, shareHolder, effect_values, factor)
 
-    def addShareToInvest(self, nameOfShare, shareHolder, aVariable, effect_values, factor):
+    def addShareToInvest(self, nameOfShare, shareHolder, aVariable, effect_values, factor) -> None:
         if aVariable is None: raise Exception('addShareToInvest() needs variable or use addConstantShare instead')
         self.__addShare('invest', nameOfShare, shareHolder, effect_values, factor, aVariable)
 
-    def addConstantShareToInvest(self, nameOfShare, shareHolder, effect_values, factor):
+    def addConstantShareToInvest(self, nameOfShare, shareHolder, effect_values, factor) -> None:
         self.__addShare('invest', nameOfShare, shareHolder, effect_values, factor)
 
         # wenn aVariable = None, dann constanter Share
 
-    def __addShare(self, operationOrInvest, nameOfShare, shareHolder, effect_values, factor, aVariable=None):
+    def __addShare(self, operationOrInvest, nameOfShare, shareHolder, effect_values, factor, aVariable=None) -> None:
         aEffectSum: cFeature_ShareSum
 
         effect_values_dict = getEffectDictOfEffectValues(effect_values)
@@ -868,7 +871,7 @@ class cGlobal(cME):
             else:
                 raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
 
-    def declareVarsAndEqs(self, modBox):
+    def declareVarsAndEqs(self, modBox) -> None:
 
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
 
@@ -884,7 +887,7 @@ class cGlobal(cME):
 
     #  eq_objective = cEquation('objective',self,modBox,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def doModeling(self, modBox, timeIndexe):
+    def doModeling(self, modBox, timeIndexe) -> None:
         # super().doModeling(modBox,timeIndexe)
 
         self.penalty.doModeling(modBox, timeIndexe)
