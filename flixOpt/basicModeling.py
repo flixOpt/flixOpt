@@ -10,7 +10,7 @@ import numpy as np
 import importlib
 # import gurobipy
 import time
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Tuple, Literal
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
@@ -225,7 +225,9 @@ class cBaseModel:
 
 
 class cVariable:
-    def __init__(self, label, len, myMom, baseModel, isBinary=False, value=None, min=None, max=None):
+    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+                 value: Optional[Union[int, float]] = None,
+                 min: Optional[Union[int, float]] = None, max: Optional[Union[int, float]] = None):  #TODO: Rename max and min!!
         self.label = label
         self.len = len
         self.myMom = myMom
@@ -366,20 +368,23 @@ class cVariable:
 
 # Timeseries-Variable, optional mit Before-Werten:
 class cVariable_TS(cVariable):
-    def __init__(self, label, len, myMom, baseModel, isBinary=False, value=None, min=None, max=None):
+    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+                 value: Optional[Union[int, float, np.ndarray]] = None,
+                 min: Optional[Union[int, float, np.ndarray]] = None,
+                 max: Optional[Union[int, float, np.ndarray]] = None):
         assert len > 1, 'len is one, that seems not right for CVariable_TS'
         self.activated_beforeValues = False
         super().__init__(label, len, myMom, baseModel, isBinary=isBinary, value=value, min=min, max=max)
 
     # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
     def activateBeforeValues(self, esBeforeValue,
-                             beforeValueIsStartValue):  # beforeValueIsStartValue heißt ob es Speicherladezustand ist oder Nicht
+                             beforeValueIsStartValue) -> None:  # beforeValueIsStartValue heißt ob es Speicherladezustand ist oder Nicht
         # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
         self.beforeValueIsStartValue = beforeValueIsStartValue
         self.esBeforeValue = esBeforeValue  # Standardwerte für Simulationsstart im Energiesystem
         self.activated_beforeValues = True
 
-    def transform2MathModel(self, baseModel):
+    def transform2MathModel(self, baseModel:cBaseModel) -> None:
         super().transform2MathModel(baseModel)
 
     # hole Startwert/letzten Wert vor diesem Segment:
@@ -395,7 +400,7 @@ class cVariable_TS(cVariable):
             return self.esBeforeValue
 
     # hole Startwert/letzten Wert für nächstes Segment:
-    def getBeforeValueForNEXTSegment(self, lastUsedIndex):
+    def getBeforeValueForNEXTSegment(self, lastUsedIndex) -> Tuple:
         assert self.activated_beforeValues, 'activateBeforeValues() not executed'
         # Wenn Speicherladezustand o.ä.
         if self.beforeValueIsStartValue:
@@ -452,7 +457,7 @@ class cBeforeValueSet:
 #     super().__init__(label, myMom, baseModel, eqType='ineq')    
 
 class cEquation:
-    def __init__(self, label, myMom, baseModel, eqType='eq'):
+    def __init__(self, label: str, myMom, baseModel: cBaseModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
         self.nrOfSingleEquations = 1  # Anzahl der Gleichungen
