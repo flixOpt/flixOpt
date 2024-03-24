@@ -124,7 +124,7 @@ class cBaseModel:
 
             # Komponente löschen:
 
-    def deletePyComp(self, py_comp) -> None:
+    def deletePyComp(self, old_py_comp) -> None:
         aName = self.getPyCompStr(old_py_comp)
         aNameOfAdditionalComp = aName + '_index'  # sowas wird bei manchen Komponenten als Komponente automatisch mit erzeugt.
         # sonstige zugehörige Variablen löschen:
@@ -324,9 +324,9 @@ class cVariable:
                     self.__result = self.__result[0]
 
             elif self.baseModel.modType == 'vcxpy':
-                raise Exception('not defined for modtype ' + baseModel.modType)
+                raise Exception('not defined for modtype ' + self.baseModel.modType)
             else:
-                raise Exception('not defined for modtype ' + baseModel.modType)
+                raise Exception('not defined for modtype ' + self.baseModel.modType)
 
         return self.__result
 
