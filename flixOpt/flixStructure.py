@@ -584,7 +584,7 @@ class cEffectTypeList(List[cEffectType]):
     '''
 
     # return standard effectType:
-    def standardType(self):
+    def standardType(self) -> cEffectType:
         aEffect: cEffectType
         aStandardEffect = None
         # TODO: eleganter nach attribut suchen:
@@ -592,7 +592,7 @@ class cEffectTypeList(List[cEffectType]):
             if aEffectType.isStandard: aStandardEffect = aEffectType
         return aStandardEffect
 
-    def objectiveEffect(self):
+    def objectiveEffect(self) -> cEffectType:
         aEffect: cEffectType
         aObjectiveEffect = None
         # TODO: eleganter nach attribut suchen:
