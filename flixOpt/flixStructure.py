@@ -276,11 +276,11 @@ class cME(cArgsClass):
     not_used_args = []
 
     @property
-    def label_full(self):  # standard-Funktion, wird von Kindern teilweise überschrieben
+    def label_full(self) -> str:  # standard-Funktion, wird von Kindern teilweise überschrieben
         return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
 
     @property  # subElements of all layers
-    def subElements_all(self):
+    def subElements_all(self) -> list:  #TODO: List[cME] doesnt work...
         allSubElements = []  # wichtig, dass neues Listenobjekt!
         allSubElements += self.subElements
         for subElem in self.subElements:
@@ -289,13 +289,13 @@ class cME(cArgsClass):
         return allSubElements
 
     # TODO: besser occupied_args
-    def __init__(self, label, **kwargs):
+    def __init__(self, label: str, **kwargs):
         self.label = label
-        self.TS_list = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. cTS_vector)
+        self.TS_list: List[cTS_vector] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. cTS_vector)
 
-        self.subElements = []  # zugehörige Sub-ModelingElements
-        self.modBox = None  # hier kommt die aktive ModBox rein
-        self.mod = None  # hier kommen alle Glg und Vars rein
+        self.subElements: List[cME] = []  # zugehörige Sub-ModelingElements
+        self.modBox: Optional[cModelBoxOfES] = None  # hier kommt die aktive ModBox rein
+        self.mod: Optional[cMEModel] = None  # hier kommen alle Glg und Vars rein
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -305,26 +305,26 @@ class cME(cArgsClass):
         return f"<{self.__class__.__name__}> {self.label}"
 
     # activate inkl. subMEs:
-    def activateModbox(self, modBox):
+    def activateModbox(self, modBox) -> None:
 
         for aME in self.subElements:
             aME.activateModbox(modBox)  # inkl. subMEs
         self._activateModBox_ForMeOnly(modBox)
 
     # activate ohne SubMEs!
-    def _activateModBox_ForMeOnly(self, modBox):
+    def _activateModBox_ForMeOnly(self, modBox) -> None:
         self.modBox = modBox
         self.mod = modBox.getModOfME(self)
 
     # 1.
-    def finalize(self):
+    def finalize(self) -> None:
         # print('finalize ' + self.label)
         # gleiches für alle sub MEs:
         for aME in self.subElements:
             aME.finalize()
 
     # 2.
-    def createNewModAndActivateModBox(self, modBox):
+    def createNewModAndActivateModBox(self, modBox) -> None:
         # print('new mod for ' + self.label)
         # subElemente ebenso:
         aME: cME
@@ -339,7 +339,7 @@ class cME(cArgsClass):
         self._activateModBox_ForMeOnly(modBox)  # subMEs werden bereits aktiviert über aME.createNewMod...()
 
     # 3.
-    def declareVarsAndEqs(self, modBox):
+    def declareVarsAndEqs(self, modBox) -> None:
         #   #   # Features preparing:
         #   # for aFeature in self.features:
         #   #   aFeature.declareVarsAndEqs(modBox)
@@ -350,7 +350,7 @@ class cME(cArgsClass):
     #   aFeature.doModeling(modBox, timeIndexe)
 
     # Ergebnisse als dict ausgeben:    
-    def getResults(self):
+    def getResults(self) -> Tuple[Dict, Dict]:
         aData = {}
         aVars = {}
         # 1. Unterelemente füllen (rekursiv!):
@@ -411,7 +411,7 @@ class cME(cArgsClass):
 
         return eqsAsStr
 
-    def getVarsAsStr(self):
+    def getVarsAsStr(self) -> List:
         aList = []
         aList += self.mod.getVarsAsStr()
         for aSubElement in self.subElements:
@@ -419,17 +419,17 @@ class cME(cArgsClass):
 
         return aList
 
-    def printEqs(self, shiftChars):
+    def printEqs(self, shiftChars) -> None:
         print(shiftChars + '·' + self.label + ':')
         print(yaml.dump(self.getEqsAsStr(),
                         allow_unicode=True))
 
-    def printVars(self, shiftChars):
+    def printVars(self, shiftChars) -> None:
         print(shiftChars + self.label + ':')
         print(yaml.dump(self.getVarsAsStr(),
                         allow_unicode=True))
 
-    def getEqsVarsOverview(self):
+    def getEqsVarsOverview(self) -> Dict:
         aDict = {}
         aDict['no eqs'] = len(self.mod.eqs)
         aDict['no eqs single'] = sum([eq.nrOfSingleEquations for eq in self.mod.eqs])
