@@ -10,7 +10,7 @@ import math
 import time
 import yaml  # (für json-Schnipsel-print)
 import pprint
-from typing import List, Set, Tuple, Dict, Union
+from typing import List, Set, Tuple, Dict, Union, Optional
 
 from . import flixOptHelperFcts as helpers
 
@@ -1090,7 +1090,7 @@ class cFlow(cME):
     '''
 
     @property
-    def label_full(self):
+    def label_full(self) -> str:
         # Wenn im Erstellungsprozess comp noch nicht bekannt:
         if self.comp is None:
             comp_label = 'unknownComp'
@@ -1100,7 +1100,7 @@ class cFlow(cME):
         return comp_label + separator + self.label  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
 
     @property  # Richtung
-    def isInputInComp(self):
+    def isInputInComp(self) -> bool:
         comp: cBaseComponent
         if self in self.comp.inputs:
             return True
@@ -1108,7 +1108,7 @@ class cFlow(cME):
             return False
 
     @property
-    def investmentSize_is_fixed(self):
+    def investmentSize_is_fixed(self) -> bool:
         # Wenn kein investArg existiert:
         if self.investArgs is None:
             is_fixed = True  # keine variable var_InvestSize
@@ -1117,7 +1117,7 @@ class cFlow(cME):
         return is_fixed
 
     @property
-    def invest_is_optional(self):
+    def invest_is_optional(self) -> bool:
         # Wenn kein investArg existiert:
         if self.investArgs is None:
             is_optional = False  # keine variable var_isInvested
@@ -1129,26 +1129,27 @@ class cFlow(cME):
     __nominal_val_default = 1e9  # Großer Gültigkeitsbereich als Standard
 
     def __init__(self, label,
-                 bus: cBus = None,
-                 min_rel=0, max_rel=1,
-                 nominal_val=__nominal_val_default,
-                 loadFactor_min=None, loadFactor_max=None,
+                 bus: cBus = None,  # TODO: Is this for sure Optional?
+                 min_rel: Numeric = 0,
+                 max_rel: Numeric = 1,
+                 nominal_val: Skalar =__nominal_val_default,
+                 loadFactor_min: Optional[Skalar] = None, loadFactor_max: Optional[Skalar] = None,
                  positive_gradient=None,
-                 costsPerFlowHour=None,
-                 iCanSwitchOff=True,
-                 onHoursSum_min=None, onHoursSum_max=None,
-                 onHours_min=None, onHours_max=None,
-                 offHours_min=None, offHours_max=None,
-                 switchOnCosts=None,
-                 switchOn_maxNr=None,
-                 costsPerRunningHour=None,
-                 sumFlowHours_max=None, sumFlowHours_min=None,
-                 valuesBeforeBegin=[0, 0],
-                 val_rel=None,
-                 medium=None,
-                 investArgs=None,
-                 exists=1,
-                 group=None,
+                 costsPerFlowHour: Union[Numeric, EffectTypeDict] =None,
+                 iCanSwitchOff: bool =True,
+                 onHoursSum_min: Optional[Skalar] = None, onHoursSum_max: Optional[Skalar] = None,
+                 onHours_min: Optional[Skalar] = None, onHours_max: Optional[Skalar] = None,
+                 offHours_min: Optional[Skalar] = None, offHours_max: Optional[Skalar] = None,
+                 switchOnCosts: Union[Numeric, EffectTypeDict] = None,
+                 switchOn_maxNr: Skalar = None,
+                 costsPerRunningHour: Union[Numeric, EffectTypeDict] = None,
+                 sumFlowHours_max: Optional[Skalar] = None, sumFlowHours_min: Optional[Skalar] = None,
+                 valuesBeforeBegin: List[Skalar] = [0, 0],  # TODO: Move to __ini__ !!!! Leads to unexpected behaviour (Mutable)
+                 val_rel: Optional[Numeric] = None,
+                 medium: Optional[str] = None,
+                 investArgs: Optional[cInvestArgs] = None,
+                 exists: Optional[Numeric] = 1,
+                 group: Optional[str] = None,
                  **kwargs):
         '''
         Parameters
@@ -1339,21 +1340,21 @@ class cFlow(cME):
 
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
-    def plausiTest(self):
+    def plausiTest(self) -> None:
         # Plausi-Check min < max:
         if np.any(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d)):
             # if np.any(np.asarray(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d) )):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
-    def activateOnValue(self):
+    def activateOnValue(self) -> None:
         self.featureOn.activateOnValueExplicitly()
 
-    def finalize(self):
+    def finalize(self) -> None:
         self.plausiTest()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
         super().finalize()
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: cModelBoxOfES) -> None:
         print('declareVarsAndEqs ' + self.label)
         super().declareVarsAndEqs(modBox)
 
@@ -1406,7 +1407,7 @@ class cFlow(cME):
             self.featureInvest.setDefiningVar(self.mod.var_val, self.mod.var_on)
             self.featureInvest.declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox: cModelBoxOfES, timeIndexe):
+    def doModeling(self, modBox: cModelBoxOfES, timeIndexe) -> None:
         # super().doModeling(modBox,timeIndexe)
 
         # for aFeature in self.features:
@@ -1496,7 +1497,7 @@ class cFlow(cME):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def addShareToGlobals(self, globalComp: cGlobal, modBox):
+    def addShareToGlobals(self, globalComp: cGlobal, modBox) -> None:
 
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
@@ -1527,7 +1528,7 @@ class cFlow(cME):
                                                'costs'])
         '''
 
-    def getStrDescr(self, type='full'):
+    def getStrDescr(self, type='full') -> Dict:
         aDescr = {}
         if type == 'for bus-list':
             # aDescr = str(self.comp.label) + '.'
@@ -1561,7 +1562,7 @@ class cFlow(cME):
     #   return (str(self.comp.label) + '.' +  str(self.label))
 
     # Preset medium (only if not setted explicitly by user)
-    def setMediumIfNotSet(self, medium):
+    def setMediumIfNotSet(self, medium) -> None:
         # nicht überschreiben, nur wenn leer:
         if self.medium is None: self.medium = medium
 
