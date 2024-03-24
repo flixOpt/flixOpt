@@ -10,7 +10,7 @@ import math
 import time
 import yaml  # (für json-Schnipsel-print)
 import pprint
-from typing import List, Set, Tuple, Dict
+from typing import List, Set, Tuple, Dict, Union
 
 from . import flixOptHelperFcts as helpers
 
@@ -1883,7 +1883,7 @@ class cEnergySystem:
         return self.modBox
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activateModbox)
-    def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None):
+    def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None) -> None:
         aTS: cTS_vector
         if dictOfTSAndExplicitData is None:
             dictOfTSAndExplicitData = {}
@@ -1897,7 +1897,7 @@ class cEnergySystem:
                 # Aktivieren:
             aTS.activate(chosenTimeIndexe, explicitData)
 
-    def activateModBox(self, aModBox:cModelBoxOfES):
+    def activateModBox(self, aModBox:cModelBoxOfES) -> None:
         self.modBox = aModBox
         aModBox: cModelBoxOfES
         aME: cME
@@ -1938,7 +1938,7 @@ class cEnergySystem:
 
         return results, results_var
 
-    def printModel(self):
+    def printModel(self) -> None:
         aBus: cBus
         aComp: cBaseComponent
         print('')
@@ -2006,7 +2006,7 @@ class cEnergySystem:
 
         return aDict
 
-    def printEquations(self):
+    def printEquations(self) -> None:
 
         print('')
         print('##############################################################')
@@ -2017,7 +2017,7 @@ class cEnergySystem:
                         default_flow_style=False,
                         allow_unicode=True))
 
-    def getVarsAsStr(self, structured=True):
+    def getVarsAsStr(self, structured=True) -> Union[List, Dict]:
         aVar: cVariable
 
         # liste:
@@ -2057,7 +2057,7 @@ class cEnergySystem:
 
             return aDict
 
-    def printVariables(self):
+    def printVariables(self) -> None:
         print('')
         print('##############################################################')
         print('################# Variables of Energysystem ##################')
@@ -2074,7 +2074,7 @@ class cEnergySystem:
         yaml.dump(self.getVarsAsStr(structured=True))
 
     # Datenzeitreihe auf Basis gegebener esTimeIndexe aus globaler extrahieren:
-    def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe):
+    def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe) -> Tuple:
         # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(len(self.timeSeries))
         # Zeitreihen:
         timeSeries = self.timeSeries[chosenEsTimeIndexe]
@@ -2136,8 +2136,6 @@ class cCalculation:
             else:
                 raise Exception('calcType ' + str(self.calcType) + ' not defined')
         return self.__results_struct
-
-    es: cEnergySystem
 
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
     def __init__(self, label, es: cEnergySystem, modType, chosenEsTimeIndexe=None, pathForSaving='results', ):
