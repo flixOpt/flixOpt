@@ -6,6 +6,7 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import numpy as np
+import textwrap
 
 from . import flixOptHelperFcts as helpers
 from .basicModeling import *
@@ -112,22 +113,47 @@ class cBaseLinearTransformer(cBaseComponent):
     def __str__(self):
         # Creating a representation for factor_Sets with flow labels and their corresponding values
 
+        other_relevant_data = []
         if self.factor_Sets:
             factor_sets_rep = []
             for factor_set in self.factor_Sets:
-                factor_sets_rep.append({flow.label: value for flow, value in factor_set.items()})
+                factor_sets_rep.append({flow.__repr__(): value for flow, value in factor_set.items()})
         else:
             factor_sets_rep = "None"
 
         # Representing inputs and outputs by their labels
-        inputs_str = [flow.__str__() for flow in self.inputs]
-        outputs_str = [flow.__str__() for flow in self.outputs]
+        inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
+        outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
 
-        return (f"<{self.__class__.__name__}> {self.label}: "
-                f"exists={self.exists}, group={self.group}, "
-                f"factor_Sets={factor_sets_rep}, segmentsOfFlows={self.segmentsOfFlows}, "
-                f"\n    inputs={inputs_str}, "
-                f"\n    outputs={outputs_str})")
+        other_relevant_data = (f"factor_Sets={factor_sets_rep},\n"
+                               f"segmentsOfFlows={self.segmentsOfFlows}")
+
+        remaining_data = {
+            key: value for key, value in self.__dict__.items()
+            if value and
+               not isinstance(value, cFlow) and
+               key not in ["label", "TS_list", "segmentsOfFlows", "factor_Sets", "inputs", "outputs"]
+        }
+
+        remaining_data_str = ""
+        for key, value in remaining_data.items():
+            if hasattr(value, '__str__'):
+                remaining_data_str += f"{key}: {value}\n"
+            elif hasattr(value, '__repr__'):
+                remaining_data_str += f"{key}: {repr(value)}\n"
+            else:
+                remaining_data_str += f"{key}: {value}\n"
+
+        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
+                        f"{textwrap.indent('inputs=', ' ' * 3)}\n"
+                            f"{textwrap.indent(inputs_str, ' ' * 6)}\n"
+                        f"{textwrap.indent('outputs=', ' ' * 3)}\n"
+                            f"{textwrap.indent(outputs_str, ' ' * 6)}\n"
+                        f"{textwrap.indent(other_relevant_data, ' ' * 3)}\n"
+                        f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
+                    )
+
+        return str_desc
 
     def transformFactorsToTS(self, factor_Sets):
         """
