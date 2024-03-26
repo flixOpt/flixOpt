@@ -2482,7 +2482,7 @@ class cFlow(cME):
         self.max_rel = cTS_vector('max_rel', np.multiply(self.max_rel_explicit.d, exist_global), self)
         self.min_rel = cTS_vector('min_rel', np.multiply(self.min_rel_explicit.d, exist_global), self)
         
-        # prepare invest Feature:
+        # prepare invest Feature (only here, because of definition of max_rel/min_rel necessary):
         if self.investArgs is None:
             self.featureInvest = None  #
         else:
