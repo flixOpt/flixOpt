@@ -2375,7 +2375,7 @@ class cFlow(cME):
         self.switchOn_maxNr = switchOn_maxNr
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
         self.costsPerHour = transFormEffectValuesToTSDict('costsPerHour', costsPerHour, self)
-        self.costsPerHour_rel = transFormEffectValuesToTSDict('costsPerHour', costsPerHour_rel, self)
+        self.costsPerHour_rel = transFormEffectValuesToTSDict('costsPerHour_rel', costsPerHour_rel, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
