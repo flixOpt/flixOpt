@@ -5,6 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 import pprint
+from .flixBasics import cTS_vector 
 
 # Anmerkung: cTSraw separat von cTS_vector wg. Einfachheit für Anwender
 class cTSraw:
@@ -65,6 +66,12 @@ class cInvestArgs:
         fixCosts : None ore scalar
             fixed investment-costs if invested             
             (Attention: Annualize costs to chosen period!)
+            
+            special case: fixcosts is a timeseries - you can spread the overall investcosts to the timesteps. 
+            This is just for a better display of investcosts as regularly costs (Kapitalkosten, Darlehensrate) in results.
+            Mathematically it is just summed up: invest_sum (= sum(invest_i); i - timesteps) .
+            Take care: if you change your chosen timeIndexe of a calculation, 
+            only the chosen timesteps are used for summed investcosts!
         divestCosts : None or scalar 
             fixed divestment-costs (if not invested, i.g. demolition costs or contractual penalty)
         investmentSize_is_fixed: boolean
@@ -101,7 +108,9 @@ class cInvestArgs:
   
         '''
 
-        self.fixCosts = fixCosts
+
+        self.fixCosts = cTS_vector('fixCost', min_rel, self)
+        self.do_cTS_vectors(modBox)
         self.divestCosts = divestCosts
         self.investmentSize_is_fixed = investmentSize_is_fixed
         self.investment_is_optional = investment_is_optional
@@ -133,3 +142,8 @@ class cInvestArgs:
         return f"<{self.__class__.__name__}>: {full_str}"
 
 
+    def do_cTS_vectors(self, modBox):
+        self.fixCosts = cTS_vector('fixCost', min_rel, self)
+        # self.divestCosts = 
+        # self.specificCosts = 
+        # self.costsInInvestsizeSegments = 

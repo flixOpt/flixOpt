@@ -874,7 +874,9 @@ class cFeatureInvest(cFeature):
         super().__init__('invest', owner)
         self.nameOfInvestmentSize = nameOfInvestmentSize
         self.owner = owner
+        investArgs.do_cTS_vectors()
         self.args = investArgs
+        
         self.definingVar = None
         self.max_rel = max_rel
         self.min_rel = min_rel
@@ -1127,7 +1129,7 @@ class cFeatureInvest(cFeature):
             self.eq_isInvested_2.addSummand(self.mod.var_investmentSize, -1)
             self.eq_isInvested_2.addSummand(self.mod.var_isInvested, max(modBox.epsilon, self.args.min_investmentSize))
 
-    def addShareToGlobals(self, globalComp, modBox):
+    def addShareToGlobals(self, globalComp:cGlobal, modBox):
 
         # # fixCosts:
         # wenn fixCosts vorhanden:

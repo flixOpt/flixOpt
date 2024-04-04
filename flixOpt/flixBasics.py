@@ -102,16 +102,22 @@ class cTS_vector:
     def label_full(self):
         return self.owner.label_full + '_' + self.label
 
-    def __init__(self, label, value, owner):
+    def __init__(self, label, value, owner, TSTransformingTypeIfScalar = 'scalarInAllElementsOfArray'):
         '''
         Parameters
         ----------
         value :
             scalar, array or cTSraw!
         owner :
+        
+        TSTransformingTypeIfScalar : 
+            'scalarInAllElementsOfArray' - ' x -> [x, x, x, x, ...]'
+            'spreadValueOverTime'        - ' x -> [dt_1/dt_ges * x, dt_2/dt_ges*x,...]* x"Wert value zeitgewichtet verteilen, d.h. x_i = value * modBox.dtInHours(i)/modBox.dtInHours_tot' 
+
         '''
         self.label = label
-        self.owner = owner
+        self.owner = ownerLiebe Tanzinteressierte,
+
 
         # if value is cTSraw, then extract value:
         if isinstance(value, cTSraw):

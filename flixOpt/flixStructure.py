@@ -1430,7 +1430,6 @@ class cME(cArgsClass):
     def finalize(self):
         # print('finalize ' + self.label)
         # gleiches für alle sub MEs:
-        aME : cME
         for aME in self.subElements:
             aME.finalize()
 
@@ -1648,7 +1647,7 @@ class cEffectType(cME):
         self.min_Sum = min_Sum
         self.max_Sum = max_Sum
 
-        #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ):
+        #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ! ):
         for effectType, share in self.specificShareToOtherEffects_operation.items():
             # value überschreiben durch TS:
             TS_name = 'specificShareToOtherEffect' + '_' + effectType.label
@@ -1659,7 +1658,7 @@ class cEffectType(cME):
         # ShareSums:
         self.operation = cFeature_ShareSum(label='operation', owner=self, sharesAreTS=True,
                                            minOfSum=self.min_operationSum, maxOfSum=self.max_operationSum)
-        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False, minOfSum=self.min_investSum,
+        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=True, minOfSum=self.min_investSum,
                                         maxOfSum=self.max_investSum)
         self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.min_Sum,
                                      maxOfSum=self.max_Sum)
