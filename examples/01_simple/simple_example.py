@@ -32,6 +32,7 @@ Q_th_Last = [30., 0., 90., 110, 110 , 20, 20, 20, 20] # kW; thermal load profile
 p_el = 1/1000*np.array([80., 80., 80., 80 , 80, 80, 80, 80, 80]) # €/kWh; feed_in tariff;
 aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1) # creating timeseries
 aTimeSeries = aTimeSeries.astype('datetime64') # needed format for timeseries in flixOpt
+max_emissions_per_hour = 1000 # kg per timestep
 
 print('#######################################################################')
 print('################### start of modeling #################################')
@@ -48,8 +49,9 @@ Gas = cBus('fuel', 'Gas') # balancing node/bus of gas
 costs = cEffectType('costs','€','Kosten',  # name, unit, description
                     isStandard = True, # standard effect --> shorter input possible (without effect as a key)
                     isObjective = True) # defining costs as objective of optimiziation
+
 CO2   = cEffectType('CO2','kg','CO2_e-Emissionen', # name, unit, description
-                    specificShareToOtherEffects_operation = {costs: 0.2}) # 0.2 €/kg; defining links between effects, here CO2-price 
+                    specificShareToOtherEffects_operation = {costs: 0.2}, max_per_hour_operation = max_emissions_per_hour) # 0.2 €/kg; defining links between effects, here CO2-price 
 
 # ###########################
 # ## Component-Definition: ##
