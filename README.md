@@ -12,7 +12,7 @@ This project was funded by the German Federal Ministry for Economic Affairs and 
 
 flixOpt development is based on matlab framework flixOptMat developed in project FAKS by [TU Dresden](https://github.com/gewv-tu-dresden) and has a few influences from [oemof/solph](https://github.com/oemof/oemof-solph) (Great thanks for your tool!)
 
-## Useage
+## Usage
 Install this package via pip in to your environment: `pip install git+https://github.com/flixOpt/flixOpt.git`
 
 ## key features
