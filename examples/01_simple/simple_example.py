@@ -28,7 +28,7 @@ solverProps = {'gapFrac': gapFrac,
 
 #####################
 ## some timeseries ##
-Q_th_Last = [30., 0., 90., 110, 110 , 20, 20, 20, 20] # kW; thermal load profile in 
+Q_th_Last = np.array([30., 0., 90., 110, 110 , 20, 20, 20, 20]) # kW; thermal load profile in
 p_el = 1/1000*np.array([80., 80., 80., 80 , 80, 80, 80, 80, 80]) # €/kWh; feed_in tariff;
 aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1) # creating timeseries
 aTimeSeries = aTimeSeries.astype('datetime64') # needed format for timeseries in flixOpt
