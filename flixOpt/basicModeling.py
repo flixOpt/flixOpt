@@ -10,6 +10,7 @@ import numpy as np
 import importlib
 # import gurobipy
 import time
+from typing import List, Dict, Optional, Union, Tuple, Literal
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
@@ -33,7 +34,7 @@ class cBaseModel:
     '''
 
     @property
-    def infos(self):
+    def infos(self) -> Dict:
         infos = {}
         infos['Solver'] = self.solver_name
 
@@ -53,11 +54,11 @@ class cBaseModel:
         return infos
 
     @property
-    def variables_TSonly(self):
+    def variables_TSonly(self) -> List:
         variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, cVariable_TS)]
         return variables_TSonly
 
-    def __init__(self, label, aModType):
+    def __init__(self, label: str, aModType):
         self._infos = {}
         self.label = label
         self.modType = aModType
@@ -101,7 +102,7 @@ class cBaseModel:
         else:
             pass
 
-    def printNoEqsAndVars(self):
+    def printNoEqsAndVars(self) -> None:
         print('no of Eqs   (single):' + str(self.noOfEqs) + ' (' + str(self.noOfSingleEqs) + ')')
         print('no of InEqs (single):' + str(self.noOfIneqs) + ' (' + str(self.noOfSingleIneqs) + ')')
         print('no of Vars  (single):' + str(self.noOfVars) + ' (' + str(self.noOfSingleVars) + ')')
@@ -109,7 +110,7 @@ class cBaseModel:
     ##############################################################################################
     ################ pyomo-Spezifisch
     # alle Pyomo Elemente müssen im model registriert sein, sonst werden sie nicht berücksichtigt
-    def registerPyComp(self, py_comp, aStr='', oldPyCompToOverwrite=None):
+    def registerPyComp(self, py_comp, aStr='', oldPyCompToOverwrite=None) -> None:
         # neu erstellen
         if oldPyCompToOverwrite == None:
             self.countComp += 1
@@ -123,7 +124,7 @@ class cBaseModel:
 
             # Komponente löschen:
 
-    def deletePyComp(self, py_comp):
+    def deletePyComp(self, old_py_comp) -> None:
         aName = self.getPyCompStr(old_py_comp)
         aNameOfAdditionalComp = aName + '_index'  # sowas wird bei manchen Komponenten als Komponente automatisch mit erzeugt.
         # sonstige zugehörige Variablen löschen:
@@ -133,7 +134,7 @@ class cBaseModel:
 
         # name of component
 
-    def getPyCompStr(self, aComp):
+    def getPyCompStr(self, aComp) -> str:
         for key, val in self.model.component_map().iteritems():
             if aComp == val:
                 return key
@@ -142,14 +143,14 @@ class cBaseModel:
         return self.model.component_map()[aStr]
 
     # gleichnamige Pyomo-Komponente überschreiben (wenn schon vorhanden, sonst neu)
-    def __overwritePyComp(self, py_comp, old_py_comp):
+    def __overwritePyComp(self, py_comp, old_py_comp) -> None:
         aName = self.getPyCompStr(old_py_comp)
         # alles alte löschen:
         self.deletePyComp(old_py_comp)
         # überschreiben:
         self.model.add_component(aName, py_comp)
 
-    def transform2MathModel(self):
+    def transform2MathModel(self) -> None:
 
         self._charactarizeProblem()
 
@@ -170,7 +171,7 @@ class cBaseModel:
         self.duration['transform2MathModel'] = round(time.time() - t_start, 2)
 
     # Attention: is overrided by childclass:
-    def _charactarizeProblem(self):
+    def _charactarizeProblem(self) -> None:
         eq: cEquation
         var: cVariable
 
@@ -183,7 +184,7 @@ class cBaseModel:
         self.noOfVars = len(self.variables)
         self.noOfSingleVars = sum([var.len for var in self.variables])
 
-    def solve(self, gapfrac, timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt):
+    def solve(self, gapfrac, timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt) -> None:
         self.solver_name = solver_name
         t_start = time.time()
         for variable in self.variables:
@@ -224,7 +225,9 @@ class cBaseModel:
 
 
 class cVariable:
-    def __init__(self, label, len, myMom, baseModel, isBinary=False, value=None, min=None, max=None):
+    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+                 value: Optional[Union[int, float]] = None,
+                 min: Optional[Union[int, float]] = None, max: Optional[Union[int, float]] = None):  #TODO: Rename max and min!!
         self.label = label
         self.len = len
         self.myMom = myMom
@@ -321,9 +324,9 @@ class cVariable:
                     self.__result = self.__result[0]
 
             elif self.baseModel.modType == 'vcxpy':
-                raise Exception('not defined for modtype ' + baseModel.modType)
+                raise Exception('not defined for modtype ' + self.baseModel.modType)
             else:
-                raise Exception('not defined for modtype ' + baseModel.modType)
+                raise Exception('not defined for modtype ' + self.baseModel.modType)
 
         return self.__result
 
@@ -365,20 +368,23 @@ class cVariable:
 
 # Timeseries-Variable, optional mit Before-Werten:
 class cVariable_TS(cVariable):
-    def __init__(self, label, len, myMom, baseModel, isBinary=False, value=None, min=None, max=None):
+    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+                 value: Optional[Union[int, float, np.ndarray]] = None,
+                 min: Optional[Union[int, float, np.ndarray]] = None,
+                 max: Optional[Union[int, float, np.ndarray]] = None):
         assert len > 1, 'len is one, that seems not right for CVariable_TS'
         self.activated_beforeValues = False
         super().__init__(label, len, myMom, baseModel, isBinary=isBinary, value=value, min=min, max=max)
 
     # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
     def activateBeforeValues(self, esBeforeValue,
-                             beforeValueIsStartValue):  # beforeValueIsStartValue heißt ob es Speicherladezustand ist oder Nicht
+                             beforeValueIsStartValue) -> None:  # beforeValueIsStartValue heißt ob es Speicherladezustand ist oder Nicht
         # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
         self.beforeValueIsStartValue = beforeValueIsStartValue
         self.esBeforeValue = esBeforeValue  # Standardwerte für Simulationsstart im Energiesystem
         self.activated_beforeValues = True
 
-    def transform2MathModel(self, baseModel):
+    def transform2MathModel(self, baseModel:cBaseModel) -> None:
         super().transform2MathModel(baseModel)
 
     # hole Startwert/letzten Wert vor diesem Segment:
@@ -394,7 +400,7 @@ class cVariable_TS(cVariable):
             return self.esBeforeValue
 
     # hole Startwert/letzten Wert für nächstes Segment:
-    def getBeforeValueForNEXTSegment(self, lastUsedIndex):
+    def getBeforeValueForNEXTSegment(self, lastUsedIndex) -> Tuple:
         assert self.activated_beforeValues, 'activateBeforeValues() not executed'
         # Wenn Speicherladezustand o.ä.
         if self.beforeValueIsStartValue:
@@ -451,7 +457,7 @@ class cBeforeValueSet:
 #     super().__init__(label, myMom, baseModel, eqType='ineq')    
 
 class cEquation:
-    def __init__(self, label, myMom, baseModel, eqType='eq'):
+    def __init__(self, label: str, myMom, baseModel: cBaseModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
         self.nrOfSingleEquations = 1  # Anzahl der Gleichungen
