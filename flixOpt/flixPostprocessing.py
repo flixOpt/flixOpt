@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt  # für Plots im Postprocessing
 import matplotlib.dates as mdates
+from typing import Literal, Dict, Union
 
 
 class cFlow_post():
@@ -265,6 +266,97 @@ class flix_results():
             if flowHours > small:
                 FH[aFlow.comp + '.' + aFlow.label] = aFlow.getFlowHours()
         return FH
+
+    def _get_effect_share_factors(self) -> Dict[str, Dict[str, Union[float, np.ndarray]]]:
+        """
+        Retrieves and calculates the nested mapping of effect shares from the results dictionary. This method
+        iteratively computes the compounded share relationships by cascading direct shares to derive indirect
+        effect shares. The computation assumes that effects can influence one another through a chain of direct
+        relationships.
+
+        Returns:
+            Dict[str, Dict[str, Union[int, float, np.ndarray]]]:
+            A dictionary where each key is an effect name (origin_of_share) and its value is another dictionary with an
+            effect name (target_of_share) and the share value.
+            This value can be an integer, float, or NumPy arrays depending on the data structure of shares.
+        """
+        shares = {}
+
+        # Getting all shares from the results dict
+        for effect_name, effect_results in self.results["globalComp"].items():
+            for key in effect_results.keys():
+                if "specificShareToOtherEffect" in key:
+                    shares[effect_name] = {}
+                    effect_target = key.rsplit('_', 1)[-1]
+                    if effect_target not in self.results["globalComp"].keys():
+                        raise Exception(f"Effect '{effect_target}' not in calc1.results.")
+                    shares[effect_name][effect_target] = effect_results[key]
+
+        # Create a mapping with the absolute shares from one effect to the other.
+        for _ in range(20):  # Iterative, to catch deeply nested shares
+            for origin_of_share, target_of_share in shares.items():
+                target_of_share = next(iter(target_of_share))  # getting the key of the dict
+                if target_of_share in shares.keys():
+                    for indirect_target_of_share in shares[target_of_share].keys():
+                        shares[origin_of_share][indirect_target_of_share] = (
+                                shares[origin_of_share][target_of_share] * shares[target_of_share][
+                            indirect_target_of_share])
+
+        return shares
+
+    def get_effect_result_without_shares(self,
+                                         effect: str,
+                                         comp_name: str,
+                                         operation_or_invest: Literal["operation", "invest"]
+                                         ) -> float:
+        """
+        Calculates the total effect result for a specified component without accounting for shared influences from other effects.
+        The resulting value is the sum of the component itself and all sub COmponents like FLows
+
+        Args:
+            effect (str): The type of effect to be calculated (e.g., costs, CO2, ...).
+            comp_name (str): The name of the component.
+            operation_or_invest (Literal["operation", "invest"]): Specifies whether to use operational or investment values.
+
+        Returns:
+            float: The calculated result without considering any shared effects.
+        """
+        result = 0
+        for name, value in self.results["globalComp"][effect][operation_or_invest]["shares"].items():
+            if comp_name in name:  # string comparison
+                result += value
+        return result
+
+    def get_effect_result(self,
+                          effect: str,
+                          comp_name: str,
+                          operation_or_invest: Literal["operation", "invest"]
+                          ) -> float:
+        """
+        Computes the total effect result for a specified component by incorporating both direct and shared
+        influences from other components or effects. This method first calculates the direct effect result and
+        then adds the influences from other effects based on the shared factors.
+        The resulting value is the sum of the component itself and all sub COmponents like FLows
+
+        Args:
+            effect (str): The type of effect (e.g., energy, force) under consideration.
+            comp_name (str): The name of the component for which the result is being calculated.
+            operation_or_invest (Literal["operation", "invest"]): Specifies whether to use operational or
+            investment data for calculations.
+
+        Returns:
+            float: The total effect result that includes both direct and shared influences.
+        """
+
+        result = self.get_effect_result_without_shares(effect, comp_name, operation_or_invest)
+        shares = self._get_effect_share_factors()
+
+        for origin_of_share in shares.keys():
+            if effect in shares[origin_of_share].keys():
+                result_wo_shares = self.get_effect_result_without_shares(origin_of_share, comp_name, operation_or_invest)
+                result += result_wo_shares * shares[origin_of_share][effect]
+
+        return result
 
     # def plotFullLoadHours(self):
     #   FLH = self.getLoadFactor
