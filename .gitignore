@@ -5,3 +5,5 @@ results/
 venv/
 .DS_Store
 examples/*/results/
+tests/results/
+tests/*/results/
