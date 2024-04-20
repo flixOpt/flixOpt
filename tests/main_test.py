@@ -4,7 +4,7 @@ Created on Fri Nov 11 10:29:47 2022
 
 @author: Panitz
 """
+
+# THis skript runs all tests in the test directory
 import pytest
-import os
-os.chdir(os.path.dirname(__file__)+'/..')
-pytest.main()
+pytest.main(["--verbose"])
