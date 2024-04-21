@@ -615,7 +615,7 @@ class cBaseComponent(cME):
                      'onHoursSum_max', 'costsPerRunningHour']
     not_used_args = ['label']
 
-    def __init__(self, label: str, on_valuesBeforeBegin=[0, 0],  # TODO: Move to __init__, leads to unexpected Behavours (Mutable)!!!
+    def __init__(self, label: str, on_valuesBeforeBegin:Optional[List[Skalar]] = None,
                  switchOnCosts: Optional[Union[EffectTypeDict, Numeric]] = None,
                  switchOn_maxNr: Optional[Skalar] = None,
                  onHoursSum_min: Optional[Skalar] = None,
@@ -650,7 +650,7 @@ class cBaseComponent(cME):
         '''
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
-        self.on_valuesBeforeBegin = on_valuesBeforeBegin
+        self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
         self.switchOnCosts = transFormEffectValuesToTSDict('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
         self.onHoursSum_min = onHoursSum_min
@@ -1148,7 +1148,7 @@ class cFlow(cME):
                  switchOn_maxNr: Optional[Skalar] = None,
                  costsPerRunningHour: Optional[Union[Numeric, EffectTypeDict]] = None,
                  sumFlowHours_max: Optional[Skalar] = None, sumFlowHours_min: Optional[Skalar] = None,
-                 valuesBeforeBegin: List[Skalar] = [0, 0],  # TODO: Move to __ini__ !!!! Leads to unexpected behaviour (Mutable)
+                 valuesBeforeBegin: Optional[List[Skalar]] = None,
                  val_rel: Optional[Numeric] = None,
                  medium: Optional[str] = None,
                  investArgs: Optional[cInvestArgs] = None,
@@ -1254,7 +1254,7 @@ class cFlow(cME):
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
-        self.valuesBeforeBegin = np.array(valuesBeforeBegin)  # list -> np-array
+        self.valuesBeforeBegin = np.array(valuesBeforeBegin) if valuesBeforeBegin else np.array([0, 0])  # list -> np-array
 
         if val_rel is None:
             self.val_rel = None  # damit man noch einfach rauskriegt, ob es belegt wurde
