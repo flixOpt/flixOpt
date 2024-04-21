@@ -332,12 +332,12 @@ class cME(cArgsClass):
             aData[aTS.label] = aTS.d
             aVars[aTS.label] = aTS  # link zur Variable
 
-            # 4. Attribut Group übergeben, wenn vorhanden
-            aGroup: str
-            if hasattr(self, 'group'):
-                if self.group is not None:
-                    aData["group"] = self.group
-                    aVars["group"] = self.group
+        # 4. Attribut Group übergeben, wenn vorhanden
+        aGroup: str
+        if hasattr(self, 'group'):
+            if self.group is not None:
+                aData["group"] = self.group
+                aVars["group"] = self.group
 
         return aData, aVars
 
