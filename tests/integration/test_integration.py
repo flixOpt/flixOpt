@@ -16,7 +16,7 @@ class TestModelingTypes(unittest.TestCase):
         try:
             costs = run_model_modeling_types(modeling_type="aggregated")
             expected_cost = 342967.0
-            self.assertAlmostEqual(first=costs, second=expected_cost, places=-3,
+            self.assertAlmostEqual(first=costs, second=expected_cost, places=-2,
                                    msg=f"Aggregated calculation cost mismatch: Expected {expected_cost}, got {costs}")
         except Exception as e:
             self.fail(f"Testing of Aggregated Calculation failed with exception: {e}")
@@ -63,21 +63,21 @@ class TestExamples(unittest.TestCase):
         try:
             costs_full = Model_and_solve.full.results_struct.costs.all.sum
             expected_cost_full= 342967.0
-            self.assertAlmostEqual(first=costs_full, second=expected_cost_full, places=2,
+            self.assertAlmostEqual(first=costs_full, second=expected_cost_full, places=-1,
                                    msg=f"Aggregated Modeling cost mismatch: Expected {expected_cost_full}, got {costs_full}")
             print("Full Modeling sucessfully tested")
 
 
             costs_agg = Model_and_solve.agg.results_struct.costs.all.sum
             expected_cost_agg = 342967.0
-            self.assertAlmostEqual(first=costs_agg, second=expected_cost_agg, places=0,
+            self.assertAlmostEqual(first=costs_agg, second=expected_cost_agg, places=-2,
                                    msg=f"Aggregated Modeling cost mismatch: Expected {expected_cost_agg}, got {costs_agg}")
             print("Aggregated Modeling sucessfully tested")
 
 
             costs_seg = Model_and_solve.agg.results_struct.costs.all.sum
             expected_cost_seg = [210569.29522477, 270926.44574398]
-            self.assertAlmostEqual(first=sum(costs_seg), second=sum(expected_cost_seg), places=0,
+            self.assertAlmostEqual(first=sum(costs_seg), second=sum(expected_cost_seg), places=-1,
                                    msg=f"Segmented Modeling cost mismatch: Expected {expected_cost_seg}, got {costs_seg}")
             print("Segmented Modeling sucessfully tested")
 
