@@ -286,7 +286,8 @@ class flix_results():
         for effect_name, effect_results in self.results["globalComp"].items():
             for key in effect_results.keys():
                 if "specificShareToOtherEffect" in key:
-                    shares[effect_name] = {}
+                    if effect_name not in shares.keys():
+                        shares[effect_name] = {}
                     effect_target = key.rsplit('_', 1)[-1]
                     if effect_target not in self.results["globalComp"].keys():
                         raise Exception(f"Effect '{effect_target}' not in calc1.results.")
