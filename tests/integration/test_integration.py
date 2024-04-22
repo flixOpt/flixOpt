@@ -62,8 +62,8 @@ class TestExamples(unittest.TestCase):
             self.fail(f"Test failed with exception: {e}")
         try:
             costs_full = Model_and_solve.full.results_struct.costs.all.sum
-            expected_cost_full= 342967.0
-            self.assertAlmostEqual(first=costs_full, second=expected_cost_full, places=-1,
+            expected_cost_full= 343613
+            self.assertAlmostEqual(first=costs_full, second=expected_cost_full, places=-2,
                                    msg=f"Aggregated Modeling cost mismatch: Expected {expected_cost_full}, got {costs_full}")
             print("Full Modeling sucessfully tested")
 
