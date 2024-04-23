@@ -480,7 +480,8 @@ class cEffectType(cME):
                  max_investSum: Optional[Skalar] = None,
                  min_per_hour_operation: Optional[Numeric] = None,
                  max_per_hour_operation: Optional[Numeric] = None,
-                 min_Sum: Optional[Skalar] = None, max_Sum: Optional[Skalar] = None,
+                 min_Sum: Optional[Skalar] = None,
+                 max_Sum: Optional[Skalar] = None,
                  **kwargs):
         '''        
         Parameters
