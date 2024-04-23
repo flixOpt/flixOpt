@@ -1272,7 +1272,7 @@ class cFlow(cME):
         self.switchOn_maxNr = switchOn_maxNr
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
         self.costsPerHour = transFormEffectValuesToTSDict('costsPerHour', costsPerHour, self)
-        self.costsPerHour_rel = transFormEffectValuesToTSDict('costsPerHour', costsPerHour_rel, self)
+        self.costsPerHour_rel = transFormEffectValuesToTSDict('costsPerHour_rel', costsPerHour_rel, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
@@ -1531,27 +1531,27 @@ class cFlow(cME):
             # variable_costs          = cVector(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))
             # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.d_i, modBox.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
-            globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.mod.var_val, self.costsPerFlowHour,
+            globalComp.addShareToOperation('costsPerFlowHour', self, self.mod.var_val, self.costsPerFlowHour,
                                            modBox.dtInHours)
         
         # Betriebskosten absolut:
         #   wenn Variable isInvested vorhanden:
         if self.costsPerHour is not None:
-            if (self.featureInvest is not None) and self.featureInvest.investment_is_optional:
-                globalComp.addShareToOperation('costsPerHour', shareHolder, featureInvest.mod.var_isInvested ,self.costsPerHour,
-                                               np.multiply(modBox.dtInHours, self.exists))
+            if (self.featureInvest is not None) and self.invest_is_optional:
+                globalComp.addShareToOperation('costsPerHour', self, self.featureInvest.mod.var_isInvested ,self.costsPerHour,
+                                               np.multiply(modBox.dtInHours, self.exists.d))
             else:
-                globalComp.addConstantShareToOperation('costsPerHour', shareHolder, self.costsPerHour,
-                                               np.multiply(modBox.dtInHours, self.exists))
+                globalComp.addConstantShareToOperation('costsPerHour', self, self.costsPerHour,
+                                               np.multiply(modBox.dtInHours, self.exists.d))
 
                                                        # Betriebskosten relativ:                                     np.multiply(modBox.dtInHours, self.exists))
         if self.costsPerHour_rel is not None:
             if (self.featureInvest is not None):
-                globalComp.addShareToOperation('costsPerHour_rel', shareHolder, featureInvest.mod.var_investmentSize ,self.costsPerHour_rel,
-                                               np.multiply(modBox.dtInHours, self.exists))
+                globalComp.addShareToOperation('costsPerHour_rel', self, self.featureInvest.mod.var_investmentSize ,self.costsPerHour_rel,
+                                               np.sum(np.multiply(modBox.dtInHours, self.exists.d)))
             else:
-                globalComp.addConstantShareToOperation('costsPerHour_rel', shareHolder, self.costsPerHour_rel,
-                                               np.multiply(modBox.dtInHours, self.exists, self.nominal_val))
+                globalComp.addConstantShareToOperation('costsPerHour_rel', self, self.costsPerHour_rel,
+                                               np.sum(np.multiply(modBox.dtInHours, self.exists.d)) * self.nominal_val)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
         self.featureOn.addShareToGlobals(globalComp, modBox)
