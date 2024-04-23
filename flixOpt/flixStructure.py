@@ -474,9 +474,14 @@ class cEffectType(cME):
                  isObjective: bool = False,
                  specificShareToOtherEffects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
                  specificShareToOtherEffects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
-                 min_operationSum: Optional[Skalar] = None, max_operationSum: Optional[Skalar] = None,
-                 min_investSum: Optional[Skalar] = None, max_investSum: Optional[Skalar] = None,
-                 min_Sum: Optional[Skalar]=None, max_Sum: Optional[Skalar]=None,
+                 min_operationSum: Optional[Skalar] = None,
+                 max_operationSum: Optional[Skalar] = None,
+                 min_investSum: Optional[Skalar] = None,
+                 max_investSum: Optional[Skalar] = None,
+                 min_per_hour_operation: Optional[Numeric] = None,
+                 max_per_hour_operation: Optional[Numeric] = None,
+                 min_Sum: Optional[Skalar] = None,
+                 max_Sum: Optional[Skalar] = None,
                  **kwargs):
         '''        
         Parameters
@@ -499,6 +504,10 @@ class cEffectType(cME):
             minimal sum (only operation) of the effect
         max_operationSum : scalar, optional
             maximal sum (nur operation) of the effect.
+        min_per_hour_operation : scalar or TS
+            maximum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
+        max_per_hour_operation : scalar or TS
+            minimum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
         min_investSum : scalar, optional
             minimal sum (only invest) of the effect
         max_investSum : scalar, optional
@@ -533,6 +542,8 @@ class cEffectType(cME):
 
         self.min_operationSum = min_operationSum
         self.max_operationSum = max_operationSum
+        self.min_per_hour_operation = min_per_hour_operation
+        self.max_per_hour_operation = max_per_hour_operation
         self.min_investSum = min_investSum
         self.max_investSum = max_investSum
         self.min_Sum = min_Sum
@@ -548,7 +559,8 @@ class cEffectType(cME):
 
         # ShareSums:
         self.operation = cFeature_ShareSum(label='operation', owner=self, sharesAreTS=True,
-                                           minOfSum=self.min_operationSum, maxOfSum=self.max_operationSum)
+                                           minOfSum=self.min_operationSum, maxOfSum= self.max_operationSum,
+                                           min_per_hour=self.min_per_hour_operation, max_per_hour=self.max_per_hour_operation)
         self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False, minOfSum=self.min_investSum,
                                         maxOfSum=self.max_investSum)
         self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.min_Sum,

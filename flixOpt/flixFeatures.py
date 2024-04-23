@@ -622,7 +622,7 @@ class cFeatureOn(cFeature):
 # TODO: als cFeature_TSShareSum
 class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
 
-    def __init__(self, label, owner, sharesAreTS, maxOfSum=None, minOfSum=None):
+    def __init__(self, label, owner, sharesAreTS, maxOfSum=None, minOfSum=None, max_per_hour = None, min_per_hour = None):
         '''
         sharesAreTS = True : 
           Output: 
@@ -652,13 +652,24 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
             DESCRIPTION. The default is None.
         minOfSum : TYPE, optional
             DESCRIPTION. The default is None.
-
+        max_per_hour : scalar or timeseries 
+            maximum value per hour of shareSum of each timestep    
+            only usable if sharesAreTS=True         
+        min_per_hour : scalar or timeseries (if sharesAreTS=True)
+            minimum value per hour of shareSum of each timestep    
+            only usable if sharesAreTS=True 
 
         '''
         super().__init__(label, owner)
         self.sharesAreTS = sharesAreTS
         self.maxOfSum = maxOfSum
         self.minOfSum = minOfSum
+        max_min_per_hour_is_not_None = (max_per_hour is not None) or (min_per_hour is not None)
+        if (not self.sharesAreTS) and max_min_per_hour_is_not_None:
+            raise Exception('max_per_hour or min_per_hour can only be used, if sharesAreTS==True!')
+        self.max_per_hour = None if (max_per_hour is None) else cTS_vector('max_per_hour', max_per_hour, self)
+        self.min_per_hour = None if (min_per_hour is None) else cTS_vector('min_per_hour', min_per_hour, self)           
+        
 
         self.shares = cFeatureShares('shares', self)
         # self.effectType = effectType    
@@ -673,7 +684,9 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
         #   -> aber Beachte Effekt ist nicht einfach gleichzusetzen mit Flow, da hier eine Menge z.b. in € im Zeitschritt übergeben wird
         # variable für alle TS zusammen (TS-Summe):
         if self.sharesAreTS:
-            self.mod.var_sum_TS = cVariable_TS('sum_TS', modBox.nrOfTimeSteps, self, modBox)  # TS
+            lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.d_i, modBox.dtInHours)
+            ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.d_i, modBox.dtInHours)
+            self.mod.var_sum_TS = cVariable_TS('sum_TS', modBox.nrOfTimeSteps, self, modBox, min = lb_TS, max = ub_TS)  # TS
 
         # Variable für Summe (Skalar-Summe):
         self.mod.var_sum = cVariable('sum', 1, self, modBox, min=self.minOfSum, max=self.maxOfSum)  # Skalar
