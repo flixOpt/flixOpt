@@ -324,7 +324,7 @@ class flix_results():
         """
         result = 0
         for name, value in self.results["globalComp"][effect][operation_or_invest]["shares"].items():
-            if comp_name in name:  # string comparison
+            if name.startswith(f"{comp_name}__"):  # string comparison. Flow name is split from comp name by __
                 result += value
         return result
 
