@@ -280,28 +280,45 @@ class flix_results():
             effect name (target_of_share) and the share value.
             This value can be an integer, float, or NumPy arrays depending on the data structure of shares.
         """
-        shares = {}
+        shares_direct = {}
 
         # Getting all shares from the results dict
         for effect_name, effect_results in self.results["globalComp"].items():
             for key in effect_results.keys():
                 if "specificShareToOtherEffect" in key:
-                    if effect_name not in shares.keys():
-                        shares[effect_name] = {}
+                    if effect_name not in shares_direct.keys():
+                        shares_direct[effect_name] = {}
                     effect_target = key.rsplit('_', 1)[-1]
                     if effect_target not in self.results["globalComp"].keys():
                         raise Exception(f"Effect '{effect_target}' not in calc1.results.")
-                    shares[effect_name][effect_target] = effect_results[key]
+                    shares_direct[effect_name][effect_target] = effect_results[key]
 
-        # Create a mapping with the absolute shares from one effect to the other.
-        for _ in range(20):  # Iterative, to catch deeply nested shares
-            for origin_of_share, target_of_share in shares.items():
-                target_of_share = next(iter(target_of_share))  # getting the key of the dict
-                if target_of_share in shares.keys():
-                    for indirect_target_of_share in shares[target_of_share].keys():
-                        shares[origin_of_share][indirect_target_of_share] = (
-                                shares[origin_of_share][target_of_share] * shares[target_of_share][
-                            indirect_target_of_share])
+        def get_total_share_factor(origin, target, shares_direct) -> Union[float, np.ndarray]:
+            '''
+            allocates direct effect share factors to total effect shares factors. Uses recursion
+            Example:
+                shares_direct = {'CO2': {'costs': 0.2},'PE': {'costs': 0.2, 'CO2': 4}, 'PE2': {'PE': 5, 'CO2': 4, 'costs': 23}}
+                Compute all shares like this:
+                res = ( shares_direct["PE2"]["costs"] +
+                        shares_direct["PE2"]["CO2"] * shares_direct["CO2"]["costs"] +
+                        shares_direct["PE2"]["PE"] * shares_direct["PE"]["costs"] +
+                        shares_direct["PE2"]["PE"] * shares_direct["PE"]["CO2"] * shares_direct["CO2"]["costs"])
+
+            returns the value for the total share from one effect to another
+            '''
+            if origin not in shares_direct.keys():
+                return 0
+            value = shares_direct[origin].get(target, 0)
+            for key in shares_direct[origin].keys():
+                indirect_value = shares_direct[origin][key]
+                value = value + indirect_value * get_total_share_factor(key, target, shares_direct)
+            return value
+
+        shares = {}
+        for origin in shares_direct.keys():
+            shares[origin] = {}
+            for target in shares_direct[origin].keys():
+                shares[origin][target] = get_total_share_factor(origin, target, shares_direct)
 
         return shares
 
