@@ -19,8 +19,9 @@ timelimit = 3600 # seconds until solver abort
 # choose the solver, you have installed:
 # solver_name = 'glpk' # warning, glpk quickly has numerical problems with binaries (big and epsilon)
 # solver_name = 'gurobi'
-solver_name = 'highs'
-solverProps = {'gapFrac': gapFrac,
+# solver_name = 'cbc'
+solver_name = 'Highs'
+solverProps = {'gapFrac': gapFrac, 
                'timelimit': timelimit,
                'solver': solver_name, 
                'displaySolverOutput' : displaySolverOutput,

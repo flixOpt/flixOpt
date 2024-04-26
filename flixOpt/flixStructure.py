@@ -185,8 +185,10 @@ class cModelBoxOfES(cBaseModel):
                 aDict['sum'] = str(aEffect.all.mod.var_sum.getResult())
             main_results_str['penaltyCosts'] = str(self.es.globalComp.penalty.mod.var_sum.getResult())
             main_results_str['Result of Obj'] = self.objective_value
-            main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
-
+            if self.solver_name =='highs':
+                main_results_str['lower bound'] = self.solver_results.best_objective_bound
+            else:
+                main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
             main_results_str['busesWithExcess'] = busesWithExcess
             for aBus in self.es.setOfBuses:
