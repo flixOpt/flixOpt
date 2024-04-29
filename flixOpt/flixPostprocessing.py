@@ -315,10 +315,14 @@ class flix_results():
             return value
 
         shares = {}
-        for origin in shares_direct.keys():
+        for origin in self.results["globalComp"].keys():
             shares[origin] = {}
-            for target in shares_direct[origin].keys():
-                shares[origin][target] = get_total_share_factor(origin, target, shares_direct)
+            for target in self.results["globalComp"].keys():
+                share_value = get_total_share_factor(origin, target, shares_direct)
+                if share_value != 0:
+                    shares[origin][target] = share_value
+            if shares[origin] == {}:
+                shares.pop(origin)
 
         return shares
 
@@ -341,7 +345,7 @@ class flix_results():
         """
         result = 0
         for name, value in self.results["globalComp"][effect][operation_or_invest]["shares"].items():
-            if comp_name in name:  # string comparison
+            if name.startswith(f"{comp_name}__"):  # string comparison. Flow name is split from comp name by __
                 result += value
         return result
 
