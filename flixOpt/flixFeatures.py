@@ -652,10 +652,10 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
             DESCRIPTION. The default is None.
         minOfSum : TYPE, optional
             DESCRIPTION. The default is None.
-        max_per_hour : scalar or timeseries 
-            maximum value per hour of shareSum of each timestep    
+        max_per_hour : scalar or list(TS) (if sharesAreTS=True)
+            maximum value per hour of shareSum;
             only usable if sharesAreTS=True         
-        min_per_hour : scalar or timeseries (if sharesAreTS=True)
+        min_per_hour : scalar or list(TS) (if sharesAreTS=True)
             minimum value per hour of shareSum of each timestep    
             only usable if sharesAreTS=True 
 
