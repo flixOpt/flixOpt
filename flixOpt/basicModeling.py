@@ -10,6 +10,7 @@ import numpy as np
 import importlib
 # import gurobipy
 import time
+from pyomo.contrib import appsi
 from typing import List, Dict, Optional, Union, Tuple, Literal
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
@@ -190,8 +191,10 @@ class cBaseModel:
         for variable in self.variables:
             variable.resetResult()  # altes Ergebnis löschen (falls vorhanden)
         if self.modType == 'pyomo':
-            solver = pyomoEnv.SolverFactory(solver_name)
-
+            if solver_name == 'highs':
+              solver = appsi.solvers.Highs()   
+            else:
+              solver = pyomoEnv.SolverFactory(solver_name)
             if solver_name == 'cbc':
                 solver_opt["ratio"] = gapfrac
                 solver_opt["sec"] = timelimit
@@ -206,15 +209,28 @@ class cBaseModel:
                 # solver_opt = {} # überschreiben, keine kwargs zulässig
                 # solver_opt["mipgap"] = gapfrac
                 solver_opt['mipgap'] = gapfrac
-
+            elif solver_name == 'highs':
+                  solver_opt["mip_rel_gap"] = gapfrac
+                  solver_opt["time_limit"] = timelimit
+                  solver_opt["log_file"]= "results/highs.log"
+                  solver_opt["parallel"] = "on"
+                  solver_opt["presolve"] = "on"
+                  solver_opt["threads"] = 4
+                  solver_opt["output_flag"] = True
+                  solver_opt["log_to_console"] = True    
             # logfileName = "flixSolverLog.log"
-
-            self.solver_results = solver.solve(self.model, options=solver_opt, tee=displaySolverOutput, keepfiles=True,
-                                               logfile=logfileName)
+            if solver_name == 'highs':
+                solver.highs_options=solver_opt
+                self.solver_results = solver.solve(self.model)     
+            else:    
+                self.solver_results = solver.solve(self.model, options = solver_opt, tee = displaySolverOutput, keepfiles=True, logfile=logfileName)  
 
             # Log wieder laden:
-            self.solverLog = cSolverLog(solver_name, logfileName)
-            self.solverLog.parseInfos()
+            if solver_name == 'highs':
+                pass    
+            else:    
+                self.solverLog = cSolverLog(solver_name,logfileName)
+                self.solverLog.parseInfos()
             # Ergebnis Zielfunktion ablegen
             self.objective_value = self.model.objective.expr()
 
