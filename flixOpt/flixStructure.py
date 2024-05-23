@@ -707,14 +707,10 @@ class cBaseComponent(cME):
         inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs != [] else "inputs=[]"
         outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.outputs != [] else "outputs=[]"
 
-        sub_elements_str = ",\n".join([comp.__str__() for comp in self.subElements])
-        sub_elements_str = f"subElements=\n{textwrap.indent(sub_elements_str, ' ' * 3)}" if self.subElements != [] else "subElements=[]"
-
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, cFlow) and
-               key not in ["label", "TS_list", "inputs", "outputs", "subElements", "modBox", "mod"]
+               not isinstance(value, cFlow) and key in self.getInitArgs() and key != "label"
         }
 
         remaining_data_str = ""
@@ -730,7 +726,6 @@ class cBaseComponent(cME):
                     f"{textwrap.indent(inputs_str, ' ' * 3)}\n"
                     f"{textwrap.indent(outputs_str, ' ' * 3)}\n"
                     f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
-                    f"{textwrap.indent(sub_elements_str, ' ' * 3)}\n"
                     )
 
         return str_desc
