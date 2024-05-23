@@ -261,7 +261,27 @@ class cME(cArgsClass):
         return f"<{self.__class__.__name__}> {self.label}"
 
     def __str__(self):
-        return f"<{self.__class__.__name__}> {self.label}"
+        # Creating a representation for factor_Sets with flow labels and their corresponding values
+        remaining_data = {
+            key: value for key, value in self.__dict__.items()
+            if value and
+               not isinstance(value, cFlow) and key in self.getInitArgs() and key != "label"
+        }
+
+        remaining_data_str = ""
+        for key, value in remaining_data.items():
+            if hasattr(value, '__str__'):
+                remaining_data_str += f"{key}: {value}\n"
+            elif hasattr(value, '__repr__'):
+                remaining_data_str += f"{key}: {repr(value)}\n"
+            else:
+                remaining_data_str += f"{key}: {value}\n"
+
+        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
+                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
+                    )
+
+        return str_desc
 
     # activate inkl. subMEs:
     def activateModbox(self, modBox) -> None:
