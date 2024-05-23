@@ -1735,8 +1735,10 @@ class cEnergySystem:
         return f"<{self.__class__.__name__} with {len(self.listOfComponents)} components and {len(self.listOfEffectTypes)} effects>"
 
     def __str__(self):
-        components = '\n'.join(component.__str__() for component in self.listOfComponents)
-        effects = '\n'.join(effect.__str__() for effect in self.listOfEffectTypes)
+        components = '\n'.join(component.__str__() for component in
+                               sorted(self.listOfComponents, key=lambda component: component.label.upper()))
+        effects = '\n'.join(effect.__str__() for effect in
+                               sorted(self.listOfEffectTypes, key=lambda effect: effect.label.upper()))
         return f"Energy System with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
