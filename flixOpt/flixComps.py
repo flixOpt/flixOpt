@@ -621,7 +621,7 @@ class cStorage(cBaseComponent):
 
     new_init_args = ['label', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
                      'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
-                     'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce' 'investArgs']
+                     'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce', 'investArgs']
 
     not_used_args = ['label']
 
