@@ -24,6 +24,9 @@ class cFeature(cME):
             self.owner.subElements.append(self)  # register in owner
         super().__init__(label, **kwargs)
 
+    def __str__(self):
+        return f"<{self.__class__.__name__}> {self.label}"
+
     @property
     def label_full(self):
         return self.owner.label_full + '_' + self.label
