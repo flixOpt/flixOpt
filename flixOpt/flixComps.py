@@ -112,8 +112,6 @@ class cBaseLinearTransformer(cBaseComponent):
 
     def __str__(self):
         # Creating a representation for factor_Sets with flow labels and their corresponding values
-
-        other_relevant_data = []
         if self.factor_Sets:
             factor_sets_rep = []
             for factor_set in self.factor_Sets:

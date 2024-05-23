@@ -261,7 +261,6 @@ class cME(cArgsClass):
         return f"<{self.__class__.__name__}> {self.label}"
 
     def __str__(self):
-        # Creating a representation for factor_Sets with flow labels and their corresponding values
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
@@ -714,10 +713,6 @@ class cBaseComponent(cME):
     #     aComp.addEnergySystemIBelongTo(base)
 
     def __str__(self):
-        # Creating a representation for factor_Sets with flow labels and their corresponding values
-
-        other_relevant_data = []
-
         # Representing inputs and outputs by their labels
         inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
         outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
