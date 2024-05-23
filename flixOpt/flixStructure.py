@@ -693,9 +693,6 @@ class cBaseComponent(cME):
     #   for aComp in self.subComps :
     #     aComp.addEnergySystemIBelongTo(base)
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.label}"
-
     def __str__(self):
         # Creating a representation for factor_Sets with flow labels and their corresponding values
 
@@ -1357,10 +1354,6 @@ class cFlow(cME):
                                                 val_rel=self.val_rel,
                                                 investmentSize=self.nominal_val,
                                                 featureOn=self.featureOn)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.label}"
-
 
     def __str__(self):
         details = [
