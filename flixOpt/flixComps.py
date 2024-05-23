@@ -124,6 +124,8 @@ class cBaseLinearTransformer(cBaseComponent):
         # Representing inputs and outputs by their labels
         inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
         outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
+        inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs else "inputs=[]"
+        outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.inputs else "outputs=[]"
 
         other_relevant_data = (f"factor_Sets={factor_sets_rep},\n"
                                f"segmentsOfFlows={self.segmentsOfFlows}")
@@ -145,12 +147,10 @@ class cBaseLinearTransformer(cBaseComponent):
                 remaining_data_str += f"{key}: {value}\n"
 
         str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
-                        f"{textwrap.indent('inputs=', ' ' * 3)}\n"
-                            f"{textwrap.indent(inputs_str, ' ' * 6)}\n"
-                        f"{textwrap.indent('outputs=', ' ' * 3)}\n"
-                            f"{textwrap.indent(outputs_str, ' ' * 6)}\n"
-                        f"{textwrap.indent(other_relevant_data, ' ' * 3)}\n"
-                        f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
+                    f"{textwrap.indent(inputs_str, ' ' * 3)}\n"
+                    f"{textwrap.indent(outputs_str, ' ' * 3)}\n"
+                    f"{textwrap.indent(other_relevant_data, ' ' * 3)}\n"
+                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
                     )
 
         return str_desc
@@ -768,22 +768,6 @@ class cStorage(cBaseComponent):
         # TODO: chargeState0 darf nicht größer max usw. abfangen!
 
         self.isStorage = True  # for postprocessing
-
-    def __str__(self):
-
-        # Representing inputs and outputs by their labels
-        inputs_str = [flow.__str__() for flow in self.inputs]
-        outputs_str = [flow.__str__() for flow in self.outputs]
-
-        return (f"<{self.__class__.__name__}> {self.label}: "
-                f"exists={self.exists}, group={self.group}, "
-                f"capacity={self.capacity_inFlowHours} FlowHours, "
-                f"Min/Max Charge State={self.min_rel_chargeState}-{self.max_rel_chargeState}, "
-                f"fracLossPerHour={self.fracLossPerHour}, "
-                f"eta_load={self.eta_load}, eta_unload={self.eta_unload}, "
-                f"investArgs={self.investArgs.__str__()}, "
-                f"\n    inputs={inputs_str},"
-                f"\n    outputs={outputs_str}")
 
     def declareVarsAndEqs(self, modBox: cModelBoxOfES):
         """

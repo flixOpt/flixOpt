@@ -10,6 +10,7 @@ import math
 import time
 import yaml  # (für json-Schnipsel-print)
 import pprint
+import textwrap
 from typing import List, Set, Tuple, Dict, Union, Optional
 
 from . import flixOptHelperFcts as helpers
@@ -696,14 +697,43 @@ class cBaseComponent(cME):
         return f"<{self.__class__.__name__}> {self.label}"
 
     def __str__(self):
+        # Creating a representation for factor_Sets with flow labels and their corresponding values
+
+        other_relevant_data = []
+
         # Representing inputs and outputs by their labels
-        inputs_str = [flow.__str__() for flow in self.inputs]
-        outputs_str = [flow.__str__() for flow in self.outputs]
+        inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
+        outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
+        inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs != [] else "inputs=[]"
+        outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.outputs != [] else "outputs=[]"
 
-        return (f"<{self.__class__.__name__}> {self.label}:"
-                f"\n    inputs={inputs_str},"
-                f"\n    outputs={outputs_str}")
+        sub_elements_str = ",\n".join([comp.__str__() for comp in self.subElements])
+        sub_elements_str = f"subElements=\n{textwrap.indent(sub_elements_str, ' ' * 3)}" if self.subElements != [] else "subElements=[]"
 
+        remaining_data = {
+            key: value for key, value in self.__dict__.items()
+            if value and
+               not isinstance(value, cFlow) and
+               key not in ["label", "TS_list", "inputs", "outputs", "subElements", "modBox", "mod"]
+        }
+
+        remaining_data_str = ""
+        for key, value in remaining_data.items():
+            if hasattr(value, '__str__'):
+                remaining_data_str += f"{key}: {value}\n"
+            elif hasattr(value, '__repr__'):
+                remaining_data_str += f"{key}: {repr(value)}\n"
+            else:
+                remaining_data_str += f"{key}: {value}\n"
+
+        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
+                    f"{textwrap.indent(inputs_str, ' ' * 3)}\n"
+                    f"{textwrap.indent(outputs_str, ' ' * 3)}\n"
+                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
+                    f"{textwrap.indent(sub_elements_str, ' ' * 3)}\n"
+                    )
+
+        return str_desc
 
     def registerMeInFlows(self) -> None:
         for aFlow in self.inputs + self.outputs:
