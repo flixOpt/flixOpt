@@ -287,6 +287,6 @@ def run_model(modeling_type: Literal["full", "segmented", "aggregated"]) -> Unio
         seg = flixPost.flix_results(calcSegs.nameOfCalc)
         listOfResults.append(seg)
         # del calcSegs
-        costs = seg.results_struct.globalComp.costs.all.sum
+        costs = sum(seg.results_struct.globalComp.costs.operation.sum_TS)
 
     return costs
