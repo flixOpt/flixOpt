@@ -16,7 +16,7 @@ class BaseTest(unittest.TestCase):
             'displaySolverOutput': True,
         }
 
-    def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.01):
+    def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.011): # error_range etwas höher als gap_frac, weil unterschiedl. Bezugswerte
         '''
         Asserts that actual is almost equal to desired.
         Designed for comparing float and ndarrays. Whith respect to tolerances
@@ -278,18 +278,18 @@ class TestModelingTypes(BaseTest):
         self.max_emissions_per_hour = 1000
 
     def test_full(self):
-        results = self.modeling_types("full")
+        results = self.calculate("full")
         self.assertAlmostEqualNumeric(results['costs']['all']['sum'], 343613, "costs doesnt match expected value")
 
     def test_aggregated(self):
-        results = self.modeling_types("aggregated")
+        results = self.calculate("aggregated")
         self.assertAlmostEqualNumeric(results['costs']['all']['sum'], 342967.0, "costs doesnt match expected value")
 
     def test_segmented(self):
-        results = self.modeling_types("segmented")
+        results = self.calculate("segmented")
         self.assertAlmostEqualNumeric(sum(results['costs']['operation']['sum_TS']), 343613, "costs doesnt match expected value")
 
-    def modeling_types(self, modeling_type: Literal["full", "segmented", "aggregated"]):
+    def calculate(self, modeling_type: Literal["full", "segmented", "aggregated"]):
         doFullCalc, doSegmentedCalc, doAggregatedCalc = modeling_type == "full", modeling_type == "segmented", modeling_type == "aggregated"
         if not any([doFullCalc, doSegmentedCalc, doAggregatedCalc]): raise Exception("Unknown modeling type")
 
