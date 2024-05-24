@@ -12,7 +12,7 @@ class BaseTest(unittest.TestCase):
         self.solverProps = {
             'gapFrac': 0.0001,
             'timelimit': 3600,
-            'solver': 'cbc',
+            'solver': 'highs',
             'displaySolverOutput': True,
         }
 
