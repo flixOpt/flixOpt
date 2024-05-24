@@ -1189,7 +1189,7 @@ class cFlow(cME):
                  max_rel: Numeric = 1,
                  nominal_val: Optional[Skalar] =__nominal_val_default,
                  loadFactor_min: Optional[Skalar] = None, loadFactor_max: Optional[Skalar] = None,
-                 positive_gradient=None,
+                 #positive_gradient=None,
                  costsPerFlowHour: Optional[Union[Numeric, EffectTypeDict]] =None,
                  iCanSwitchOff: bool = True,
                  onHoursSum_min: Optional[Skalar] = None, onHoursSum_max: Optional[Skalar] = None,
@@ -1290,7 +1290,7 @@ class cFlow(cME):
 
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
-        self.positive_gradient = cTS_vector('positive_gradient', positive_gradient, self)
+        #self.positive_gradient = cTS_vector('positive_gradient', positive_gradient, self)
         self.costsPerFlowHour = transFormEffectValuesToTSDict('costsPerFlowHour', costsPerFlowHour, self)
         self.iCanSwitchOff = iCanSwitchOff
         self.onHoursSum_min = onHoursSum_min
@@ -2324,7 +2324,7 @@ class cCalculation:
         # timeSeriesOfSim = self.es.timeSeries[from_index:to_index+1]
 
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
-        nrOfSimSegments = math.ceil((self.nrOfTimeSteps - segmentLen) / nrOfUsedSteps) + 1
+        nrOfSimSegments = math.ceil((self.nrOfTimeSteps) / nrOfUsedSteps)
         self._infos['segmentedProps']['nrOfSegments'] = nrOfSimSegments
         print('indexe        : ' + str(self.chosenEsTimeIndexe[0]) + '...' + str(self.chosenEsTimeIndexe[-1]))
         print('segmentLen    : ' + str(segmentLen))
