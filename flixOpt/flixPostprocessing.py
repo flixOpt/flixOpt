@@ -397,7 +397,7 @@ class flix_results():
             fig = plot_matplotlib(sums, labels, title, aText)
         return fig
 
-    def to_csv(self, busOrComponent, filename, sep='\t'):
+    def to_csv(self, busOrComponent, filename, sep='\t', index_label=''):
         '''
         saves flow-values to csv # TODO: TEMPORARY function only!
 
@@ -418,7 +418,7 @@ class flix_results():
             flow: cFlow_post
             flow.label_full
             df[flow.label_full] = flow.results['val']
-        df.to_csv(filename, sep=sep)
+        df.to_csv(filename, sep=sep, index_label=index_label )
 
     def plotInAndOuts(self,
                       busOrComponent,
