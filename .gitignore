@@ -4,9 +4,3 @@ results/
 .venv/
 venv/
 .DS_Store
-examples/*/results/
-examples/Ex03_full_seg_agg/Model_and_solve_test.py
-examples/01_simple/Kesselproblem.py
-examples/01_simple/simple_example_effects.py
-examples/01_simple/simple_example_one_of_three.py
-examples/Ex03_full_seg_agg/Model_and_solve_test.py
