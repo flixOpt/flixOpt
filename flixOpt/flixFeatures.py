@@ -558,7 +558,8 @@ class cFeatureOn(cFeature):
         # 3) check onHours_min before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
         if onHours_min is not None:
-            # eq:  onHours(t-1) >= minOnHours * (On(t)-On(t-1))
+            # Note: switchOff-step is when: On(t)-On(t-1) == -1
+            # eq:  onHours(t-1) >= minOnHours * -1 * [On(t)-On(t-1)]
             # eq: -onHours(t-1) - onHours_min * On(t) + onHours_min*On(t-1) <= 0
             ineq_min = cEquation(aLabel + '_min', eqsOwner, modBox, eqType='ineq')
             ineq_min.addSummand(var_bin_onTime, -1, timeIndexe[0:-1])  # onHours(t-1)
