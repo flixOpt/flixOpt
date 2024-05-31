@@ -2,7 +2,7 @@
 ## PreProcessing + Solving: ##
 ##############################
 
-import example_complex_ModelAndSolve as example_pre
+from . import example_complex_ModelAndSolve as example_pre
 
 # Name der Rechnung:
 nameOfCalc = example_pre.aCalc.nameOfCalc

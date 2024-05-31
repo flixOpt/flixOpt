@@ -40,10 +40,13 @@ You can choose between three calculation modes:
   * allows integration of other modeling languages than [Pyomo](http://www.pyomo.org/)
 <img src="/pics/architecture_flixOpt.png" style=" height:400px "  >
 
-## solver 
+## solver
   * You need to install a solver. Various solvers are usable. Recommended opensource solvers are [CBC](https://github.com/coin-or/Cbc) and [GLPK](https://www.gnu.org/software/glpk/). Executables can be found for example  [here for CBC](https://portal.ampl.com/dl/open/cbc/) and [here for GLPK](https://sourceforge.net/projects/winglpk/) (Windows: You have to put solver-executables to the PATH-variable)
 
 ## citing
 For explicitly citing, a link to a paper is coming soon ...
 
 Temporarily use <https://doi.org/10.13140/RG.2.2.14948.24969>
+
+## developement
+ * Testing: Using `python -m unittest discover -s tests` in the commant line will run all tests
