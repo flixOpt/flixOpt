@@ -662,7 +662,7 @@ class cBaseComponent(cME):
                  onHoursSum_min: Optional[Skalar] = None,
                  onHoursSum_max: Optional[Skalar] = None,
                  costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
-                 exists=1,
+                 exists: Numeric = 1,
                  **kwargs):
         '''
         
@@ -1305,7 +1305,7 @@ class cFlow(cME):
         self.nominal_val = nominal_val  # skalar!
         self.min_rel = cTS_vector('min_rel', min_rel, self)
         self.max_rel = cTS_vector('max_rel', max_rel, self)
-        # self.max_rel und self.min_rel wird in finalize() erstellt
+
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
         #self.positive_gradient = cTS_vector('positive_gradient', positive_gradient, self)

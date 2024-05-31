@@ -1027,7 +1027,7 @@ class cSource(cBaseComponent):
         :param cFlow source: flow-output Quelle
         :param kwargs:
         """
-        super().__init__(label,**kwargs)
+        super().__init__(label, **kwargs)
         self.source = source
         self.outputs.append(source)  # ein Output-Flow
 

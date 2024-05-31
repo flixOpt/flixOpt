@@ -96,10 +96,8 @@ def checkForAttributeNameConformity(aName):
     return newName
 
 def checkExists(exists: Union[int, list, np.ndarray])-> Union[int, list,np.ndarray]:
-    # type checking for argumen "exist"
-    if isinstance(exists, int) and exists in {0, 1}:
-        return exists
-    elif isinstance(exists, (list, np.ndarray)) and np.all(np.isin(exists, [0, 1])):
+    # type checking for argument "exist"
+    if np.all(np.isin(exists, [0, 1])):
         return exists
     else:
         raise ValueError(f"Argument 'exists' must be int, list or np.ndarray with values 0 or 1")
