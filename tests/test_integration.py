@@ -16,12 +16,11 @@ class BaseTest(unittest.TestCase):
             'displaySolverOutput': True,
         }
 
-    def assertAlmostEqualNumeric(self, actual, desired, err_msg):
+    def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.01):
         '''
         Asserts that actual is almost equal to desired.
         Designed for comparing float and ndarrays. Whith respect to tolerances
         '''
-        relative_error_range_in_percent = 0.01
         relative_tol = relative_error_range_in_percent/100
         if isinstance(desired, (int, float)):
             delta = abs(relative_tol * desired)
