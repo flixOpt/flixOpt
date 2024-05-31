@@ -7,7 +7,7 @@ from flixOpt.flixComps import cKessel
 from flixOpt.flixStructure import cFlow, cBus, cEnergySystem
 
 
-class Existance(unittest.TestCase):
+class TestExistance(unittest.TestCase):
     def test_flow(self):
         exists = np.array([1,1,1,1,0,0,0,0])
         kessel = cKessel(label="Kessel",
