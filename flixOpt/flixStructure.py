@@ -23,7 +23,13 @@ import logging
 log = logging.getLogger(__name__)
 
 Skalar = Union[int, float]  # Datatype
-Numeric = Union[int, float, np.ndarray, cTSraw]  # Datatype
+Numeric = Union[int, float, np.ndarray]  # Datatype
+# zeitreihenbezogene Input-Daten:
+Numeric_TS = Union[Skalar, np.ndarray, cTSraw]
+# Datatype Numeric_TS:
+#   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
+#   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
+#   cTSraw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
 class cModelBoxOfES(cBaseModel):
@@ -500,8 +506,8 @@ class cEffectType(cME):
                  max_operationSum: Optional[Skalar] = None,
                  min_investSum: Optional[Skalar] = None,
                  max_investSum: Optional[Skalar] = None,
-                 min_per_hour_operation: Optional[Numeric] = None,
-                 max_per_hour_operation: Optional[Numeric] = None,
+                 min_per_hour_operation: Optional[Numeric_TS] = None,
+                 max_per_hour_operation: Optional[Numeric_TS] = None,
                  min_Sum: Optional[Skalar] = None,
                  max_Sum: Optional[Skalar] = None,
                  **kwargs):
@@ -637,7 +643,7 @@ class cEffectTypeList(List[cEffectType]):
 
 
 from .flixFeatures import *
-EffectTypeDict = Dict[cEffectType, Numeric]  #Datatype
+EffectTypeDict = Dict[cEffectType, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class cBaseComponent(cME):
@@ -650,11 +656,11 @@ class cBaseComponent(cME):
     not_used_args = ['label']
 
     def __init__(self, label: str, on_valuesBeforeBegin:Optional[List[Skalar]] = None,
-                 switchOnCosts: Optional[Union[EffectTypeDict, Numeric]] = None,
+                 switchOnCosts: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  switchOn_maxNr: Optional[Skalar] = None,
                  onHoursSum_min: Optional[Skalar] = None,
                  onHoursSum_max: Optional[Skalar] = None,
-                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric]] = None, **kwargs):
+                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric_TS]] = None, **kwargs):
         '''
         
 
@@ -995,7 +1001,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
     new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
     not_used_args = ['label']
 
-    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric = 1e5, **kwargs):
+    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric_TS = 1e5, **kwargs):
         '''
         Parameters
         ----------
@@ -1185,25 +1191,25 @@ class cFlow(cME):
 
     def __init__(self, label,
                  bus: cBus = None,  # TODO: Is this for sure Optional?
-                 min_rel: Numeric = 0,
-                 max_rel: Numeric = 1,
+                 min_rel: Numeric_TS = 0,
+                 max_rel: Numeric_TS = 1,
                  nominal_val: Optional[Skalar] =__nominal_val_default,
                  loadFactor_min: Optional[Skalar] = None, loadFactor_max: Optional[Skalar] = None,
                  #positive_gradient=None,
-                 costsPerFlowHour: Optional[Union[Numeric, EffectTypeDict]] =None,
+                 costsPerFlowHour: Optional[Union[Numeric_TS, EffectTypeDict]] =None,
                  iCanSwitchOff: bool = True,
                  onHoursSum_min: Optional[Skalar] = None, onHoursSum_max: Optional[Skalar] = None,
                  onHours_min: Optional[Skalar] = None, onHours_max: Optional[Skalar] = None,
                  offHours_min: Optional[Skalar] = None, offHours_max: Optional[Skalar] = None,
-                 switchOnCosts: Optional[Union[Numeric, EffectTypeDict]] = None,
+                 switchOnCosts: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  switchOn_maxNr: Optional[Skalar] = None,
-                 costsPerRunningHour: Optional[Union[Numeric, EffectTypeDict]] = None,
+                 costsPerRunningHour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  sumFlowHours_max: Optional[Skalar] = None, sumFlowHours_min: Optional[Skalar] = None,
                  valuesBeforeBegin: Optional[List[Skalar]] = None,
-                 val_rel: Optional[Numeric] = None,
+                 val_rel: Optional[Numeric_TS] = None,
                  medium: Optional[str] = None,
                  investArgs: Optional[cInvestArgs] = None,
-                 exists: Numeric = 1,
+                 exists: Numeric_TS = 1,
                  group: Optional[str] = None,
                  **kwargs):
         '''

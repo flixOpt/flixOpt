@@ -322,7 +322,7 @@ class cKessel(cBaseLinearTransformer):
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric, Q_fu:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, Q_fu:cFlow, Q_th:cFlow, **kwargs):
         '''
         constructor for boiler
 
@@ -370,7 +370,7 @@ class cEHK(cBaseLinearTransformer):
     new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
         '''
         constructor for boiler
 
@@ -418,7 +418,7 @@ class cHeatPump(cBaseLinearTransformer):
     new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
         '''
         Parameters
         ----------
@@ -458,7 +458,7 @@ class cCoolingTower(cBaseLinearTransformer):
     new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, specificElectricityDemand:Numeric, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
         '''
         Parameters
         ----------
@@ -504,7 +504,7 @@ class cKWK(cBaseLinearTransformer):
     # eta = 1 # Thermischer Wirkungsgrad
     # __eta_bound = [0,1]
 
-    def __init__(self, label:str, eta_th:Numeric, eta_el:Numeric, Q_fu:cFlow, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta_th:Numeric_TS, eta_el:Numeric_TS, Q_fu:cFlow, P_el:cFlow, Q_th:cFlow, **kwargs):
         '''
         constructor of cCHP
 
@@ -560,7 +560,7 @@ class cAbwaermeHP(cBaseLinearTransformer):
     new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric, P_el:cFlow, Q_ab:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_ab:cFlow, Q_th:cFlow, **kwargs):
         '''
         Parameters
         ----------
@@ -629,15 +629,15 @@ class cStorage(cBaseComponent):
                  inFlow: cFlow,
                  outFlow: cFlow,
                  capacity_inFlowHours: Optional[Skalar],
-                 exists: Numeric = 1,
+                 exists: Numeric_TS = 1,
                  group: Optional[str] = None,
-                 min_rel_chargeState: Numeric = 0,
-                 max_rel_chargeState: Numeric = 1,
+                 min_rel_chargeState: Numeric_TS = 0,
+                 max_rel_chargeState: Numeric_TS = 1,
                  chargeState0_inFlowHours: Skalar = 0,
                  charge_state_end_min: Optional[Skalar] = None,
                  charge_state_end_max: Optional[Skalar] = None,
-                 eta_load: Numeric = 1, eta_unload: Numeric = 1,
-                 fracLossPerHour: Numeric = 0,
+                 eta_load: Numeric_TS = 1, eta_unload: Numeric_TS = 1,
+                 fracLossPerHour: Numeric_TS = 0,
                  avoidInAndOutAtOnce: bool = True,
                  investArgs: Optional[cInvestArgs] = None,
                  **kwargs):
@@ -961,7 +961,7 @@ class cSourceAndSink(cBaseComponent):
 
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, sink: cFlow, exists: Numeric = 1, group: str = None,
+    def __init__(self, label: str, source: cFlow, sink: cFlow, exists: Numeric_TS = 1, group: str = None,
                  avoidInAndOutAtOnce: bool = True, **kwargs):
         '''
         Parameters
@@ -1048,7 +1048,7 @@ class cSource(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, exists: Numeric = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, source: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
         '''       
         Parameters
         ----------
@@ -1104,7 +1104,7 @@ class cSink(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, sink: cFlow, exists: Numeric = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, sink: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
         '''
         constructor of sink 
 
@@ -1158,8 +1158,8 @@ class cTransportation(cBaseComponent):
 
     def __init__(self, label: str, in1: cFlow, out1: cFlow,
                  in2: Optional[cFlow] = None, out2: Optional[cFlow] = None,
-                 loss_rel: Numeric = 0,
-                 loss_abs: Numeric = 0, isAlwaysOn: bool = True,
+                 loss_rel: Numeric_TS = 0,
+                 loss_abs: Numeric_TS = 0, isAlwaysOn: bool = True,
                  avoidFlowInBothDirectionsAtOnce: bool = True, **kwargs):
         '''
         pipe/cable/connector between side A and side B
