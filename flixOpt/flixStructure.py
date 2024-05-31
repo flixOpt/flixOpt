@@ -653,7 +653,7 @@ class cBaseComponent(cME):
     '''
     modBox: cModelBoxOfES
     new_init_args = ['label', 'on_valuesBeforeBegin', 'switchOnCosts', 'switchOn_maxNr', 'onHoursSum_min',
-                     'onHoursSum_max', 'costsPerRunningHour']
+                     'onHoursSum_max', 'costsPerRunningHour', 'exists']
     not_used_args = ['label']
 
     def __init__(self, label: str, on_valuesBeforeBegin:Optional[List[Skalar]] = None,
@@ -1303,8 +1303,8 @@ class cFlow(cME):
         # args to attributes:
         self.bus = bus
         self.nominal_val = nominal_val  # skalar!
-        self.min_rel_explicit = cTS_vector('min_rel_explicit', min_rel, self)
-        self.max_rel_explicit = cTS_vector('max_rel_explicit', max_rel, self)
+        self.min_rel = cTS_vector('min_rel', min_rel, self)
+        self.max_rel = cTS_vector('max_rel', max_rel, self)
         # self.max_rel und self.min_rel wird in finalize() erstellt
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
@@ -1404,7 +1404,7 @@ class cFlow(cME):
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausiTest(self) -> None:
         # Plausi-Check min < max:
-        if np.any(np.asarray(self.min_rel_explicit.d) > np.asarray(self.max_rel_explicit.d)):
+        if np.any(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d)):
             # if np.any(np.asarray(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d) )):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
@@ -1418,9 +1418,10 @@ class cFlow(cME):
 
         # exist-merge aus Flow.exist und Comp.exist
         exist_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
-        # create max_rel from max_rel_explicit and  exist_global:
-        self.max_rel = cTS_vector('max_rel', np.multiply(self.max_rel_explicit.d, exist_global), self)
-        self.min_rel = cTS_vector('min_rel', np.multiply(self.min_rel_explicit.d, exist_global), self)
+        self.exists = cTS_vector('exists', helpers.checkExists(exist_global), self)
+        # combine max_rel with and exist from the flow and the comp it belongs to
+        self.max_rel = cTS_vector('max_rel', np.multiply(self.max_rel.d, self.exists.d), self)
+        self.min_rel = cTS_vector('min_rel', np.multiply(self.min_rel.d, self.exists.d), self)
 
         # prepare invest Feature:
         if self.investArgs is None:
