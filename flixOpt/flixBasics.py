@@ -80,7 +80,8 @@ class cTS_vector:
     # gets rawdata only of activated esIndexe:
     @property
     def d_i_raw(self):
-        if (np.isscalar(self.data)) or (self.data is None) or (self.__timeIndexe_actual is None):
+        indices_not_applicable = (np.isscalar(self.data)) or (self.data is None) or (self.__timeIndexe_actual is None)
+        if indices_not_applicable:
             return self.data
         else:
             return self.data[self.__timeIndexe_actual]
