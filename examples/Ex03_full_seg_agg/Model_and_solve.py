@@ -208,7 +208,7 @@ aStromTarif       = cSource('Stromtarif' ,source = cFlow('P_el'     , bus = Stro
 aStromTarif.source.costsPerFlowHour[costs].set_agg_weight(.5)
 
 # Zusammenführung:
-es = cEnergySystem(aTimeSeries, dt_last=None)
+es = System(aTimeSeries, dt_last=None)
 # es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 es.addEffects(costs)
 es.addEffects(CO2, PE)
