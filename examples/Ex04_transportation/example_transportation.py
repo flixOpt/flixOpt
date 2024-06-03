@@ -116,7 +116,7 @@ chosenEsTimeIndexe = None
 # chosenEsTimeIndexe = [1,3,5]
 
 ## modeling "full":
-aCalc = cCalculation('Sim1', es, 'pyomo', chosenEsTimeIndexe)
+aCalc = Calculation('Sim1', es, 'pyomo', chosenEsTimeIndexe)
 aCalc.doModelingAsOneSegment()
 
 # PRINT Model-Charactaricstics:

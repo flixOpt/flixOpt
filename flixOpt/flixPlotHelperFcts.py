@@ -37,7 +37,7 @@ def plotOn(mb, aVar_struct, var_label, y, plotSwitchOnOff=True):
         pass
 
 # # Input z.B. 'results_struct.KWK.Q_th.on' oder [KWK,'Q_th','on']
-# def plotSegmentedValue(calc : cCalculation, results_struct_As_String_OR_keyList):    
+# def plotSegmentedValue(calc : Calculation, results_struct_As_String_OR_keyList):
 #   if len(calc.segmentModBoxList) == 0 :
 #     raise Exception 'Keine Segmente vorhanden!'
 #   else :
