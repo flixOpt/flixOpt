@@ -14,7 +14,7 @@ from .flixStructure import *
 from .flixFeatures import *
 
 
-class cBaseLinearTransformer(cBaseComponent):
+class cBaseLinearTransformer(Component):
     """
     Klasse cBaseLinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
@@ -603,7 +603,7 @@ class cAbwaermeHP(cBaseLinearTransformer):
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class cStorage(cBaseComponent):
+class cStorage(Component):
     """
     Klasse cStorage
     """
@@ -950,7 +950,7 @@ class cStorage(cBaseComponent):
             self.featureInvest.addShareToGlobals(globalComp, modBox)
 
 
-class cSourceAndSink(cBaseComponent):
+class cSourceAndSink(Component):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
     """
@@ -1041,7 +1041,7 @@ class cSourceAndSink(cBaseComponent):
             self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
-class cSource(cBaseComponent):
+class cSource(Component):
     """
     class of a source
     """
@@ -1097,7 +1097,7 @@ class cSource(cBaseComponent):
             flow.min_rel = TimeSeries('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
 
-class cSink(cBaseComponent):
+class cSink(Component):
     """
     Klasse cSink
     """
@@ -1149,7 +1149,7 @@ class cSink(cBaseComponent):
             flow.min_rel = TimeSeries('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
 
-class cTransportation(cBaseComponent):
+class cTransportation(Component):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
     # TODO: investmentsize only on 1 flow
