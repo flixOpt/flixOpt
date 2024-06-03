@@ -327,9 +327,9 @@ def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[
         return {None: effect_values}
 
 
-def transformDictValuesToTS(name_of_param: str, effect_dict: Optional[Dict[Any, Union[Numeric, cTS_vector]]], owner) -> Optional[Dict[Any, cTS_vector]]:
+def effect_values_to_ts(name_of_param: str, effect_dict: Optional[Dict[Any, Union[Numeric, TimeSeries]]], owner) -> Optional[Dict[Any, TimeSeries]]:
     """
-    Transforms values in a dictionary to instances of cTS_vector.
+    Transforms values in a dictionary to instances of TimeSeries.
 
     Parameters
     ----------
@@ -338,12 +338,12 @@ def transformDictValuesToTS(name_of_param: str, effect_dict: Optional[Dict[Any, 
     effect_dict : dict
         A dictionary with effect-value pairs.
     owner : object
-        The owner object where cTS_vector belongs to.
+        The owner object where TimeSeries belongs to.
 
     Returns
     -------
     dict
-        A dictionary with effect types as keys and cTS_vector instances as values.
+        A dictionary with effect types as keys and TimeSeries instances as values.
     """
     if effect_dict is None:
         return None
@@ -386,5 +386,5 @@ def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
     # add standardeffect if only value is given:
     effectsDict = as_effect_dict(aEffectsValue)
     # dict-values zu TimeSeries:
-    effectsDict_TS = transformDictValuesToTS(nameOfParam, effectsDict, ownerOfParam)
+    effectsDict_TS = effect_values_to_ts(nameOfParam, effectsDict, ownerOfParam)
     return effectsDict_TS
