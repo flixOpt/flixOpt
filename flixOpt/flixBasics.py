@@ -88,7 +88,7 @@ class cTS_vector:
 
     # Vektor:
     @property
-    def d_i_raw_vec(self):
+    def active_data_raw_vector(self):
         vec = helpers.getVector(self.active_data_raw, len(self.__timeIndexe_actual))
         return vec
 
@@ -235,7 +235,7 @@ class cTS_collection():
                 raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
             # add to dict:
             self.seriesDict[
-                aTS.label_full] = aTS.d_i_raw_vec  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
+                aTS.label_full] = aTS.active_data_raw_vector  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
             self.weightDict[aTS.label_full] = self._getWeight(aTS)  # Wichtung ermitteln!
             if (aTS.TSraw is not None):
                 if aTS.TSraw in self.addPeakMax_TSraw:
