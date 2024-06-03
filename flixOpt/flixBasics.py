@@ -316,7 +316,7 @@ def as_effect_dict(effect_values: Union[Numeric, cTS_vector, Dict]) -> Optional[
         return {None: effect_values}
 
 
-def transformDictValuesToTS(name_of_param: str, effect_dict: Optional[Dict[Any, Union[Numeric, cTS_vector]]], owner) -> Optional[Dict[Any, cTS_vector]]:
+def values_to_ts_vectors(name_of_param: str, effect_dict: Optional[Dict[Any, Union[Numeric, cTS_vector]]], owner) -> Optional[Dict[Any, cTS_vector]]:
     """
     Transforms values in a dictionary to instances of cTS_vector.
 
@@ -375,5 +375,5 @@ def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
     # add standardeffect if only value is given:
     effectsDict = as_effect_dict(aEffectsValue)
     # dict-values zu cTS_vectoren:  
-    effectsDict_TS = transformDictValuesToTS(nameOfParam, effectsDict, ownerOfParam)
+    effectsDict_TS = values_to_ts_vectors(nameOfParam, effectsDict, ownerOfParam)
     return effectsDict_TS
