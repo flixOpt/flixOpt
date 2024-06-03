@@ -8,7 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 from . import flixOptHelperFcts as helpers
 from .flixBasicsPublic import cTSraw
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -287,39 +287,33 @@ class cTS_collection():
             print('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
 
 
-def getEffectDictOfEffectValues(effect_values):
-    '''
-    if costs is given without effectType, standardeffect is related
-    examples:
-      costs = 20                        -> {None:20}
+def as_effect_dict(effect_values: Union[Numeric, cTS_vector, Dict]) -> Optional[Dict]:
+    """
+    Converts effect values into a dictionary. If a scalar value is provided, it is associated with a standard effect type.
+
+    Examples
+    --------
+    If costs are given without effectType, a standard effect is related:
+      costs = 20                        -> {None: 20}
       costs = None                      -> no change
-      costs = {effect1:20, effect2:0.3} -> no change      
+      costs = {effect1: 20, effect2: 0.3} -> no change
 
     Parameters
     ----------
-    effect_values : None, scalar or TS, dict
-        see examples
-        
+    effect_values : None, int, float, cTS_vector, or dict
+        The effect values to convert can be a scalar, a cTS_vector, or a dictionary with an effectas key
+
     Returns
     -------
-    effect_values_dict : dict
-        see examples
-    '''
-
-    ## Umwandlung in dict:
-    # Wenn schon dict:
+    dict or None
+        Converted values in from of dict with either None or cEffectType as key. if values is None, None is returned
+    """
     if isinstance(effect_values, dict):
-        # nur übergeben, nix machen
-        effect_values_dict = effect_values
+        return effect_values
     elif effect_values is None:
-        effect_values_dict = None
-        # Wenn Skalar oder TS:
+        return None
     else:
-        # dict bauen mit standard-effect:
-        effect_values_dict = {
-            None: effect_values}  # standardType noch nicht bekannt, dann None. Wird später Standard-Effekt-Type
-
-    return effect_values_dict
+        return {None: effect_values}
 
 
 def transformDictValuesToTS(nameOfParam, aDict, owner):
@@ -387,7 +381,7 @@ def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
     '''
 
     # add standardeffect if only value is given:
-    effectsDict = getEffectDictOfEffectValues(aEffectsValue)
+    effectsDict = as_effect_dict(aEffectsValue)
     # dict-values zu cTS_vectoren:  
     effectsDict_TS = transformDictValuesToTS(nameOfParam, effectsDict, ownerOfParam)
     return effectsDict_TS
