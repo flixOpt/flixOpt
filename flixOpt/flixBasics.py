@@ -161,14 +161,14 @@ class cTS_vector:
         return data
 
     # define, which timeStep-Set should be transfered in data-request self.active_data()
-    def activate(self, dataTimeIndexe, d_i_explicit=None):
+    def activate(self, time_indices, explicit_active_data=None):
         # time-Index:
-        self.active_time_indices = dataTimeIndexe
+        self.active_time_indices = time_indices
 
         # explicitData:
-        if d_i_explicit is not None:
-            assert ((len(d_i_explicit) == len(self.active_time_indices)) or \
-                    (len(d_i_explicit) == 1)), 'explicit_active_data has not right length!'
+        if explicit_active_data is not None:
+            assert ((len(explicit_active_data) == len(self.active_time_indices)) or \
+                    (len(explicit_active_data) == 1)), 'explicit_active_data has not right length!'
 
         self.explicit_active_data = self._convert_to_scalar_if_possible(explicit_active_data)
 
