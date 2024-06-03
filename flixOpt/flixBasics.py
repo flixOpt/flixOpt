@@ -130,7 +130,7 @@ class cTS_vector:
         else:
             self.TSraw = None
 
-        self.data = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
+        self.data = self._make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
         self.d_i_explicit = None  #
 
         self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
@@ -143,15 +143,25 @@ class cTS_vector:
         return f"{self.data}"
 
     @staticmethod
-    def make_scalar_if_possible(data):
-        if (np.isscalar(data)) or (data is None):
-            # do nothing
-            pass
-        else:
-            data = np.array(data)  # Umwandeln, da einfaches slicing mit Index-Listen nur mit np-Array geht.
-            # Wenn alle Werte gleich, dann Vektor in Skalar umwandeln:
-            if np.all(data == data[0]):
-                data = data[0]
+    def _make_scalar_if_possible(data: Numeric_TS) -> Numeric:
+        """
+        Convert an array to a scalar if all values are equal, or return the array as-is.
+
+        Parameters
+        ----------
+        data : Numeric_TS
+            The data to process.
+
+        Returns
+        -------
+        Numeric
+            A scalar if all values in the array are equal, otherwise the array itself.
+        """
+        if np.isscalar(data) or data is None:
+            return data
+        data = np.array(data)
+        if np.all(data == data[0]):
+            return data[0]
         return data
 
     # define, which timeStep-Set should be transfered in data-request self.active_data()
@@ -164,7 +174,7 @@ class cTS_vector:
             assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
                     (len(d_i_explicit) == 1)), 'd_i_explicit has not right length!'
 
-        self.d_i_explicit = self.make_scalar_if_possible(d_i_explicit)
+        self.d_i_explicit = self._make_scalar_if_possible(d_i_explicit)
 
     def setAggWeight(self, aWeight):
         '''
