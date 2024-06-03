@@ -238,7 +238,7 @@ class flixAggregation:
         """
 
         timestamp = datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')
+        timestring = timestamp.strftime('%Y-%m-%data')
 
         # Rahmenbedingungen und Ergebnisse speichern
         periodsOrderString = ','.join(map(str, self.periodsOrder))
@@ -280,7 +280,7 @@ class flixAggregation:
         Speichern der aggregierten Zeitreihen.
         """
         timestamp = datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')
+        timestring = timestamp.strftime('%Y-%m-%data')
 
         filename = self.name.replace(" ", "") + '_Timeseries.csv'
         if addTimeStamp: filename = timestring + '_' + filename
