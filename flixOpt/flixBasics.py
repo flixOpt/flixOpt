@@ -107,20 +107,10 @@ class cTS_vector:
     def __repr__(self):
         return f"{self.data}"
 
-
-    # gets rawdata only of activated esIndexe:
-    @property
-    def active_data_raw(self):
-        indices_not_applicable = (np.isscalar(self.data)) or (self.data is None) or (self.active_time_indices is None)
-        if indices_not_applicable:
-            return self.data
-        else:
-            return self.data[self.active_time_indices]
-
     # Vektor:
     @property
     def active_data_raw_vector(self):
-        vec = helpers.getVector(self.active_data_raw, len(self.active_time_indices))
+        vec = helpers.getVector(self.active_data, len(self.active_time_indices))
         return vec
 
     @property
@@ -129,7 +119,12 @@ class cTS_vector:
         if self.explicit_active_data is not None:
             return self.explicit_active_data
         else:
-            return self.active_data_raw
+            indices_not_applicable = (np.isscalar(self.data)) or (self.data is None) or (
+                        self.active_time_indices is None)
+            if indices_not_applicable:
+                return self.data
+            else:
+                return self.data[self.active_time_indices]
 
     @property
     def isscalar(self):
