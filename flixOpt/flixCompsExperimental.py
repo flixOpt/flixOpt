@@ -10,7 +10,7 @@ from .flixFeatures import *
 from .flixComps import cBaseLinearTransformer, cKWK
 
 
-def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
+def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
             eta_th: list, eta_el: list, exists=None, group=None, **kwargs) -> list:
     '''
     EKT A - Modulation, linear interpolation
@@ -67,7 +67,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
     eta_elB = eta_el[0]
     eta_elA = eta_el[1]
 
-    HelperBus = cBus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
+    HelperBus = Bus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
 
     # Transformer 1
     Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val, min_rel=1, **kwargs)
@@ -89,7 +89,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
     return [EKTIn, EKTA, EKTB]
 
 
-def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
+def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
             nominal_val_Qfu: float, segQth: list[float], segPel: list[float],
             costsPerFlowHour_fuel: dict = None, costsPerFlowHour_th: dict = None, costsPerFlowHour_el: dict = None,
             iCanSwitchOff=True, exists=1, group=None, investArgs: cInvestArgs = None, **kwargs) -> list:
@@ -111,11 +111,11 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
     ----------
     label: str
         A string representing the label for the component.
-    BusFuel: cBus
+    BusFuel: Bus
         The bus representing the fuel input for the component.
-    BusTh: cBus
+    BusTh: Bus
         The bus representing the thermal output for the component.
-    BusEl: cBus
+    BusEl: Bus
         The bus representing the electrical output for the component.
     nominal_val_Qfu: float
         Fuel flow. Constant, But iCanSwitchOff=True
@@ -175,8 +175,8 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
         segQth = [0, 0] + segQth
         segPel = [0, 0] + segPel
 
-    HelperBus = cBus(label='Helper' + label + 'In', media=None,
-                     excessCostsPerFlowHour=None)  # balancing node/bus of electricity
+    HelperBus = Bus(label='Helper' + label + 'In', media=None,
+                    excessCostsPerFlowHour=None)  # balancing node/bus of electricity
 
     # Transformer 1
     Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=1, max_rel=1,

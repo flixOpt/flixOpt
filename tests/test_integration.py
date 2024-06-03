@@ -57,9 +57,9 @@ class TestSimple(BaseTest):
 
     def model(self):
         # Define the components and energy system
-        Strom = cBus('el', 'Strom')
-        Fernwaerme = cBus('heat', 'Fernwärme')
-        Gas = cBus('fuel', 'Gas')
+        Strom = Bus('el', 'Strom')
+        Fernwaerme = Bus('heat', 'Fernwärme')
+        Gas = Bus('fuel', 'Gas')
 
         costs = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True)
         CO2 = cEffectType('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2},
@@ -181,9 +181,9 @@ class TestComplex(BaseTest):
 
     def basic_model(self):
         # Define the components and energy system
-        Strom = cBus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
-        Fernwaerme = cBus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
-        Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
+        Strom = Bus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
+        Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
+        Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
 
         costs = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True)
         CO2 = cEffectType('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
@@ -224,9 +224,9 @@ class TestComplex(BaseTest):
 
     def segments_of_flows_model(self):
         # Define the components and energy system
-        Strom = cBus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
-        Fernwaerme = cBus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
-        Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
+        Strom = Bus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
+        Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
+        Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
 
         costs = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True)
         CO2 = cEffectType('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
@@ -299,7 +299,7 @@ class TestModelingTypes(BaseTest):
         P_el_Last, Q_th_Last, p_el, gP = data['P_Netz/MW'], data['Q_Netz/MW'], data['Strompr.€/MWh'], data['Gaspr.€/MWh']
         aTimeSeries = (datetime.datetime(2020, 1, 1) + np.arange(len(P_el_Last)) * datetime.timedelta(hours=0.25)).astype('datetime64')
 
-        Strom, Fernwaerme, Gas, Kohle = cBus('el', 'Strom'), cBus('heat', 'Fernwärme'), cBus('fuel', 'Gas'), cBus('fuel', 'Kohle')
+        Strom, Fernwaerme, Gas, Kohle = Bus('el', 'Strom'), Bus('heat', 'Fernwärme'), Bus('fuel', 'Gas'), Bus('fuel', 'Kohle')
         costs, CO2, PE = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True), cEffectType('CO2', 'kg', 'CO2_e-Emissionen'), cEffectType('PE', 'kWh_PE', 'Primärenergie')
 
         aGaskessel = cKessel('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, nominal_val=95, min_rel=12 / 95, iCanSwitchOff=True, switchOnCosts=1000, valuesBeforeBegin=[0]))

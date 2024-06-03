@@ -743,7 +743,7 @@ class cBaseComponent(cME):
         for aFlow in self.inputs + self.outputs:
             aFlow.comp = self
 
-    def registerFlowsInBus(self) -> None:  # todo: macht aber bei Kindklasse cBus keinen Sinn!
+    def registerFlowsInBus(self) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         #
         # ############## register in Bus: ##############
         #
@@ -754,12 +754,12 @@ class cBaseComponent(cME):
         for aFlow in self.outputs:
             aFlow.bus.registerInputFlow(aFlow)
 
-    def declareVarsAndEqsOfFlows(self, modBox) -> None:  # todo: macht aber bei Kindklasse cBus keinen Sinn!
+    def declareVarsAndEqsOfFlows(self, modBox) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
             aFlow.declareVarsAndEqs(modBox)
 
-    def doModelingOfFlows(self, modBox, timeIndexe) -> None:  # todo: macht aber bei Kindklasse cBus keinen Sinn!
+    def doModelingOfFlows(self, modBox, timeIndexe) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
             aFlow.doModeling(modBox, timeIndexe)
@@ -771,7 +771,7 @@ class cBaseComponent(cME):
         # Variablen der In-/Out-Puts ergänzen:
         for aFlow in self.inputs + self.outputs:
             # z.B. results['Q_th'] = {'val':..., 'on': ..., ...}
-            if isinstance(self, cBus):
+            if isinstance(self, Bus):
                 flowLabel = aFlow.label_full  # Kessel_Q_th
             else:
                 flowLabel = aFlow.label  # Q_th
@@ -826,7 +826,7 @@ class cBaseComponent(cME):
 
         descr[self.label] = inhalt
 
-        if isinstance(self, cBus):
+        if isinstance(self, Bus):
             descrType = 'for bus-list'
         else:
             descrType = 'for comp-list'
@@ -979,7 +979,7 @@ class cGlobal(cME):
         self.objective.addSummand(objectiveEffect.invest.mod.var_sum, 1)
 
 
-class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur cME???
+class Bus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur cME???
     '''
     realizing balance of all linked flows
     (penalty flow is excess can be activated)
@@ -1043,7 +1043,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
             # wenn leer, data.h. kein gemeinsamer Eintrag:
             if (aFlow.medium is not None) and (self.media is not None) and \
                     (not (aFlow.medium in self.media)):
-                raise Exception('in cBus ' + self.label + ' : registerFlow(): medium \''
+                raise Exception('in Bus ' + self.label + ' : registerFlow(): medium \''
                                 + str(aFlow.medium) + '\' of ' + aFlow.label_full +
                                 ' and media ' + str(self.media) + ' of bus ' +
                                 self.label_full + '  have no common medium!' +
@@ -1181,7 +1181,7 @@ class Flow(cME):
     __nominal_val_default = 1e9  # Großer Gültigkeitsbereich als Standard
 
     def __init__(self, label,
-                 bus: cBus = None,  # TODO: Is this for sure Optional?
+                 bus: Bus = None,  # TODO: Is this for sure Optional?
                  min_rel: Numeric_TS = 0,
                  max_rel: Numeric_TS = 1,
                  nominal_val: Optional[Skalar] =__nominal_val_default,
@@ -1208,7 +1208,7 @@ class Flow(cME):
         ----------
         label : str
             name of flow
-        bus : cBus, optional
+        bus : Bus, optional
             bus to which flow is linked
         min_rel : scalar, array, cTSraw, optional
             min value is min_rel multiplied by nominal_val
@@ -1686,7 +1686,7 @@ class System:
 
     # aktuelles Bus-Set ausgeben (generiert sich aus dem setOfFlows):
     @property
-    def setOfBuses(self) -> Set[cBus]:
+    def setOfBuses(self) -> Set[Bus]:
         setOfBuses = set()
         # Flow-Liste durchgehen::
         for aFlow in self.setOfFlows:
@@ -1790,7 +1790,7 @@ class System:
 
         Parameters
         ----------
-        *args : childs of   cME like cBoiler, cHeatPump, cBus,...
+        *args : childs of   cME like cBoiler, cHeatPump, Bus,...
             modeling Elements
 
         '''
@@ -1918,7 +1918,7 @@ class System:
             aComp.addShareToGlobals(self.globalComp, self.modBox)
 
         # Bus-Modellierung (# inklusive subMEs!)
-        aBus: cBus
+        aBus: Bus
         for aBus in self.setOfBuses:
             log.debug('model ' + aBus.label + '...')
             aBus.declareVarsAndEqs(self.modBox)
@@ -1993,7 +1993,7 @@ class System:
         return results, results_var
 
     def printModel(self) -> None:
-        aBus: cBus
+        aBus: Bus
         aComp: cBaseComponent
         print('')
         print('##############################################################')
@@ -2009,7 +2009,7 @@ class System:
         # Buses:
         modelDescription['buses'] = {}
         for aBus in self.setOfBuses:
-            aBus: cBus
+            aBus: Bus
             modelDescription['buses'].update(aBus.getDescrAsStr())
         # Comps:
         modelDescription['components'] = {}

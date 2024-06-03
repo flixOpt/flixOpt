@@ -147,10 +147,10 @@ print('################### start of modeling #################################')
 #                 Typ         Name              
 excessCosts = 1e5
 excessCosts = None
-Strom      = cBus('el'        ,'Strom'     , excessCostsPerFlowHour = excessCosts);
-Fernwaerme = cBus('heat'        ,'Fernwärme' , excessCostsPerFlowHour = excessCosts);  
-Gas        = cBus('fuel'      ,'Gas'       , excessCostsPerFlowHour = excessCosts);  
-Kohle      = cBus('fuel'      ,'Kohle'     , excessCostsPerFlowHour = excessCosts);  
+Strom      = Bus('el', 'Strom', excessCostsPerFlowHour = excessCosts);
+Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour = excessCosts);
+Gas        = Bus('fuel', 'Gas', excessCostsPerFlowHour = excessCosts);
+Kohle      = Bus('fuel', 'Kohle', excessCostsPerFlowHour = excessCosts);
 
 # Effects
 
