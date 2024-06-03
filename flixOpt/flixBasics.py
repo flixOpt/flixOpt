@@ -95,7 +95,7 @@ class cTS_vector:
         else:
             self.TSraw = None
 
-        self.data = self._make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
+        self.data = self._convert_to_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
         self.explicit_active_data = None  # Used as a short cut for aggregation modeling.
 
         self.active_time_indices = None  # aktuelle timeIndexe der modBox
@@ -139,7 +139,7 @@ class cTS_vector:
         return self.owner.label_full + '_' + self.label
 
     @staticmethod
-    def _make_scalar_if_possible(data: Numeric_TS) -> Numeric:
+    def _convert_to_scalar_if_possible(data: Numeric_TS) -> Numeric:
         """
         Convert an array to a scalar if all values are equal, or return the array as-is.
 
@@ -170,7 +170,7 @@ class cTS_vector:
             assert ((len(d_i_explicit) == len(self.active_time_indices)) or \
                     (len(d_i_explicit) == 1)), 'explicit_active_data has not right length!'
 
-        self.explicit_active_data = self._make_scalar_if_possible(d_i_explicit)
+        self.explicit_active_data = self._convert_to_scalar_if_possible(explicit_active_data)
 
     def setAggWeight(self, aWeight):
         '''
