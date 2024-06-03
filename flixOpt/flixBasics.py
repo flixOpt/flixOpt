@@ -198,7 +198,11 @@ class cTS_collection():
         else:
             return self._addPeakMin_labels
 
-    def __init__(self, listOfTS_vectors, addPeakMax_TSraw=[], addPeakMin_TSraw=[]):
+    def __init__(self, listOfTS_vectors, addPeakMax_TSraw=None, addPeakMin_TSraw=None):
+        if addPeakMax_TSraw is None:
+            addPeakMax_TSraw = []
+        if addPeakMin_TSraw is None:
+            addPeakMin_TSraw = []
         self.listOfTS_vectors = listOfTS_vectors
         self.addPeakMax_TSraw = addPeakMax_TSraw
         self.addPeakMin_TSraw = addPeakMin_TSraw
