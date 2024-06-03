@@ -79,7 +79,7 @@ class cTS_vector:
 
     # gets rawdata only of activated esIndexe:
     @property
-    def d_i_raw(self):
+    def active_data_raw(self):
         indices_not_applicable = (np.isscalar(self.data)) or (self.data is None) or (self.__timeIndexe_actual is None)
         if indices_not_applicable:
             return self.data
@@ -89,17 +89,16 @@ class cTS_vector:
     # Vektor:
     @property
     def d_i_raw_vec(self):
-        vec = helpers.getVector(self.d_i_raw, len(self.__timeIndexe_actual))
+        vec = helpers.getVector(self.active_data_raw, len(self.__timeIndexe_actual))
         return vec
 
     @property
-    # gets data only of activated esIndexe or explicit data::
     def active_data(self):
-        # wenn d_i_explicit gesetzt wurde:
+        # gets data only of activated esIndexe or explicit data::
         if self.d_i_explicit is not None:
             return self.d_i_explicit
         else:
-            return self.d_i_raw
+            return self.active_data_raw
 
     @property
     def isscalar(self):
