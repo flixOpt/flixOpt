@@ -124,12 +124,12 @@ class cTS_vector:
                 return self.data[self.active_time_indices]
 
     @property
-    def isscalar(self):
+    def is_scalar(self):
         return np.isscalar(self.data)
 
     @property
-    def isArray(self):
-        return (not (self.isscalar)) & (not (self.data is None))
+    def is_array(self):
+        return (not (self.is_scalar)) & (not (self.data is None))
 
     @property
     def label_full(self):
