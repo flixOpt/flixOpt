@@ -217,14 +217,14 @@ class cModelBoxOfES(cBaseModel):
         helpers.printDictAndList(self.main_results_str)
 
 
-class cME(cArgsClass):
+class Element(cArgsClass):
     """
     Element mit Variablen und Gleichungen (ME = Modeling Element)
     -> besitzt Methoden, die jede Kindklasse ergänzend füllt:
-    1. cME.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
-    2. cME.declareVarsAndEqs() --> Variablen und Eqs definieren.
-    3. cME.doModeling()        --> Modellierung
-    4. cME.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
+    1. Element.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
+    2. Element.declareVarsAndEqs() --> Variablen und Eqs definieren.
+    3. Element.doModeling()        --> Modellierung
+    4. Element.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
     """
     modBox: cModelBoxOfES
 
@@ -236,7 +236,7 @@ class cME(cArgsClass):
         return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
 
     @property  # subElements of all layers
-    def subElements_all(self) -> list:  #TODO: List[cME] doesnt work...
+    def subElements_all(self) -> list:  #TODO: List[Element] doesnt work...
         allSubElements = []  # wichtig, dass neues Listenobjekt!
         allSubElements += self.subElements
         for subElem in self.subElements:
@@ -249,7 +249,7 @@ class cME(cArgsClass):
         self.label = label
         self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
 
-        self.subElements: List[cME] = []  # zugehörige Sub-ModelingElements
+        self.subElements: List[Element] = []  # zugehörige Sub-ModelingElements
         self.modBox: Optional[cModelBoxOfES] = None  # hier kommt die aktive ModBox rein
         self.mod: Optional[cMEModel] = None  # hier kommen alle Glg und Vars rein
         super().__init__(**kwargs)
@@ -302,7 +302,7 @@ class cME(cArgsClass):
     def createNewModAndActivateModBox(self, modBox) -> None:
         # print('new mod for ' + self.label)
         # subElemente ebenso:
-        aME: cME
+        aME: Element
         for aME in self.subElements:
             aME.createNewModAndActivateModBox(modBox)  # rekursiv!
 
@@ -417,10 +417,10 @@ class cME(cArgsClass):
 
 class cMEModel:
     '''
-    is existing in every cME and owns eqs and vars of the activated calculation
+    is existing in every Element and owns eqs and vars of the activated calculation
     '''
 
-    def __init__(self, ME: cME):
+    def __init__(self, ME: Element):
         self.ME = ME
         self.variables = []
         self.eqs = []
@@ -460,7 +460,7 @@ class cMEModel:
                   allow_unicode=True)
 
 
-class Effect(cME):
+class Effect(Element):
     '''
     Effect, i.g. costs, CO2 emissions, area, ...
     can be used later afterwards for allocating effects to compontents and flows.
@@ -637,7 +637,7 @@ from .flixFeatures import *
 EffectTypeDict = Dict[Effect, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
-class Component(cME):
+class Component(Element):
     ''' 
     basic component class for all components
     '''
@@ -856,7 +856,7 @@ class Component(cME):
 
 
 # komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
-class cGlobal(cME):
+class cGlobal(Element):
     ''' 
     storing global modeling stuff like effect equations and optimization target
     '''
@@ -979,7 +979,7 @@ class cGlobal(cME):
         self.objective.addSummand(objectiveEffect.invest.mod.var_sum, 1)
 
 
-class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur cME???
+class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
     '''
     realizing balance of all linked flows
     (penalty flow is excess can be activated)
@@ -1136,7 +1136,7 @@ class cIO():
 
 # todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
 # Fluss/Strippe
-class Flow(cME):
+class Flow(Element):
     '''
     flows are inputs and outputs of components
     '''
@@ -1634,13 +1634,13 @@ class System:
     ## Properties:
 
     @property
-    def allMEsOfFirstLayerWithoutFlows(self) -> List[cME]:
+    def allMEsOfFirstLayerWithoutFlows(self) -> List[Element]:
         allMEs = self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes + list(
             self.setOfOtherMEs)
         return allMEs
 
     @property
-    def allMEsOfFirstLayer(self) -> List[cME]:
+    def allMEsOfFirstLayer(self) -> List[Element]:
         allMEs = self.allMEsOfFirstLayerWithoutFlows + list(self.setOfFlows)
         return allMEs
 
@@ -1784,13 +1784,13 @@ class System:
 
         # ME registrieren ganz allgemein:
 
-    def addElements(self, *args: cME) -> None:
+    def addElements(self, *args: Element) -> None:
         '''
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
 
         Parameters
         ----------
-        *args : childs of   cME like cBoiler, cHeatPump, Bus,...
+        *args : childs of   Element like cBoiler, cHeatPump, Bus,...
             modeling Elements
 
         '''
@@ -1801,23 +1801,23 @@ class System:
                 self.addComponents(aNewME)
             elif isinstance(aNewME, Effect):
                 self.addEffects(aNewME)
-            elif isinstance(aNewME, cME):
+            elif isinstance(aNewME, Element):
                 # check if already exists:
                 self._checkIfUniqueElement(aNewME, self.setOfOtherMEs)
                 # register ME:
                 self.setOfOtherMEs.add(aNewME)
 
             else:
-                raise Exception('argument is not instance of a modeling Element (cME)')
+                raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def addTemporaryElements(self, *args: cME) -> None:
+    def addTemporaryElements(self, *args: Element) -> None:
         '''
         add temporary modeling elements, only valid for one calculation,
         i.g. cAggregationModeling-Element
 
         Parameters
         ----------
-        *args : cME
+        *args : Element
             temporary modeling Elements.
 
         '''
@@ -1837,13 +1837,13 @@ class System:
             self.listOfEffectTypes.remove(tempME)
             self.setOfFlows(tempME)
 
-    def _checkIfUniqueElement(self, aElement: cME, listOfExistingLists: list) -> None:
+    def _checkIfUniqueElement(self, aElement: Element, listOfExistingLists: list) -> None:
         '''
         checks if element or label of element already exists in list
 
         Parameters
         ----------
-        aElement : cME
+        aElement : Element
             new element to check
         listOfExistingLists : list
             list of already registered elements
@@ -1954,7 +1954,7 @@ class System:
     def activateModBox(self, aModBox:cModelBoxOfES) -> None:
         self.modBox = aModBox
         aModBox: cModelBoxOfES
-        aME: cME
+        aME: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
         self.activateInTS(aModBox.esTimeIndexe, aModBox.TS_explicit)
@@ -2032,7 +2032,7 @@ class System:
         # comps:
         aSubDict = {}
         aDict['Components'] = aSubDict
-        aComp: cME
+        aComp: Element
         for aComp in self.listOfComponents:
             aSubDict[aComp.label] = aComp.getEqsAsStr()
 

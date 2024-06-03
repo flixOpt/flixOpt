@@ -295,7 +295,7 @@ from .basicModeling import *
 
 
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
-class cAggregationModeling(flixStructure.cME):
+class cAggregationModeling(flixStructure.Element):
     def __init__(self, label, es, indexVectorsOfClusters, fixStorageFlows=True, fixBinaryVarsOnly=True,
                  listOfMEsToClusterize=None, percentageOfPeriodFreedom=0, costsOfPeriodFreedom=0, **kwargs):
         '''
