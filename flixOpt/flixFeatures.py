@@ -1080,7 +1080,7 @@ class cFeatureInvest(cFeature):
         self.eq_max_via_investmentSize.addSummand(self.definingVar, 1)
         # TODO: Changed by FB
         # self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.d_i))
-        self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.d))
+        self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.data))
         # TODO: Changed by FB
 
         ## 2. Gleichung: Minimum durch Investmentgröße ##        

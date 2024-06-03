@@ -351,7 +351,7 @@ class cME(cArgsClass):
         aTS: TimeSeries
         for aTS in self.TS_list:
             # print(aVar.label)
-            aData[aTS.label] = aTS.d
+            aData[aTS.label] = aTS.data
             aVars[aTS.label] = aTS  # link zur Variable
 
             # 4. Attribut Group übergeben, wenn vorhanden
@@ -1057,7 +1057,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
         if aFlow.medium is not None:
             # set gemeinsamer Medien:
             # commonMedium = self.media & aFlow.medium
-            # wenn leer, d.h. kein gemeinsamer Eintrag:
+            # wenn leer, data.h. kein gemeinsamer Eintrag:
             if (aFlow.medium is not None) and (self.media is not None) and \
                     (not (aFlow.medium in self.media)):
                 raise Exception('in cBus ' + self.label + ' : registerFlow(): medium \''
@@ -1405,8 +1405,8 @@ class cFlow(cME):
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausiTest(self) -> None:
         # Plausi-Check min < max:
-        if np.any(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d)):
-            # if np.any(np.asarray(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d) )):
+        if np.any(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data)):
+            # if np.any(np.asarray(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data) )):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
@@ -1418,11 +1418,11 @@ class cFlow(cME):
 
 
         # exist-merge aus Flow.exist und Comp.exist
-        exists_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
+        exists_global = np.multiply(self.exists.data, self.comp.exists.data) # array of 0 and 1
         self.exists_with_comp = TimeSeries('exists_with_comp', helpers.checkExists(exists_global), self)
         # combine max_rel with and exist from the flow and the comp it belongs to
-        self.max_rel_with_exists = TimeSeries('max_rel_with_exists', np.multiply(self.max_rel.d, self.exists_with_comp.d), self)
-        self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.d, self.exists_with_comp.d), self)
+        self.max_rel_with_exists = TimeSeries('max_rel_with_exists', np.multiply(self.max_rel.data, self.exists_with_comp.data), self)
+        self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
 
         # prepare invest Feature:
         if self.investArgs is None:
@@ -2676,7 +2676,7 @@ class cCalculation:
         self.pathForResults = aPath
 
         timestamp = datetime.datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')
+        timestring = timestamp.strftime('%Y-%m-%data')
         self.nameOfCalc = namePrefix.replace(" ", "") + timestring + '_' + self.label.replace(" ",
                                                                                               "") + nameSuffix.replace(
             " ", "")

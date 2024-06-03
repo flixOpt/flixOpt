@@ -80,10 +80,10 @@ class TimeSeries:
     # gets rawdata only of activated esIndexe:
     @property
     def d_i_raw(self):
-        if (np.isscalar(self.d)) or (self.d is None) or (self.__timeIndexe_actual is None):
-            return self.d
+        if (np.isscalar(self.data)) or (self.data is None) or (self.__timeIndexe_actual is None):
+            return self.data
         else:
-            return self.d[self.__timeIndexe_actual]
+            return self.data[self.__timeIndexe_actual]
 
     # Vektor:
     @property
@@ -102,21 +102,21 @@ class TimeSeries:
 
     @property
     def isscalar(self):
-        return np.isscalar(self.d)
+        return np.isscalar(self.data)
 
     @property
     def isArray(self):
-        return (not (self.isscalar)) & (not (self.d is None))
+        return (not (self.isscalar)) & (not (self.data is None))
 
     @property
     def label_full(self):
         return self.owner.label_full + '_' + self.label
 
-    def __init__(self, label, value, owner):
+    def __init__(self, label: str, data: Numeric_TS, owner):
         '''
         Parameters
         ----------
-        value :
+        data :
             scalar, array or cTSraw!
         owner :
         '''
@@ -124,13 +124,13 @@ class TimeSeries:
         self.owner = owner
 
         # if value is cTSraw, then extract value:
-        if isinstance(value, cTSraw):
-            self.TSraw = value
-            value = self.TSraw.value  # extract value
+        if isinstance(data, cTSraw):
+            self.TSraw = data
+            data = self.TSraw.value  # extract value
         else:
             self.TSraw = None
 
-        self.d = self.__makeSkalarIfPossible(value)  # (d wie data), d so knapp wie möglich speichern
+        self.data = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
         self.d_i_explicit = None  #
 
         self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
@@ -140,19 +140,19 @@ class TimeSeries:
         self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
-        return f"{self.d}"
+        return f"{self.data}"
 
     @staticmethod
-    def __makeSkalarIfPossible(d):
-        if (np.isscalar(d)) or (d is None):
+    def make_scalar_if_possible(data):
+        if (np.isscalar(data)) or (data is None):
             # do nothing
             pass
         else:
-            d = np.array(d)  # Umwandeln, da einfaches slicing mit Index-Listen nur mit np-Array geht.
+            data = np.array(data)  # Umwandeln, da einfaches slicing mit Index-Listen nur mit np-Array geht.
             # Wenn alle Werte gleich, dann Vektor in Skalar umwandeln:
-            if np.all(d == d[0]):
-                d = d[0]
-        return d
+            if np.all(data == data[0]):
+                data = data[0]
+        return data
 
     # define, which timeStep-Set should be transfered in data-request self.d_i()
     def activate(self, dataTimeIndexe, d_i_explicit=None):
@@ -164,7 +164,7 @@ class TimeSeries:
             assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
                     (len(d_i_explicit) == 1)), 'd_i_explicit has not right length!'
 
-        self.d_i_explicit = self.__makeSkalarIfPossible(d_i_explicit)
+        self.d_i_explicit = self.make_scalar_if_possible(d_i_explicit)
 
     def setAggWeight(self, aWeight):
         '''
