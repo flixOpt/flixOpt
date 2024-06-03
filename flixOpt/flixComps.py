@@ -937,7 +937,7 @@ class cStorage(Component):
         # obj.ineqs.EntwederLadenOderEntladen.addSummand(obj.vars.IchEntladeMich,1);
         # obj.ineqs.EntwederLadenOderEntladen.addRightSide(1);
 
-    def addShareToGlobals(self, globalComp: cGlobal, modBox):
+    def addShareToGlobals(self, globalComp: Global, modBox):
         """
 
         :param globalComp:
