@@ -97,11 +97,8 @@ class cTS_vector:
 
         self.data = self._convert_to_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
         self.explicit_active_data = None  # Used as a short cut for aggregation modeling.
-
         self.active_time_indices = None  # aktuelle timeIndexe der modBox
-
         owner.TS_list.append(self)
-
         self.aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
@@ -172,12 +169,12 @@ class cTS_vector:
 
         self.explicit_active_data = self._convert_to_scalar_if_possible(explicit_active_data)
 
-    def set_agg_weight(self, aWeight):
+    def set_agg_weight(self, weight):
         '''
         only for aggregation: set weight of timeseries for creating of typical periods!
         '''
-        self.aggregation_weight = aWeight
-        if (aWeight > 1) or (aWeight < 0):
+        self.aggregation_weight = weight
+        if (weight > 1) or (weight < 0):
             raise Exception('weigth must be between 0 and 1!')
 
 
