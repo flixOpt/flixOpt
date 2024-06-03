@@ -1463,15 +1463,15 @@ class cFlow(cME):
             # Wenn fixer Lastgang:
             if self.val_rel is not None:
                 # min = max = val !
-                fix_value = self.val_rel.d_i * self.nominal_val
+                fix_value = self.val_rel.active_data * self.nominal_val
                 lb = None
                 ub = None
             else:
                 if self.featureOn.useOn:
                     lb = 0
                 else:
-                    lb = self.min_rel_with_exists.d_i * self.nominal_val  # immer an
-                ub = self.max_rel_with_exists.d_i * self.nominal_val
+                    lb = self.min_rel_with_exists.active_data * self.nominal_val  # immer an
+                ub = self.max_rel_with_exists.active_data * self.nominal_val
                 fix_value = None
             return (lb, ub, fix_value)
 
@@ -1509,10 +1509,10 @@ class cFlow(cME):
 
         #
         # ############## onHoursSum_max: ##############
-        #        
-        
+        #
+
         # ineq: sum(var_on(t)) <= onHoursSum_max
-        
+
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = cEquation('onHoursSum_max', self, modBox, 'ineq')
             eq_onHoursSum_max.addSummandSumOf(self.mod.var_on, 1)
@@ -1520,10 +1520,10 @@ class cFlow(cME):
 
         #
         # ############## onHoursSum_max: ##############
-        #        
-        
+        #
+
         # ineq: sum(var_on(t)) >= onHoursSum_min
-        
+
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = cEquation('onHoursSum_min', self, modBox, 'ineq')
             eq_onHoursSum_min.addSummandSumOf(self.mod.var_on, -1)
@@ -1614,7 +1614,7 @@ class cFlow(cME):
         if self.costsPerFlowHour is not None:
             # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
             # variable_costs          = cVector(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))
-            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.d_i, modBox.dtInHours)) # np.multiply = elementweise Multiplikation
+            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.active_data, modBox.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.mod.var_val, self.costsPerFlowHour,
                                            modBox.dtInHours)
