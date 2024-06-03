@@ -96,13 +96,13 @@ class cTS_vector:
             self.TSraw = None
 
         self.data = self._make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
-        self.d_i_explicit = None  #
+        self.explicit_active_data = None  # Used as a short cut for aggregation modeling.
 
-        self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
+        self.active_time_indices = None  # aktuelle timeIndexe der modBox
 
         owner.TS_list.append(self)
 
-        self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
+        self.aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
         return f"{self.data}"
@@ -111,23 +111,23 @@ class cTS_vector:
     # gets rawdata only of activated esIndexe:
     @property
     def active_data_raw(self):
-        indices_not_applicable = (np.isscalar(self.data)) or (self.data is None) or (self.__timeIndexe_actual is None)
+        indices_not_applicable = (np.isscalar(self.data)) or (self.data is None) or (self.active_time_indices is None)
         if indices_not_applicable:
             return self.data
         else:
-            return self.data[self.__timeIndexe_actual]
+            return self.data[self.active_time_indices]
 
     # Vektor:
     @property
     def active_data_raw_vector(self):
-        vec = helpers.getVector(self.active_data_raw, len(self.__timeIndexe_actual))
+        vec = helpers.getVector(self.active_data_raw, len(self.active_time_indices))
         return vec
 
     @property
     def active_data(self):
         # gets data only of activated esIndexe or explicit data::
-        if self.d_i_explicit is not None:
-            return self.d_i_explicit
+        if self.explicit_active_data is not None:
+            return self.explicit_active_data
         else:
             return self.active_data_raw
 
@@ -168,20 +168,20 @@ class cTS_vector:
     # define, which timeStep-Set should be transfered in data-request self.active_data()
     def activate(self, dataTimeIndexe, d_i_explicit=None):
         # time-Index:
-        self.__timeIndexe_actual = dataTimeIndexe
+        self.active_time_indices = dataTimeIndexe
 
         # explicitData:
         if d_i_explicit is not None:
-            assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
-                    (len(d_i_explicit) == 1)), 'd_i_explicit has not right length!'
+            assert ((len(d_i_explicit) == len(self.active_time_indices)) or \
+                    (len(d_i_explicit) == 1)), 'explicit_active_data has not right length!'
 
-        self.d_i_explicit = self._make_scalar_if_possible(d_i_explicit)
+        self.explicit_active_data = self._make_scalar_if_possible(d_i_explicit)
 
     def setAggWeight(self, aWeight):
         '''
         only for aggregation: set weight of timeseries for creating of typical periods!
         '''
-        self.weight_agg = aWeight
+        self.aggregation_weight = aWeight
         if (aWeight > 1) or (aWeight < 0):
             raise Exception('weigth must be between 0 and 1!')
 
