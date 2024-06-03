@@ -99,71 +99,58 @@ class cTS_vector:
     # create and register in List:
 
     def __init__(self, label: str, data: Numeric_TS, owner):
-        '''
-        Parameters
-        ----------
-        data :
-            scalar, array or cTSraw!
-        owner :
-        '''
-        self.label = label
-        self.owner = owner
+        self.label: str = label
+        self.owner: object = owner
 
-        # if value is cTSraw, then extract value:
         if isinstance(data, cTSraw):
-            self.TSraw = data
+            self.TSraw: Optional[cTSraw] = data
             data = self.TSraw.value  # extract value
         else:
             self.TSraw = None
 
-        self.data = self._convert_to_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
-        self.explicit_active_data = None  # Used as a short cut for aggregation modeling.
-        self.active_time_indices = None  # aktuelle timeIndexe der modBox
+        self.data: Numeric = self._convert_to_scalar_if_possible(data)
+        self.explicit_active_data: Optional[Numeric] = None
+        self.active_time_indices = None
         owner.TS_list.append(self)
         self.aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
         return f"{self.data}"
 
-    # Vektor:
     @property
-    def active_data_raw_vector(self):
+    def active_data_raw_vector(self) -> np.ndarray:
         vec = helpers.getVector(self.active_data, len(self.active_time_indices))
         return vec
 
     @property
-    def active_data(self):
-        # gets data only of activated esIndexe or explicit data::
+    def active_data(self) -> Numeric:
         if self.explicit_active_data is not None:
             return self.explicit_active_data
-        else:
-            indices_not_applicable = (np.isscalar(self.data)) or (self.data is None) or (
-                        self.active_time_indices is None)
-            if indices_not_applicable:
-                return self.data
-            else:
-                return self.data[self.active_time_indices]
+        indices_not_applicable = np.isscalar(self.data) or self.data is None or self.active_time_indices is None
+        if indices_not_applicable:
+            return self.data
+        return self.data[self.active_time_indices]
 
     @property
-    def is_scalar(self):
+    def is_scalar(self) -> bool:
         return np.isscalar(self.data)
 
     @property
-    def is_array(self):
-        return (not (self.is_scalar)) & (not (self.data is None))
+    def is_array(self) -> bool:
+        return not self.is_scalar and self.data is not None
 
     @property
-    def label_full(self):
+    def label_full(self) -> str:
         return self.owner.label_full + '_' + self.label
 
     @staticmethod
-    def _convert_to_scalar_if_possible(data: Numeric_TS) -> Numeric:
+    def _convert_to_scalar_if_possible(data: Numeric) -> Numeric:
         """
         Convert an array to a scalar if all values are equal, or return the array as-is.
 
         Parameters
         ----------
-        data : Numeric_TS
+        data : Numeric
             The data to process.
 
         Returns
@@ -178,25 +165,18 @@ class cTS_vector:
             return data[0]
         return data
 
-    # define, which timeStep-Set should be transfered in data-request self.active_data()
-    def activate(self, time_indices, explicit_active_data=None):
-        # time-Index:
+    def activate(self, time_indices, explicit_active_data: Optional = None):
         self.active_time_indices = time_indices
 
-        # explicitData:
         if explicit_active_data is not None:
-            assert ((len(explicit_active_data) == len(self.active_time_indices)) or \
-                    (len(explicit_active_data) == 1)), 'explicit_active_data has not right length!'
-
+            assert len(explicit_active_data) == len(self.active_time_indices) or len(explicit_active_data) == 1, \
+                'explicit_active_data has incorrect length!'
         self.explicit_active_data = self._convert_to_scalar_if_possible(explicit_active_data)
 
-    def set_agg_weight(self, weight):
-        '''
-        only for aggregation: set weight of timeseries for creating of typical periods!
-        '''
+    def set_agg_weight(self, weight: Union[int, float]):
         self.aggregation_weight = weight
-        if (weight > 1) or (weight < 0):
-            raise Exception('weigth must be between 0 and 1!')
+        if weight > 1 or weight < 0:
+            raise Exception('weight must be between 0 and 1!')
 
 
 class cTS_collection():
