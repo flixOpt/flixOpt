@@ -1128,10 +1128,10 @@ class MediumCollection:
 
 
 # input/output-dock (TODO:
-class cIO():
+class IO():
     pass
     # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
-    # input wären wie Flow,aber statt bus : connectsTo -> hier andere cIO oder aber Bus (dort keine cIO, weil nicht notwendig)
+    # input wären wie Flow,aber statt bus : connectsTo -> hier andere IO oder aber Bus (dort keine IO, weil nicht notwendig)
 
 
 # todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
