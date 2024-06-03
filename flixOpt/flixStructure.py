@@ -352,7 +352,7 @@ class cME(cArgsClass):
         aTS: cTS_vector
         for aTS in self.TS_list:
             # print(aVar.label)
-            aData[aTS.label] = aTS.d
+            aData[aTS.label] = aTS.data
             aVars[aTS.label] = aTS  # link zur Variable
 
             # 4. Attribut Group übergeben, wenn vorhanden
@@ -1058,7 +1058,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
         if aFlow.medium is not None:
             # set gemeinsamer Medien:
             # commonMedium = self.media & aFlow.medium
-            # wenn leer, d.h. kein gemeinsamer Eintrag:
+            # wenn leer, data.h. kein gemeinsamer Eintrag:
             if (aFlow.medium is not None) and (self.media is not None) and \
                     (not (aFlow.medium in self.media)):
                 raise Exception('in cBus ' + self.label + ' : registerFlow(): medium \''
@@ -1406,8 +1406,8 @@ class cFlow(cME):
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausiTest(self) -> None:
         # Plausi-Check min < max:
-        if np.any(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d)):
-            # if np.any(np.asarray(np.asarray(self.min_rel.d) > np.asarray(self.max_rel.d) )):
+        if np.any(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data)):
+            # if np.any(np.asarray(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data) )):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
@@ -2677,7 +2677,7 @@ class cCalculation:
         self.pathForResults = aPath
 
         timestamp = datetime.datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')
+        timestring = timestamp.strftime('%Y-%m-%data')
         self.nameOfCalc = namePrefix.replace(" ", "") + timestring + '_' + self.label.replace(" ",
                                                                                               "") + nameSuffix.replace(
             " ", "")
