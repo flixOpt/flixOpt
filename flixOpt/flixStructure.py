@@ -247,7 +247,7 @@ class cME(cArgsClass):
     # TODO: besser occupied_args
     def __init__(self, label: str, **kwargs):
         self.label = label
-        self.TS_list: List[cTS_vector] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. cTS_vector)
+        self.TS_list: List[TimeSeriesVector] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeriesVector)
 
         self.subElements: List[cME] = []  # zugehörige Sub-ModelingElements
         self.modBox: Optional[cModelBoxOfES] = None  # hier kommt die aktive ModBox rein
@@ -349,7 +349,7 @@ class cME(cArgsClass):
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben
-        aTS: cTS_vector
+        aTS: TimeSeriesVector
         for aTS in self.TS_list:
             # print(aVar.label)
             aData[aTS.label] = aTS.data
@@ -576,8 +576,8 @@ class cEffectType(cME):
         for effectType, share in self.specificShareToOtherEffects_operation.items():
             # value überschreiben durch TS:
             TS_name = 'specificShareToOtherEffect' + '_' + effectType.label
-            self.specificShareToOtherEffects_operation[effectType] = cTS_vector(TS_name,
-                                                                                specificShareToOtherEffects_operation[
+            self.specificShareToOtherEffects_operation[effectType] = TimeSeriesVector(TS_name,
+                                                                                      specificShareToOtherEffects_operation[
                                                                                     effectType], self)
 
         # ShareSums:
@@ -1041,7 +1041,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
 
         if (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0):
             self.withExcess = True
-            self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)
+            self.excessCostsPerFlowHour = TimeSeriesVector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)
         else:
             self.withExcess = False
 
@@ -1305,20 +1305,20 @@ class cFlow(cME):
         # args to attributes:
         self.bus = bus
         self.nominal_val = nominal_val  # skalar!
-        self.min_rel = cTS_vector('min_rel', min_rel, self)
-        self.max_rel = cTS_vector('max_rel', max_rel, self)
+        self.min_rel = TimeSeriesVector('min_rel', min_rel, self)
+        self.max_rel = TimeSeriesVector('max_rel', max_rel, self)
 
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
-        #self.positive_gradient = cTS_vector('positive_gradient', positive_gradient, self)
+        #self.positive_gradient = TimeSeriesVector('positive_gradient', positive_gradient, self)
         self.costsPerFlowHour = as_effect_dict_with_ts_vectors('costsPerFlowHour', costsPerFlowHour, self)
         self.iCanSwitchOff = iCanSwitchOff
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
-        self.onHours_min = None if (onHours_min is None) else cTS_vector('onHours_min', onHours_min, self)
-        self.onHours_max = None if (onHours_max is None) else cTS_vector('onHours_max', onHours_max, self)
-        self.offHours_min = None if (offHours_min is None) else cTS_vector('offHours_min', offHours_min, self)
-        self.offHours_max = None if (offHours_max is None) else cTS_vector('offHours_max', offHours_max, self)
+        self.onHours_min = None if (onHours_min is None) else TimeSeriesVector('onHours_min', onHours_min, self)
+        self.onHours_max = None if (onHours_max is None) else TimeSeriesVector('onHours_max', onHours_max, self)
+        self.offHours_min = None if (offHours_min is None) else TimeSeriesVector('offHours_min', offHours_min, self)
+        self.offHours_max = None if (offHours_max is None) else TimeSeriesVector('offHours_max', offHours_max, self)
         self.switchOnCosts = as_effect_dict_with_ts_vectors('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
         self.costsPerRunningHour = as_effect_dict_with_ts_vectors('costsPerRunningHour', costsPerRunningHour, self)
@@ -1340,7 +1340,7 @@ class cFlow(cME):
                 raise Exception(
                     'Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
 
-            self.val_rel = cTS_vector('val_rel', val_rel, self)
+            self.val_rel = TimeSeriesVector('val_rel', val_rel, self)
 
         self.investArgs = investArgs
         # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
@@ -1740,7 +1740,7 @@ class cEnergySystem:
 
     # get all TS in one list:
     @property
-    def allTSinMEs(self) -> List[cTS_vector]:
+    def allTSinMEs(self) -> List[TimeSeriesVector]:
         ME: cMEModel
         allTS = []
         for ME in self.allMEsOfFirstLayer:
@@ -2001,7 +2001,7 @@ class cEnergySystem:
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activateModbox)
     def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None) -> None:
-        aTS: cTS_vector
+        aTS: TimeSeriesVector
         if dictOfTSAndExplicitData is None:
             dictOfTSAndExplicitData = {}
 
