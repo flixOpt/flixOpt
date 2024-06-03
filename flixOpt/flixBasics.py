@@ -77,6 +77,37 @@ class cTS_vector:
 
     # create and register in List:
 
+    def __init__(self, label: str, data: Numeric_TS, owner):
+        '''
+        Parameters
+        ----------
+        data :
+            scalar, array or cTSraw!
+        owner :
+        '''
+        self.label = label
+        self.owner = owner
+
+        # if value is cTSraw, then extract value:
+        if isinstance(data, cTSraw):
+            self.TSraw = data
+            data = self.TSraw.value  # extract value
+        else:
+            self.TSraw = None
+
+        self.data = self._make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
+        self.d_i_explicit = None  #
+
+        self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
+
+        owner.TS_list.append(self)
+
+        self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
+
+    def __repr__(self):
+        return f"{self.data}"
+
+
     # gets rawdata only of activated esIndexe:
     @property
     def active_data_raw(self):
@@ -111,36 +142,6 @@ class cTS_vector:
     @property
     def label_full(self):
         return self.owner.label_full + '_' + self.label
-
-    def __init__(self, label: str, data: Numeric_TS, owner):
-        '''
-        Parameters
-        ----------
-        data :
-            scalar, array or cTSraw!
-        owner :
-        '''
-        self.label = label
-        self.owner = owner
-
-        # if value is cTSraw, then extract value:
-        if isinstance(data, cTSraw):
-            self.TSraw = data
-            data = self.TSraw.value  # extract value
-        else:
-            self.TSraw = None
-
-        self.data = self._make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
-        self.d_i_explicit = None  #
-
-        self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
-
-        owner.TS_list.append(self)
-
-        self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
-
-    def __repr__(self):
-        return f"{self.data}"
 
     @staticmethod
     def _make_scalar_if_possible(data: Numeric_TS) -> Numeric:
