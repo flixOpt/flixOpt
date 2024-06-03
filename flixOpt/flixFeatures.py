@@ -149,7 +149,7 @@ class cFeatureLinearSegmentVars(cFeature):
                 stuetz1 = aSegment.samplePoints[aVar][0]
                 stuetz2 = aSegment.samplePoints[aVar][1]
                 # wenn Stützstellen TS_vector:
-                if isinstance(stuetz1, cTS_vector):
+                if isinstance(stuetz1, TimeSeriesVector):
                     samplePoint1 = stuetz1.active_data
                     samplePoint2 = stuetz2.active_data
                 # wenn Stützstellen Skalar oder array
@@ -316,10 +316,10 @@ class cFeatureOn(cFeature):
         self.costsPerRunningHour = costsPerRunningHour
         self.onHoursSum_min = onHoursSum_min  # scalar
         self.onHoursSum_max = onHoursSum_max  # scalar
-        self.onHours_min = onHours_min  # cTS_vector
-        self.onHours_max = onHours_max  # cTS_vector
-        self.offHours_min = offHours_min  # cTS_vector
-        self.offHours_max = offHours_max  # cTS_vector
+        self.onHours_min = onHours_min  # TimeSeriesVector
+        self.onHours_max = onHours_max  # TimeSeriesVector
+        self.offHours_min = offHours_min  # TimeSeriesVector
+        self.offHours_max = offHours_max  # TimeSeriesVector
         self.switchOn_maxNr = switchOn_maxNr
         # default:
         self.useOn = False
@@ -671,8 +671,8 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
         max_min_per_hour_is_not_None = (max_per_hour is not None) or (min_per_hour is not None)
         if (not self.sharesAreTS) and max_min_per_hour_is_not_None:
             raise Exception('max_per_hour or min_per_hour can only be used, if sharesAreTS==True!')
-        self.max_per_hour = None if (max_per_hour is None) else cTS_vector('max_per_hour', max_per_hour, self)
-        self.min_per_hour = None if (min_per_hour is None) else cTS_vector('min_per_hour', min_per_hour, self)           
+        self.max_per_hour = None if (max_per_hour is None) else TimeSeriesVector('max_per_hour', max_per_hour, self)
+        self.min_per_hour = None if (min_per_hour is None) else TimeSeriesVector('min_per_hour', min_per_hour, self)
         
 
         self.shares = cFeatureShares('shares', self)
@@ -764,9 +764,9 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
 
         if self.sharesAreTS:
 
-            # Falls cTS_vector, Daten auslesen:
-            if isinstance(factor1, cTS_vector): factor1 = factor1.active_data
-            if isinstance(factor2, cTS_vector): factor2 = factor2.active_data
+            # Falls TimeSeriesVector, Daten auslesen:
+            if isinstance(factor1, TimeSeriesVector): factor1 = factor1.active_data
+            if isinstance(factor2, TimeSeriesVector): factor2 = factor2.active_data
 
             factorOfSummand = np.multiply(factor1, factor2)  # np.multiply = elementweise Multiplikation
             ## Share zu TS-equation hinzufügen:
@@ -783,8 +783,8 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
 
 
         else:
-            assert (not (isinstance(factor1, cTS_vector))) & (not (isinstance(factor2,
-                                                                              cTS_vector))), 'factor1 und factor2 müssen Skalare sein, da shareSum ' + self.label + 'skalar ist'
+            assert (not (isinstance(factor1, TimeSeriesVector))) & (not (isinstance(factor2,
+                                                                                    TimeSeriesVector))), 'factor1 und factor2 müssen Skalare sein, da shareSum ' + self.label + 'skalar ist'
             factorOfSummand = factor1 * factor2
             ## Share zu skalar-equation hinzufügen:
             # if constant share:

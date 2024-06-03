@@ -40,7 +40,7 @@ class cBaseLinearTransformer(cBaseComponent):
         factor_Sets : list
             linear relation between flows
             eq: sum (factor * flow_in) = sum (factor * flow_out)
-            factor can be cTS_vector, scalar or list.
+            factor can be TimeSeriesVector, scalar or list.
             Either 'factor_Sets' or 'segmentsOfFlows' can be used!
 
             example heat pump:  
@@ -89,7 +89,7 @@ class cBaseLinearTransformer(cBaseComponent):
         # type checking
         if isinstance(exists, int) or (
                 isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
+            self.exists = TimeSeriesVector('exists', exists, self)
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
@@ -97,9 +97,9 @@ class cBaseLinearTransformer(cBaseComponent):
         for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
+            flow.exists = TimeSeriesVector('exists', exists, flow)
+            flow.max_rel = TimeSeriesVector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
+            flow.min_rel = TimeSeriesVector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
         # copy information about exists into segments of flows
         if self.segmentsOfFlows is not None:
@@ -155,7 +155,7 @@ class cBaseLinearTransformer(cBaseComponent):
 
     def transformFactorsToTS(self, factor_Sets):
         """
-        macht alle Faktoren, die nicht cTS_vector sind, zu cTS_vector
+        macht alle Faktoren, die nicht TimeSeriesVector sind, zu TimeSeriesVector
 
         :param factor_Sets:
         :return:
@@ -211,10 +211,10 @@ class cBaseLinearTransformer(cBaseComponent):
             # Flow als Keys rauspicken und alle Stützstellen als cTS_Vector:
             self.segmentsOfFlows_TS = self.segmentsOfFlows
             for aFlow in self.segmentsOfFlows.keys():
-                # 2. Stützstellen zu cTS_vector machen, wenn noch nicht cTS_vector!:
+                # 2. Stützstellen zu TimeSeriesVector machen, wenn noch nicht TimeSeriesVector!:
                 for i in range(len(self.segmentsOfFlows[aFlow])):
                     stuetzstelle = self.segmentsOfFlows[aFlow][i]
-                    self.segmentsOfFlows_TS[aFlow][i] = cTS_vector('Stuetzstelle', stuetzstelle, self)
+                    self.segmentsOfFlows_TS[aFlow][i] = TimeSeriesVector('Stuetzstelle', stuetzstelle, self)
 
             def get_var_on():
                 return self.mod.var_on
@@ -347,7 +347,7 @@ class cKessel(cBaseLinearTransformer):
         super().__init__(label, inputs=[Q_fu], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
 
         # args to attributes:
-        self.eta = cTS_vector('eta', eta, self)  # thermischer Wirkungsgrad
+        self.eta = TimeSeriesVector('eta', eta, self)  # thermischer Wirkungsgrad
         self.Q_fu = Q_fu
         self.Q_th = Q_th
 
@@ -395,7 +395,7 @@ class cEHK(cBaseLinearTransformer):
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
 
         # args to attributes:
-        self.eta = cTS_vector('eta', eta, self)  # thermischer Wirkungsgrad
+        self.eta = TimeSeriesVector('eta', eta, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
 
@@ -438,7 +438,7 @@ class cHeatPump(cBaseLinearTransformer):
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[heatPump_bilanz], **kwargs)
 
         # args to attributes:
-        self.COP = cTS_vector('COP', COP, self)  # thermischer Wirkungsgrad
+        self.COP = TimeSeriesVector('COP', COP, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
 
@@ -479,8 +479,8 @@ class cCoolingTower(cBaseLinearTransformer):
         super().__init__(label, inputs=[P_el, Q_th], outputs=[], factor_Sets=[auxElectricity_eq], **kwargs)
 
         # args to attributes:
-        self.specificElectricityDemand = cTS_vector('specificElectricityDemand', specificElectricityDemand,
-                                                    self)  # thermischer Wirkungsgrad
+        self.specificElectricityDemand = TimeSeriesVector('specificElectricityDemand', specificElectricityDemand,
+                                                          self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
 
@@ -533,8 +533,8 @@ class cKWK(cBaseLinearTransformer):
         super().__init__(label, inputs=[Q_fu], outputs=[P_el, Q_th], factor_Sets=[waerme_glg, strom_glg], **kwargs)
 
         # args to attributes:
-        self.eta_th = cTS_vector('eta_th', eta_th, self)
-        self.eta_el = cTS_vector('eta_el', eta_el, self)
+        self.eta_th = TimeSeriesVector('eta_th', eta_th, self)
+        self.eta_el = TimeSeriesVector('eta_el', eta_el, self)
         self.Q_fu = Q_fu
         self.P_el = P_el
         self.Q_th = Q_th
@@ -588,7 +588,7 @@ class cAbwaermeHP(cBaseLinearTransformer):
                          factor_Sets=[heatPump_bilanzEl, heatPump_bilanzAb], **kwargs)
 
         # args to attributes:
-        self.COP = cTS_vector('COP', COP, self)  # thermischer Wirkungsgrad
+        self.COP = TimeSeriesVector('COP', COP, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_ab = Q_ab
         self.Q_th = Q_th
@@ -699,27 +699,27 @@ class cStorage(cBaseComponent):
         self.inFlow = inFlow
         self.outFlow = outFlow
         self.capacity_inFlowHours = capacity_inFlowHours
-        self.max_rel_chargeState = cTS_vector('max_rel_chargeState', max_rel_chargeState, self)
-        self.min_rel_chargeState = cTS_vector('min_rel_chargeState', min_rel_chargeState, self)
+        self.max_rel_chargeState = TimeSeriesVector('max_rel_chargeState', max_rel_chargeState, self)
+        self.min_rel_chargeState = TimeSeriesVector('min_rel_chargeState', min_rel_chargeState, self)
 
         self.group = group
 
         # type checking
         if isinstance(exists, int):
             if exists in (0, 1):
-                self.exists = cTS_vector('exists', exists, self)
+                self.exists = TimeSeriesVector('exists', exists, self)
             else:
                 raise ValueError("Invalid value for exists. Must contain only 0 and 1")
         elif isinstance(exists, (list, np.ndarray)):
             if all(item in {0, 1} for item in exists):
-                self.exists = cTS_vector('exists', np.append(exists, exists[-1]), self)
+                self.exists = TimeSeriesVector('exists', np.append(exists, exists[-1]), self)
             else:
                 raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-            self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
-                                                  self.max_rel_chargeState.active_data * self.exists.active_data, self)
-            self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
-                                                  self.min_rel_chargeState.active_data * self.exists.active_data, self)
+            self.max_rel_chargeState = TimeSeriesVector('max_rel_chargeState',
+                                                        self.max_rel_chargeState.active_data * self.exists.active_data, self)
+            self.min_rel_chargeState = TimeSeriesVector('min_rel_chargeState',
+                                                        self.min_rel_chargeState.active_data * self.exists.active_data, self)
         else:
             raise TypeError()
 
@@ -727,9 +727,9 @@ class cStorage(cBaseComponent):
         for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
+            flow.exists = TimeSeriesVector('exists', exists, flow)
+            flow.max_rel = TimeSeriesVector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
+            flow.min_rel = TimeSeriesVector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
         self.chargeState0_inFlowHours = chargeState0_inFlowHours
         self.charge_state_end_min = charge_state_end_min
@@ -739,9 +739,9 @@ class cStorage(cBaseComponent):
             self.charge_state_end_max = self.capacity_inFlowHours
         else:
             self.charge_state_end_max = charge_state_end_max
-        self.eta_load = cTS_vector('eta_load', eta_load, self)
-        self.eta_unload = cTS_vector('eta_unload', eta_unload, self)
-        self.fracLossPerHour = cTS_vector('fracLossPerHour', fracLossPerHour, self)
+        self.eta_load = TimeSeriesVector('eta_load', eta_load, self)
+        self.eta_unload = TimeSeriesVector('eta_unload', eta_unload, self)
+        self.fracLossPerHour = TimeSeriesVector('fracLossPerHour', fracLossPerHour, self)
         self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
 
         self.investArgs = investArgs
@@ -997,7 +997,7 @@ class cSourceAndSink(cBaseComponent):
         # type checking
         if isinstance(exists, int) or (
                 isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
+            self.exists = TimeSeriesVector('exists', exists, self)
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
@@ -1005,9 +1005,9 @@ class cSourceAndSink(cBaseComponent):
         for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
+            flow.exists = TimeSeriesVector('exists', exists, flow)
+            flow.max_rel = TimeSeriesVector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
+            flow.min_rel = TimeSeriesVector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
         # Erzwinge die Erstellung der On-Variablen, da notwendig für gleichung
         self.source.activateOnValue()
@@ -1084,7 +1084,7 @@ class cSource(cBaseComponent):
         # type checking
         if isinstance(exists, int) or (
                 isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
+            self.exists = TimeSeriesVector('exists', exists, self)
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
@@ -1092,9 +1092,9 @@ class cSource(cBaseComponent):
         for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
+            flow.exists = TimeSeriesVector('exists', exists, flow)
+            flow.max_rel = TimeSeriesVector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
+            flow.min_rel = TimeSeriesVector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
 
 class cSink(cBaseComponent):
@@ -1136,7 +1136,7 @@ class cSink(cBaseComponent):
         # type checking
         if isinstance(exists, int) or (
                 isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
+            self.exists = TimeSeriesVector('exists', exists, self)
         else:
             raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
@@ -1144,9 +1144,9 @@ class cSink(cBaseComponent):
         for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
+            flow.exists = TimeSeriesVector('exists', exists, flow)
+            flow.max_rel = TimeSeriesVector('max_rel', flow.max_rel.active_data * flow.exists.active_data, flow)
+            flow.min_rel = TimeSeriesVector('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
 
 class cTransportation(cBaseComponent):
@@ -1217,8 +1217,8 @@ class cTransportation(cBaseComponent):
             assert in2.bus == out1.bus, 'in2.bus is not equal out1.bus!'
             assert out2.bus == in1.bus, 'out2.bus is not equal in1.bus!'
 
-        self.loss_rel = cTS_vector('loss_rel', loss_rel, self)  #
-        self.loss_abs = cTS_vector('loss_abs', loss_abs, self)  #
+        self.loss_rel = TimeSeriesVector('loss_rel', loss_rel, self)  #
+        self.loss_abs = TimeSeriesVector('loss_abs', loss_abs, self)  #
         self.isAlwaysOn = isAlwaysOn
         self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
 
