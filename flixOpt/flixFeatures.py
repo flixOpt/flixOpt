@@ -1032,7 +1032,7 @@ class cFeatureInvest(cFeature):
 
     def __create_var_segmentedInvestCost(self, aEffect, modBox):
         # define cost-Variable (=costs through segmented Investsize-costs):
-        if isinstance(aEffect, cEffectType):
+        if isinstance(aEffect, Effect):
             aStr = aEffect.label
         elif aEffect is None:
             aStr = modBox.es.listOfEffectTypes.standardType().label  # Standard-Effekt

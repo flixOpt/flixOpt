@@ -460,7 +460,7 @@ class cMEModel:
                   allow_unicode=True)
 
 
-class cEffectType(cME):
+class Effect(cME):
     '''
     Effect, i.g. costs, CO2 emissions, area, ...
     can be used later afterwards for allocating effects to compontents and flows.
@@ -610,22 +610,22 @@ class cEffectType(cME):
 
 
 # Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
-class EffectCollection(List[cEffectType]):
+class EffectCollection(List[Effect]):
     '''
     internal effect list for simple handling of effects
     '''
 
     # return standard effectType:
-    def standardType(self) -> cEffectType:
-        aEffect: cEffectType
+    def standardType(self) -> Effect:
+        aEffect: Effect
         aStandardEffect = None
         # TODO: eleganter nach attribut suchen:
         for aEffectType in self:
             if aEffectType.isStandard: aStandardEffect = aEffectType
         return aStandardEffect
 
-    def objectiveEffect(self) -> cEffectType:
-        aEffect: cEffectType
+    def objectiveEffect(self) -> Effect:
+        aEffect: Effect
         aObjectiveEffect = None
         # TODO: eleganter nach attribut suchen:
         for aEffectType in self:
@@ -634,7 +634,7 @@ class EffectCollection(List[cEffectType]):
 
 
 from .flixFeatures import *
-EffectTypeDict = Dict[cEffectType, Numeric_TS]  #Datatype
+EffectTypeDict = Dict[Effect, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class Component(cME):
@@ -905,7 +905,7 @@ class cGlobal(cME):
         # an alle Effekttypen, die einen Wert haben, anhängen:
         for effectType, value in effect_values_dict.items():
             # Falls None, dann Standard-effekt nutzen:
-            effectType: cEffectType
+            effectType: Effect
             if effectType is None:
                 effectType = self.listOfEffectTypes.standardType()
             elif effectType not in self.listOfEffectTypes:
@@ -941,7 +941,7 @@ class cGlobal(cME):
 
         self.penalty.doModeling(modBox, timeIndexe)
         ## Gleichungen bauen für Effekte: ##
-        effect : cEffectType
+        effect : Effect
         for effect in self.listOfEffectTypes:
             effect.doModeling(modBox, timeIndexe)
 
@@ -1739,7 +1739,7 @@ class System:
         return f"Energy System with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
-    def addEffects(self, *args: cEffectType) -> None:
+    def addEffects(self, *args: Effect) -> None:
         newListOfEffects = list(args)
         for aNewEffect in newListOfEffects:
             print('Register new effect ' + aNewEffect.label)
@@ -1799,7 +1799,7 @@ class System:
         for aNewME in newList:
             if isinstance(aNewME, Component):
                 self.addComponents(aNewME)
-            elif isinstance(aNewME, cEffectType):
+            elif isinstance(aNewME, Effect):
                 self.addEffects(aNewME)
             elif isinstance(aNewME, cME):
                 # check if already exists:

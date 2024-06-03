@@ -67,7 +67,7 @@ heat1 = Bus('heat', 'heat1', excessCostsPerFlowHour = excessCosts);
 heat2 = Bus('heat', 'heat2', excessCostsPerFlowHour = excessCosts);
 
 # Effect-Definition:
-costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
+costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)
 
 
 aSink1   = cSink   ('Sink1', sink   = Flow('Q_th', bus = heat1, nominal_val = 1, val_rel = sink1))
