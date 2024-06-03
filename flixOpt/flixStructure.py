@@ -261,7 +261,7 @@ class cME(cArgsClass):
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, cFlow) and key in self.getInitArgs() and key != "label"
+               not isinstance(value, Flow) and key in self.getInitArgs() and key != "label"
         }
 
         remaining_data_str = ""
@@ -666,11 +666,11 @@ class cBaseComponent(cME):
 
         on_valuesBeforeBegin :  array (TODO: why not scalar?)
             Ein(1)/Aus(0)-Wert vor Zeitreihe
-        switchOnCosts : look in cFlow for description
-        switchOn_maxNr : look in cFlow for description
-        onHoursSum_min : look in cFlow for description
-        onHoursSum_max : look in cFlow for description
-        costsPerRunningHour : look in cFlow for description
+        switchOnCosts : look in Flow for description
+        switchOn_maxNr : look in Flow for description
+        onHoursSum_min : look in Flow for description
+        onHoursSum_max : look in Flow for description
+        costsPerRunningHour : look in Flow for description
         **kwargs : TYPE
             DESCRIPTION.
 
@@ -719,7 +719,7 @@ class cBaseComponent(cME):
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, cFlow) and key in self.getInitArgs() and key != "label"
+               not isinstance(value, Flow) and key in self.getInitArgs() and key != "label"
         }
 
         remaining_data_str = ""
@@ -822,7 +822,7 @@ class cBaseComponent(cME):
 
         descr = {}
         inhalt = {'In-Flows': [], 'Out-Flows': []}
-        aFlow: cFlow
+        aFlow: Flow
 
         descr[self.label] = inhalt
 
@@ -851,7 +851,7 @@ class cBaseComponent(cME):
         return descr
 
     def print(self, shiftChars) -> None:
-        aFlow: cFlow
+        aFlow: Flow
         print(yaml.dump(self.getDescrAsStr(), allow_unicode=True))
 
 
@@ -1131,12 +1131,12 @@ class cMediumCollection:
 class cIO():
     pass
     # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
-    # input wären wie cFlow,aber statt bus : connectsTo -> hier andere cIO oder aber Bus (dort keine cIO, weil nicht notwendig)
+    # input wären wie Flow,aber statt bus : connectsTo -> hier andere cIO oder aber Bus (dort keine cIO, weil nicht notwendig)
 
 
 # todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
 # Fluss/Strippe
-class cFlow(cME):
+class Flow(cME):
     '''
     flows are inputs and outputs of components
     '''
@@ -1309,7 +1309,7 @@ class cFlow(cME):
         else:
             # Check:
             # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
-            if (self.nominal_val == cFlow.__nominal_val_default) and \
+            if (self.nominal_val == Flow.__nominal_val_default) and \
                     ((investArgs is None) or (investArgs.investmentSize_is_fixed == True)):
                 # Fehlermeldung:
                 raise Exception(
@@ -1662,7 +1662,7 @@ class System:
         return allInvestFeatures
 
     # Achtung: Funktion wird nicht nur für Getter genutzt.
-    def getFlows(self, listOfComps=None) -> Set[cFlow]:
+    def getFlows(self, listOfComps=None) -> Set[Flow]:
         setOfFlows = set()
         # standardmäßig Flows aller Komponenten:
         if listOfComps is None:
@@ -2020,7 +2020,7 @@ class System:
         # Flows:
         flowList = []
         modelDescription['flows'] = flowList
-        aFlow: cFlow
+        aFlow: Flow
         for aFlow in self.setOfFlows:
             flowList.append(aFlow.getStrDescr())
 

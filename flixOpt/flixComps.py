@@ -131,7 +131,7 @@ class cBaseLinearTransformer(cBaseComponent):
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, cFlow) and
+               not isinstance(value, Flow) and
                key not in ["label", "TS_list", "segmentsOfFlows", "factor_Sets", "inputs", "outputs"]
         }
 
@@ -322,7 +322,7 @@ class cKessel(cBaseLinearTransformer):
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric_TS, Q_fu:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, Q_fu:Flow, Q_th:Flow, **kwargs):
         '''
         constructor for boiler
 
@@ -332,9 +332,9 @@ class cKessel(cBaseLinearTransformer):
             name of bolier.
         eta : float or TS
             thermal efficiency.
-        Q_fu : cFlow
+        Q_fu : Flow
             fuel input-flow
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see mother classes!
         
@@ -370,7 +370,7 @@ class cEHK(cBaseLinearTransformer):
     new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         constructor for boiler
 
@@ -380,9 +380,9 @@ class cEHK(cBaseLinearTransformer):
             name of bolier.
         eta : float or TS
             thermal efficiency.
-        P_el : cFlow
+        P_el : Flow
             electric input-flow
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see mother classes!
 
@@ -418,7 +418,7 @@ class cHeatPump(cBaseLinearTransformer):
     new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -426,9 +426,9 @@ class cHeatPump(cBaseLinearTransformer):
             name of heatpump.
         COP : float or TS
             Coefficient of performance.
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see motherclasses
         '''
@@ -458,7 +458,7 @@ class cCoolingTower(cBaseLinearTransformer):
     new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -466,9 +466,9 @@ class cCoolingTower(cBaseLinearTransformer):
             name of cooling tower.
         specificElectricityDemand : float or TS
             auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal input-flow.
         **kwargs : see getKwargs() and their description in motherclasses
             
@@ -504,7 +504,7 @@ class cKWK(cBaseLinearTransformer):
     # eta = 1 # Thermischer Wirkungsgrad
     # __eta_bound = [0,1]
 
-    def __init__(self, label:str, eta_th:Numeric_TS, eta_el:Numeric_TS, Q_fu:cFlow, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta_th:Numeric_TS, eta_el:Numeric_TS, Q_fu:Flow, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         constructor of cCHP
 
@@ -516,11 +516,11 @@ class cKWK(cBaseLinearTransformer):
             thermal efficiency.
         eta_el : float or TS
             electrical efficiency.
-        Q_fu : cFlow
+        Q_fu : Flow
             fuel input-flow.
-        P_el : cFlow
+        P_el : Flow
             electricity output-flow.
-        Q_th : cFlow
+        Q_th : Flow
             heat output-flow.
         **kwargs : 
         
@@ -560,7 +560,7 @@ class cAbwaermeHP(cBaseLinearTransformer):
     new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_ab:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_ab:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -568,11 +568,11 @@ class cAbwaermeHP(cBaseLinearTransformer):
             name of heatpump.
         COP : float, TS
             Coefficient of performance.
-        Q_ab : cFlow
+        Q_ab : Flow
             Heatsource input-flow.
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see motherclasses
         '''
@@ -626,8 +626,8 @@ class cStorage(cBaseComponent):
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self,
                  label: str,
-                 inFlow: cFlow,
-                 outFlow: cFlow,
+                 inFlow: Flow,
+                 outFlow: Flow,
                  capacity_inFlowHours: Optional[Skalar],
                  exists: Numeric_TS = 1,
                  group: Optional[str] = None,
@@ -648,9 +648,9 @@ class cStorage(cBaseComponent):
         ----------
         label : str
             description.
-        inFlow : cFlow
+        inFlow : Flow
             ingoing flow.
-        outFlow : cFlow
+        outFlow : Flow
             outgoing flow.
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
@@ -954,23 +954,23 @@ class cSourceAndSink(cBaseComponent):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
     """
-    # source : cFlow
-    # sink   : cFlow
+    # source : Flow
+    # sink   : Flow
 
     new_init_args = ['label', 'source', 'sink', 'avoidInAndOutAtOnce']
 
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, sink: cFlow, exists: Numeric_TS = 1, group: str = None,
+    def __init__(self, label: str, source: Flow, sink: Flow, exists: Numeric_TS = 1, group: str = None,
                  avoidInAndOutAtOnce: bool = True, **kwargs):
         '''
         Parameters
         ----------
         label : str
             name of sourceAndSink
-        source : cFlow
+        source : Flow
             output-flow of this component
-        sink : cFlow
+        sink : Flow
             input-flow of this component
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
@@ -1048,13 +1048,13 @@ class cSource(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, source: Flow, exists: Numeric_TS = 1, group: str = None, **kwargs):
         '''       
         Parameters
         ----------
         label : str
             name of source
-        source : cFlow
+        source : Flow
             output-flow of source
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
@@ -1073,7 +1073,7 @@ class cSource(cBaseComponent):
         Konstruktor für Instanzen der Klasse cSource
 
         :param str label: Bezeichnung
-        :param cFlow source: flow-output Quelle
+        :param Flow source: flow-output Quelle
         :param kwargs:
         """
         super().__init__(label, **kwargs)
@@ -1104,7 +1104,7 @@ class cSink(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, sink: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, sink: Flow, exists: Numeric_TS = 1, group: str = None, **kwargs):
         '''
         constructor of sink 
 
@@ -1112,7 +1112,7 @@ class cSink(cBaseComponent):
         ----------
         label : str
             name of sink.
-        sink : cFlow
+        sink : Flow
             input-flow of sink
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
@@ -1156,8 +1156,8 @@ class cTransportation(cBaseComponent):
     # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
     # TODO: optional: capacities should be recognised for losses
 
-    def __init__(self, label: str, in1: cFlow, out1: cFlow,
-                 in2: Optional[cFlow] = None, out2: Optional[cFlow] = None,
+    def __init__(self, label: str, in1: Flow, out1: Flow,
+                 in2: Optional[Flow] = None, out2: Optional[Flow] = None,
                  loss_rel: Numeric_TS = 0,
                  loss_abs: Numeric_TS = 0, isAlwaysOn: bool = True,
                  avoidFlowInBothDirectionsAtOnce: bool = True, **kwargs):
@@ -1178,9 +1178,9 @@ class cTransportation(cBaseComponent):
         ----------
         label : str
             name of cTransportation.
-        in1 : cFlow
+        in1 : Flow
             inflow of input at side A
-        out1 : cFlow
+        out1 : Flow
             outflow (of in1) at side B
         in2 : cFlow, optional
             optional inflow of side B

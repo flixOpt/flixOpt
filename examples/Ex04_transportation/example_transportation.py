@@ -70,10 +70,10 @@ heat2 = cBus('heat'        ,'heat2'     , excessCostsPerFlowHour = excessCosts);
 costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
 
 
-aSink1   = cSink   ('Sink1'  ,sink   = cFlow('Q_th' , bus = heat1, nominal_val = 1, val_rel = sink1))
-aSink2   = cSink   ('Sink2'  ,sink   = cFlow('Q_th' , bus = heat2, nominal_val = 1, val_rel = sink2))
-aSource1 = cSource ('Source1',source = cFlow('Q_th' , bus = heat1, nominal_val = 60, costsPerFlowHour = -1))
-aSource2 = cSource ('Source2',source = cFlow('Q_th' , bus = heat2, nominal_val = 60, costsPerFlowHour = -1)) # doppelt so teuer
+aSink1   = cSink   ('Sink1', sink   = Flow('Q_th', bus = heat1, nominal_val = 1, val_rel = sink1))
+aSink2   = cSink   ('Sink2', sink   = Flow('Q_th', bus = heat2, nominal_val = 1, val_rel = sink2))
+aSource1 = cSource ('Source1', source = Flow('Q_th', bus = heat1, nominal_val = 60, costsPerFlowHour = -1))
+aSource2 = cSource ('Source2', source = Flow('Q_th', bus = heat2, nominal_val = 60, costsPerFlowHour = -1)) # doppelt so teuer
 
 
 loss_abs = 1
@@ -95,14 +95,14 @@ invest2 = cInvestArgs(fixCosts=0,
                       specificCosts=0
                       )
 
-aTransporter = cTransportation('Rohr', 
-                                in1  = cFlow('in1',  bus=heat1, investArgs=invest1, nominal_val = None, min_rel = 0.1 ),
-                                out1 = cFlow('out1', bus=heat2),
-                                loss_abs = loss_abs,
-                                loss_rel = loss_rel,
-                                in2  = cFlow('in2',  bus=heat2, investArgs=invest2, nominal_val = None, min_rel = 0.1 ),
-                                out2 = cFlow('out2', bus=heat1),
-                                )
+aTransporter = cTransportation('Rohr',
+                               in1  = Flow('in1', bus=heat1, investArgs=invest1, nominal_val = None, min_rel = 0.1),
+                               out1 = Flow('out1', bus=heat2),
+                               loss_abs = loss_abs,
+                               loss_rel = loss_rel,
+                               in2  = Flow('in2', bus=heat2, investArgs=invest2, nominal_val = None, min_rel = 0.1),
+                               out2 = Flow('out2', bus=heat1),
+                               )
 
 # Built energysystem:
 es = System(aTimeSeries, dt_last=None)
