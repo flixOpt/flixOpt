@@ -8,7 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 from . import flixOptHelperFcts as helpers
 from .flixBasicsPublic import cTSraw
-from typing import Union, Optional, List, Dict
+from typing import Union, Optional, List, Dict, Any
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -327,43 +327,35 @@ def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[
         return {None: effect_values}
 
 
-def transformDictValuesToTS(nameOfParam, aDict, owner):
-    '''
-      transformiert Wert -> TimeSeries
-      für alle {Effekt:Wert}-couples in dict,
+def transformDictValuesToTS(name_of_param: str, effect_dict: Optional[Dict[Any, Union[Numeric, cTS_vector]]], owner) -> Optional[Dict[Any, cTS_vector]]:
+    """
+    Transforms values in a dictionary to instances of cTS_vector.
 
-      Parameters
-      ----------
-      nameOfParam : str
+    Parameters
+    ----------
+    name_of_param : str
+        The base name of the parameter.
+    effect_dict : dict
+        A dictionary with effect-value pairs.
+    owner : object
+        The owner object where cTS_vector belongs to.
 
-      aDict : dict
-          {Effect:value}-couples
-      owner : class
-          class where TimeSeries belongs to
+    Returns
+    -------
+    dict
+        A dictionary with effect types as keys and cTS_vector instances as values.
+    """
+    if effect_dict is None:
+        return None
 
-      Returns
-      -------
-      aDict_TS : dict
-         {Effect:TS_value}-couples
+    transformed_dict = {}
+    for effect, value in effect_dict.items():
+        if not isinstance(value, TimeSeries):
+            subname = 'standard' if effect is None else effect.label
+            full_name = f"{name_of_param}_{subname}"
+            transformed_dict[effect] = TimeSeries(full_name, value, owner)
 
-      '''
-
-    # Einzelne Faktoren zu Vektoren:
-    aDict_TS = {}  #
-    # für jedes Dict -> Values (=Faktoren) zu Vektoren umwandeln:
-    if aDict is None:
-        aDict_TS = None
-    else:
-        for effect, value in aDict.items():
-            if not isinstance(value, TimeSeries):
-                # Subnamen aus key:
-                if effect is None:
-                    subname = 'standard'  # Standard-Effekt o.ä. # todo: das ist nicht schön, weil costs in Namen nicht auftaucht
-                else:
-                    subname = effect.label  # z.B. costs, Q_th,...
-                nameOfParam_full = nameOfParam + '_' + subname  # name ergänzen mit key.label
-                aDict_TS[effect] = TimeSeries(nameOfParam_full, value, owner)  # Transform to TS
-        return aDict_TS
+    return transformed_dict
 
 
 def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
