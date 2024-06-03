@@ -358,33 +358,29 @@ def effect_values_to_ts(name_of_param: str, effect_dict: Optional[Dict[Any, Unio
     return transformed_dict
 
 
-def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
-    '''
-    Transforms effect/cost-input to dict of TS,
-      wenn nur wert gegeben, dann wird gegebener effect zugeordnet
-      effectToUseIfOnlyValue = None -> Standard-EffektType wird genommen
-    Fall 1:
-        output = {effect1 : TS1, effects2: TS2}
-    Fall2 (falls Skalar übergeben):
-        output = {standardEffect : TS1}
+def as_effect_dict_with_ts(name_of_param: str,
+                           effect_values: Union[Numeric, TimeSeries, Dict],
+                           owner
+                           ) -> Optional[Dict[Any, TimeSeries]]:
+    """
+    Transforms effect or cost input to a dictionary of TimeSeries instances.
+
+    If only a value is given, it is associated with a standard effect type.
 
     Parameters
     ----------
-    nameOfParam : str
-    aEffectsValue : TYPE
-        DESCRIPTION.
-    ownerOfParam : TYPE
-        DESCRIPTION.
+    name_of_param : str
+        The base name of the parameter.
+    effect_values : int, float, TimeSeries, or dict
+        The effect values to transform.
+    owner : object
+        The owner object where cTS_vector belongs to.
 
     Returns
     -------
-    effectsDict_TS : TYPE
-        DESCRIPTION.
-
-    '''
-
-    # add standardeffect if only value is given:
-    effectsDict = as_effect_dict(aEffectsValue)
-    # dict-values zu TimeSeries:
-    effectsDict_TS = effect_values_to_ts(nameOfParam, effectsDict, ownerOfParam)
-    return effectsDict_TS
+    dict
+        A dictionary with effect types as keys and cTS_vector instances as values.
+    """
+    effect_dict = as_effect_dict(effect_values)
+    effect_ts_dict = effect_values_to_ts(name_of_param, effect_dict, owner)
+    return effect_ts_dict

@@ -9,6 +9,7 @@ import numpy as np
 import math
 import time
 import yaml  # (für json-Schnipsel-print)
+import pprint
 import textwrap
 from typing import List, Set, Tuple, Dict, Union, Optional
 
@@ -693,11 +694,11 @@ class cBaseComponent(cME):
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
-        self.switchOnCosts = transFormEffectValuesToTSDict('switchOnCosts', switchOnCosts, self)
+        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
-        self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
+        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
@@ -1310,7 +1311,7 @@ class cFlow(cME):
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
         #self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
-        self.costsPerFlowHour = transFormEffectValuesToTSDict('costsPerFlowHour', costsPerFlowHour, self)
+        self.costsPerFlowHour = as_effect_dict_with_ts('costsPerFlowHour', costsPerFlowHour, self)
         self.iCanSwitchOff = iCanSwitchOff
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
@@ -1318,9 +1319,9 @@ class cFlow(cME):
         self.onHours_max = None if (onHours_max is None) else TimeSeries('onHours_max', onHours_max, self)
         self.offHours_min = None if (offHours_min is None) else TimeSeries('offHours_min', offHours_min, self)
         self.offHours_max = None if (offHours_max is None) else TimeSeries('offHours_max', offHours_max, self)
-        self.switchOnCosts = transFormEffectValuesToTSDict('switchOnCosts', switchOnCosts, self)
+        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
-        self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
+        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
@@ -1508,10 +1509,10 @@ class cFlow(cME):
 
         #
         # ############## onHoursSum_max: ##############
-        #        
-        
+        #
+
         # ineq: sum(var_on(t)) <= onHoursSum_max
-        
+
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = cEquation('onHoursSum_max', self, modBox, 'ineq')
             eq_onHoursSum_max.addSummandSumOf(self.mod.var_on, 1)
@@ -1519,10 +1520,10 @@ class cFlow(cME):
 
         #
         # ############## onHoursSum_max: ##############
-        #        
-        
+        #
+
         # ineq: sum(var_on(t)) >= onHoursSum_min
-        
+
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = cEquation('onHoursSum_min', self, modBox, 'ineq')
             eq_onHoursSum_min.addSummandSumOf(self.mod.var_on, -1)
