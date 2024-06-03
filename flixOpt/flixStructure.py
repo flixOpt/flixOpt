@@ -21,15 +21,6 @@ import logging
 
 log = logging.getLogger(__name__)
 
-Skalar = Union[int, float]  # Datatype
-Numeric = Union[int, float, np.ndarray]  # Datatype
-# zeitreihenbezogene Input-Daten:
-Numeric_TS = Union[Skalar, np.ndarray, cTSraw]
-# Datatype Numeric_TS:
-#   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
-#   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
-#   cTSraw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
-
 
 class cModelBoxOfES(cBaseModel):
     '''
