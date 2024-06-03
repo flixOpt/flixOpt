@@ -8,7 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 from . import flixOptHelperFcts as helpers
 from .flixBasicsPublic import cTSraw
-from typing import Union
+from typing import Union, Optional
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -72,7 +72,28 @@ class cArgsClass:
 
 class cTS_vector:
     '''
-    Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
+    Class for time series vectors or scalars that apply to time series.
+
+    This class represents a time series vector or scalar value that makes the handling of time series easier.
+    It supports various operations such as activation of specific time indices, setting explicit active data, and
+    aggregation weight management.
+
+    Attributes
+    ----------
+    label : str
+        The label for the time series vector.
+    owner : object
+        The owner object which holds the time series list.
+    TSraw : Optional[cTSraw]
+        The raw time series data if provided as cTSraw.
+    data : Numeric
+        The actual data for the time series vector.
+    explicit_active_data : Optional[Numeric]
+        Explicit data to use instead of raw data if provided.
+    active_time_indices : Optional[np.ndarray]
+        Indices of the time steps to activate.
+    aggregation_weight : float
+        Weight for aggregation method, between 0 and 1, normally 1.
     '''
 
     # create and register in List:
