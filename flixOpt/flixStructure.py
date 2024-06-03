@@ -251,7 +251,7 @@ class Element(cArgsClass):
 
         self.subElements: List[Element] = []  # zugehörige Sub-ModelingElements
         self.modBox: Optional[cModelBoxOfES] = None  # hier kommt die aktive ModBox rein
-        self.mod: Optional[cMEModel] = None  # hier kommen alle Glg und Vars rein
+        self.mod: Optional[ElementModel] = None  # hier kommen alle Glg und Vars rein
         super().__init__(**kwargs)
 
     def __repr__(self):
@@ -307,7 +307,7 @@ class Element(cArgsClass):
             aME.createNewModAndActivateModBox(modBox)  # rekursiv!
 
         # create mod:
-        aMod = cMEModel(self)
+        aMod = ElementModel(self)
         # register mod:
         modBox.registerMEandMod(self, aMod)
 
@@ -415,7 +415,7 @@ class Element(cArgsClass):
         return aDict
 
 
-class cMEModel:
+class ElementModel:
     '''
     is existing in every Element and owns eqs and vars of the activated calculation
     '''
@@ -1678,7 +1678,7 @@ class System:
     # get all TS in one list:
     @property
     def allTSinMEs(self) -> List[TimeSeries]:
-        ME: cMEModel
+        ME: ElementModel
         allTS = []
         for ME in self.allMEsOfFirstLayer:
             allTS += ME.TS_list
