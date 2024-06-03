@@ -97,12 +97,12 @@ class cFeatureLinearSegmentVars(cFeature):
             newSegment.createNewModAndActivateModBox(self.modBox)
             self.listOfSegments.append(newSegment)
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: SystemModel):
         for aSegment in self.listOfSegments:
             # Segmentvariablen erstellen:
             aSegment.declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox: cModelBoxOfES, timeIndexe):
+    def doModeling(self, modBox: SystemModel, timeIndexe):
         #########################################
         ## 1. Gleichungen für: Nur ein Segment kann aktiv sein! ##
         # eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0 
@@ -1002,7 +1002,7 @@ class cFeatureInvest(cFeature):
             self.featureLinearSegments.declareVarsAndEqs(modBox)
 
     # definingInvestcosts in Segments:
-    def _defineCostSegments(self, modBox: cModelBoxOfES):
+    def _defineCostSegments(self, modBox: SystemModel):
         investSizeSegs = self.args.costsInInvestsizeSegments[0]  # segments of investSize
         costSegs = self.args.costsInInvestsizeSegments[1]  # effect-dict with segments as entries
         costSegs = as_effect_dict(costSegs)

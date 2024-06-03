@@ -223,7 +223,7 @@ class cBaseLinearTransformer(Component):
                                                                 get_var_on=get_var_on,
                                                                 checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
@@ -239,7 +239,7 @@ class cBaseLinearTransformer(Component):
         else:
             self.feature_linSegments.declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox: cModelBoxOfES, timeIndexe):
+    def doModeling(self, modBox: SystemModel, timeIndexe):
         """
         Durchführen der Modellierung?
 
@@ -767,7 +767,7 @@ class cStorage(Component):
 
         self.isStorage = True  # for postprocessing
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
@@ -1226,7 +1226,7 @@ class cTransportation(Component):
             self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
                                                                              [self.in1, self.in2])
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
         

@@ -348,10 +348,10 @@ class cAggregationModeling(flixStructure.Element):
     def finalize(self):
         super().finalize()
 
-    def declareVarsAndEqs(self, modBox: flixStructure.cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: flixStructure.SystemModel):
         super().declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox: flixStructure.cModelBoxOfES, timeIndexe):
+    def doModeling(self, modBox: flixStructure.SystemModel, timeIndexe):
 
         if self.listOfMEsToClusterize is None:
             # Alle:
