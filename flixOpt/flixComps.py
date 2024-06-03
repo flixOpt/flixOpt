@@ -352,8 +352,8 @@ class cKessel(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(cMediumCollection.fuel)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -400,8 +400,8 @@ class cEHK(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -443,8 +443,8 @@ class cHeatPump(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
@@ -485,8 +485,8 @@ class cCoolingTower(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.specificElectricityDemand_bounds = [0, 1]  # 0 < eta_th < 1
@@ -540,9 +540,9 @@ class cKWK(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(cMediumCollection.fuel)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
-        P_el.setMediumIfNotSet(cMediumCollection.el)
+        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
 
         # Plausibilität eta:
         self.eta_th_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -594,9 +594,9 @@ class cAbwaermeHP(cBaseLinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
-        Q_ab.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        Q_ab.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
@@ -760,7 +760,7 @@ class cStorage(cBaseComponent):
                                                 featureOn=None)  # hier gibt es kein On-Wert
 
         # Medium-Check:
-        if not (cMediumCollection.checkIfFits(inFlow.medium, outFlow.medium)):
+        if not (MediumCollection.checkIfFits(inFlow.medium, outFlow.medium)):
             raise Exception('in cStorage ' + self.label + ': input.medium = ' + str(inFlow.medium) +
                             ' and output.medium = ' + str(outFlow.medium) + ' don`t fit!')
         # TODO: chargeState0 darf nicht größer max usw. abfangen!

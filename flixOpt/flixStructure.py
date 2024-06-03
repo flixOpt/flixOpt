@@ -1094,10 +1094,10 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
 
 
 # Medien definieren:
-class cMediumCollection:
+class MediumCollection:
     '''
     attributes are defined possible media for flow (not tested!) TODO!
-    you can use them, i.g. cMediumCollection.heat or you can explicitly work with strings (i.g. 'heat')
+    you can use them, i.g. MediumCollection.heat or you can explicitly work with strings (i.g. 'heat')
     '''
     # predefined medium: (just the string is used for comparison)
     heat = 'heat'  # set(['heat'])
@@ -1114,7 +1114,7 @@ class cMediumCollection:
         attrName : str
         strOfMedium : str
         '''
-        cMediumCollection.setattr(attrName, strOfMedium)
+        MediumCollection.setattr(attrName, strOfMedium)
 
     # checkifFits(medium1,medium2,...)
     def checkIfFits(*args):
