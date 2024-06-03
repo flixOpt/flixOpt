@@ -172,7 +172,7 @@ class cTS_vector:
 
         self.explicit_active_data = self._convert_to_scalar_if_possible(explicit_active_data)
 
-    def setAggWeight(self, aWeight):
+    def set_agg_weight(self, aWeight):
         '''
         only for aggregation: set weight of timeseries for creating of typical periods!
         '''
