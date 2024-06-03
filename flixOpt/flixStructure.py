@@ -915,7 +915,7 @@ class cGlobal(cME):
     def __addShare(self, operationOrInvest, nameOfShare, shareHolder, effect_values, factor, aVariable=None) -> None:
         aEffectSum: cFeature_ShareSum
 
-        effect_values_dict = getEffectDictOfEffectValues(effect_values)
+        effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effekttypen, die einen Wert haben, anhängen:
         for effectType, value in effect_values_dict.items():
