@@ -105,6 +105,7 @@ class cTS_vector:
         if isinstance(data, cTSraw):
             self.TSraw: Optional[cTSraw] = data
             data = self.TSraw.value  # extract value
+            #TODO: Instead of stroing the cTSraw object, storing the underlying data directly would be preferable.
         else:
             self.TSraw = None
 
