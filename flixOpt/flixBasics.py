@@ -180,21 +180,6 @@ class cTS_vector:
         if (aWeight > 1) or (aWeight < 0):
             raise Exception('weigth must be between 0 and 1!')
 
-    # Rückgabe Maximum
-    def max(self):
-        return cTS_vector.__getMax(self.data)
-
-        # Maximum für indexe:
-
-    def max_i(self):
-        return cTS_vector.__getMax(self.active_data)
-
-    def __getMax(aValue):
-        if np.isscalar(aValue):
-            return aValue
-        else:
-            return max(aValue)
-
 
 class cTS_collection():
     '''
