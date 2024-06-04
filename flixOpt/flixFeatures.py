@@ -8,9 +8,10 @@ developed by Felix Panitz* and Peter Stange*
 # featureAvoidFlowsAtOnce:
 # neue Variante (typ="new") austesten
 
+import numpy as np
+
 from .flixStructure import *  # Grundstruktur
 from .flixBasicsPublic import *
-import numpy as np
 
 
 ##############################################################
