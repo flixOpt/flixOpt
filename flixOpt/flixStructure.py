@@ -333,7 +333,7 @@ class Element(cArgsClass):
             (aData[aME.label], aVars[aME.label]) = aME.getResults()  # rekursiv
 
         # 2. Variablenwerte ablegen:
-        aVar: cVariable
+        aVar: Variable
         for aVar in self.mod.variables:
             # print(aVar.label)
             aData[aVar.label] = aVar.getResult()
@@ -1444,8 +1444,8 @@ class Flow(Element):
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
         self.mod.var_val = cVariable_TS('val', modBox.nrOfTimeSteps, self, modBox, min=lb, max=ub, value=fix_value)
-        self.mod.var_sumFlowHours = cVariable('sumFlowHours', 1, self, modBox, min=self.sumFlowHours_min,
-                                              max=self.sumFlowHours_max)
+        self.mod.var_sumFlowHours = Variable('sumFlowHours', 1, self, modBox, min=self.sumFlowHours_min,
+                                             max=self.sumFlowHours_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.mod.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.mod.var_switchOn, self.mod.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
@@ -2072,7 +2072,7 @@ class System:
                         allow_unicode=True))
 
     def getVarsAsStr(self, structured=True) -> Union[List, Dict]:
-        aVar: cVariable
+        aVar: Variable
 
         # liste:
         if not structured:

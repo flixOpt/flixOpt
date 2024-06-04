@@ -42,7 +42,7 @@ class cFeatureLinearSegmentVars(cFeature):
         super().__init__(label, owner)
 
     # segements separat erst jetzt definieren, damit Variablen schon erstellt sind.
-    # todo: wenn cVariable-Dummys existieren, dann kann das alles in __init__
+    # todo: wenn Variable-Dummys existieren, dann kann das alles in __init__
     def defineSegments(self, segmentsOfVars, var_on, checkListOfVars):
         # segementsData - Elemente sind Listen!.
         # segmentsOfVars = {var_Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Indexspezfika (z.B. für Zeitreihenabbildung) über arrays oder TS!!
@@ -380,8 +380,8 @@ class cFeatureOn(cFeature):
             self.mod.var_on = cVariable_TS('on', modBox.nrOfTimeSteps, self.owner, modBox, isBinary=True)
             self.mod.var_on.activateBeforeValues(esBeforeValue=self.on_valuesBeforeBegin[0],
                                                  beforeValueIsStartValue=False)
-            self.mod.var_onHoursSum = cVariable('onHoursSum', 1, self.owner, modBox, min=self.onHoursSum_min,
-                                                max=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei
+            self.mod.var_onHoursSum = Variable('onHoursSum', 1, self.owner, modBox, min=self.onHoursSum_min,
+                                               max=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei
 
         else:
             self.mod.var_on = None
@@ -409,8 +409,8 @@ class cFeatureOn(cFeature):
         if self.useSwitchOn:
             self.mod.var_switchOn = cVariable_TS('switchOn', modBox.nrOfTimeSteps, self.owner, modBox, isBinary=True)
             self.mod.var_switchOff = cVariable_TS('switchOff', modBox.nrOfTimeSteps, self.owner, modBox, isBinary=True)
-            self.mod.var_nrSwitchOn = cVariable('nrSwitchOn', 1, self.owner, modBox,
-                                                max=self.switchOn_maxNr)  # wenn max/min = None, dann bleibt das frei
+            self.mod.var_nrSwitchOn = Variable('nrSwitchOn', 1, self.owner, modBox,
+                                               max=self.switchOn_maxNr)  # wenn max/min = None, dann bleibt das frei
         else:
             self.mod.var_switchOn = None
             self.mod.var_switchOff = None
@@ -693,7 +693,7 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
             self.mod.var_sum_TS = cVariable_TS('sum_TS', modBox.nrOfTimeSteps, self, modBox, min = lb_TS, max = ub_TS)  # TS
 
         # Variable für Summe (Skalar-Summe):
-        self.mod.var_sum = cVariable('sum', 1, self, modBox, min=self.minOfSum, max=self.maxOfSum)  # Skalar
+        self.mod.var_sum = Variable('sum', 1, self, modBox, min=self.minOfSum, max=self.maxOfSum)  # Skalar
 
         # Gleichungen schon hier definiert, damit andere MEs beim modeling Beiträge eintragen können:      
         if self.sharesAreTS:
@@ -833,7 +833,7 @@ class cFeatureShares(cFeature):
             full_name_of_share = shareHolder.label_full + '_' + nameOfShare
         except:
             pass
-        var_oneShare = cVariable(full_name_of_share, 1, self, modBox)  # Skalar
+        var_oneShare = Variable(full_name_of_share, 1, self, modBox)  # Skalar
         eq_oneShare = cEquation(full_name_of_share, self, modBox)
         eq_oneShare.addSummand(var_oneShare, -1)
 
@@ -957,7 +957,7 @@ class cFeatureInvest(cFeature):
         return (lb, ub, fix_value)
 
     # Variablenreferenz kann erst später hinzugefügt werden, da erst später erstellt:
-    # todo-> abändern durch cVariable-Dummies
+    # todo-> abändern durch Variable-Dummies
     def setDefiningVar(self, definingVar, definingVar_On):
         self.definingVar = definingVar
         self.definingVar_On = definingVar_On
@@ -986,14 +986,14 @@ class cFeatureInvest(cFeature):
 
         if lb == ub:
             # fix:
-            self.mod.var_investmentSize = cVariable(self.nameOfInvestmentSize, 1, self, modBox, value=lb)
+            self.mod.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, value=lb)
         else:
             # Bereich:
-            self.mod.var_investmentSize = cVariable(self.nameOfInvestmentSize, 1, self, modBox, min=lb, max=ub)
+            self.mod.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, min=lb, max=ub)
 
         # b) var_isInvested:
         if self.args.investment_is_optional:
-            self.mod.var_isInvested = cVariable('isInvested', 1, self, modBox, isBinary=True)
+            self.mod.var_isInvested = Variable('isInvested', 1, self, modBox, isBinary=True)
 
             ## investCosts in Segments: ##
         # wenn vorhanden,
@@ -1039,7 +1039,7 @@ class cFeatureInvest(cFeature):
         else:
             raise Exception('Given effect (' + str(aEffect) + ') is not an effect!')
         # new variable, i.e for costs, CO2,... :
-        var_investForEffect = cVariable('investCosts_segmented_' + aStr, 1, self, modBox, min=0)
+        var_investForEffect = Variable('investCosts_segmented_' + aStr, 1, self, modBox, min=0)
         self.mod.var_list_investCosts_segmented.append(var_investForEffect)
         return var_investForEffect
 
