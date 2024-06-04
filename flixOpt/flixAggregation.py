@@ -10,22 +10,25 @@ developed by Felix Panitz* and Peter Stange*
 Modul zur aggregierten Berechnung eines Energiesystemmodells.
 """
 
-# Paket-Importe
-# from component import Storage, Trading, Converter
+import warnings
+from datetime import datetime
+import time
+
 import pandas as pd
 import numpy as np
 import tsam.timeseriesaggregation as tsam
+import yaml
+import copy
 import pyomo.environ as pyo
 import pyomo.opt as opt
 from pyomo.util.infeasible import log_infeasible_constraints
-import time
-from datetime import datetime
-import yaml
-import warnings
+
+from . import flixStructure
+from . import flixComps
+from .basicModeling import *
+
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-import copy
 
 
 class flixAggregation:
@@ -287,11 +290,6 @@ class flixAggregation:
 
         pathAgg = './results/aggTimeseries/'
         self.totalTimeseries.to_csv(pathAgg + filename)
-
-
-from . import flixStructure
-from . import flixComps
-from .basicModeling import *
 
 
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
