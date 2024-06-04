@@ -5,11 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import numpy as np
-import math  # für nan
 import matplotlib.pyplot as plt
-import pandas as pd
-from .flixStructure import *
 
 
 def plotFlow(calc, aFlow_value, label, withPoints=True):
