@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 from .flixStructure import *
 from .flixFeatures import *
-from .flixComps import cBaseLinearTransformer, cKWK
+from .flixComps import LinearTransformer, cKWK
 
 
 def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
@@ -50,7 +50,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
 
     Returns
     -------
-    list(cBaseLinearTransformer, cKWK, cKWK)
+    list(LinearTransformer, cKWK, cKWK)
             a list of Components that need to be added to the System
     '''
 
@@ -72,8 +72,8 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
     # Transformer 1
     Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val, min_rel=1, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
-    EKTIn = cBaseLinearTransformer(label=label + "In", exists=exists, group=group,
-                                   inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+    EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
+                              inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
     # EKT A
     EKTA = cKWK(label=label + "A", exists=exists, group=group,
                 eta_th=eta_thA, eta_el=eta_elA,
@@ -144,7 +144,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
 
     Returns
     -------
-    list(cBaseLinearTransformer, cBaseLinearTransformer, cBaseLinearTransformer)
+    list(LinearTransformer, LinearTransformer, LinearTransformer)
         a list of Components that need to be added to the System
 
     Raises
@@ -182,22 +182,22 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=1, max_rel=1,
                costsPerFlowHour=costsPerFlowHour_fuel, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
-    EKTIn = cBaseLinearTransformer(label=label + "In", exists=exists, group=group,
-                                   inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+    EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
+                              inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
 
     # Transformer Strom
     P_el = Flow(label="Pel", bus=BusEl, nominal_val=max(segPel), costsPerFlowHour=costsPerFlowHour_el)
     Q_fu = Flow(label="Helper" + label + 'A', bus=HelperBus, nominal_val=nominal_val_Qfu)
     segs_el = {Q_fu: segQfu_el, P_el: segPel.copy()}
-    EKTA = cBaseLinearTransformer(label=label + "A", exists=exists, group=group,
-                                  outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs_el)
+    EKTA = LinearTransformer(label=label + "A", exists=exists, group=group,
+                             outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs_el)
 
     # Transformer Wärme
     Q_th = Flow(label="Qth", bus=BusTh, nominal_val=max(segQth), costsPerFlowHour=costsPerFlowHour_th,
                 investArgs=investArgs)
     Q_fu2 = Flow(label="Helper" + label + 'B', bus=HelperBus)
     segments = {Q_fu2: segQfu_th, Q_th: segQth}
-    EKTB = cBaseLinearTransformer(label=label + "B", exists=exists, group=group,
-                                  outputs=[Q_th], inputs=[Q_fu2], segmentsOfFlows=segments)
+    EKTB = LinearTransformer(label=label + "B", exists=exists, group=group,
+                             outputs=[Q_th], inputs=[Q_fu2], segmentsOfFlows=segments)
 
     return [EKTIn, EKTA, EKTB]

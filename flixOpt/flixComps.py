@@ -14,9 +14,9 @@ from .flixStructure import *
 from .flixFeatures import *
 
 
-class cBaseLinearTransformer(Component):
+class LinearTransformer(Component):
     """
-    Klasse cBaseLinearTransformer: Grundgerüst lineare Übertragungskomponente
+    Klasse LinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
     new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
     not_used_args = ['label']
@@ -315,7 +315,7 @@ class cBaseLinearTransformer(Component):
         self.segmentsOfFlows = segmentsOfFlows  # attribute of mother-class
 
 
-class cKessel(cBaseLinearTransformer):
+class cKessel(LinearTransformer):
     """
     class cKessel
     """
@@ -363,7 +363,7 @@ class cKessel(cBaseLinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class cEHK(cBaseLinearTransformer):
+class cEHK(LinearTransformer):
     """
     class cEHK
     """
@@ -411,7 +411,7 @@ class cEHK(cBaseLinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class cHeatPump(cBaseLinearTransformer):
+class cHeatPump(LinearTransformer):
     """
     class cHeatPump
     """
@@ -451,7 +451,7 @@ class cHeatPump(cBaseLinearTransformer):
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class cCoolingTower(cBaseLinearTransformer):
+class cCoolingTower(LinearTransformer):
     """
     Klasse cCoolingTower
     """
@@ -494,7 +494,7 @@ class cCoolingTower(cBaseLinearTransformer):
                                        self.specificElectricityDemand_bounds, self)
 
 
-class cKWK(cBaseLinearTransformer):
+class cKWK(LinearTransformer):
     """
     class of combined heat and power unit (CHP)
     """
@@ -553,7 +553,7 @@ class cKWK(cBaseLinearTransformer):
         helpers.checkBoundsOfParameter(eta_th + eta_el, 'eta_th+eta_el', [0 + 1e-10, 1 - 1e-10], self)
 
 
-class cAbwaermeHP(cBaseLinearTransformer):
+class cAbwaermeHP(LinearTransformer):
     """
     class cAbwaermeHP
     """
