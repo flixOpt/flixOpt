@@ -1055,8 +1055,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Fehlerplus/-minus:
         if self.withExcess:
             # Fehlerplus und -minus definieren
-            self.excessIn = cVariable_TS('excessIn', len(modBox.timeSeries), self, modBox, min=0)
-            self.excessOut = cVariable_TS('excessOut', len(modBox.timeSeries), self, modBox, min=0)
+            self.excessIn = VariableTS('excessIn', len(modBox.timeSeries), self, modBox, min=0)
+            self.excessOut = VariableTS('excessOut', len(modBox.timeSeries), self, modBox, min=0)
 
     def doModeling(self, modBox, timeIndexe) -> None:
         super().doModeling(modBox, timeIndexe)
@@ -1443,7 +1443,7 @@ class Flow(Element):
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.mod.var_val = cVariable_TS('val', modBox.nrOfTimeSteps, self, modBox, min=lb, max=ub, value=fix_value)
+        self.mod.var_val = VariableTS('val', modBox.nrOfTimeSteps, self, modBox, min=lb, max=ub, value=fix_value)
         self.mod.var_sumFlowHours = Variable('sumFlowHours', 1, self, modBox, min=self.sumFlowHours_min,
                                              max=self.sumFlowHours_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
@@ -2692,8 +2692,8 @@ class Calculation:
                     else:
                         # Beachte Speicherladezustand und ähnliche Variablen:
                         aReferedVariable = resultToAppendVar[key]
-                        aReferedVariable: cVariable_TS
-                        withEnd = isinstance(aReferedVariable, cVariable_TS) \
+                        aReferedVariable: VariableTS
+                        withEnd = isinstance(aReferedVariable, VariableTS) \
                                   and aReferedVariable.activated_beforeValues \
                                   and aReferedVariable.beforeValueIsStartValue
 
