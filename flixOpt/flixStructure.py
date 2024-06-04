@@ -436,7 +436,7 @@ class ElementModel:
     # Eqs, Ineqs und Objective als Str-Description:
     def getEqsAsStr(self) -> List:
         # Wenn Glg vorhanden:
-        eq: cEquation
+        eq: Equation
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
             for eq in (self.eqs + self.ineqs):
@@ -930,11 +930,11 @@ class Global(Element):
             effect.declareVarsAndEqs(modBox)
         self.penalty.declareVarsAndEqs(modBox)
 
-        self.objective = cEquation('obj', self, modBox, 'objective')
+        self.objective = Equation('obj', self, modBox, 'objective')
 
         # todo : besser wäre objective separat:
 
-    #  eq_objective = cEquation('objective',self,modBox,'objective')
+    #  eq_objective = Equation('objective',self,modBox,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
     def doModeling(self, modBox, timeIndexe) -> None:
         # super().doModeling(modBox,timeIndexe)
@@ -1062,7 +1062,7 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         super().doModeling(modBox, timeIndexe)
 
         # inputs = outputs
-        eq_busbalance = cEquation('busBalance', self, modBox)
+        eq_busbalance = Equation('busBalance', self, modBox)
         for aFlow in self.inputs:
             eq_busbalance.addSummand(aFlow.mod.var_val, 1)
         for aFlow in self.outputs:
@@ -1473,7 +1473,7 @@ class Flow(Element):
 
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
-        eq_sumFlowHours = cEquation('sumFlowHours', self, modBox, 'eq')  # general mean
+        eq_sumFlowHours = Equation('sumFlowHours', self, modBox, 'eq')  # general mean
         eq_sumFlowHours.addSummandSumOf(self.mod.var_val, modBox.dtInHours)
         eq_sumFlowHours.addSummand(self.mod.var_sumFlowHours, -1)
 
@@ -1497,7 +1497,7 @@ class Flow(Element):
 
         if self.loadFactor_max is not None:
             flowHoursPerInvestsize_max = modBox.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Max = cEquation('loadFactor_max', self, modBox, 'ineq')  # general mean
+            eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, modBox, 'ineq')  # general mean
             eq_flowHoursPerInvestsize_Max.addSummand(self.mod.var_sumFlowHours, 1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Max.addSummand(self.featureInvest.mod.var_investmentSize,
@@ -1510,7 +1510,7 @@ class Flow(Element):
 
         if self.loadFactor_min is not None:
             flowHoursPerInvestsize_min = modBox.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Min = cEquation('loadFactor_min', self, modBox, 'ineq')
+            eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, modBox, 'ineq')
             eq_flowHoursPerInvestsize_Min.addSummand(self.mod.var_sumFlowHours, -1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Min.addSummand(self.featureInvest.mod.var_investmentSize,
