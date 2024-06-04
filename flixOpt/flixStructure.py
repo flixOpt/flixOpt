@@ -17,7 +17,7 @@ from . import flixOptHelperFcts as helpers
 
 from .basicModeling import *  # Modelliersprache
 from .flixBasics import *
-from .flixBasicsPublic import cInvestArgs, cTSraw
+from .flixBasicsPublic import cInvestArgs, TimeSeriesRaw
 import logging
 
 log = logging.getLogger(__name__)
@@ -1004,7 +1004,7 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             example 2: media = {'gas','biogas','H2'} -> flows of these media are allowed
         label : str
             name.
-        excessCostsPerFlowHour : none or scalar, array or cTSraw
+        excessCostsPerFlowHour : none or scalar, array or TimeSeriesRaw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
         **kwargs : TYPE
@@ -1210,9 +1210,9 @@ class Flow(Element):
             name of flow
         bus : Bus, optional
             bus to which flow is linked
-        min_rel : scalar, array, cTSraw, optional
+        min_rel : scalar, array, TimeSeriesRaw, optional
             min value is min_rel multiplied by nominal_val
-        max_rel : scalar, array, cTSraw, optional
+        max_rel : scalar, array, TimeSeriesRaw, optional
             max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
         nominal_val : scalar. None if is a nominal value is a opt-variable, optional
             nominal value/ invest size (linked to min_rel, max_rel and others). 
@@ -1227,7 +1227,7 @@ class Flow(Element):
             maximal load factor (see minimal load factor)
         positive_gradient : TYPE, optional
            not implemented yet
-        costsPerFlowHour : scalar, array, cTSraw, optional
+        costsPerFlowHour : scalar, array, TimeSeriesRaw, optional
             operational costs, costs per flow-"work"
         iCanSwitchOff : boolean, optional
             flow can be "off", i.e. be zero (only relevant if min_rel > 0) 
@@ -1248,7 +1248,7 @@ class Flow(Element):
             (last off-time period of timeseries is not checked and can be shorter)
         offHours_max : scalar, optional
             max sum of non-operating hours in one piece
-        switchOnCosts : scalar, array, cTSraw, optional
+        switchOnCosts : scalar, array, TimeSeriesRaw, optional
             cost of one switch from off (var_on=0) to on (var_on=1), 
             unit i.g. in Euro
         switchOn_maxNr : integer, optional
@@ -1264,7 +1264,7 @@ class Flow(Element):
         valuesBeforeBegin : list (TODO: why not scalar?), optional
             Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'), 
             # TODO: integration of option for 'first is last'
-        val_rel : scalar, array, cTSraw, optional
+        val_rel : scalar, array, TimeSeriesRaw, optional
             fixed relative values for flow (if given). 
             val(t) := val_rel(t) * nominal_val(t)
             With this value, the flow-value is no opt-variable anymore;
@@ -2429,10 +2429,10 @@ class Calculation:
         useOriginalTimeSeries : boolean.
             orginal or aggregated timeseries should
             be chosen for the calculation. default is False.
-        addPeakMax : list of cTSraw
+        addPeakMax : list of TimeSeriesRaw
             list of data-timeseries. The period with the max-value are
             chosen as a explicitly period.
-        addPeakMin : list of cTSraw
+        addPeakMin : list of TimeSeriesRaw
             list of data-timeseries. The period with the min-value are
             chosen as a explicitly period.
 
