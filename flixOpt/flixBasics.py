@@ -125,10 +125,12 @@ class TimeSeries:
     def active_data(self) -> Numeric:
         if self.explicit_active_data is not None:
             return self.explicit_active_data
-        indices_not_applicable = np.isscalar(self.data) or self.data is None or self.active_time_indices is None
+
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_time_indices is None)
         if indices_not_applicable:
             return self.data
-        return self.data[self.active_time_indices]
+        else:
+            return self.data[self.active_time_indices]
 
     @property
     def is_scalar(self) -> bool:
