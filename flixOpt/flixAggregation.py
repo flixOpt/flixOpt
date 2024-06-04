@@ -19,9 +19,6 @@ import numpy as np
 import tsam.timeseriesaggregation as tsam
 import yaml
 import copy
-import pyomo.environ as pyo
-import pyomo.opt as opt
-from pyomo.util.infeasible import log_infeasible_constraints
 
 from . import flixStructure
 from . import flixComps
