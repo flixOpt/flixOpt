@@ -11,6 +11,7 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 import re
 import math  # für nan
+
 import matplotlib.pyplot as plt
 
 from .flixBasicsPublic import TimeSeriesRaw
@@ -88,7 +89,6 @@ def checkForAttributeNameConformity(aName):
         print('Name \'' + aName + '\' ist nicht Attributnamen-konform und wird zu \'' + newName + '\' geändert')
 
     # check, ob jetzt valid variable name: (für Verwendung in results_struct notwendig)
-    import re
     if not re.search(r'^[a-zA-Z_]\w*$', newName):
         raise Exception('label \'' + aName + '\' is not valid for variable name \n .\
                      (no number first, no special characteres etc.)')
