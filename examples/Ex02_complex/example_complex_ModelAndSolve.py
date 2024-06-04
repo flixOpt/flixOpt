@@ -178,8 +178,8 @@ aWaermeLast = cSink('Wärmelast',
                                 min_rel = 0,
                                 val_rel = Q_th_Last)) # fixed values val_rel * nominal_val
 # 5.b) gas tarif:
-aGasTarif = cSource('Gastarif',
-                    source = Flow('Q_Gas',
+aGasTarif = Source('Gastarif',
+                   source = Flow('Q_Gas',
                                   bus = Gas,  # linked bus
                                   nominal_val = 1000,  # defining nominal size
                                   costsPerFlowHour= {costs: 0.04, CO2: 0.3}))

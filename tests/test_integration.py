@@ -78,8 +78,8 @@ class TestSimple(BaseTest):
                             investArgs=cInvestArgs(fixCosts=20, investmentSize_is_fixed=True,
                                                     investment_is_optional=False))
         aWaermeLast = cSink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, val_rel=self.Q_th_Last))
-        aGasTarif = cSource('Gastarif',
-                            source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
+        aGasTarif = Source('Gastarif',
+                           source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = cSink('Einspeisung', sink=Flow('P_el', bus=Strom, costsPerFlowHour=-1 * self.p_el))
 
         es = System(self.aTimeSeries, dt_last=None)
@@ -204,7 +204,7 @@ class TestComplex(BaseTest):
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, nominal_val=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, nominal_val=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, investArgs=invest_Speicher)
 
         aWaermeLast = cSink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, min_rel=0, val_rel=self.Q_th_Last))
-        aGasTarif = cSource('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
+        aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = cSink('Einspeisung', sink=Flow('P_el', bus=Strom, costsPerFlowHour=-1 * np.array(self.P_el_Last)))
 
         es = System(self.aTimeSeries, dt_last=None)
@@ -248,7 +248,7 @@ class TestComplex(BaseTest):
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, nominal_val=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, nominal_val=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, investArgs=invest_Speicher)
 
         aWaermeLast = cSink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, min_rel=0, val_rel=self.Q_th_Last))
-        aGasTarif = cSource('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
+        aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = cSink('Einspeisung', sink=Flow('P_el', bus=Strom, costsPerFlowHour=-1 * np.array(self.P_el_Last)))
 
         es = System(self.aTimeSeries, dt_last=None)
@@ -308,10 +308,10 @@ class TestModelingTypes(BaseTest):
 
         TS_Q_th_Last, TS_P_el_Last = cTSraw(Q_th_Last), cTSraw(P_el_Last, agg_weight=0.7)
         aWaermeLast, aStromLast = cSink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, val_rel=TS_Q_th_Last)), cSink('Stromlast', sink=Flow('P_el_Last', bus=Strom, nominal_val=1, val_rel=TS_P_el_Last))
-        aKohleTarif, aGasTarif = cSource('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, nominal_val=1000, costsPerFlowHour={costs: 4.6, CO2: 0.3})), cSource('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: gP, CO2: 0.3}))
+        aKohleTarif, aGasTarif = Source('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, nominal_val=1000, costsPerFlowHour={costs: 4.6, CO2: 0.3})), Source('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: gP, CO2: 0.3}))
 
         p_feed_in, p_sell = cTSraw(-(p_el - 0.5), agg_type='p_el'), cTSraw(p_el + 0.5, agg_type='p_el')
-        aStromEinspeisung, aStromTarif = cSink('Einspeisung', sink=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour=p_feed_in)), cSource('Stromtarif', source=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour={costs: p_sell, CO2: 0.3}))
+        aStromEinspeisung, aStromTarif = cSink('Einspeisung', sink=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour=p_feed_in)), Source('Stromtarif', source=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour={costs: p_sell, CO2: 0.3}))
         aStromEinspeisung.sink.costsPerFlowHour[None].set_agg_weight(.5)
         aStromTarif.source.costsPerFlowHour[costs].set_agg_weight(.5)
 

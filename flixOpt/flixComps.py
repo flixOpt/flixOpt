@@ -1041,7 +1041,7 @@ class SourceAndSink(Component):
             self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
-class cSource(Component):
+class Source(Component):
     """
     class of a source
     """
@@ -1070,7 +1070,7 @@ class cSource(Component):
         '''
 
         """
-        Konstruktor für Instanzen der Klasse cSource
+        Konstruktor für Instanzen der Klasse Source
 
         :param str label: Bezeichnung
         :param Flow source: flow-output Quelle
