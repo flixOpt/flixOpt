@@ -879,7 +879,7 @@ class cFeatureInvest(cFeature):
         investmentSize : scalar or None
             value of fixed investmentSize (None if no fixed investmentSize)
             Flow: investmentSize = nominal_val
-            cStorage: investmentSize = 
+            Storage: investmentSize =
         featureOn : cFeatureOn
             cFeatureOn of the definingVar (if it has a cFeatureOn)
 
