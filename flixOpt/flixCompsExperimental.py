@@ -5,8 +5,10 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-from .flixStructure import *
-from .flixFeatures import *
+import numpy as np
+
+from .flixStructure import Bus,Flow
+from .flixBasicsPublic import InvestArgs
 from .flixComps import LinearTransformer, CHP
 
 
