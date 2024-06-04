@@ -7,7 +7,6 @@ developed by Felix Panitz* and Peter Stange*
 
 import math
 import time
-import pprint
 import textwrap
 import logging
 from typing import List, Set, Tuple, Dict, Union, Optional
@@ -18,7 +17,7 @@ import yaml  # (für json-Schnipsel-print)
 from . import flixOptHelperFcts as helpers
 from .basicModeling import Equation, Variable, VariableTS, BaseModel, BeforeValueSet  # Modelliersprache
 from .flixBasics import cArgsClass, TimeSeries, as_effect_dict_with_ts, as_effect_dict, TimeSeriesCollection
-from .flixBasicsPublic import InvestArgs, TimeSeriesRaw, Skalar, Numeric, Numeric_TS
+from .flixBasicsPublic import InvestArgs, TimeSeriesRaw, Skalar, Numeric_TS
 
 log = logging.getLogger(__name__)
 
@@ -632,8 +631,8 @@ class EffectCollection(List[Effect]):
             if aEffectType.isObjective: aObjectiveEffect = aEffectType
         return aObjectiveEffect
 
-
-from .flixFeatures import *
+# TODO: Move stuff below into a new module
+from .flixFeatures import cFeature_ShareSum, cFeatureOn, cFeatureInvest
 EffectTypeDict = Dict[Effect, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
