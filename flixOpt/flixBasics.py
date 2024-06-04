@@ -180,7 +180,7 @@ class TimeSeries:
             raise Exception('weight must be between 0 and 1!')
 
 
-class cTS_collection():
+class TimeSeriesCollection:
     '''
     calculates weights of TS_vector for being in that collection (depending on)
     '''

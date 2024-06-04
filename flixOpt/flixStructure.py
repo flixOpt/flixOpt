@@ -2473,10 +2473,10 @@ class Calculation:
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
         self.TSlistForAggregation = [item for item in self.es.allTSinMEs if item.is_array]
-        self.TScollectionForAgg = cTS_collection(self.TSlistForAggregation,
-                                                 addPeakMax_TSraw=addPeakMax,
-                                                 addPeakMin_TSraw=addPeakMin,
-                                                 )
+        self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
+                                                       addPeakMax_TSraw=addPeakMax,
+                                                       addPeakMin_TSraw=addPeakMin,
+                                                       )
 
         self.TScollectionForAgg.print()
 
