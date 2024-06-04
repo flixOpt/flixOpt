@@ -1790,7 +1790,7 @@ class System:
 
         Parameters
         ----------
-        *args : childs of   Element like cBoiler, cHeatPump, Bus,...
+        *args : childs of   Element like cBoiler, HeatPump, Bus,...
             modeling Elements
 
         '''
