@@ -70,11 +70,11 @@ PE    = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum = 3.5e3)
 
 # 1. definition of boiler #
 # 1. a) investment-options:
-invest_Gaskessel = cInvestArgs(fixCosts = 1000, # 1000 € investment costs
-                               investmentSize_is_fixed = True, # fix nominal size
-                               investment_is_optional=False,# forced investment
-                               specificCosts= {costs:10, PE:2}, # specific costs: 10 €/kW; 2 kWh_PE/kW
-                               )
+invest_Gaskessel = InvestArgs(fixCosts = 1000,  # 1000 € investment costs
+                              investmentSize_is_fixed = True,  # fix nominal size
+                              investment_is_optional=False,  # forced investment
+                              specificCosts= {costs:10, PE:2},  # specific costs: 10 €/kW; 2 kWh_PE/kW
+                              )
 # invest_Gaskessel = None #
 # 1. b) boiler itself:
 aGaskessel = Boiler('Kessel',
@@ -147,12 +147,12 @@ costsInvestsizeSegments = [[5,25,25,100], #kW
 #                             [50,250,250,800],#€ (standard-effect)
 #                           ]
 
-invest_Speicher = cInvestArgs(fixCosts = 0, # no fix costs
-                              investmentSize_is_fixed = False, # variable size
-                              costsInInvestsizeSegments = costsInvestsizeSegments, # see above
-                              investment_is_optional=False, # forced invest
-                              specificCosts= {costs: 0.01, CO2: 0.01}, # €/kWh; kg_CO2/kWh
-                              min_investmentSize=0, max_investmentSize=1000) # optimizing between 0...1000 kWh
+invest_Speicher = InvestArgs(fixCosts = 0,  # no fix costs
+                             investmentSize_is_fixed = False,  # variable size
+                             costsInInvestsizeSegments = costsInvestsizeSegments,  # see above
+                             investment_is_optional=False,  # forced invest
+                             specificCosts= {costs: 0.01, CO2: 0.01},  # €/kWh; kg_CO2/kWh
+                             min_investmentSize=0, max_investmentSize=1000) # optimizing between 0...1000 kWh
 
 # 4.b) storage itself:
 aSpeicher = Storage('Speicher',

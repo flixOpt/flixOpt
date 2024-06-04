@@ -854,7 +854,7 @@ class cFeatureInvest(cFeature):
             existOn = self.featureOn.useOn
         return existOn
 
-    def __init__(self, nameOfInvestmentSize, owner, investArgs: cInvestArgs, min_rel, max_rel, val_rel, investmentSize,
+    def __init__(self, nameOfInvestmentSize, owner, investArgs: InvestArgs, min_rel, max_rel, val_rel, investmentSize,
                  featureOn=None):
         '''
         
@@ -865,7 +865,7 @@ class cFeatureInvest(cFeature):
             DESCRIPTION.
         owner : TYPE
             owner of this ME
-        investArgs : cInvestArgs
+        investArgs : InvestArgs
             arguments for modeling
         min_rel : scalar or TS
             given min_rel of definingVar 

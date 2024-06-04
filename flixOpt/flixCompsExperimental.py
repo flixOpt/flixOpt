@@ -92,7 +92,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
 def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
             nominal_val_Qfu: float, segQth: list[float], segPel: list[float],
             costsPerFlowHour_fuel: dict = None, costsPerFlowHour_th: dict = None, costsPerFlowHour_el: dict = None,
-            iCanSwitchOff=True, exists=1, group=None, investArgs: cInvestArgs = None, **kwargs) -> list:
+            iCanSwitchOff=True, exists=1, group=None, investArgs: InvestArgs = None, **kwargs) -> list:
     '''
     EKT B - On/Off, interpolation with Base Points
     Creates a KWK with a variable rate between electricity and heat production
@@ -137,7 +137,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
         A parameter specifying when the component exists. Defaults to 1.
     group: any, optional
         A parameter specifying the group to which the component belongs. Defaults to None.
-    investArgs: cInvestArgs, optional
+    investArgs: InvestArgs, optional
         An object containing investment-related parameters. Defaults to None. Passed to the thermal output flow
     **kwargs
         Additional keyword arguments. Passed to the input fuel flow. Allowed keywords see documentation of Flow

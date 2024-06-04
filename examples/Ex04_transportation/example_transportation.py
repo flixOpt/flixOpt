@@ -81,19 +81,19 @@ loss_abs = 1
 loss_rel = 0.1
 # loss_rel = 0
 
-invest1 = cInvestArgs(fixCosts=10,
-                      investmentSize_is_fixed=False,
-                      investment_is_optional=True,                      
-                      max_investmentSize=1000 ,
-                      specificCosts=1)
+invest1 = InvestArgs(fixCosts=10,
+                     investmentSize_is_fixed=False,
+                     investment_is_optional=True,
+                     max_investmentSize=1000,
+                     specificCosts=1)
 
 # only for getting realizing investSize-Variable:
-invest2 = cInvestArgs(fixCosts=0,
-                      investmentSize_is_fixed=False,
-                      investment_is_optional=True,                      
-                      max_investmentSize=1000 ,
-                      specificCosts=0
-                      )
+invest2 = InvestArgs(fixCosts=0,
+                     investmentSize_is_fixed=False,
+                     investment_is_optional=True,
+                     max_investmentSize=1000,
+                     specificCosts=0
+                     )
 
 aTransporter = cTransportation('Rohr',
                                in1  = Flow('in1', bus=heat1, investArgs=invest1, nominal_val = None, min_rel = 0.1),

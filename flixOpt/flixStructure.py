@@ -17,7 +17,7 @@ from . import flixOptHelperFcts as helpers
 
 from .basicModeling import *  # Modelliersprache
 from .flixBasics import *
-from .flixBasicsPublic import cInvestArgs, TimeSeriesRaw
+from .flixBasicsPublic import InvestArgs, TimeSeriesRaw
 import logging
 
 log = logging.getLogger(__name__)
@@ -1199,7 +1199,7 @@ class Flow(Element):
                  valuesBeforeBegin: Optional[List[Skalar]] = None,
                  val_rel: Optional[Numeric_TS] = None,
                  medium: Optional[str] = None,
-                 investArgs: Optional[cInvestArgs] = None,
+                 investArgs: Optional[InvestArgs] = None,
                  exists: Numeric_TS = 1,
                  group: Optional[str] = None,
                  **kwargs):
@@ -1274,7 +1274,7 @@ class Flow(Element):
         medium: string, None
             medium is relevant, if the linked bus only allows a special defined set of media.
             If None, any bus can be used.            
-        investArgs : None or cInvestArgs, optional
+        investArgs : None or InvestArgs, optional
             used for investment costs or/and investment-optimization!
         '''
 

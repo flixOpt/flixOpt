@@ -639,7 +639,7 @@ class Storage(Component):
                  eta_load: Numeric_TS = 1, eta_unload: Numeric_TS = 1,
                  fracLossPerHour: Numeric_TS = 0,
                  avoidInAndOutAtOnce: bool = True,
-                 investArgs: Optional[cInvestArgs] = None,
+                 investArgs: Optional[InvestArgs] = None,
                  **kwargs):
         '''
         constructor of storage
@@ -682,7 +682,7 @@ class Storage(Component):
             loss per chargeState-Unit per hour. The default is 0.
         avoidInAndOutAtOnce : boolean, optional
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
-        investArgs : cInvestArgs, optional
+        investArgs : InvestArgs, optional
             invest arguments. The default is None.
         
         **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
