@@ -7,17 +7,8 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 from . import flixOptHelperFcts as helpers
-from .flixBasicsPublic import TimeSeriesRaw
+from .flixBasicsPublic import TimeSeriesRaw, Numeric, Numeric_TS
 from typing import Union, Optional, Dict, Any
-
-Skalar = Union[int, float]  # Datatype
-Numeric = Union[int, float, np.ndarray]  # Datatype
-# zeitreihenbezogene Input-Daten:
-Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesRaw]
-# Datatype Numeric_TS:
-#   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
-#   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
-#   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
 class cArgsClass:

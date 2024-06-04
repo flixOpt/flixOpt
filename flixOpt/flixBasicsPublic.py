@@ -4,7 +4,6 @@ Created on Tue Sep  6 15:25:43 2022
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-import pprint
 from typing import Union, Optional, Dict, List
 import numpy as np
 
@@ -128,3 +127,13 @@ class InvestArgs:
         full_str =f"{', '.join(all_relevant_parts)}"
 
         return f"<{self.__class__.__name__}>: {full_str}"
+
+
+Skalar = Union[int, float]  # Datatype
+Numeric = Union[int, float, np.ndarray]  # Datatype
+# zeitreihenbezogene Input-Daten:
+Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesRaw]
+# Datatype Numeric_TS:
+#   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
+#   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
+#   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
