@@ -12,6 +12,7 @@ from . import flixOptHelperFcts as helpers
 from .basicModeling import *
 from .flixStructure import *
 from .flixFeatures import *
+from .flixBasics import values_to_ts
 
 
 class LinearTransformer(Component):
