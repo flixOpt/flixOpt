@@ -23,7 +23,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class SystemModel(cBaseModel):
+class SystemModel(BaseModel):
     '''
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     '''

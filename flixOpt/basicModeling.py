@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 from . import flixOptHelperFcts as helpers
 
 
-class cBaseModel:
+class BaseModel:
     '''
     Klasse für Gleichungen a_1.*x_1+a_2.*x_2 = y
     x_1, a_1 können Vektoren oder Skalare sein.
@@ -241,7 +241,7 @@ class cBaseModel:
 
 
 class cVariable:
-    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+    def __init__(self, label: str, len: int, myMom, baseModel: BaseModel, isBinary: bool = False,
                  value: Optional[Union[int, float]] = None,
                  min: Optional[Union[int, float]] = None, max: Optional[Union[int, float]] = None):  #TODO: Rename max and min!!
         self.label = label
@@ -287,7 +287,7 @@ class cVariable:
         baseModel.variables.append(self)  # baseModel-Liste mit allen vars
         myMom.mod.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
-    def transform2MathModel(self, baseModel: cBaseModel):
+    def transform2MathModel(self, baseModel: BaseModel):
         self.baseModel = baseModel
 
         # TODO: self.var ist hier einziges Attribut, das baseModel-spezifisch ist: --> umbetten in baseModel!
@@ -384,7 +384,7 @@ class cVariable:
 
 # Timeseries-Variable, optional mit Before-Werten:
 class cVariable_TS(cVariable):
-    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+    def __init__(self, label: str, len: int, myMom, baseModel: BaseModel, isBinary: bool = False,
                  value: Optional[Union[int, float, np.ndarray]] = None,
                  min: Optional[Union[int, float, np.ndarray]] = None,
                  max: Optional[Union[int, float, np.ndarray]] = None):
@@ -400,7 +400,7 @@ class cVariable_TS(cVariable):
         self.esBeforeValue = esBeforeValue  # Standardwerte für Simulationsstart im Energiesystem
         self.activated_beforeValues = True
 
-    def transform2MathModel(self, baseModel:cBaseModel) -> None:
+    def transform2MathModel(self, baseModel:BaseModel) -> None:
         super().transform2MathModel(baseModel)
 
     # hole Startwert/letzten Wert vor diesem Segment:
@@ -473,7 +473,7 @@ class cBeforeValueSet:
 #     super().__init__(label, myMom, baseModel, eqType='ineq')    
 
 class cEquation:
-    def __init__(self, label: str, myMom, baseModel: cBaseModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
+    def __init__(self, label: str, myMom, baseModel: BaseModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
         self.nrOfSingleEquations = 1  # Anzahl der Gleichungen
@@ -577,7 +577,7 @@ class cEquation:
 
         # Umsetzung in der gewählten Modellierungssprache:
 
-    def transform2MathModel(self, baseModel: cBaseModel):
+    def transform2MathModel(self, baseModel: BaseModel):
         log.debug('eq ' + self.label + '.transform2MathModel()')
 
         # y_vec hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
