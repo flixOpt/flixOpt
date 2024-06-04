@@ -165,7 +165,7 @@ class cBaseLinearTransformer(Component):
         # für jedes Dict -> Values (=Faktoren) zu Vektoren umwandeln:
         for aFactor_Dict in factor_Sets:  # Liste of dicts
             # Transform to TS:
-            aFactor_Dict_TS = values_to_ts_vectors('Faktor', aFactor_Dict, self)
+            aFactor_Dict_TS = values_to_ts('Faktor', aFactor_Dict, self)
             factor_Sets_TS.append(aFactor_Dict_TS)
             # check flows:
             for flow in aFactor_Dict_TS:

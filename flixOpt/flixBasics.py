@@ -317,9 +317,9 @@ def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[
         return {None: effect_values}
 
 
-def values_to_ts_vectors(name_of_param: str,
-                         effect_dict: Optional[Dict[Any, Union[Numeric, TimeSeries]]],
-                         owner) -> Optional[Dict[Any, TimeSeries]]:
+def values_to_ts(name_of_param: str,
+                 effect_dict: Optional[Dict[Any, Union[Numeric, TimeSeries]]],
+                 owner) -> Optional[Dict[Any, TimeSeries]]:
     """
     Transforms values in a dictionary to instances of TimeSeries.
 
@@ -373,5 +373,5 @@ def as_effect_dict_with_ts_vectors(name_of_param: str,
         A dictionary with effect types as keys and TimeSeries instances as values.
     """
     effect_dict = as_effect_dict(effect_values)
-    effect_ts_dict = values_to_ts_vectors(name_of_param, effect_dict, owner)
+    effect_ts_dict = values_to_ts(name_of_param, effect_dict, owner)
     return effect_ts_dict
