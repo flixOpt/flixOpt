@@ -5,14 +5,17 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import numpy as np
 import textwrap
+from typing import Optional
+
+import numpy as np
 
 from . import flixOptHelperFcts as helpers
-from .basicModeling import *
-from .flixStructure import *
-from .flixFeatures import *
-from .flixBasics import values_to_ts
+from .basicModeling import Equation, VariableTS
+from .flixStructure import Component, Flow, SystemModel, MediumCollection, Global
+from .flixFeatures import cFeatureInvest, cFeatureAvoidFlowsAtOnce, cFeatureLinearSegmentSet
+from .flixBasics import TimeSeries, values_to_ts, TimeSeriesRaw
+from .flixBasicsPublic import Numeric_TS, InvestArgs, Skalar
 
 
 class LinearTransformer(Component):

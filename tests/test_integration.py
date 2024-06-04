@@ -1,8 +1,11 @@
 import unittest
-import numpy as np
-import pandas as pd
 import os
 import datetime
+from typing import Literal
+
+import numpy as np
+import pandas as pd
+
 from flixOpt.flixStructure import *
 from flixOpt.flixComps import *
 import flixOpt.flixPostprocessing as flixPost
