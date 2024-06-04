@@ -21,7 +21,7 @@ class cBaseLinearTransformer(cBaseComponent):
     new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
     not_used_args = ['label']
 
-    def __init__(self, label: str, inputs: list, outputs: list, exists=1, group: str = None, factor_Sets=None,
+    def __init__(self, label: str, inputs: list, outputs: list, group: str = None, factor_Sets=None,
                  segmentsOfFlows=None, **kwargs):
         '''
         Parameters
@@ -32,9 +32,6 @@ class cBaseLinearTransformer(cBaseComponent):
             input flows.
         outputs : list of flows
             output flows.
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel of all flows is multiplied with this value before the solve!
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         factor_Sets : list
@@ -73,7 +70,7 @@ class cBaseLinearTransformer(cBaseComponent):
 
         '''
 
-        super().__init__(label, exists=exists, **kwargs)
+        super().__init__(label, **kwargs)
         # args to attributes:
         self.inputs = inputs
         self.outputs = outputs
@@ -619,7 +616,6 @@ class cStorage(cBaseComponent):
                  inFlow: cFlow,
                  outFlow: cFlow,
                  capacity_inFlowHours: Optional[Skalar],
-                 exists: Numeric_TS = 1,
                  group: Optional[str] = None,
                  min_rel_chargeState: Numeric_TS = 0,
                  max_rel_chargeState: Numeric_TS = 1,
@@ -642,9 +638,6 @@ class cStorage(cBaseComponent):
             ingoing flow.
         outFlow : cFlow
             outgoing flow.
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            Has to be one step longer than the number of Timesteps of the calculation
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         capacity_inFlowHours : float or None
@@ -681,7 +674,7 @@ class cStorage(cBaseComponent):
         # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch "val_rel_chargeState" implementieren damit konsistent zu flow (max_rel, min_rel, val_re)
 
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
-        super().__init__(label, exists=exists, **kwargs)
+        super().__init__(label, **kwargs)
 
         # args to attributes:
         self.inputs = [inFlow]
@@ -693,7 +686,7 @@ class cStorage(cBaseComponent):
         self.min_rel_chargeState = cTS_vector('min_rel_chargeState', min_rel_chargeState, self)
 
         self.group = group
-        
+
         # add last time step (if not scalar):
         existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else (self.exists.d_i + self.exists.d_i[-1])
         self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
@@ -935,7 +928,7 @@ class cSourceAndSink(cBaseComponent):
 
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, sink: cFlow, exists: Numeric_TS = 1, group: str = None,
+    def __init__(self, label: str, source: cFlow, sink: cFlow, group: str = None,
                  avoidInAndOutAtOnce: bool = True, **kwargs):
         '''
         Parameters
@@ -946,9 +939,6 @@ class cSourceAndSink(cBaseComponent):
             output-flow of this component
         sink : cFlow
             input-flow of this component
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         avoidInAndOutAtOnce: boolean. Default ist True.
@@ -960,7 +950,7 @@ class cSourceAndSink(cBaseComponent):
 
 
         '''
-        super().__init__(label, exists=exists, **kwargs)
+        super().__init__(label, **kwargs)
         self.source = source
         self.sink = sink
         self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
@@ -1009,10 +999,10 @@ class cSource(cBaseComponent):
     """
     class of a source
     """
-    new_init_args = ['label', 'source', 'exists']
-    not_used_args = ['label', 'exists']
+    new_init_args = ['label', 'source']
+    not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, source: cFlow, group: str = None, **kwargs):
         '''       
         Parameters
         ----------
@@ -1020,9 +1010,6 @@ class cSource(cBaseComponent):
             name of source
         source : cFlow
             output-flow of source
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
@@ -1040,7 +1027,7 @@ class cSource(cBaseComponent):
         :param cFlow source: flow-output Quelle
         :param kwargs:
         """
-        super().__init__(label, exists=exists, **kwargs)
+        super().__init__(label,**kwargs)
         self.source = source
         self.outputs.append(source)  # ein Output-Flow
 
@@ -1055,10 +1042,10 @@ class cSink(cBaseComponent):
     """
     Klasse cSink
     """
-    new_init_args = ['label', 'source', 'exists']
-    not_used_args = ['label', 'exists']
+    new_init_args = ['label', 'source']
+    not_used_args = ['label']
 
-    def __init__(self, label: str, sink: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, sink: cFlow, group: str = None, **kwargs):
         '''
         constructor of sink 
 
@@ -1068,9 +1055,6 @@ class cSink(cBaseComponent):
             name of sink.
         sink : cFlow
             input-flow of sink
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
@@ -1082,7 +1066,7 @@ class cSink(cBaseComponent):
 
         '''
 
-        super().__init__(label, exists=exists, **kwargs)
+        super().__init__(label, **kwargs)
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
 
@@ -1111,7 +1095,6 @@ class cTransportation(cBaseComponent):
                  loss_abs: Numeric_TS = 0,
                  isAlwaysOn: bool = True,
                  avoidFlowInBothDirectionsAtOnce: bool = True,
-                 exists=1,
                  **kwargs):
         '''
         pipe/cable/connector between side A and side B
@@ -1154,7 +1137,7 @@ class cTransportation(cBaseComponent):
 
         '''
 
-        super().__init__(label, exists=exists, **kwargs)
+        super().__init__(label, **kwargs)
 
         self.in1 = in1
         self.out1 = out1

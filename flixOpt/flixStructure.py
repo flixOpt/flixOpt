@@ -1007,7 +1007,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
     new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
     not_used_args = ['label']
 
-    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric_TS = 1e5, exists=1, **kwargs):
+    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric = 1e5, **kwargs):
         '''
         Parameters
         ----------
@@ -1027,7 +1027,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
             DESCRIPTION.
         '''
 
-        super().__init__(label, exists=exists, **kwargs)
+        super().__init__(label, **kwargs)
         if media is None:
             self.media = media  # alle erlaubt
         elif isinstance(media, str):
@@ -1417,19 +1417,19 @@ class cFlow(cME):
 
 
         # exist-merge aus Flow.exist und Comp.exist
-        exist_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
-        self.exists = cTS_vector('exists', helpers.checkExists(exist_global), self)
+        exists_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
+        self.exists_with_comp = cTS_vector('exist_with_comp', helpers.checkExists(exists_global), self)
         # combine max_rel with and exist from the flow and the comp it belongs to
-        self.max_rel = cTS_vector('max_rel', np.multiply(self.max_rel.d, self.exists.d), self)
-        self.min_rel = cTS_vector('min_rel', np.multiply(self.min_rel.d, self.exists.d), self)
+        self.max_rel_with_exists = cTS_vector('max_rel_with_exists', np.multiply(self.max_rel.d, self.exists_with_comp.d), self)
+        self.min_rel_with_exists = cTS_vector('min_rel_with_exists', np.multiply(self.min_rel.d, self.exists_with_comp.d), self)
 
         # prepare invest Feature:
         if self.investArgs is None:
             self.featureInvest = None  #
         else:
             self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs,
-                                                min_rel=self.min_rel,
-                                                max_rel=self.max_rel,
+                                                min_rel=self.max_rel_with_exists,
+                                                max_rel=self.min_rel_with_exists,
                                                 val_rel=self.val_rel,
                                                 investmentSize=self.nominal_val,
                                                 featureOn=self.featureOn)
@@ -1468,8 +1468,8 @@ class cFlow(cME):
                 if self.featureOn.useOn:
                     lb = 0
                 else:
-                    lb = self.min_rel.d_i * self.nominal_val  # immer an
-                ub = self.max_rel.d_i * self.nominal_val
+                    lb = self.min_rel_with_exists.d_i * self.nominal_val  # immer an
+                ub = self.max_rel_with_exists.d_i * self.nominal_val
                 fix_value = None
             return (lb, ub, fix_value)
 
