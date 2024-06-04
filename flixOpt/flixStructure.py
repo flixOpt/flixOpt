@@ -2357,8 +2357,8 @@ class Calculation:
             # Startwerte übergeben von Vorgänger-Modbox:
             if i > 0:
                 segmentModBoxBefore = self.segmentModBoxList[i - 1]
-                segmentModBox.beforeValueSet = cBeforeValueSet(segmentModBoxBefore,
-                                                               segmentModBoxBefore.realNrOfUsedSteps - 1)
+                segmentModBox.beforeValueSet = BeforeValueSet(segmentModBoxBefore,
+                                                              segmentModBoxBefore.realNrOfUsedSteps - 1)
                 print('### beforeValueSet: ###')
                 segmentModBox.beforeValueSet.print()
                 print('#######################')
