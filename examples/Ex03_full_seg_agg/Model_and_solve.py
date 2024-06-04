@@ -185,11 +185,11 @@ aSpeicher = Storage('Speicher',
  
 
 TS_Q_th_Last = cTSraw(Q_th_Last)
-aWaermeLast = cSink  ('Wärmelast', sink   = Flow('Q_th_Last', bus = Fernwaerme, nominal_val = 1, val_rel = TS_Q_th_Last))
+aWaermeLast = Sink  ('Wärmelast', sink   = Flow('Q_th_Last', bus = Fernwaerme, nominal_val = 1, val_rel = TS_Q_th_Last))
 
 # TS with explicit defined weight
 TS_P_el_Last = cTSraw(P_el_Last, agg_weight = 0.7) # explicit defined weight
-aStromLast = cSink('Stromlast', sink = Flow('P_el_Last', bus = Strom, nominal_val = 1, val_rel = TS_P_el_Last))
+aStromLast = Sink('Stromlast', sink = Flow('P_el_Last', bus = Strom, nominal_val = 1, val_rel = TS_P_el_Last))
 
 aKohleTarif = Source('Kohletarif', source = Flow('Q_Kohle', bus = Kohle, nominal_val = 1000, costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
 
@@ -201,7 +201,7 @@ p_feed_in = cTSraw(-(p_el-0.5), agg_type='p_el') # weight shared in group p_el
 p_sell    = cTSraw(  p_el+0.5 , agg_type='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
-aStromEinspeisung = cSink  ('Einspeisung', sink   = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))
+aStromEinspeisung = Sink  ('Einspeisung', sink   = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))
 aStromEinspeisung.sink.costsPerFlowHour[None].set_agg_weight(.5)
 
 aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))

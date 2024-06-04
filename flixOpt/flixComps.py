@@ -1097,9 +1097,9 @@ class Source(Component):
             flow.min_rel = TimeSeries('min_rel', flow.min_rel.active_data * flow.exists.active_data, flow)
 
 
-class cSink(Component):
+class Sink(Component):
     """
-    Klasse cSink
+    Klasse Sink
     """
     new_init_args = ['label', 'source']
     not_used_args = ['label']
