@@ -350,9 +350,9 @@ def values_to_ts(name_of_param: str,
     return transformed_dict
 
 
-def as_effect_dict_with_ts_vectors(name_of_param: str,
-                                   effect_values: Union[Numeric, TimeSeries, Dict],
-                                   owner) -> Optional[Dict[Any, TimeSeries]]:
+def as_effect_dict_with_ts(name_of_param: str,
+                           effect_values: Union[Numeric, TimeSeries, Dict],
+                           owner) -> Optional[Dict[Any, TimeSeries]]:
     """
     Transforms effect or cost input to a dictionary of TimeSeries instances.
 

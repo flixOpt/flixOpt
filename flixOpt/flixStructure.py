@@ -682,11 +682,11 @@ class Component(Element):
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
-        self.switchOnCosts = as_effect_dict_with_ts_vectors('switchOnCosts', switchOnCosts, self)
+        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
-        self.costsPerRunningHour = as_effect_dict_with_ts_vectors('costsPerRunningHour', costsPerRunningHour, self)
+        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
@@ -1288,7 +1288,7 @@ class Flow(Element):
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
         #self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
-        self.costsPerFlowHour = as_effect_dict_with_ts_vectors('costsPerFlowHour', costsPerFlowHour, self)
+        self.costsPerFlowHour = as_effect_dict_with_ts('costsPerFlowHour', costsPerFlowHour, self)
         self.iCanSwitchOff = iCanSwitchOff
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
@@ -1296,9 +1296,9 @@ class Flow(Element):
         self.onHours_max = None if (onHours_max is None) else TimeSeries('onHours_max', onHours_max, self)
         self.offHours_min = None if (offHours_min is None) else TimeSeries('offHours_min', offHours_min, self)
         self.offHours_max = None if (offHours_max is None) else TimeSeries('offHours_max', offHours_max, self)
-        self.switchOnCosts = as_effect_dict_with_ts_vectors('switchOnCosts', switchOnCosts, self)
+        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
-        self.costsPerRunningHour = as_effect_dict_with_ts_vectors('costsPerRunningHour', costsPerRunningHour, self)
+        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
