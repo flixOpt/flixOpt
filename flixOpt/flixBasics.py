@@ -117,9 +117,9 @@ class TimeSeries:
         return f"{self.data}"
 
     @property
-    def active_data_raw_vector(self) -> np.ndarray:
-        vec = helpers.getVector(self.active_data, len(self.active_time_indices))
-        return vec
+    def active_data_vector(self) -> np.ndarray:
+        # Always returns the active data as a vector.
+        return helpers.getVector(self.active_data, len(self.active_time_indices))
 
     @property
     def active_data(self) -> Numeric:
@@ -227,7 +227,7 @@ class cTS_collection():
                 raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
             # add to dict:
             self.seriesDict[
-                aTS.label_full] = aTS.active_data_raw_vector  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
+                aTS.label_full] = aTS.active_data_vector  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
             self.weightDict[aTS.label_full] = self._getWeight(aTS)  # Wichtung ermitteln!
             if (aTS.TSraw is not None):
                 if aTS.TSraw in self.addPeakMax_TSraw:
