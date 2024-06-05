@@ -688,7 +688,7 @@ class cStorage(cBaseComponent):
         self.group = group
 
         # add last time step (if not scalar):
-        existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else (self.exists.d_i + self.exists.d_i[-1])
+        existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else np.append(self.exists.d_i, self.exists.d_i[-1])
         self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
                                                   self.max_rel_chargeState.d_i * existsWithEndTimestep, self)
         self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
