@@ -1007,7 +1007,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
     new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
     not_used_args = ['label']
 
-    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric = 1e5, **kwargs):
+    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric_TS = 1e5, **kwargs):
         '''
         Parameters
         ----------
