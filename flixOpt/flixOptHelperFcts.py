@@ -14,6 +14,7 @@ import math  # für nan
 import matplotlib.pyplot as plt
 
 from .flixBasicsPublic import cTSraw
+from typing import Union
 
 
 def getVector(aValue, aLen):
@@ -93,6 +94,13 @@ def checkForAttributeNameConformity(aName):
         raise Exception('label \'' + aName + '\' is not valid for variable name \n .\
                      (no number first, no special characteres etc.)')
     return newName
+
+def checkExists(exists: Union[int, list, np.ndarray])-> Union[int, list,np.ndarray]:
+    # type checking for argument "exist"
+    if np.all(np.isin(exists, [0, 1])):
+        return exists
+    else:
+        raise ValueError(f"Argument 'exists' must be int, list or np.ndarray with values 0 or 1")
 
 
 class InfiniteFullSet(object):

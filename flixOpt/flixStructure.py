@@ -304,6 +304,7 @@ class cME(cArgsClass):
     def finalize(self) -> None:
         # print('finalize ' + self.label)
         # gleiches für alle sub MEs:
+        aME : cME
         for aME in self.subElements:
             aME.finalize()
 
@@ -652,7 +653,7 @@ class cBaseComponent(cME):
     '''
     modBox: cModelBoxOfES
     new_init_args = ['label', 'on_valuesBeforeBegin', 'switchOnCosts', 'switchOn_maxNr', 'onHoursSum_min',
-                     'onHoursSum_max', 'costsPerRunningHour']
+                     'onHoursSum_max', 'costsPerRunningHour', 'exists']
     not_used_args = ['label']
 
     def __init__(self, label: str, on_valuesBeforeBegin:Optional[List[Skalar]] = None,
@@ -660,7 +661,9 @@ class cBaseComponent(cME):
                  switchOn_maxNr: Optional[Skalar] = None,
                  onHoursSum_min: Optional[Skalar] = None,
                  onHoursSum_max: Optional[Skalar] = None,
-                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric_TS]] = None, **kwargs):
+                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 exists: Numeric = 1,
+                 **kwargs):
         '''
         
 
@@ -680,6 +683,8 @@ class cBaseComponent(cME):
         onHoursSum_min : look in cFlow for description
         onHoursSum_max : look in cFlow for description
         costsPerRunningHour : look in cFlow for description
+        exists : array, int, None
+            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
         **kwargs : TYPE
             DESCRIPTION.
 
@@ -696,6 +701,7 @@ class cBaseComponent(cME):
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
@@ -1001,7 +1007,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
     new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
     not_used_args = ['label']
 
-    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric_TS = 1e5, **kwargs):
+    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Numeric = 1e5, **kwargs):
         '''
         Parameters
         ----------
@@ -1016,6 +1022,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
         excessCostsPerFlowHour : none or scalar, array or cTSraw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
+        exists : not implemented yet for cBus!
         **kwargs : TYPE
             DESCRIPTION.
         '''
@@ -1285,6 +1292,11 @@ class cFlow(cME):
             If None, any bus can be used.            
         investArgs : None or cInvestArgs, optional
             used for investment costs or/and investment-optimization!
+        exists : int, array, None
+            indicates when a flow is present. Used for timing of Investments. Only contains blocks of 0 and 1.
+            max_rel is multiplied with this value before the solve
+        group: str, None
+            group name to assign flows to groups. Used for later analysis of the results
         '''
 
         super().__init__(label, **kwargs)
@@ -1311,6 +1323,8 @@ class cFlow(cME):
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
+        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
+        self.group = group # TODO: wird überschrieben von Component!
         self.valuesBeforeBegin = np.array(valuesBeforeBegin) if valuesBeforeBegin else np.array([0, 0])  # list -> np-array
 
         if val_rel is None:
@@ -1366,15 +1380,6 @@ class cFlow(cME):
                                     switchOn_maxNr=self.switchOn_maxNr,
                                     useOn_explicit=self.__useOn_fromProps)
 
-        if self.investArgs is None:
-            self.featureInvest = None  #
-        else:
-            self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs,
-                                                min_rel=self.min_rel,
-                                                max_rel=self.max_rel,
-                                                val_rel=self.val_rel,
-                                                investmentSize=self.nominal_val,
-                                                featureOn=self.featureOn)
 
     def __str__(self):
         details = [
@@ -1409,7 +1414,30 @@ class cFlow(cME):
 
     def finalize(self) -> None:
         self.plausiTest()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
+
+
+        # exist-merge aus Flow.exist und Comp.exist
+        exists_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
+        self.exists_with_comp = cTS_vector('exist_with_comp', helpers.checkExists(exists_global), self)
+        # combine max_rel with and exist from the flow and the comp it belongs to
+        self.max_rel_with_exists = cTS_vector('max_rel_with_exists', np.multiply(self.max_rel.d, self.exists_with_comp.d), self)
+        self.min_rel_with_exists = cTS_vector('min_rel_with_exists', np.multiply(self.min_rel.d, self.exists_with_comp.d), self)
+
+        # prepare invest Feature:
+        if self.investArgs is None:
+            self.featureInvest = None  #
+        else:
+            self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs,
+                                                min_rel=self.max_rel_with_exists,
+                                                max_rel=self.min_rel_with_exists,
+                                                val_rel=self.val_rel,
+                                                investmentSize=self.nominal_val,
+                                                featureOn=self.featureOn)
+
+
+
         super().finalize()
+
 
     def declareVarsAndEqs(self, modBox: cModelBoxOfES) -> None:
         print('declareVarsAndEqs ' + self.label)
@@ -1440,8 +1468,8 @@ class cFlow(cME):
                 if self.featureOn.useOn:
                     lb = 0
                 else:
-                    lb = self.min_rel.d_i * self.nominal_val  # immer an
-                ub = self.max_rel.d_i * self.nominal_val
+                    lb = self.min_rel_with_exists.d_i * self.nominal_val  # immer an
+                ub = self.max_rel_with_exists.d_i * self.nominal_val
                 fix_value = None
             return (lb, ub, fix_value)
 

@@ -21,7 +21,7 @@ class cBaseLinearTransformer(cBaseComponent):
     new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
     not_used_args = ['label']
 
-    def __init__(self, label: str, inputs: list, outputs: list, exists=1, group: str = None, factor_Sets=None,
+    def __init__(self, label: str, inputs: list, outputs: list, group: str = None, factor_Sets=None,
                  segmentsOfFlows=None, **kwargs):
         '''
         Parameters
@@ -32,9 +32,6 @@ class cBaseLinearTransformer(cBaseComponent):
             input flows.
         outputs : list of flows
             output flows.
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         factor_Sets : list
@@ -86,20 +83,10 @@ class cBaseLinearTransformer(cBaseComponent):
                             be defined! Not Both!')
 
         self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         # copy information about exists into segments of flows
         if self.segmentsOfFlows is not None:
@@ -617,19 +604,18 @@ class cStorage(cBaseComponent):
     # costs_default = property(get_costs())
     # param_defalt  = property(get_params())
 
-    new_init_args = ['label', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
+    new_init_args = ['label', 'exists', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
                      'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
                      'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce', 'investArgs']
 
-    not_used_args = ['label']
+    not_used_args = ['label', 'exists']
 
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self,
                  label: str,
                  inFlow: cFlow,
                  outFlow: cFlow,
-                 capacity_inFlowHours: Optional[Skalar],
-                 exists: Numeric_TS = 1,
+                 capacity_inFlowHours: Optional[Skalar, Literal['lastValueOfSim']],
                  group: Optional[str] = None,
                  min_rel_chargeState: Numeric_TS = 0,
                  max_rel_chargeState: Numeric_TS = 1,
@@ -652,11 +638,11 @@ class cStorage(cBaseComponent):
             ingoing flow.
         outFlow : cFlow
             outgoing flow.
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            Has to be one step longer than the number of Timesteps of the calculation
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
+        exists: Numeric_TS
+            Limits the availlable capacity, and the in and out flow. DOes not affect other parameters yet
+            (like frac_loss_per_hour, starting value, ...)
         capacity_inFlowHours : float or None
             nominal capacity of the storage 
             float: capacity in FlowHours
@@ -704,32 +690,16 @@ class cStorage(cBaseComponent):
 
         self.group = group
 
-        # type checking
-        if isinstance(exists, int):
-            if exists in (0, 1):
-                self.exists = cTS_vector('exists', exists, self)
-            else:
-                raise ValueError("Invalid value for exists. Must contain only 0 and 1")
-        elif isinstance(exists, (list, np.ndarray)):
-            if all(item in {0, 1} for item in exists):
-                self.exists = cTS_vector('exists', np.append(exists, exists[-1]), self)
-            else:
-                raise ValueError("Invalid value for exists. Must contain only 0 and 1")
+        # add last time step (if not scalar):
+        existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else np.append(self.exists.d_i, self.exists.d_i[-1])
+        self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
+                                                  self.max_rel_chargeState.d_i * existsWithEndTimestep, self)
+        self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
+                                                  self.min_rel_chargeState.d_i * existsWithEndTimestep, self)
 
-            self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
-                                                  self.max_rel_chargeState.d_i * self.exists.d_i, self)
-            self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
-                                                  self.min_rel_chargeState.d_i * self.exists.d_i, self)
-        else:
-            raise TypeError()
-
-        # copy information of "group" and "exists" to in-flows and out-flows
+        # copy information of "group" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         self.chargeState0_inFlowHours = chargeState0_inFlowHours
         self.charge_state_end_min = charge_state_end_min
@@ -961,7 +931,7 @@ class cSourceAndSink(cBaseComponent):
 
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, sink: cFlow, exists: Numeric_TS = 1, group: str = None,
+    def __init__(self, label: str, source: cFlow, sink: cFlow, group: str = None,
                  avoidInAndOutAtOnce: bool = True, **kwargs):
         '''
         Parameters
@@ -972,9 +942,6 @@ class cSourceAndSink(cBaseComponent):
             output-flow of this component
         sink : cFlow
             input-flow of this component
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         avoidInAndOutAtOnce: boolean. Default ist True.
@@ -994,20 +961,10 @@ class cSourceAndSink(cBaseComponent):
         self.inputs.append(sink)
 
         self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
         # Erzwinge die Erstellung der On-Variablen, da notwendig für gleichung
         self.source.activateOnValue()
@@ -1048,7 +1005,7 @@ class cSource(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, source: cFlow, group: str = None, **kwargs):
         '''       
         Parameters
         ----------
@@ -1056,9 +1013,6 @@ class cSource(cBaseComponent):
             name of source
         source : cFlow
             output-flow of source
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
@@ -1081,20 +1035,10 @@ class cSource(cBaseComponent):
         self.outputs.append(source)  # ein Output-Flow
 
         self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
-
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
 
 class cSink(cBaseComponent):
@@ -1104,7 +1048,7 @@ class cSink(cBaseComponent):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, sink: cFlow, exists: Numeric_TS = 1, group: str = None, **kwargs):
+    def __init__(self, label: str, sink: cFlow, group: str = None, **kwargs):
         '''
         constructor of sink 
 
@@ -1114,9 +1058,6 @@ class cSink(cBaseComponent):
             name of sink.
         sink : cFlow
             input-flow of sink
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
         **kwargs : TYPE
@@ -1128,25 +1069,16 @@ class cSink(cBaseComponent):
 
         '''
 
-        super().__init__(label)
+        super().__init__(label, **kwargs)
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
 
         self.group = group
-        # type checking
-        if isinstance(exists, int) or (
-                isinstance(exists, (list, np.ndarray)) and all(item in {0, 1} for item in exists)):
-            self.exists = cTS_vector('exists', exists, self)
-        else:
-            raise ValueError("Invalid value for exists. Must contain only 0 and 1")
 
-        # copy information of group and exists to in-flows and out-flows
+        # copy information of group to in-flows and out-flows
         for flow in self.inputs + self.outputs:
             flow.group = self.group
 
-            flow.exists = cTS_vector('exists', exists, flow)
-            flow.max_rel = cTS_vector('max_rel', flow.max_rel.d_i * flow.exists.d_i, flow)
-            flow.min_rel = cTS_vector('min_rel', flow.min_rel.d_i * flow.exists.d_i, flow)
 
 
 class cTransportation(cBaseComponent):
@@ -1156,11 +1088,17 @@ class cTransportation(cBaseComponent):
     # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
     # TODO: optional: capacities should be recognised for losses
 
-    def __init__(self, label: str, in1: cFlow, out1: cFlow,
-                 in2: Optional[cFlow] = None, out2: Optional[cFlow] = None,
+    def __init__(self,
+                 label: str,
+                 in1: cFlow,
+                 out1: cFlow,
+                 in2: Optional[cFlow] = None,
+                 out2: Optional[cFlow] = None,
                  loss_rel: Numeric_TS = 0,
-                 loss_abs: Numeric_TS = 0, isAlwaysOn: bool = True,
-                 avoidFlowInBothDirectionsAtOnce: bool = True, **kwargs):
+                 loss_abs: Numeric_TS = 0,
+                 isAlwaysOn: bool = True,
+                 avoidFlowInBothDirectionsAtOnce: bool = True,
+                 **kwargs):
         '''
         pipe/cable/connector between side A and side B
         losses can be modelled
@@ -1191,17 +1129,18 @@ class cTransportation(cBaseComponent):
         loss_abs : float, TS
             absolut loss. is active until on=0 for in-flows
             example: loss_abs=2 -> 2 kW fix loss on transportation
-
         ... featureOnVars for Active Transportation:
         switchOnCosts : 
             #costs of switch rohr on
+        exists : Warning! Functionality not implemented!
+
         Returns
         -------
         None.
 
         '''
 
-        super().__init__(label)
+        super().__init__(label, **kwargs)
 
         self.in1 = in1
         self.out1 = out1
