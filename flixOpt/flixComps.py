@@ -604,18 +604,18 @@ class cStorage(cBaseComponent):
     # costs_default = property(get_costs())
     # param_defalt  = property(get_params())
 
-    new_init_args = ['label', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
+    new_init_args = ['label', 'exists', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
                      'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
                      'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce', 'investArgs']
 
-    not_used_args = ['label']
+    not_used_args = ['label', 'exists']
 
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self,
                  label: str,
                  inFlow: cFlow,
                  outFlow: cFlow,
-                 capacity_inFlowHours: Optional[Skalar],
+                 capacity_inFlowHours: Optional[Skalar, Literal['lastValueOfSim']],
                  group: Optional[str] = None,
                  min_rel_chargeState: Numeric_TS = 0,
                  max_rel_chargeState: Numeric_TS = 1,
@@ -640,6 +640,9 @@ class cStorage(cBaseComponent):
             outgoing flow.
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
+        exists: Numeric_TS
+            Limits the availlable capacity, and the in and out flow. DOes not affect other parameters yet
+            (like frac_loss_per_hour, starting value, ...)
         capacity_inFlowHours : float or None
             nominal capacity of the storage 
             float: capacity in FlowHours
