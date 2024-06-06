@@ -1022,6 +1022,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
         excessCostsPerFlowHour : none or scalar, array or cTSraw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
+            (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calcType = aggregated!)
         exists : not implemented yet for cBus!
         **kwargs : TYPE
             DESCRIPTION.
