@@ -615,7 +615,7 @@ class cStorage(cBaseComponent):
                  label: str,
                  inFlow: cFlow,
                  outFlow: cFlow,
-                 capacity_inFlowHours: Optional[Skalar, Literal['lastValueOfSim']],
+                 capacity_inFlowHours: Optional[Union[Skalar, Literal['lastValueOfSim']]],
                  group: Optional[str] = None,
                  min_rel_chargeState: Numeric_TS = 0,
                  max_rel_chargeState: Numeric_TS = 1,
