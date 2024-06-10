@@ -1429,8 +1429,8 @@ class cFlow(cME):
             self.featureInvest = None  #
         else:
             self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs,
-                                                min_rel=self.max_rel_with_exists,
-                                                max_rel=self.min_rel_with_exists,
+                                                min_rel=self.min_rel_with_exists,
+                                                max_rel=self.max_rel_with_exists,
                                                 val_rel=self.val_rel,
                                                 investmentSize=self.nominal_val,
                                                 featureOn=self.featureOn)
