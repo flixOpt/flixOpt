@@ -122,11 +122,41 @@ class TestComplex(BaseTest):
         # Compare expected values with actual values
         self.assertAlmostEqualNumeric(results['costs']['all']['sum'], -11597.873624489237,
                                "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['CO2']['all']['sum'], 1294.186483480967,
+        self.assertAlmostEqualNumeric(results['costs']['operation']['sum_TS'],
+                                      [-2.38500000e+03, -2.21681333e+03, -2.38500000e+03, -2.17599000e+03,
+                                       -2.35107029e+03, -2.38500000e+03, 0.00000000e+00, -1.68897826e-10,
+                                       -2.16914486e-12], "costs doesnt match expected value")
+
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['CO2_specificShareToOtherEffects_operation'],
+                                      258.63729669618675, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel__Q_th_switchOnCosts'],
+                                      0.01, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel_costsPerRunningHour'],
+                                      -0.0, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Gastarif__Q_Gas_costsPerFlowHour'],
+                                      39.09153113079115, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Einspeisung__P_el_costsPerFlowHour'],
+                                      -14196.61245231646, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['KWK_switchOnCosts'],
+                                      0.0, "costs doesnt match expected value")
+
+        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_fixCosts'],
+                                      1000, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_specificCosts'],
+                                      500, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Speicher_specificCosts'],
+                                      1, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Speicher_linearSegments'],
+                                      800, "costs doesnt match expected value")
+
+        self.assertAlmostEqualNumeric(results['CO2']['all']['shares']['CO2_operation'], 1293.1864834809337,
                                "CO2 doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['CO2']['all']['shares']['CO2_invest'], 0.9999999999999994,
+                                      "CO2 doesnt match expected value")
         self.assertAlmostEqualNumeric(results['Kessel']['Q_th']['val'],
                                       [0, 0, 0, 45, 0, 0, 0, 0, 0],
                                   "Kessel doesnt match expected value")
+
         self.assertAlmostEqualNumeric(results['KWK']['Q_th']['val'],
                                       [7.50000000e+01, 6.97111111e+01, 7.50000000e+01, 7.50000000e+01,
                                    7.39330280e+01, 7.50000000e+01, 0.00000000e+00, 3.12638804e-14,
@@ -144,6 +174,11 @@ class TestComplex(BaseTest):
 
         self.assertAlmostEqualNumeric(results['Speicher']['nettoFlow'],
                                       [-45., -69.71111111, 15., -10., 36.06697198, -55., 20., 20., 20.],
+                                  "Speicher nettoFlow doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['Speicher']['charge_state'],
+                                      [0., 40.5, 100., 77.,
+                                             79.84, 37.38582802, 83.89496178, 57.18336484,
+                                             32.60869565, 10.],
                                   "Speicher nettoFlow doesnt match expected value")
 
         self.assertAlmostEqualNumeric(results['Speicher']['invest']['investCosts_segmented_costs'], 800,
