@@ -28,7 +28,7 @@ solverProps = {'gapFrac': gapFrac,
 
 #####################
 ## some timeseries ##
-Q_th_Last = np.array([50., 0., 90., 100, 0 , 20, 20, 20, 20]) # kW; thermal load profile in
+Q_th_Last = np.array([30., 0., 90., 110, 110 , 20, 20, 20, 20]) # kW; thermal load profile in
 p_el = 1/1000*np.array([80., 80., 80., 80 , 80, 80, 80, 80, 80]) # €/kWh; feed_in tariff;
 aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1) # creating timeseries
 aTimeSeries = aTimeSeries.astype('datetime64') # needed format for timeseries in flixOpt
@@ -59,16 +59,13 @@ CO2   = cEffectType('CO2','kg','CO2_e-Emissionen', # name, unit, description
 # # 1. heat supply units: #
 
 # 1.a) defining a boiler
-aBoiler = cKessel('Boiler', eta = 0.5,on_valuesBeforeBegin=0, # name, efficiency factor
+aBoiler = cKessel('Boiler', eta = 0.5, # name, efficiency factor
                   # defining the output-flow = thermal -flow
                   Q_th = cFlow(label = 'Q_th', # name of flow
                                bus = Fernwaerme, # define, where flow is linked to (here: Fernwaerme-Bus)
                                nominal_val = 50, # kW; nominal_size of boiler
-                               min_rel = 0, # 10 % minimum load, i.e. 5 kW
+                               min_rel = 5/50, # 10 % minimum load, i.e. 5 kW
                                max_rel = 1, # 100 % maximum load, i.e. 50 kW
-                               switchOn_maxNr=1,
-                               onHours_max=9,
-                               onHours_min=9
                                ),    
                   # defining the input-flow = fuel-flow
                   Q_fu = cFlow(label = 'Q_fu', # name of flow
@@ -76,14 +73,11 @@ aBoiler = cKessel('Boiler', eta = 0.5,on_valuesBeforeBegin=0, # name, efficiency
                   ) 
 
 # 2.b) defining a CHP unit:
-aKWK  = cKWK('CHP_unit', eta_th = 0.5, eta_el = 0.4,on_valuesBeforeBegin=0, # name, thermal efficiency, electric efficiency
+aKWK  = cKWK('CHP_unit', eta_th = 0.5, eta_el = 0.4, # name, thermal efficiency, electric efficiency
              # defining flows:
              P_el = cFlow('P_el',bus = Strom, 
                           nominal_val = 60, # 60 kW_el
-                          min_rel = 0,
-                          switchOn_maxNr=1,
-                          onHours_max=9,
-                          onHours_min=9), # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
+                          min_rel = 5/60, ), # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
              Q_th = cFlow('Q_th',bus = Fernwaerme),
              Q_fu = cFlow('Q_fu',bus = Gas))
 
@@ -92,7 +86,7 @@ aKWK  = cKWK('CHP_unit', eta_th = 0.5, eta_el = 0.4,on_valuesBeforeBegin=0, # na
 aSpeicher = cStorage('Speicher',
                      inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4), # load-flow, maximum load-power: 1e4 kW 
                      outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4), # unload-flow, maximum load-power: 1e4 kW
-                     capacity_inFlowHours=10, # 30 kWh; storage capacity
+                     capacity_inFlowHours=30, # 30 kWh; storage capacity
                      chargeState0_inFlowHours=0, # empty storage at first time step
                      max_rel_chargeState = 1/100*np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
                      eta_load=0.9, eta_unload=1, #loading efficiency factor, unloading efficiency factor
@@ -137,7 +131,7 @@ aStromEinspeisung = cSink('Einspeisung',
 # ## Build energysystem - Registering of all elements ##
 
 es = cEnergySystem(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
-#es.addComponents(aSpeicher) # adding components
+es.addComponents(aSpeicher) # adding components
 es.addEffects(costs, CO2) # adding defined effects
 es.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
 es.addComponents(aStromEinspeisung) # adding components
