@@ -334,7 +334,7 @@ class cFeatureOn(cFeature):
         if any(param is not None for param in paramsForcingOn):
             self.useOn = True
 
-        paramsForcingSwitchOn = [switchOnCosts, switchOn_maxNr]
+        paramsForcingSwitchOn = [switchOnCosts, switchOn_maxNr, onHoursSum_max, onHoursSum_min]
         if any(param is not None for param in paramsForcingSwitchOn):
             self.useOn = True
             self.useSwitchOn = True

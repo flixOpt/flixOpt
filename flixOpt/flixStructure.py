@@ -693,6 +693,10 @@ class cBaseComponent(cME):
         None.
 
         '''
+        if onHoursSum_min is not None:
+            raise NotImplementedError("'onHoursSum_min' is not implemented yet for Components. Use FLow directly instead")
+        if onHoursSum_max is not None:
+            raise NotImplementedError("'onHoursSum_max' is not implemented yet for Components. Use FLow directly instead")
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
@@ -1504,6 +1508,30 @@ class cFlow(cME):
         #
 
         # todo -> für pyomo: fix()        
+
+
+        #
+        # ############## onHoursSum_max: ##############
+        #        
+        
+        # ineq: sum(var_on(t)) <= onHoursSum_max
+        
+        if self.onHoursSum_max is not None:
+            eq_onHoursSum_max = cEquation('onHoursSum_max', self, modBox, 'ineq')
+            eq_onHoursSum_max.addSummandSumOf(self.mod.var_on, 1)
+            eq_onHoursSum_max.addRightSide(self.onHoursSum_max/modBox.dtInHours)
+
+        #
+        # ############## onHoursSum_max: ##############
+        #        
+        
+        # ineq: sum(var_on(t)) >= onHoursSum_min
+        
+        if self.onHoursSum_min is not None:
+            eq_onHoursSum_min = cEquation('onHoursSum_min', self, modBox, 'ineq')
+            eq_onHoursSum_min.addSummandSumOf(self.mod.var_on, -1)
+            eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/modBox.dtInHours)
+
 
         #
         # ############## sumFlowHours: ##############
