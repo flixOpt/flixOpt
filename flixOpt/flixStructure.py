@@ -744,8 +744,11 @@ class cBaseComponent(cME):
                not isinstance(value, cFlow) and key in self.getInitArgs() and key != "label"
         }
 
+        remaining_data_keys = sorted(remaining_data.keys())
+        remaining_data_values = [remaining_data[key] for key in remaining_data_keys]
+
         remaining_data_str = ""
-        for key, value in remaining_data.items():
+        for key, value in zip(remaining_data_keys, remaining_data_values):
             if hasattr(value, '__str__'):
                 remaining_data_str += f"{key}: {value}\n"
             elif hasattr(value, '__repr__'):
