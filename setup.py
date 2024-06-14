@@ -6,7 +6,7 @@ def read_requirements(file_path):
 #TODO: Change Autor Name and email
 setup(
     name='flixOpt',
-    version='0.1.0',
+    version='0.2.0',
     python_requires='>=3.9, <3.12',
     author='Felix Bumann',
     author_email='felixbumann387@gmail.com',
@@ -27,7 +27,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python'
     ],
 
-    packages=find_packages(exclude=['tests', 'docs', 'examples', 'examples.*'
+    packages=find_packages(exclude=['tests', 'docs', 'examples', 'examples.*', 'Tutorials',
                                     '.git', '.vscode', 'build', '.venv', 'venv/',
                                     ]),
     install_requires=read_requirements('requirements.txt')
