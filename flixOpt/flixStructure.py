@@ -1325,7 +1325,7 @@ class cFlow(cME):
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
+        self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
         self.group = group # TODO: wird überschrieben von Component!
         self.valuesBeforeBegin = np.array(valuesBeforeBegin) if valuesBeforeBegin else np.array([0, 0])  # list -> np-array
 
@@ -1419,11 +1419,11 @@ class cFlow(cME):
 
 
         # exist-merge aus Flow.exist und Comp.exist
-        exists_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
-        self.exists_with_comp = cTS_vector('exists_with_comp', helpers.checkExists(exists_global), self)
+        exists_global = np.multiply(self.exists.data, self.comp.exists.data) # array of 0 and 1
+        self.exists_with_comp = TimeSeries('exists_with_comp', helpers.checkExists(exists_global), self)
         # combine max_rel with and exist from the flow and the comp it belongs to
-        self.max_rel_with_exists = cTS_vector('max_rel_with_exists', np.multiply(self.max_rel.d, self.exists_with_comp.d), self)
-        self.min_rel_with_exists = cTS_vector('min_rel_with_exists', np.multiply(self.min_rel.d, self.exists_with_comp.d), self)
+        self.max_rel_with_exists = TimeSeries('max_rel_with_exists', np.multiply(self.max_rel.data, self.exists_with_comp.data), self)
+        self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
 
         # prepare invest Feature:
         if self.investArgs is None:
