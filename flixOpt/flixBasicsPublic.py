@@ -9,7 +9,7 @@ from typing import Union, Optional, Dict, List
 import numpy as np
 
 
-# Anmerkung: cTSraw separat von TimeSeriesVector wg. Einfachheit für Anwender
+# Anmerkung: cTSraw separat von TimeSeries wg. Einfachheit für Anwender
 class cTSraw:
     '''
     timeseries class for transmit timeseries AND special characteristics of timeseries, 

@@ -70,24 +70,24 @@ class cArgsClass:
             raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
 
 
-class TimeSeriesVector:
+class TimeSeries:
     '''
-    Class for time series vectors or scalars that apply to time series.
+    Class for data that applies to time series, stored as vector (np.ndarray) or scalar.
 
-    This class represents a time series vector or scalar value that makes the handling of time series easier.
+    This class represents a vector or scalar value that makes the handling of time series easier.
     It supports various operations such as activation of specific time indices, setting explicit active data, and
     aggregation weight management.
 
     Attributes
     ----------
     label : str
-        The label for the time series vector.
+        The label for the time series.
     owner : object
         The owner object which holds the time series list.
     TSraw : Optional[cTSraw]
         The raw time series data if provided as cTSraw.
     data : Numeric
-        The actual data for the time series vector.
+        The actual data for the time series.
     explicit_active_data : Optional[Numeric]
         Explicit data to use instead of raw data if provided.
     active_time_indices : Optional[np.ndarray]
@@ -95,8 +95,6 @@ class TimeSeriesVector:
     aggregation_weight : float
         Weight for aggregation method, between 0 and 1, normally 1.
     '''
-
-    # create and register in List:
 
     def __init__(self, label: str, data: Numeric_TS, owner):
         self.label: str = label
@@ -112,7 +110,7 @@ class TimeSeriesVector:
         self.data: Numeric = self._convert_to_scalar_if_possible(data)
         self.explicit_active_data: Optional[Numeric] = None
         self.active_time_indices = None
-        owner.TS_list.append(self)
+        owner.TS_list.append(self)  # create and register in List
         self.aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
@@ -222,7 +220,7 @@ class cTS_collection():
 
     def calculateParametersForTSAM(self):
         for i in range(len(self.listOfTS_vectors)):
-            aTS: TimeSeriesVector
+            aTS: TimeSeries
             aTS = self.listOfTS_vectors[i]
             # check uniqueness of label:
             if aTS.label_full in self.seriesDict.keys():
@@ -248,14 +246,14 @@ class cTS_collection():
         agg_types = (aTS.TSraw.agg_type for aTS in TSlistWithAggType)
         return Counter(agg_types)
 
-    def _get_agg_type(self, aTS: TimeSeriesVector):
+    def _get_agg_type(self, aTS: TimeSeries):
         if (aTS.TSraw is not None):
             agg_type = aTS.TSraw.agg_type
         else:
             agg_type = None
         return agg_type
 
-    def _getWeight(self, aTS: TimeSeriesVector):
+    def _getWeight(self, aTS: TimeSeries):
         if aTS.TSraw is None:
             # default:
             weight = 1
@@ -288,7 +286,7 @@ class cTS_collection():
             print('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
 
 
-def as_effect_dict(effect_values: Union[Numeric, TimeSeriesVector, Dict]) -> Optional[Dict]:
+def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[Dict]:
     """
     Converts effect values into a dictionary. If a scalar value is provided, it is associated with a standard effect type.
 
@@ -301,8 +299,8 @@ def as_effect_dict(effect_values: Union[Numeric, TimeSeriesVector, Dict]) -> Opt
 
     Parameters
     ----------
-    effect_values : None, int, float, TimeSeriesVector, or dict
-        The effect values to convert can be a scalar, a TimeSeriesVector, or a dictionary with an effectas key
+    effect_values : None, int, float, TimeSeries, or dict
+        The effect values to convert can be a scalar, a TimeSeries, or a dictionary with an effectas key
 
     Returns
     -------
@@ -318,10 +316,10 @@ def as_effect_dict(effect_values: Union[Numeric, TimeSeriesVector, Dict]) -> Opt
 
 
 def values_to_ts_vectors(name_of_param: str,
-                         effect_dict: Optional[Dict[Any, Union[Numeric, TimeSeriesVector]]],
-                         owner) -> Optional[Dict[Any, TimeSeriesVector]]:
+                         effect_dict: Optional[Dict[Any, Union[Numeric, TimeSeries]]],
+                         owner) -> Optional[Dict[Any, TimeSeries]]:
     """
-    Transforms values in a dictionary to instances of TimeSeriesVector.
+    Transforms values in a dictionary to instances of TimeSeries.
 
     Parameters
     ----------
@@ -330,31 +328,31 @@ def values_to_ts_vectors(name_of_param: str,
     effect_dict : dict
         A dictionary with effect-value pairs.
     owner : object
-        The owner object where TimeSeriesVector belongs to.
+        The owner object where TimeSeries belongs to.
 
     Returns
     -------
     dict
-        A dictionary with effect types as keys and TimeSeriesVector instances as values.
+        A dictionary with effect types as keys and TimeSeries instances as values.
     """
     if effect_dict is None:
         return None
 
     transformed_dict = {}
     for effect, value in effect_dict.items():
-        if not isinstance(value, TimeSeriesVector):
+        if not isinstance(value, TimeSeries):
             subname = 'standard' if effect is None else effect.label
             full_name = f"{name_of_param}_{subname}"
-            transformed_dict[effect] = TimeSeriesVector(full_name, value, owner)
+            transformed_dict[effect] = TimeSeries(full_name, value, owner)
 
     return transformed_dict
 
 
 def as_effect_dict_with_ts_vectors(name_of_param: str,
-                                   effect_values: Union[Numeric, TimeSeriesVector, Dict],
-                                   owner) -> Optional[Dict[Any, TimeSeriesVector]]:
+                                   effect_values: Union[Numeric, TimeSeries, Dict],
+                                   owner) -> Optional[Dict[Any, TimeSeries]]:
     """
-    Transforms effect or cost input to a dictionary of TimeSeriesVector instances.
+    Transforms effect or cost input to a dictionary of TimeSeries instances.
 
     If only a value is given, it is associated with a standard effect type.
 
@@ -362,15 +360,15 @@ def as_effect_dict_with_ts_vectors(name_of_param: str,
     ----------
     name_of_param : str
         The base name of the parameter.
-    effect_values : int, float, TimeSeriesVector, or dict
+    effect_values : int, float, TimeSeries, or dict
         The effect values to transform.
     owner : object
-        The owner object where TimeSeriesVector belongs to.
+        The owner object where TimeSeries belongs to.
 
     Returns
     -------
     dict
-        A dictionary with effect types as keys and TimeSeriesVector instances as values.
+        A dictionary with effect types as keys and TimeSeries instances as values.
     """
     effect_dict = as_effect_dict(effect_values)
     effect_ts_dict = values_to_ts_vectors(name_of_param, effect_dict, owner)
