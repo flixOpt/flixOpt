@@ -29,8 +29,7 @@ class cFlow_post():
         self.label = aDescr['label']
         self.bus = aDescr['bus']
         self.comp = aDescr['comp']
-        if "group" in aDescr:
-            self.group = aDescr['group']
+        self.group = aDescr['group'] if 'group' in aDescr else None
         self.descr = aDescr
         self.flixResults = flixResults
         self.comp_post = flixResults.postObjOfStr(self.comp)
@@ -77,8 +76,7 @@ class cCompOrBus_post():
     def __init__(self, label, aDescr, flixResults, color=None):
         self.label = label
         self.type = aDescr['class']
-        if "group" in aDescr:
-            self.group = aDescr['group']
+        self.group = aDescr['group'] if 'group' in aDescr else None
         self.descr = aDescr
         self.flixResults = flixResults
         self.color = color
