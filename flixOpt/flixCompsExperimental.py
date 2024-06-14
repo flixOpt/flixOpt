@@ -8,6 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 from .flixStructure import *
 from .flixFeatures import *
 from .flixComps import cBaseLinearTransformer, cKWK
+from flixOpt.flixOptHelperFcts import checkExists
 
 
 def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
@@ -177,9 +178,12 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
 
     HelperBus = cBus(label='Helper' + label + 'In', media=None,
                      excessCostsPerFlowHour=None)  # balancing node/bus of electricity
+    # Handling min_rel and max_rel
+    max_rel = kwargs.pop("max_rel", 1)
+    checkExists(max_rel)
 
     # Transformer 1
-    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=1, max_rel=1,
+    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=max_rel, max_rel=max_rel,
                 costsPerFlowHour=costsPerFlowHour_fuel, **kwargs)
     Qout = cFlow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = cBaseLinearTransformer(label=label + "In", exists=exists, group=group,
