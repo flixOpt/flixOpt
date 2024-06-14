@@ -693,6 +693,10 @@ class cBaseComponent(cME):
         None.
 
         '''
+        if onHoursSum_min is not None:
+            raise NotImplementedError("'onHoursSum_min' is not implemented yet for Components. Use FLow directly instead")
+        if onHoursSum_max is not None:
+            raise NotImplementedError("'onHoursSum_max' is not implemented yet for Components. Use FLow directly instead")
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
