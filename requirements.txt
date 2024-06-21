@@ -1,8 +1,8 @@
 matplotlib >= 3.5.2
 networkx >= 2.8.4
-numpy >= 1.21.5
+numpy >= 1.21.5, < 2
 openpyxl >= 3.0.10
-pandas >= 1.4.4
+pandas >= 2, < 3
 plotly >= 5.9.0
 Pyomo >= 6.4.2
 PyYAML >= 6.0
