@@ -210,10 +210,10 @@ class cTS_collection():
         else:
             return self._addPeakMin_labels
 
-    def __init__(self, listOfTS_vectors, addPeakMax_TSraw=[], addPeakMin_TSraw=[]):
+    def __init__(self, listOfTS_vectors, addPeakMax_TSraw=None, addPeakMin_TSraw=None):
         self.listOfTS_vectors = listOfTS_vectors
-        self.addPeakMax_TSraw = addPeakMax_TSraw
-        self.addPeakMin_TSraw = addPeakMin_TSraw
+        self.addPeakMax_TSraw = addPeakMax_TSraw if addPeakMax_TSraw is not None else []
+        self.addPeakMin_TSraw = addPeakMin_TSraw if addPeakMin_TSraw is not None else []
         # i.g.: self.agg_type_count = {'solar': 3, 'price_el' = 2}
         self.agg_type_count = self._get_agg_type_count()
 
