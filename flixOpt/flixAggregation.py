@@ -328,7 +328,7 @@ class cAggregationModeling(flixStructure.Element):
         None.
 
         '''
-        es: flixStructure.cEnergySystem
+        es: flixStructure.System
         self.es = es
         self.indexVectorsOfClusters = indexVectorsOfClusters
         self.fixStorageFlows = fixStorageFlows

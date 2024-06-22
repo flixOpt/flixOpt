@@ -71,7 +71,7 @@ aGasTarif = Source('Gastarif',
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-es = cEnergySystem(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
+es = System(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
 es.addEffects(costs) # adding defined effects
 es.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
 

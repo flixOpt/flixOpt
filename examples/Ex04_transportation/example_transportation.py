@@ -105,7 +105,7 @@ aTransporter = Transportation('Rohr',
                               )
 
 # Built energysystem:
-es = cEnergySystem(aTimeSeries, dt_last=None)
+es = System(aTimeSeries, dt_last=None)
 # es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 es.addEffects(costs)
 es.addComponents(aSink2, aSource1, aSource2)

@@ -82,7 +82,7 @@ class TestSimple(BaseTest):
                            source=cFlow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=cFlow('P_el', bus=Strom, costsPerFlowHour=-1 * self.p_el))
 
-        es = cEnergySystem(self.aTimeSeries, dt_last=None)
+        es = System(self.aTimeSeries, dt_last=None)
         es.addComponents(aSpeicher)
         es.addEffects(costs, CO2)
         es.addComponents(aBoiler, aWaermeLast, aGasTarif)
@@ -242,7 +242,7 @@ class TestComplex(BaseTest):
         aGasTarif = Source('Gastarif', source=cFlow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=cFlow('P_el', bus=Strom, costsPerFlowHour=-1 * np.array(self.P_el_Last)))
 
-        es = cEnergySystem(self.aTimeSeries, dt_last=None)
+        es = System(self.aTimeSeries, dt_last=None)
         es.addEffects(costs, CO2, PE)
         es.addComponents(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
@@ -286,7 +286,7 @@ class TestComplex(BaseTest):
         aGasTarif = Source('Gastarif', source=cFlow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=cFlow('P_el', bus=Strom, costsPerFlowHour=-1 * np.array(self.P_el_Last)))
 
-        es = cEnergySystem(self.aTimeSeries, dt_last=None)
+        es = System(self.aTimeSeries, dt_last=None)
         es.addEffects(costs, CO2, PE)
         es.addComponents(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
         es.addComponents(aSpeicher)
@@ -350,7 +350,7 @@ class TestModelingTypes(BaseTest):
         aStromEinspeisung.sink.costsPerFlowHour[None].aggregation_weight = .5
         aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
 
-        es = cEnergySystem(aTimeSeries, dt_last=None)
+        es = System(aTimeSeries, dt_last=None)
         es.addEffects(costs, CO2, PE)
         es.addComponents(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
 

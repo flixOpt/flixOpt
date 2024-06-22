@@ -39,7 +39,7 @@ class cModelBoxOfES(LinearModel):
 
     def __init__(self, label, aModType, es, esTimeIndexe, TS_explicit=None):
         super().__init__(label, aModType)
-        self.es: cEnergySystem
+        self.es: System
         self.es = es  # energysystem (wäre Attribut von cTimePeriodModel)
         self.esTimeIndexe = esTimeIndexe
         self.nrOfTimeSteps = len(esTimeIndexe)
@@ -1725,9 +1725,9 @@ class cFlow(Element):
 #     if
 
 
-class cEnergySystem:
+class System:
     '''
-    Handles the energy system as a model.
+    A System holds Elements (Components, Buses, Flows, Effects,...).
     '''
 
     ## Properties:
@@ -2291,13 +2291,13 @@ class cCalculation:
         return self.__results_struct
 
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, es: cEnergySystem, modType, chosenEsTimeIndexe=None, pathForSaving='results', ):
+    def __init__(self, label, es: System, modType, chosenEsTimeIndexe=None, pathForSaving='results', ):
         '''
         Parameters
         ----------
         label : str
             name of calculation
-        es : cEnergySystem
+        es : System
             energysystem which should be calculated
         modType : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language

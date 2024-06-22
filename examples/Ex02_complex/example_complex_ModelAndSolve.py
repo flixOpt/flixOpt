@@ -194,7 +194,7 @@ aStromEinspeisung = Sink('Einspeisung',
 # ## Build energysystem ##
 ##########################
 
-es = cEnergySystem(aTimeSeries, dt_last=None) # creating System
+es = System(aTimeSeries, dt_last=None) # creating System
 
 es.addEffects(costs, CO2, PE) # adding effects
 es.addComponents(aGaskessel, aWaermeLast, aGasTarif) # adding components

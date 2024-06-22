@@ -130,7 +130,7 @@ aStromEinspeisung = Sink('Einspeisung',
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-es = cEnergySystem(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
+es = System(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
 es.addComponents(aSpeicher) # adding components
 es.addEffects(costs, CO2) # adding defined effects
 es.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
