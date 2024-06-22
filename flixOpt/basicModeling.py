@@ -59,10 +59,12 @@ class LinearModel:
         variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, VariableTS)]
         return variables_TSonly
 
-    def __init__(self, label: str, aModType):
+    def __init__(self,
+                 label: str,
+                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'):
         self._infos = {}
         self.label = label
-        self.modType = aModType
+        self.modeling_language = modeling_language
 
         self.countComp = 0;  # ElementeZähler für Pyomo
         self.model = None;  # Übergabe später, zumindest für Pyomo notwendig
@@ -79,7 +81,7 @@ class LinearModel:
         self.duration = {}  # Laufzeiten
         self.solverLog = None  # logging und parsen des solver-outputs
 
-        if self.modType == 'pyomo':
+        if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
             import pyomo.environ as pyomoEnv
             # pyomoEnv = importlib.import_module('pyomo.environ', package = None)
@@ -87,10 +89,10 @@ class LinearModel:
             # import pyomo.environ as pyomoEnv #Set,Param,Var,AbstractModel,Objective,Constraint,maximize
             log.info('pyomo Module geladen')
         else:
-            raise Exception('not defined for modType' + str(self.modType))
+            raise Exception('not defined for modeling_language' + str(self.modeling_language))
         ########################################
         # globales Zeugs :
-        if self.modType == 'pyomo':
+        if self.modeling_language == 'pyomo':
             # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchlaufe immer wieder genutzt wird.
             self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
 
@@ -98,7 +100,7 @@ class LinearModel:
             # self.timesteps = pyomoEnv.RangeSet(0,len(self.timeSeries)-1) # Start-index = 0, weil np.arrays auch so
             # # initialisieren:
             # self.registerPyComp(self.timesteps)
-        elif self.modType == 'cvxpy':
+        elif self.modeling_language == 'cvxpy':
             pass
         else:
             pass
@@ -190,7 +192,7 @@ class LinearModel:
         t_start = time.time()
         for variable in self.variables:
             variable.resetResult()  # altes Ergebnis löschen (falls vorhanden)
-        if self.modType == 'pyomo':
+        if self.modeling_language == 'pyomo':
             if solver_name == 'highs':
               solver = appsi.solvers.Highs()   
             else:
@@ -235,7 +237,7 @@ class LinearModel:
             self.objective_value = self.model.objective.expr()
 
         else:
-            raise Exception('not defined for modtype ' + self.modType)
+            raise Exception('not defined for modtype ' + self.modeling_language)
 
         self.duration['solve'] = round(time.time() - t_start, 2)
 
@@ -291,7 +293,7 @@ class Variable:
         self.baseModel = baseModel
 
         # TODO: self.var ist hier einziges Attribut, das baseModel-spezifisch ist: --> umbetten in baseModel!
-        if baseModel.modType == 'pyomo':
+        if baseModel.modeling_language == 'pyomo':
             if self.isBinary:
                 self.var = pyomoEnv.Var(self.indexe, domain=pyomoEnv.Binary)
                 # self.var = Var(baseModel.timesteps,domain=Binary)
@@ -314,10 +316,10 @@ class Variable:
                     self.var[i].setub(self.max_vec[i])  # max
 
 
-        elif baseModel.modType == 'vcxpy':
-            raise Exception('not defined for modtype ' + baseModel.modType)
+        elif baseModel.modeling_language == 'vcxpy':
+            raise Exception('not defined for modtype ' + baseModel.modeling_language)
         else:
-            raise Exception('not defined for modtype ' + baseModel.modType)
+            raise Exception('not defined for modtype ' + baseModel.modeling_language)
 
     def resetResult(self):
         self.__result = None
@@ -325,7 +327,7 @@ class Variable:
     def getResult(self):
         # wenn noch nicht abgefragt: (so wird verhindert, dass für jede Abfrage jedesMal neuer Speicher bereitgestellt wird.)
         if self.__result is None:
-            if self.baseModel.modType == 'pyomo':
+            if self.baseModel.modeling_language == 'pyomo':
                 # get Data:
                 values = self.var.get_values().values()  # .values() of dict, because {0:0.1, 1:0.3,...}
                 # choose dataType:
@@ -339,10 +341,10 @@ class Variable:
                 if len(self.__result) == 1:
                     self.__result = self.__result[0]
 
-            elif self.baseModel.modType == 'vcxpy':
-                raise Exception('not defined for modtype ' + self.baseModel.modType)
+            elif self.baseModel.modeling_language == 'vcxpy':
+                raise Exception('not defined for modtype ' + self.baseModel.modeling_language)
             else:
-                raise Exception('not defined for modtype ' + self.baseModel.modType)
+                raise Exception('not defined for modtype ' + self.baseModel.modeling_language)
 
         return self.__result
 
@@ -583,7 +585,7 @@ class Equation:
         # y_vec hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         self.y_vec = helpers.getVector(self.y, self.nrOfSingleEquations)
 
-        if baseModel.modType == 'pyomo':
+        if baseModel.modeling_language == 'pyomo':
             # 1. Constraints:
             if self.eqType in ['eq', 'ineq']:
 
@@ -592,7 +594,7 @@ class Equation:
                     lhs = 0
                     aSummand: Summand
                     for aSummand in self.listOfSummands:
-                        lhs += aSummand.getMathExpression_Pyomo(baseModel.modType,
+                        lhs += aSummand.getMathExpression_Pyomo(baseModel.modeling_language,
                                                                 i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
                     rhs = self.y_vec[i]
                     # Unterscheidung return-value je nach typ:
@@ -618,7 +620,7 @@ class Equation:
                 def linearSumRule_Skalar(model):
                     skalar = 0
                     for aSummand in self.listOfSummands:
-                        skalar += aSummand.getMathExpression_Pyomo(baseModel.modType)  # kein i übergeben, da skalar
+                        skalar += aSummand.getMathExpression_Pyomo(baseModel.modeling_language)  # kein i übergeben, da skalar
                     return skalar
 
                 self.eq = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
@@ -628,10 +630,10 @@ class Equation:
                 # 3. Undefined:
             else:
                 raise Exception('equation.eqType= ' + str(self.eqType) + ' nicht definiert')
-        elif baseModel.modType == 'vcxpy':
-            raise Exception('not defined for modtype ' + baseModel.modType)
+        elif baseModel.modeling_language == 'vcxpy':
+            raise Exception('not defined for modtype ' + baseModel.modeling_language)
         else:
-            raise Exception('not defined for modtype ' + baseModel.modType)
+            raise Exception('not defined for modtype ' + baseModel.modeling_language)
 
             # print i-th equation:
 

@@ -37,8 +37,8 @@ class SystemModel(LinearModel):
         infos.update(self._infos)  # da steht schon zeug drin
         return infos
 
-    def __init__(self, label, aModType, system, time_indices, TS_explicit=None):
-        super().__init__(label, aModType)
+    def __init__(self, label, modeling_language, system, time_indices, TS_explicit=None):
+        super().__init__(label, modeling_language)
         self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
@@ -1621,7 +1621,7 @@ class Flow(Element):
 
         '''        
         if self.positive_gradient == None :                    
-          if model.modType == 'pyomo':
+          if model.modeling_language == 'pyomo':
             def positive_gradient_rule(t):
               if t == 0:
                 return (self.model.var_val[t] - self.val_initial) / model.dtInHours[t] <= self.positive_gradient[t] #             
@@ -1635,10 +1635,10 @@ class Flow(Element):
               self.positive_gradient_constr =  Constraint(model.timestepsOfRun,rule = positive_gradient_rule)   # timestepsOfRun = [start:end]
               # raise error();
             system_model.registerPyComp(self.positive_gradient_constr, self.label + '_positive_gradient_constr')
-          elif model.modType == 'vcxpy':
-            raise Exception('not defined for modtype ' + model.modType)
+          elif model.modeling_language == 'vcxpy':
+            raise Exception('not defined for modtype ' + model.modeling_language)
           else:
-            raise Exception('not defined for modtype ' + model.modType)'''
+            raise Exception('not defined for modtype ' + model.modeling_language)'''
 
         # ############# Beiträge zu globalen constraints ############
 
