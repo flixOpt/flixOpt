@@ -430,7 +430,7 @@ class VariableTS(Variable):
 
 
 # managed die Before-Werte des segments:
-class cBeforeValueSet:
+class StartValue:
     def __init__(self, fromBaseModel, lastUsedIndex):
         self.fromBaseModel = fromBaseModel
         self.beforeValues = {}
