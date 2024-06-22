@@ -590,7 +590,7 @@ class flix_results():
             # setOfStorages = set()
             # # for aFlow in self.inputs + self.outputs:
             # for acomp in self.modBox.es.allMEsOfFirstLayerWithoutFlows:
-            #   if acomp.__class__.__name__ == 'cStorage': # nicht schön, da cStorage hier noch nicht bekannt
+            #   if acomp.__class__.__name__ == 'Storage': # nicht schön, da Storage hier noch nicht bekannt
             #     setOfStorages.add(acomp)      
             # for aStorage in setOfStorages:
             #   chargeState = aStorage.mod.var_charge_state.getResult()

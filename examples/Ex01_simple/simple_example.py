@@ -59,50 +59,50 @@ CO2   = cEffectType('CO2','kg','CO2_e-Emissionen', # name, unit, description
 # # 1. heat supply units: #
 
 # 1.a) defining a boiler
-aBoiler = cKessel('Boiler', eta = 0.5, # name, efficiency factor
-                  # defining the output-flow = thermal -flow
-                  Q_th = cFlow(label = 'Q_th', # name of flow
+aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
+                 # defining the output-flow = thermal -flow
+                 Q_th = cFlow(label = 'Q_th', # name of flow
                                bus = Fernwaerme, # define, where flow is linked to (here: Fernwaerme-Bus)
                                nominal_val = 50, # kW; nominal_size of boiler
                                min_rel = 5/50, # 10 % minimum load, i.e. 5 kW
                                max_rel = 1, # 100 % maximum load, i.e. 50 kW
-                               ),    
-                  # defining the input-flow = fuel-flow
-                  Q_fu = cFlow(label = 'Q_fu', # name of flow
-                               bus = Gas) # define, where flow is linked to (here: Gas-Bus)
-                  ) 
+                               ),
+                 # defining the input-flow = fuel-flow
+                 Q_fu = cFlow(label = 'Q_fu', # name of flow
+                               bus = Gas)  # define, where flow is linked to (here: Gas-Bus)
+                 )
 
 # 2.b) defining a CHP unit:
-aKWK  = cKWK('CHP_unit', eta_th = 0.5, eta_el = 0.4, # name, thermal efficiency, electric efficiency
-             # defining flows:
-             P_el = cFlow('P_el',bus = Strom, 
+aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency, electric efficiency
+            # defining flows:
+            P_el = cFlow('P_el',bus = Strom,
                           nominal_val = 60, # 60 kW_el
-                          min_rel = 5/60, ), # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
-             Q_th = cFlow('Q_th',bus = Fernwaerme),
-             Q_fu = cFlow('Q_fu',bus = Gas))
+                          min_rel = 5/60, ),  # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
+            Q_th = cFlow('Q_th',bus = Fernwaerme),
+            Q_fu = cFlow('Q_fu',bus = Gas))
 
 # # 2. storage #
 
-aSpeicher = cStorage('Speicher',
-                     inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),  # load-flow, maximum load-power: 1e4 kW
-                     outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4),  # unload-flow, maximum load-power: 1e4 kW
-                     capacity_inFlowHours=30,  # 30 kWh; storage capacity
-                     chargeState0_inFlowHours=0,  # empty storage at first time step
-                     max_rel_chargeState = 1/100*np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
-                     eta_load=0.9, eta_unload=1,  #loading efficiency factor, unloading efficiency factor
-                     fracLossPerHour=0.08,  # 8 %/h; 8 percent of storage loading level is lossed every hour
-                     avoidInAndOutAtOnce=True,  # no parallel loading and unloading at one time
-                     invest_parameters=InvestParameters(fixCosts=20,
+aSpeicher = Storage('Speicher',
+                    inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),  # load-flow, maximum load-power: 1e4 kW
+                    outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4),  # unload-flow, maximum load-power: 1e4 kW
+                    capacity_inFlowHours=30,  # 30 kWh; storage capacity
+                    chargeState0_inFlowHours=0,  # empty storage at first time step
+                    max_rel_chargeState = 1/100*np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
+                    eta_load=0.9, eta_unload=1,  #loading efficiency factor, unloading efficiency factor
+                    fracLossPerHour=0.08,  # 8 %/h; 8 percent of storage loading level is lossed every hour
+                    avoidInAndOutAtOnce=True,  # no parallel loading and unloading at one time
+                    invest_parameters=InvestParameters(fixCosts=20,
                                                         investmentSize_is_fixed=True,
                                                         investment_is_optional=False)
-                     )
+                    )
  
 # # 3. sinks and sources #
 
 # sink of heat load:
-aWaermeLast = cSink('Wärmelast',
-                    # defining input-flow:
-                    sink   = cFlow('Q_th_Last', # name
+aWaermeLast = Sink('Wärmelast',
+                   # defining input-flow:
+                   sink   = cFlow('Q_th_Last', # name
                                    bus = Fernwaerme, # linked to bus "Fernwaerme"
                                    nominal_val = 1, # nominal_value
                                    val_rel = Q_th_Last)) # fixed profile
@@ -110,9 +110,9 @@ aWaermeLast = cSink('Wärmelast',
                                    # value = val_rel * nominal_val
     
 # source of gas:
-aGasTarif = cSource('Gastarif' ,
-                    # defining output-flow:
-                    source = cFlow('Q_Gas', # name
+aGasTarif = Source('Gastarif',
+                   # defining output-flow:
+                   source = cFlow('Q_Gas', # name
                                    bus = Gas, # linked to bus "Gas"
                                    nominal_val = 1000, # nominal size, i.e. 1000 kW maximum
                                    # defining effect-shares. 
@@ -120,9 +120,9 @@ aGasTarif = cSource('Gastarif' ,
                                    costsPerFlowHour= {costs: 0.04, CO2: 0.3})) # 0.04 €/kWh, 0.3 kg_CO2/kWh
 
 # sink of electricity feed-in:
-aStromEinspeisung = cSink('Einspeisung', 
-                          # defining input-flow:
-                          sink=cFlow('P_el', # name
+aStromEinspeisung = Sink('Einspeisung',
+                         # defining input-flow:
+                         sink=cFlow('P_el', # name
                                      bus = Strom, # linked to bus "Strom"
                                      costsPerFlowHour = -1*p_el)) # gains (negative costs) per kWh
 

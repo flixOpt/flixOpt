@@ -14,9 +14,9 @@ from .flixStructure import *
 from .flixFeatures import *
 
 
-class cBaseLinearTransformer(cBaseComponent):
+class LinearTransformer(cBaseComponent):
     """
-    Klasse cBaseLinearTransformer: Grundgerüst lineare Übertragungskomponente
+    Klasse LinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
     new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
     not_used_args = ['label']
@@ -302,9 +302,9 @@ class cBaseLinearTransformer(cBaseComponent):
         self.segmentsOfFlows = segmentsOfFlows  # attribute of mother-class
 
 
-class cKessel(cBaseLinearTransformer):
+class Boiler(LinearTransformer):
     """
-    class cKessel
+    class Boiler
     """
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
@@ -350,9 +350,9 @@ class cKessel(cBaseLinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class cEHK(cBaseLinearTransformer):
+class Power2Heat(LinearTransformer):
     """
-    class cEHK
+    class Power2Heat
     """
     new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
@@ -398,9 +398,9 @@ class cEHK(cBaseLinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class cHeatPump(cBaseLinearTransformer):
+class HeatPump(LinearTransformer):
     """
-    class cHeatPump
+    class HeatPump
     """
     new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
@@ -438,9 +438,9 @@ class cHeatPump(cBaseLinearTransformer):
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class cCoolingTower(cBaseLinearTransformer):
+class CoolingTower(LinearTransformer):
     """
-    Klasse cCoolingTower
+    Klasse CoolingTower
     """
     new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
@@ -481,7 +481,7 @@ class cCoolingTower(cBaseLinearTransformer):
                                        self.specificElectricityDemand_bounds, self)
 
 
-class cKWK(cBaseLinearTransformer):
+class CHP(LinearTransformer):
     """
     class of combined heat and power unit (CHP)
     """
@@ -540,9 +540,9 @@ class cKWK(cBaseLinearTransformer):
         helpers.checkBoundsOfParameter(eta_th + eta_el, 'eta_th+eta_el', [0 + 1e-10, 1 - 1e-10], self)
 
 
-class cAbwaermeHP(cBaseLinearTransformer):
+class HeatPumpWithSource(LinearTransformer):
     """
-    class cAbwaermeHP
+    class HeatPumpWithSource
     """
     new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
@@ -590,9 +590,9 @@ class cAbwaermeHP(cBaseLinearTransformer):
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class cStorage(cBaseComponent):
+class Storage(cBaseComponent):
     """
-    Klasse cStorage
+    Klasse Storage
     """
 
     # TODO: Dabei fällt mir auf. Vielleicht sollte man mal überlegen, ob man für Ladeleistungen bereits in dem
@@ -731,7 +731,7 @@ class cStorage(cBaseComponent):
 
         # Medium-Check:
         if not (cMediumCollection.checkIfFits(inFlow.medium, outFlow.medium)):
-            raise Exception('in cStorage ' + self.label + ': input.medium = ' + str(inFlow.medium) +
+            raise Exception('in Storage ' + self.label + ': input.medium = ' + str(inFlow.medium) +
                             ' and output.medium = ' + str(outFlow.medium) + ' don`t fit!')
         # TODO: chargeState0 darf nicht größer max usw. abfangen!
 
@@ -920,7 +920,7 @@ class cStorage(cBaseComponent):
             self.featureInvest.addShareToGlobals(globalComp, modBox)
 
 
-class cSourceAndSink(cBaseComponent):
+class SourceAndSink(cBaseComponent):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
     """
@@ -998,7 +998,7 @@ class cSourceAndSink(cBaseComponent):
             self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
-class cSource(cBaseComponent):
+class Source(cBaseComponent):
     """
     class of a source
     """
@@ -1024,7 +1024,7 @@ class cSource(cBaseComponent):
         '''
 
         """
-        Konstruktor für Instanzen der Klasse cSource
+        Konstruktor für Instanzen der Klasse Source
 
         :param str label: Bezeichnung
         :param cFlow source: flow-output Quelle
@@ -1041,9 +1041,9 @@ class cSource(cBaseComponent):
             flow.group = self.group
 
 
-class cSink(cBaseComponent):
+class Sink(cBaseComponent):
     """
-    Klasse cSink
+    Klasse Sink
     """
     new_init_args = ['label', 'source']
     not_used_args = ['label']
@@ -1081,7 +1081,7 @@ class cSink(cBaseComponent):
 
 
 
-class cTransportation(cBaseComponent):
+class Transportation(cBaseComponent):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
     # TODO: investmentsize only on 1 flow
@@ -1115,7 +1115,7 @@ class cTransportation(cBaseComponent):
         Parameters
         ----------
         label : str
-            name of cTransportation.
+            name of Transportation.
         in1 : cFlow
             inflow of input at side A
         out1 : cFlow

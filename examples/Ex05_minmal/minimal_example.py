@@ -36,21 +36,21 @@ costs = cEffectType('costs','€','Kosten',  # name, unit, description
 # ###########################
 # ## Component-Definition: ##
 
-aBoiler = cKessel('Boiler', eta = 0.5, # name, efficiency factor
-                  # defining the output-flow = thermal -flow
-                  Q_th = cFlow(label = 'Q_th', # name of flow
+aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
+                 # defining the output-flow = thermal -flow
+                 Q_th = cFlow(label = 'Q_th', # name of flow
                                bus = Fernwaerme, # define, where flow is linked to (here: Fernwaerme-Bus)
                                nominal_val = 50, # kW; nominal_size of boiler
-                               ),    
-                  # defining the input-flow = fuel-flow
-                  Q_fu = cFlow(label = 'Q_fu', # name of flow
-                               bus = Gas) # define, where flow is linked to (here: Gas-Bus)
-                  )
+                               ),
+                 # defining the input-flow = fuel-flow
+                 Q_fu = cFlow(label = 'Q_fu', # name of flow
+                               bus = Gas)  # define, where flow is linked to (here: Gas-Bus)
+                 )
 
 # sink of heat load:
-aWaermeLast = cSink('Wärmelast',
-                    # defining input-flow:
-                    sink   = cFlow('Q_th_Last', # name
+aWaermeLast = Sink('Wärmelast',
+                   # defining input-flow:
+                   sink   = cFlow('Q_th_Last', # name
                                    bus = Fernwaerme, # linked to bus "Fernwaerme"
                                    nominal_val = 1, # nominal_value
                                    val_rel = Q_th_Last)) # fixed profile
@@ -58,9 +58,9 @@ aWaermeLast = cSink('Wärmelast',
                                    # value = val_rel * nominal_val
     
 # source of gas:
-aGasTarif = cSource('Gastarif' ,
-                    # defining output-flow:
-                    source = cFlow('Q_Gas', # name
+aGasTarif = Source('Gastarif',
+                   # defining output-flow:
+                   source = cFlow('Q_Gas', # name
                                    bus = Gas, # linked to bus "Gas"
                                    nominal_val = 1000, # nominal size, i.e. 1000 kW maximum
                                    # defining effect-shares. 
