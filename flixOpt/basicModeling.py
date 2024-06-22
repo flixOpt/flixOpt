@@ -6,32 +6,32 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import logging
-import numpy as np
-import importlib
-# import gurobipy
 import time
-from pyomo.contrib import appsi
+import re
 from typing import List, Dict, Optional, Union, Tuple, Literal
+
+import numpy as np
+from pyomo.contrib import appsi
+
+from . import flixOptHelperFcts as helpers
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
 log = logging.getLogger(__name__)
 
-from . import flixOptHelperFcts as helpers
 
-
-class cBaseModel:
+class LinearModel:
     '''
-    Klasse für Gleichungen a_1.*x_1+a_2.*x_2 = y
-    x_1, a_1 können Vektoren oder Skalare sein.
+    Class for equations of the form a_1*x_1 + a_2*x_2 = y
+    x_1 and a_1 can be vectors or scalars.
 
-    Modell zum Addieren von Vektor-Variablen und Skalaren :
-    zulässige Summanden:
-    + var_vec * factor_vec
-    + var_vec * factor
-    +           factor
-    + var     * factor
-    + var     * factor_vec  # macht das Sinn? Ist das überhaupt implementiert?
+    Model for adding vector variables and scalars:
+    Allowed summands:
+    - var_vec * factor_vec
+    - var_vec * factor
+    - factor
+    - var * factor
+    - var * factor_vec  # Does this make sense? Is this even implemented?
     '''
 
     @property
@@ -56,7 +56,7 @@ class cBaseModel:
 
     @property
     def variables_TSonly(self) -> List:
-        variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, cVariable_TS)]
+        variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, VariableTS)]
         return variables_TSonly
 
     def __init__(self, label: str, aModType):
@@ -156,7 +156,7 @@ class cBaseModel:
         self._charactarizeProblem()
 
         t_start = time.time()
-        eq: cEquation
+        eq: Equation
         # Variablen erstellen
         for variable in self.variables:
             variable.transform2MathModel(self)
@@ -173,8 +173,8 @@ class cBaseModel:
 
     # Attention: is overrided by childclass:
     def _charactarizeProblem(self) -> None:
-        eq: cEquation
-        var: cVariable
+        eq: Equation
+        var: Variable
 
         self.noOfEqs = len(self.eqs)
         self.noOfSingleEqs = sum([eq.nrOfSingleEquations for eq in self.eqs])
@@ -229,7 +229,7 @@ class cBaseModel:
             if solver_name == 'highs':
                 pass    
             else:    
-                self.solverLog = cSolverLog(solver_name,logfileName)
+                self.solverLog = SolverLog(solver_name, logfileName)
                 self.solverLog.parseInfos()
             # Ergebnis Zielfunktion ablegen
             self.objective_value = self.model.objective.expr()
@@ -240,8 +240,8 @@ class cBaseModel:
         self.duration['solve'] = round(time.time() - t_start, 2)
 
 
-class cVariable:
-    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+class Variable:
+    def __init__(self, label: str, len: int, myMom, baseModel: LinearModel, isBinary: bool = False,
                  value: Optional[Union[int, float]] = None,
                  min: Optional[Union[int, float]] = None, max: Optional[Union[int, float]] = None):  #TODO: Rename max and min!!
         self.label = label
@@ -276,7 +276,7 @@ class cVariable:
             minOk = (self.min is None) or (np.all(self.value >= self.min_vec))  # prüft elementweise
             maxOk = (self.max is None) or (np.all(self.value <= self.max_vec))  # prüft elementweise
             if (not (minOk)) or (not (maxOk)):
-                raise Exception('cVariable.value' + self.label_full + ' nicht in min/max Grenzen')
+                raise Exception('Variable.value' + self.label_full + ' nicht in min/max Grenzen')
 
             # Werte in Variable festsetzen:
             self.fixed = True
@@ -287,7 +287,7 @@ class cVariable:
         baseModel.variables.append(self)  # baseModel-Liste mit allen vars
         myMom.mod.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
-    def transform2MathModel(self, baseModel: cBaseModel):
+    def transform2MathModel(self, baseModel: LinearModel):
         self.baseModel = baseModel
 
         # TODO: self.var ist hier einziges Attribut, das baseModel-spezifisch ist: --> umbetten in baseModel!
@@ -355,7 +355,7 @@ class cVariable:
         maxChars = 50  # länge begrenzen falls vector-Darstellung
         aStr = 'var'
 
-        if isinstance(self, cVariable_TS):
+        if isinstance(self, VariableTS):
             aStr += ' TS'
         else:
             aStr += '   '
@@ -375,7 +375,7 @@ class cVariable:
 
 
 # TODO:
-# class cTS_Variable (cVariable):  
+# class cTS_Variable (Variable):
 #   valuesIsPostTimeStep = False # für Speicherladezustände true!!!
 #   oneValDependsOnPrevious : Bool, optional
 #             if every value depends on previous -> not fixed in aggregation mode. The default is True.
@@ -383,8 +383,8 @@ class cVariable:
 
 
 # Timeseries-Variable, optional mit Before-Werten:
-class cVariable_TS(cVariable):
-    def __init__(self, label: str, len: int, myMom, baseModel: cBaseModel, isBinary: bool = False,
+class VariableTS(Variable):
+    def __init__(self, label: str, len: int, myMom, baseModel: LinearModel, isBinary: bool = False,
                  value: Optional[Union[int, float, np.ndarray]] = None,
                  min: Optional[Union[int, float, np.ndarray]] = None,
                  max: Optional[Union[int, float, np.ndarray]] = None):
@@ -400,7 +400,7 @@ class cVariable_TS(cVariable):
         self.esBeforeValue = esBeforeValue  # Standardwerte für Simulationsstart im Energiesystem
         self.activated_beforeValues = True
 
-    def transform2MathModel(self, baseModel:cBaseModel) -> None:
+    def transform2MathModel(self, baseModel:LinearModel) -> None:
         super().transform2MathModel(baseModel)
 
     # hole Startwert/letzten Wert vor diesem Segment:
@@ -430,7 +430,7 @@ class cVariable_TS(cVariable):
 
 
 # managed die Before-Werte des segments:
-class cBeforeValueSet:
+class StartValue:
     def __init__(self, fromBaseModel, lastUsedIndex):
         self.fromBaseModel = fromBaseModel
         self.beforeValues = {}
@@ -438,7 +438,7 @@ class cBeforeValueSet:
         #                      (aME2, aVar2.name): (value, time),
         #                       ...                       }
         for aVar in self.fromBaseModel.variables_TSonly:
-            aVar: cVariable_TS
+            aVar: VariableTS
             if aVar.activated_beforeValues:
                 # Before-Value holen:
                 (aValue, aTime) = aVar.getBeforeValueForNEXTSegment(lastUsedIndex)
@@ -468,12 +468,12 @@ class cBeforeValueSet:
             print(aME.label + '.' + varName + ' = ' + str(self.beforeValues[(aME, varName)]))
 
 
-# class cInequation(cEquation):
+# class cInequation(Equation):
 #   def __init__(self, label, myMom, baseModel):
 #     super().__init__(label, myMom, baseModel, eqType='ineq')    
 
-class cEquation:
-    def __init__(self, label: str, myMom, baseModel: cBaseModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
+class Equation:
+    def __init__(self, label: str, myMom, baseModel: LinearModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
         self.nrOfSingleEquations = 1  # Anzahl der Gleichungen
@@ -506,7 +506,7 @@ class cEquation:
                 raise Exception('baseModel.objective ist bereits belegt!')
         # Undefined:
         else:
-            raise Exception('cEquation.eqType ' + str(self.eqType) + ' nicht definiert!')
+            raise Exception('Equation.eqType ' + str(self.eqType) + ' nicht definiert!')
 
         # in Matlab noch:
         # B; % B of this object (related to x)!
@@ -530,13 +530,13 @@ class cEquation:
         self.addUniversalSummand(variable, factor, isSumOf_Type, indexeOfVariable)
 
     def addUniversalSummand(self, variable, factor, isSumOf_Type, indexeOfVar):
-        if not isinstance(variable, cVariable):
+        if not isinstance(variable, Variable):
             raise Exception('error in eq ' + self.label + ' : no variable given (variable = ' + str(variable) + ')')
         # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
         if np.isscalar(indexeOfVar):
             indexeOfVar = [indexeOfVar]
         # Vektor/Summand erstellen:
-        aVector = cVector(variable, factor, indexeOfVariable=indexeOfVar)
+        aVector = Summand(variable, factor, indexeOfVariable=indexeOfVar)
 
         if isSumOf_Type:
             aVector.sumOf()  # Umwandlung zu Sum-Of-Skalar
@@ -577,7 +577,7 @@ class cEquation:
 
         # Umsetzung in der gewählten Modellierungssprache:
 
-    def transform2MathModel(self, baseModel: cBaseModel):
+    def transform2MathModel(self, baseModel: LinearModel):
         log.debug('eq ' + self.label + '.transform2MathModel()')
 
         # y_vec hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
@@ -590,7 +590,7 @@ class cEquation:
                 # lineare Summierung für i-te Gleichung:
                 def linearSumRule(model, i):
                     lhs = 0
-                    aSummand: cVector
+                    aSummand: Summand
                     for aSummand in self.listOfSummands:
                         lhs += aSummand.getMathExpression_Pyomo(baseModel.modType,
                                                                 i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
@@ -612,7 +612,7 @@ class cEquation:
             elif self.eqType == 'objective':
                 # Anmerkung: nrOfEquation - Check könnte auch weiter vorne schon passieren!
                 if self.nrOfSingleEquations > 1:
-                    raise Exception('cEquation muss für objective ein Skalar ergeben!!!')
+                    raise Exception('Equation muss für objective ein Skalar ergeben!!!')
 
                 # Summierung der Skalare:
                 def linearSumRule_Skalar(model):
@@ -710,7 +710,7 @@ class cEquation:
 
 
 # Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
-class cVector:
+class Summand:
     def __init__(self, variable, factor, indexeOfVariable=None):  # indexeOfVariable default : alle
         self.__dict__.update(**locals())
         self.isSumOf_Type = False  # Falls Skalar durch Summation über alle Indexe
@@ -747,7 +747,7 @@ class cVector:
     def sumOf(self):
         if len == 1:
             print(
-                'warning: cVector.sumOf() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
+                'warning: Summand.sumOf() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
         self.isSumOf_Type = True
         self.len = 1  # jetzt nur noch Skalar!
         return self
@@ -780,10 +780,7 @@ class cVector:
         return expr
 
 
-import re
-
-
-class cSolverLog():
+class SolverLog():
     def __init__(self, solver_name, filename, string=None):
 
         if filename is None:
@@ -869,4 +866,4 @@ class cSolverLog():
             print('######################################################')
             print('### No solver-log parsing implemented for glpk yet! ###')
         else:
-            raise Exception('cSolverLog.parseInfos() is not defined for solver ' + self.solver_name)
+            raise Exception('SolverLog.parseInfos() is not defined for solver ' + self.solver_name)

@@ -253,7 +253,7 @@ class cBaseLinearTransformer(cBaseComponent):
                 leftSideFlows = inputs_set & aFactorVec_Dict.keys()  # davon nur die input-flows, die in Glg sind.
                 rightSideFlows = outputs_set & aFactorVec_Dict.keys()  # davon nur die output-flows, die in Glg. sind.
 
-                eq_linearFlowRelation_i = cEquation('linearFlowRelation_' + str(i), self, modBox)
+                eq_linearFlowRelation_i = Equation('linearFlowRelation_' + str(i), self, modBox)
                 for inFlow in leftSideFlows:
                     aFactor = aFactorVec_Dict[inFlow].active_data
                     eq_linearFlowRelation_i.addSummand(inFlow.mod.var_val, aFactor)  # input1.val[t]      * factor[t]
@@ -774,11 +774,11 @@ class cStorage(cBaseComponent):
             else:
                 ub = np.append(ub, ub[-1])  # charge_state_end_max)
 
-        self.mod.var_charge_state = cVariable_TS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
-                                                 value=fix_value)  # Eins mehr am Ende!
+        self.mod.var_charge_state = VariableTS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, min=lb, max=ub,
+                                               value=fix_value)  # Eins mehr am Ende!
         self.mod.var_charge_state.activateBeforeValues(self.chargeState0_inFlowHours, True)
-        self.mod.var_nettoFlow = cVariable_TS('nettoFlow', modBox.nrOfTimeSteps, self, modBox,
-                                              min=-np.inf)  # negative Werte zulässig!
+        self.mod.var_nettoFlow = VariableTS('nettoFlow', modBox.nrOfTimeSteps, self, modBox,
+                                            min=-np.inf)  # negative Werte zulässig!
 
         # erst hier, da definingVar vorher nicht belegt!
         if self.featureInvest is not None:
@@ -831,12 +831,12 @@ class cStorage(cBaseComponent):
             pass
         elif helpers.is_number(self.chargeState0_inFlowHours):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
-            self.eq_charge_state_start = cEquation('charge_state_start', self, modBox, eqType='eq')
+            self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
             self.eq_charge_state_start.addRightSide(self.mod.var_charge_state.beforeVal())  # chargeState_0 !
             self.eq_charge_state_start.addSummand(self.mod.var_charge_state, 1, timeIndexe[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
-            self.eq_charge_state_start = cEquation('charge_state_start', self, modBox, eqType='eq')
+            self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
             self.eq_charge_state_start.addSummand(self.mod.var_charge_state, 1, timeIndexe[0])
             self.eq_charge_state_start.addSummand(self.mod.var_charge_state, -1, timeIndexe[-1])
         else:
@@ -848,7 +848,7 @@ class cStorage(cBaseComponent):
 
         # charge_state hat ein Index mehr:
         timeIndexeChargeState = range(timeIndexe.start, timeIndexe.stop + 1)
-        self.eq_charge_state = cEquation('charge_state', self, modBox, eqType='eq')
+        self.eq_charge_state = Equation('charge_state', self, modBox, eqType='eq')
         self.eq_charge_state.addSummand(self.mod.var_charge_state,
                                         -1 * (1 - self.fracLossPerHour.active_data * modBox.dtInHours),
                                         timeIndexeChargeState[
@@ -862,19 +862,19 @@ class cStorage(cBaseComponent):
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.charge_state_end_max is not None:
-            self.eq_charge_state_end_max = cEquation('eq_charge_state_end_max', self, modBox, eqType='ineq')
+            self.eq_charge_state_end_max = Equation('eq_charge_state_end_max', self, modBox, eqType='ineq')
             self.eq_charge_state_end_max.addSummand(self.mod.var_charge_state, 1, timeIndexeChargeState[-1])
             self.eq_charge_state_end_max.addRightSide(self.charge_state_end_max)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.charge_state_end_min is not None:
-            self.eq_charge_state_end_min = cEquation('eq_charge_state_end_min', self, modBox, eqType='ineq')
+            self.eq_charge_state_end_min = Equation('eq_charge_state_end_min', self, modBox, eqType='ineq')
             self.eq_charge_state_end_min.addSummand(self.mod.var_charge_state, -1, timeIndexeChargeState[-1])
             self.eq_charge_state_end_min.addRightSide(- self.charge_state_end_min)
 
         # nettoflow:
         # eq: nettoFlow(t) - outFlow(t) + inFlow(t) = 0
-        self.eq_nettoFlow = cEquation('nettoFlow', self, modBox, eqType='eq')
+        self.eq_nettoFlow = Equation('nettoFlow', self, modBox, eqType='eq')
         self.eq_nettoFlow.addSummand(self.mod.var_nettoFlow, 1)
         self.eq_nettoFlow.addSummand(self.inFlow.mod.var_val, 1)
         self.eq_nettoFlow.addSummand(self.outFlow.mod.var_val, -1)
@@ -885,7 +885,7 @@ class cStorage(cBaseComponent):
         # ############# Gleichungen ##########################
         # % Speicherleistung an Bilanzgrenze / Speicher-Ladung / Speicher-Entladung
         # % Q_th(n) + Q_th_Lade(n) - Q_th_Entlade(n) = 0;
-        # obj.eqs.Leistungen = cEquation('Leistungen');
+        # obj.eqs.Leistungen = Equation('Leistungen');
         # obj.eqs.Leistungen.addSummand(obj.vars.Q_th        , 1);
         # obj.eqs.Leistungen.addSummand(obj.vars.Q_th_Lade   , 1);
         # obj.eqs.Leistungen.addSummand(obj.vars.Q_th_Entlade,-1);
@@ -902,7 +902,7 @@ class cStorage(cBaseComponent):
 
         # % Bedingung "Laden ODER Entladen ODER nix von beiden" (insbesondere für KWK-Anlagen wichtig, da gleichzeitiges Entladen und Beladen sonst Kostenoptimum sein kann
         # % eq: IchLadeMich(n) + IchEntladeMich(n) <= 1;
-        # obj.ineqs.EntwederLadenOderEntladen = cEquation('EntwederLadenOderEntladen');
+        # obj.ineqs.EntwederLadenOderEntladen = Equation('EntwederLadenOderEntladen');
         # obj.ineqs.EntwederLadenOderEntladen.addSummand(obj.vars.IchLadeMich   ,1);
         # obj.ineqs.EntwederLadenOderEntladen.addSummand(obj.vars.IchEntladeMich,1);
         # obj.ineqs.EntwederLadenOderEntladen.addRightSide(1);
@@ -1183,7 +1183,7 @@ class cTransportation(cBaseComponent):
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
-        self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
+        self.eq_dir1 = Equation('transport_dir1', self, modBox, eqType='eq')
         self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.active_data))
         self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
         if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
@@ -1193,7 +1193,7 @@ class cTransportation(cBaseComponent):
         # second direction:        
         if self.in2 is not None:
             # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
-            self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
+            self.eq_dir2 = Equation('transport_dir2', self, modBox, eqType='eq')
             self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.active_data)
             self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
             if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
@@ -1203,7 +1203,7 @@ class cTransportation(cBaseComponent):
         # always On (in at least one direction)
         # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
         if self.isAlwaysOn:
-            self.eq_alwaysOn = cEquation('alwaysOn', self, modBox, eqType='ineq')
+            self.eq_alwaysOn = Equation('alwaysOn', self, modBox, eqType='ineq')
             self.eq_alwaysOn.addSummand(self.in1.mod.var_on, -1)
             if (self.in2 is not None): self.eq_alwaysOn.addSummand(self.in2.mod.var_on, -1)
             self.eq_alwaysOn.addRightSide(-.5)  # wg binärungenauigkeit 0.5 statt 1
@@ -1215,7 +1215,7 @@ class cTransportation(cBaseComponent):
             if oneInFlowHasFeatureInvest:
                 if bothInFlowsHaveFeatureInvest:
                     # eq: in1.nom_value = in2.nom_value
-                    self.eq_nom_value = cEquation('equalSizeInBothDirections', self, modBox, eqType='eq')
+                    self.eq_nom_value = Equation('equalSizeInBothDirections', self, modBox, eqType='eq')
                     self.eq_nom_value.addSummand(self.in1.featureInvest.mod.var_investmentSize, 1)
                     self.eq_nom_value.addSummand(self.in2.featureInvest.mod.var_investmentSize, -1)
                 else:

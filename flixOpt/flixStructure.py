@@ -23,7 +23,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class cModelBoxOfES(cBaseModel):
+class cModelBoxOfES(LinearModel):
     '''
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     '''
@@ -373,7 +373,7 @@ class cME:
             (aData[aME.label], aVars[aME.label]) = aME.getResults()  # rekursiv
 
         # 2. Variablenwerte ablegen:
-        aVar: cVariable
+        aVar: Variable
         for aVar in self.mod.variables:
             # print(aVar.label)
             aData[aVar.label] = aVar.getResult()
@@ -476,7 +476,7 @@ class cMEModel:
     # Eqs, Ineqs und Objective als Str-Description:
     def getEqsAsStr(self) -> List:
         # Wenn Glg vorhanden:
-        eq: cEquation
+        eq: Equation
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
             for eq in (self.eqs + self.ineqs):
@@ -982,11 +982,11 @@ class cGlobal(cME):
             effect.declareVarsAndEqs(modBox)
         self.penalty.declareVarsAndEqs(modBox)
 
-        self.objective = cEquation('obj', self, modBox, 'objective')
+        self.objective = Equation('obj', self, modBox, 'objective')
 
         # todo : besser wäre objective separat:
 
-    #  eq_objective = cEquation('objective',self,modBox,'objective')
+    #  eq_objective = Equation('objective',self,modBox,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
     def doModeling(self, modBox, timeIndexe) -> None:
         # super().doModeling(modBox,timeIndexe)
@@ -1109,14 +1109,14 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
         # Fehlerplus/-minus:
         if self.withExcess:
             # Fehlerplus und -minus definieren
-            self.excessIn = cVariable_TS('excessIn', len(modBox.timeSeries), self, modBox, min=0)
-            self.excessOut = cVariable_TS('excessOut', len(modBox.timeSeries), self, modBox, min=0)
+            self.excessIn = VariableTS('excessIn', len(modBox.timeSeries), self, modBox, min=0)
+            self.excessOut = VariableTS('excessOut', len(modBox.timeSeries), self, modBox, min=0)
 
     def doModeling(self, modBox, timeIndexe) -> None:
         super().doModeling(modBox, timeIndexe)
 
         # inputs = outputs
-        eq_busbalance = cEquation('busBalance', self, modBox)
+        eq_busbalance = Equation('busBalance', self, modBox)
         for aFlow in self.inputs:
             eq_busbalance.addSummand(aFlow.mod.var_val, 1)
         for aFlow in self.outputs:
@@ -1518,9 +1518,9 @@ class cFlow(cME):
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.mod.var_val = cVariable_TS('val', modBox.nrOfTimeSteps, self, modBox, min=lb, max=ub, value=fix_value)
-        self.mod.var_sumFlowHours = cVariable('sumFlowHours', 1, self, modBox, min=self.sumFlowHours_min,
-                                              max=self.sumFlowHours_max)
+        self.mod.var_val = VariableTS('val', modBox.nrOfTimeSteps, self, modBox, min=lb, max=ub, value=fix_value)
+        self.mod.var_sumFlowHours = Variable('sumFlowHours', 1, self, modBox, min=self.sumFlowHours_min,
+                                             max=self.sumFlowHours_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.mod.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.mod.var_switchOn, self.mod.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
@@ -1550,7 +1550,7 @@ class cFlow(cME):
         # ineq: sum(var_on(t)) <= onHoursSum_max
 
         if self.onHoursSum_max is not None:
-            eq_onHoursSum_max = cEquation('onHoursSum_max', self, modBox, 'ineq')
+            eq_onHoursSum_max = Equation('onHoursSum_max', self, modBox, 'ineq')
             eq_onHoursSum_max.addSummandSumOf(self.mod.var_on, 1)
             eq_onHoursSum_max.addRightSide(self.onHoursSum_max/modBox.dtInHours)
 
@@ -1561,7 +1561,7 @@ class cFlow(cME):
         # ineq: sum(var_on(t)) >= onHoursSum_min
 
         if self.onHoursSum_min is not None:
-            eq_onHoursSum_min = cEquation('onHoursSum_min', self, modBox, 'ineq')
+            eq_onHoursSum_min = Equation('onHoursSum_min', self, modBox, 'ineq')
             eq_onHoursSum_min.addSummandSumOf(self.mod.var_on, -1)
             eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/modBox.dtInHours)
 
@@ -1572,7 +1572,7 @@ class cFlow(cME):
 
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
-        eq_sumFlowHours = cEquation('sumFlowHours', self, modBox, 'eq')  # general mean
+        eq_sumFlowHours = Equation('sumFlowHours', self, modBox, 'eq')  # general mean
         eq_sumFlowHours.addSummandSumOf(self.mod.var_val, modBox.dtInHours)
         eq_sumFlowHours.addSummand(self.mod.var_sumFlowHours, -1)
 
@@ -1596,7 +1596,7 @@ class cFlow(cME):
 
         if self.loadFactor_max is not None:
             flowHoursPerInvestsize_max = modBox.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Max = cEquation('loadFactor_max', self, modBox, 'ineq')  # general mean
+            eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, modBox, 'ineq')  # general mean
             eq_flowHoursPerInvestsize_Max.addSummand(self.mod.var_sumFlowHours, 1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Max.addSummand(self.featureInvest.mod.var_investmentSize,
@@ -1609,7 +1609,7 @@ class cFlow(cME):
 
         if self.loadFactor_min is not None:
             flowHoursPerInvestsize_min = modBox.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Min = cEquation('loadFactor_min', self, modBox, 'ineq')
+            eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, modBox, 'ineq')
             eq_flowHoursPerInvestsize_Min.addSummand(self.mod.var_sumFlowHours, -1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Min.addSummand(self.featureInvest.mod.var_investmentSize,
@@ -1649,7 +1649,7 @@ class cFlow(cME):
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
             # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
-            # variable_costs          = cVector(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))
+            # variable_costs          = Summand(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))
             # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.active_data, modBox.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.mod.var_val, self.costsPerFlowHour,
@@ -2171,7 +2171,7 @@ class cEnergySystem:
                         allow_unicode=True))
 
     def getVarsAsStr(self, structured=True) -> Union[List, Dict]:
-        aVar: cVariable
+        aVar: Variable
 
         # liste:
         if not structured:
@@ -2456,8 +2456,8 @@ class cCalculation:
             # Startwerte übergeben von Vorgänger-Modbox:
             if i > 0:
                 segmentModBoxBefore = self.segmentModBoxList[i - 1]
-                segmentModBox.beforeValueSet = cBeforeValueSet(segmentModBoxBefore,
-                                                               segmentModBoxBefore.realNrOfUsedSteps - 1)
+                segmentModBox.beforeValueSet = StartValue(segmentModBoxBefore,
+                                                          segmentModBoxBefore.realNrOfUsedSteps - 1)
                 print('### beforeValueSet: ###')
                 segmentModBox.beforeValueSet.print()
                 print('#######################')
@@ -2791,8 +2791,8 @@ class cCalculation:
                     else:
                         # Beachte Speicherladezustand und ähnliche Variablen:
                         aReferedVariable = resultToAppendVar[key]
-                        aReferedVariable: cVariable_TS
-                        withEnd = isinstance(aReferedVariable, cVariable_TS) \
+                        aReferedVariable: VariableTS
+                        withEnd = isinstance(aReferedVariable, VariableTS) \
                                   and aReferedVariable.activated_beforeValues \
                                   and aReferedVariable.beforeValueIsStartValue
 
