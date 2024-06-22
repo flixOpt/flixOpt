@@ -191,7 +191,7 @@ class TimeSeries:
             self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
 
 
-class cTS_collection():
+class TimeSeriesCollection:
     '''
     calculates weights of TS_vector for being in that collection (depending on)
     '''
