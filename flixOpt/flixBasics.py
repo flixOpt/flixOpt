@@ -8,7 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 from . import flixOptHelperFcts as helpers
 from .flixBasicsPublic import cTSraw
-from typing import Union
+from typing import Union, Optional
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -138,15 +138,27 @@ class TimeSeries:
         return self.owner.label_full + '_' + self.label
 
     @staticmethod
-    def make_scalar_if_possible(data):
-        if (np.isscalar(data)) or (data is None):
-            # do nothing
-            pass
-        else:
-            data = np.array(data)  # Umwandeln, da einfaches slicing mit Index-Listen nur mit np-Array geht.
-            # Wenn alle Werte gleich, dann Vektor in Skalar umwandeln:
-            if np.all(data == data[0]):
-                data = data[0]
+    def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
+        """
+        Convert an array to a scalar if all values are equal, or return the array as-is.
+        Can Return None if the passed data is None
+
+        Parameters
+        ----------
+        data : Numeric, None
+            The data to process.
+
+        Returns
+        -------
+        Numeric
+            A scalar if all values in the array are equal, otherwise the array itself. None, if the passed value is None
+        """
+        #TODO: Should this really return None Values?
+        if np.isscalar(data) or data is None:
+            return data
+        data = np.array(data)
+        if np.all(data == data[0]):
+            return data[0]
         return data
 
     # define, which timeStep-Set should be transfered in data-request self.active_data()
