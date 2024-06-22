@@ -920,7 +920,7 @@ class Storage(cBaseComponent):
             self.featureInvest.addShareToGlobals(globalComp, modBox)
 
 
-class cSourceAndSink(cBaseComponent):
+class SourceAndSink(cBaseComponent):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
     """
