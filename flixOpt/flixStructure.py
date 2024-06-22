@@ -650,7 +650,7 @@ class Effect(Element):
 
 
 # Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
-class cEffectTypeList(List[Effect]):
+class EffectCollection(List[Effect]):
     '''
     internal effect list for simple handling of effects
     '''
@@ -1816,7 +1816,7 @@ class System:
         # defaults:
         self.listOfComponents = []
         self.setOfOtherMEs = set()  ## hier kommen zusätzliche MEs rein, z.B. aggregation
-        self.listOfEffectTypes = cEffectTypeList()  # Kosten, CO2, Primärenergie, ...
+        self.listOfEffectTypes = EffectCollection()  # Kosten, CO2, Primärenergie, ...
         self.AllTempMEs = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         self.standardEffect = None  # Standard-Effekt, zumeist Kosten
         self.objectiveEffect = None  # Zielfunktions-Effekt, z.B. Kosten oder CO2
