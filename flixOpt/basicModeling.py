@@ -6,18 +6,18 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import logging
-import numpy as np
-import importlib
-# import gurobipy
 import time
-from pyomo.contrib import appsi
+import re
 from typing import List, Dict, Optional, Union, Tuple, Literal
+
+import numpy as np
+from pyomo.contrib import appsi
+
+from . import flixOptHelperFcts as helpers
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
 log = logging.getLogger(__name__)
-
-from . import flixOptHelperFcts as helpers
 
 
 class LinearModel:
@@ -778,9 +778,6 @@ class Summand:
             ## expression:
             expr = self.variable.var[self.indexeOfVariable[indexeOfVar]] * self.factor_vec[nrOfEq]
         return expr
-
-
-import re
 
 
 class SolverLog():
