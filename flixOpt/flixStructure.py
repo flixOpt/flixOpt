@@ -37,11 +37,11 @@ class SystemModel(LinearModel):
         infos.update(self._infos)  # da steht schon zeug drin
         return infos
 
-    def __init__(self, label, aModType, system, esTimeIndexe, TS_explicit=None):
+    def __init__(self, label, aModType, system, time_indices, TS_explicit=None):
         super().__init__(label, aModType)
         self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
-        self.esTimeIndexe = esTimeIndexe
-        self.nrOfTimeSteps = len(esTimeIndexe)
+        self.time_indices = time_indices
+        self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
         # self.epsilon    = 1e-5 # 
         # self.variables  = [] # Liste aller Variablen
@@ -55,7 +55,7 @@ class SystemModel(LinearModel):
         self.beforeValueSet = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
         (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
-            esTimeIndexe)
+            time_indices)
 
     # extract model of Element:
     def get_model_of_element(self, aModelingElement):
@@ -1993,7 +1993,7 @@ class System:
 
         # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von chosenEsTimeIndexe abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
         # --> ist aber nicht sauber durchimplementiert in den ganzehn addSummand()-Befehlen!!
-        timeIndexe = range(len(self.model.esTimeIndexe))
+        timeIndexe = range(len(self.model.time_indices))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:
         self.globalComp.declareVarsAndEqs(self.model)  # globale Funktionen erstellen!
@@ -2053,7 +2053,7 @@ class System:
         element: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
-        self.activateInTS(system_model.esTimeIndexe, system_model.TS_explicit)
+        self.activateInTS(system_model.time_indices, system_model.TS_explicit)
 
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
@@ -2223,7 +2223,7 @@ class System:
 
         yaml.dump(self.getVarsAsStr(structured=True))
 
-    # Datenzeitreihe auf Basis gegebener esTimeIndexe aus globaler extrahieren:
+    # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe) -> Tuple:
         # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(len(self.timeSeries))
         # Zeitreihen:
