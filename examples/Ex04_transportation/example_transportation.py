@@ -95,14 +95,14 @@ invest2 = InvestParameters(fixCosts=0,
                            specificCosts=0
                            )
 
-aTransporter = cTransportation('Rohr',
-                               in1  = cFlow('in1', bus=heat1, invest_parameters=invest1, nominal_val = None, min_rel = 0.1),
-                               out1 = cFlow('out1', bus=heat2),
-                               loss_abs = loss_abs,
-                               loss_rel = loss_rel,
-                               in2  = cFlow('in2', bus=heat2, invest_parameters=invest2, nominal_val = None, min_rel = 0.1),
-                               out2 = cFlow('out2', bus=heat1),
-                               )
+aTransporter = Transportation('Rohr',
+                              in1  = cFlow('in1', bus=heat1, invest_parameters=invest1, nominal_val = None, min_rel = 0.1),
+                              out1 = cFlow('out1', bus=heat2),
+                              loss_abs = loss_abs,
+                              loss_rel = loss_rel,
+                              in2  = cFlow('in2', bus=heat2, invest_parameters=invest2, nominal_val = None, min_rel = 0.1),
+                              out2 = cFlow('out2', bus=heat1),
+                              )
 
 # Built energysystem:
 es = cEnergySystem(aTimeSeries, dt_last=None)

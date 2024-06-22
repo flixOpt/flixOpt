@@ -1081,7 +1081,7 @@ class Sink(cBaseComponent):
 
 
 
-class cTransportation(cBaseComponent):
+class Transportation(cBaseComponent):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
     # TODO: investmentsize only on 1 flow
@@ -1115,7 +1115,7 @@ class cTransportation(cBaseComponent):
         Parameters
         ----------
         label : str
-            name of cTransportation.
+            name of Transportation.
         in1 : cFlow
             inflow of input at side A
         out1 : cFlow
