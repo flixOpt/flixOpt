@@ -318,14 +318,14 @@ class Element:
 
         return str_desc
 
-    # activate inkl. subMEs:
+    # activate inkl. subElements:
     def activateModbox(self, modBox) -> None:
 
         for aME in self.subElements:
-            aME.activateModbox(modBox)  # inkl. subMEs
+            aME.activateModbox(modBox)  # inkl. subElements
         self._activateModBox_ForMeOnly(modBox)
 
-    # activate ohne SubMEs!
+    # activate ohne SubElements!
     def _activateModBox_ForMeOnly(self, modBox) -> None:
         self.system_model = modBox
         self.model = modBox.getModOfME(self)
@@ -333,7 +333,7 @@ class Element:
     # 1.
     def finalize(self) -> None:
         # print('finalize ' + self.label)
-        # gleiches für alle sub MEs:
+        # gleiches für alle sub Elements:
         aME : Element
         for aME in self.subElements:
             aME.finalize()
@@ -351,7 +351,7 @@ class Element:
         # register model:
         modBox.registerMEandMod(self, aMod)
 
-        self._activateModBox_ForMeOnly(modBox)  # subMEs werden bereits aktiviert über aME.createNewMod...()
+        self._activateModBox_ForMeOnly(modBox)  # subElements werden bereits aktiviert über aME.createNewMod...()
 
     # 3.
     def declareVarsAndEqs(self, modBox) -> None:
@@ -460,8 +460,8 @@ class ElementModel:
     is existing in every Element and owns eqs and vars of the activated calculation
     '''
 
-    def __init__(self, ME: Element):
-        self.ME = ME
+    def __init__(self, element: Element):
+        self.element = element
         self.variables = []
         self.eqs = []
         self.ineqs = []
@@ -1817,14 +1817,14 @@ class System:
 
         # defaults:
         self.listOfComponents = []
-        self.setOfOtherMEs = set()  ## hier kommen zusätzliche MEs rein, z.B. aggregation
+        self.setOfOtherMEs = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
         self.listOfEffectTypes = EffectCollection()  # Kosten, CO2, Primärenergie, ...
         self.AllTempMEs = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         self.standardEffect = None  # Standard-Effekt, zumeist Kosten
         self.objectiveEffect = None  # Zielfunktions-Effekt, z.B. Kosten oder CO2
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
         self.globalComp = Global('globalComp')
-        self.__finalized = False  # wenn die MEs alle finalisiert sind, dann True
+        self.__finalized = False  # wenn die Elements alle finalisiert sind, dann True
         self.model: SystemModel = None  # later activated
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
         # self.addComponents(self.globalComp)
@@ -1976,17 +1976,17 @@ class System:
                 assert (
                         effect not in shareEffect.specificShareToOtherEffects_invest.keys()), 'Error: circular invest-shares \n' + getErrorStr()
 
-    # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch subMEs erzeugt!)
+    # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch subElements erzeugt!)
     def finalize(self) -> None:
-        print('finalize all MEs...')
+        print('finalize all Elements...')
         self.__plausibilityChecks()
-        # nur EINMAL ausführen: Finalisieren der MEs:
+        # nur EINMAL ausführen: Finalisieren der Elements:
         if not self.__finalized:
-            # finalize MEs for modeling:
+            # finalize Elements for modeling:
             for aME in self.allMEsOfFirstLayer:
                 print(aME.label)
                 type(aME)
-                aME.finalize()  # inklusive subMEs!
+                aME.finalize()  # inklusive subElements!
             self.__finalized = True
 
     def doModelingOfElements(self) -> SystemModel:
@@ -2004,7 +2004,7 @@ class System:
         self.globalComp.declareVarsAndEqs(self.model)  # globale Funktionen erstellen!
         self.globalComp.doModeling(self.model, timeIndexe)  # globale Funktionen erstellen!
 
-        # Komponenten-Modellierung (# inklusive subMEs!)
+        # Komponenten-Modellierung (# inklusive subElements!)
         for aComp in self.listOfComponents:
             aComp: Component
             log.debug('model ' + aComp.label + '...')
@@ -2018,7 +2018,7 @@ class System:
             aComp.addShareToGlobalsOfFlows(self.globalComp, self.model)
             aComp.addShareToGlobals(self.globalComp, self.model)
 
-        # Bus-Modellierung (# inklusive subMEs!)
+        # Bus-Modellierung (# inklusive subElements!)
         aBus: Bus
         for aBus in self.setOfBuses:
             log.debug('model ' + aBus.label + '...')
@@ -2062,17 +2062,17 @@ class System:
 
         # Wenn noch nicht gebaut, dann einmalig ME.model bauen:
         if aModBox.models_of_elements == {}:
-            log.debug('create model-Vars for MEs of EnergySystem')
+            log.debug('create model-Vars for Elements of EnergySystem')
             for aME in self.allMEsOfFirstLayer:
-                # BEACHTE: erst nach finalize(), denn da werden noch subMEs erst erzeugt!
+                # BEACHTE: erst nach finalize(), denn da werden noch subElements erst erzeugt!
                 if not self.__finalized:
                     raise Exception('activateModBox(): --> Geht nicht, da System noch nicht finalized!')
                 # model bauen und in model registrieren.
-                aME.createNewModAndActivateModBox(self.model)  # inkl. subMEs
+                aME.createNewModAndActivateModBox(self.model)  # inkl. subElements
         else:
             # nur Aktivieren:
             for aME in allMEsOfFirstLayer:  # TODO: Is This a BUG?
-                aME.activateModbox(aModBox)  # inkl. subMEs
+                aME.activateModbox(aModBox)  # inkl. subElements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
     def getResultsAfterSolve(self) -> Tuple[Dict, Dict]:
@@ -2081,7 +2081,7 @@ class System:
         # für alle Komponenten:
         for aME in self.allMEsOfFirstLayerWithoutFlows:
             # results        füllen:
-            (results[aME.label], results_var[aME.label]) = aME.getResults()  # inklusive subMEs!
+            (results[aME.label], results_var[aME.label]) = aME.getResults()  # inklusive subElements!
 
         # Zeitdaten ergänzen
         aTime = {}
