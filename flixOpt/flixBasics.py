@@ -126,12 +126,12 @@ class TimeSeries:
             return self.data[self.__timeIndexe_actual]
 
     @property
-    def isscalar(self):
+    def is_scalar(self) -> bool:
         return np.isscalar(self.data)
 
     @property
     def isArray(self):
-        return (not (self.isscalar)) & (not (self.data is None))
+        return (not (self.is_scalar)) & (not (self.data is None))
 
     @property
     def label_full(self):
