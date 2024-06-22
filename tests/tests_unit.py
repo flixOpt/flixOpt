@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import datetime
 
-from flixOpt.flixComps import Boiler, cStorage, cSource, cSink, cKWK
+from flixOpt.flixComps import Boiler, cStorage, cSource, cSink, CHP
 from flixOpt.flixStructure import cFlow, cBus, cEnergySystem, cCalculation, cEffectType
 from flixOpt.flixPostprocessing import flix_results
 
@@ -34,11 +34,11 @@ class TestExistance(unittest.TestCase):
             "Boiler": Boiler(label="Boiler", eta=0.5,
                              Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
                              Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])),
-            "CHP": cKWK(label="CHP", eta_th=0.45, eta_el=0.4,
-                        Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
-                        P_el=cFlow(label="P_el", bus=self.busses["Power"]),
-                        Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])
-                        )
+            "CHP": CHP(label="CHP", eta_th=0.45, eta_el=0.4,
+                       Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
+                       P_el=cFlow(label="P_el", bus=self.busses["Power"]),
+                       Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])
+                       )
         }
 
     def test_boiler(self):

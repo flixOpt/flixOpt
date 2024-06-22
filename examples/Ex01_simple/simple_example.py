@@ -73,13 +73,13 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                  )
 
 # 2.b) defining a CHP unit:
-aKWK  = cKWK('CHP_unit', eta_th = 0.5, eta_el = 0.4, # name, thermal efficiency, electric efficiency
-             # defining flows:
-             P_el = cFlow('P_el',bus = Strom, 
+aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency, electric efficiency
+            # defining flows:
+            P_el = cFlow('P_el',bus = Strom,
                           nominal_val = 60, # 60 kW_el
-                          min_rel = 5/60, ), # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
-             Q_th = cFlow('Q_th',bus = Fernwaerme),
-             Q_fu = cFlow('Q_fu',bus = Gas))
+                          min_rel = 5/60, ),  # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
+            Q_th = cFlow('Q_th',bus = Fernwaerme),
+            Q_fu = cFlow('Q_fu',bus = Gas))
 
 # # 2. storage #
 

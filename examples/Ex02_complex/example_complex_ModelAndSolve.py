@@ -107,10 +107,10 @@ aGaskessel = Boiler('Kessel',
                                   max_rel = 1)) 
 
 # 2. defining of CHP-unit:
-aKWK  = cKWK('BHKW2', eta_th = 0.5, eta_el = 0.4, switchOnCosts =  0.01,
+aKWK  = CHP('BHKW2', eta_th = 0.5, eta_el = 0.4, switchOnCosts =  0.01,
             P_el = cFlow('P_el',bus = Strom     , nominal_val = 60, min_rel = 5/60, ),
             Q_th = cFlow('Q_th',bus = Fernwaerme, nominal_val = 1e3),
-            Q_fu = cFlow('Q_fu',bus = Gas, nominal_val = 1e3),on_valuesBeforeBegin = [1])
+            Q_fu = cFlow('Q_fu',bus = Gas, nominal_val = 1e3), on_valuesBeforeBegin = [1])
 
 
 # 3. defining a alternative CHP-unit with linear segments :

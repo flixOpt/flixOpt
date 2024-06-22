@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 from .flixStructure import *
 from .flixFeatures import *
-from .flixComps import LinearTransformer, cKWK
+from .flixComps import LinearTransformer, CHP
 from flixOpt.flixOptHelperFcts import checkExists
 
 
@@ -51,7 +51,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
 
     Returns
     -------
-    list(LinearTransformer, cKWK, cKWK)
+    list(LinearTransformer, CHP, CHP)
             a list of Components that need to be added to the cEnergySystem
     '''
 
@@ -76,17 +76,17 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
                               inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
     # EKT A
-    EKTA = cKWK(label=label + "A", exists=exists, group=group,
-                eta_th=eta_thA, eta_el=eta_elA,
-                P_el=cFlow(label="Pel", bus=BusEl),
-                Q_fu=cFlow(label="Helper" + label + 'A', bus=HelperBus),
-                Q_th=cFlow(label="Qth", bus=BusTh))
+    EKTA = CHP(label=label + "A", exists=exists, group=group,
+               eta_th=eta_thA, eta_el=eta_elA,
+               P_el=cFlow(label="Pel", bus=BusEl),
+               Q_fu=cFlow(label="Helper" + label + 'A', bus=HelperBus),
+               Q_th=cFlow(label="Qth", bus=BusTh))
     # EKT B
-    EKTB = cKWK(label=label + "B", exists=exists, group=group,
-                eta_th=eta_thB, eta_el=eta_elB,
-                P_el=cFlow(label="Pel", bus=BusEl),
-                Q_fu=cFlow(label="Helper" + label + 'B', bus=HelperBus),
-                Q_th=cFlow(label="Qth", bus=BusTh))
+    EKTB = CHP(label=label + "B", exists=exists, group=group,
+               eta_th=eta_thB, eta_el=eta_elB,
+               P_el=cFlow(label="Pel", bus=BusEl),
+               Q_fu=cFlow(label="Helper" + label + 'B', bus=HelperBus),
+               Q_th=cFlow(label="Qth", bus=BusTh))
     return [EKTIn, EKTA, EKTB]
 
 

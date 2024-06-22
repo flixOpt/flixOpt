@@ -481,7 +481,7 @@ class CoolingTower(LinearTransformer):
                                        self.specificElectricityDemand_bounds, self)
 
 
-class cKWK(LinearTransformer):
+class CHP(LinearTransformer):
     """
     class of combined heat and power unit (CHP)
     """
