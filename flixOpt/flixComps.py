@@ -350,9 +350,9 @@ class Boiler(LinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class cEHK(LinearTransformer):
+class Power2Heat(LinearTransformer):
     """
-    class cEHK
+    class Power2Heat
     """
     new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
