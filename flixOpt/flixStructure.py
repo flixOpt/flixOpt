@@ -58,13 +58,13 @@ class SystemModel(LinearModel):
         (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = es.getTimeDataOfTimeIndexe(
             esTimeIndexe)
 
-    # extract model of ME:
+    # extract model of Element:
     def getModOfME(self, aModelingElement):
         return self.models_of_elements[aModelingElement]
 
     # register ModelingElements and belonging Mod:
     def registerMEandMod(self, aModelingElement, aMod):
-        # allocation ME -> model
+        # allocation Element -> model
         self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
 
     # override:
@@ -351,7 +351,7 @@ class Element:
         # register model:
         modBox.registerMEandMod(self, aMod)
 
-        self._activateModBox_ForMeOnly(modBox)  # subElements werden bereits aktiviert über aME.createNewMod...()
+        self._activateModBox_ForMeOnly(modBox)  # subElements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
     def declareVarsAndEqs(self, modBox) -> None:
@@ -644,7 +644,7 @@ class Effect(Element):
         self.all.doModeling(modBox, timeIndexe)
 
 
-# ModelingElement (ME) Klasse zum Summieren einzelner Shares
+# ModelingElement (Element) Klasse zum Summieren einzelner Shares
 # geht für skalar und TS
 # z.B. invest.costs 
 
@@ -1883,7 +1883,7 @@ class System:
         # register components:
         self.listOfComponents.extend(newListOfComps)
 
-        # ME registrieren ganz allgemein:
+        # Element registrieren ganz allgemein:
 
     def addElements(self, *args: Element) -> None:
         '''
@@ -1905,7 +1905,7 @@ class System:
             elif isinstance(aNewME, Element):
                 # check if already exists:
                 self._checkIfUniqueElement(aNewME, self.setOfOtherMEs)
-                # register ME:
+                # register Element:
                 self.setOfOtherMEs.add(aNewME)
 
             else:
@@ -2060,7 +2060,7 @@ class System:
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
         self.activateInTS(aModBox.esTimeIndexe, aModBox.TS_explicit)
 
-        # Wenn noch nicht gebaut, dann einmalig ME.model bauen:
+        # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if aModBox.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
             for aME in self.allMEsOfFirstLayer:
