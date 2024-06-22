@@ -67,43 +67,27 @@ class LinearModel:
         self.modeling_language = modeling_language
 
         self.countComp = 0  # ElementeZähler für Pyomo
-        self.model = None  # Übergabe später, zumindest für Pyomo notwendig
-
         self.epsilon = 1e-5  #
 
+        self.model = None  # Übergabe später, zumindest für Pyomo notwendig
         self.variables: List[Variable] = []  # Liste aller Variablen
-        self.eqs: List[Equation] = []  # Liste aller Gleichungen = []  # Liste aller Gleichungen
+        self.eqs: List[Equation] = []  # Liste aller Gleichungen
         self.ineqs: List[Equation] = []  # Liste aller Ungleichungen
-
         self.objective = None  # objective-Function
-        self.objective_value = None  # Ergebnis
-
+        self.objective_result = None  # Ergebnis
         self.duration = {}  # Laufzeiten
         self.solver_log = None  # logging und parsen des solver-outputs
 
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
             import pyomo.environ as pyomoEnv
-            # pyomoEnv = importlib.import_module('pyomo.environ', package = None)
-            # global pyomoEnv # mache es global
-            # import pyomo.environ as pyomoEnv #Set,Param,Var,AbstractModel,Objective,Constraint,maximize
-            log.info('pyomo Module geladen')
-        else:
-            raise Exception('not defined for modeling_language' + str(self.modeling_language))
-        ########################################
-        # globales Zeugs :
-        if self.modeling_language == 'pyomo':
+            log.info('Loaded pyomo modules')
             # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchlaufe immer wieder genutzt wird.
             self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
-
-            # TODO: generelles timestep-Set für alle (-> bringt das wirklich was?)
-            # self.timesteps = pyomoEnv.RangeSet(0,len(self.timeSeries)-1) # Start-index = 0, weil np.arrays auch so
-            # # initialisieren:
-            # self.registerPyComp(self.timesteps)
         elif self.modeling_language == 'cvxpy':
-            pass
+            raise NotImplementedError('Modeling Language cvxpy is not yet implemented')
         else:
-            pass
+            raise Exception('not defined for modeling_language' + str(self.modeling_language))
 
     def printNoEqsAndVars(self) -> None:
         print('no of Eqs   (single):' + str(self.noOfEqs) + ' (' + str(self.noOfSingleEqs) + ')')
