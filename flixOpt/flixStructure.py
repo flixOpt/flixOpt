@@ -23,7 +23,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class cModelBoxOfES(cBaseModel):
+class cModelBoxOfES(LinearModel):
     '''
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     '''
