@@ -130,12 +130,12 @@ aStromEinspeisung = Sink('Einspeisung',
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-es = System(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
-es.addComponents(aSpeicher) # adding components
-es.addEffects(costs, CO2) # adding defined effects
-es.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
-es.addComponents(aStromEinspeisung) # adding components
-es.addComponents(aKWK) # adding components
+system = System(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
+system.addComponents(aSpeicher) # adding components
+system.addEffects(costs, CO2) # adding defined effects
+system.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
+system.addComponents(aStromEinspeisung) # adding components
+system.addComponents(aKWK) # adding components
 
 
 # choose used timeindexe:
@@ -146,7 +146,7 @@ chosenEsTimeIndexe = None # all timeindexe are used
 
 # 1. create a Calculation 
 aCalc = Calculation('Sim1',  # name of calculation
-                    es,  # energysystem to calculate
+                    system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
                     chosenEsTimeIndexe) # used time steps
 
@@ -154,9 +154,9 @@ aCalc = Calculation('Sim1',  # name of calculation
 aCalc.doModelingAsOneSegment() # mathematic modeling of system
 
 # 3. (optional) print Model-Characteristics:
-es.printModel() # string-output:network structure of model
-es.printVariables() # string output: variables of model
-es.printEquations() # string-output: equations of model
+system.printModel() # string-output:network structure of model
+system.printVariables() # string output: variables of model
+system.printEquations() # string-output: equations of model
 
 
 # #################

@@ -194,18 +194,18 @@ aStromEinspeisung = Sink('Einspeisung',
 # ## Build energysystem ##
 ##########################
 
-es = System(aTimeSeries, dt_last=None) # creating System
+system = System(aTimeSeries, dt_last=None) # creating System
 
-es.addEffects(costs, CO2, PE) # adding effects
-es.addComponents(aGaskessel, aWaermeLast, aGasTarif) # adding components
-es.addComponents(aStromEinspeisung) # adding components
+system.addEffects(costs, CO2, PE) # adding effects
+system.addComponents(aGaskessel, aWaermeLast, aGasTarif) # adding components
+system.addComponents(aStromEinspeisung) # adding components
 
 if useCHPwithLinearSegments:
-    es.addComponents(aKWK2) # adding components
+    system.addComponents(aKWK2) # adding components
 else:
-    es.addComponents(aKWK) # adding components
+    system.addComponents(aKWK) # adding components
     
-es.addComponents(aSpeicher) # adding components
+system.addComponents(aSpeicher) # adding components
 
 ################################
 # ## modeling and calculation ##
@@ -215,13 +215,13 @@ chosenEsTimeIndexe = None
 # chosenEsTimeIndexe = [1,3,5]
 
 # ## modeling "full" calculation:
-aCalc = Calculation('Sim1', es, 'pyomo', chosenEsTimeIndexe)
+aCalc = Calculation('Sim1', system, 'pyomo', chosenEsTimeIndexe)
 aCalc.doModelingAsOneSegment()
 
 # print Model-Charactaricstics:
-es.printModel()
-es.printVariables()
-es.printEquations()
+system.printModel()
+system.printVariables()
+system.printEquations()
 
 solverProps = {'gapFrac': gapFrac, 
                'timelimit': timelimit,
