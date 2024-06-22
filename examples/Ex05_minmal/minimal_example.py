@@ -23,9 +23,9 @@ print('################### start of modeling #################################')
 # #####################
 # ## Bus-Definition: ##
 # define buses for the 3 used media:
-Strom = cBus('el', 'Strom') # balancing node/bus of electricity
-Fernwaerme = cBus('heat', 'Fernwärme') # balancing node/bus of heat
-Gas = cBus('fuel', 'Gas') # balancing node/bus of gas
+Strom = Bus('el', 'Strom') # balancing node/bus of electricity
+Fernwaerme = Bus('heat', 'Fernwärme') # balancing node/bus of heat
+Gas = Bus('fuel', 'Gas') # balancing node/bus of gas
 
 # ########################
 # ## Effect-Definition: ##

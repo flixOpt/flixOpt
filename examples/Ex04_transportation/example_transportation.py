@@ -63,8 +63,8 @@ print('################### start of modeling #################################')
 
 # Bus-Definition:
 #                 Typ         Name              
-heat1 = cBus('heat'        ,'heat1'     , excessCostsPerFlowHour = excessCosts);
-heat2 = cBus('heat'        ,'heat2'     , excessCostsPerFlowHour = excessCosts);
+heat1 = Bus('heat', 'heat1', excessCostsPerFlowHour = excessCosts);
+heat2 = Bus('heat', 'heat2', excessCostsPerFlowHour = excessCosts);
 
 # Effect-Definition:
 costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)

@@ -4,7 +4,7 @@ import numpy as np
 import datetime
 
 from flixOpt.flixComps import Boiler, Storage, Source, Sink, CHP
-from flixOpt.flixStructure import cFlow, cBus, System, cCalculation, Effect
+from flixOpt.flixStructure import cFlow, Bus, System, cCalculation, Effect
 from flixOpt.flixPostprocessing import flix_results
 
 
@@ -16,9 +16,9 @@ class TestExistance(unittest.TestCase):
             "costs": Effect(label="costs", unit="€", isStandard=True, isObjective=True, description="")
         }
         self.busses = {
-            "Gas": cBus(label="Gas", media="fuel"),
-            "Heat": cBus(label="Heat", media="heat"),
-            "Power": cBus(label="Power", media="el")
+            "Gas": Bus(label="Gas", media="fuel"),
+            "Heat": Bus(label="Heat", media="heat"),
+            "Power": Bus(label="Power", media="el")
         }
         self.sinks_n_sources = {
             "GasSource": Source(label="GasSource", source=cFlow(label="Gasmarkt", bus=self.busses["Gas"],
