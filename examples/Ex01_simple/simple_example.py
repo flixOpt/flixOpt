@@ -145,10 +145,10 @@ chosenEsTimeIndexe = None # all timeindexe are used
 # ## modeling the system ##
 
 # 1. create a Calculation 
-aCalc = cCalculation('Sim1', # name of calculation
-                     es, # energysystem to calculate
-                     'pyomo', # optimization modeling language (only "pyomo" implemented, yet)
-                     chosenEsTimeIndexe) # used time steps
+aCalc = Calculation('Sim1',  # name of calculation
+                    es,  # energysystem to calculate
+                     'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
+                    chosenEsTimeIndexe) # used time steps
 
 # 2. modeling:
 aCalc.doModelingAsOneSegment() # mathematic modeling of system

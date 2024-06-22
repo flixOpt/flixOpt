@@ -4,7 +4,7 @@ import numpy as np
 import datetime
 
 from flixOpt.flixComps import Boiler, Storage, Source, Sink, CHP
-from flixOpt.flixStructure import Flow, Bus, System, cCalculation, Effect
+from flixOpt.flixStructure import Flow, Bus, System, Calculation, Effect
 from flixOpt.flixPostprocessing import flix_results
 
 
@@ -50,7 +50,7 @@ class TestExistance(unittest.TestCase):
                                )
         self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())
         self.es.addElements(boiler_exists, self.comps["Boiler"])
-        calc = cCalculation('Sim1', self.es, 'pyomo')
+        calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
         calc.solve(solverProps={'gapFrac': 0.05,
                                 'timelimit': 60,
@@ -81,7 +81,7 @@ class TestExistance(unittest.TestCase):
 
         self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())
         self.es.addElements(storage_exists, self.comps["CHP"])
-        calc = cCalculation('Sim1', self.es, 'pyomo')
+        calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
         calc.solve(solverProps={'gapFrac': 0.05,
                                 'timelimit': 60,

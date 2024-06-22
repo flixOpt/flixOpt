@@ -2247,7 +2247,7 @@ class System:
 
 
 # Standardoptimierung segmentiert/nicht segmentiert
-class cCalculation:
+class Calculation:
     '''
     class for defined way of solving a energy system optimizatino
     '''
@@ -2740,7 +2740,7 @@ class cCalculation:
 
         if self.calcType is not None:
             raise Exception(
-                'An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this cCalculation-Object. \n Always create a new instance of cCalculation for new modeling/solving-command!')
+                'An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this Calculation-Object. \n Always create a new instance of Calculation for new modeling/solving-command!')
 
         if self.es.AllTempMEs:  # if some element in this list
             raise Exception(

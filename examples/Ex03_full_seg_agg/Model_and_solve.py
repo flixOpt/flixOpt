@@ -231,7 +231,7 @@ listOfCalcs = []
 
 # Roh-Rechnung:
 if doFullCalc:
-  calcFull = cCalculation('fullModel',es,'pyomo', chosenEsTimeIndexe)
+  calcFull = Calculation('fullModel', es, 'pyomo', chosenEsTimeIndexe)
   calcFull.doModelingAsOneSegment()
   
   es.printModel()
@@ -244,14 +244,14 @@ if doFullCalc:
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
-   calcSegs = cCalculation('segModel',es, 'pyomo', chosenEsTimeIndexe)
+   calcSegs = Calculation('segModel', es, 'pyomo', chosenEsTimeIndexe)
    calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, nameSuffix = nameSuffix)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
 
 if doAggregatedCalc :    
-    calcAgg = cCalculation('aggModel',es, 'pyomo')
+    calcAgg = Calculation('aggModel', es, 'pyomo')
     calcAgg.doAggregatedModeling(periodLengthInHours, 
                                  noTypicalPeriods, 
                                  useExtremeValues, 
