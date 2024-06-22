@@ -72,7 +72,7 @@ class SystemModel(LinearModel):
 
         super()._charactarizeProblem()
 
-        # Systembeschreibung abspeichern: (Beachte: modbox muss aktiviert sein)
+        # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
         # self.es.activateModBox()
         self._infos['str_Eqs'] = self.es.getEqsAsStr()
         self._infos['str_Vars'] = self.es.getVarsAsStr()
@@ -283,7 +283,7 @@ class Element:
         self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
 
         self.subElements: List[Element] = []  # zugehörige Sub-ModelingElements
-        self.system_model: Optional[SystemModel] = None  # hier kommt die aktive ModBox rein
+        self.system_model: Optional[SystemModel] = None  # hier kommt die aktive system_model rein
         self.model: Optional[ElementModel] = None  # hier kommen alle Glg und Vars rein
 
         # wenn hier kwargs auftauchen, dann wurde zuviel übergeben:
@@ -319,16 +319,16 @@ class Element:
         return str_desc
 
     # activate inkl. subElements:
-    def activateModbox(self, modBox) -> None:
+    def activateModbox(self, system_model) -> None:
 
         for element in self.subElements:
-            element.activateModbox(modBox)  # inkl. subElements
-        self._activateModBox_ForMeOnly(modBox)
+            element.activateModbox(system_model)  # inkl. subElements
+        self._activateModBox_ForMeOnly(system_model)
 
     # activate ohne SubElements!
-    def _activateModBox_ForMeOnly(self, modBox) -> None:
-        self.system_model = modBox
-        self.model = modBox.get_model_of_element(self)
+    def _activateModBox_ForMeOnly(self, system_model) -> None:
+        self.system_model = system_model
+        self.model = system_model.get_model_of_element(self)
 
     # 1.
     def finalize(self) -> None:
@@ -354,7 +354,7 @@ class Element:
         self._activateModBox_ForMeOnly(system_model)  # subElements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
-    def declareVarsAndEqs(self, modBox) -> None:
+    def declareVarsAndEqs(self, system_model) -> None:
         #   #   # Features preparing:
         #   # for aFeature in self.features:
         #   #   aFeature.declareVarsAndEqs(model)
@@ -625,23 +625,23 @@ class Effect(Element):
         self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.min_Sum,
                                      maxOfSum=self.max_Sum)
 
-    def declareVarsAndEqs(self, modBox) -> None:
-        super().declareVarsAndEqs(modBox)
-        self.operation.declareVarsAndEqs(modBox)
-        self.invest.declareVarsAndEqs(modBox)
-        self.all.declareVarsAndEqs(modBox)
+    def declareVarsAndEqs(self, system_model) -> None:
+        super().declareVarsAndEqs(system_model)
+        self.operation.declareVarsAndEqs(system_model)
+        self.invest.declareVarsAndEqs(system_model)
+        self.all.declareVarsAndEqs(system_model)
 
-    def doModeling(self, modBox, timeIndexe) -> None:
+    def doModeling(self, system_model, timeIndexe) -> None:
         print('modeling ' + self.label)
-        super().declareVarsAndEqs(modBox)
-        self.operation.doModeling(modBox, timeIndexe)
-        self.invest.doModeling(modBox, timeIndexe)
+        super().declareVarsAndEqs(system_model)
+        self.operation.doModeling(system_model, timeIndexe)
+        self.invest.doModeling(system_model, timeIndexe)
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
         self.all.addVariableShare('operation', self, self.operation.model.var_sum, 1, 1)
         self.all.addVariableShare('invest', self, self.invest.model.var_sum, 1, 1)
-        self.all.doModeling(modBox, timeIndexe)
+        self.all.doModeling(system_model, timeIndexe)
 
 
 # ModelingElement (Element) Klasse zum Summieren einzelner Shares
@@ -806,15 +806,15 @@ class Component(Element):
         for aFlow in self.outputs:
             aFlow.bus.registerInputFlow(aFlow)
 
-    def declareVarsAndEqsOfFlows(self, modBox) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def declareVarsAndEqsOfFlows(self, system_model) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
-            aFlow.declareVarsAndEqs(modBox)
+            aFlow.declareVarsAndEqs(system_model)
 
-    def doModelingOfFlows(self, modBox, timeIndexe) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def doModelingOfFlows(self, system_model, timeIndexe) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
-            aFlow.doModeling(modBox, timeIndexe)
+            aFlow.doModeling(system_model, timeIndexe)
 
     def getResults(self) -> Tuple[Dict, Dict]:
         # Variablen der Komponente:
@@ -840,10 +840,10 @@ class Component(Element):
                                     self.costsPerRunningHour, onHoursSum_min=self.onHoursSum_min,
                                     onHoursSum_max=self.onHoursSum_max, switchOn_maxNr=self.switchOn_maxNr)
 
-    def declareVarsAndEqs(self, modBox) -> None:
-        super().declareVarsAndEqs(modBox)
+    def declareVarsAndEqs(self, system_model) -> None:
+        super().declareVarsAndEqs(system_model)
 
-        self.featureOn.declareVarsAndEqs(modBox)
+        self.featureOn.declareVarsAndEqs(system_model)
 
         # Binärvariablen holen (wenn vorh., sonst None):
         #   (hier und nicht erst bei doModeling, da linearSegments die Variable zum Modellieren benötigt!)
@@ -852,23 +852,23 @@ class Component(Element):
 
         # super().declareVarsAndEqs(model)
 
-    def doModeling(self, modBox, timeIndexe) -> None:
+    def doModeling(self, system_model, timeIndexe) -> None:
         log.debug(str(self.label) + 'doModeling()')
         # super().doModeling(model,timeIndexe)
 
         #
         # ############## Constraints für Binärvariablen : ##############
         #
-        self.featureOn.doModeling(modBox, timeIndexe)
+        self.featureOn.doModeling(system_model, timeIndexe)
 
-    def addShareToGlobalsOfFlows(self, globalComp, modBox) -> None:
+    def addShareToGlobalsOfFlows(self, globalComp, system_model) -> None:
         for aFlow in self.inputs + self.outputs:
-            aFlow.addShareToGlobals(globalComp, modBox)
+            aFlow.addShareToGlobals(globalComp, system_model)
 
     # wird von Kindklassen überschrieben:
-    def addShareToGlobals(self, globalComp, modBox) -> None:
+    def addShareToGlobals(self, globalComp, system_model) -> None:
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
-        self.featureOn.addShareToGlobals(globalComp, modBox)
+        self.featureOn.addShareToGlobals(globalComp, system_model)
 
     def getDescrAsStr(self) -> Dict:
 
@@ -972,30 +972,30 @@ class Global(Element):
             else:
                 raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
 
-    def declareVarsAndEqs(self, modBox) -> None:
+    def declareVarsAndEqs(self, system_model) -> None:
 
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
 
-        super().declareVarsAndEqs(modBox)
+        super().declareVarsAndEqs(system_model)
 
         for effect in self.listOfEffectTypes:
-            effect.declareVarsAndEqs(modBox)
-        self.penalty.declareVarsAndEqs(modBox)
+            effect.declareVarsAndEqs(system_model)
+        self.penalty.declareVarsAndEqs(system_model)
 
-        self.objective = Equation('obj', self, modBox, 'objective')
+        self.objective = Equation('obj', self, system_model, 'objective')
 
         # todo : besser wäre objective separat:
 
     #  eq_objective = Equation('objective',self,model,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def doModeling(self, modBox, timeIndexe) -> None:
+    def doModeling(self, system_model, timeIndexe) -> None:
         # super().doModeling(model,timeIndexe)
 
-        self.penalty.doModeling(modBox, timeIndexe)
+        self.penalty.doModeling(system_model, timeIndexe)
         ## Gleichungen bauen für Effekte: ##
         effect : Effect
         for effect in self.listOfEffectTypes:
-            effect.doModeling(modBox, timeIndexe)
+            effect.doModeling(system_model, timeIndexe)
 
         ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
         for effectType in self.listOfEffectTypes:
@@ -1104,19 +1104,19 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
                                 ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
                                 )
 
-    def declareVarsAndEqs(self, modBox) -> None:
-        super().declareVarsAndEqs(modBox)
+    def declareVarsAndEqs(self, system_model) -> None:
+        super().declareVarsAndEqs(system_model)
         # Fehlerplus/-minus:
         if self.withExcess:
             # Fehlerplus und -minus definieren
-            self.excessIn = VariableTS('excessIn', len(modBox.timeSeries), self, modBox, min=0)
-            self.excessOut = VariableTS('excessOut', len(modBox.timeSeries), self, modBox, min=0)
+            self.excessIn = VariableTS('excessIn', len(system_model.timeSeries), self, system_model, min=0)
+            self.excessOut = VariableTS('excessOut', len(system_model.timeSeries), self, system_model, min=0)
 
-    def doModeling(self, modBox, timeIndexe) -> None:
-        super().doModeling(modBox, timeIndexe)
+    def doModeling(self, system_model, timeIndexe) -> None:
+        super().doModeling(system_model, timeIndexe)
 
         # inputs = outputs
-        eq_busbalance = Equation('busBalance', self, modBox)
+        eq_busbalance = Equation('busBalance', self, system_model)
         for aFlow in self.inputs:
             eq_busbalance.addSummand(aFlow.model.var_val, 1)
         for aFlow in self.outputs:
@@ -1128,14 +1128,14 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             eq_busbalance.addSummand(self.excessOut, -1)
             eq_busbalance.addSummand(self.excessIn, 1)
 
-    def addShareToGlobals(self, globalComp, modBox) -> None:
-        super().addShareToGlobals(globalComp, modBox)
+    def addShareToGlobals(self, globalComp, system_model) -> None:
+        super().addShareToGlobals(globalComp, system_model)
         # Strafkosten hinzufügen:
         if self.withExcess:
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessIn,
-                                                self.excessCostsPerFlowHour, modBox.dtInHours)
+                                                self.excessCostsPerFlowHour, system_model.dtInHours)
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut,
-                                                self.excessCostsPerFlowHour, modBox.dtInHours)
+                                                self.excessCostsPerFlowHour, system_model.dtInHours)
             # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
             # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
 
@@ -1479,13 +1479,13 @@ class Flow(Element):
         super().finalize()
 
 
-    def declareVarsAndEqs(self, modBox: SystemModel) -> None:
+    def declareVarsAndEqs(self, system_model: SystemModel) -> None:
         print('declareVarsAndEqs ' + self.label)
-        super().declareVarsAndEqs(modBox)
+        super().declareVarsAndEqs(system_model)
 
-        self.featureOn.declareVarsAndEqs(modBox)  # TODO: rekursiv aufrufen für subElements
+        self.featureOn.declareVarsAndEqs(system_model)  # TODO: rekursiv aufrufen für subElements
 
-        self.modBox = modBox
+        self.system_model = system_model
 
         # Skalare zu Vektoren #
         # -> schöner wäre das bei Init, aber da gibt es noch keine Info über Länge)
@@ -1520,8 +1520,8 @@ class Flow(Element):
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.model.var_val = VariableTS('val', modBox.nrOfTimeSteps, self, modBox, min=lb, max=ub, value=fix_value)
-        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, modBox, min=self.sumFlowHours_min,
+        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model, min=lb, max=ub, value=fix_value)
+        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, min=self.sumFlowHours_min,
                                                max=self.sumFlowHours_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
@@ -1530,9 +1530,9 @@ class Flow(Element):
         # erst hier, da definingVar vorher nicht belegt!
         if self.featureInvest is not None:
             self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
-            self.featureInvest.declareVarsAndEqs(modBox)
+            self.featureInvest.declareVarsAndEqs(system_model)
 
-    def doModeling(self, modBox: SystemModel, timeIndexe) -> None:
+    def doModeling(self, system_model: SystemModel, timeIndexe) -> None:
         # super().doModeling(model,timeIndexe)
 
         # for aFeature in self.features:
@@ -1552,9 +1552,9 @@ class Flow(Element):
         # ineq: sum(var_on(t)) <= onHoursSum_max
 
         if self.onHoursSum_max is not None:
-            eq_onHoursSum_max = Equation('onHoursSum_max', self, modBox, 'ineq')
+            eq_onHoursSum_max = Equation('onHoursSum_max', self, system_model, 'ineq')
             eq_onHoursSum_max.addSummandSumOf(self.model.var_on, 1)
-            eq_onHoursSum_max.addRightSide(self.onHoursSum_max/modBox.dtInHours)
+            eq_onHoursSum_max.addRightSide(self.onHoursSum_max/system_model.dtInHours)
 
         #
         # ############## onHoursSum_max: ##############
@@ -1563,9 +1563,9 @@ class Flow(Element):
         # ineq: sum(var_on(t)) >= onHoursSum_min
 
         if self.onHoursSum_min is not None:
-            eq_onHoursSum_min = Equation('onHoursSum_min', self, modBox, 'ineq')
+            eq_onHoursSum_min = Equation('onHoursSum_min', self, system_model, 'ineq')
             eq_onHoursSum_min.addSummandSumOf(self.model.var_on, -1)
-            eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/modBox.dtInHours)
+            eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/system_model.dtInHours)
 
 
         #
@@ -1574,22 +1574,22 @@ class Flow(Element):
 
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
-        eq_sumFlowHours = Equation('sumFlowHours', self, modBox, 'eq')  # general mean
-        eq_sumFlowHours.addSummandSumOf(self.model.var_val, modBox.dtInHours)
+        eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
+        eq_sumFlowHours.addSummandSumOf(self.model.var_val, system_model.dtInHours)
         eq_sumFlowHours.addSummand(self.model.var_sumFlowHours, -1)
 
         #          
         # ############## Constraints für Binärvariablen : ##############
         #
 
-        self.featureOn.doModeling(modBox, timeIndexe)  # TODO: rekursiv aufrufen für subElements
+        self.featureOn.doModeling(system_model, timeIndexe)  # TODO: rekursiv aufrufen für subElements
 
         #          
         # ############## Glg. für Investition : ##############
         #
 
         if self.featureInvest is not None:
-            self.featureInvest.doModeling(modBox, timeIndexe)
+            self.featureInvest.doModeling(system_model, timeIndexe)
 
         ## ############## full load fraction bzw. load factor ##############
 
@@ -1597,8 +1597,8 @@ class Flow(Element):
         #  eq: var_sumFlowHours <= nominal_val * dt_tot * load_factor_max
 
         if self.loadFactor_max is not None:
-            flowHoursPerInvestsize_max = modBox.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, modBox, 'ineq')  # general mean
+            flowHoursPerInvestsize_max = system_model.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
+            eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, system_model, 'ineq')  # general mean
             eq_flowHoursPerInvestsize_Max.addSummand(self.model.var_sumFlowHours, 1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Max.addSummand(self.featureInvest.model.var_investmentSize,
@@ -1610,8 +1610,8 @@ class Flow(Element):
         #  eq: nominal_val * sum(dt)* load_factor_min <= var_sumFlowHours
 
         if self.loadFactor_min is not None:
-            flowHoursPerInvestsize_min = modBox.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, modBox, 'ineq')
+            flowHoursPerInvestsize_min = system_model.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
+            eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, system_model, 'ineq')
             eq_flowHoursPerInvestsize_Min.addSummand(self.model.var_sumFlowHours, -1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Min.addSummand(self.featureInvest.model.var_investmentSize,
@@ -1636,7 +1636,7 @@ class Flow(Element):
             else:
               self.positive_gradient_constr =  Constraint(model.timestepsOfRun,rule = positive_gradient_rule)   # timestepsOfRun = [start:end]
               # raise error();
-            modbox.registerPyComp(self.positive_gradient_constr, self.label + '_positive_gradient_constr')
+            system_model.registerPyComp(self.positive_gradient_constr, self.label + '_positive_gradient_constr')
           elif model.modType == 'vcxpy':
             raise Exception('not defined for modtype ' + model.modType)
           else:
@@ -1646,7 +1646,7 @@ class Flow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def addShareToGlobals(self, globalComp: Global, modBox) -> None:
+    def addShareToGlobals(self, globalComp: Global, system_model) -> None:
 
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
@@ -1655,13 +1655,13 @@ class Flow(Element):
             # globalComp.costsOfOperating_eq.addSummand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.model.var_val, self.costsPerFlowHour,
-                                           modBox.dtInHours)
+                                           system_model.dtInHours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
-        self.featureOn.addShareToGlobals(globalComp, modBox)
+        self.featureOn.addShareToGlobals(globalComp, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.addShareToGlobals(globalComp, modBox)
+            self.featureInvest.addShareToGlobals(globalComp, system_model)
 
         ''' in oemof gibt es noch 
              if m.flows[i, o].positive_gradient['ub'][0] is not None:
@@ -2268,7 +2268,7 @@ class Calculation:
 
     @property
     def results(self):
-        # wenn noch nicht belegt, dann aus modbox holen
+        # wenn noch nicht belegt, dann aus system_model holen
         if self.__results is None:
             self.__results = self.listOfModbox[0].results
 
@@ -2282,7 +2282,7 @@ class Calculation:
             # Neurechnen (nur bei Segments)
             if (self.calcType == 'segmented'):
                 self.__results_struct = helpers.createStructFromDictInDict(self.results)
-            # nur eine Modbox vorhanden ('full','aggregated')
+            # nur eine system_model vorhanden ('full','aggregated')
             elif len(self.listOfModbox) == 1:
                 self.__results_struct = self.listOfModbox[0].results_struct
             else:
@@ -2452,7 +2452,7 @@ class Calculation:
             segmentModBox = SystemModel(label, self.modType, self.es, indexe_global)  # alle Indexe nehmen!
             segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
 
-            # Startwerte übergeben von Vorgänger-Modbox:
+            # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 segmentModBoxBefore = self.segmentModBoxList[i - 1]
                 segmentModBox.beforeValueSet = StartValue(segmentModBoxBefore,
@@ -2469,9 +2469,9 @@ class Calculation:
             t_start_modeling = time.time()
             self.es.doModelingOfElements()
             self.durations['modeling'] += round(time.time() - t_start_modeling, 2)
-            # modbox in Liste hinzufügen:
+            # system_model in Liste hinzufügen:
             self.segmentModBoxList.append(segmentModBox)
-            # übergeordnete Modbox-Liste:
+            # übergeordnete system_model-Liste:
             self.listOfModbox.append(segmentModBox)
 
             # Lösen:
