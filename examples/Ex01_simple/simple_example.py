@@ -59,18 +59,18 @@ CO2   = cEffectType('CO2','kg','CO2_e-Emissionen', # name, unit, description
 # # 1. heat supply units: #
 
 # 1.a) defining a boiler
-aBoiler = cKessel('Boiler', eta = 0.5, # name, efficiency factor
-                  # defining the output-flow = thermal -flow
-                  Q_th = cFlow(label = 'Q_th', # name of flow
+aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
+                 # defining the output-flow = thermal -flow
+                 Q_th = cFlow(label = 'Q_th', # name of flow
                                bus = Fernwaerme, # define, where flow is linked to (here: Fernwaerme-Bus)
                                nominal_val = 50, # kW; nominal_size of boiler
                                min_rel = 5/50, # 10 % minimum load, i.e. 5 kW
                                max_rel = 1, # 100 % maximum load, i.e. 50 kW
-                               ),    
-                  # defining the input-flow = fuel-flow
-                  Q_fu = cFlow(label = 'Q_fu', # name of flow
-                               bus = Gas) # define, where flow is linked to (here: Gas-Bus)
-                  ) 
+                               ),
+                 # defining the input-flow = fuel-flow
+                 Q_fu = cFlow(label = 'Q_fu', # name of flow
+                               bus = Gas)  # define, where flow is linked to (here: Gas-Bus)
+                 )
 
 # 2.b) defining a CHP unit:
 aKWK  = cKWK('CHP_unit', eta_th = 0.5, eta_el = 0.4, # name, thermal efficiency, electric efficiency

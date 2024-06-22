@@ -36,16 +36,16 @@ costs = cEffectType('costs','€','Kosten',  # name, unit, description
 # ###########################
 # ## Component-Definition: ##
 
-aBoiler = cKessel('Boiler', eta = 0.5, # name, efficiency factor
-                  # defining the output-flow = thermal -flow
-                  Q_th = cFlow(label = 'Q_th', # name of flow
+aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
+                 # defining the output-flow = thermal -flow
+                 Q_th = cFlow(label = 'Q_th', # name of flow
                                bus = Fernwaerme, # define, where flow is linked to (here: Fernwaerme-Bus)
                                nominal_val = 50, # kW; nominal_size of boiler
-                               ),    
-                  # defining the input-flow = fuel-flow
-                  Q_fu = cFlow(label = 'Q_fu', # name of flow
-                               bus = Gas) # define, where flow is linked to (here: Gas-Bus)
-                  )
+                               ),
+                 # defining the input-flow = fuel-flow
+                 Q_fu = cFlow(label = 'Q_fu', # name of flow
+                               bus = Gas)  # define, where flow is linked to (here: Gas-Bus)
+                 )
 
 # sink of heat load:
 aWaermeLast = cSink('Wärmelast',

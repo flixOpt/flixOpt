@@ -160,8 +160,8 @@ PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie')
 
 # Komponentendefinition:
 
-aGaskessel = cKessel('Kessel', eta  = 0.85,# , costsPerRunningHour = {costs:0,CO2:1000},#, switchOnCosts = 0
-                    Q_th = cFlow(label   = 'Q_th', bus = Fernwaerme),       # maxGradient = 5),
+aGaskessel = Boiler('Kessel', eta  = 0.85,  # , costsPerRunningHour = {costs:0,CO2:1000},#, switchOnCosts = 0
+                    Q_th = cFlow(label   = 'Q_th', bus = Fernwaerme),  # maxGradient = 5),
                     Q_fu = cFlow(label   = 'Q_fu', bus = Gas       , nominal_val = 95, min_rel = 12/95, iCanSwitchOff = True, switchOnCosts=1000, valuesBeforeBegin=[0])) 
 
 

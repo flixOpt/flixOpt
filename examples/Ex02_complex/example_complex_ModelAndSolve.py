@@ -77,11 +77,11 @@ invest_Gaskessel = InvestParameters(fixCosts = 1000,  # 1000 € investment cost
                                     )
 # invest_Gaskessel = None #
 # 1. b) boiler itself:
-aGaskessel = cKessel('Kessel', 
-                     eta = 0.5, # efficiency ratio
-                     costsPerRunningHour = {costs:0, CO2:1000}, # 1000 kg_CO2/h (just for testing)
-                     # defining flows:
-                     Q_th = cFlow(label   = 'Q_th',  # name
+aGaskessel = Boiler('Kessel',
+                    eta = 0.5,  # efficiency ratio
+                    costsPerRunningHour = {costs:0, CO2:1000},  # 1000 kg_CO2/h (just for testing)
+                    # defining flows:
+                    Q_th = cFlow(label   = 'Q_th',  # name
                                   bus = Fernwaerme,  # linked bus
                                   nominal_val = 50,  # 50 kW_th nominal size
                                   loadFactor_max = 1.0,  # maximal mean power 50 kW
@@ -100,7 +100,7 @@ aGaskessel = cKessel('Kessel',
                                   invest_parameters= invest_Gaskessel,  # see above
                                   sumFlowHours_max = 1e6,  # kWh, overall maximum "flow-work"
                                   ),
-                     Q_fu = cFlow(label = 'Q_fu', # name
+                    Q_fu = cFlow(label = 'Q_fu', # name
                                   bus = Gas, # linked bus
                                   nominal_val = 200, # kW
                                   min_rel = 0, 

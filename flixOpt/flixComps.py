@@ -302,9 +302,9 @@ class LinearTransformer(cBaseComponent):
         self.segmentsOfFlows = segmentsOfFlows  # attribute of mother-class
 
 
-class cKessel(LinearTransformer):
+class Boiler(LinearTransformer):
     """
-    class cKessel
+    class Boiler
     """
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']

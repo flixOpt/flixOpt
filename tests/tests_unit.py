@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import datetime
 
-from flixOpt.flixComps import cKessel, cStorage, cSource, cSink, cKWK
+from flixOpt.flixComps import Boiler, cStorage, cSource, cSink, cKWK
 from flixOpt.flixStructure import cFlow, cBus, cEnergySystem, cCalculation, cEffectType
 from flixOpt.flixPostprocessing import flix_results
 
@@ -31,9 +31,9 @@ class TestExistance(unittest.TestCase):
                                                                      costsPerFlowHour=np.array([100, 20, 60, 40, 5])))
         }
         self.comps = {
-            "Boiler": cKessel(label="Boiler", eta=0.5,
-                         Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
-                         Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])),
+            "Boiler": Boiler(label="Boiler", eta=0.5,
+                             Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
+                             Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])),
             "CHP": cKWK(label="CHP", eta_th=0.45, eta_el=0.4,
                         Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
                         P_el=cFlow(label="P_el", bus=self.busses["Power"]),
@@ -44,10 +44,10 @@ class TestExistance(unittest.TestCase):
     def test_boiler(self):
         exists = np.array([1, 1, 1, 0, 0])
         nominal_val = 120
-        boiler_exists = cKessel(label="Boiler_ex", eta=0.8, exists= exists,
-                         Q_th=cFlow(label="Q_th", nominal_val=nominal_val, bus=self.busses["Heat"]),
-                         Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])
-                         )
+        boiler_exists = Boiler(label="Boiler_ex", eta=0.8, exists= exists,
+                               Q_th=cFlow(label="Q_th", nominal_val=nominal_val, bus=self.busses["Heat"]),
+                               Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])
+                               )
         self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())
         self.es.addElements(boiler_exists, self.comps["Boiler"])
         calc = cCalculation('Sim1', self.es, 'pyomo')
