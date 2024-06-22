@@ -285,7 +285,7 @@ class Variable:
         # Register me:
         # myMom .variables.append(self) # Komponentenliste
         baseModel.variables.append(self)  # baseModel-Liste mit allen vars
-        myMom.mod.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
+        myMom.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
     def transform2MathModel(self, baseModel: LinearModel):
         self.baseModel = baseModel
@@ -491,17 +491,17 @@ class Equation:
         if eqType == 'ineq':  # lhs <= rhs
             # myMom .ineqs.append(self) # Komponentenliste
             baseModel.ineqs.append(self)  # baseModel-Liste mit allen ineqs
-            myMom.mod.ineqs.append(self)
+            myMom.model.ineqs.append(self)
         # Inequation:
         elif eqType == 'eq':
             # myMom .eqs.append(self) # Komponentenliste
             baseModel.eqs.append(self)  # baseModel-Liste mit allen eqs
-            myMom.mod.eqs.append(self)
+            myMom.model.eqs.append(self)
         # Objective:
         elif eqType == 'objective':
             if baseModel.objective == None:
                 baseModel.objective = self
-                myMom.mod.objective = self
+                myMom.model.objective = self
             else:
                 raise Exception('baseModel.objective ist bereits belegt!')
         # Undefined:

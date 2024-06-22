@@ -309,7 +309,7 @@ if (not calcSegs is None) and (not calcFull is None):
 print('######### sum Korr_... (wenn vorhanden) #########')
 if calcAgg is not None:
   aggretation_ME=list(calcAgg.es.setOfOtherMEs)[0]
-  for var in aggretation_ME.mod.variables:
+  for var in aggretation_ME.model.variables:
     print(var.label_full + ':' + str( sum(var.getResult())))
 
 print('')
