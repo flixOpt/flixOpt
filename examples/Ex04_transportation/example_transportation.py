@@ -105,24 +105,24 @@ aTransporter = Transportation('Rohr',
                               )
 
 # Built energysystem:
-es = System(aTimeSeries, dt_last=None)
-# es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
-es.addEffects(costs)
-es.addComponents(aSink2, aSource1, aSource2)
-if useAdditionalSink1 : es.addComponents(aSink1)
-if useRohr : es.addComponents(aTransporter)
+system = System(aTimeSeries, dt_last=None)
+# system.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
+system.addEffects(costs)
+system.addComponents(aSink2, aSource1, aSource2)
+if useAdditionalSink1 : system.addComponents(aSink1)
+if useRohr : system.addComponents(aTransporter)
 
 chosenEsTimeIndexe = None
 # chosenEsTimeIndexe = [1,3,5]
 
 ## modeling "full":
-aCalc = Calculation('Sim1', es, 'pyomo', chosenEsTimeIndexe)
+aCalc = Calculation('Sim1', system, 'pyomo', chosenEsTimeIndexe)
 aCalc.doModelingAsOneSegment()
 
 # PRINT Model-Charactaricstics:
-es.printModel()
-es.printVariables()
-es.printEquations()
+system.printModel()
+system.printVariables()
+system.printEquations()
 
 solverProps = {'gapFrac': gapFrac, 
                'timelimit': timelimit,

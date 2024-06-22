@@ -208,17 +208,17 @@ aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, nomi
 aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
 
 # Zusammenführung:
-es = System(aTimeSeries, dt_last=None)
-# es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
-es.addEffects(costs)
-es.addEffects(CO2, PE)
-es.addComponents(aGaskessel,aWaermeLast,aStromLast,aGasTarif,aKohleTarif)
-es.addComponents(aStromEinspeisung,aStromTarif)
-es.addComponents(aKWK)
+system = System(aTimeSeries, dt_last=None)
+# system.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
+system.addEffects(costs)
+system.addEffects(CO2, PE)
+system.addComponents(aGaskessel,aWaermeLast,aStromLast,aGasTarif,aKohleTarif)
+system.addComponents(aStromEinspeisung,aStromTarif)
+system.addComponents(aKWK)
 
-es.addComponents(aSpeicher)
+system.addComponents(aSpeicher)
 
-# es.mainSystem.extractSubSystem([0,1,2])
+# system.mainSystem.extractSubSystem([0,1,2])
 
 
 chosenEsTimeIndexe = None
@@ -231,12 +231,12 @@ listOfCalcs = []
 
 # Roh-Rechnung:
 if doFullCalc:
-  calcFull = Calculation('fullModel', es, 'pyomo', chosenEsTimeIndexe)
+  calcFull = Calculation('fullModel', system, 'pyomo', chosenEsTimeIndexe)
   calcFull.doModelingAsOneSegment()
   
-  es.printModel()
-  es.printVariables()
-  es.printEquations()
+  system.printModel()
+  system.printVariables()
+  system.printEquations()
     
   calcFull.solve(solverProps, nameSuffix=nameSuffix)
   listOfCalcs.append(calcFull)
@@ -244,14 +244,14 @@ if doFullCalc:
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
-   calcSegs = Calculation('segModel', es, 'pyomo', chosenEsTimeIndexe)
+   calcSegs = Calculation('segModel', system, 'pyomo', chosenEsTimeIndexe)
    calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, nameSuffix = nameSuffix)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
 
 if doAggregatedCalc :    
-    calcAgg = Calculation('aggModel', es, 'pyomo')
+    calcAgg = Calculation('aggModel', system, 'pyomo')
     calcAgg.doAggregatedModeling(periodLengthInHours, 
                                  noTypicalPeriods, 
                                  useExtremeValues, 
@@ -263,8 +263,8 @@ if doAggregatedCalc :
                                  addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
                                  )
     
-    es.printVariables()
-    es.printEquations()
+    system.printVariables()
+    system.printEquations()
     
     calcAgg.solve(solverProps, nameSuffix = nameSuffix)
     listOfCalcs.append(calcAgg)
