@@ -66,7 +66,7 @@ class LinearModel:
 
     def transform2MathModel(self) -> None:
 
-        self._charactarizeProblem()
+        self.characterize_math_problem()
 
         t_start = time.time()
         eq: Equation
@@ -85,7 +85,7 @@ class LinearModel:
         self.duration['transform2MathModel'] = round(time.time() - t_start, 2)
 
     # Attention: is overrided by childclass:
-    def _charactarizeProblem(self) -> None:
+    def characterize_math_problem(self) -> None:
         eq: Equation
         var: Variable
 

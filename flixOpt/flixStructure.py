@@ -67,9 +67,9 @@ class SystemModel(LinearModel):
         self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
 
     # override:
-    def _charactarizeProblem(self):  # overriding same method in motherclass!
+    def characterize_math_problem(self):  # overriding same method in motherclass!
 
-        super()._charactarizeProblem()
+        super().characterize_math_problem()
 
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
         # self.system.activate_model()
