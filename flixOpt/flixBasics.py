@@ -20,56 +20,6 @@ Numeric_TS = Union[Skalar, np.ndarray, cTSraw]
 #   cTSraw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
-class cArgsClass:
-    '''
-    stellt Infrastruktur getInitArgs() etc zur Verfügung: 
-        TODO: geht das nicht irgendwie nativ? noch notwendig?
-    gibt Warnung, falls unbenutzte kwargs vorhanden! 
-    '''
-
-    @classmethod
-    def getInitArgs(cls):
-        '''
-        diese (Klassen-)Methode holt aus dieser und den Kindklassen
-        alle zulässigen Argumente der Kindklasse!
-        '''
-
-        ### 1. Argumente der Mutterklasse (rekursiv) ###
-        # wird rekursiv aufgerufen bis man bei Mutter-Klasse cModelingElement ankommt.
-        # nur bis zu cArgsClass zurück gehen:
-        if hasattr(cls.__base__, 'getInitArgs'):  # man könnte auch schreiben: if cls.__name__ == cArgsClass
-            allArgsFromMotherClass = cls.__base__.getInitArgs()  # rekursiv in Mutterklasse aufrufen
-
-        # wenn cls.__base__ also bereits eine Ebene UNTER cArgsClass:
-        else:
-            allArgsFromMotherClass = []
-
-            # checken, dass die zwei class-Atributes auch wirklich für jede Klasse (und nicht nur für Mutterklasse) existieren (-> die nimmt er sonst einfach automatisch)
-        if (not ('not_used_args' in cls.__dict__)) | (not ('new_init_args' in cls.__dict__)):
-            raise Exception(
-                'class ' + cls.__name__ + ': you forgot to implement class attribute <not_used_args> or/and <new_int_args>')
-        notTransferedMotherArgs = cls.not_used_args
-
-        ### 2. Abziehen der nicht durchgereichten Argumente ###
-        # delete not Transfered Args:
-        allArgsFromMotherClass = [prop for prop in allArgsFromMotherClass if prop not in notTransferedMotherArgs]
-
-        ### 3. Ergänzen der neuen Argumente ###
-        myArgs = cls.new_init_args.copy()  # get all new arguments of __init__() (as a copy)
-        # melt lists:
-        myArgs.extend(allArgsFromMotherClass)
-        return myArgs
-
-    # Diese Variablen muss jede Kindklasse auch haben:
-    new_init_args = []
-    not_used_args = []
-
-    def __init__(self, **kwargs):
-        # wenn hier kwargs auftauchen, dann wurde zuviel übergeben:
-        if len(kwargs) > 0:
-            raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
-
-
 class TimeSeries:
     '''
     Class for data that applies to time series, stored as vector (np.ndarray) or scalar.
