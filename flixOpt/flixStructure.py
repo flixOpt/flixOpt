@@ -1649,7 +1649,7 @@ class cFlow(cME):
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
             # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
-            # variable_costs          = cVector(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))
+            # variable_costs          = Summand(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))
             # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.active_data, modBox.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.mod.var_val, self.costsPerFlowHour,

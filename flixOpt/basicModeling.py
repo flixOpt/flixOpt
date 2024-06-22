@@ -536,7 +536,7 @@ class Equation:
         if np.isscalar(indexeOfVar):
             indexeOfVar = [indexeOfVar]
         # Vektor/Summand erstellen:
-        aVector = cVector(variable, factor, indexeOfVariable=indexeOfVar)
+        aVector = Summand(variable, factor, indexeOfVariable=indexeOfVar)
 
         if isSumOf_Type:
             aVector.sumOf()  # Umwandlung zu Sum-Of-Skalar
@@ -590,7 +590,7 @@ class Equation:
                 # lineare Summierung für i-te Gleichung:
                 def linearSumRule(model, i):
                     lhs = 0
-                    aSummand: cVector
+                    aSummand: Summand
                     for aSummand in self.listOfSummands:
                         lhs += aSummand.getMathExpression_Pyomo(baseModel.modType,
                                                                 i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
@@ -710,7 +710,7 @@ class Equation:
 
 
 # Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
-class cVector:
+class Summand:
     def __init__(self, variable, factor, indexeOfVariable=None):  # indexeOfVariable default : alle
         self.__dict__.update(**locals())
         self.isSumOf_Type = False  # Falls Skalar durch Summation über alle Indexe
@@ -747,7 +747,7 @@ class cVector:
     def sumOf(self):
         if len == 1:
             print(
-                'warning: cVector.sumOf() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
+                'warning: Summand.sumOf() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
         self.isSumOf_Type = True
         self.len = 1  # jetzt nur noch Skalar!
         return self
