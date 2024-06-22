@@ -29,9 +29,9 @@ Gas = cBus('fuel', 'Gas') # balancing node/bus of gas
 
 # ########################
 # ## Effect-Definition: ##
-costs = cEffectType('costs','€','Kosten',  # name, unit, description
-                    isStandard = True, # standard effect --> shorter input possible (without effect as a key)
-                    isObjective = True) # defining costs as objective of optimiziation
+costs = Effect('costs', '€', 'Kosten',  # name, unit, description
+               isStandard = True,  # standard effect --> shorter input possible (without effect as a key)
+               isObjective = True) # defining costs as objective of optimiziation
 
 # ###########################
 # ## Component-Definition: ##

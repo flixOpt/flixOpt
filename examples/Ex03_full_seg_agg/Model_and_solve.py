@@ -154,9 +154,9 @@ Kohle      = cBus('fuel'      ,'Kohle'     , excessCostsPerFlowHour = excessCost
 
 # Effects
 
-costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
-CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen') # effectsPerFlowHour = {'costs' : 180} )) 
-PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie')
+costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)
+CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen') # effectsPerFlowHour = {'costs' : 180} ))
+PE    = Effect('PE', 'kWh_PE', 'Primärenergie')
 
 # Komponentendefinition:
 

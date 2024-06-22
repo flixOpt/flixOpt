@@ -58,11 +58,11 @@ Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=excessCosts)
 
 
 # Effect-Definition:
-costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
-CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen', 
-                    specificShareToOtherEffects_operation = {costs: 0.2}, 
-                    )
-PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie', max_Sum = 3.5e3  )
+costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)
+CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen',
+               specificShareToOtherEffects_operation = {costs: 0.2},
+               )
+PE    = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum = 3.5e3)
 
 ################################
 # ## definition of components ##

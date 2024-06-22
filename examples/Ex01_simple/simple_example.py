@@ -46,12 +46,12 @@ Gas = cBus('fuel', 'Gas') # balancing node/bus of gas
 
 # ########################
 # ## Effect-Definition: ##
-costs = cEffectType('costs','€','Kosten',  # name, unit, description
-                    isStandard = True, # standard effect --> shorter input possible (without effect as a key)
-                    isObjective = True) # defining costs as objective of optimiziation
+costs = Effect('costs', '€', 'Kosten',  # name, unit, description
+               isStandard = True,  # standard effect --> shorter input possible (without effect as a key)
+               isObjective = True) # defining costs as objective of optimiziation
 
-CO2   = cEffectType('CO2','kg','CO2_e-Emissionen', # name, unit, description
-                    specificShareToOtherEffects_operation = {costs: 0.2}, max_per_hour_operation = max_emissions_per_hour) # 0.2 €/kg; defining links between effects, here CO2-price 
+CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen',  # name, unit, description
+               specificShareToOtherEffects_operation = {costs: 0.2}, max_per_hour_operation = max_emissions_per_hour) # 0.2 €/kg; defining links between effects, here CO2-price
 
 # ###########################
 # ## Component-Definition: ##

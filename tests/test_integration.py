@@ -61,9 +61,9 @@ class TestSimple(BaseTest):
         Fernwaerme = cBus('heat', 'Fernwärme')
         Gas = cBus('fuel', 'Gas')
 
-        costs = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = cEffectType('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2},
-                          max_per_hour_operation=self.max_emissions_per_hour)
+        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2},
+                     max_per_hour_operation=self.max_emissions_per_hour)
 
         aBoiler = Boiler('Boiler', eta=0.5,
                          Q_th=cFlow('Q_th', bus=Fernwaerme, nominal_val=50, min_rel=5 / 50, max_rel=1),
@@ -220,9 +220,9 @@ class TestComplex(BaseTest):
         Fernwaerme = cBus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
         Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
 
-        costs = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = cEffectType('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
-        PE = cEffectType('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
+        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
+        PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
 
         invest_Gaskessel = InvestParameters(fixCosts=1000, investmentSize_is_fixed=True, investment_is_optional=False, specificCosts={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
@@ -263,9 +263,9 @@ class TestComplex(BaseTest):
         Fernwaerme = cBus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
         Gas = cBus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
 
-        costs = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = cEffectType('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
-        PE = cEffectType('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
+        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
+        PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
 
         invest_Gaskessel = InvestParameters(fixCosts=1000, investmentSize_is_fixed=True, investment_is_optional=False, specificCosts={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
@@ -335,7 +335,7 @@ class TestModelingTypes(BaseTest):
         aTimeSeries = (datetime.datetime(2020, 1, 1) + np.arange(len(P_el_Last)) * datetime.timedelta(hours=0.25)).astype('datetime64')
 
         Strom, Fernwaerme, Gas, Kohle = cBus('el', 'Strom'), cBus('heat', 'Fernwärme'), cBus('fuel', 'Gas'), cBus('fuel', 'Kohle')
-        costs, CO2, PE = cEffectType('costs', '€', 'Kosten', isStandard=True, isObjective=True), cEffectType('CO2', 'kg', 'CO2_e-Emissionen'), cEffectType('PE', 'kWh_PE', 'Primärenergie')
+        costs, CO2, PE = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True), Effect('CO2', 'kg', 'CO2_e-Emissionen'), Effect('PE', 'kWh_PE', 'Primärenergie')
 
         aGaskessel = Boiler('Kessel', eta=0.85, Q_th=cFlow(label='Q_th', bus=Fernwaerme), Q_fu=cFlow(label='Q_fu', bus=Gas, nominal_val=95, min_rel=12 / 95, iCanSwitchOff=True, switchOnCosts=1000, valuesBeforeBegin=[0]))
         aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switchOnCosts=24000, P_el=cFlow('P_el', bus=Strom), Q_th=cFlow('Q_th', bus=Fernwaerme), Q_fu=cFlow('Q_fu', bus=Kohle, nominal_val=288, min_rel=87 / 288), on_valuesBeforeBegin=[0])

@@ -73,9 +73,9 @@ class InvestParameters:
             Determines if the investment size is fixed. If its not fixed, uses naminal_val as an optimization variable.
         investment_is_optional : bool, optional
             If True, investment is not forced.
-        specificCosts : scalar or Dict[cEffectType: Union[int, float, np.ndarray], optional
+        specificCosts : scalar or Dict[Effect: Union[int, float, np.ndarray], optional
             Specific costs, e.g., in €/kW_nominal or €/m²_nominal.
-            Example: {costs: 3, CO2: 0.3} with costs and CO2 representing an Object of class cEffectType
+            Example: {costs: 3, CO2: 0.3} with costs and CO2 representing an Object of class Effect
             (Attention: Annualize costs to chosen period!)
         costsInInvestsizeSegments : list or List[ List[Union[int,float]], Dict[cEffecType: Union[List[Union[int,float]], optional
             Linear relation in segments [invest_segments, cost_segments].
