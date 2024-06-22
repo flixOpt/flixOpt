@@ -48,7 +48,7 @@ class SystemModel(LinearModel):
         # self.variables  = [] # Liste aller Variablen
         # self.eqs        = [] # Liste aller Gleichungen
         # self.ineqs      = [] # Liste aller Ungleichungen
-        self.ME_mod = {}  # dict mit allen mods der MEs
+        self.models_of_elements: Dict = {}  # dict with all ElementModel's od Elements in System
 
         # self.objective       = None # objective-Function
         # self.objective_value = None # Ergebnis
@@ -60,12 +60,12 @@ class SystemModel(LinearModel):
 
     # extract model of ME:
     def getModOfME(self, aModelingElement):
-        return self.ME_mod[aModelingElement]
+        return self.models_of_elements[aModelingElement]
 
     # register ModelingElements and belonging Mod:
     def registerMEandMod(self, aModelingElement, aMod):
         # allocation ME -> model
-        self.ME_mod[aModelingElement] = aMod  # aktuelles model hier speichern
+        self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
 
     # override:
     def _charactarizeProblem(self):  # overriding same method in motherclass!
@@ -2061,7 +2061,7 @@ class System:
         self.activateInTS(aModBox.esTimeIndexe, aModBox.TS_explicit)
 
         # Wenn noch nicht gebaut, dann einmalig ME.model bauen:
-        if aModBox.ME_mod == {}:
+        if aModBox.models_of_elements == {}:
             log.debug('create model-Vars for MEs of EnergySystem')
             for aME in self.allMEsOfFirstLayer:
                 # BEACHTE: erst nach finalize(), denn da werden noch subMEs erst erzeugt!
