@@ -339,19 +339,19 @@ class Element:
             aME.finalize()
 
     # 2.
-    def createNewModAndActivateModBox(self, modBox) -> None:
+    def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
         # print('new model for ' + self.label)
         # subElemente ebenso:
-        aME: Element
-        for aME in self.subElements:
-            aME.createNewModAndActivateModBox(modBox)  # rekursiv!
+        element: Element
+        for element in self.subElements:
+            element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
 
         # create model:
-        aMod = ElementModel(self)
+        model = ElementModel(self)
         # register model:
-        modBox.register_element_with_model(self, aMod)
+        system_model.register_element_with_model(self, model)
 
-        self._activateModBox_ForMeOnly(modBox)  # subElements werden bereits aktiviert über aElement.createNewMod...()
+        self._activateModBox_ForMeOnly(system_model)  # subElements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
     def declareVarsAndEqs(self, modBox) -> None:
@@ -2068,7 +2068,7 @@ class System:
                 if not self.__finalized:
                     raise Exception('activateModBox(): --> Geht nicht, da System noch nicht finalized!')
                 # model bauen und in model registrieren.
-                aME.createNewModAndActivateModBox(self.model)  # inkl. subElements
+                aME.create_new_model_and_activate_system_model(self.model)  # inkl. subElements
         else:
             # nur Aktivieren:
             for aME in allMEsOfFirstLayer:  # TODO: Is This a BUG?

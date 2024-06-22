@@ -94,7 +94,7 @@ class cFeatureLinearSegmentVars(cFeature):
             newSegment = cSegment('seg_' + str(aSecNr), self, samplePointsOfSegment, aSecNr)
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
             # todo: alle cMEs sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
-            newSegment.createNewModAndActivateModBox(self.system_model)
+            newSegment.create_new_model_and_activate_system_model(self.system_model)
             self.listOfSegments.append(newSegment)
 
     def declareVarsAndEqs(self, modBox: SystemModel):
