@@ -2543,7 +2543,7 @@ class cCalculation:
         self.TScollectionForAgg.print()
 
         import pandas as pd
-        # seriesDict = {i : self.TSlistForAggregation[i].d_i_raw_vec for i in range(len(self.TSlistForAggregation))}
+        # seriesDict = {i : self.TSlistForAggregation[i].active_data_vector for i in range(len(self.TSlistForAggregation))}
         df_OriginalData = pd.DataFrame(self.TScollectionForAgg.seriesDict,
                                        index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
 
