@@ -50,7 +50,7 @@ class SystemModel(LinearModel):
         self.models_of_elements: Dict = {}  # dict with all ElementModel's od Elements in System
 
         # self.objective       = None # objective-Function
-        # self.objective_value = None # Ergebnis
+        # self.objective_result = None # Ergebnis
 
         self.beforeValueSet = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
@@ -145,7 +145,7 @@ class SystemModel(LinearModel):
         print('SUM              : ' + '...todo...')
         print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.getResult()))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
-        print('Result of Obj : ' + str(self.objective_value))
+        print('Result of Obj : ' + str(self.objective_result))
         try:
             print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
         except:
@@ -181,7 +181,7 @@ class SystemModel(LinearModel):
                 aDict['invest'] = str(aEffect.invest.model.var_sum.getResult())
                 aDict['sum'] = str(aEffect.all.model.var_sum.getResult())
             main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.getResult())
-            main_results_str['Result of Obj'] = self.objective_value
+            main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
             else:

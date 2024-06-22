@@ -218,7 +218,7 @@ class LinearModel:
                 self.solver_log = SolverLog(solver_name, logfileName)
                 self.solver_log.parseInfos()
             # Ergebnis Zielfunktion ablegen
-            self.objective_value = self.model.objective.expr()
+            self.objective_result = self.model.objective.expr()
 
         else:
             raise Exception('not defined for modtype ' + self.modeling_language)
