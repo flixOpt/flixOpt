@@ -118,7 +118,7 @@ class LinearTransformer(Component):
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, cFlow) and
+               not isinstance(value, Flow) and
                key not in ["label", "TS_list", "segmentsOfFlows", "factor_Sets", "inputs", "outputs"]
         }
 
@@ -309,7 +309,7 @@ class Boiler(LinearTransformer):
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric_TS, Q_fu:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, Q_fu:Flow, Q_th:Flow, **kwargs):
         '''
         constructor for boiler
 
@@ -319,9 +319,9 @@ class Boiler(LinearTransformer):
             name of bolier.
         eta : float or TS
             thermal efficiency.
-        Q_fu : cFlow
+        Q_fu : Flow
             fuel input-flow
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see mother classes!
         
@@ -357,7 +357,7 @@ class Power2Heat(LinearTransformer):
     new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         constructor for boiler
 
@@ -367,9 +367,9 @@ class Power2Heat(LinearTransformer):
             name of bolier.
         eta : float or TS
             thermal efficiency.
-        P_el : cFlow
+        P_el : Flow
             electric input-flow
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see mother classes!
 
@@ -405,7 +405,7 @@ class HeatPump(LinearTransformer):
     new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -413,9 +413,9 @@ class HeatPump(LinearTransformer):
             name of heatpump.
         COP : float or TS
             Coefficient of performance.
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see motherclasses
         '''
@@ -445,7 +445,7 @@ class CoolingTower(LinearTransformer):
     new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -453,9 +453,9 @@ class CoolingTower(LinearTransformer):
             name of cooling tower.
         specificElectricityDemand : float or TS
             auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal input-flow.
         **kwargs : see getKwargs() and their description in motherclasses
             
@@ -491,7 +491,7 @@ class CHP(LinearTransformer):
     # eta = 1 # Thermischer Wirkungsgrad
     # __eta_bound = [0,1]
 
-    def __init__(self, label:str, eta_th:Numeric_TS, eta_el:Numeric_TS, Q_fu:cFlow, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta_th:Numeric_TS, eta_el:Numeric_TS, Q_fu:Flow, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         constructor of cCHP
 
@@ -503,11 +503,11 @@ class CHP(LinearTransformer):
             thermal efficiency.
         eta_el : float or TS
             electrical efficiency.
-        Q_fu : cFlow
+        Q_fu : Flow
             fuel input-flow.
-        P_el : cFlow
+        P_el : Flow
             electricity output-flow.
-        Q_th : cFlow
+        Q_th : Flow
             heat output-flow.
         **kwargs : 
         
@@ -547,7 +547,7 @@ class HeatPumpWithSource(LinearTransformer):
     new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_ab:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_ab:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -555,11 +555,11 @@ class HeatPumpWithSource(LinearTransformer):
             name of heatpump.
         COP : float, TS
             Coefficient of performance.
-        Q_ab : cFlow
+        Q_ab : Flow
             Heatsource input-flow.
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see motherclasses
         '''
@@ -613,8 +613,8 @@ class Storage(Component):
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self,
                  label: str,
-                 inFlow: cFlow,
-                 outFlow: cFlow,
+                 inFlow: Flow,
+                 outFlow: Flow,
                  capacity_inFlowHours: Optional[Union[Skalar, Literal['lastValueOfSim']]],
                  group: Optional[str] = None,
                  min_rel_chargeState: Numeric_TS = 0,
@@ -634,9 +634,9 @@ class Storage(Component):
         ----------
         label : str
             description.
-        inFlow : cFlow
+        inFlow : Flow
             ingoing flow.
-        outFlow : cFlow
+        outFlow : Flow
             outgoing flow.
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -924,23 +924,23 @@ class SourceAndSink(Component):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
     """
-    # source : cFlow
-    # sink   : cFlow
+    # source : Flow
+    # sink   : Flow
 
     new_init_args = ['label', 'source', 'sink', 'avoidInAndOutAtOnce']
 
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, sink: cFlow, group: str = None,
+    def __init__(self, label: str, source: Flow, sink: Flow, group: str = None,
                  avoidInAndOutAtOnce: bool = True, **kwargs):
         '''
         Parameters
         ----------
         label : str
             name of sourceAndSink
-        source : cFlow
+        source : Flow
             output-flow of this component
-        sink : cFlow
+        sink : Flow
             input-flow of this component
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -1005,13 +1005,13 @@ class Source(Component):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, group: str = None, **kwargs):
+    def __init__(self, label: str, source: Flow, group: str = None, **kwargs):
         '''       
         Parameters
         ----------
         label : str
             name of source
-        source : cFlow
+        source : Flow
             output-flow of source
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -1027,7 +1027,7 @@ class Source(Component):
         Konstruktor für Instanzen der Klasse Source
 
         :param str label: Bezeichnung
-        :param cFlow source: flow-output Quelle
+        :param Flow source: flow-output Quelle
         :param kwargs:
         """
         super().__init__(label, **kwargs)
@@ -1048,7 +1048,7 @@ class Sink(Component):
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, sink: cFlow, group: str = None, **kwargs):
+    def __init__(self, label: str, sink: Flow, group: str = None, **kwargs):
         '''
         constructor of sink 
 
@@ -1056,7 +1056,7 @@ class Sink(Component):
         ----------
         label : str
             name of sink.
-        sink : cFlow
+        sink : Flow
             input-flow of sink
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -1090,10 +1090,10 @@ class Transportation(Component):
 
     def __init__(self,
                  label: str,
-                 in1: cFlow,
-                 out1: cFlow,
-                 in2: Optional[cFlow] = None,
-                 out2: Optional[cFlow] = None,
+                 in1: Flow,
+                 out1: Flow,
+                 in2: Optional[Flow] = None,
+                 out2: Optional[Flow] = None,
                  loss_rel: Numeric_TS = 0,
                  loss_abs: Numeric_TS = 0,
                  isAlwaysOn: bool = True,
@@ -1116,9 +1116,9 @@ class Transportation(Component):
         ----------
         label : str
             name of Transportation.
-        in1 : cFlow
+        in1 : Flow
             inflow of input at side A
-        out1 : cFlow
+        out1 : Flow
             outflow (of in1) at side B
         in2 : cFlow, optional
             optional inflow of side B

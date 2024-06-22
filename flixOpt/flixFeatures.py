@@ -236,7 +236,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
     def finalize(self):
         super().finalize
         # Beachte: Hiervor muss featureOn in den Flows existieren!
-        aFlow: cFlow
+        aFlow: Flow
 
         if self.typ == 'classic':
             # "classic" -> alle Flows brauchen Binärvariable:
@@ -878,7 +878,7 @@ class cFeatureInvest(cFeature):
             (val = val_rel * investmentSize)
         investmentSize : scalar or None
             value of fixed investmentSize (None if no fixed investmentSize)
-            cFlow: investmentSize = nominal_val
+            Flow: investmentSize = nominal_val
             Storage: investmentSize =
         featureOn : cFeatureOn
             cFeatureOn of the definingVar (if it has a cFeatureOn)

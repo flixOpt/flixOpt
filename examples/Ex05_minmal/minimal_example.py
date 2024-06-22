@@ -38,34 +38,34 @@ costs = Effect('costs', '€', 'Kosten',  # name, unit, description
 
 aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                  # defining the output-flow = thermal -flow
-                 Q_th = cFlow(label = 'Q_th', # name of flow
-                               bus = Fernwaerme, # define, where flow is linked to (here: Fernwaerme-Bus)
-                               nominal_val = 50, # kW; nominal_size of boiler
-                               ),
+                 Q_th = Flow(label ='Q_th',  # name of flow
+                             bus = Fernwaerme,  # define, where flow is linked to (here: Fernwaerme-Bus)
+                             nominal_val = 50,  # kW; nominal_size of boiler
+                             ),
                  # defining the input-flow = fuel-flow
-                 Q_fu = cFlow(label = 'Q_fu', # name of flow
-                               bus = Gas)  # define, where flow is linked to (here: Gas-Bus)
+                 Q_fu = Flow(label ='Q_fu',  # name of flow
+                             bus = Gas)  # define, where flow is linked to (here: Gas-Bus)
                  )
 
 # sink of heat load:
 aWaermeLast = Sink('Wärmelast',
                    # defining input-flow:
-                   sink   = cFlow('Q_th_Last', # name
-                                   bus = Fernwaerme, # linked to bus "Fernwaerme"
-                                   nominal_val = 1, # nominal_value
-                                   val_rel = Q_th_Last)) # fixed profile
+                   sink   = Flow('Q_th_Last',  # name
+                                 bus = Fernwaerme,  # linked to bus "Fernwaerme"
+                                 nominal_val = 1,  # nominal_value
+                                 val_rel = Q_th_Last)) # fixed profile
                                    # relative fixed values (timeseries) of the flow
                                    # value = val_rel * nominal_val
     
 # source of gas:
 aGasTarif = Source('Gastarif',
                    # defining output-flow:
-                   source = cFlow('Q_Gas', # name
-                                   bus = Gas, # linked to bus "Gas"
-                                   nominal_val = 1000, # nominal size, i.e. 1000 kW maximum
-                                   # defining effect-shares. 
-                                   #    Here not only "costs", but also CO2-emissions:
-                                   costsPerFlowHour= 0.04)) # 0.04 €/kWh
+                   source = Flow('Q_Gas',  # name
+                                 bus = Gas,  # linked to bus "Gas"
+                                 nominal_val = 1000,  # nominal size, i.e. 1000 kW maximum
+                                 # defining effect-shares.
+                                 #    Here not only "costs", but also CO2-emissions:
+                                 costsPerFlowHour= 0.04)) # 0.04 €/kWh
 
 
 # ######################################################

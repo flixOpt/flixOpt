@@ -81,45 +81,45 @@ aGaskessel = Boiler('Kessel',
                     eta = 0.5,  # efficiency ratio
                     costsPerRunningHour = {costs:0, CO2:1000},  # 1000 kg_CO2/h (just for testing)
                     # defining flows:
-                    Q_th = cFlow(label   = 'Q_th',  # name
-                                  bus = Fernwaerme,  # linked bus
-                                  nominal_val = 50,  # 50 kW_th nominal size
-                                  loadFactor_max = 1.0,  # maximal mean power 50 kW
-                                  loadFactor_min = 0.1,  # minimal mean power 5 kW
-                                  min_rel = 5/50,  # 10 % part load
-                                  max_rel = 1,  # 50 kW
-                                  onHoursSum_min = 0,  # minimum of working hours
-                                  onHoursSum_max = 1000,  # maximum of working hours
-                                  onHours_max = 10,  # maximum of working hours in one step
-                                  offHours_max = 10,  # maximum of off hours in one step
-                                  # onHours_min = 2, # minimum on hours in one step
-                                  # offHours_min = 4, # minimum off hours in one step
-                                  switchOnCosts = 0.01,  # € per start
-                                  switchOn_maxNr = 1000,  # max nr of starts
-                                  valuesBeforeBegin=[50],  # 50 kW is value before start
-                                  invest_parameters= invest_Gaskessel,  # see above
-                                  sumFlowHours_max = 1e6,  # kWh, overall maximum "flow-work"
-                                  ),
-                    Q_fu = cFlow(label = 'Q_fu', # name
-                                  bus = Gas, # linked bus
-                                  nominal_val = 200, # kW
-                                  min_rel = 0, 
-                                  max_rel = 1)) 
+                    Q_th = Flow(label   ='Q_th',  # name
+                                bus = Fernwaerme,  # linked bus
+                                nominal_val = 50,  # 50 kW_th nominal size
+                                loadFactor_max = 1.0,  # maximal mean power 50 kW
+                                loadFactor_min = 0.1,  # minimal mean power 5 kW
+                                min_rel = 5/50,  # 10 % part load
+                                max_rel = 1,  # 50 kW
+                                onHoursSum_min = 0,  # minimum of working hours
+                                onHoursSum_max = 1000,  # maximum of working hours
+                                onHours_max = 10,  # maximum of working hours in one step
+                                offHours_max = 10,  # maximum of off hours in one step
+                                # onHours_min = 2, # minimum on hours in one step
+                                # offHours_min = 4, # minimum off hours in one step
+                                switchOnCosts = 0.01,  # € per start
+                                switchOn_maxNr = 1000,  # max nr of starts
+                                valuesBeforeBegin=[50],  # 50 kW is value before start
+                                invest_parameters= invest_Gaskessel,  # see above
+                                sumFlowHours_max = 1e6,  # kWh, overall maximum "flow-work"
+                                ),
+                    Q_fu = Flow(label ='Q_fu',  # name
+                                bus = Gas,  # linked bus
+                                nominal_val = 200,  # kW
+                                min_rel = 0,
+                                max_rel = 1))
 
 # 2. defining of CHP-unit:
 aKWK  = CHP('BHKW2', eta_th = 0.5, eta_el = 0.4, switchOnCosts =  0.01,
-            P_el = cFlow('P_el',bus = Strom     , nominal_val = 60, min_rel = 5/60, ),
-            Q_th = cFlow('Q_th',bus = Fernwaerme, nominal_val = 1e3),
-            Q_fu = cFlow('Q_fu',bus = Gas, nominal_val = 1e3), on_valuesBeforeBegin = [1])
+            P_el = Flow('P_el', bus = Strom, nominal_val = 60, min_rel =5 / 60, ),
+            Q_th = Flow('Q_th', bus = Fernwaerme, nominal_val = 1e3),
+            Q_fu = Flow('Q_fu', bus = Gas, nominal_val = 1e3), on_valuesBeforeBegin = [1])
 
 
 # 3. defining a alternative CHP-unit with linear segments :
 # defining flows:
 #   (explicitly outside, because variables 'P_el', 'Q_th', 'Q_fu' must be picked 
 #    in segment definition)
-P_el = cFlow('P_el', bus=Strom, nominal_val=60, max_rel=55)
-Q_th = cFlow('Q_th', bus=Fernwaerme)
-Q_fu = cFlow('Q_fu', bus=Gas)
+P_el = Flow('P_el', bus=Strom, nominal_val=60, max_rel=55)
+Q_th = Flow('Q_th', bus=Fernwaerme)
+Q_fu = Flow('Q_fu', bus=Gas)
 # linear segments (eta-definitions than become useless!):
 segmentsOfFlows = ({P_el: [5  ,30, 40,60 ], # elements an be list (timeseries)
                    Q_th: [6  ,35, 45,100], 
@@ -157,8 +157,8 @@ invest_Speicher = InvestParameters(fixCosts = 0,  # no fix costs
 # 4.b) storage itself:
 aSpeicher = Storage('Speicher',
                     # defining flows:
-                    inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),
-                    outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4),
+                    inFlow  = Flow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),
+                    outFlow = Flow('Q_th_unload', bus = Fernwaerme, nominal_val = 1e4),
                     capacity_inFlowHours=None,  # None, because invest-size is variable
                     chargeState0_inFlowHours=0,  # empty storage at beginning
                     # charge_state_end_min = 3, # min charge state and end
@@ -172,22 +172,22 @@ aSpeicher = Storage('Speicher',
 # 5. definition of sinks and sources:
 # 5.a) heat load profile:    
 aWaermeLast = Sink('Wärmelast',
-                   sink = cFlow('Q_th_Last', # name
-                                 bus = Fernwaerme, # linked bus
-                                 nominal_val = 1, 
-                                 min_rel = 0,
-                                 val_rel = Q_th_Last)) # fixed values val_rel * nominal_val
+                   sink = Flow('Q_th_Last',  # name
+                               bus = Fernwaerme,  # linked bus
+                               nominal_val = 1,
+                               min_rel = 0,
+                               val_rel = Q_th_Last)) # fixed values val_rel * nominal_val
 # 5.b) gas tarif:
 aGasTarif = Source('Gastarif',
-                   source = cFlow('Q_Gas',
-                                   bus = Gas, # linked bus
-                                   nominal_val = 1000, # defining nominal size
-                                   costsPerFlowHour= {costs: 0.04, CO2: 0.3})) 
+                   source = Flow('Q_Gas',
+                                 bus = Gas,  # linked bus
+                                 nominal_val = 1000,  # defining nominal size
+                                 costsPerFlowHour= {costs: 0.04, CO2: 0.3}))
 # 5.c) feed-in of electricity:
 aStromEinspeisung = Sink('Einspeisung',
-                         sink = cFlow('P_el',
-                                       bus = Strom, # linked bus
-                                       costsPerFlowHour = -1*np.array(p_el)))# feed-in tariff
+                         sink = Flow('P_el',
+                                     bus = Strom,  # linked bus
+                                     costsPerFlowHour = -1*np.array(p_el)))# feed-in tariff
 
 
 ##########################

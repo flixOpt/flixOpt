@@ -4,7 +4,7 @@ import numpy as np
 import datetime
 
 from flixOpt.flixComps import Boiler, Storage, Source, Sink, CHP
-from flixOpt.flixStructure import cFlow, Bus, System, cCalculation, Effect
+from flixOpt.flixStructure import Flow, Bus, System, cCalculation, Effect
 from flixOpt.flixPostprocessing import flix_results
 
 
@@ -21,23 +21,23 @@ class TestExistance(unittest.TestCase):
             "Power": Bus(label="Power", media="el")
         }
         self.sinks_n_sources = {
-            "GasSource": Source(label="GasSource", source=cFlow(label="Gasmarkt", bus=self.busses["Gas"],
-                                                                costsPerFlowHour=np.array([20, 15, 13, 25, 26]))),
-            "HeatSink": Sink(label="HeatSink", sink=cFlow(label="Heating_Network",
-                                                          nominal_val=1,
-                                                          val_rel= np.linspace(0, 100, len(self.es.timeSeries)),
-                                                          bus=self.busses["Heat"])),
-            "PowerSource": Source(label="PowerSource", source=cFlow(label="Power_Grid", bus=self.busses["Power"],
-                                                                    costsPerFlowHour=np.array([100, 20, 60, 40, 5])))
+            "GasSource": Source(label="GasSource", source=Flow(label="Gasmarkt", bus=self.busses["Gas"],
+                                                               costsPerFlowHour=np.array([20, 15, 13, 25, 26]))),
+            "HeatSink": Sink(label="HeatSink", sink=Flow(label="Heating_Network",
+                                                         nominal_val=1,
+                                                         val_rel= np.linspace(0, 100, len(self.es.timeSeries)),
+                                                         bus=self.busses["Heat"])),
+            "PowerSource": Source(label="PowerSource", source=Flow(label="Power_Grid", bus=self.busses["Power"],
+                                                                   costsPerFlowHour=np.array([100, 20, 60, 40, 5])))
         }
         self.comps = {
             "Boiler": Boiler(label="Boiler", eta=0.5,
-                             Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
-                             Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])),
+                             Q_th=Flow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
+                             Q_fu=Flow(label="Q_fu", bus=self.busses["Gas"])),
             "CHP": CHP(label="CHP", eta_th=0.45, eta_el=0.4,
-                       Q_th=cFlow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
-                       P_el=cFlow(label="P_el", bus=self.busses["Power"]),
-                       Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])
+                       Q_th=Flow(label="Q_th", nominal_val=112, bus=self.busses["Heat"]),
+                       P_el=Flow(label="P_el", bus=self.busses["Power"]),
+                       Q_fu=Flow(label="Q_fu", bus=self.busses["Gas"])
                        )
         }
 
@@ -45,8 +45,8 @@ class TestExistance(unittest.TestCase):
         exists = np.array([1, 1, 1, 0, 0])
         nominal_val = 120
         boiler_exists = Boiler(label="Boiler_ex", eta=0.8, exists= exists,
-                               Q_th=cFlow(label="Q_th", nominal_val=nominal_val, bus=self.busses["Heat"]),
-                               Q_fu=cFlow(label="Q_fu", bus=self.busses["Gas"])
+                               Q_th=Flow(label="Q_th", nominal_val=nominal_val, bus=self.busses["Heat"]),
+                               Q_fu=Flow(label="Q_fu", bus=self.busses["Gas"])
                                )
         self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())
         self.es.addElements(boiler_exists, self.comps["Boiler"])
@@ -71,12 +71,12 @@ class TestExistance(unittest.TestCase):
         nominal_val = 5
         capacity = 10
         storage_exists = Storage(label="Storage_ex", exists=exists, capacity_inFlowHours=capacity,
-                                 inFlow=cFlow(label="in",
-                                               nominal_val=nominal_val,
-                                               bus=self.busses["Gas"]),
-                                 outFlow=cFlow(label="out",
-                                                nominal_val=nominal_val,
-                                                bus=self.busses["Gas"])
+                                 inFlow=Flow(label="in",
+                                             nominal_val=nominal_val,
+                                             bus=self.busses["Gas"]),
+                                 outFlow=Flow(label="out",
+                                              nominal_val=nominal_val,
+                                              bus=self.busses["Gas"])
                                  )
 
         self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())

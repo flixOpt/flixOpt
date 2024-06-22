@@ -362,7 +362,7 @@ class cAggregationModeling(flixStructure.Element):
             compSet = set(self.listOfMEsToClusterize)
             flowSet = self.es.getFlows(listOfMEsToClusterize)
 
-        flow: flixStructure.cFlow
+        flow: flixStructure.Flow
 
         # todo: hier anstelle alle MEs durchgehen, nicht nur flows und comps:
         for aME in flowSet | compSet:

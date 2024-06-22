@@ -27,8 +27,8 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
         #  KWK_poweroriented    KWK_heatoriented,
     eta_th =   [0.00001,            0.9 ]
     eta_el =   [0.2,                0.1 ]
-    Q_th =   [ cFlow(),            cFlow() ]
-    P_el =   [ cFlow(),            cFlow() ]
+    Q_th =   [ Flow(),            Flow() ]
+    P_el =   [ Flow(),            Flow() ]
 
     Parameters
     ----------
@@ -40,11 +40,11 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
     eta_el : list of float or array
         electrical efficiency of poweroriented (po) and heatoriented (ho) operation.
         passed in a list [eta_th_po, eta_th_ho]. the elements can be float or array
-    Q_fu : cFlow
+    Q_fu : Flow
         fuel input-flow.
-    P_el : list of cFlow
+    P_el : list of Flow
         electricity output-flow.
-    Q_th : list of cFlow
+    Q_th : list of Flow
         heat output-flow.
     **kwargs :
         Additional keyword arguments. Passed to the fule input flow!!
@@ -71,22 +71,22 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
     HelperBus = Bus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
 
     # Transformer 1
-    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=nominal_val, min_rel=1, **kwargs)
-    Qout = cFlow(label="Helper" + label + 'Fu', bus=HelperBus)
+    Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val, min_rel=1, **kwargs)
+    Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
                               inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
     # EKT A
     EKTA = CHP(label=label + "A", exists=exists, group=group,
                eta_th=eta_thA, eta_el=eta_elA,
-               P_el=cFlow(label="Pel", bus=BusEl),
-               Q_fu=cFlow(label="Helper" + label + 'A', bus=HelperBus),
-               Q_th=cFlow(label="Qth", bus=BusTh))
+               P_el=Flow(label="Pel", bus=BusEl),
+               Q_fu=Flow(label="Helper" + label + 'A', bus=HelperBus),
+               Q_th=Flow(label="Qth", bus=BusTh))
     # EKT B
     EKTB = CHP(label=label + "B", exists=exists, group=group,
                eta_th=eta_thB, eta_el=eta_elB,
-               P_el=cFlow(label="Pel", bus=BusEl),
-               Q_fu=cFlow(label="Helper" + label + 'B', bus=HelperBus),
-               Q_th=cFlow(label="Qth", bus=BusTh))
+               P_el=Flow(label="Pel", bus=BusEl),
+               Q_fu=Flow(label="Helper" + label + 'B', bus=HelperBus),
+               Q_th=Flow(label="Qth", bus=BusTh))
     return [EKTIn, EKTA, EKTB]
 
 
@@ -141,7 +141,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     invest_parameters: InvestParameters, optional
         An object containing investment-related parameters. Defaults to None. Passed to the thermal output flow
     **kwargs
-        Additional keyword arguments. Passed to the input fuel flow. Allowed keywords see documentation of cFlow
+        Additional keyword arguments. Passed to the input fuel flow. Allowed keywords see documentation of Flow
 
     Returns
     -------
@@ -183,23 +183,23 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     checkExists(max_rel)
 
     # Transformer 1
-    Qin = cFlow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=max_rel, max_rel=max_rel,
-                costsPerFlowHour=costsPerFlowHour_fuel, **kwargs)
-    Qout = cFlow(label="Helper" + label + 'Fu', bus=HelperBus)
+    Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=max_rel, max_rel=max_rel,
+               costsPerFlowHour=costsPerFlowHour_fuel, **kwargs)
+    Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
                               inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
 
     # Transformer Strom
-    P_el = cFlow(label="Pel", bus=BusEl, nominal_val=max(segPel), costsPerFlowHour=costsPerFlowHour_el)
-    Q_fu = cFlow(label="Helper" + label + 'A', bus=HelperBus, nominal_val=nominal_val_Qfu)
+    P_el = Flow(label="Pel", bus=BusEl, nominal_val=max(segPel), costsPerFlowHour=costsPerFlowHour_el)
+    Q_fu = Flow(label="Helper" + label + 'A', bus=HelperBus, nominal_val=nominal_val_Qfu)
     segs_el = {Q_fu: segQfu_el, P_el: segPel.copy()}
     EKTA = LinearTransformer(label=label + "A", exists=exists, group=group,
                              outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs_el)
 
     # Transformer Wärme
-    Q_th = cFlow(label="Qth", bus=BusTh, nominal_val=max(segQth), costsPerFlowHour=costsPerFlowHour_th,
-                 invest_parameters=invest_parameters)
-    Q_fu2 = cFlow(label="Helper" + label + 'B', bus=HelperBus)
+    Q_th = Flow(label="Qth", bus=BusTh, nominal_val=max(segQth), costsPerFlowHour=costsPerFlowHour_th,
+                invest_parameters=invest_parameters)
+    Q_fu2 = Flow(label="Helper" + label + 'B', bus=HelperBus)
     segments = {Q_fu2: segQfu_th, Q_th: segQth}
     EKTB = LinearTransformer(label=label + "B", exists=exists, group=group,
                              outputs=[Q_th], inputs=[Q_fu2], segmentsOfFlows=segments)
