@@ -14,7 +14,7 @@ from .flixStructure import *
 from .flixFeatures import *
 
 
-class LinearTransformer(cBaseComponent):
+class LinearTransformer(Component):
     """
     Klasse LinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
@@ -590,7 +590,7 @@ class HeatPumpWithSource(LinearTransformer):
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class Storage(cBaseComponent):
+class Storage(Component):
     """
     Klasse Storage
     """
@@ -920,7 +920,7 @@ class Storage(cBaseComponent):
             self.featureInvest.addShareToGlobals(globalComp, modBox)
 
 
-class SourceAndSink(cBaseComponent):
+class SourceAndSink(Component):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
     """
@@ -998,7 +998,7 @@ class SourceAndSink(cBaseComponent):
             self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
-class Source(cBaseComponent):
+class Source(Component):
     """
     class of a source
     """
@@ -1041,7 +1041,7 @@ class Source(cBaseComponent):
             flow.group = self.group
 
 
-class Sink(cBaseComponent):
+class Sink(Component):
     """
     Klasse Sink
     """
@@ -1081,7 +1081,7 @@ class Sink(cBaseComponent):
 
 
 
-class Transportation(cBaseComponent):
+class Transportation(Component):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
     # TODO: investmentsize only on 1 flow

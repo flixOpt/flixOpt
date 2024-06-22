@@ -677,7 +677,7 @@ from .flixFeatures import *
 EffectTypeDict = Dict[Effect, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
-class cBaseComponent(Element):
+class Component(Element):
     ''' 
     basic component class for all components
     '''
@@ -1031,7 +1031,7 @@ class cGlobal(Element):
         self.objective.addSummand(objectiveEffect.invest.mod.var_sum, 1)
 
 
-class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur Element???
+class cBus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
     '''
     realizing balance of all linked flows
     (penalty flow is excess can be activated)
@@ -1207,7 +1207,7 @@ class cFlow(Element):
 
     @property  # Richtung
     def isInputInComp(self) -> bool:
-        comp: cBaseComponent
+        comp: Component
         if self in self.comp.inputs:
             return True
         else:
@@ -1859,7 +1859,7 @@ class System:
         self.globalComp.listOfEffectTypes = self.listOfEffectTypes
 
     # Komponenten registrieren:
-    def addComponents(self, *args: cBaseComponent) -> None:
+    def addComponents(self, *args: Component) -> None:
 
         newListOfComps = list(args)
         # für alle neuen Komponenten:
@@ -1896,7 +1896,7 @@ class System:
 
         newList = list(args)
         for aNewME in newList:
-            if isinstance(aNewME, cBaseComponent):
+            if isinstance(aNewME, Component):
                 self.addComponents(aNewME)
             elif isinstance(aNewME, Effect):
                 self.addEffects(aNewME)
@@ -2004,7 +2004,7 @@ class System:
 
         # Komponenten-Modellierung (# inklusive subMEs!)
         for aComp in self.listOfComponents:
-            aComp: cBaseComponent
+            aComp: Component
             log.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
             aComp.declareVarsAndEqsOfFlows(self.modBox)
@@ -2093,7 +2093,7 @@ class System:
 
     def printModel(self) -> None:
         aBus: cBus
-        aComp: cBaseComponent
+        aComp: Component
         print('')
         print('##############################################################')
         print('########## Short String Description of Energysystem ##########')
@@ -2112,7 +2112,7 @@ class System:
             modelDescription['buses'].update(aBus.getDescrAsStr())
         # Comps:
         modelDescription['components'] = {}
-        aComp: cBaseComponent
+        aComp: Component
         for aComp in self.listOfComponents:
             modelDescription['components'].update(aComp.getDescrAsStr())
 
