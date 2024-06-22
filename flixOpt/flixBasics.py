@@ -312,7 +312,7 @@ def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[
     Parameters
     ----------
     effect_values : None, int, float, TimeSeries, or dict
-        The effect values to convert can be a scalar, a cTS_vector, or a dictionary with an effectas key
+        The effect values to convert can be a scalar, a TimeSeries, or a dictionary with an effectas key
 
     Returns
     -------
