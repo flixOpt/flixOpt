@@ -114,7 +114,7 @@ class TimeSeries:
 
         owner.TS_list.append(self)  # Register TimeSeries in owner
 
-        self.aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
+        self._aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
         return f"{self.active_data}"
@@ -148,6 +148,16 @@ class TimeSeries:
     def label_full(self) -> str:
         return self.owner.label_full + '_' + self.label
 
+    @property
+    def aggregation_weight(self):
+        return self._aggregation_weight
+
+    @aggregation_weight.setter
+    def aggregation_weight(self, weight: Union[int, float]):
+        if weight > 1 or weight < 0:
+            raise Exception('Aggregation weight must not be below 0 or above 1!')
+        self._aggregation_weight = weight
+
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
         """
@@ -179,11 +189,6 @@ class TimeSeries:
             assert len(explicit_active_data) == len(self.active_time_indices) or len(explicit_active_data) == 1, \
                 'explicit_active_data has incorrect length!'
             self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
-
-    def set_agg_weight(self, weight: Union[int, float]):
-        self.aggregation_weight = weight
-        if weight > 1 or weight < 0:
-            raise Exception('weight must be between 0 and 1!')
 
 
 class cTS_collection():
