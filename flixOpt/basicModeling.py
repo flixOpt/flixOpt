@@ -13,7 +13,7 @@ from typing import List, Dict, Optional, Union, Tuple, Literal
 import numpy as np
 from pyomo.contrib import appsi
 
-from . import flixOptHelperFcts as helpers
+from flixOpt import flixOptHelperFcts as helpers
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
