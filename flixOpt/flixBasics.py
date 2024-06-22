@@ -105,9 +105,8 @@ class TimeSeries:
         self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
-        return f"{self.data}"
+        return f"{self.active_data}"
 
-    # Vektor:
     @property
     def active_data_vector(self) -> np.ndarray:
         # Always returns the active data as a vector.
@@ -134,7 +133,7 @@ class TimeSeries:
         return (not (self.is_scalar)) & (not (self.data is None))
 
     @property
-    def label_full(self):
+    def label_full(self) -> str:
         return self.owner.label_full + '_' + self.label
 
     @staticmethod
