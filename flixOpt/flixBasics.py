@@ -72,19 +72,31 @@ class cArgsClass:
 
 class TimeSeries:
     '''
-    Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
+    Class for data that applies to time series, stored as vector (np.ndarray) or scalar.
+
+    This class represents a vector or scalar value that makes the handling of time series easier.
+    It supports various operations such as activation of specific time indices, setting explicit active data, and
+    aggregation weight management.
+
+    Attributes
+    ----------
+    label : str
+        The label for the time series.
+    owner : object
+        The owner object which holds the time series list.
+    TSraw : Optional[cTSraw]
+        The raw time series data if provided as cTSraw.
+    data : Optional[Numeric]
+        The actual data for the time series. Can be None.
+    explicit_active_data : Optional[Numeric]
+        Explicit data to use instead of raw data if provided.
+    active_time_indices : Optional[np.ndarray]
+        Indices of the time steps to activate.
+    aggregation_weight : float
+        Weight for aggregation method, between 0 and 1, normally 1.
     '''
 
-    # create and register in List:
-
-    def __init__(self, label: str, data: Numeric_TS, owner):
-        '''
-        Parameters
-        ----------
-        data :
-            scalar, array or cTSraw!
-        owner :
-        '''
+    def __init__(self, label: str, data: Optional[Numeric_TS], owner):
         self.label: str = label
         self.owner: object = owner
 
