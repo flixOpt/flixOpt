@@ -998,7 +998,7 @@ class SourceAndSink(cBaseComponent):
             self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
-class cSource(cBaseComponent):
+class Source(cBaseComponent):
     """
     class of a source
     """
@@ -1024,7 +1024,7 @@ class cSource(cBaseComponent):
         '''
 
         """
-        Konstruktor für Instanzen der Klasse cSource
+        Konstruktor für Instanzen der Klasse Source
 
         :param str label: Bezeichnung
         :param cFlow source: flow-output Quelle

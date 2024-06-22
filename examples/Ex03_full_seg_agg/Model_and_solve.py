@@ -191,9 +191,9 @@ aWaermeLast = cSink  ('Wärmelast',sink   = cFlow('Q_th_Last' , bus = Fernwaerme
 TS_P_el_Last = TimeSeriesRaw(P_el_Last, agg_weight = 0.7) # explicit defined weight
 aStromLast = cSink('Stromlast',sink = cFlow('P_el_Last' , bus = Strom, nominal_val = 1,  val_rel = TS_P_el_Last))
 
-aKohleTarif = cSource('Kohletarif' ,source = cFlow('Q_Kohle'     , bus = Kohle  , nominal_val = 1000,  costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
+aKohleTarif = Source('Kohletarif', source = cFlow('Q_Kohle', bus = Kohle, nominal_val = 1000, costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
 
-aGasTarif = cSource('Gastarif' ,source = cFlow('Q_Gas'     , bus = Gas, nominal_val = 1000, costsPerFlowHour= {costs: gP, CO2: 0.3}))
+aGasTarif = Source('Gastarif', source = cFlow('Q_Gas', bus = Gas, nominal_val = 1000, costsPerFlowHour= {costs: gP, CO2: 0.3}))
 
 
 # 2 TS with same aggType (--> implicit defined weigth = 0.5)
@@ -204,7 +204,7 @@ p_sell    = TimeSeriesRaw(p_el + 0.5, agg_type='p_el')
 aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))
 aStromEinspeisung.sink.costsPerFlowHour[None].aggregation_weight = .5
 
-aStromTarif       = cSource('Stromtarif' ,source = cFlow('P_el'     , bus = Strom  , nominal_val = 1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))
+aStromTarif       = Source('Stromtarif', source = cFlow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))
 aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
 
 # Zusammenführung:

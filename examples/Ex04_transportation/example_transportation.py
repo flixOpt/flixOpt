@@ -72,8 +72,8 @@ costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjectiv
 
 aSink1   = cSink   ('Sink1'  ,sink   = cFlow('Q_th' , bus = heat1, nominal_val = 1, val_rel = sink1))
 aSink2   = cSink   ('Sink2'  ,sink   = cFlow('Q_th' , bus = heat2, nominal_val = 1, val_rel = sink2))
-aSource1 = cSource ('Source1',source = cFlow('Q_th' , bus = heat1, nominal_val = 60, costsPerFlowHour = -1))
-aSource2 = cSource ('Source2',source = cFlow('Q_th' , bus = heat2, nominal_val = 60, costsPerFlowHour = -1)) # doppelt so teuer
+aSource1 = Source ('Source1', source = cFlow('Q_th', bus = heat1, nominal_val = 60, costsPerFlowHour = -1))
+aSource2 = Source ('Source2', source = cFlow('Q_th', bus = heat2, nominal_val = 60, costsPerFlowHour = -1)) # doppelt so teuer
 
 
 loss_abs = 1

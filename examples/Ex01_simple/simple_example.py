@@ -110,9 +110,9 @@ aWaermeLast = cSink('Wärmelast',
                                    # value = val_rel * nominal_val
     
 # source of gas:
-aGasTarif = cSource('Gastarif' ,
-                    # defining output-flow:
-                    source = cFlow('Q_Gas', # name
+aGasTarif = Source('Gastarif',
+                   # defining output-flow:
+                   source = cFlow('Q_Gas', # name
                                    bus = Gas, # linked to bus "Gas"
                                    nominal_val = 1000, # nominal size, i.e. 1000 kW maximum
                                    # defining effect-shares. 
