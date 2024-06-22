@@ -438,9 +438,9 @@ class HeatPump(LinearTransformer):
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class cCoolingTower(LinearTransformer):
+class CoolingTower(LinearTransformer):
     """
-    Klasse cCoolingTower
+    Klasse CoolingTower
     """
     new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
