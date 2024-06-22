@@ -78,7 +78,7 @@ class SystemModel(LinearModel):
 
     # 'gurobi'
     def solve(self, gapFrac=0.02, timelimit=3600, solver='cbc', displaySolverOutput=True, excessThreshold=0.1,
-              logfileName='solverLog.log', **kwargs):
+              logfileName='solver_log.log', **kwargs):
         '''        
         Parameters
         ----------

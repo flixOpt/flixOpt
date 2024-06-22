@@ -50,8 +50,8 @@ class LinearModel:
         info_flixModel['no vars single'] = self.noOfSingleVars
         info_flixModel['no vars TS'] = len(self.variables_TSonly)
 
-        if self.solverLog is not None:
-            infos['solverLog'] = self.solverLog.infos
+        if self.solver_log is not None:
+            infos['solver_log'] = self.solver_log.infos
         return infos
 
     @property
@@ -66,20 +66,20 @@ class LinearModel:
         self.label = label
         self.modeling_language = modeling_language
 
-        self.countComp = 0;  # ElementeZähler für Pyomo
-        self.model = None;  # Übergabe später, zumindest für Pyomo notwendig
+        self.countComp = 0  # ElementeZähler für Pyomo
+        self.model = None  # Übergabe später, zumindest für Pyomo notwendig
 
         self.epsilon = 1e-5  #
 
-        self.variables = []  # Liste aller Variablen
-        self.eqs = []  # Liste aller Gleichungen
-        self.ineqs = []  # Liste aller Ungleichungen
+        self.variables: List[Variable] = []  # Liste aller Variablen
+        self.eqs: List[Equation] = []  # Liste aller Gleichungen = []  # Liste aller Gleichungen
+        self.ineqs: List[Equation] = []  # Liste aller Ungleichungen
 
         self.objective = None  # objective-Function
         self.objective_value = None  # Ergebnis
 
         self.duration = {}  # Laufzeiten
-        self.solverLog = None  # logging und parsen des solver-outputs
+        self.solver_log = None  # logging und parsen des solver-outputs
 
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
@@ -231,8 +231,8 @@ class LinearModel:
             if solver_name == 'highs':
                 pass    
             else:    
-                self.solverLog = SolverLog(solver_name, logfileName)
-                self.solverLog.parseInfos()
+                self.solver_log = SolverLog(solver_name, logfileName)
+                self.solver_log.parseInfos()
             # Ergebnis Zielfunktion ablegen
             self.objective_value = self.model.objective.expr()
 
