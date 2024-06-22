@@ -367,7 +367,7 @@ class cAggregationModeling(flixStructure.cME):
         # todo: hier anstelle alle MEs durchgehen, nicht nur flows und comps:
         for aME in flowSet | compSet:
             # Wenn StorageFlows nicht gefixt werden sollen und flow ein storage-Flow ist:
-            if (not self.fixStorageFlows) and hasattr(aME, 'comp') and (isinstance(aME.comp, flixComps.cStorage)):
+            if (not self.fixStorageFlows) and hasattr(aME, 'comp') and (isinstance(aME.comp, flixComps.Storage)):
                 pass  # flow hier nicht fixen!
             else:
                 # On-Variablen:

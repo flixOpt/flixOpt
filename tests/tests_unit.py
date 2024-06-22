@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import datetime
 
-from flixOpt.flixComps import Boiler, cStorage, cSource, cSink, CHP
+from flixOpt.flixComps import Boiler, Storage, cSource, cSink, CHP
 from flixOpt.flixStructure import cFlow, cBus, cEnergySystem, cCalculation, cEffectType
 from flixOpt.flixPostprocessing import flix_results
 
@@ -70,14 +70,14 @@ class TestExistance(unittest.TestCase):
         exists = np.array([0, 0, 1, 1, 1])
         nominal_val = 5
         capacity = 10
-        storage_exists = cStorage(label="Storage_ex", exists=exists, capacity_inFlowHours=capacity,
-                                  inFlow=cFlow(label="in",
+        storage_exists = Storage(label="Storage_ex", exists=exists, capacity_inFlowHours=capacity,
+                                 inFlow=cFlow(label="in",
                                                nominal_val=nominal_val,
                                                bus=self.busses["Gas"]),
-                                  outFlow=cFlow(label="out",
+                                 outFlow=cFlow(label="out",
                                                 nominal_val=nominal_val,
                                                 bus=self.busses["Gas"])
-                                  )
+                                 )
 
         self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())
         self.es.addElements(storage_exists, self.comps["CHP"])

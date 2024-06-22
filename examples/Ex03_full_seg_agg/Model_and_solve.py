@@ -172,16 +172,16 @@ aKWK  = CHP('BHKW2', eta_th = 0.58, eta_el=0.22, switchOnCosts =  24000,
 
 
 
-aSpeicher = cStorage('Speicher',
-                     inFlow  = cFlow('Q_th_load' , nominal_val = 137, bus = Fernwaerme), 
-                     outFlow = cFlow('Q_th_unload', nominal_val = 158, bus = Fernwaerme), 
-                     capacity_inFlowHours = 684, 
-                     chargeState0_inFlowHours = 137, 
-                     charge_state_end_min = 137,
-                     charge_state_end_max = 158, 
-                     eta_load = 1, eta_unload = 1, 
-                     fracLossPerHour = 0.001, 
-                     avoidInAndOutAtOnce = True)
+aSpeicher = Storage('Speicher',
+                    inFlow  = cFlow('Q_th_load' , nominal_val = 137, bus = Fernwaerme),
+                    outFlow = cFlow('Q_th_unload', nominal_val = 158, bus = Fernwaerme),
+                    capacity_inFlowHours = 684,
+                    chargeState0_inFlowHours = 137,
+                    charge_state_end_min = 137,
+                    charge_state_end_max = 158,
+                    eta_load = 1, eta_unload = 1,
+                    fracLossPerHour = 0.001,
+                    avoidInAndOutAtOnce = True)
  
 
 TS_Q_th_Last = TimeSeriesRaw(Q_th_Last)

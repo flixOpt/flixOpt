@@ -590,9 +590,9 @@ class HeatPumpWithSource(LinearTransformer):
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class cStorage(cBaseComponent):
+class Storage(cBaseComponent):
     """
-    Klasse cStorage
+    Klasse Storage
     """
 
     # TODO: Dabei fällt mir auf. Vielleicht sollte man mal überlegen, ob man für Ladeleistungen bereits in dem
@@ -731,7 +731,7 @@ class cStorage(cBaseComponent):
 
         # Medium-Check:
         if not (cMediumCollection.checkIfFits(inFlow.medium, outFlow.medium)):
-            raise Exception('in cStorage ' + self.label + ': input.medium = ' + str(inFlow.medium) +
+            raise Exception('in Storage ' + self.label + ': input.medium = ' + str(inFlow.medium) +
                             ' and output.medium = ' + str(outFlow.medium) + ' don`t fit!')
         # TODO: chargeState0 darf nicht größer max usw. abfangen!
 

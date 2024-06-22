@@ -155,18 +155,18 @@ invest_Speicher = InvestParameters(fixCosts = 0,  # no fix costs
                                    min_investmentSize=0, max_investmentSize=1000) # optimizing between 0...1000 kWh
 
 # 4.b) storage itself:
-aSpeicher = cStorage('Speicher',
-                     # defining flows:
-                     inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),
-                     outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4),
-                     capacity_inFlowHours=None,  # None, because invest-size is variable
-                     chargeState0_inFlowHours=0,  # empty storage at beginning
-                     # charge_state_end_min = 3, # min charge state and end
-                     charge_state_end_max=10,  # max charge state and end
-                     eta_load=0.9, eta_unload=1,  # efficiency of (un)-loading
-                     fracLossPerHour=0.08,  # loss of storage per time
-                     avoidInAndOutAtOnce=True,  # no parallel loading and unloading
-                     invest_parameters=invest_Speicher) # see above
+aSpeicher = Storage('Speicher',
+                    # defining flows:
+                    inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),
+                    outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4),
+                    capacity_inFlowHours=None,  # None, because invest-size is variable
+                    chargeState0_inFlowHours=0,  # empty storage at beginning
+                    # charge_state_end_min = 3, # min charge state and end
+                    charge_state_end_max=10,  # max charge state and end
+                    eta_load=0.9, eta_unload=1,  # efficiency of (un)-loading
+                    fracLossPerHour=0.08,  # loss of storage per time
+                    avoidInAndOutAtOnce=True,  # no parallel loading and unloading
+                    invest_parameters=invest_Speicher) # see above
  
 
 # 5. definition of sinks and sources:
