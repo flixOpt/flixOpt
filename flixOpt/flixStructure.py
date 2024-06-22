@@ -1735,15 +1735,13 @@ class System:
     ## Properties:
 
     @property
-    def allMEsOfFirstLayerWithoutFlows(self) -> List[Element]:
-        allMEs = self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes + list(
-            self.setOfOtherMEs)
-        return allMEs
+    def allElementsOfFirstLayerWithoutFlows(self) -> List[Element]:
+        return (self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +
+                list(self.setOfOtherMEs))
 
     @property
-    def allMEsOfFirstLayer(self) -> List[Element]:
-        allMEs = self.allMEsOfFirstLayerWithoutFlows + list(self.setOfFlows)
-        return allMEs
+    def allElementsOfFirstLayer(self) -> List[Element]:
+        return self.allElementsOfFirstLayerWithoutFlows + list(self.setOfFlows)
 
     @property
     def allInvestFeatures(self) -> List[cFeatureInvest]:
@@ -1757,7 +1755,7 @@ class System:
                 investFeatures += getInvestFeaturesOfME(aSubComp)  # recursive!
             return investFeatures
 
-        for aME in self.allMEsOfFirstLayer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
+        for aME in self.allElementsOfFirstLayer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
             allInvestFeatures += getInvestFeaturesOfME(aME)
 
         return allInvestFeatures
@@ -1781,7 +1779,7 @@ class System:
     def allTSinMEs(self) -> List[TimeSeries]:
         ME: ElementModel
         allTS = []
-        for ME in self.allMEsOfFirstLayer:
+        for ME in self.allElementsOfFirstLayer:
             allTS += ME.TS_list
         return allTS
 
@@ -1983,7 +1981,7 @@ class System:
         # nur EINMAL ausführen: Finalisieren der Elements:
         if not self.__finalized:
             # finalize Elements for modeling:
-            for aME in self.allMEsOfFirstLayer:
+            for aME in self.allElementsOfFirstLayer:
                 print(aME.label)
                 type(aME)
                 aME.finalize()  # inklusive subElements!
@@ -2063,7 +2061,7 @@ class System:
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if aModBox.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
-            for aME in self.allMEsOfFirstLayer:
+            for aME in self.allElementsOfFirstLayer:
                 # BEACHTE: erst nach finalize(), denn da werden noch subElements erst erzeugt!
                 if not self.__finalized:
                     raise Exception('activateModBox(): --> Geht nicht, da System noch nicht finalized!')
@@ -2071,7 +2069,7 @@ class System:
                 aME.create_new_model_and_activate_system_model(self.model)  # inkl. subElements
         else:
             # nur Aktivieren:
-            for aME in allMEsOfFirstLayer:  # TODO: Is This a BUG?
+            for aME in allElementsOfFirstLayer:  # TODO: Is This a BUG?
                 aME.activateModbox(aModBox)  # inkl. subElements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
@@ -2079,7 +2077,7 @@ class System:
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
         # für alle Komponenten:
-        for aME in self.allMEsOfFirstLayerWithoutFlows:
+        for aME in self.allElementsOfFirstLayerWithoutFlows:
             # results        füllen:
             (results[aME.label], results_var[aME.label]) = aME.getResults()  # inklusive subElements!
 
