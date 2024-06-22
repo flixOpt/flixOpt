@@ -96,7 +96,7 @@ class TimeSeries:
             self.TSraw = None
 
         self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
-        self.d_i_explicit = None  #
+        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
 
         self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
 
@@ -114,9 +114,9 @@ class TimeSeries:
 
     @property
     def active_data(self) -> Numeric:
-        # wenn d_i_explicit gesetzt wurde:
-        if self.d_i_explicit is not None:
-            return self.d_i_explicit
+        # wenn explicit_active_data gesetzt wurde:
+        if self.explicit_active_data is not None:
+            return self.explicit_active_data
 
         indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.__timeIndexe_actual is None)
         if indices_not_applicable:
@@ -168,9 +168,9 @@ class TimeSeries:
         # explicitData:
         if d_i_explicit is not None:
             assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
-                    (len(d_i_explicit) == 1)), 'd_i_explicit has not right length!'
+                    (len(d_i_explicit) == 1)), 'explicit_active_data has not right length!'
 
-        self.d_i_explicit = self.make_scalar_if_possible(d_i_explicit)
+        self.explicit_active_data = self.make_scalar_if_possible(d_i_explicit)
 
     def setAggWeight(self, aWeight):
         '''
