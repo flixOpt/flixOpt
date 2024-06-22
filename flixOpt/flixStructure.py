@@ -411,7 +411,7 @@ class Element:
         subs = {}
         for aSubElement in self.subElements:
             subs[aSubElement.label] = aSubElement.getEqsAsStr()  # rekursiv
-        ## me:
+        ## Element:
 
         # wenn sub-eqs, dann dict:
         if not (subs == {}):

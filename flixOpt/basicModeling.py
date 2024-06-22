@@ -282,7 +282,7 @@ class Variable:
             self.fixed = True
             self.value = helpers.getVector(value, len)
 
-        # Register me:
+        # Register Element:
         # myMom .variables.append(self) # Komponentenliste
         baseModel.variables.append(self)  # baseModel-Liste mit allen vars
         myMom.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
@@ -486,7 +486,7 @@ class Equation:
 
         log.debug('equation created: ' + str(label))
 
-        ## Register Me:
+        ## Register Element:
         # Equation:
         if eqType == 'ineq':  # lhs <= rhs
             # myMom .ineqs.append(self) # Komponentenliste
