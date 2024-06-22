@@ -174,7 +174,7 @@ class LinearModel:
     # Attention: is overrided by childclass:
     def _charactarizeProblem(self) -> None:
         eq: cEquation
-        var: cVariable
+        var: Variable
 
         self.noOfEqs = len(self.eqs)
         self.noOfSingleEqs = sum([eq.nrOfSingleEquations for eq in self.eqs])
@@ -240,7 +240,7 @@ class LinearModel:
         self.duration['solve'] = round(time.time() - t_start, 2)
 
 
-class cVariable:
+class Variable:
     def __init__(self, label: str, len: int, myMom, baseModel: LinearModel, isBinary: bool = False,
                  value: Optional[Union[int, float]] = None,
                  min: Optional[Union[int, float]] = None, max: Optional[Union[int, float]] = None):  #TODO: Rename max and min!!
@@ -276,7 +276,7 @@ class cVariable:
             minOk = (self.min is None) or (np.all(self.value >= self.min_vec))  # prüft elementweise
             maxOk = (self.max is None) or (np.all(self.value <= self.max_vec))  # prüft elementweise
             if (not (minOk)) or (not (maxOk)):
-                raise Exception('cVariable.value' + self.label_full + ' nicht in min/max Grenzen')
+                raise Exception('Variable.value' + self.label_full + ' nicht in min/max Grenzen')
 
             # Werte in Variable festsetzen:
             self.fixed = True
@@ -375,7 +375,7 @@ class cVariable:
 
 
 # TODO:
-# class cTS_Variable (cVariable):  
+# class cTS_Variable (Variable):
 #   valuesIsPostTimeStep = False # für Speicherladezustände true!!!
 #   oneValDependsOnPrevious : Bool, optional
 #             if every value depends on previous -> not fixed in aggregation mode. The default is True.
@@ -383,7 +383,7 @@ class cVariable:
 
 
 # Timeseries-Variable, optional mit Before-Werten:
-class cVariable_TS(cVariable):
+class cVariable_TS(Variable):
     def __init__(self, label: str, len: int, myMom, baseModel: LinearModel, isBinary: bool = False,
                  value: Optional[Union[int, float, np.ndarray]] = None,
                  min: Optional[Union[int, float, np.ndarray]] = None,
@@ -530,7 +530,7 @@ class cEquation:
         self.addUniversalSummand(variable, factor, isSumOf_Type, indexeOfVariable)
 
     def addUniversalSummand(self, variable, factor, isSumOf_Type, indexeOfVar):
-        if not isinstance(variable, cVariable):
+        if not isinstance(variable, Variable):
             raise Exception('error in eq ' + self.label + ' : no variable given (variable = ' + str(variable) + ')')
         # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
         if np.isscalar(indexeOfVar):

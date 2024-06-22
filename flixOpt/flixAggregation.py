@@ -393,7 +393,7 @@ class cAggregationModeling(flixStructure.cME):
                         aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=True)
 
     def getEqForLinkedIndexe(self, aVar, modBox, fixFirstIndexOfPeriod):
-        aVar: cVariable
+        aVar: Variable
         # todo!: idx_var1/2 wird jedes mal gemacht! nicht schick
 
         # Gleichung:
@@ -421,10 +421,10 @@ class cAggregationModeling(flixStructure.cME):
         # Korrektur: (bisher nur für Binärvariablen:)
         if aVar.isBinary and self.percentageOfPeriodFreedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = cVariable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
-                               isBinary=True)
-            var_K0 = cVariable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
-                               isBinary=True)
+            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
+                              isBinary=True)
+            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
+                              isBinary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
