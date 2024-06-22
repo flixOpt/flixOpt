@@ -60,7 +60,7 @@ class cArgsClass:
             raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
 
 
-class cTS_vector:
+class TimeSeries:
     '''
     Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
     '''
@@ -144,7 +144,7 @@ class cTS_vector:
                 d = d[0]
         return d
 
-    # define, which timeStep-Set should be transfered in data-request self.d_i()    
+    # define, which timeStep-Set should be transfered in data-request self.d_i()
     def activate(self, dataTimeIndexe, d_i_explicit=None):
         # time-Index:
         self.__timeIndexe_actual = dataTimeIndexe
@@ -166,12 +166,12 @@ class cTS_vector:
 
     # Rückgabe Maximum
     def max(self):
-        return cTS_vector.__getMax(self.d)
+        return TimeSeries.__getMax(self.d)
 
         # Maximum für indexe:
 
     def max_i(self):
-        return cTS_vector.__getMax(self.d_i)
+        return TimeSeries.__getMax(self.d_i)
 
     def __getMax(aValue):
         if np.isscalar(aValue):
@@ -218,7 +218,7 @@ class cTS_collection():
 
     def calculateParametersForTSAM(self):
         for i in range(len(self.listOfTS_vectors)):
-            aTS: cTS_vector
+            aTS: TimeSeries
             aTS = self.listOfTS_vectors[i]
             # check uniqueness of label:
             if aTS.label_full in self.seriesDict.keys():
@@ -244,14 +244,14 @@ class cTS_collection():
         agg_types = (aTS.TSraw.agg_type for aTS in TSlistWithAggType)
         return Counter(agg_types)
 
-    def _get_agg_type(self, aTS: cTS_vector):
+    def _get_agg_type(self, aTS: TimeSeries):
         if (aTS.TSraw is not None):
             agg_type = aTS.TSraw.agg_type
         else:
             agg_type = None
         return agg_type
 
-    def _getWeight(self, aTS: cTS_vector):
+    def _getWeight(self, aTS: TimeSeries):
         if aTS.TSraw is None:
             # default:
             weight = 1
@@ -290,13 +290,13 @@ def getEffectDictOfEffectValues(effect_values):
     examples:
       costs = 20                        -> {None:20}
       costs = None                      -> no change
-      costs = {effect1:20, effect2:0.3} -> no change      
+      costs = {effect1:20, effect2:0.3} -> no change
 
     Parameters
     ----------
     effect_values : None, scalar or TS, dict
         see examples
-        
+
     Returns
     -------
     effect_values_dict : dict
@@ -321,7 +321,7 @@ def getEffectDictOfEffectValues(effect_values):
 
 def transformDictValuesToTS(nameOfParam, aDict, owner):
     '''
-      transformiert Wert -> cTS_vector
+      transformiert Wert -> TimeSeries
       für alle {Effekt:Wert}-couples in dict,
 
       Parameters
@@ -331,7 +331,7 @@ def transformDictValuesToTS(nameOfParam, aDict, owner):
       aDict : dict
           {Effect:value}-couples
       owner : class
-          class where cTS_vector belongs to
+          class where TimeSeries belongs to
 
       Returns
       -------
@@ -347,20 +347,20 @@ def transformDictValuesToTS(nameOfParam, aDict, owner):
         aDict_TS = None
     else:
         for effect, value in aDict.items():
-            if not isinstance(value, cTS_vector):
+            if not isinstance(value, TimeSeries):
                 # Subnamen aus key:
                 if effect is None:
                     subname = 'standard'  # Standard-Effekt o.ä. # todo: das ist nicht schön, weil costs in Namen nicht auftaucht
                 else:
                     subname = effect.label  # z.B. costs, Q_th,...
                 nameOfParam_full = nameOfParam + '_' + subname  # name ergänzen mit key.label
-                aDict_TS[effect] = cTS_vector(nameOfParam_full, value, owner)  # Transform to TS
+                aDict_TS[effect] = TimeSeries(nameOfParam_full, value, owner)  # Transform to TS
         return aDict_TS
 
 
 def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
     '''
-    Transforms effect/cost-input to dict of TS, 
+    Transforms effect/cost-input to dict of TS,
       wenn nur wert gegeben, dann wird gegebener effect zugeordnet
       effectToUseIfOnlyValue = None -> Standard-EffektType wird genommen
     Fall 1:
@@ -385,6 +385,6 @@ def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
 
     # add standardeffect if only value is given:
     effectsDict = getEffectDictOfEffectValues(aEffectsValue)
-    # dict-values zu cTS_vectoren:  
+    # dict-values zu TimeSeries:
     effectsDict_TS = transformDictValuesToTS(nameOfParam, effectsDict, ownerOfParam)
     return effectsDict_TS

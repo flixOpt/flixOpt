@@ -255,7 +255,7 @@ class cME(cArgsClass):
     # TODO: besser occupied_args
     def __init__(self, label: str, **kwargs):
         self.label = label
-        self.TS_list: List[cTS_vector] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. cTS_vector)
+        self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
 
         self.subElements: List[cME] = []  # zugehörige Sub-ModelingElements
         self.modBox: Optional[cModelBoxOfES] = None  # hier kommt die aktive ModBox rein
@@ -357,7 +357,7 @@ class cME(cArgsClass):
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben
-        aTS: cTS_vector
+        aTS: TimeSeries
         for aTS in self.TS_list:
             # print(aVar.label)
             aData[aTS.label] = aTS.d
@@ -584,7 +584,7 @@ class cEffectType(cME):
         for effectType, share in self.specificShareToOtherEffects_operation.items():
             # value überschreiben durch TS:
             TS_name = 'specificShareToOtherEffect' + '_' + effectType.label
-            self.specificShareToOtherEffects_operation[effectType] = cTS_vector(TS_name,
+            self.specificShareToOtherEffects_operation[effectType] = TimeSeries(TS_name,
                                                                                 specificShareToOtherEffects_operation[
                                                                                     effectType], self)
 
@@ -707,7 +707,7 @@ class cBaseComponent(cME):
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
+        self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
@@ -1049,7 +1049,7 @@ class cBus(cBaseComponent):  # sollte das wirklich geerbt werden oder eher nur c
 
         if (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0):
             self.withExcess = True
-            self.excessCostsPerFlowHour = cTS_vector('excessCostsPerFlowHour', excessCostsPerFlowHour, self)
+            self.excessCostsPerFlowHour = TimeSeries('excessCostsPerFlowHour', excessCostsPerFlowHour, self)
         else:
             self.withExcess = False
 
@@ -1313,27 +1313,27 @@ class cFlow(cME):
         # args to attributes:
         self.bus = bus
         self.nominal_val = nominal_val  # skalar!
-        self.min_rel = cTS_vector('min_rel', min_rel, self)
-        self.max_rel = cTS_vector('max_rel', max_rel, self)
+        self.min_rel = TimeSeries('min_rel', min_rel, self)
+        self.max_rel = TimeSeries('max_rel', max_rel, self)
 
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
-        #self.positive_gradient = cTS_vector('positive_gradient', positive_gradient, self)
+        #self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
         self.costsPerFlowHour = transFormEffectValuesToTSDict('costsPerFlowHour', costsPerFlowHour, self)
         self.iCanSwitchOff = iCanSwitchOff
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
-        self.onHours_min = None if (onHours_min is None) else cTS_vector('onHours_min', onHours_min, self)
-        self.onHours_max = None if (onHours_max is None) else cTS_vector('onHours_max', onHours_max, self)
-        self.offHours_min = None if (offHours_min is None) else cTS_vector('offHours_min', offHours_min, self)
-        self.offHours_max = None if (offHours_max is None) else cTS_vector('offHours_max', offHours_max, self)
+        self.onHours_min = None if (onHours_min is None) else TimeSeries('onHours_min', onHours_min, self)
+        self.onHours_max = None if (onHours_max is None) else TimeSeries('onHours_max', onHours_max, self)
+        self.offHours_min = None if (offHours_min is None) else TimeSeries('offHours_min', offHours_min, self)
+        self.offHours_max = None if (offHours_max is None) else TimeSeries('offHours_max', offHours_max, self)
         self.switchOnCosts = transFormEffectValuesToTSDict('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
         self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
-        self.exists = cTS_vector('exists', helpers.checkExists(exists), self)
+        self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
         self.group = group # TODO: wird überschrieben von Component!
         self.valuesBeforeBegin = np.array(valuesBeforeBegin) if valuesBeforeBegin else np.array([0, 0])  # list -> np-array
 
@@ -1348,7 +1348,7 @@ class cFlow(cME):
                 raise Exception(
                     'Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
 
-            self.val_rel = cTS_vector('val_rel', val_rel, self)
+            self.val_rel = TimeSeries('val_rel', val_rel, self)
 
         self.investArgs = investArgs
         # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
@@ -1428,10 +1428,10 @@ class cFlow(cME):
 
         # exist-merge aus Flow.exist und Comp.exist
         exists_global = np.multiply(self.exists.d, self.comp.exists.d) # array of 0 and 1
-        self.exists_with_comp = cTS_vector('exists_with_comp', helpers.checkExists(exists_global), self)
+        self.exists_with_comp = TimeSeries('exists_with_comp', helpers.checkExists(exists_global), self)
         # combine max_rel with and exist from the flow and the comp it belongs to
-        self.max_rel_with_exists = cTS_vector('max_rel_with_exists', np.multiply(self.max_rel.d, self.exists_with_comp.d), self)
-        self.min_rel_with_exists = cTS_vector('min_rel_with_exists', np.multiply(self.min_rel.d, self.exists_with_comp.d), self)
+        self.max_rel_with_exists = TimeSeries('max_rel_with_exists', np.multiply(self.max_rel.d, self.exists_with_comp.d), self)
+        self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.d, self.exists_with_comp.d), self)
 
         # prepare invest Feature:
         if self.investArgs is None:
@@ -1748,7 +1748,7 @@ class cEnergySystem:
 
     # get all TS in one list:
     @property
-    def allTSinMEs(self) -> List[cTS_vector]:
+    def allTSinMEs(self) -> List[TimeSeries]:
         ME: cMEModel
         allTS = []
         for ME in self.allMEsOfFirstLayer:
@@ -2009,7 +2009,7 @@ class cEnergySystem:
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activateModbox)
     def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None) -> None:
-        aTS: cTS_vector
+        aTS: TimeSeries
         if dictOfTSAndExplicitData is None:
             dictOfTSAndExplicitData = {}
 
