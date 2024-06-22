@@ -8,6 +8,16 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 from . import flixOptHelperFcts as helpers
 from .flixBasicsPublic import cTSraw
+from typing import Union, Optional
+
+Skalar = Union[int, float]  # Datatype
+Numeric = Union[int, float, np.ndarray]  # Datatype
+# zeitreihenbezogene Input-Daten:
+Numeric_TS = Union[Skalar, np.ndarray, cTSraw]
+# Datatype Numeric_TS:
+#   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
+#   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
+#   cTSraw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
 class cArgsClass:
@@ -60,124 +70,125 @@ class cArgsClass:
             raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
 
 
-class cTS_vector:
+class TimeSeries:
     '''
-    Klasse für Timeseries-Vektoren bzw. Skalare, die für Zeitreihe gelten
+    Class for data that applies to time series, stored as vector (np.ndarray) or scalar.
+
+    This class represents a vector or scalar value that makes the handling of time series easier.
+    It supports various operations such as activation of specific time indices, setting explicit active data, and
+    aggregation weight management.
+
+    Attributes
+    ----------
+    label : str
+        The label for the time series.
+    owner : object
+        The owner object which holds the time series list.
+    TSraw : Optional[cTSraw]
+        The raw time series data if provided as cTSraw.
+    data : Optional[Numeric]
+        The actual data for the time series. Can be None.
+    explicit_active_data : Optional[Numeric]
+        Explicit data to use instead of raw data if provided.
+    active_time_indices : Optional[np.ndarray]
+        Indices of the time steps to activate.
+    aggregation_weight : float
+        Weight for aggregation method, between 0 and 1, normally 1.
     '''
 
-    # create and register in List:
+    def __init__(self, label: str, data: Optional[Numeric_TS], owner):
+        self.label: str = label
+        self.owner: object = owner
 
-    # gets rawdata only of activated esIndexe:
-    @property
-    def d_i_raw(self):
-        if (np.isscalar(self.d)) or (self.d is None) or (self.__timeIndexe_actual is None):
-            return self.d
-        else:
-            return self.d[self.__timeIndexe_actual]
-
-    # Vektor:
-    @property
-    def d_i_raw_vec(self):
-        vec = helpers.getVector(self.d_i_raw, len(self.__timeIndexe_actual))
-        return vec
-
-    @property
-    # gets data only of activated esIndexe or explicit data::
-    def d_i(self):
-        # wenn d_i_explicit gesetzt wurde:
-        if self.d_i_explicit is not None:
-            return self.d_i_explicit
-        else:
-            return self.d_i_raw
-
-    @property
-    def isscalar(self):
-        return np.isscalar(self.d)
-
-    @property
-    def isArray(self):
-        return (not (self.isscalar)) & (not (self.d is None))
-
-    @property
-    def label_full(self):
-        return self.owner.label_full + '_' + self.label
-
-    def __init__(self, label, value, owner):
-        '''
-        Parameters
-        ----------
-        value :
-            scalar, array or cTSraw!
-        owner :
-        '''
-        self.label = label
-        self.owner = owner
-
-        # if value is cTSraw, then extract value:
-        if isinstance(value, cTSraw):
-            self.TSraw = value
-            value = self.TSraw.value  # extract value
+        if isinstance(data, cTSraw):
+            self.TSraw: Optional[cTSraw] = data
+            data = self.TSraw.value  # extract value
+            #TODO: Instead of storing the cTSraw object, storing the underlying data directly would be preferable.
         else:
             self.TSraw = None
 
-        self.d = self.__makeSkalarIfPossible(value)  # (d wie data), d so knapp wie möglich speichern
-        self.d_i_explicit = None  #
+        self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
+        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
 
-        self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
+        self.active_time_indices = None  # aktuelle timeIndexe der modBox
 
-        owner.TS_list.append(self)
+        owner.TS_list.append(self)  # Register TimeSeries in owner
 
-        self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
+        self._aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
-        return f"{self.d}"
+        return f"{self.active_data}"
+
+    @property
+    def active_data_vector(self) -> np.ndarray:
+        # Always returns the active data as a vector.
+        return helpers.getVector(self.active_data, len(self.active_time_indices))
+
+    @property
+    def active_data(self) -> Numeric:
+        # wenn explicit_active_data gesetzt wurde:
+        if self.explicit_active_data is not None:
+            return self.explicit_active_data
+
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_time_indices is None)
+        if indices_not_applicable:
+            return self.data
+        else:
+            return self.data[self.active_time_indices]
+
+    @property
+    def is_scalar(self) -> bool:
+        return np.isscalar(self.data)
+
+    @property
+    def is_array(self) -> bool:
+        return not self.is_scalar and self.data is not None
+
+    @property
+    def label_full(self) -> str:
+        return self.owner.label_full + '_' + self.label
+
+    @property
+    def aggregation_weight(self):
+        return self._aggregation_weight
+
+    @aggregation_weight.setter
+    def aggregation_weight(self, weight: Union[int, float]):
+        if weight > 1 or weight < 0:
+            raise Exception('Aggregation weight must not be below 0 or above 1!')
+        self._aggregation_weight = weight
 
     @staticmethod
-    def __makeSkalarIfPossible(d):
-        if (np.isscalar(d)) or (d is None):
-            # do nothing
-            pass
-        else:
-            d = np.array(d)  # Umwandeln, da einfaches slicing mit Index-Listen nur mit np-Array geht.
-            # Wenn alle Werte gleich, dann Vektor in Skalar umwandeln:
-            if np.all(d == d[0]):
-                d = d[0]
-        return d
+    def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
+        """
+        Convert an array to a scalar if all values are equal, or return the array as-is.
+        Can Return None if the passed data is None
 
-    # define, which timeStep-Set should be transfered in data-request self.d_i()    
-    def activate(self, dataTimeIndexe, d_i_explicit=None):
-        # time-Index:
-        self.__timeIndexe_actual = dataTimeIndexe
+        Parameters
+        ----------
+        data : Numeric, None
+            The data to process.
 
-        # explicitData:
-        if d_i_explicit is not None:
-            assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
-                    (len(d_i_explicit) == 1)), 'd_i_explicit has not right length!'
+        Returns
+        -------
+        Numeric
+            A scalar if all values in the array are equal, otherwise the array itself. None, if the passed value is None
+        """
+        #TODO: Should this really return None Values?
+        if np.isscalar(data) or data is None:
+            return data
+        data = np.array(data)
+        if np.all(data == data[0]):
+            return data[0]
+        return data
 
-        self.d_i_explicit = self.__makeSkalarIfPossible(d_i_explicit)
+    def activate(self, time_indices, explicit_active_data: Optional = None):
+        self.active_time_indices = time_indices
 
-    def setAggWeight(self, aWeight):
-        '''
-        only for aggregation: set weight of timeseries for creating of typical periods!
-        '''
-        self.weight_agg = aWeight
-        if (aWeight > 1) or (aWeight < 0):
-            raise Exception('weigth must be between 0 and 1!')
-
-    # Rückgabe Maximum
-    def max(self):
-        return cTS_vector.__getMax(self.d)
-
-        # Maximum für indexe:
-
-    def max_i(self):
-        return cTS_vector.__getMax(self.d_i)
-
-    def __getMax(aValue):
-        if np.isscalar(aValue):
-            return aValue
-        else:
-            return max(aValue)
+        if explicit_active_data is not None:
+            assert len(explicit_active_data) == len(self.active_time_indices) or len(explicit_active_data) == 1, \
+                'explicit_active_data has incorrect length!'
+            self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
 
 
 class cTS_collection():
@@ -218,14 +229,14 @@ class cTS_collection():
 
     def calculateParametersForTSAM(self):
         for i in range(len(self.listOfTS_vectors)):
-            aTS: cTS_vector
+            aTS: TimeSeries
             aTS = self.listOfTS_vectors[i]
             # check uniqueness of label:
             if aTS.label_full in self.seriesDict.keys():
                 raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
             # add to dict:
             self.seriesDict[
-                aTS.label_full] = aTS.d_i_raw_vec  # Vektor zuweisen!# TODO: müsste doch d_i sein, damit abhängig von Auswahlzeitraum, oder???
+                aTS.label_full] = aTS.active_data_vector  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
             self.weightDict[aTS.label_full] = self._getWeight(aTS)  # Wichtung ermitteln!
             if (aTS.TSraw is not None):
                 if aTS.TSraw in self.addPeakMax_TSraw:
@@ -244,14 +255,14 @@ class cTS_collection():
         agg_types = (aTS.TSraw.agg_type for aTS in TSlistWithAggType)
         return Counter(agg_types)
 
-    def _get_agg_type(self, aTS: cTS_vector):
+    def _get_agg_type(self, aTS: TimeSeries):
         if (aTS.TSraw is not None):
             agg_type = aTS.TSraw.agg_type
         else:
             agg_type = None
         return agg_type
 
-    def _getWeight(self, aTS: cTS_vector):
+    def _getWeight(self, aTS: TimeSeries):
         if aTS.TSraw is None:
             # default:
             weight = 1
@@ -290,13 +301,13 @@ def getEffectDictOfEffectValues(effect_values):
     examples:
       costs = 20                        -> {None:20}
       costs = None                      -> no change
-      costs = {effect1:20, effect2:0.3} -> no change      
+      costs = {effect1:20, effect2:0.3} -> no change
 
     Parameters
     ----------
     effect_values : None, scalar or TS, dict
         see examples
-        
+
     Returns
     -------
     effect_values_dict : dict
@@ -321,7 +332,7 @@ def getEffectDictOfEffectValues(effect_values):
 
 def transformDictValuesToTS(nameOfParam, aDict, owner):
     '''
-      transformiert Wert -> cTS_vector
+      transformiert Wert -> TimeSeries
       für alle {Effekt:Wert}-couples in dict,
 
       Parameters
@@ -331,7 +342,7 @@ def transformDictValuesToTS(nameOfParam, aDict, owner):
       aDict : dict
           {Effect:value}-couples
       owner : class
-          class where cTS_vector belongs to
+          class where TimeSeries belongs to
 
       Returns
       -------
@@ -347,20 +358,20 @@ def transformDictValuesToTS(nameOfParam, aDict, owner):
         aDict_TS = None
     else:
         for effect, value in aDict.items():
-            if not isinstance(value, cTS_vector):
+            if not isinstance(value, TimeSeries):
                 # Subnamen aus key:
                 if effect is None:
                     subname = 'standard'  # Standard-Effekt o.ä. # todo: das ist nicht schön, weil costs in Namen nicht auftaucht
                 else:
                     subname = effect.label  # z.B. costs, Q_th,...
                 nameOfParam_full = nameOfParam + '_' + subname  # name ergänzen mit key.label
-                aDict_TS[effect] = cTS_vector(nameOfParam_full, value, owner)  # Transform to TS
+                aDict_TS[effect] = TimeSeries(nameOfParam_full, value, owner)  # Transform to TS
         return aDict_TS
 
 
 def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
     '''
-    Transforms effect/cost-input to dict of TS, 
+    Transforms effect/cost-input to dict of TS,
       wenn nur wert gegeben, dann wird gegebener effect zugeordnet
       effectToUseIfOnlyValue = None -> Standard-EffektType wird genommen
     Fall 1:
@@ -385,6 +396,6 @@ def transFormEffectValuesToTSDict(nameOfParam, aEffectsValue, ownerOfParam):
 
     # add standardeffect if only value is given:
     effectsDict = getEffectDictOfEffectValues(aEffectsValue)
-    # dict-values zu cTS_vectoren:  
+    # dict-values zu TimeSeries:
     effectsDict_TS = transformDictValuesToTS(nameOfParam, effectsDict, ownerOfParam)
     return effectsDict_TS

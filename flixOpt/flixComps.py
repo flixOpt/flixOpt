@@ -37,7 +37,7 @@ class cBaseLinearTransformer(cBaseComponent):
         factor_Sets : list
             linear relation between flows
             eq: sum (factor * flow_in) = sum (factor * flow_out)
-            factor can be cTS_vector, scalar or list.
+            factor can be TimeSeries, scalar or list.
             Either 'factor_Sets' or 'segmentsOfFlows' can be used!
 
             example heat pump:  
@@ -90,12 +90,12 @@ class cBaseLinearTransformer(cBaseComponent):
 
         # copy information about exists into segments of flows
         if self.segmentsOfFlows is not None:
-            if isinstance(self.exists.d_i, (np.ndarray, list)):
+            if isinstance(self.exists.active_data, (np.ndarray, list)):
                 for key, item in self.segmentsOfFlows.items():
-                    self.segmentsOfFlows[key] = [list(np.array(item) * factor) for factor in self.exists.d_i]
-            elif isinstance(self.exists.d_i, (int, float)):
+                    self.segmentsOfFlows[key] = [list(np.array(item) * factor) for factor in self.exists.active_data]
+            elif isinstance(self.exists.active_data, (int, float)):
                 for key, item in self.segmentsOfFlows.items():
-                    self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
+                    self.segmentsOfFlows[key] = list(np.array(item) * self.exists.active_data)
 
     def __str__(self):
         # Creating a representation for factor_Sets with flow labels and their corresponding values
@@ -142,7 +142,7 @@ class cBaseLinearTransformer(cBaseComponent):
 
     def transformFactorsToTS(self, factor_Sets):
         """
-        macht alle Faktoren, die nicht cTS_vector sind, zu cTS_vector
+        macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries
 
         :param factor_Sets:
         :return:
@@ -195,13 +195,13 @@ class cBaseLinearTransformer(cBaseComponent):
                                     flow.label_full +
                                     ') , does not make sense together!')
 
-            # Flow als Keys rauspicken und alle Stützstellen als cTS_Vector:
+            # Flow als Keys rauspicken und alle Stützstellen als TimeSeries:
             self.segmentsOfFlows_TS = self.segmentsOfFlows
             for aFlow in self.segmentsOfFlows.keys():
-                # 2. Stützstellen zu cTS_vector machen, wenn noch nicht cTS_vector!:
+                # 2. Stützstellen zu TimeSeries machen, wenn noch nicht TimeSeries!:
                 for i in range(len(self.segmentsOfFlows[aFlow])):
                     stuetzstelle = self.segmentsOfFlows[aFlow][i]
-                    self.segmentsOfFlows_TS[aFlow][i] = cTS_vector('Stuetzstelle', stuetzstelle, self)
+                    self.segmentsOfFlows_TS[aFlow][i] = TimeSeries('Stuetzstelle', stuetzstelle, self)
 
             def get_var_on():
                 return self.mod.var_on
@@ -255,10 +255,10 @@ class cBaseLinearTransformer(cBaseComponent):
 
                 eq_linearFlowRelation_i = cEquation('linearFlowRelation_' + str(i), self, modBox)
                 for inFlow in leftSideFlows:
-                    aFactor = aFactorVec_Dict[inFlow].d_i
+                    aFactor = aFactorVec_Dict[inFlow].active_data
                     eq_linearFlowRelation_i.addSummand(inFlow.mod.var_val, aFactor)  # input1.val[t]      * factor[t]
                 for outFlow in rightSideFlows:
-                    aFactor = aFactorVec_Dict[outFlow].d_i
+                    aFactor = aFactorVec_Dict[outFlow].active_data
                     eq_linearFlowRelation_i.addSummand(outFlow.mod.var_val, -aFactor)  # output.val[t] * -1 * factor[t]
 
                 eq_linearFlowRelation_i.addRightSide(0)  # nur zur Komplettisierung der Gleichung
@@ -334,7 +334,7 @@ class cKessel(cBaseLinearTransformer):
         super().__init__(label, inputs=[Q_fu], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
 
         # args to attributes:
-        self.eta = cTS_vector('eta', eta, self)  # thermischer Wirkungsgrad
+        self.eta = TimeSeries('eta', eta, self)  # thermischer Wirkungsgrad
         self.Q_fu = Q_fu
         self.Q_th = Q_th
 
@@ -382,7 +382,7 @@ class cEHK(cBaseLinearTransformer):
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
 
         # args to attributes:
-        self.eta = cTS_vector('eta', eta, self)  # thermischer Wirkungsgrad
+        self.eta = TimeSeries('eta', eta, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
 
@@ -425,7 +425,7 @@ class cHeatPump(cBaseLinearTransformer):
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[heatPump_bilanz], **kwargs)
 
         # args to attributes:
-        self.COP = cTS_vector('COP', COP, self)  # thermischer Wirkungsgrad
+        self.COP = TimeSeries('COP', COP, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
 
@@ -466,7 +466,7 @@ class cCoolingTower(cBaseLinearTransformer):
         super().__init__(label, inputs=[P_el, Q_th], outputs=[], factor_Sets=[auxElectricity_eq], **kwargs)
 
         # args to attributes:
-        self.specificElectricityDemand = cTS_vector('specificElectricityDemand', specificElectricityDemand,
+        self.specificElectricityDemand = TimeSeries('specificElectricityDemand', specificElectricityDemand,
                                                     self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
@@ -520,8 +520,8 @@ class cKWK(cBaseLinearTransformer):
         super().__init__(label, inputs=[Q_fu], outputs=[P_el, Q_th], factor_Sets=[waerme_glg, strom_glg], **kwargs)
 
         # args to attributes:
-        self.eta_th = cTS_vector('eta_th', eta_th, self)
-        self.eta_el = cTS_vector('eta_el', eta_el, self)
+        self.eta_th = TimeSeries('eta_th', eta_th, self)
+        self.eta_el = TimeSeries('eta_el', eta_el, self)
         self.Q_fu = Q_fu
         self.P_el = P_el
         self.Q_th = Q_th
@@ -575,7 +575,7 @@ class cAbwaermeHP(cBaseLinearTransformer):
                          factor_Sets=[heatPump_bilanzEl, heatPump_bilanzAb], **kwargs)
 
         # args to attributes:
-        self.COP = cTS_vector('COP', COP, self)  # thermischer Wirkungsgrad
+        self.COP = TimeSeries('COP', COP, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_ab = Q_ab
         self.Q_th = Q_th
@@ -685,17 +685,17 @@ class cStorage(cBaseComponent):
         self.inFlow = inFlow
         self.outFlow = outFlow
         self.capacity_inFlowHours = capacity_inFlowHours
-        self.max_rel_chargeState = cTS_vector('max_rel_chargeState', max_rel_chargeState, self)
-        self.min_rel_chargeState = cTS_vector('min_rel_chargeState', min_rel_chargeState, self)
+        self.max_rel_chargeState = TimeSeries('max_rel_chargeState', max_rel_chargeState, self)
+        self.min_rel_chargeState = TimeSeries('min_rel_chargeState', min_rel_chargeState, self)
 
         self.group = group
 
         # add last time step (if not scalar):
-        existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else np.append(self.exists.d_i, self.exists.d_i[-1])
-        self.max_rel_chargeState = cTS_vector('max_rel_chargeState',
-                                                  self.max_rel_chargeState.d_i * existsWithEndTimestep, self)
-        self.min_rel_chargeState = cTS_vector('min_rel_chargeState',
-                                                  self.min_rel_chargeState.d_i * existsWithEndTimestep, self)
+        existsWithEndTimestep = self.exists.active_data if np.isscalar(self.exists.active_data) else np.append(self.exists.active_data, self.exists.active_data[-1])
+        self.max_rel_chargeState = TimeSeries('max_rel_chargeState',
+                                              self.max_rel_chargeState.active_data * existsWithEndTimestep, self)
+        self.min_rel_chargeState = TimeSeries('min_rel_chargeState',
+                                              self.min_rel_chargeState.active_data * existsWithEndTimestep, self)
 
         # copy information of "group" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -709,9 +709,9 @@ class cStorage(cBaseComponent):
             self.charge_state_end_max = self.capacity_inFlowHours
         else:
             self.charge_state_end_max = charge_state_end_max
-        self.eta_load = cTS_vector('eta_load', eta_load, self)
-        self.eta_unload = cTS_vector('eta_unload', eta_unload, self)
-        self.fracLossPerHour = cTS_vector('fracLossPerHour', fracLossPerHour, self)
+        self.eta_load = TimeSeries('eta_load', eta_load, self)
+        self.eta_unload = TimeSeries('eta_unload', eta_unload, self)
+        self.fracLossPerHour = TimeSeries('fracLossPerHour', fracLossPerHour, self)
         self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
 
         self.investArgs = investArgs
@@ -749,8 +749,8 @@ class cStorage(cBaseComponent):
         # Variablen:
 
         if self.featureInvest is None:
-            lb = self.min_rel_chargeState.d_i * self.capacity_inFlowHours
-            ub = self.max_rel_chargeState.d_i * self.capacity_inFlowHours
+            lb = self.min_rel_chargeState.active_data * self.capacity_inFlowHours
+            ub = self.max_rel_chargeState.active_data * self.capacity_inFlowHours
             fix_value = None
 
             if np.isscalar(lb):
@@ -850,13 +850,13 @@ class cStorage(cBaseComponent):
         timeIndexeChargeState = range(timeIndexe.start, timeIndexe.stop + 1)
         self.eq_charge_state = cEquation('charge_state', self, modBox, eqType='eq')
         self.eq_charge_state.addSummand(self.mod.var_charge_state,
-                                        -1 * (1 - self.fracLossPerHour.d_i * modBox.dtInHours),
+                                        -1 * (1 - self.fracLossPerHour.active_data * modBox.dtInHours),
                                         timeIndexeChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
         self.eq_charge_state.addSummand(self.mod.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
-        self.eq_charge_state.addSummand(self.inFlow.mod.var_val, -1 * self.eta_load.d_i * modBox.dtInHours)
+        self.eq_charge_state.addSummand(self.inFlow.mod.var_val, -1 * self.eta_load.active_data * modBox.dtInHours)
         self.eq_charge_state.addSummand(self.outFlow.mod.var_val,
-                                        1 / self.eta_unload.d_i * modBox.dtInHours)  # Achtung hier 1/eta!
+                                        1 / self.eta_unload.active_data * modBox.dtInHours)  # Achtung hier 1/eta!
 
         # Speicherladezustand am Ende
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
@@ -1156,8 +1156,8 @@ class cTransportation(cBaseComponent):
             assert in2.bus == out1.bus, 'in2.bus is not equal out1.bus!'
             assert out2.bus == in1.bus, 'out2.bus is not equal in1.bus!'
 
-        self.loss_rel = cTS_vector('loss_rel', loss_rel, self)  #
-        self.loss_abs = cTS_vector('loss_abs', loss_abs, self)  #
+        self.loss_rel = TimeSeries('loss_rel', loss_rel, self)  #
+        self.loss_abs = TimeSeries('loss_abs', loss_abs, self)  #
         self.isAlwaysOn = isAlwaysOn
         self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
 
@@ -1184,21 +1184,21 @@ class cTransportation(cBaseComponent):
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
         self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
-        self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.d_i))
+        self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.active_data))
         self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
-        if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
+        if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
             assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
-            self.eq_dir1.addSummand(self.in1.mod.var_on, -1 * self.loss_abs.d_i)
+            self.eq_dir1.addSummand(self.in1.mod.var_on, -1 * self.loss_abs.active_data)
 
         # second direction:        
         if self.in2 is not None:
             # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
             self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
-            self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.d_i)
+            self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.active_data)
             self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
-            if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
+            if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
                 assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
-                self.eq_dir2.addSummand(self.in2.mod.var_on, -1 * self.loss_abs.d_i)
+                self.eq_dir2.addSummand(self.in2.mod.var_on, -1 * self.loss_abs.active_data)
 
         # always On (in at least one direction)
         # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections

@@ -634,7 +634,7 @@ class flix_results():
 
             fig.autofmt_xdate()
 
-            xfmt = mdates.DateFormatter('%d-%m')
+            xfmt = mdates.DateFormatter('%data-%m')
             ax.xaxis.set_major_formatter(xfmt)
 
             plt.title(title, fontsize=30)
