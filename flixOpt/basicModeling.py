@@ -56,7 +56,7 @@ class LinearModel:
 
     @property
     def variables_TSonly(self) -> List:
-        variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, cVariable_TS)]
+        variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, VariableTS)]
         return variables_TSonly
 
     def __init__(self, label: str, aModType):
@@ -355,7 +355,7 @@ class Variable:
         maxChars = 50  # länge begrenzen falls vector-Darstellung
         aStr = 'var'
 
-        if isinstance(self, cVariable_TS):
+        if isinstance(self, VariableTS):
             aStr += ' TS'
         else:
             aStr += '   '
@@ -383,7 +383,7 @@ class Variable:
 
 
 # Timeseries-Variable, optional mit Before-Werten:
-class cVariable_TS(Variable):
+class VariableTS(Variable):
     def __init__(self, label: str, len: int, myMom, baseModel: LinearModel, isBinary: bool = False,
                  value: Optional[Union[int, float, np.ndarray]] = None,
                  min: Optional[Union[int, float, np.ndarray]] = None,
@@ -438,7 +438,7 @@ class cBeforeValueSet:
         #                      (aME2, aVar2.name): (value, time),
         #                       ...                       }
         for aVar in self.fromBaseModel.variables_TSonly:
-            aVar: cVariable_TS
+            aVar: VariableTS
             if aVar.activated_beforeValues:
                 # Before-Value holen:
                 (aValue, aTime) = aVar.getBeforeValueForNEXTSegment(lastUsedIndex)
