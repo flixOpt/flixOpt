@@ -1035,7 +1035,7 @@ class cFeatureInvest(cFeature):
         if isinstance(aEffect, Effect):
             aStr = aEffect.label
         elif aEffect is None:
-            aStr = modBox.es.listOfEffectTypes.standardType().label  # Standard-Effekt
+            aStr = modBox.system.listOfEffectTypes.standardType().label  # Standard-Effekt
         else:
             raise Exception('Given effect (' + str(aEffect) + ') is not an effect!')
         # new variable, i.e for costs, CO2,... :

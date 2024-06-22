@@ -296,7 +296,7 @@ from .basicModeling import *
 
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
 class cAggregationModeling(flixStructure.Element):
-    def __init__(self, label, es, indexVectorsOfClusters, fixStorageFlows=True, fixBinaryVarsOnly=True,
+    def __init__(self, label, system, indexVectorsOfClusters, fixStorageFlows=True, fixBinaryVarsOnly=True,
                  listOfElementsToClusterize=None, percentageOfPeriodFreedom=0, costsOfPeriodFreedom=0, **kwargs):
         '''
         Modeling-Element for "index-equating"-equations
@@ -329,7 +329,7 @@ class cAggregationModeling(flixStructure.Element):
 
         '''
         es: flixStructure.System
-        self.es = es
+        self.system = system
         self.indexVectorsOfClusters = indexVectorsOfClusters
         self.fixStorageFlows = fixStorageFlows
         self.fixBinaryVarsOnly = fixBinaryVarsOnly
@@ -355,12 +355,12 @@ class cAggregationModeling(flixStructure.Element):
 
         if self.listOfElementsToClusterize is None:
             # Alle:
-            compSet = set(self.es.listOfComponents)
-            flowSet = self.es.setOfFlows
+            compSet = set(self.system.listOfComponents)
+            flowSet = self.system.setOfFlows
         else:
             # Ausgewählte:
             compSet = set(self.listOfElementsToClusterize)
-            flowSet = self.es.getFlows(self.listOfElementsToClusterize)
+            flowSet = self.system.getFlows(self.listOfElementsToClusterize)
 
         flow: flixStructure.Flow
 

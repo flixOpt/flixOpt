@@ -37,10 +37,9 @@ class SystemModel(LinearModel):
         infos.update(self._infos)  # da steht schon zeug drin
         return infos
 
-    def __init__(self, label, aModType, es, esTimeIndexe, TS_explicit=None):
+    def __init__(self, label, aModType, system, esTimeIndexe, TS_explicit=None):
         super().__init__(label, aModType)
-        self.es: System
-        self.es = es  # energysystem (wäre Attribut von cTimePeriodModel)
+        self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.esTimeIndexe = esTimeIndexe
         self.nrOfTimeSteps = len(esTimeIndexe)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
@@ -55,7 +54,7 @@ class SystemModel(LinearModel):
 
         self.beforeValueSet = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
-        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = es.getTimeDataOfTimeIndexe(
+        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
             esTimeIndexe)
 
     # extract model of Element:
@@ -73,9 +72,9 @@ class SystemModel(LinearModel):
         super()._charactarizeProblem()
 
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
-        # self.es.activate_model()
-        self._infos['str_Eqs'] = self.es.getEqsAsStr()
-        self._infos['str_Vars'] = self.es.getVarsAsStr()
+        # self.system.activate_model()
+        self._infos['str_Eqs'] = self.system.getEqsAsStr()
+        self._infos['str_Vars'] = self.system.getVarsAsStr()
 
     # 'gurobi'
     def solve(self, gapFrac=0.02, timelimit=3600, solver='cbc', displaySolverOutput=True, excessThreshold=0.1,
@@ -130,21 +129,21 @@ class SystemModel(LinearModel):
         print('')
         # Variablen-Ergebnisse abspeichern:      
         # 1. dict:  
-        (self.results, self.results_var) = self.es.getResultsAfterSolve()
+        (self.results, self.results_var) = self.system.getResultsAfterSolve()
         # 2. struct:
         self.results_struct = helpers.createStructFromDictInDict(self.results)
 
         print('##############################################################')
         print('################### finished #################################')
         print('')
-        for aEffect in self.es.globalComp.listOfEffectTypes:
+        for aEffect in self.system.globalComp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
             print('  operation: ' + str(aEffect.operation.model.var_sum.getResult()))
             print('  invest   : ' + str(aEffect.invest.model.var_sum.getResult()))
             print('  sum      : ' + str(aEffect.all.model.var_sum.getResult()))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.es.globalComp.penalty.model.var_sum.getResult()))
+        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.getResult()))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_value))
         try:
@@ -152,7 +151,7 @@ class SystemModel(LinearModel):
         except:
             print
         print('')
-        for aBus in self.es.setOfBuses:
+        for aBus in self.system.setOfBuses:
             if aBus.withExcess:
                 if any(self.results[aBus.label]['excessIn'] > 1e-6) or any(
                         self.results[aBus.label]['excessOut'] > 1e-6):
@@ -161,7 +160,7 @@ class SystemModel(LinearModel):
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.es.globalComp.penalty.model.var_sum.getResult() > 10:
+        if self.system.globalComp.penalty.model.var_sum.getResult() > 10:
             print('Take care: -> high penalty makes the used gapFrac quite high')
             print('           -> real costs are not optimized to gapfrac')
 
@@ -175,13 +174,13 @@ class SystemModel(LinearModel):
 
             aEffectDict = {}
             main_results_str['Effects'] = aEffectDict
-            for aEffect in self.es.globalComp.listOfEffectTypes:
+            for aEffect in self.system.globalComp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
                 aDict['operation'] = str(aEffect.operation.model.var_sum.getResult())
                 aDict['invest'] = str(aEffect.invest.model.var_sum.getResult())
                 aDict['sum'] = str(aEffect.all.model.var_sum.getResult())
-            main_results_str['penaltyCosts'] = str(self.es.globalComp.penalty.model.var_sum.getResult())
+            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.getResult())
             main_results_str['Result of Obj'] = self.objective_value
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -189,7 +188,7 @@ class SystemModel(LinearModel):
                 main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
             main_results_str['busesWithExcess'] = busesWithExcess
-            for aBus in self.es.setOfBuses:
+            for aBus in self.system.setOfBuses:
                 if aBus.withExcess:
                     if sum(self.results[aBus.label]['excessIn']) > excessThreshold or sum(
                             self.results[aBus.label]['excessOut']) > excessThreshold:
@@ -199,7 +198,7 @@ class SystemModel(LinearModel):
                      'not invested': {}
                      }
             main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.es.allInvestFeatures:
+            for aInvestFeature in self.system.allInvestFeatures:
                 investValue = aInvestFeature.model.var_investmentSize.getResult()
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
@@ -1854,7 +1853,7 @@ class System:
             # in liste ergänzen:
             self.listOfEffectTypes.append(aNewEffect)
 
-        # an globalComp durchreichen: TODO: doppelte Haltung in es und globalComp ist so nicht schick.
+        # an globalComp durchreichen: TODO: doppelte Haltung in system und globalComp ist so nicht schick.
         self.globalComp.listOfEffectTypes = self.listOfEffectTypes
 
     # Komponenten registrieren:
@@ -2258,7 +2257,7 @@ class Calculation:
         calcInfos['no ChosenIndexe'] = len(self.chosenEsTimeIndexe)
         calcInfos['calcType'] = self.calcType
         calcInfos['duration'] = self.durations
-        infos['system_description'] = self.es.getSystemDescr()
+        infos['system_description'] = self.system.getSystemDescr()
         infos['system_models'] = {}
         infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
         infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
@@ -2289,14 +2288,14 @@ class Calculation:
         return self.__results_struct
 
     # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, es: System, modType, chosenEsTimeIndexe=None, pathForSaving='results', ):
+    def __init__(self, label, system: System, modType, chosenEsTimeIndexe=None, pathForSaving='results', ):
         '''
         Parameters
         ----------
         label : str
             name of calculation
-        es : System
-            energysystem which should be calculated
+        system : System
+            system which should be calculated
         modType : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
         chosenEsTimeIndexe : None, list
@@ -2307,7 +2306,7 @@ class Calculation:
         '''
         self.label = label
         self.nameOfCalc = None  # name for storing results
-        self.es = es
+        self.system = system
         self.modType = modType
         self.chosenEsTimeIndexe = chosenEsTimeIndexe
         self.pathForSaving = pathForSaving
@@ -2321,11 +2320,11 @@ class Calculation:
         self.TSlistForAggregation = None  # list of timeseries for aggregation
         # assert from_index < to_index
         # assert from_index >= 0
-        # assert to_index <= len(self.es.timeSeries)-1
+        # assert to_index <= len(self.system.timeSeries)-1
 
         # Wenn chosenEsTimeIndexe = None, dann alle nehmen
-        if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(es.timeSeries))
-        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = es.getTimeDataOfTimeIndexe(
+        if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.timeSeries))
+        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
             self.chosenEsTimeIndexe)
         helpers.checkTimeSeries('chosenEsTimeIndexe', self.timeSeries)
 
@@ -2345,16 +2344,16 @@ class Calculation:
         self.checkIfAlreadyModeled()
         self.calcType = 'full'
         # System finalisieren:
-        self.es.finalize()
+        self.system.finalize()
 
         t_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen:
-        system_model = SystemModel(self.label, self.modType, self.es,
-                              self.chosenEsTimeIndexe)  # alle Indexe nehmen!
+        system_model = SystemModel(self.label, self.modType, self.system,
+                                   self.chosenEsTimeIndexe)  # alle Indexe nehmen!
         # model aktivieren:
-        self.es.activate_model(system_model)
+        self.system.activate_model(system_model)
         # modellieren:
-        self.es.doModelingOfElements()
+        self.system.doModelingOfElements()
 
         self.durations['modeling'] = round(time.time() - t_start, 2)
         self.system_models.append(system_model)
@@ -2405,9 +2404,9 @@ class Calculation:
         t_start = time.time()
 
         # system finalisieren:
-        self.es.finalize()
+        self.system.finalize()
 
-        if len(self.es.allInvestFeatures) > 0:
+        if len(self.system.allInvestFeatures) > 0:
             raise Exception('segmented calculation with Invest-Parameters does not make sense!')
 
         # nrOfTimeSteps = self.to_index - self.from_index +1
@@ -2415,7 +2414,7 @@ class Calculation:
         assert nrOfUsedSteps <= segmentLen
         assert segmentLen <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
 
-        # timeSeriesOfSim = self.es.timeSeries[from_index:to_index+1]
+        # timeSeriesOfSim = self.system.timeSeries[from_index:to_index+1]
 
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
         nrOfSimSegments = math.ceil((self.nrOfTimeSteps) / nrOfUsedSteps)
@@ -2444,11 +2443,11 @@ class Calculation:
                 realNrOfUsedSteps = nrOfUsedSteps
 
             print(
-                str(i) + '. Segment ' + ' (es-indexe ' + str(startIndex_global) + '...' + str(endIndex_global) + ') :')
+                str(i) + '. Segment ' + ' (system-indexe ' + str(startIndex_global) + '...' + str(endIndex_global) + ') :')
 
             # Modellierungsbox / TimePeriod-Box bauen:
             label = self.label + '_seg' + str(i)
-            segmentModBox = SystemModel(label, self.modType, self.es, indexe_global)  # alle Indexe nehmen!
+            segmentModBox = SystemModel(label, self.modType, self.system, indexe_global)  # alle Indexe nehmen!
             segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
 
             # Startwerte übergeben von Vorgänger-system_model:
@@ -2462,11 +2461,11 @@ class Calculation:
                 # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
-            self.es.activate_model(segmentModBox)
+            self.system.activate_model(segmentModBox)
 
             # modellieren:
             t_start_modeling = time.time()
-            self.es.doModelingOfElements()
+            self.system.doModelingOfElements()
             self.durations['modeling'] += round(time.time() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
             self.segmentModBoxList.append(segmentModBox)
@@ -2553,10 +2552,10 @@ class Calculation:
         self.calcType = 'aggregated'
         t_start_agg = time.time()
         # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-        self.es.activateInTS(self.chosenEsTimeIndexe)
+        self.system.activateInTS(self.chosenEsTimeIndexe)
 
         # Zeitdaten generieren:
-        (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.es.getTimeDataOfTimeIndexe(
+        (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.system.getTimeDataOfTimeIndexe(
             self.chosenEsTimeIndexe)
 
         # check equidistant timesteps:
@@ -2569,7 +2568,7 @@ class Calculation:
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
-        self.TSlistForAggregation = [item for item in self.es.all_TS_in_elements if item.is_array]
+        self.TSlistForAggregation = [item for item in self.system.all_TS_in_elements if item.is_array]
         self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
                                                        addPeakMax_TSraw=addPeakMax,
                                                        addPeakMin_TSraw=addPeakMin,
@@ -2648,7 +2647,7 @@ class Calculation:
         # ################
         # ### Modeling ###
 
-        aggregationModel = flixAgg.cAggregationModeling('aggregation', self.es,
+        aggregationModel = flixAgg.cAggregationModeling('aggregation', self.system,
                                                         indexVectorsOfClusters=dataAgg.indexVectorsOfClusters,
                                                         fixBinaryVarsOnly=fixBinaryVarsOnly,
                                                         fixStorageFlows=fixStorageFlows,
@@ -2657,7 +2656,7 @@ class Calculation:
                                                         costsOfPeriodFreedom=costsOfPeriodFreedom)
 
         # temporary Modeling-Element for equalizing indices of aggregation:
-        self.es.addTemporaryElements(aggregationModel)
+        self.system.addTemporaryElements(aggregationModel)
 
         if fixBinaryVarsOnly:
             TS_explicit = None
@@ -2671,19 +2670,19 @@ class Calculation:
 
         # ##########################
         # ## System finalizing: ##
-        self.es.finalize()
+        self.system.finalize()
 
         self.durations['aggregation'] = round(time.time() - t_start_agg, 2)
 
         t_m_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.label, self.modType, self.es, self.chosenEsTimeIndexe,
-                              TS_explicit)  # alle Indexe nehmen!
+        system_model = SystemModel(self.label, self.modType, self.system, self.chosenEsTimeIndexe,
+                                   TS_explicit)  # alle Indexe nehmen!
         self.system_models.append(system_model)
         # model aktivieren:
-        self.es.activate_model(system_model)
+        self.system.activate_model(system_model)
         # modellieren:
-        self.es.doModelingOfElements()
+        self.system.doModelingOfElements()
 
         self.durations['modeling'] = round(time.time() - t_m_start, 2)
         return system_model
@@ -2738,7 +2737,7 @@ class Calculation:
             raise Exception(
                 'An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this Calculation-Object. \n Always create a new instance of Calculation for new modeling/solving-command!')
 
-        if self.es.temporary_elements:  # if some element in this list
+        if self.system.temporary_elements:  # if some element in this list
             raise Exception(
                 'the Energysystem has some temporary modelingElements from previous calculation (i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
 
