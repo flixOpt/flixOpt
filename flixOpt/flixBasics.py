@@ -8,7 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 from . import flixOptHelperFcts as helpers
 from .flixBasicsPublic import cTSraw
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -193,7 +193,7 @@ class TimeSeries:
 
 class TimeSeriesCollection:
     '''
-    calculates weights of TS_vector for being in that collection (depending on)
+    calculates weights of TimeSeries for being in that collection (depending on)
     '''
 
     @property
@@ -210,10 +210,13 @@ class TimeSeriesCollection:
         else:
             return self._addPeakMin_labels
 
-    def __init__(self, listOfTS_vectors, addPeakMax_TSraw=None, addPeakMin_TSraw=None):
-        self.listOfTS_vectors = listOfTS_vectors
-        self.addPeakMax_TSraw = addPeakMax_TSraw if addPeakMax_TSraw is not None else []
-        self.addPeakMin_TSraw = addPeakMin_TSraw if addPeakMin_TSraw is not None else []
+    def __init__(self,
+                 time_series_list: List[TimeSeries],
+                 addPeakMax_TSraw: Optional[List[cTSraw]] = None,
+                 addPeakMin_TSraw: Optional[List[cTSraw]] = None):
+        self.time_series_list = time_series_list
+        self.addPeakMax_TSraw = addPeakMax_TSraw or []
+        self.addPeakMin_TSraw = addPeakMin_TSraw or []
         # i.g.: self.agg_type_count = {'solar': 3, 'price_el' = 2}
         self.agg_type_count = self._get_agg_type_count()
 
@@ -228,9 +231,9 @@ class TimeSeriesCollection:
         self.calculateParametersForTSAM()
 
     def calculateParametersForTSAM(self):
-        for i in range(len(self.listOfTS_vectors)):
+        for i in range(len(self.time_series_list)):
             aTS: TimeSeries
-            aTS = self.listOfTS_vectors[i]
+            aTS = self.time_series_list[i]
             # check uniqueness of label:
             if aTS.label_full in self.seriesDict.keys():
                 raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
@@ -249,7 +252,7 @@ class TimeSeriesCollection:
         from collections import Counter
 
         TSlistWithAggType = []
-        for TS in self.listOfTS_vectors:
+        for TS in self.time_series_list:
             if self._get_agg_type(TS) is not None:
                 TSlistWithAggType.append(TS)
         agg_types = (aTS.TSraw.agg_type for aTS in TSlistWithAggType)
@@ -285,8 +288,8 @@ class TimeSeriesCollection:
                     raise Exception('addPeak_max/min must be list of cTSraw-objects!')
 
     def print(self):
-        print('used ' + str(len(self.listOfTS_vectors)) + ' TS for aggregation:')
-        for TS in self.listOfTS_vectors:
+        print('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
+        for TS in self.time_series_list:
             aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_type: ' + str(self._get_agg_type(TS)) + ')'
             print(aStr.format(self._getWeight(TS)))
         if len(self.agg_type_count.keys()) > 0:
