@@ -181,22 +181,6 @@ class TimeSeries:
         if (aWeight > 1) or (aWeight < 0):
             raise Exception('weigth must be between 0 and 1!')
 
-    # Rückgabe Maximum
-    def max(self):
-        return TimeSeries.__getMax(self.d)
-
-        # Maximum für indexe:
-
-    def max_i(self):
-        return TimeSeries.__getMax(self.active_data)
-
-    def __getMax(aValue):
-        if np.isscalar(aValue):
-            return aValue
-        else:
-            return max(aValue)
-
-
 class cTS_collection():
     '''
     calculates weights of TS_vector for being in that collection (depending on)
