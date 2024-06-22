@@ -21,9 +21,9 @@ timelimit = 3600 # seconds until solver abort
 # solver_name = 'gurobi'
 solver_name = 'highs'
 solverProps = {'gapFrac': gapFrac,
-               'timelimit': timelimit,
+               'time_limit_seconds': timelimit,
                'solver': solver_name, 
-               'displaySolverOutput' : displaySolverOutput,
+               'solver_output_to_console' : displaySolverOutput,
                }
 
 #####################

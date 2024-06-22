@@ -53,9 +53,9 @@ class TestExistance(unittest.TestCase):
         calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
         calc.solve(solverProps={'gapFrac': 0.05,
-                                'timelimit': 60,
+                                'time_limit_seconds': 60,
                                 'solver': 'cbc',
-                                'displaySolverOutput': True,
+                                'solver_output_to_console': True,
                                 })
         # self.assertEqual(exists, kessel.exists.d, msg=f"Kessel exists mismatch: Expected {exists}, got {kessel.exists}")
         self.assertTrue(np.array_equal(exists, boiler_exists.inputs[0].exists_with_comp.active_data))
@@ -84,9 +84,9 @@ class TestExistance(unittest.TestCase):
         calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
         calc.solve(solverProps={'gapFrac': 0.05,
-                                'timelimit': 60,
+                                'time_limit_seconds': 60,
                                 'solver': 'cbc',
-                                'displaySolverOutput': True,
+                                'solver_output_to_console': True,
                                 })
         # self.assertEqual(exists, kessel.exists.d, msg=f"Kessel exists mismatch: Expected {exists}, got {kessel.exists}")
         self.assertTrue(np.array_equal(exists, storage_exists.inputs[0].exists_with_comp.active_data))

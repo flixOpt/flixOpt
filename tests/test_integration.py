@@ -11,12 +11,12 @@ class BaseTest(unittest.TestCase):
     def setUp(self):
         self.solverProps = {
             'gapFrac': 0.0001,
-            'timelimit': 3600,
+            'time_limit_seconds': 3600,
             'solver': 'highs',
-            'displaySolverOutput': True,
+            'solver_output_to_console': True,
         }
 
-    def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.011): # error_range etwas höher als gap_frac, weil unterschiedl. Bezugswerte
+    def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.011): # error_range etwas höher als mip_gap, weil unterschiedl. Bezugswerte
         '''
         Asserts that actual is almost equal to desired.
         Designed for comparing float and ndarrays. Whith respect to tolerances

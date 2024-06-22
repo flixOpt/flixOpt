@@ -44,6 +44,7 @@ class LinearModel:
         self.countComp = 0  # ElementeZähler für Pyomo
         self.epsilon = 1e-5  #
 
+        self.solver_name: Optional[str] = None
         self.model = None  # Übergabe später, zumindest für Pyomo notwendig
         self.variables: List[Variable] = []  # Liste aller Variablen
         self.eqs: List[Equation] = []  # Liste aller Gleichungen
@@ -98,7 +99,13 @@ class LinearModel:
         self.noOfVars = len(self.variables)
         self.noOfSingleVars = sum([var.len for var in self.variables])
 
-    def solve(self, gapfrac, timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt) -> None:
+    def solve(self,
+              mip_gap: float,
+              time_limit_seconds: int,
+              solver_name: Literal['highs', 'gurobi', 'cplex', 'glpk', 'cbc'],
+              solver_output_to_console: bool,
+              logfile_name: str,
+              **solver_opt) -> None:
         self.solver_name = solver_name
         t_start = time.time()
         for variable in self.variables:
@@ -109,40 +116,40 @@ class LinearModel:
             else:
               solver = pyomoEnv.SolverFactory(solver_name)
             if solver_name == 'cbc':
-                solver_opt["ratio"] = gapfrac
-                solver_opt["sec"] = timelimit
+                solver_opt["ratio"] = mip_gap
+                solver_opt["sec"] = time_limit_seconds
             elif solver_name == 'gurobi':
-                solver_opt["mipgap"] = gapfrac
-                solver_opt["TimeLimit"] = timelimit
+                solver_opt["mipgap"] = mip_gap
+                solver_opt["TimeLimit"] = time_limit_seconds
             elif solver_name == 'cplex':
-                solver_opt["mipgap"] = gapfrac
-                solver_opt["timelimit"] = timelimit
+                solver_opt["mipgap"] = mip_gap
+                solver_opt["timelimit"] = time_limit_seconds
                 # todo: threads = ? funktioniert das für cplex?
             elif solver_name == 'glpk':
                 # solver_opt = {} # überschreiben, keine kwargs zulässig
-                # solver_opt["mipgap"] = gapfrac
-                solver_opt['mipgap'] = gapfrac
+                # solver_opt["mipgap"] = mip_gap
+                solver_opt['mipgap'] = mip_gap
             elif solver_name == 'highs':
-                  solver_opt["mip_rel_gap"] = gapfrac
-                  solver_opt["time_limit"] = timelimit
+                  solver_opt["mip_rel_gap"] = mip_gap
+                  solver_opt["time_limit"] = time_limit_seconds
                   solver_opt["log_file"]= "results/highs.log"
                   solver_opt["parallel"] = "on"
                   solver_opt["presolve"] = "on"
                   solver_opt["threads"] = 4
                   solver_opt["output_flag"] = True
                   solver_opt["log_to_console"] = True
-            # logfileName = "flixSolverLog.log"
+            # logfile_name = "flixSolverLog.log"
             if solver_name == 'highs':
                 solver.highs_options=solver_opt
                 self.solver_results = solver.solve(self.model)
             else:
-                self.solver_results = solver.solve(self.model, options = solver_opt, tee = displaySolverOutput, keepfiles=True, logfile=logfileName)
+                self.solver_results = solver.solve(self.model, options = solver_opt, tee = solver_output_to_console, keepfiles=True, logfile=logfile_name)
 
             # Log wieder laden:
             if solver_name == 'highs':
                 pass
             else:
-                self.solver_log = SolverLog(solver_name, logfileName)
+                self.solver_log = SolverLog(solver_name, logfile_name)
                 self.solver_log.parseInfos()
             # Ergebnis Zielfunktion ablegen
             self.objective_result = self.model.objective.expr()

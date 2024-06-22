@@ -77,18 +77,18 @@ class SystemModel(LinearModel):
         self._infos['str_Vars'] = self.system.getVarsAsStr()
 
     # 'gurobi'
-    def solve(self, gapFrac=0.02, timelimit=3600, solver='cbc', displaySolverOutput=True, excessThreshold=0.1,
-              logfileName='solver_log.log', **kwargs):
+    def solve(self, gapFrac=0.02, time_limit_seconds=3600, solver='cbc', solver_output_to_console=True, excessThreshold=0.1,
+              logfile_name='solver_log.log', **kwargs):
         '''        
         Parameters
         ----------
         gapFrac : TYPE, optional
             DESCRIPTION. The default is 0.02.
-        timelimit : TYPE, optional
+        time_limit_seconds : TYPE, optional
             DESCRIPTION. The default is 3600.
         solver : TYPE, optional
             DESCRIPTION. The default is 'cbc'.
-        displaySolverOutput : TYPE, optional
+        solver_output_to_console : TYPE, optional
             DESCRIPTION. The default is True.
         excessThreshold : float, positive!
             threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
@@ -116,7 +116,7 @@ class SystemModel(LinearModel):
 
         self.printNoEqsAndVars()
 
-        super().solve(gapFrac, timelimit, solver, displaySolverOutput, logfileName, **kwargs)
+        super().solve(gapFrac, time_limit_seconds, solver, solver_output_to_console, logfile_name, **kwargs)
 
         if solver == 'gurobi':
             termination_message = self.solver_results['Solver'][0]['Termination message']
@@ -162,7 +162,7 @@ class SystemModel(LinearModel):
                     # if penalties exist
         if self.system.globalComp.penalty.model.var_sum.getResult() > 10:
             print('Take care: -> high penalty makes the used gapFrac quite high')
-            print('           -> real costs are not optimized to gapfrac')
+            print('           -> real costs are not optimized to mip_gap')
 
         print('')
         print('##############################################################')
@@ -2476,7 +2476,7 @@ class Calculation:
             t_start_solving = time.time()
 
             segmentModBox.solve(**solverProps,
-                                logfileName=self.paths_Log[i])  # keine SolverOutput-Anzeige, da sonst zu viel
+                                logfile_name=self.paths_Log[i])  # keine SolverOutput-Anzeige, da sonst zu viel
             self.durations['solving'] += round(time.time() - t_start_solving, 2)
             ## results adding:
             self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
@@ -2694,7 +2694,7 @@ class Calculation:
         if self.calcType not in ['full', 'aggregated']:
             raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
         system_model = self.system_models[0]
-        system_model.solve(**solverProps, logfileName=self.paths_Log[0])
+        system_model.solve(**solverProps, logfile_name=self.paths_Log[0])
 
         if saveResults:
             self._saveSolveInfos()
