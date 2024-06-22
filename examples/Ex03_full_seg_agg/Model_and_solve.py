@@ -202,10 +202,10 @@ p_sell    = cTSraw(  p_el+0.5 , agg_type='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
 aStromEinspeisung = cSink  ('Einspeisung'    ,sink   = cFlow('P_el'      , bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))
-aStromEinspeisung.sink.costsPerFlowHour[None].setAggWeight(.5)
+aStromEinspeisung.sink.costsPerFlowHour[None].set_agg_weight(.5)
 
 aStromTarif       = cSource('Stromtarif' ,source = cFlow('P_el'     , bus = Strom  , nominal_val = 1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))
-aStromTarif.source.costsPerFlowHour[costs].setAggWeight(.5)
+aStromTarif.source.costsPerFlowHour[costs].set_agg_weight(.5)
 
 # Zusammenführung:
 es = cEnergySystem(aTimeSeries, dt_last=None)

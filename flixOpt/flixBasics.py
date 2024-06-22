@@ -180,13 +180,11 @@ class TimeSeries:
                 'explicit_active_data has incorrect length!'
             self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
 
-    def setAggWeight(self, aWeight):
-        '''
-        only for aggregation: set weight of timeseries for creating of typical periods!
-        '''
-        self.aggregation_weight = aWeight
-        if (aWeight > 1) or (aWeight < 0):
-            raise Exception('weigth must be between 0 and 1!')
+    def set_agg_weight(self, weight: Union[int, float]):
+        self.aggregation_weight = weight
+        if weight > 1 or weight < 0:
+            raise Exception('weight must be between 0 and 1!')
+
 
 class cTS_collection():
     '''
