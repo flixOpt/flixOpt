@@ -156,7 +156,7 @@ class LinearModel:
         self._charactarizeProblem()
 
         t_start = time.time()
-        eq: cEquation
+        eq: Equation
         # Variablen erstellen
         for variable in self.variables:
             variable.transform2MathModel(self)
@@ -173,7 +173,7 @@ class LinearModel:
 
     # Attention: is overrided by childclass:
     def _charactarizeProblem(self) -> None:
-        eq: cEquation
+        eq: Equation
         var: Variable
 
         self.noOfEqs = len(self.eqs)
@@ -468,11 +468,11 @@ class StartValue:
             print(aME.label + '.' + varName + ' = ' + str(self.beforeValues[(aME, varName)]))
 
 
-# class cInequation(cEquation):
+# class cInequation(Equation):
 #   def __init__(self, label, myMom, baseModel):
 #     super().__init__(label, myMom, baseModel, eqType='ineq')    
 
-class cEquation:
+class Equation:
     def __init__(self, label: str, myMom, baseModel: LinearModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
@@ -506,7 +506,7 @@ class cEquation:
                 raise Exception('baseModel.objective ist bereits belegt!')
         # Undefined:
         else:
-            raise Exception('cEquation.eqType ' + str(self.eqType) + ' nicht definiert!')
+            raise Exception('Equation.eqType ' + str(self.eqType) + ' nicht definiert!')
 
         # in Matlab noch:
         # B; % B of this object (related to x)!
@@ -612,7 +612,7 @@ class cEquation:
             elif self.eqType == 'objective':
                 # Anmerkung: nrOfEquation - Check könnte auch weiter vorne schon passieren!
                 if self.nrOfSingleEquations > 1:
-                    raise Exception('cEquation muss für objective ein Skalar ergeben!!!')
+                    raise Exception('Equation muss für objective ein Skalar ergeben!!!')
 
                 # Summierung der Skalare:
                 def linearSumRule_Skalar(model):

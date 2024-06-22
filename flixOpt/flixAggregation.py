@@ -414,7 +414,7 @@ class cAggregationModeling(flixStructure.cME):
                 idx_var1 = np.append(idx_var1, v1[:minLen])
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
-        eq = flixStructure.cEquation('equalIdx_' + aVar.label_full, self, modBox, eqType='eq')
+        eq = flixStructure.Equation('equalIdx_' + aVar.label_full, self, modBox, eqType='eq')
         eq.addSummand(aVar, 1, indexeOfVariable=idx_var1)
         eq.addSummand(aVar, -1, indexeOfVariable=idx_var2)
 
@@ -438,7 +438,7 @@ class cAggregationModeling(flixStructure.cME):
 
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
-            eq_lock = flixStructure.cEquation('lock_K0andK1' + aVar.label_full, self, modBox, eqType='ineq')
+            eq_lock = flixStructure.Equation('lock_K0andK1' + aVar.label_full, self, modBox, eqType='ineq')
             eq_lock.addSummand(var_K0, 1)
             eq_lock.addSummand(var_K1, 1)
             eq_lock.addRightSide(1.1)
@@ -446,7 +446,7 @@ class cAggregationModeling(flixStructure.cME):
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.len)
-            eq_max = flixStructure.cEquation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
+            eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
             eq_max.addSummandSumOf(var_K1, 1)
             eq_max.addSummandSumOf(var_K0, 1)
             eq_max.addRightSide(self.noOfCorrections)  # Maximum
