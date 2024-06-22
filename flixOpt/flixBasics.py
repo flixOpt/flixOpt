@@ -77,28 +77,23 @@ class TimeSeries:
 
     # create and register in List:
 
-    # gets rawdata only of activated esIndexe:
-    @property
-    def d_i_raw(self):
-        if (np.isscalar(self.data)) or (self.data is None) or (self.__timeIndexe_actual is None):
-            return self.data
-        else:
-            return self.data[self.__timeIndexe_actual]
-
     # Vektor:
     @property
-    def active_data_vector(self):
-        vec = helpers.getVector(self.d_i_raw, len(self.__timeIndexe_actual))
-        return vec
+    def active_data_vector(self) -> np.ndarray:
+        # Always returns the active data as a vector.
+        return helpers.getVector(self.active_data, len(self.__timeIndexe_actual))
 
     @property
-    # gets data only of activated esIndexe or explicit data::
-    def active_data(self):
+    def active_data(self) -> Numeric:
         # wenn d_i_explicit gesetzt wurde:
         if self.d_i_explicit is not None:
             return self.d_i_explicit
+
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.__timeIndexe_actual is None)
+        if indices_not_applicable:
+            return self.data
         else:
-            return self.d_i_raw
+            return self.data[self.__timeIndexe_actual]
 
     @property
     def isscalar(self):
