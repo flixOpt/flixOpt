@@ -93,7 +93,7 @@ class TimeSeries:
 
     @property
     # gets data only of activated esIndexe or explicit data::
-    def d_i(self):
+    def active_data(self):
         # wenn d_i_explicit gesetzt wurde:
         if self.d_i_explicit is not None:
             return self.d_i_explicit
@@ -154,7 +154,7 @@ class TimeSeries:
                 data = data[0]
         return data
 
-    # define, which timeStep-Set should be transfered in data-request self.d_i()
+    # define, which timeStep-Set should be transfered in data-request self.active_data()
     def activate(self, dataTimeIndexe, d_i_explicit=None):
         # time-Index:
         self.__timeIndexe_actual = dataTimeIndexe
@@ -181,7 +181,7 @@ class TimeSeries:
         # Maximum für indexe:
 
     def max_i(self):
-        return TimeSeries.__getMax(self.d_i)
+        return TimeSeries.__getMax(self.active_data)
 
     def __getMax(aValue):
         if np.isscalar(aValue):
@@ -235,7 +235,7 @@ class cTS_collection():
                 raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
             # add to dict:
             self.seriesDict[
-                aTS.label_full] = aTS.d_i_raw_vec  # Vektor zuweisen!# TODO: müsste doch d_i sein, damit abhängig von Auswahlzeitraum, oder???
+                aTS.label_full] = aTS.d_i_raw_vec  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
             self.weightDict[aTS.label_full] = self._getWeight(aTS)  # Wichtung ermitteln!
             if (aTS.TSraw is not None):
                 if aTS.TSraw in self.addPeakMax_TSraw:

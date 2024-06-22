@@ -90,12 +90,12 @@ class cBaseLinearTransformer(cBaseComponent):
 
         # copy information about exists into segments of flows
         if self.segmentsOfFlows is not None:
-            if isinstance(self.exists.d_i, (np.ndarray, list)):
+            if isinstance(self.exists.active_data, (np.ndarray, list)):
                 for key, item in self.segmentsOfFlows.items():
-                    self.segmentsOfFlows[key] = [list(np.array(item) * factor) for factor in self.exists.d_i]
-            elif isinstance(self.exists.d_i, (int, float)):
+                    self.segmentsOfFlows[key] = [list(np.array(item) * factor) for factor in self.exists.active_data]
+            elif isinstance(self.exists.active_data, (int, float)):
                 for key, item in self.segmentsOfFlows.items():
-                    self.segmentsOfFlows[key] = list(np.array(item) * self.exists.d_i)
+                    self.segmentsOfFlows[key] = list(np.array(item) * self.exists.active_data)
 
     def __str__(self):
         # Creating a representation for factor_Sets with flow labels and their corresponding values
@@ -255,10 +255,10 @@ class cBaseLinearTransformer(cBaseComponent):
 
                 eq_linearFlowRelation_i = cEquation('linearFlowRelation_' + str(i), self, modBox)
                 for inFlow in leftSideFlows:
-                    aFactor = aFactorVec_Dict[inFlow].d_i
+                    aFactor = aFactorVec_Dict[inFlow].active_data
                     eq_linearFlowRelation_i.addSummand(inFlow.mod.var_val, aFactor)  # input1.val[t]      * factor[t]
                 for outFlow in rightSideFlows:
-                    aFactor = aFactorVec_Dict[outFlow].d_i
+                    aFactor = aFactorVec_Dict[outFlow].active_data
                     eq_linearFlowRelation_i.addSummand(outFlow.mod.var_val, -aFactor)  # output.val[t] * -1 * factor[t]
 
                 eq_linearFlowRelation_i.addRightSide(0)  # nur zur Komplettisierung der Gleichung
@@ -691,11 +691,11 @@ class cStorage(cBaseComponent):
         self.group = group
 
         # add last time step (if not scalar):
-        existsWithEndTimestep = self.exists.d_i if np.isscalar(self.exists.d_i) else np.append(self.exists.d_i, self.exists.d_i[-1])
+        existsWithEndTimestep = self.exists.active_data if np.isscalar(self.exists.active_data) else np.append(self.exists.active_data, self.exists.active_data[-1])
         self.max_rel_chargeState = TimeSeries('max_rel_chargeState',
-                                              self.max_rel_chargeState.d_i * existsWithEndTimestep, self)
+                                              self.max_rel_chargeState.active_data * existsWithEndTimestep, self)
         self.min_rel_chargeState = TimeSeries('min_rel_chargeState',
-                                              self.min_rel_chargeState.d_i * existsWithEndTimestep, self)
+                                              self.min_rel_chargeState.active_data * existsWithEndTimestep, self)
 
         # copy information of "group" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -749,8 +749,8 @@ class cStorage(cBaseComponent):
         # Variablen:
 
         if self.featureInvest is None:
-            lb = self.min_rel_chargeState.d_i * self.capacity_inFlowHours
-            ub = self.max_rel_chargeState.d_i * self.capacity_inFlowHours
+            lb = self.min_rel_chargeState.active_data * self.capacity_inFlowHours
+            ub = self.max_rel_chargeState.active_data * self.capacity_inFlowHours
             fix_value = None
 
             if np.isscalar(lb):
@@ -850,13 +850,13 @@ class cStorage(cBaseComponent):
         timeIndexeChargeState = range(timeIndexe.start, timeIndexe.stop + 1)
         self.eq_charge_state = cEquation('charge_state', self, modBox, eqType='eq')
         self.eq_charge_state.addSummand(self.mod.var_charge_state,
-                                        -1 * (1 - self.fracLossPerHour.d_i * modBox.dtInHours),
+                                        -1 * (1 - self.fracLossPerHour.active_data * modBox.dtInHours),
                                         timeIndexeChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
         self.eq_charge_state.addSummand(self.mod.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
-        self.eq_charge_state.addSummand(self.inFlow.mod.var_val, -1 * self.eta_load.d_i * modBox.dtInHours)
+        self.eq_charge_state.addSummand(self.inFlow.mod.var_val, -1 * self.eta_load.active_data * modBox.dtInHours)
         self.eq_charge_state.addSummand(self.outFlow.mod.var_val,
-                                        1 / self.eta_unload.d_i * modBox.dtInHours)  # Achtung hier 1/eta!
+                                        1 / self.eta_unload.active_data * modBox.dtInHours)  # Achtung hier 1/eta!
 
         # Speicherladezustand am Ende
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
@@ -1184,21 +1184,21 @@ class cTransportation(cBaseComponent):
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
         self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
-        self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.d_i))
+        self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.active_data))
         self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
-        if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
+        if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
             assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
-            self.eq_dir1.addSummand(self.in1.mod.var_on, -1 * self.loss_abs.d_i)
+            self.eq_dir1.addSummand(self.in1.mod.var_on, -1 * self.loss_abs.active_data)
 
         # second direction:        
         if self.in2 is not None:
             # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
             self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
-            self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.d_i)
+            self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.active_data)
             self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
-            if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
+            if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
                 assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
-                self.eq_dir2.addSummand(self.in2.mod.var_on, -1 * self.loss_abs.d_i)
+                self.eq_dir2.addSummand(self.in2.mod.var_on, -1 * self.loss_abs.active_data)
 
         # always On (in at least one direction)
         # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections

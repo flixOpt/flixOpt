@@ -150,8 +150,8 @@ class cFeatureLinearSegmentVars(cFeature):
                 stuetz2 = aSegment.samplePoints[aVar][1]
                 # wenn Stützstellen TS_vector:
                 if isinstance(stuetz1, TimeSeries):
-                    samplePoint1 = stuetz1.d_i
-                    samplePoint2 = stuetz2.d_i
+                    samplePoint1 = stuetz1.active_data
+                    samplePoint2 = stuetz2.active_data
                 # wenn Stützstellen Skalar oder array
                 else:
                     samplePoint1 = stuetz1
@@ -396,12 +396,12 @@ class cFeatureOn(cFeature):
         #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
         #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
         if self.useOnHours:
-            aMax = None if (self.onHours_max is None) else self.onHours_max.d_i
+            aMax = None if (self.onHours_max is None) else self.onHours_max.active_data
             self.mod.var_onHours = cVariable_TS('onHours', modBox.nrOfTimeSteps, self.owner, modBox,
                                                 min=0, max=aMax)  # min separat
         # offHours:
         if self.useOffHours:
-            aMax = None if (self.offHours_max is None) else self.offHours_max.d_i
+            aMax = None if (self.offHours_max is None) else self.offHours_max.active_data
             self.mod.var_offHours = cVariable_TS('offHours', modBox.nrOfTimeSteps, self.owner, modBox,
                                                  min=0, max=aMax)  # min separat
 
@@ -458,10 +458,10 @@ class cFeatureOn(cFeature):
             eq1.addSummand(aFlow.mod.var_val, -1, timeIndexe)
             # wenn variabler Nennwert:
             if aFlow.nominal_val is None:
-                min_val = aFlow.investArgs.min_investmentSize * aFlow.min_rel.d_i  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
+                min_val = aFlow.investArgs.min_investmentSize * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
             # wenn fixer Nennwert
             else:
-                min_val = aFlow.nominal_val * aFlow.min_rel.d_i
+                min_val = aFlow.nominal_val * aFlow.min_rel.active_data
 
             eq1.addSummand(self.mod.var_on, 1 * np.maximum(modBox.epsilon, min_val),
                            timeIndexe)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
@@ -495,9 +495,9 @@ class cFeatureOn(cFeature):
             eq2.addSummand(aFlow.mod.var_val, 1 / nrOfFlows, timeIndexe)
             # wenn variabler Nennwert:
             if aFlow.nominal_val is None:
-                sumOfFlowMax += aFlow.max_rel.d_i * aFlow.investArgs.max_investmentSize  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
+                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.investArgs.max_investmentSize  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
-                sumOfFlowMax += aFlow.max_rel.d_i * aFlow.nominal_val
+                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.nominal_val
 
         eq2.addSummand(self.mod.var_on, - sumOfFlowMax / nrOfFlows, timeIndexe)  #
 
@@ -563,8 +563,8 @@ class cFeatureOn(cFeature):
             # eq: -onHours(t-1) - onHours_min * On(t) + onHours_min*On(t-1) <= 0
             ineq_min = cEquation(aLabel + '_min', eqsOwner, modBox, eqType='ineq')
             ineq_min.addSummand(var_bin_onTime, -1, timeIndexe[0:-1])  # onHours(t-1)
-            ineq_min.addSummand(var_bin, -1 * onHours_min.d_i, timeIndexe[1:])  # on(t)
-            ineq_min.addSummand(var_bin, onHours_min.d_i, timeIndexe[0:-1])  # on(t-1)
+            ineq_min.addSummand(var_bin, -1 * onHours_min.active_data, timeIndexe[1:])  # on(t)
+            ineq_min.addSummand(var_bin, onHours_min.active_data, timeIndexe[0:-1])  # on(t-1)
 
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)
@@ -614,13 +614,13 @@ class cFeatureOn(cFeature):
 
         shareHolder = self.owner
         # Anfahrkosten:
-        if self.switchOnCosts is not None:  # and any(self.switchOnCosts.d_i != 0):
+        if self.switchOnCosts is not None:  # and any(self.switchOnCosts.active_data != 0):
             globalComp.addShareToOperation('switchOnCosts', shareHolder, self.mod.var_switchOn, self.switchOnCosts, 1)
         # Betriebskosten:
         if self.costsPerRunningHour is not None:  # and any(self.costsPerRunningHour):
             globalComp.addShareToOperation('costsPerRunningHour', shareHolder, self.mod.var_on,
                                            self.costsPerRunningHour, modBox.dtInHours)
-            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_on, np.multiply(self.costsPerRunningHour.d_i, modBox.dtInHours))# np.multiply = elementweise Multiplikation
+            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_on, np.multiply(self.costsPerRunningHour.active_data, modBox.dtInHours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als cFeature_TSShareSum
@@ -688,8 +688,8 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
         #   -> aber Beachte Effekt ist nicht einfach gleichzusetzen mit Flow, da hier eine Menge z.b. in € im Zeitschritt übergeben wird
         # variable für alle TS zusammen (TS-Summe):
         if self.sharesAreTS:
-            lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.d_i, modBox.dtInHours)
-            ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.d_i, modBox.dtInHours)
+            lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, modBox.dtInHours)
+            ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, modBox.dtInHours)
             self.mod.var_sum_TS = cVariable_TS('sum_TS', modBox.nrOfTimeSteps, self, modBox, min = lb_TS, max = ub_TS)  # TS
 
         # Variable für Summe (Skalar-Summe):
@@ -765,8 +765,8 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
         if self.sharesAreTS:
 
             # Falls TimeSeries, Daten auslesen:
-            if isinstance(factor1, TimeSeries): factor1 = factor1.d_i
-            if isinstance(factor2, TimeSeries): factor2 = factor2.d_i
+            if isinstance(factor1, TimeSeries): factor1 = factor1.active_data
+            if isinstance(factor2, TimeSeries): factor2 = factor2.active_data
 
             factorOfSummand = np.multiply(factor1, factor2)  # np.multiply = elementweise Multiplikation
             ## Share zu TS-equation hinzufügen:
@@ -920,11 +920,11 @@ class cFeatureInvest(cFeature):
         # Wenn fixer relativer Lastgang:
         if self.val_rel is not None:
             # max_rel = min_rel = val_rel !
-            min_rel_eff = self.val_rel.d_i
+            min_rel_eff = self.val_rel.active_data
             max_rel_eff = min_rel_eff
         else:
-            min_rel_eff = self.min_rel.d_i
-            max_rel_eff = self.max_rel.d_i
+            min_rel_eff = self.min_rel.active_data
+            max_rel_eff = self.max_rel.active_data
 
         onIsUsed = ((self.featureOn is not None) and (self.featureOn.useOn))
         onIsUsedAndvalIsNotFix = (self.val_rel is None) and onIsUsed
@@ -1069,7 +1069,7 @@ class cFeatureInvest(cFeature):
 
         self.eq_fix_via_investmentSize = cEquation('fix_via_InvestmentSize', self, modBox, 'eq')
         self.eq_fix_via_investmentSize.addSummand(self.definingVar, 1)
-        self.eq_fix_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.val_rel.d_i))
+        self.eq_fix_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.val_rel.active_data))
 
     def _add_max_min_of_definingVar_with_var_investmentSize(self, modBox):
 
@@ -1079,7 +1079,7 @@ class cFeatureInvest(cFeature):
         self.eq_max_via_investmentSize = cEquation('max_via_InvestmentSize', self, modBox, 'ineq')
         self.eq_max_via_investmentSize.addSummand(self.definingVar, 1)
         # TODO: Changed by FB
-        # self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.d_i))
+        # self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.active_data))
         self.eq_max_via_investmentSize.addSummand(self.mod.var_investmentSize, np.multiply(-1, self.max_rel.data))
         # TODO: Changed by FB
 
@@ -1099,11 +1099,11 @@ class cFeatureInvest(cFeature):
                 # äquivalent zu:.
                 # eq: - definingVar(t) + Big * On(t) + min_rel(t) * investmentSize <= Big
 
-                Big = helpers.max_args(self.min_rel.d_i * self.args.max_investmentSize, modBox.epsilon)
+                Big = helpers.max_args(self.min_rel.active_data * self.args.max_investmentSize, modBox.epsilon)
 
                 self.eq_min_via_investmentSize.addSummand(self.definingVar, -1)
                 self.eq_min_via_investmentSize.addSummand(self.definingVar_On, Big)  # übergebene On-Variable
-                self.eq_min_via_investmentSize.addSummand(self.mod.var_investmentSize, self.min_rel.d_i)
+                self.eq_min_via_investmentSize.addSummand(self.mod.var_investmentSize, self.min_rel.active_data)
                 self.eq_min_via_investmentSize.addRightSide(Big)
                 # Anmerkung: Glg bei Spezialfall min_rel = 0 redundant zu cFeatureOn-Glg.
             else:
@@ -1112,7 +1112,7 @@ class cFeatureInvest(cFeature):
             # eq: definingVar(t) >= investmentSize * min_rel(t)    
 
             self.eq_min_via_investmentSize.addSummand(self.definingVar, -1)
-            self.eq_min_via_investmentSize.addSummand(self.mod.var_investmentSize, self.min_rel.d_i)
+            self.eq_min_via_investmentSize.addSummand(self.mod.var_investmentSize, self.min_rel.active_data)
 
             #### Defining var_isInvested ####
 
