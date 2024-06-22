@@ -125,7 +125,7 @@ segmentsOfFlows = ({P_el: [5  ,30, 40,60 ], # elements an be list (timeseries)
                    Q_th: [6  ,35, 45,100], 
                    Q_fu: [12 ,70, 90,200]})
 
-aKWK2 = cBaseLinearTransformer('BHKW2', inputs = [Q_fu], outputs = [P_el, Q_th], segmentsOfFlows = segmentsOfFlows, switchOnCosts = 0.01, on_valuesBeforeBegin = [1])
+aKWK2 = LinearTransformer('BHKW2', inputs = [Q_fu], outputs = [P_el, Q_th], segmentsOfFlows = segmentsOfFlows, switchOnCosts = 0.01, on_valuesBeforeBegin = [1])
 
 
 
