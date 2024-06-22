@@ -16,7 +16,7 @@ import numpy as np
 ##############################################################
 ## Funktionalität/Features zum Anhängen an die Komponenten: ##  
 
-class cFeature(cME):
+class cFeature(Element):
 
     def __init__(self, label, owner, **kwargs):
         self.owner = owner
@@ -31,7 +31,7 @@ class cFeature(cME):
     def label_full(self):
         return self.owner.label_full + '_' + self.label
 
-    def finalize(self):  # TODO: evtl. besser bei cME aufgehoben
+    def finalize(self):  # TODO: evtl. besser bei Element aufgehoben
         super().finalize()
 
 
