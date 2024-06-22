@@ -102,7 +102,7 @@ class TimeSeries:
 
         owner.TS_list.append(self)  # Register TimeSeries in owner
 
-        self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
+        self.aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
         return f"{self.active_data}"
@@ -176,7 +176,7 @@ class TimeSeries:
         '''
         only for aggregation: set weight of timeseries for creating of typical periods!
         '''
-        self.weight_agg = aWeight
+        self.aggregation_weight = aWeight
         if (aWeight > 1) or (aWeight < 0):
             raise Exception('weigth must be between 0 and 1!')
 
