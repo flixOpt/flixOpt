@@ -172,17 +172,13 @@ class TimeSeries:
             return data[0]
         return data
 
-    # define, which timeStep-Set should be transfered in data-request self.active_data()
-    def activate(self, dataTimeIndexe, d_i_explicit=None):
-        # time-Index:
-        self.active_time_indices = dataTimeIndexe
+    def activate(self, time_indices, explicit_active_data: Optional = None):
+        self.active_time_indices = time_indices
 
-        # explicitData:
-        if d_i_explicit is not None:
-            assert ((len(d_i_explicit) == len(self.active_time_indices)) or \
-                    (len(d_i_explicit) == 1)), 'explicit_active_data has not right length!'
-
-        self.explicit_active_data = self.make_scalar_if_possible(d_i_explicit)
+        if explicit_active_data is not None:
+            assert len(explicit_active_data) == len(self.active_time_indices) or len(explicit_active_data) == 1, \
+                'explicit_active_data has incorrect length!'
+            self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
 
     def setAggWeight(self, aWeight):
         '''
