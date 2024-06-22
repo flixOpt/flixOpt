@@ -540,9 +540,9 @@ class CHP(LinearTransformer):
         helpers.checkBoundsOfParameter(eta_th + eta_el, 'eta_th+eta_el', [0 + 1e-10, 1 - 1e-10], self)
 
 
-class cAbwaermeHP(LinearTransformer):
+class HeatPumpWithSource(LinearTransformer):
     """
-    class cAbwaermeHP
+    class HeatPumpWithSource
     """
     new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
