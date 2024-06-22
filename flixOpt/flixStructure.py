@@ -1889,7 +1889,7 @@ class cEnergySystem:
 
         Parameters
         ----------
-        *args : childs of   cME like cBoiler, cHeatPump, cBus,...
+        *args : childs of   cME like cBoiler, HeatPump, cBus,...
             modeling Elements
 
         '''

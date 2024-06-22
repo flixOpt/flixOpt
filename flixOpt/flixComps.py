@@ -398,9 +398,9 @@ class Power2Heat(LinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class cHeatPump(LinearTransformer):
+class HeatPump(LinearTransformer):
     """
-    class cHeatPump
+    class HeatPump
     """
     new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
