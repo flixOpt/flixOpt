@@ -48,9 +48,9 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                  )
 
 # sink of heat load:
-aWaermeLast = cSink('Wärmelast',
-                    # defining input-flow:
-                    sink   = cFlow('Q_th_Last', # name
+aWaermeLast = Sink('Wärmelast',
+                   # defining input-flow:
+                   sink   = cFlow('Q_th_Last', # name
                                    bus = Fernwaerme, # linked to bus "Fernwaerme"
                                    nominal_val = 1, # nominal_value
                                    val_rel = Q_th_Last)) # fixed profile

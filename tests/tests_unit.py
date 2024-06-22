@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import datetime
 
-from flixOpt.flixComps import Boiler, Storage, Source, cSink, CHP
+from flixOpt.flixComps import Boiler, Storage, Source, Sink, CHP
 from flixOpt.flixStructure import cFlow, cBus, cEnergySystem, cCalculation, cEffectType
 from flixOpt.flixPostprocessing import flix_results
 
@@ -23,10 +23,10 @@ class TestExistance(unittest.TestCase):
         self.sinks_n_sources = {
             "GasSource": Source(label="GasSource", source=cFlow(label="Gasmarkt", bus=self.busses["Gas"],
                                                                 costsPerFlowHour=np.array([20, 15, 13, 25, 26]))),
-            "HeatSink": cSink(label="HeatSink", sink=cFlow(label="Heating_Network",
-                                                           nominal_val=1,
-                                                           val_rel= np.linspace(0, 100, len(self.es.timeSeries)),
-                                                           bus=self.busses["Heat"])),
+            "HeatSink": Sink(label="HeatSink", sink=cFlow(label="Heating_Network",
+                                                          nominal_val=1,
+                                                          val_rel= np.linspace(0, 100, len(self.es.timeSeries)),
+                                                          bus=self.busses["Heat"])),
             "PowerSource": Source(label="PowerSource", source=cFlow(label="Power_Grid", bus=self.busses["Power"],
                                                                     costsPerFlowHour=np.array([100, 20, 60, 40, 5])))
         }

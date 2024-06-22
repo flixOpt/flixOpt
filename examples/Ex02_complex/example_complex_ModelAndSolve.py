@@ -171,8 +171,8 @@ aSpeicher = Storage('Speicher',
 
 # 5. definition of sinks and sources:
 # 5.a) heat load profile:    
-aWaermeLast = cSink('Wärmelast',
-                    sink = cFlow('Q_th_Last', # name
+aWaermeLast = Sink('Wärmelast',
+                   sink = cFlow('Q_th_Last', # name
                                  bus = Fernwaerme, # linked bus
                                  nominal_val = 1, 
                                  min_rel = 0,
@@ -184,8 +184,8 @@ aGasTarif = Source('Gastarif',
                                    nominal_val = 1000, # defining nominal size
                                    costsPerFlowHour= {costs: 0.04, CO2: 0.3})) 
 # 5.c) feed-in of electricity:
-aStromEinspeisung = cSink('Einspeisung',
-                          sink = cFlow('P_el',
+aStromEinspeisung = Sink('Einspeisung',
+                         sink = cFlow('P_el',
                                        bus = Strom, # linked bus
                                        costsPerFlowHour = -1*np.array(p_el)))# feed-in tariff
 

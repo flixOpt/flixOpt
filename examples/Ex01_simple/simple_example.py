@@ -100,9 +100,9 @@ aSpeicher = Storage('Speicher',
 # # 3. sinks and sources #
 
 # sink of heat load:
-aWaermeLast = cSink('Wärmelast',
-                    # defining input-flow:
-                    sink   = cFlow('Q_th_Last', # name
+aWaermeLast = Sink('Wärmelast',
+                   # defining input-flow:
+                   sink   = cFlow('Q_th_Last', # name
                                    bus = Fernwaerme, # linked to bus "Fernwaerme"
                                    nominal_val = 1, # nominal_value
                                    val_rel = Q_th_Last)) # fixed profile
@@ -120,9 +120,9 @@ aGasTarif = Source('Gastarif',
                                    costsPerFlowHour= {costs: 0.04, CO2: 0.3})) # 0.04 €/kWh, 0.3 kg_CO2/kWh
 
 # sink of electricity feed-in:
-aStromEinspeisung = cSink('Einspeisung', 
-                          # defining input-flow:
-                          sink=cFlow('P_el', # name
+aStromEinspeisung = Sink('Einspeisung',
+                         # defining input-flow:
+                         sink=cFlow('P_el', # name
                                      bus = Strom, # linked to bus "Strom"
                                      costsPerFlowHour = -1*p_el)) # gains (negative costs) per kWh
 

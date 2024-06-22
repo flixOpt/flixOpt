@@ -1041,9 +1041,9 @@ class Source(cBaseComponent):
             flow.group = self.group
 
 
-class cSink(cBaseComponent):
+class Sink(cBaseComponent):
     """
-    Klasse cSink
+    Klasse Sink
     """
     new_init_args = ['label', 'source']
     not_used_args = ['label']
