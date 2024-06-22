@@ -1005,7 +1005,7 @@ class cFeatureInvest(cFeature):
     def _defineCostSegments(self, modBox: cModelBoxOfES):
         investSizeSegs = self.args.costsInInvestsizeSegments[0]  # segments of investSize
         costSegs = self.args.costsInInvestsizeSegments[1]  # effect-dict with segments as entries
-        costSegs = getEffectDictOfEffectValues(costSegs)
+        costSegs = as_effect_dict(costSegs)
 
         ## 1. create segments for investSize and every effect##
         ## 1.a) add investSize-Variablen-Segmente: ##

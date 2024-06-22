@@ -9,6 +9,7 @@ import numpy as np
 import math
 import time
 import yaml  # (für json-Schnipsel-print)
+import pprint
 import textwrap
 from typing import List, Set, Tuple, Dict, Union, Optional
 
@@ -216,7 +217,7 @@ class cModelBoxOfES(cBaseModel):
         helpers.printDictAndList(self.main_results_str)
 
 
-class cME(cArgsClass):
+class cME:
     """
     Element mit Variablen und Gleichungen (ME = Modeling Element)
     -> besitzt Methoden, die jede Kindklasse ergänzend füllt:
@@ -229,6 +230,39 @@ class cME(cArgsClass):
 
     new_init_args = ['label']
     not_used_args = []
+
+    @classmethod
+    def getInitArgs(cls):
+        '''
+        diese (Klassen-)Methode holt aus dieser und den Kindklassen
+        alle zulässigen Argumente der Kindklasse!
+        '''
+
+        ### 1. Argumente der Mutterklasse (rekursiv) ###
+        # wird rekursiv aufgerufen bis man bei Mutter-Klasse cModelingElement ankommt.
+        # nur bis zu cArgsClass zurück gehen:
+        if hasattr(cls.__base__, 'getInitArgs'):  # man könnte auch schreiben: if cls.__name__ == cArgsClass
+            allArgsFromMotherClass = cls.__base__.getInitArgs()  # rekursiv in Mutterklasse aufrufen
+
+        # wenn cls.__base__ also bereits eine Ebene UNTER cArgsClass:
+        else:
+            allArgsFromMotherClass = []
+
+            # checken, dass die zwei class-Atributes auch wirklich für jede Klasse (und nicht nur für Mutterklasse) existieren (-> die nimmt er sonst einfach automatisch)
+        if (not ('not_used_args' in cls.__dict__)) | (not ('new_init_args' in cls.__dict__)):
+            raise Exception(
+                'class ' + cls.__name__ + ': you forgot to implement class attribute <not_used_args> or/and <new_int_args>')
+        notTransferedMotherArgs = cls.not_used_args
+
+        ### 2. Abziehen der nicht durchgereichten Argumente ###
+        # delete not Transfered Args:
+        allArgsFromMotherClass = [prop for prop in allArgsFromMotherClass if prop not in notTransferedMotherArgs]
+
+        ### 3. Ergänzen der neuen Argumente ###
+        myArgs = cls.new_init_args.copy()  # get all new arguments of __init__() (as a copy)
+        # melt lists:
+        myArgs.extend(allArgsFromMotherClass)
+        return myArgs
 
     @property
     def label_full(self) -> str:  # standard-Funktion, wird von Kindern teilweise überschrieben
@@ -251,7 +285,10 @@ class cME(cArgsClass):
         self.subElements: List[cME] = []  # zugehörige Sub-ModelingElements
         self.modBox: Optional[cModelBoxOfES] = None  # hier kommt die aktive ModBox rein
         self.mod: Optional[cMEModel] = None  # hier kommen alle Glg und Vars rein
-        super().__init__(**kwargs)
+
+        # wenn hier kwargs auftauchen, dann wurde zuviel übergeben:
+        if len(kwargs) > 0:
+            raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
 
     def __repr__(self):
         return f"<{self.__class__.__name__}> {self.label}"
@@ -693,11 +730,11 @@ class cBaseComponent(cME):
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
-        self.switchOnCosts = transFormEffectValuesToTSDict('switchOnCosts', switchOnCosts, self)
+        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
-        self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
+        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
@@ -915,7 +952,7 @@ class cGlobal(cME):
     def __addShare(self, operationOrInvest, nameOfShare, shareHolder, effect_values, factor, aVariable=None) -> None:
         aEffectSum: cFeature_ShareSum
 
-        effect_values_dict = getEffectDictOfEffectValues(effect_values)
+        effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effekttypen, die einen Wert haben, anhängen:
         for effectType, value in effect_values_dict.items():
@@ -1310,7 +1347,7 @@ class cFlow(cME):
         self.loadFactor_min = loadFactor_min
         self.loadFactor_max = loadFactor_max
         #self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
-        self.costsPerFlowHour = transFormEffectValuesToTSDict('costsPerFlowHour', costsPerFlowHour, self)
+        self.costsPerFlowHour = as_effect_dict_with_ts('costsPerFlowHour', costsPerFlowHour, self)
         self.iCanSwitchOff = iCanSwitchOff
         self.onHoursSum_min = onHoursSum_min
         self.onHoursSum_max = onHoursSum_max
@@ -1318,9 +1355,9 @@ class cFlow(cME):
         self.onHours_max = None if (onHours_max is None) else TimeSeries('onHours_max', onHours_max, self)
         self.offHours_min = None if (offHours_min is None) else TimeSeries('offHours_min', offHours_min, self)
         self.offHours_max = None if (offHours_max is None) else TimeSeries('offHours_max', offHours_max, self)
-        self.switchOnCosts = transFormEffectValuesToTSDict('switchOnCosts', switchOnCosts, self)
+        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
-        self.costsPerRunningHour = transFormEffectValuesToTSDict('costsPerRunningHour', costsPerRunningHour, self)
+        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
@@ -1508,10 +1545,10 @@ class cFlow(cME):
 
         #
         # ############## onHoursSum_max: ##############
-        #        
-        
+        #
+
         # ineq: sum(var_on(t)) <= onHoursSum_max
-        
+
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = cEquation('onHoursSum_max', self, modBox, 'ineq')
             eq_onHoursSum_max.addSummandSumOf(self.mod.var_on, 1)
@@ -1519,10 +1556,10 @@ class cFlow(cME):
 
         #
         # ############## onHoursSum_max: ##############
-        #        
-        
+        #
+
         # ineq: sum(var_on(t)) >= onHoursSum_min
-        
+
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = cEquation('onHoursSum_min', self, modBox, 'ineq')
             eq_onHoursSum_min.addSummandSumOf(self.mod.var_on, -1)
@@ -2535,10 +2572,10 @@ class cCalculation:
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
         self.TSlistForAggregation = [item for item in self.es.allTSinMEs if item.is_array]
-        self.TScollectionForAgg = cTS_collection(self.TSlistForAggregation,
-                                                 addPeakMax_TSraw=addPeakMax,
-                                                 addPeakMin_TSraw=addPeakMin,
-                                                 )
+        self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
+                                                       addPeakMax_TSraw=addPeakMax,
+                                                       addPeakMin_TSraw=addPeakMin,
+                                                       )
 
         self.TScollectionForAgg.print()
 
