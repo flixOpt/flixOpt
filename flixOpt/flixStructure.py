@@ -63,7 +63,7 @@ class SystemModel(LinearModel):
         return self.models_of_elements[aModelingElement]
 
     # register ModelingElements and belonging Mod:
-    def registerMEandMod(self, aModelingElement, aMod):
+    def register_element_with_model(self, aModelingElement, aMod):
         # allocation Element -> model
         self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
 
@@ -349,7 +349,7 @@ class Element:
         # create model:
         aMod = ElementModel(self)
         # register model:
-        modBox.registerMEandMod(self, aMod)
+        modBox.register_element_with_model(self, aMod)
 
         self._activateModBox_ForMeOnly(modBox)  # subElements werden bereits aktiviert über aElement.createNewMod...()
 
