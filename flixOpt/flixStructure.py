@@ -23,7 +23,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class cModelBoxOfES(LinearModel):
+class SystemModel(LinearModel):
     '''
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     '''
@@ -226,7 +226,7 @@ class Element:
     3. Element.doModeling()        --> Modellierung
     4. Element.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
     """
-    modBox: cModelBoxOfES
+    modBox: SystemModel
 
     new_init_args = ['label']
     not_used_args = []
@@ -283,7 +283,7 @@ class Element:
         self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
 
         self.subElements: List[Element] = []  # zugehörige Sub-ModelingElements
-        self.modBox: Optional[cModelBoxOfES] = None  # hier kommt die aktive ModBox rein
+        self.modBox: Optional[SystemModel] = None  # hier kommt die aktive ModBox rein
         self.mod: Optional[cMEModel] = None  # hier kommen alle Glg und Vars rein
 
         # wenn hier kwargs auftauchen, dann wurde zuviel übergeben:
@@ -681,7 +681,7 @@ class cBaseComponent(Element):
     ''' 
     basic component class for all components
     '''
-    modBox: cModelBoxOfES
+    modBox: SystemModel
     new_init_args = ['label', 'on_valuesBeforeBegin', 'switchOnCosts', 'switchOn_maxNr', 'onHoursSum_min',
                      'onHoursSum_max', 'costsPerRunningHour', 'exists']
     not_used_args = ['label']
@@ -1477,7 +1477,7 @@ class cFlow(Element):
         super().finalize()
 
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES) -> None:
+    def declareVarsAndEqs(self, modBox: SystemModel) -> None:
         print('declareVarsAndEqs ' + self.label)
         super().declareVarsAndEqs(modBox)
 
@@ -1530,7 +1530,7 @@ class cFlow(Element):
             self.featureInvest.setDefiningVar(self.mod.var_val, self.mod.var_on)
             self.featureInvest.declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox: cModelBoxOfES, timeIndexe) -> None:
+    def doModeling(self, modBox: SystemModel, timeIndexe) -> None:
         # super().doModeling(modBox,timeIndexe)
 
         # for aFeature in self.features:
@@ -1823,7 +1823,7 @@ class System:
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
         self.globalComp = cGlobal('globalComp')
         self.__finalized = False  # wenn die MEs alle finalisiert sind, dann True
-        self.modBox: cModelBoxOfES = None  # later activated
+        self.modBox: SystemModel = None  # later activated
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
         # self.addComponents(self.globalComp)
 
@@ -1987,7 +1987,7 @@ class System:
                 aME.finalize()  # inklusive subMEs!
             self.__finalized = True
 
-    def doModelingOfElements(self) -> cModelBoxOfES:
+    def doModelingOfElements(self) -> SystemModel:
 
         if not self.__finalized:
             raise Exception('modeling not possible, because Energysystem is not finalized')
@@ -2050,9 +2050,9 @@ class System:
                 # Aktivieren:
             aTS.activate(chosenTimeIndexe, explicitData)
 
-    def activateModBox(self, aModBox:cModelBoxOfES) -> None:
+    def activateModBox(self, aModBox:SystemModel) -> None:
         self.modBox = aModBox
-        aModBox: cModelBoxOfES
+        aModBox: SystemModel
         aME: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
@@ -2351,8 +2351,8 @@ class cCalculation:
 
         t_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen:
-        aModBox = cModelBoxOfES(self.label, self.modType, self.es,
-                                self.chosenEsTimeIndexe)  # alle Indexe nehmen!
+        aModBox = SystemModel(self.label, self.modType, self.es,
+                              self.chosenEsTimeIndexe)  # alle Indexe nehmen!
         # modBox aktivieren:
         self.es.activateModBox(aModBox)
         # modellieren:
@@ -2450,7 +2450,7 @@ class cCalculation:
 
             # Modellierungsbox / TimePeriod-Box bauen:
             label = self.label + '_seg' + str(i)
-            segmentModBox = cModelBoxOfES(label, self.modType, self.es, indexe_global)  # alle Indexe nehmen!
+            segmentModBox = SystemModel(label, self.modType, self.es, indexe_global)  # alle Indexe nehmen!
             segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
 
             # Startwerte übergeben von Vorgänger-Modbox:
@@ -2679,8 +2679,8 @@ class cCalculation:
 
         t_m_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        aModBox = cModelBoxOfES(self.label, self.modType, self.es, self.chosenEsTimeIndexe,
-                                TS_explicit)  # alle Indexe nehmen!
+        aModBox = SystemModel(self.label, self.modType, self.es, self.chosenEsTimeIndexe,
+                              TS_explicit)  # alle Indexe nehmen!
         self.listOfModbox.append(aModBox)
         # modBox aktivieren:
         self.es.activateModBox(aModBox)
