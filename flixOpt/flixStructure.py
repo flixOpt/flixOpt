@@ -73,7 +73,7 @@ class SystemModel(LinearModel):
         super()._charactarizeProblem()
 
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
-        # self.es.activateModBox()
+        # self.es.activate_model()
         self._infos['str_Eqs'] = self.es.getEqsAsStr()
         self._infos['str_Vars'] = self.es.getVarsAsStr()
 
@@ -319,14 +319,13 @@ class Element:
         return str_desc
 
     # activate inkl. subElements:
-    def activateModbox(self, system_model) -> None:
-
+    def activate_system_model(self, system_model) -> None:
         for element in self.subElements:
-            element.activateModbox(system_model)  # inkl. subElements
-        self._activateModBox_ForMeOnly(system_model)
+            element.activate_system_model(system_model)  # inkl. subElements
+        self.activate_system_model_for_me(system_model)
 
     # activate ohne SubElements!
-    def _activateModBox_ForMeOnly(self, system_model) -> None:
+    def activate_system_model_for_me(self, system_model) -> None:
         self.system_model = system_model
         self.model = system_model.get_model_of_element(self)
 
@@ -351,7 +350,7 @@ class Element:
         # register model:
         system_model.register_element_with_model(self, model)
 
-        self._activateModBox_ForMeOnly(system_model)  # subElements werden bereits aktiviert über aElement.createNewMod...()
+        self.activate_system_model_for_me(system_model)  # subElements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
     def declareVarsAndEqs(self, system_model) -> None:
@@ -2034,7 +2033,7 @@ class System:
 
         return self.model
 
-    # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activateModbox)
+    # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activate_system_model)
     def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None) -> None:
         aTS: TimeSeries
         if dictOfTSAndExplicitData is None:
@@ -2049,27 +2048,27 @@ class System:
                 # Aktivieren:
             aTS.activate(chosenTimeIndexe, explicitData)
 
-    def activateModBox(self, aModBox:SystemModel) -> None:
-        self.model = aModBox
-        aModBox: SystemModel
+    def activate_model(self, system_model: SystemModel) -> None:
+        self.model = system_model
+        system_model: SystemModel
         element: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
-        self.activateInTS(aModBox.esTimeIndexe, aModBox.TS_explicit)
+        self.activateInTS(system_model.esTimeIndexe, system_model.TS_explicit)
 
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
-        if aModBox.models_of_elements == {}:
+        if system_model.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
             for element in self.allElementsOfFirstLayer:
                 # BEACHTE: erst nach finalize(), denn da werden noch subElements erst erzeugt!
                 if not self.__finalized:
-                    raise Exception('activateModBox(): --> Geht nicht, da System noch nicht finalized!')
+                    raise Exception('activate_model(): --> Geht nicht, da System noch nicht finalized!')
                 # model bauen und in model registrieren.
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. subElements
         else:
             # nur Aktivieren:
             for element in self.allElementsOfFirstLayer:  # TODO: Is This a BUG?
-                element.activateModbox(aModBox)  # inkl. subElements
+                element.activate_system_model(system_model)  # inkl. subElements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
     def getResultsAfterSolve(self) -> Tuple[Dict, Dict]:
@@ -2260,9 +2259,9 @@ class Calculation:
         calcInfos['calcType'] = self.calcType
         calcInfos['duration'] = self.durations
         infos['system_description'] = self.es.getSystemDescr()
-        infos['modboxes'] = {}
-        infos['modboxes']['duration'] = [aModbox.duration for aModbox in self.listOfModbox]
-        infos['modboxes']['info'] = [aModBox.infos for aModBox in self.listOfModbox]
+        infos['system_models'] = {}
+        infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
+        infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
 
         return infos
 
@@ -2270,7 +2269,7 @@ class Calculation:
     def results(self):
         # wenn noch nicht belegt, dann aus system_model holen
         if self.__results is None:
-            self.__results = self.listOfModbox[0].results
+            self.__results = self.system_models[0].results
 
             # (bei segmented Calc ist das schon explizit belegt.)
         return self.__results
@@ -2283,8 +2282,8 @@ class Calculation:
             if (self.calcType == 'segmented'):
                 self.__results_struct = helpers.createStructFromDictInDict(self.results)
             # nur eine system_model vorhanden ('full','aggregated')
-            elif len(self.listOfModbox) == 1:
-                self.__results_struct = self.listOfModbox[0].results_struct
+            elif len(self.system_models) == 1:
+                self.__results_struct = self.system_models[0].results_struct
             else:
                 raise Exception('calcType ' + str(self.calcType) + ' not defined')
         return self.__results_struct
@@ -2315,7 +2314,7 @@ class Calculation:
         self.calcType = None  # 'full', 'segmented', 'aggregated'
         self._infos = {}
 
-        self.listOfModbox = []  # liste der ModelBoxes (nur bei Segmentweise mehrere!)
+        self.system_models: List[SystemModel] = []  # liste der ModelBoxes (nur bei Segmentweise mehrere!)
         self.durations = {}  # Dauer der einzelnen Dinge
         self.durations['modeling'] = 0
         self.durations['solving'] = 0
@@ -2350,16 +2349,16 @@ class Calculation:
 
         t_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen:
-        aModBox = SystemModel(self.label, self.modType, self.es,
+        system_model = SystemModel(self.label, self.modType, self.es,
                               self.chosenEsTimeIndexe)  # alle Indexe nehmen!
         # model aktivieren:
-        self.es.activateModBox(aModBox)
+        self.es.activate_model(system_model)
         # modellieren:
         self.es.doModelingOfElements()
 
         self.durations['modeling'] = round(time.time() - t_start, 2)
-        self.listOfModbox.append(aModBox)
-        return aModBox
+        self.system_models.append(system_model)
+        return system_model
 
     # Variante2:
     def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix='', nameSuffix='',
@@ -2427,7 +2426,7 @@ class Calculation:
         print('-> nr of Sims : ' + str(nrOfSimSegments))
         print('')
 
-        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults=True, nrOfModBoxes=nrOfSimSegments)
+        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults=True, nr_of_system_models=nrOfSimSegments)
 
         for i in range(nrOfSimSegments):
             startIndex_calc = i * nrOfUsedSteps
@@ -2463,7 +2462,7 @@ class Calculation:
                 # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
-            self.es.activateModBox(segmentModBox)
+            self.es.activate_model(segmentModBox)
 
             # modellieren:
             t_start_modeling = time.time()
@@ -2472,7 +2471,7 @@ class Calculation:
             # system_model in Liste hinzufügen:
             self.segmentModBoxList.append(segmentModBox)
             # übergeordnete system_model-Liste:
-            self.listOfModbox.append(segmentModBox)
+            self.system_models.append(segmentModBox)
 
             # Lösen:
             t_start_solving = time.time()
@@ -2537,7 +2536,7 @@ class Calculation:
 
         Returns
         -------
-        aModBox : TYPE
+        system_model : TYPE
             DESCRIPTION.
 
         '''
@@ -2678,30 +2677,30 @@ class Calculation:
 
         t_m_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        aModBox = SystemModel(self.label, self.modType, self.es, self.chosenEsTimeIndexe,
+        system_model = SystemModel(self.label, self.modType, self.es, self.chosenEsTimeIndexe,
                               TS_explicit)  # alle Indexe nehmen!
-        self.listOfModbox.append(aModBox)
+        self.system_models.append(system_model)
         # model aktivieren:
-        self.es.activateModBox(aModBox)
+        self.es.activate_model(system_model)
         # modellieren:
         self.es.doModelingOfElements()
 
         self.durations['modeling'] = round(time.time() - t_m_start, 2)
-        return aModBox
+        return system_model
 
     def solve(self, solverProps, namePrefix='', nameSuffix='', aPath='results/', saveResults=True):
 
-        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults, nrOfModBoxes=1)
+        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
 
         if self.calcType not in ['full', 'aggregated']:
             raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
-        aModbox = self.listOfModbox[0]
-        aModbox.solve(**solverProps, logfileName=self.paths_Log[0])
+        system_model = self.system_models[0]
+        system_model.solve(**solverProps, logfileName=self.paths_Log[0])
 
         if saveResults:
             self._saveSolveInfos()
 
-    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults, nrOfModBoxes=1):
+    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1):
         import datetime
         import pathlib
 
@@ -2720,12 +2719,12 @@ class Calculation:
         if saveResults:
             filename_Data = self.nameOfCalc + '_data.pickle'
             filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
-            if nrOfModBoxes == 1:
+            if nr_of_system_models == 1:
                 filenames_Log = [self.nameOfCalc + '_solver.log']
             else:
-                filenames_Log = [(self.nameOfCalc + '_solver_' + str(i) + '.log') for i in range(nrOfModBoxes)]
+                filenames_Log = [(self.nameOfCalc + '_solver_' + str(i) + '.log') for i in range(nr_of_system_models)]
 
-            self.paths_Log = [self.pathForResults / filenames_Log[i] for i in range(nrOfModBoxes)]
+            self.paths_Log = [self.pathForResults / filenames_Log[i] for i in range(nr_of_system_models)]
             self.path_Data = self.pathForResults / filename_Data
             self.path_Info = self.pathForResults / filename_Info
         else:
