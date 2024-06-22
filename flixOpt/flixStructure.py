@@ -226,7 +226,7 @@ class Element:
     3. Element.doModeling()        --> Modellierung
     4. Element.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
     """
-    modBox: SystemModel
+    system_model: SystemModel
 
     new_init_args = ['label']
     not_used_args = []
@@ -283,7 +283,7 @@ class Element:
         self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
 
         self.subElements: List[Element] = []  # zugehörige Sub-ModelingElements
-        self.modBox: Optional[SystemModel] = None  # hier kommt die aktive ModBox rein
+        self.system_model: Optional[SystemModel] = None  # hier kommt die aktive ModBox rein
         self.mod: Optional[ElementModel] = None  # hier kommen alle Glg und Vars rein
 
         # wenn hier kwargs auftauchen, dann wurde zuviel übergeben:
@@ -327,7 +327,7 @@ class Element:
 
     # activate ohne SubMEs!
     def _activateModBox_ForMeOnly(self, modBox) -> None:
-        self.modBox = modBox
+        self.system_model = modBox
         self.mod = modBox.getModOfME(self)
 
     # 1.
@@ -681,7 +681,7 @@ class Component(Element):
     ''' 
     basic component class for all components
     '''
-    modBox: SystemModel
+    system_model: SystemModel
     new_init_args = ['label', 'on_valuesBeforeBegin', 'switchOnCosts', 'switchOn_maxNr', 'onHoursSum_min',
                      'onHoursSum_max', 'costsPerRunningHour', 'exists']
     not_used_args = ['label']
