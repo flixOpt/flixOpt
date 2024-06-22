@@ -77,36 +77,6 @@ class TimeSeries:
 
     # create and register in List:
 
-    # Vektor:
-    @property
-    def active_data_vector(self) -> np.ndarray:
-        # Always returns the active data as a vector.
-        return helpers.getVector(self.active_data, len(self.__timeIndexe_actual))
-
-    @property
-    def active_data(self) -> Numeric:
-        # wenn d_i_explicit gesetzt wurde:
-        if self.d_i_explicit is not None:
-            return self.d_i_explicit
-
-        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.__timeIndexe_actual is None)
-        if indices_not_applicable:
-            return self.data
-        else:
-            return self.data[self.__timeIndexe_actual]
-
-    @property
-    def isscalar(self):
-        return np.isscalar(self.data)
-
-    @property
-    def isArray(self):
-        return (not (self.isscalar)) & (not (self.data is None))
-
-    @property
-    def label_full(self):
-        return self.owner.label_full + '_' + self.label
-
     def __init__(self, label: str, data: Numeric_TS, owner):
         '''
         Parameters
@@ -136,6 +106,36 @@ class TimeSeries:
 
     def __repr__(self):
         return f"{self.data}"
+
+    # Vektor:
+    @property
+    def active_data_vector(self) -> np.ndarray:
+        # Always returns the active data as a vector.
+        return helpers.getVector(self.active_data, len(self.__timeIndexe_actual))
+
+    @property
+    def active_data(self) -> Numeric:
+        # wenn d_i_explicit gesetzt wurde:
+        if self.d_i_explicit is not None:
+            return self.d_i_explicit
+
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.__timeIndexe_actual is None)
+        if indices_not_applicable:
+            return self.data
+        else:
+            return self.data[self.__timeIndexe_actual]
+
+    @property
+    def isscalar(self):
+        return np.isscalar(self.data)
+
+    @property
+    def isArray(self):
+        return (not (self.isscalar)) & (not (self.data is None))
+
+    @property
+    def label_full(self):
+        return self.owner.label_full + '_' + self.label
 
     @staticmethod
     def make_scalar_if_possible(data):
