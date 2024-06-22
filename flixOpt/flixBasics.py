@@ -142,7 +142,7 @@ class TimeSeries:
 
     @property
     def is_array(self) -> bool:
-        return (not (self.is_scalar)) & (not (self.data is None))
+        return not self.is_scalar and self.data is not None
 
     @property
     def label_full(self) -> str:
