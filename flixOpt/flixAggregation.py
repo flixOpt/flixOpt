@@ -452,7 +452,7 @@ class cAggregationModeling(flixStructure.Element):
             eq_max.addRightSide(self.noOfCorrections)  # Maximum
         return eq
 
-    def addShareToGlobals(self, globalComp: flixStructure.cGlobal, modBox):
+    def addShareToGlobals(self, globalComp: flixStructure.Global, modBox):
 
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentageOfPeriodFreedom > 0) & (self.costsOfPeriodFreedom != 0):

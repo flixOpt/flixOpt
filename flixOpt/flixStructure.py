@@ -908,7 +908,7 @@ class Component(Element):
 
 
 # komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
-class cGlobal(Element):
+class Global(Element):
     ''' 
     storing global modeling stuff like effect equations and optimization target
     '''
@@ -1644,7 +1644,7 @@ class cFlow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def addShareToGlobals(self, globalComp: cGlobal, modBox) -> None:
+    def addShareToGlobals(self, globalComp: Global, modBox) -> None:
 
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
@@ -1821,7 +1821,7 @@ class System:
         self.standardEffect = None  # Standard-Effekt, zumeist Kosten
         self.objectiveEffect = None  # Zielfunktions-Effekt, z.B. Kosten oder CO2
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
-        self.globalComp = cGlobal('globalComp')
+        self.globalComp = Global('globalComp')
         self.__finalized = False  # wenn die MEs alle finalisiert sind, dann True
         self.modBox: SystemModel = None  # later activated
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
