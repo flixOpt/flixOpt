@@ -34,31 +34,6 @@ class LinearModel:
     - var * factor_vec  # Does this make sense? Is this even implemented?
     '''
 
-    @property
-    def infos(self) -> Dict:
-        infos = {}
-        infos['Solver'] = self.solver_name
-
-        info_flixModel = {}
-        infos['flixModel'] = info_flixModel
-
-        info_flixModel['no eqs'] = self.noOfEqs
-        info_flixModel['no eqs single'] = self.noOfSingleEqs
-        info_flixModel['no inEqs'] = self.noOfIneqs
-        info_flixModel['no inEqs single'] = self.noOfSingleIneqs
-        info_flixModel['no vars'] = self.noOfVars
-        info_flixModel['no vars single'] = self.noOfSingleVars
-        info_flixModel['no vars TS'] = len(self.variables_TSonly)
-
-        if self.solver_log is not None:
-            infos['solver_log'] = self.solver_log.infos
-        return infos
-
-    @property
-    def variables_TSonly(self) -> List:
-        variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, VariableTS)]
-        return variables_TSonly
-
     def __init__(self,
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'):
@@ -88,6 +63,120 @@ class LinearModel:
             raise NotImplementedError('Modeling Language cvxpy is not yet implemented')
         else:
             raise Exception('not defined for modeling_language' + str(self.modeling_language))
+
+    def transform2MathModel(self) -> None:
+
+        self._charactarizeProblem()
+
+        t_start = time.time()
+        eq: Equation
+        # Variablen erstellen
+        for variable in self.variables:
+            variable.transform2MathModel(self)
+        # Gleichungen erstellen
+        for eq in self.eqs:
+            eq.transform2MathModel(self)
+        # Ungleichungen erstellen:
+        for ineq in self.ineqs:
+            ineq.transform2MathModel(self)
+        # Zielfunktion erstellen
+        self.objective.transform2MathModel(self)
+
+        self.duration['transform2MathModel'] = round(time.time() - t_start, 2)
+
+    # Attention: is overrided by childclass:
+    def _charactarizeProblem(self) -> None:
+        eq: Equation
+        var: Variable
+
+        self.noOfEqs = len(self.eqs)
+        self.noOfSingleEqs = sum([eq.nrOfSingleEquations for eq in self.eqs])
+
+        self.noOfIneqs = len(self.ineqs)
+        self.noOfSingleIneqs = sum([eq.nrOfSingleEquations for eq in self.ineqs])
+
+        self.noOfVars = len(self.variables)
+        self.noOfSingleVars = sum([var.len for var in self.variables])
+
+    def solve(self, gapfrac, timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt) -> None:
+        self.solver_name = solver_name
+        t_start = time.time()
+        for variable in self.variables:
+            variable.resetResult()  # altes Ergebnis löschen (falls vorhanden)
+        if self.modeling_language == 'pyomo':
+            if solver_name == 'highs':
+              solver = appsi.solvers.Highs()
+            else:
+              solver = pyomoEnv.SolverFactory(solver_name)
+            if solver_name == 'cbc':
+                solver_opt["ratio"] = gapfrac
+                solver_opt["sec"] = timelimit
+            elif solver_name == 'gurobi':
+                solver_opt["mipgap"] = gapfrac
+                solver_opt["TimeLimit"] = timelimit
+            elif solver_name == 'cplex':
+                solver_opt["mipgap"] = gapfrac
+                solver_opt["timelimit"] = timelimit
+                # todo: threads = ? funktioniert das für cplex?
+            elif solver_name == 'glpk':
+                # solver_opt = {} # überschreiben, keine kwargs zulässig
+                # solver_opt["mipgap"] = gapfrac
+                solver_opt['mipgap'] = gapfrac
+            elif solver_name == 'highs':
+                  solver_opt["mip_rel_gap"] = gapfrac
+                  solver_opt["time_limit"] = timelimit
+                  solver_opt["log_file"]= "results/highs.log"
+                  solver_opt["parallel"] = "on"
+                  solver_opt["presolve"] = "on"
+                  solver_opt["threads"] = 4
+                  solver_opt["output_flag"] = True
+                  solver_opt["log_to_console"] = True
+            # logfileName = "flixSolverLog.log"
+            if solver_name == 'highs':
+                solver.highs_options=solver_opt
+                self.solver_results = solver.solve(self.model)
+            else:
+                self.solver_results = solver.solve(self.model, options = solver_opt, tee = displaySolverOutput, keepfiles=True, logfile=logfileName)
+
+            # Log wieder laden:
+            if solver_name == 'highs':
+                pass
+            else:
+                self.solver_log = SolverLog(solver_name, logfileName)
+                self.solver_log.parseInfos()
+            # Ergebnis Zielfunktion ablegen
+            self.objective_result = self.model.objective.expr()
+
+        else:
+            raise Exception('not defined for modtype ' + self.modeling_language)
+
+        self.duration['solve'] = round(time.time() - t_start, 2)
+
+
+    @property
+    def infos(self) -> Dict:
+        infos = {}
+        infos['Solver'] = self.solver_name
+
+        info_flixModel = {}
+        infos['flixModel'] = info_flixModel
+
+        info_flixModel['no eqs'] = self.noOfEqs
+        info_flixModel['no eqs single'] = self.noOfSingleEqs
+        info_flixModel['no inEqs'] = self.noOfIneqs
+        info_flixModel['no inEqs single'] = self.noOfSingleIneqs
+        info_flixModel['no vars'] = self.noOfVars
+        info_flixModel['no vars single'] = self.noOfSingleVars
+        info_flixModel['no vars TS'] = len(self.variables_TSonly)
+
+        if self.solver_log is not None:
+            infos['solver_log'] = self.solver_log.infos
+        return infos
+
+    @property
+    def variables_TSonly(self) -> List:
+        variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, VariableTS)]
+        return variables_TSonly
 
     def printNoEqsAndVars(self) -> None:
         print('no of Eqs   (single):' + str(self.noOfEqs) + ' (' + str(self.noOfSingleEqs) + ')')
@@ -136,94 +225,6 @@ class LinearModel:
         self.deletePyComp(old_py_comp)
         # überschreiben:
         self.model.add_component(aName, py_comp)
-
-    def transform2MathModel(self) -> None:
-
-        self._charactarizeProblem()
-
-        t_start = time.time()
-        eq: Equation
-        # Variablen erstellen
-        for variable in self.variables:
-            variable.transform2MathModel(self)
-        # Gleichungen erstellen
-        for eq in self.eqs:
-            eq.transform2MathModel(self)
-        # Ungleichungen erstellen:
-        for ineq in self.ineqs:
-            ineq.transform2MathModel(self)
-        # Zielfunktion erstellen
-        self.objective.transform2MathModel(self)
-
-        self.duration['transform2MathModel'] = round(time.time() - t_start, 2)
-
-    # Attention: is overrided by childclass:
-    def _charactarizeProblem(self) -> None:
-        eq: Equation
-        var: Variable
-
-        self.noOfEqs = len(self.eqs)
-        self.noOfSingleEqs = sum([eq.nrOfSingleEquations for eq in self.eqs])
-
-        self.noOfIneqs = len(self.ineqs)
-        self.noOfSingleIneqs = sum([eq.nrOfSingleEquations for eq in self.ineqs])
-
-        self.noOfVars = len(self.variables)
-        self.noOfSingleVars = sum([var.len for var in self.variables])
-
-    def solve(self, gapfrac, timelimit, solver_name, displaySolverOutput, logfileName, **solver_opt) -> None:
-        self.solver_name = solver_name
-        t_start = time.time()
-        for variable in self.variables:
-            variable.resetResult()  # altes Ergebnis löschen (falls vorhanden)
-        if self.modeling_language == 'pyomo':
-            if solver_name == 'highs':
-              solver = appsi.solvers.Highs()   
-            else:
-              solver = pyomoEnv.SolverFactory(solver_name)
-            if solver_name == 'cbc':
-                solver_opt["ratio"] = gapfrac
-                solver_opt["sec"] = timelimit
-            elif solver_name == 'gurobi':
-                solver_opt["mipgap"] = gapfrac
-                solver_opt["TimeLimit"] = timelimit
-            elif solver_name == 'cplex':
-                solver_opt["mipgap"] = gapfrac
-                solver_opt["timelimit"] = timelimit
-                # todo: threads = ? funktioniert das für cplex?
-            elif solver_name == 'glpk':
-                # solver_opt = {} # überschreiben, keine kwargs zulässig
-                # solver_opt["mipgap"] = gapfrac
-                solver_opt['mipgap'] = gapfrac
-            elif solver_name == 'highs':
-                  solver_opt["mip_rel_gap"] = gapfrac
-                  solver_opt["time_limit"] = timelimit
-                  solver_opt["log_file"]= "results/highs.log"
-                  solver_opt["parallel"] = "on"
-                  solver_opt["presolve"] = "on"
-                  solver_opt["threads"] = 4
-                  solver_opt["output_flag"] = True
-                  solver_opt["log_to_console"] = True    
-            # logfileName = "flixSolverLog.log"
-            if solver_name == 'highs':
-                solver.highs_options=solver_opt
-                self.solver_results = solver.solve(self.model)     
-            else:    
-                self.solver_results = solver.solve(self.model, options = solver_opt, tee = displaySolverOutput, keepfiles=True, logfile=logfileName)  
-
-            # Log wieder laden:
-            if solver_name == 'highs':
-                pass    
-            else:    
-                self.solver_log = SolverLog(solver_name, logfileName)
-                self.solver_log.parseInfos()
-            # Ergebnis Zielfunktion ablegen
-            self.objective_result = self.model.objective.expr()
-
-        else:
-            raise Exception('not defined for modtype ' + self.modeling_language)
-
-        self.duration['solve'] = round(time.time() - t_start, 2)
 
 
 class Variable:
