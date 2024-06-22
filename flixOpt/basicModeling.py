@@ -167,16 +167,15 @@ class LinearModel:
         info_flixModel['no inEqs single'] = self.noOfSingleIneqs
         info_flixModel['no vars'] = self.noOfVars
         info_flixModel['no vars single'] = self.noOfSingleVars
-        info_flixModel['no vars TS'] = len(self.variables_TSonly)
+        info_flixModel['no vars TS'] = len(self.all_ts_variables)
 
         if self.solver_log is not None:
             infos['solver_log'] = self.solver_log.infos
         return infos
 
     @property
-    def variables_TSonly(self) -> List:
-        variables_TSonly = [aVar for aVar in self.variables if isinstance(aVar, VariableTS)]
-        return variables_TSonly
+    def all_ts_variables(self) -> List:
+        return [variable for variable in self.variables if isinstance(variable, VariableTS)]
 
     def printNoEqsAndVars(self) -> None:
         print('no of Eqs   (single):' + str(self.noOfEqs) + ' (' + str(self.noOfSingleEqs) + ')')
@@ -424,7 +423,7 @@ class StartValue:
         # Sieht dann so aus = {(Element1, aVar1.name): (value, time),
         #                      (Element2, aVar2.name): (value, time),
         #                       ...                       }
-        for aVar in self.fromBaseModel.variables_TSonly:
+        for aVar in self.fromBaseModel.all_ts_variables:
             aVar: VariableTS
             if aVar.activated_beforeValues:
                 # Before-Value holen:
