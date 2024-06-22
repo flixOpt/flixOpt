@@ -85,22 +85,22 @@ class TimeSeries:
             scalar, array or cTSraw!
         owner :
         '''
-        self.label = label
-        self.owner = owner
+        self.label: str = label
+        self.owner: object = owner
 
-        # if value is cTSraw, then extract value:
         if isinstance(data, cTSraw):
-            self.TSraw = data
+            self.TSraw: Optional[cTSraw] = data
             data = self.TSraw.value  # extract value
+            #TODO: Instead of storing the cTSraw object, storing the underlying data directly would be preferable.
         else:
             self.TSraw = None
 
-        self.data = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
+        self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
         self.d_i_explicit = None  #
 
         self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
 
-        owner.TS_list.append(self)
+        owner.TS_list.append(self)  # Register TimeSeries in owner
 
         self.weight_agg = 1  # weight for Aggregation method # between 0..1, normally 1
 
