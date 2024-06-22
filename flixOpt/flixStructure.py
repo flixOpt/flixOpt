@@ -59,7 +59,7 @@ class SystemModel(LinearModel):
             esTimeIndexe)
 
     # extract model of Element:
-    def getModOfME(self, aModelingElement):
+    def get_model_of_element(self, aModelingElement):
         return self.models_of_elements[aModelingElement]
 
     # register ModelingElements and belonging Mod:
@@ -328,7 +328,7 @@ class Element:
     # activate ohne SubElements!
     def _activateModBox_ForMeOnly(self, modBox) -> None:
         self.system_model = modBox
-        self.model = modBox.getModOfME(self)
+        self.model = modBox.get_model_of_element(self)
 
     # 1.
     def finalize(self) -> None:
