@@ -98,7 +98,7 @@ class TimeSeries:
         self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
         self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
 
-        self.__timeIndexe_actual = None  # aktuelle timeIndexe der modBox
+        self.active_time_indices = None  # aktuelle timeIndexe der modBox
 
         owner.TS_list.append(self)  # Register TimeSeries in owner
 
@@ -110,7 +110,7 @@ class TimeSeries:
     @property
     def active_data_vector(self) -> np.ndarray:
         # Always returns the active data as a vector.
-        return helpers.getVector(self.active_data, len(self.__timeIndexe_actual))
+        return helpers.getVector(self.active_data, len(self.active_time_indices))
 
     @property
     def active_data(self) -> Numeric:
@@ -118,11 +118,11 @@ class TimeSeries:
         if self.explicit_active_data is not None:
             return self.explicit_active_data
 
-        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.__timeIndexe_actual is None)
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_time_indices is None)
         if indices_not_applicable:
             return self.data
         else:
-            return self.data[self.__timeIndexe_actual]
+            return self.data[self.active_time_indices]
 
     @property
     def is_scalar(self) -> bool:
@@ -163,11 +163,11 @@ class TimeSeries:
     # define, which timeStep-Set should be transfered in data-request self.active_data()
     def activate(self, dataTimeIndexe, d_i_explicit=None):
         # time-Index:
-        self.__timeIndexe_actual = dataTimeIndexe
+        self.active_time_indices = dataTimeIndexe
 
         # explicitData:
         if d_i_explicit is not None:
-            assert ((len(d_i_explicit) == len(self.__timeIndexe_actual)) or \
+            assert ((len(d_i_explicit) == len(self.active_time_indices)) or \
                     (len(d_i_explicit) == 1)), 'explicit_active_data has not right length!'
 
         self.explicit_active_data = self.make_scalar_if_possible(d_i_explicit)
