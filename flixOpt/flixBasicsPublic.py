@@ -8,8 +8,8 @@ from typing import Union, Optional, Dict, List
 import numpy as np
 
 
-# Anmerkung: cTSraw separat von TimeSeries wg. Einfachheit für Anwender
-class cTSraw:
+# Anmerkung: TimeSeriesRaw separat von TimeSeries wg. Einfachheit für Anwender
+class TimeSeriesRaw:
     '''
     timeseries class for transmit timeseries AND special characteristics of timeseries, 
     i.g. to define weights needed in calcType 'aggregated'

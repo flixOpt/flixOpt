@@ -566,7 +566,7 @@ class cAbwaermeHP(cBaseLinearTransformer):
 
         # super:
         heatPump_bilanzEl = {P_el: COP, Q_th: 1}
-        if isinstance(COP, cTSraw):
+        if isinstance(COP, TimeSeriesRaw):
             COP = COP.value
             heatPump_bilanzAb = {Q_ab: COP / (COP - 1), Q_th: 1}
         else:

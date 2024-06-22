@@ -7,17 +7,17 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 from . import flixOptHelperFcts as helpers
-from .flixBasicsPublic import cTSraw
+from .flixBasicsPublic import TimeSeriesRaw
 from typing import Union, Optional, List, Dict, Any
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
 # zeitreihenbezogene Input-Daten:
-Numeric_TS = Union[Skalar, np.ndarray, cTSraw]
+Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesRaw]
 # Datatype Numeric_TS:
 #   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
 #   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
-#   cTSraw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
+#   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
 class TimeSeries:
@@ -34,7 +34,7 @@ class TimeSeries:
         The label for the time series.
     owner : object
         The owner object which holds the time series list.
-    TSraw : Optional[cTSraw]
+    TSraw : Optional[TimeSeriesRaw]
         The raw time series data if provided as cTSraw.
     data : Optional[Numeric]
         The actual data for the time series. Can be None.
@@ -50,10 +50,10 @@ class TimeSeries:
         self.label: str = label
         self.owner: object = owner
 
-        if isinstance(data, cTSraw):
-            self.TSraw: Optional[cTSraw] = data
+        if isinstance(data, TimeSeriesRaw):
+            self.TSraw: Optional[TimeSeriesRaw] = data
             data = self.TSraw.value  # extract value
-            #TODO: Instead of storing the cTSraw object, storing the underlying data directly would be preferable.
+            #TODO: Instead of storing the TimeSeriesRaw object, storing the underlying data directly would be preferable.
         else:
             self.TSraw = None
 
@@ -162,8 +162,8 @@ class TimeSeriesCollection:
 
     def __init__(self,
                  time_series_list: List[TimeSeries],
-                 addPeakMax_TSraw: Optional[List[cTSraw]] = None,
-                 addPeakMin_TSraw: Optional[List[cTSraw]] = None):
+                 addPeakMax_TSraw: Optional[List[TimeSeriesRaw]] = None,
+                 addPeakMin_TSraw: Optional[List[TimeSeriesRaw]] = None):
         self.time_series_list = time_series_list
         self.addPeakMax_TSraw = addPeakMax_TSraw or []
         self.addPeakMin_TSraw = addPeakMin_TSraw or []
@@ -234,8 +234,8 @@ class TimeSeriesCollection:
     def _checkPeak_TSraw(self, aTSrawlist):
         if aTSrawlist is not None:
             for aTSraw in aTSrawlist:
-                if not isinstance(aTSraw, cTSraw):
-                    raise Exception('addPeak_max/min must be list of cTSraw-objects!')
+                if not isinstance(aTSraw, TimeSeriesRaw):
+                    raise Exception('addPeak_max/min must be list of TimeSeriesRaw-objects!')
 
     def print(self):
         print('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
