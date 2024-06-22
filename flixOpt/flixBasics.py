@@ -130,7 +130,7 @@ class TimeSeries:
         return np.isscalar(self.data)
 
     @property
-    def isArray(self):
+    def is_array(self) -> bool:
         return (not (self.is_scalar)) & (not (self.data is None))
 
     @property
