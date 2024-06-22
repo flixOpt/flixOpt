@@ -14,7 +14,7 @@ from .flixStructure import *
 from .flixFeatures import *
 
 
-class LinearTransformer(cBaseComponent):
+class LinearTransformer(Component):
     """
     Klasse LinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
@@ -118,7 +118,7 @@ class LinearTransformer(cBaseComponent):
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, cFlow) and
+               not isinstance(value, Flow) and
                key not in ["label", "TS_list", "segmentsOfFlows", "factor_Sets", "inputs", "outputs"]
         }
 
@@ -210,7 +210,7 @@ class LinearTransformer(cBaseComponent):
                                                                 get_var_on=get_var_on,
                                                                 checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
@@ -226,7 +226,7 @@ class LinearTransformer(cBaseComponent):
         else:
             self.feature_linSegments.declareVarsAndEqs(modBox)
 
-    def doModeling(self, modBox: cModelBoxOfES, timeIndexe):
+    def doModeling(self, modBox: SystemModel, timeIndexe):
         """
         Durchführen der Modellierung?
 
@@ -309,7 +309,7 @@ class Boiler(LinearTransformer):
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric_TS, Q_fu:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, Q_fu:Flow, Q_th:Flow, **kwargs):
         '''
         constructor for boiler
 
@@ -319,9 +319,9 @@ class Boiler(LinearTransformer):
             name of bolier.
         eta : float or TS
             thermal efficiency.
-        Q_fu : cFlow
+        Q_fu : Flow
             fuel input-flow
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see mother classes!
         
@@ -339,8 +339,8 @@ class Boiler(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(cMediumCollection.fuel)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -357,7 +357,7 @@ class Power2Heat(LinearTransformer):
     new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         constructor for boiler
 
@@ -367,9 +367,9 @@ class Power2Heat(LinearTransformer):
             name of bolier.
         eta : float or TS
             thermal efficiency.
-        P_el : cFlow
+        P_el : Flow
             electric input-flow
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see mother classes!
 
@@ -387,8 +387,8 @@ class Power2Heat(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -405,7 +405,7 @@ class HeatPump(LinearTransformer):
     new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -413,9 +413,9 @@ class HeatPump(LinearTransformer):
             name of heatpump.
         COP : float or TS
             Coefficient of performance.
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see motherclasses
         '''
@@ -430,8 +430,8 @@ class HeatPump(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
@@ -445,7 +445,7 @@ class CoolingTower(LinearTransformer):
     new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -453,9 +453,9 @@ class CoolingTower(LinearTransformer):
             name of cooling tower.
         specificElectricityDemand : float or TS
             auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal input-flow.
         **kwargs : see getKwargs() and their description in motherclasses
             
@@ -472,8 +472,8 @@ class CoolingTower(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.specificElectricityDemand_bounds = [0, 1]  # 0 < eta_th < 1
@@ -491,7 +491,7 @@ class CHP(LinearTransformer):
     # eta = 1 # Thermischer Wirkungsgrad
     # __eta_bound = [0,1]
 
-    def __init__(self, label:str, eta_th:Numeric_TS, eta_el:Numeric_TS, Q_fu:cFlow, P_el:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, eta_th:Numeric_TS, eta_el:Numeric_TS, Q_fu:Flow, P_el:Flow, Q_th:Flow, **kwargs):
         '''
         constructor of cCHP
 
@@ -503,11 +503,11 @@ class CHP(LinearTransformer):
             thermal efficiency.
         eta_el : float or TS
             electrical efficiency.
-        Q_fu : cFlow
+        Q_fu : Flow
             fuel input-flow.
-        P_el : cFlow
+        P_el : Flow
             electricity output-flow.
-        Q_th : cFlow
+        Q_th : Flow
             heat output-flow.
         **kwargs : 
         
@@ -527,9 +527,9 @@ class CHP(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(cMediumCollection.fuel)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
-        P_el.setMediumIfNotSet(cMediumCollection.el)
+        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
 
         # Plausibilität eta:
         self.eta_th_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -547,7 +547,7 @@ class HeatPumpWithSource(LinearTransformer):
     new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, COP:Numeric_TS, P_el:cFlow, Q_ab:cFlow, Q_th:cFlow, **kwargs):
+    def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_ab:Flow, Q_th:Flow, **kwargs):
         '''
         Parameters
         ----------
@@ -555,11 +555,11 @@ class HeatPumpWithSource(LinearTransformer):
             name of heatpump.
         COP : float, TS
             Coefficient of performance.
-        Q_ab : cFlow
+        Q_ab : Flow
             Heatsource input-flow.
-        P_el : cFlow
+        P_el : Flow
             electricity input-flow.
-        Q_th : cFlow
+        Q_th : Flow
             thermal output-flow.
         **kwargs : see motherclasses
         '''
@@ -581,16 +581,16 @@ class HeatPumpWithSource(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(cMediumCollection.el)
-        Q_th.setMediumIfNotSet(cMediumCollection.heat)
-        Q_ab.setMediumIfNotSet(cMediumCollection.heat)
+        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        Q_ab.setMediumIfNotSet(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
         helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
 
 
-class Storage(cBaseComponent):
+class Storage(Component):
     """
     Klasse Storage
     """
@@ -613,8 +613,8 @@ class Storage(cBaseComponent):
     # capacity_inFlowHours: float, 'lastValueOfSim', None
     def __init__(self,
                  label: str,
-                 inFlow: cFlow,
-                 outFlow: cFlow,
+                 inFlow: Flow,
+                 outFlow: Flow,
                  capacity_inFlowHours: Optional[Union[Skalar, Literal['lastValueOfSim']]],
                  group: Optional[str] = None,
                  min_rel_chargeState: Numeric_TS = 0,
@@ -634,9 +634,9 @@ class Storage(cBaseComponent):
         ----------
         label : str
             description.
-        inFlow : cFlow
+        inFlow : Flow
             ingoing flow.
-        outFlow : cFlow
+        outFlow : Flow
             outgoing flow.
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -730,14 +730,14 @@ class Storage(cBaseComponent):
                                                 featureOn=None)  # hier gibt es kein On-Wert
 
         # Medium-Check:
-        if not (cMediumCollection.checkIfFits(inFlow.medium, outFlow.medium)):
+        if not (MediumCollection.checkIfFits(inFlow.medium, outFlow.medium)):
             raise Exception('in Storage ' + self.label + ': input.medium = ' + str(inFlow.medium) +
                             ' and output.medium = ' + str(outFlow.medium) + ' don`t fit!')
         # TODO: chargeState0 darf nicht größer max usw. abfangen!
 
         self.isStorage = True  # for postprocessing
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
@@ -907,7 +907,7 @@ class Storage(cBaseComponent):
         # obj.ineqs.EntwederLadenOderEntladen.addSummand(obj.vars.IchEntladeMich,1);
         # obj.ineqs.EntwederLadenOderEntladen.addRightSide(1);
 
-    def addShareToGlobals(self, globalComp: cGlobal, modBox):
+    def addShareToGlobals(self, globalComp: Global, modBox):
         """
 
         :param globalComp:
@@ -920,27 +920,27 @@ class Storage(cBaseComponent):
             self.featureInvest.addShareToGlobals(globalComp, modBox)
 
 
-class SourceAndSink(cBaseComponent):
+class SourceAndSink(Component):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
     """
-    # source : cFlow
-    # sink   : cFlow
+    # source : Flow
+    # sink   : Flow
 
     new_init_args = ['label', 'source', 'sink', 'avoidInAndOutAtOnce']
 
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, sink: cFlow, group: str = None,
+    def __init__(self, label: str, source: Flow, sink: Flow, group: str = None,
                  avoidInAndOutAtOnce: bool = True, **kwargs):
         '''
         Parameters
         ----------
         label : str
             name of sourceAndSink
-        source : cFlow
+        source : Flow
             output-flow of this component
-        sink : cFlow
+        sink : Flow
             input-flow of this component
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -998,20 +998,20 @@ class SourceAndSink(cBaseComponent):
             self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
 
 
-class Source(cBaseComponent):
+class Source(Component):
     """
     class of a source
     """
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, source: cFlow, group: str = None, **kwargs):
+    def __init__(self, label: str, source: Flow, group: str = None, **kwargs):
         '''       
         Parameters
         ----------
         label : str
             name of source
-        source : cFlow
+        source : Flow
             output-flow of source
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -1027,7 +1027,7 @@ class Source(cBaseComponent):
         Konstruktor für Instanzen der Klasse Source
 
         :param str label: Bezeichnung
-        :param cFlow source: flow-output Quelle
+        :param Flow source: flow-output Quelle
         :param kwargs:
         """
         super().__init__(label, **kwargs)
@@ -1041,14 +1041,14 @@ class Source(cBaseComponent):
             flow.group = self.group
 
 
-class Sink(cBaseComponent):
+class Sink(Component):
     """
     Klasse Sink
     """
     new_init_args = ['label', 'source']
     not_used_args = ['label']
 
-    def __init__(self, label: str, sink: cFlow, group: str = None, **kwargs):
+    def __init__(self, label: str, sink: Flow, group: str = None, **kwargs):
         '''
         constructor of sink 
 
@@ -1056,7 +1056,7 @@ class Sink(cBaseComponent):
         ----------
         label : str
             name of sink.
-        sink : cFlow
+        sink : Flow
             input-flow of sink
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -1081,7 +1081,7 @@ class Sink(cBaseComponent):
 
 
 
-class Transportation(cBaseComponent):
+class Transportation(Component):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
     # TODO: investmentsize only on 1 flow
@@ -1090,10 +1090,10 @@ class Transportation(cBaseComponent):
 
     def __init__(self,
                  label: str,
-                 in1: cFlow,
-                 out1: cFlow,
-                 in2: Optional[cFlow] = None,
-                 out2: Optional[cFlow] = None,
+                 in1: Flow,
+                 out1: Flow,
+                 in2: Optional[Flow] = None,
+                 out2: Optional[Flow] = None,
                  loss_rel: Numeric_TS = 0,
                  loss_abs: Numeric_TS = 0,
                  isAlwaysOn: bool = True,
@@ -1116,9 +1116,9 @@ class Transportation(cBaseComponent):
         ----------
         label : str
             name of Transportation.
-        in1 : cFlow
+        in1 : Flow
             inflow of input at side A
-        out1 : cFlow
+        out1 : Flow
             outflow (of in1) at side B
         in2 : cFlow, optional
             optional inflow of side B
@@ -1165,7 +1165,7 @@ class Transportation(cBaseComponent):
             self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
                                                                              [self.in1, self.in2])
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+    def declareVarsAndEqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
         

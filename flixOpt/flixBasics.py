@@ -267,7 +267,7 @@ def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[
     Returns
     -------
     dict or None
-        Converted values in from of dict with either None or cEffectType as key. if values is None, None is returned
+        Converted values in from of dict with either None or Effect as key. if values is None, None is returned
     """
     if isinstance(effect_values, dict):
         return effect_values

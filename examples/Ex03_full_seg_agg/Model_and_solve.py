@@ -147,34 +147,34 @@ print('################### start of modeling #################################')
 #                 Typ         Name              
 excessCosts = 1e5
 excessCosts = None
-Strom      = cBus('el'        ,'Strom'     , excessCostsPerFlowHour = excessCosts);
-Fernwaerme = cBus('heat'        ,'Fernwärme' , excessCostsPerFlowHour = excessCosts);  
-Gas        = cBus('fuel'      ,'Gas'       , excessCostsPerFlowHour = excessCosts);  
-Kohle      = cBus('fuel'      ,'Kohle'     , excessCostsPerFlowHour = excessCosts);  
+Strom      = Bus('el', 'Strom', excessCostsPerFlowHour = excessCosts);
+Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour = excessCosts);
+Gas        = Bus('fuel', 'Gas', excessCostsPerFlowHour = excessCosts);
+Kohle      = Bus('fuel', 'Kohle', excessCostsPerFlowHour = excessCosts);
 
 # Effects
 
-costs = cEffectType('costs','€'      , 'Kosten', isStandard = True, isObjective = True)
-CO2   = cEffectType('CO2'  ,'kg'     , 'CO2_e-Emissionen') # effectsPerFlowHour = {'costs' : 180} )) 
-PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie')
+costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)
+CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen') # effectsPerFlowHour = {'costs' : 180} ))
+PE    = Effect('PE', 'kWh_PE', 'Primärenergie')
 
 # Komponentendefinition:
 
 aGaskessel = Boiler('Kessel', eta  = 0.85,  # , costsPerRunningHour = {costs:0,CO2:1000},#, switchOnCosts = 0
-                    Q_th = cFlow(label   = 'Q_th', bus = Fernwaerme),  # maxGradient = 5),
-                    Q_fu = cFlow(label   = 'Q_fu', bus = Gas       , nominal_val = 95, min_rel = 12/95, iCanSwitchOff = True, switchOnCosts=1000, valuesBeforeBegin=[0])) 
+                    Q_th = Flow(label   ='Q_th', bus = Fernwaerme),  # maxGradient = 5),
+                    Q_fu = Flow(label   ='Q_fu', bus = Gas, nominal_val = 95, min_rel =12 / 95, iCanSwitchOff = True, switchOnCosts=1000, valuesBeforeBegin=[0]))
 
 
 aKWK  = CHP('BHKW2', eta_th = 0.58, eta_el=0.22, switchOnCosts =  24000,
-            P_el = cFlow('P_el',bus = Strom    ),
-            Q_th = cFlow('Q_th',bus = Fernwaerme),
-            Q_fu = cFlow('Q_fu',bus = Kohle, nominal_val = 288, min_rel = 87/288), on_valuesBeforeBegin = [0])
+            P_el = Flow('P_el', bus = Strom),
+            Q_th = Flow('Q_th', bus = Fernwaerme),
+            Q_fu = Flow('Q_fu', bus = Kohle, nominal_val = 288, min_rel =87 / 288), on_valuesBeforeBegin = [0])
 
 
 
 aSpeicher = Storage('Speicher',
-                    inFlow  = cFlow('Q_th_load' , nominal_val = 137, bus = Fernwaerme),
-                    outFlow = cFlow('Q_th_unload', nominal_val = 158, bus = Fernwaerme),
+                    inFlow  = Flow('Q_th_load', nominal_val = 137, bus = Fernwaerme),
+                    outFlow = Flow('Q_th_unload', nominal_val = 158, bus = Fernwaerme),
                     capacity_inFlowHours = 684,
                     chargeState0_inFlowHours = 137,
                     charge_state_end_min = 137,
@@ -185,15 +185,15 @@ aSpeicher = Storage('Speicher',
  
 
 TS_Q_th_Last = TimeSeriesRaw(Q_th_Last)
-aWaermeLast = Sink  ('Wärmelast', sink   = cFlow('Q_th_Last', bus = Fernwaerme, nominal_val = 1, val_rel = TS_Q_th_Last))
+aWaermeLast = Sink  ('Wärmelast', sink   = Flow('Q_th_Last', bus = Fernwaerme, nominal_val = 1, val_rel = TS_Q_th_Last))
 
 # TS with explicit defined weight
 TS_P_el_Last = TimeSeriesRaw(P_el_Last, agg_weight = 0.7) # explicit defined weight
-aStromLast = Sink('Stromlast', sink = cFlow('P_el_Last', bus = Strom, nominal_val = 1, val_rel = TS_P_el_Last))
+aStromLast = Sink('Stromlast', sink = Flow('P_el_Last', bus = Strom, nominal_val = 1, val_rel = TS_P_el_Last))
 
-aKohleTarif = Source('Kohletarif', source = cFlow('Q_Kohle', bus = Kohle, nominal_val = 1000, costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
+aKohleTarif = Source('Kohletarif', source = Flow('Q_Kohle', bus = Kohle, nominal_val = 1000, costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
 
-aGasTarif = Source('Gastarif', source = cFlow('Q_Gas', bus = Gas, nominal_val = 1000, costsPerFlowHour= {costs: gP, CO2: 0.3}))
+aGasTarif = Source('Gastarif', source = Flow('Q_Gas', bus = Gas, nominal_val = 1000, costsPerFlowHour= {costs: gP, CO2: 0.3}))
 
 
 # 2 TS with same aggType (--> implicit defined weigth = 0.5)
@@ -201,14 +201,14 @@ p_feed_in = TimeSeriesRaw(-(p_el - 0.5), agg_type='p_el') # weight shared in gro
 p_sell    = TimeSeriesRaw(p_el + 0.5, agg_type='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
-aStromEinspeisung = Sink  ('Einspeisung', sink   = cFlow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))
+aStromEinspeisung = Sink  ('Einspeisung', sink   = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))
 aStromEinspeisung.sink.costsPerFlowHour[None].aggregation_weight = .5
 
-aStromTarif       = Source('Stromtarif', source = cFlow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))
+aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))
 aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
 
 # Zusammenführung:
-es = cEnergySystem(aTimeSeries, dt_last=None)
+es = System(aTimeSeries, dt_last=None)
 # es.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 es.addEffects(costs)
 es.addEffects(CO2, PE)
@@ -231,7 +231,7 @@ listOfCalcs = []
 
 # Roh-Rechnung:
 if doFullCalc:
-  calcFull = cCalculation('fullModel',es,'pyomo', chosenEsTimeIndexe)
+  calcFull = Calculation('fullModel', es, 'pyomo', chosenEsTimeIndexe)
   calcFull.doModelingAsOneSegment()
   
   es.printModel()
@@ -244,14 +244,14 @@ if doFullCalc:
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
-   calcSegs = cCalculation('segModel',es, 'pyomo', chosenEsTimeIndexe)
+   calcSegs = Calculation('segModel', es, 'pyomo', chosenEsTimeIndexe)
    calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, nameSuffix = nameSuffix)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
 
 if doAggregatedCalc :    
-    calcAgg = cCalculation('aggModel',es, 'pyomo')
+    calcAgg = Calculation('aggModel', es, 'pyomo')
     calcAgg.doAggregatedModeling(periodLengthInHours, 
                                  noTypicalPeriods, 
                                  useExtremeValues, 
