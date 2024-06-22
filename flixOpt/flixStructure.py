@@ -321,8 +321,8 @@ class Element:
     # activate inkl. subElements:
     def activateModbox(self, modBox) -> None:
 
-        for aME in self.subElements:
-            aME.activateModbox(modBox)  # inkl. subElements
+        for element in self.subElements:
+            element.activateModbox(modBox)  # inkl. subElements
         self._activateModBox_ForMeOnly(modBox)
 
     # activate ohne SubElements!
@@ -334,9 +334,9 @@ class Element:
     def finalize(self) -> None:
         # print('finalize ' + self.label)
         # gleiches für alle sub Elements:
-        aME : Element
-        for aME in self.subElements:
-            aME.finalize()
+        element: Element
+        for element in self.subElements:
+            element.finalize()
 
     # 2.
     def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
@@ -369,8 +369,8 @@ class Element:
         aData = {}
         aVars = {}
         # 1. Unterelemente füllen (rekursiv!):
-        for aME in self.subElements:
-            (aData[aME.label], aVars[aME.label]) = aME.getResults()  # rekursiv
+        for element in self.subElements:
+            (aData[element.label], aVars[element.label]) = element.getResults()  # rekursiv
 
         # 2. Variablenwerte ablegen:
         aVar: Variable
@@ -1737,7 +1737,7 @@ class System:
     @property
     def allElementsOfFirstLayerWithoutFlows(self) -> List[Element]:
         return (self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +
-                list(self.setOfOtherMEs))
+                list(self.setOfOtherElements))
 
     @property
     def allElementsOfFirstLayer(self) -> List[Element]:
@@ -1747,16 +1747,16 @@ class System:
     def allInvestFeatures(self) -> List[cFeatureInvest]:
         allInvestFeatures = []
 
-        def getInvestFeaturesOfME(aME):
+        def getInvestFeaturesOfElement(element) -> List[cFeatureInvest]:
             investFeatures = []
-            for aSubComp in aME.subElements_all:
+            for aSubComp in element.subElements_all:
                 if isinstance(aSubComp, cFeatureInvest):
                     investFeatures.append(aSubComp)
-                investFeatures += getInvestFeaturesOfME(aSubComp)  # recursive!
+                investFeatures += getInvestFeaturesOfElement(aSubComp)  # recursive!
             return investFeatures
 
-        for aME in self.allElementsOfFirstLayer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
-            allInvestFeatures += getInvestFeaturesOfME(aME)
+        for element in self.allElementsOfFirstLayer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
+            allInvestFeatures += getInvestFeaturesOfElement(element)
 
         return allInvestFeatures
 
@@ -1776,12 +1776,12 @@ class System:
 
     # get all TS in one list:
     @property
-    def allTSinMEs(self) -> List[TimeSeries]:
-        ME: ElementModel
-        allTS = []
-        for ME in self.allElementsOfFirstLayer:
-            allTS += ME.TS_list
-        return allTS
+    def all_TS_in_elements(self) -> List[TimeSeries]:
+        element: Element
+        all_TS = []
+        for element in self.allElementsOfFirstLayer:
+            all_TS += element.TS_list
+        return all_TS
 
     # aktuelles Bus-Set ausgeben (generiert sich aus dem setOfFlows):
     @property
@@ -1815,15 +1815,15 @@ class System:
 
         # defaults:
         self.listOfComponents = []
-        self.setOfOtherMEs = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
+        self.setOfOtherElements = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
         self.listOfEffectTypes = EffectCollection()  # Kosten, CO2, Primärenergie, ...
-        self.AllTempMEs = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
+        self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         self.standardEffect = None  # Standard-Effekt, zumeist Kosten
         self.objectiveEffect = None  # Zielfunktions-Effekt, z.B. Kosten oder CO2
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
         self.globalComp = Global('globalComp')
         self.__finalized = False  # wenn die Elements alle finalisiert sind, dann True
-        self.model: SystemModel = None  # later activated
+        self.model: Optional[SystemModel] = None  # later activated
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
         # self.addComponents(self.globalComp)
 
@@ -1894,17 +1894,16 @@ class System:
 
         '''
 
-        newList = list(args)
-        for aNewME in newList:
-            if isinstance(aNewME, Component):
-                self.addComponents(aNewME)
-            elif isinstance(aNewME, Effect):
-                self.addEffects(aNewME)
-            elif isinstance(aNewME, Element):
+        for new_element in list(args):
+            if isinstance(new_element, Component):
+                self.addComponents(new_element)
+            elif isinstance(new_element, Effect):
+                self.addEffects(new_element)
+            elif isinstance(new_element, Element):
                 # check if already exists:
-                self._checkIfUniqueElement(aNewME, self.setOfOtherMEs)
+                self._checkIfUniqueElement(new_element, self.setOfOtherElements)
                 # register Element:
-                self.setOfOtherMEs.add(aNewME)
+                self.setOfOtherElements.add(new_element)
 
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
@@ -1922,19 +1921,19 @@ class System:
         '''
 
         self.addElements(*args)
-        self.AllTempMEs += args  # Register temporary Elements
+        self.temporary_elements += args  # Register temporary Elements
 
     def deleteTemporaryElements(self):  # function just implemented, still not used
         '''
         deletes all registered temporary Elements
         '''
-        for tempME in self.AllTempMEs:
+        for temporary_element in self.temporary_elements:
             # delete them again in the lists:
-            self.listOfComponents.remove(tempME)
-            self.setOfBuses.remove(tempME)
-            self.setOfOtherMEs.remove(tempME)
-            self.listOfEffectTypes.remove(tempME)
-            self.setOfFlows(tempME)
+            self.listOfComponents.remove(temporary_element)
+            self.setOfBuses.remove(temporary_element)
+            self.setOfOtherElements.remove(temporary_element)
+            self.listOfEffectTypes.remove(temporary_element)
+            self.setOfFlows(temporary_element)
 
     def _checkIfUniqueElement(self, aElement: Element, listOfExistingLists: list) -> None:
         '''
@@ -1981,10 +1980,10 @@ class System:
         # nur EINMAL ausführen: Finalisieren der Elements:
         if not self.__finalized:
             # finalize Elements for modeling:
-            for aME in self.allElementsOfFirstLayer:
-                print(aME.label)
-                type(aME)
-                aME.finalize()  # inklusive subElements!
+            for element in self.allElementsOfFirstLayer:
+                print(element.label)
+                type(element)
+                element.finalize()  # inklusive subElements!
             self.__finalized = True
 
     def doModelingOfElements(self) -> SystemModel:
@@ -2025,10 +2024,10 @@ class System:
             aBus.addShareToGlobals(self.globalComp, self.model)
 
         # weitere übergeordnete Modellierungen:
-        for aME in self.setOfOtherMEs:
-            aME.declareVarsAndEqs(self.model)
-            aME.doModeling(self.model, timeIndexe)
-            aME.addShareToGlobals(self.globalComp, self.model)
+        for element in self.setOfOtherElements:
+            element.declareVarsAndEqs(self.model)
+            element.doModeling(self.model, timeIndexe)
+            element.addShareToGlobals(self.globalComp, self.model)
 
             # transform to Math:
         self.model.transform2MathModel()
@@ -2041,7 +2040,7 @@ class System:
         if dictOfTSAndExplicitData is None:
             dictOfTSAndExplicitData = {}
 
-        for aTS in self.allTSinMEs:
+        for aTS in self.all_TS_in_elements:
             # Wenn explicitData vorhanden:
             if aTS in dictOfTSAndExplicitData.keys():
                 explicitData = dictOfTSAndExplicitData[aTS]
@@ -2053,7 +2052,7 @@ class System:
     def activateModBox(self, aModBox:SystemModel) -> None:
         self.model = aModBox
         aModBox: SystemModel
-        aME: Element
+        element: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
         self.activateInTS(aModBox.esTimeIndexe, aModBox.TS_explicit)
@@ -2061,25 +2060,25 @@ class System:
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if aModBox.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
-            for aME in self.allElementsOfFirstLayer:
+            for element in self.allElementsOfFirstLayer:
                 # BEACHTE: erst nach finalize(), denn da werden noch subElements erst erzeugt!
                 if not self.__finalized:
                     raise Exception('activateModBox(): --> Geht nicht, da System noch nicht finalized!')
                 # model bauen und in model registrieren.
-                aME.create_new_model_and_activate_system_model(self.model)  # inkl. subElements
+                element.create_new_model_and_activate_system_model(self.model)  # inkl. subElements
         else:
             # nur Aktivieren:
-            for aME in allElementsOfFirstLayer:  # TODO: Is This a BUG?
-                aME.activateModbox(aModBox)  # inkl. subElements
+            for element in self.allElementsOfFirstLayer:  # TODO: Is This a BUG?
+                element.activateModbox(aModBox)  # inkl. subElements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
     def getResultsAfterSolve(self) -> Tuple[Dict, Dict]:
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
         # für alle Komponenten:
-        for aME in self.allElementsOfFirstLayerWithoutFlows:
+        for element in self.allElementsOfFirstLayerWithoutFlows:
             # results        füllen:
-            (results[aME.label], results_var[aME.label]) = aME.getResults()  # inklusive subElements!
+            (results[element.label], results_var[element.label]) = element.getResults()  # inklusive subElements!
 
         # Zeitdaten ergänzen
         aTime = {}
@@ -2154,8 +2153,8 @@ class System:
         # others
         aSubDict = {}
         aDict['others'] = aSubDict
-        for aME in self.setOfOtherMEs:
-            aSubDict[aME.label] = aME.getEqsAsStr()
+        for element in self.setOfOtherElements:
+            aSubDict[element.label] = element.getEqsAsStr()
 
         return aDict
 
@@ -2196,8 +2195,8 @@ class System:
             # buses:
             subDict = {}
             aDict['buses'] = subDict
-            for aME in self.setOfBuses:
-                subDict[aME.label] = aME.getVarsAsStr()
+            for bus in self.setOfBuses:
+                subDict[bus.label] = bus.getVarsAsStr()
 
             # globals:
             aDict['globals'] = self.globalComp.getVarsAsStr()
@@ -2205,8 +2204,8 @@ class System:
             # others
             aSubDict = {}
             aDict['others'] = aSubDict
-            for aME in self.setOfOtherMEs:
-                aSubDict[aME.label] = aME.getVarsAsStr()
+            for element in self.setOfOtherElements:
+                aSubDict[element.label] = element.getVarsAsStr()
 
             return aDict
 
@@ -2571,7 +2570,7 @@ class Calculation:
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
-        self.TSlistForAggregation = [item for item in self.es.allTSinMEs if item.is_array]
+        self.TSlistForAggregation = [item for item in self.es.all_TS_in_elements if item.is_array]
         self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
                                                        addPeakMax_TSraw=addPeakMax,
                                                        addPeakMin_TSraw=addPeakMin,
@@ -2654,7 +2653,7 @@ class Calculation:
                                                         indexVectorsOfClusters=dataAgg.indexVectorsOfClusters,
                                                         fixBinaryVarsOnly=fixBinaryVarsOnly,
                                                         fixStorageFlows=fixStorageFlows,
-                                                        listOfMEsToClusterize=None,
+                                                        listOfElementsToClusterize=None,
                                                         percentageOfPeriodFreedom=percentageOfPeriodFreedom,
                                                         costsOfPeriodFreedom=costsOfPeriodFreedom)
 
@@ -2740,7 +2739,7 @@ class Calculation:
             raise Exception(
                 'An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this Calculation-Object. \n Always create a new instance of Calculation for new modeling/solving-command!')
 
-        if self.es.AllTempMEs:  # if some element in this list
+        if self.es.temporary_elements:  # if some element in this list
             raise Exception(
                 'the Energysystem has some temporary modelingElements from previous calculation (i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
 

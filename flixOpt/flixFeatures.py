@@ -93,7 +93,7 @@ class cFeatureLinearSegmentVars(cFeature):
             # Segment erstellen und in Liste::
             newSegment = cSegment('seg_' + str(aSecNr), self, samplePointsOfSegment, aSecNr)
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
-            # todo: alle cMEs sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
+            # todo: alle Elemente sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
             newSegment.create_new_model_and_activate_system_model(self.system_model)
             self.listOfSegments.append(newSegment)
 
@@ -624,7 +624,7 @@ class cFeatureOn(cFeature):
 
 
 # TODO: als cFeature_TSShareSum
-class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
+class cFeature_ShareSum(cFeature):
 
     def __init__(self, label, owner, sharesAreTS, maxOfSum=None, minOfSum=None, max_per_hour = None, min_per_hour = None):
         '''
@@ -695,7 +695,7 @@ class cFeature_ShareSum(cFeature):  # (ME = ModelingElement)
         # Variable für Summe (Skalar-Summe):
         self.model.var_sum = Variable('sum', 1, self, modBox, min=self.minOfSum, max=self.maxOfSum)  # Skalar
 
-        # Gleichungen schon hier definiert, damit andere MEs beim modeling Beiträge eintragen können:      
+        # Gleichungen schon hier definiert, damit andere Elemente beim modeling Beiträge eintragen können:
         if self.sharesAreTS:
             self.eq_sum_TS = Equation('bilanz', self, modBox)
         self.eq_sum = Equation('sum', self, modBox)
@@ -864,7 +864,7 @@ class cFeatureInvest(cFeature):
         nameOfInvestmentSize : TYPE
             DESCRIPTION.
         owner : TYPE
-            owner of this ME
+            owner of this Element
         invest_parameters : InvestParameters
             arguments for modeling
         min_rel : scalar or TS

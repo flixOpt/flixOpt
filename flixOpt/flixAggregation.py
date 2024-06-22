@@ -297,7 +297,7 @@ from .basicModeling import *
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
 class cAggregationModeling(flixStructure.Element):
     def __init__(self, label, es, indexVectorsOfClusters, fixStorageFlows=True, fixBinaryVarsOnly=True,
-                 listOfMEsToClusterize=None, percentageOfPeriodFreedom=0, costsOfPeriodFreedom=0, **kwargs):
+                 listOfElementsToClusterize=None, percentageOfPeriodFreedom=0, costsOfPeriodFreedom=0, **kwargs):
         '''
         Modeling-Element for "index-equating"-equations
 
@@ -314,7 +314,7 @@ class cAggregationModeling(flixStructure.Element):
             DESCRIPTION. The default is True.
         fixBinaryVarsOnly : TYPE, optional
             DESCRIPTION. The default is True.
-        listOfMEsToClusterize : TYPE, optional
+        listOfElementsToClusterize : TYPE, optional
             DESCRIPTION. The default is None.
         percentageOfPeriodFreedom : TYPE, optional
             DESCRIPTION. The default is 0.
@@ -333,7 +333,7 @@ class cAggregationModeling(flixStructure.Element):
         self.indexVectorsOfClusters = indexVectorsOfClusters
         self.fixStorageFlows = fixStorageFlows
         self.fixBinaryVarsOnly = fixBinaryVarsOnly
-        self.listOfMEsToClusterize = listOfMEsToClusterize
+        self.listOfElementsToClusterize = listOfElementsToClusterize
 
         self.percentageOfPeriodFreedom = percentageOfPeriodFreedom
         self.costsOfPeriodFreedom = costsOfPeriodFreedom
@@ -353,34 +353,34 @@ class cAggregationModeling(flixStructure.Element):
 
     def doModeling(self, modBox: flixStructure.SystemModel, timeIndexe):
 
-        if self.listOfMEsToClusterize is None:
+        if self.listOfElementsToClusterize is None:
             # Alle:
             compSet = set(self.es.listOfComponents)
             flowSet = self.es.setOfFlows
         else:
             # Ausgewählte:
-            compSet = set(self.listOfMEsToClusterize)
-            flowSet = self.es.getFlows(listOfMEsToClusterize)
+            compSet = set(self.listOfElementsToClusterize)
+            flowSet = self.es.getFlows(self.listOfElementsToClusterize)
 
         flow: flixStructure.Flow
 
-        # todo: hier anstelle alle MEs durchgehen, nicht nur flows und comps:
-        for aME in flowSet | compSet:
+        # todo: hier anstelle alle Elemente durchgehen, nicht nur flows und comps:
+        for element in flowSet | compSet:
             # Wenn StorageFlows nicht gefixt werden sollen und flow ein storage-Flow ist:
-            if (not self.fixStorageFlows) and hasattr(aME, 'comp') and (isinstance(aME.comp, flixComps.Storage)):
+            if (not self.fixStorageFlows) and hasattr(element, 'comp') and (isinstance(element.comp, flixComps.Storage)):
                 pass  # flow hier nicht fixen!
             else:
                 # On-Variablen:
-                if aME.model.var_on is not None:
-                    aVar = aME.model.var_on
+                if element.model.var_on is not None:
+                    aVar = element.model.var_on
                     aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=True)
                     # SwitchOn-Variablen:
-                if aME.model.var_switchOn is not None:
-                    aVar = aME.model.var_switchOn
+                if element.model.var_switchOn is not None:
+                    aVar = element.model.var_switchOn
                     # --> hier ersten Index weglassen:
                     aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=False)
-                if aME.model.var_switchOff is not None:
-                    aVar = aME.model.var_switchOff
+                if element.model.var_switchOff is not None:
+                    aVar = element.model.var_switchOff
                     # --> hier ersten Index weglassen:
                     aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=False)
 
@@ -388,8 +388,8 @@ class cAggregationModeling(flixStructure.Element):
                 # Nicht-Binär-Variablen:
                 if not self.fixBinaryVarsOnly:
                     # Value-Variablen:
-                    if hasattr(aME.model, 'var_val'):
-                        aVar = aME.model.var_val
+                    if hasattr(element.model, 'var_val'):
+                        aVar = element.model.var_val
                         aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=True)
 
     def getEqForLinkedIndexe(self, aVar, modBox, fixFirstIndexOfPeriod):

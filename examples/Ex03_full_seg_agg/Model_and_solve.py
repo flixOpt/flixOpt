@@ -308,7 +308,7 @@ if (not calcSegs is None) and (not calcFull is None):
 # Ergebnisse Korrektur-Variablen (nur wenn genutzt):
 print('######### sum Korr_... (wenn vorhanden) #########')
 if calcAgg is not None:
-  aggretation_ME=list(calcAgg.es.setOfOtherMEs)[0]
+  aggretation_ME=list(calcAgg.es.setOfOtherElements)[0]
   for var in aggretation_ME.model.variables:
     print(var.label_full + ':' + str( sum(var.getResult())))
 

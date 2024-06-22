@@ -434,8 +434,8 @@ class StartValue:
     def __init__(self, fromBaseModel, lastUsedIndex):
         self.fromBaseModel = fromBaseModel
         self.beforeValues = {}
-        # Sieht dann so aus = {(aME1, aVar1.name): (value, time),
-        #                      (aME2, aVar2.name): (value, time),
+        # Sieht dann so aus = {(Element1, aVar1.name): (value, time),
+        #                      (Element2, aVar2.name): (value, time),
         #                       ...                       }
         for aVar in self.fromBaseModel.variables_TSonly:
             aVar: VariableTS
@@ -445,8 +445,8 @@ class StartValue:
                 self.addBeforeValues(aVar, aValue, aTime)
 
     def addBeforeValues(self, aVar, aValue, aTime):
-        aME = aVar.myMom
-        aKey = (aME, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je baseModel!
+        element = aVar.myMom
+        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je baseModel!
         # beforeValues = aVar.getResult(aValue) # letzten zwei Werte
 
         if aKey in self.beforeValues.keys():
@@ -456,16 +456,16 @@ class StartValue:
 
     # return (value, time)
     def getBeforeValues(self, aVar):
-        aME = aVar.myMom
-        aKey = (aME, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je baseModel!
+        element = aVar.myMom
+        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je baseModel!
         if aKey in self.beforeValues.keys():
             return self.beforeValues[aKey]  # returns (value, time)
         else:
             return None
 
     def print(self):
-        for (aME, varName) in self.beforeValues.keys():
-            print(aME.label + '.' + varName + ' = ' + str(self.beforeValues[(aME, varName)]))
+        for (element, varName) in self.beforeValues.keys():
+            print(element.label + '.' + varName + ' = ' + str(self.beforeValues[(element, varName)]))
 
 
 # class cInequation(Equation):
