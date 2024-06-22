@@ -229,7 +229,7 @@ class LinearModel:
             if solver_name == 'highs':
                 pass    
             else:    
-                self.solverLog = cSolverLog(solver_name,logfileName)
+                self.solverLog = SolverLog(solver_name, logfileName)
                 self.solverLog.parseInfos()
             # Ergebnis Zielfunktion ablegen
             self.objective_value = self.model.objective.expr()
@@ -783,7 +783,7 @@ class Summand:
 import re
 
 
-class cSolverLog():
+class SolverLog():
     def __init__(self, solver_name, filename, string=None):
 
         if filename is None:
@@ -869,4 +869,4 @@ class cSolverLog():
             print('######################################################')
             print('### No solver-log parsing implemented for glpk yet! ###')
         else:
-            raise Exception('cSolverLog.parseInfos() is not defined for solver ' + self.solver_name)
+            raise Exception('SolverLog.parseInfos() is not defined for solver ' + self.solver_name)
