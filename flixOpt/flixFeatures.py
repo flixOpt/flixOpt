@@ -620,7 +620,7 @@ class cFeatureOn(cFeature):
         if self.costsPerRunningHour is not None:  # and any(self.costsPerRunningHour):
             globalComp.addShareToOperation('costsPerRunningHour', shareHolder, self.mod.var_on,
                                            self.costsPerRunningHour, modBox.dtInHours)
-            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_on, np.multiply(self.costsPerRunningHour.active_data, modBox.dtInHours))# np.multiply = elementweise Multiplikation
+            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_on, np.multiply(self.costsPerRunningHour.active_data, model.dtInHours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als cFeature_TSShareSum

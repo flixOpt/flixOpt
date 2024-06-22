@@ -357,12 +357,12 @@ class Element:
     def declareVarsAndEqs(self, modBox) -> None:
         #   #   # Features preparing:
         #   # for aFeature in self.features:
-        #   #   aFeature.declareVarsAndEqs(modBox)
+        #   #   aFeature.declareVarsAndEqs(model)
         pass
 
-    # def doModeling(self,modBox,timeIndexe):
+    # def doModeling(self,model,timeIndexe):
     #   # for aFeature in self.features:
-    #   aFeature.doModeling(modBox, timeIndexe)
+    #   aFeature.doModeling(model, timeIndexe)
 
     # Ergebnisse als dict ausgeben:    
     def getResults(self) -> Tuple[Dict, Dict]:
@@ -739,7 +739,7 @@ class Component(Element):
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
-        # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(modBox.epsilon,self.flowMin)) für alle Flows!
+        # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
 
         self.inputs = []  # list of flows
         self.outputs = []  # list of flows
@@ -850,11 +850,11 @@ class Component(Element):
         self.mod.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.mod.var_switchOn, self.mod.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-        # super().declareVarsAndEqs(modBox)
+        # super().declareVarsAndEqs(model)
 
     def doModeling(self, modBox, timeIndexe) -> None:
         log.debug(str(self.label) + 'doModeling()')
-        # super().doModeling(modBox,timeIndexe)
+        # super().doModeling(model,timeIndexe)
 
         #
         # ############## Constraints für Binärvariablen : ##############
@@ -986,10 +986,10 @@ class Global(Element):
 
         # todo : besser wäre objective separat:
 
-    #  eq_objective = Equation('objective',self,modBox,'objective')
+    #  eq_objective = Equation('objective',self,model,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
     def doModeling(self, modBox, timeIndexe) -> None:
-        # super().doModeling(modBox,timeIndexe)
+        # super().doModeling(model,timeIndexe)
 
         self.penalty.doModeling(modBox, timeIndexe)
         ## Gleichungen bauen für Effekte: ##
@@ -1136,8 +1136,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
                                                 self.excessCostsPerFlowHour, modBox.dtInHours)
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut,
                                                 self.excessCostsPerFlowHour, modBox.dtInHours)
-            # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
-            # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, modBox.dtInHours))
+            # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
+            # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
 
     def print(self, shiftChars) -> None:
         print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
@@ -1404,7 +1404,7 @@ class Flow(Element):
         flowsDefiningOn = [
             self]  # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
         on_valuesBeforeBegin = 1 * (
-                    self.valuesBeforeBegin >= 0.0001)  # TODO: besser wäre modBox.epsilon, aber hier noch nicht bekannt!)
+                    self.valuesBeforeBegin >= 0.0001)  # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
         # TODO: Wenn iCanSwitchOff = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
         self.featureOn = cFeatureOn(self, flowsDefiningOn,
@@ -1533,10 +1533,10 @@ class Flow(Element):
             self.featureInvest.declareVarsAndEqs(modBox)
 
     def doModeling(self, modBox: SystemModel, timeIndexe) -> None:
-        # super().doModeling(modBox,timeIndexe)
+        # super().doModeling(model,timeIndexe)
 
         # for aFeature in self.features:
-        #   aFeature.doModeling(modBox,timeIndexe)
+        #   aFeature.doModeling(model,timeIndexe)
 
         #
         # ############## Variablen aktivieren: ##############
@@ -1623,24 +1623,24 @@ class Flow(Element):
 
         '''        
         if self.positive_gradient == None :                    
-          if modBox.modType == 'pyomo':
+          if model.modType == 'pyomo':
             def positive_gradient_rule(t):
               if t == 0:
-                return (self.mod.var_val[t] - self.val_initial) / modBox.dtInHours[t] <= self.positive_gradient[t] #             
+                return (self.mod.var_val[t] - self.val_initial) / model.dtInHours[t] <= self.positive_gradient[t] #             
               else: 
-                return (self.mod.var_val[t] - self.mod.var_val[t-1])    / modBox.dtInHours[t] <= self.positive_gradient[t] #
+                return (self.mod.var_val[t] - self.mod.var_val[t-1])    / model.dtInHours[t] <= self.positive_gradient[t] #
   
             # Erster Zeitschritt beachten:          
             if (self.val_initial == None) & (start == 0):
               self.positive_gradient_constr =  Constraint([start+1:end]        ,rule = positive_gradient_rule)          
             else:
-              self.positive_gradient_constr =  Constraint(modBox.timestepsOfRun,rule = positive_gradient_rule)   # timestepsOfRun = [start:end]
+              self.positive_gradient_constr =  Constraint(model.timestepsOfRun,rule = positive_gradient_rule)   # timestepsOfRun = [start:end]
               # raise error();
             modbox.registerPyComp(self.positive_gradient_constr, self.label + '_positive_gradient_constr')
-          elif modBox.modType == 'vcxpy':
-            raise Exception('not defined for modtype ' + modBox.modType)
+          elif model.modType == 'vcxpy':
+            raise Exception('not defined for modtype ' + model.modType)
           else:
-            raise Exception('not defined for modtype ' + modBox.modType)'''
+            raise Exception('not defined for modtype ' + model.modType)'''
 
         # ############# Beiträge zu globalen constraints ############
 
@@ -1651,8 +1651,8 @@ class Flow(Element):
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
             # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
-            # variable_costs          = Summand(self.mod.var_val, np.multiply(self.costsPerFlowHour, modBox.dtInHours))
-            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.active_data, modBox.dtInHours)) # np.multiply = elementweise Multiplikation
+            # variable_costs          = Summand(self.mod.var_val, np.multiply(self.costsPerFlowHour, model.dtInHours))
+            # globalComp.costsOfOperating_eq.addSummand(self.mod.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.mod.var_val, self.costsPerFlowHour,
                                            modBox.dtInHours)
@@ -1825,7 +1825,7 @@ class System:
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
         self.globalComp = Global('globalComp')
         self.__finalized = False  # wenn die MEs alle finalisiert sind, dann True
-        self.modBox: SystemModel = None  # later activated
+        self.model: SystemModel = None  # later activated
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
         # self.addComponents(self.globalComp)
 
@@ -1998,44 +1998,44 @@ class System:
 
         # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von chosenEsTimeIndexe abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
         # --> ist aber nicht sauber durchimplementiert in den ganzehn addSummand()-Befehlen!!
-        timeIndexe = range(len(self.modBox.esTimeIndexe))
+        timeIndexe = range(len(self.model.esTimeIndexe))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:
-        self.globalComp.declareVarsAndEqs(self.modBox)  # globale Funktionen erstellen!
-        self.globalComp.doModeling(self.modBox, timeIndexe)  # globale Funktionen erstellen!
+        self.globalComp.declareVarsAndEqs(self.model)  # globale Funktionen erstellen!
+        self.globalComp.doModeling(self.model, timeIndexe)  # globale Funktionen erstellen!
 
         # Komponenten-Modellierung (# inklusive subMEs!)
         for aComp in self.listOfComponents:
             aComp: Component
             log.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
-            aComp.declareVarsAndEqsOfFlows(self.modBox)
-            aComp.declareVarsAndEqs(self.modBox)
+            aComp.declareVarsAndEqsOfFlows(self.model)
+            aComp.declareVarsAndEqs(self.model)
 
-            aComp.doModelingOfFlows(self.modBox, timeIndexe)
-            aComp.doModeling(self.modBox, timeIndexe)
+            aComp.doModelingOfFlows(self.model, timeIndexe)
+            aComp.doModeling(self.model, timeIndexe)
 
-            aComp.addShareToGlobalsOfFlows(self.globalComp, self.modBox)
-            aComp.addShareToGlobals(self.globalComp, self.modBox)
+            aComp.addShareToGlobalsOfFlows(self.globalComp, self.model)
+            aComp.addShareToGlobals(self.globalComp, self.model)
 
         # Bus-Modellierung (# inklusive subMEs!)
         aBus: Bus
         for aBus in self.setOfBuses:
             log.debug('model ' + aBus.label + '...')
-            aBus.declareVarsAndEqs(self.modBox)
-            aBus.doModeling(self.modBox, timeIndexe)
-            aBus.addShareToGlobals(self.globalComp, self.modBox)
+            aBus.declareVarsAndEqs(self.model)
+            aBus.doModeling(self.model, timeIndexe)
+            aBus.addShareToGlobals(self.globalComp, self.model)
 
         # weitere übergeordnete Modellierungen:
         for aME in self.setOfOtherMEs:
-            aME.declareVarsAndEqs(self.modBox)
-            aME.doModeling(self.modBox, timeIndexe)
-            aME.addShareToGlobals(self.globalComp, self.modBox)
+            aME.declareVarsAndEqs(self.model)
+            aME.doModeling(self.model, timeIndexe)
+            aME.addShareToGlobals(self.globalComp, self.model)
 
             # transform to Math:
-        self.modBox.transform2MathModel()
+        self.model.transform2MathModel()
 
-        return self.modBox
+        return self.model
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activateModbox)
     def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None) -> None:
@@ -2053,7 +2053,7 @@ class System:
             aTS.activate(chosenTimeIndexe, explicitData)
 
     def activateModBox(self, aModBox:SystemModel) -> None:
-        self.modBox = aModBox
+        self.model = aModBox
         aModBox: SystemModel
         aME: Element
 
@@ -2067,14 +2067,14 @@ class System:
                 # BEACHTE: erst nach finalize(), denn da werden noch subMEs erst erzeugt!
                 if not self.__finalized:
                     raise Exception('activateModBox(): --> Geht nicht, da System noch nicht finalized!')
-                # mod bauen und in modBox registrieren.
-                aME.createNewModAndActivateModBox(self.modBox)  # inkl. subMEs
+                # mod bauen und in model registrieren.
+                aME.createNewModAndActivateModBox(self.model)  # inkl. subMEs
         else:
             # nur Aktivieren:
             for aME in allMEsOfFirstLayer:  # TODO: Is This a BUG?
                 aME.activateModbox(aModBox)  # inkl. subMEs
 
-    # ! nur nach Solve aufrufen, nicht später nochmal nach activating modBox (da evtl stimmen Referenzen nicht mehr unbedingt!)
+    # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
     def getResultsAfterSolve(self) -> Tuple[Dict, Dict]:
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
@@ -2086,10 +2086,10 @@ class System:
         # Zeitdaten ergänzen
         aTime = {}
         results['time'] = aTime
-        aTime['timeSeriesWithEnd'] = self.modBox.timeSeriesWithEnd
-        aTime['timeSeries'] = self.modBox.timeSeries
-        aTime['dtInHours'] = self.modBox.dtInHours
-        aTime['dtInHours_tot'] = self.modBox.dtInHours_tot
+        aTime['timeSeriesWithEnd'] = self.model.timeSeriesWithEnd
+        aTime['timeSeries'] = self.model.timeSeries
+        aTime['dtInHours'] = self.model.dtInHours
+        aTime['dtInHours_tot'] = self.model.dtInHours_tot
 
         return results, results_var
 
@@ -2178,7 +2178,7 @@ class System:
         # liste:
         if not structured:
             aList = []
-            for aVar in self.modBox.variables:
+            for aVar in self.model.variables:
                 aList.append(aVar.getStrDescription())
             return aList
 
@@ -2337,7 +2337,7 @@ class Calculation:
 
         self.__results = None
         self.__results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
-        self.segmentModBoxList = []  # modBox list
+        self.segmentModBoxList = []  # model list
         self.dataAgg = None  # aggregationStuff (if calcType = 'aggregated')
 
     # Variante1:
@@ -2355,7 +2355,7 @@ class Calculation:
         # Modellierungsbox / TimePeriod-Box bauen:
         aModBox = SystemModel(self.label, self.modType, self.es,
                               self.chosenEsTimeIndexe)  # alle Indexe nehmen!
-        # modBox aktivieren:
+        # model aktivieren:
         self.es.activateModBox(aModBox)
         # modellieren:
         self.es.doModelingOfElements()
@@ -2465,7 +2465,7 @@ class Calculation:
                 print('#######################')
                 # transferStartValues(segment, segmentBefore)
 
-            # modBox in Energiesystem aktivieren:
+            # model in Energiesystem aktivieren:
             self.es.activateModBox(segmentModBox)
 
             # modellieren:
@@ -2684,7 +2684,7 @@ class Calculation:
         aModBox = SystemModel(self.label, self.modType, self.es, self.chosenEsTimeIndexe,
                               TS_explicit)  # alle Indexe nehmen!
         self.listOfModbox.append(aModBox)
-        # modBox aktivieren:
+        # model aktivieren:
         self.es.activateModBox(aModBox)
         # modellieren:
         self.es.doModelingOfElements()
