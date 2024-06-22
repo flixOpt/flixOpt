@@ -81,28 +81,28 @@ loss_abs = 1
 loss_rel = 0.1
 # loss_rel = 0
 
-invest1 = cInvestArgs(fixCosts=10,
-                      investmentSize_is_fixed=False,
-                      investment_is_optional=True,                      
-                      max_investmentSize=1000 ,
-                      specificCosts=1)
+invest1 = InvestParameters(fixCosts=10,
+                           investmentSize_is_fixed=False,
+                           investment_is_optional=True,
+                           max_investmentSize=1000,
+                           specificCosts=1)
 
 # only for getting realizing investSize-Variable:
-invest2 = cInvestArgs(fixCosts=0,
-                      investmentSize_is_fixed=False,
-                      investment_is_optional=True,                      
-                      max_investmentSize=1000 ,
-                      specificCosts=0
-                      )
+invest2 = InvestParameters(fixCosts=0,
+                           investmentSize_is_fixed=False,
+                           investment_is_optional=True,
+                           max_investmentSize=1000,
+                           specificCosts=0
+                           )
 
-aTransporter = cTransportation('Rohr', 
-                                in1  = cFlow('in1',  bus=heat1, investArgs=invest1, nominal_val = None, min_rel = 0.1 ),
-                                out1 = cFlow('out1', bus=heat2),
-                                loss_abs = loss_abs,
-                                loss_rel = loss_rel,
-                                in2  = cFlow('in2',  bus=heat2, investArgs=invest2, nominal_val = None, min_rel = 0.1 ),
-                                out2 = cFlow('out2', bus=heat1),
-                                )
+aTransporter = cTransportation('Rohr',
+                               in1  = cFlow('in1', bus=heat1, invest_parameters=invest1, nominal_val = None, min_rel = 0.1),
+                               out1 = cFlow('out1', bus=heat2),
+                               loss_abs = loss_abs,
+                               loss_rel = loss_rel,
+                               in2  = cFlow('in2', bus=heat2, invest_parameters=invest2, nominal_val = None, min_rel = 0.1),
+                               out2 = cFlow('out2', bus=heat1),
+                               )
 
 # Built energysystem:
 es = cEnergySystem(aTimeSeries, dt_last=None)

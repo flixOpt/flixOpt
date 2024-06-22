@@ -21,7 +21,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
         Modulation of Total Power (Fuel) [min_rel, max_rel, nominal value]
         linear interpolation between efficiencies A and B
 
-        Not working: Investment with variable Size
+        Not working: InvestParameters with variable Size
 
     Use in Following manner:
         #  KWK_poweroriented    KWK_heatoriented,
@@ -93,7 +93,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: cBus, BusTh: cBus, BusEl: c
 def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
             nominal_val_Qfu: float, segQth: list[float], segPel: list[float],
             costsPerFlowHour_fuel: dict = None, costsPerFlowHour_th: dict = None, costsPerFlowHour_el: dict = None,
-            iCanSwitchOff=True, exists=1, group=None, investArgs: cInvestArgs = None, **kwargs) -> list:
+            iCanSwitchOff=True, exists=1, group=None, invest_parameters: InvestParameters = None, **kwargs) -> list:
     '''
     EKT B - On/Off, interpolation with Base Points
     Creates a KWK with a variable rate between electricity and heat production
@@ -103,7 +103,7 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
         Interpolation with Base Points between efficiencies A and B
 
         Not working:
-        Investment with variable Size
+        InvestParameters with variable Size
         Variation of total Power
 
     Nominal Value is equal to the max of seqFu
@@ -138,7 +138,7 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
         A parameter specifying when the component exists. Defaults to 1.
     group: any, optional
         A parameter specifying the group to which the component belongs. Defaults to None.
-    investArgs: cInvestArgs, optional
+    invest_parameters: InvestParameters, optional
         An object containing investment-related parameters. Defaults to None. Passed to the thermal output flow
     **kwargs
         Additional keyword arguments. Passed to the input fuel flow. Allowed keywords see documentation of cFlow
@@ -198,7 +198,7 @@ def KWKektB(label: str, BusFuel: cBus, BusTh: cBus, BusEl: cBus,
 
     # Transformer Wärme
     Q_th = cFlow(label="Qth", bus=BusTh, nominal_val=max(segQth), costsPerFlowHour=costsPerFlowHour_th,
-                 investArgs=investArgs)
+                 invest_parameters=invest_parameters)
     Q_fu2 = cFlow(label="Helper" + label + 'B', bus=HelperBus)
     segments = {Q_fu2: segQfu_th, Q_th: segQth}
     EKTB = cBaseLinearTransformer(label=label + "B", exists=exists, group=group,

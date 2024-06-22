@@ -186,8 +186,8 @@ class cBaseLinearTransformer(cBaseComponent):
 
             # check if investsize is variable for any flow:            
             for flow in (self.inputs + self.outputs):
-                if (flow.investArgs is not None) and \
-                        not (flow.investArgs.investmentSize_is_fixed):
+                if (flow.invest_parameters is not None) and \
+                        not (flow.invest_parameters.investmentSize_is_fixed):
                     raise Exception('linearSegmentsOfFlows (in ' +
                                     self.label_full +
                                     ') and variable nominal_value' +
@@ -606,7 +606,7 @@ class cStorage(cBaseComponent):
 
     new_init_args = ['label', 'exists', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
                      'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
-                     'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce', 'investArgs']
+                     'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce', 'invest_parameters']
 
     not_used_args = ['label', 'exists']
 
@@ -625,7 +625,7 @@ class cStorage(cBaseComponent):
                  eta_load: Numeric_TS = 1, eta_unload: Numeric_TS = 1,
                  fracLossPerHour: Numeric_TS = 0,
                  avoidInAndOutAtOnce: bool = True,
-                 investArgs: Optional[cInvestArgs] = None,
+                 invest_parameters: Optional[InvestParameters] = None,
                  **kwargs):
         '''
         constructor of storage
@@ -646,7 +646,7 @@ class cStorage(cBaseComponent):
         capacity_inFlowHours : float or None
             nominal capacity of the storage 
             float: capacity in FlowHours
-            None:  if investArgs.investmentSize_is_fixed = False
+            None:  if invest_parameters.investmentSize_is_fixed = False
         min_rel_chargeState : float or TS, optional
             minimum relative charge state. The default is 0.
         max_rel_chargeState : float or TS, optional
@@ -668,7 +668,7 @@ class cStorage(cBaseComponent):
             loss per chargeState-Unit per hour. The default is 0.
         avoidInAndOutAtOnce : boolean, optional
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
-        investArgs : cInvestArgs, optional
+        invest_parameters : InvestParameters, optional
             invest arguments. The default is None.
         
         **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
@@ -714,15 +714,15 @@ class cStorage(cBaseComponent):
         self.fracLossPerHour = TimeSeries('fracLossPerHour', fracLossPerHour, self)
         self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
 
-        self.investArgs = investArgs
+        self.invest_parameters = invest_parameters
         self.featureInvest = None
 
         if self.avoidInAndOutAtOnce:
             self.featureAvoidInAndOut = cFeatureAvoidFlowsAtOnce('feature_avoidInAndOutAtOnce', self,
                                                                  [self.inFlow, self.outFlow])
 
-        if self.investArgs is not None:
-            self.featureInvest = cFeatureInvest('used_capacity_inFlowHours', self, self.investArgs,
+        if self.invest_parameters is not None:
+            self.featureInvest = cFeatureInvest('used_capacity_inFlowHours', self, self.invest_parameters,
                                                 min_rel=self.min_rel_chargeState,
                                                 max_rel=self.max_rel_chargeState,
                                                 val_rel=None,  # kein vorgegebenes Profil
@@ -1085,7 +1085,7 @@ class cTransportation(cBaseComponent):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
     # TODO: investmentsize only on 1 flow
-    # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
+    # TODO: automatic invest_parameters for both in-flows (or alternatively both out-flows!)
     # TODO: optional: capacities should be recognised for losses
 
     def __init__(self,
@@ -1103,7 +1103,7 @@ class cTransportation(cBaseComponent):
         pipe/cable/connector between side A and side B
         losses can be modelled
         investmentsize is recognised
-        for investment_size use investArgs of in1 and in2-flows. 
+        for investment_size use invest_parameters of in1 and in2-flows.
         (The investment_size of the both directions (in-flows) is equated)
         
         (when no flow through it, then loss is still there and has to be
@@ -1220,4 +1220,4 @@ class cTransportation(cBaseComponent):
                     self.eq_nom_value.addSummand(self.in2.featureInvest.mod.var_investmentSize, -1)
                 else:
                     raise Exception(
-                        'define investArgs also for second In-Flow (values can be empty!)')  # TODO: anders lösen (automatisiert)!
+                        'define invest_parameters also for second In-Flow (values can be empty!)')  # TODO: anders lösen (automatisiert)!

@@ -458,7 +458,7 @@ class cFeatureOn(cFeature):
             eq1.addSummand(aFlow.mod.var_val, -1, timeIndexe)
             # wenn variabler Nennwert:
             if aFlow.nominal_val is None:
-                min_val = aFlow.investArgs.min_investmentSize * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
+                min_val = aFlow.invest_parameters.min_investmentSize * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
             # wenn fixer Nennwert
             else:
                 min_val = aFlow.nominal_val * aFlow.min_rel.active_data
@@ -495,7 +495,7 @@ class cFeatureOn(cFeature):
             eq2.addSummand(aFlow.mod.var_val, 1 / nrOfFlows, timeIndexe)
             # wenn variabler Nennwert:
             if aFlow.nominal_val is None:
-                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.investArgs.max_investmentSize  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
+                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.invest_parameters.max_investmentSize  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
                 sumOfFlowMax += aFlow.max_rel.active_data * aFlow.nominal_val
 
@@ -854,7 +854,7 @@ class cFeatureInvest(cFeature):
             existOn = self.featureOn.useOn
         return existOn
 
-    def __init__(self, nameOfInvestmentSize, owner, investArgs: cInvestArgs, min_rel, max_rel, val_rel, investmentSize,
+    def __init__(self, nameOfInvestmentSize, owner, invest_parameters: InvestParameters, min_rel, max_rel, val_rel, investmentSize,
                  featureOn=None):
         '''
         
@@ -865,7 +865,7 @@ class cFeatureInvest(cFeature):
             DESCRIPTION.
         owner : TYPE
             owner of this ME
-        investArgs : cInvestArgs
+        invest_parameters : InvestParameters
             arguments for modeling
         min_rel : scalar or TS
             given min_rel of definingVar 
@@ -891,7 +891,7 @@ class cFeatureInvest(cFeature):
         super().__init__('invest', owner)
         self.nameOfInvestmentSize = nameOfInvestmentSize
         self.owner = owner
-        self.args = investArgs
+        self.args = invest_parameters
         self.definingVar = None
         self.max_rel = max_rel
         self.min_rel = min_rel

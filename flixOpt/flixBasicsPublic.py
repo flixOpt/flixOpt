@@ -46,7 +46,7 @@ class TimeSeriesRaw:
 
 
 # Sammlung von Props für Investitionskosten (für cFeatureInvest)
-class cInvestArgs:
+class InvestParameters:
     '''
     collects arguments for invest-stuff
     '''

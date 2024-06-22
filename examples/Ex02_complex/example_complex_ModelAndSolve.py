@@ -70,35 +70,35 @@ PE    = cEffectType('PE'   ,'kWh_PE' , 'Primärenergie', max_Sum = 3.5e3  )
 
 # 1. definition of boiler #
 # 1. a) investment-options:
-invest_Gaskessel = cInvestArgs(fixCosts = 1000, # 1000 € investment costs
-                               investmentSize_is_fixed = True, # fix nominal size
-                               investment_is_optional=False,# forced investment
-                               specificCosts= {costs:10, PE:2}, # specific costs: 10 €/kW; 2 kWh_PE/kW
-                               )
+invest_Gaskessel = InvestParameters(fixCosts = 1000,  # 1000 € investment costs
+                                    investmentSize_is_fixed = True,  # fix nominal size
+                                    investment_is_optional=False,  # forced investment
+                                    specificCosts= {costs:10, PE:2},  # specific costs: 10 €/kW; 2 kWh_PE/kW
+                                    )
 # invest_Gaskessel = None #
 # 1. b) boiler itself:
 aGaskessel = cKessel('Kessel', 
                      eta = 0.5, # efficiency ratio
                      costsPerRunningHour = {costs:0, CO2:1000}, # 1000 kg_CO2/h (just for testing)
                      # defining flows:
-                     Q_th = cFlow(label   = 'Q_th', # name
-                                  bus = Fernwaerme, # linked bus
-                                  nominal_val = 50, # 50 kW_th nominal size
-                                  loadFactor_max = 1.0, # maximal mean power 50 kW
-                                  loadFactor_min = 0.1, # minimal mean power 5 kW
-                                  min_rel = 5/50, # 10 % part load
-                                  max_rel = 1, # 50 kW
-                                  onHoursSum_min = 0, # minimum of working hours
-                                  onHoursSum_max = 1000, # maximum of working hours
-                                  onHours_max = 10, # maximum of working hours in one step
-                                  offHours_max = 10, # maximum of off hours in one step
+                     Q_th = cFlow(label   = 'Q_th',  # name
+                                  bus = Fernwaerme,  # linked bus
+                                  nominal_val = 50,  # 50 kW_th nominal size
+                                  loadFactor_max = 1.0,  # maximal mean power 50 kW
+                                  loadFactor_min = 0.1,  # minimal mean power 5 kW
+                                  min_rel = 5/50,  # 10 % part load
+                                  max_rel = 1,  # 50 kW
+                                  onHoursSum_min = 0,  # minimum of working hours
+                                  onHoursSum_max = 1000,  # maximum of working hours
+                                  onHours_max = 10,  # maximum of working hours in one step
+                                  offHours_max = 10,  # maximum of off hours in one step
                                   # onHours_min = 2, # minimum on hours in one step
                                   # offHours_min = 4, # minimum off hours in one step
-                                  switchOnCosts = 0.01, # € per start
-                                  switchOn_maxNr = 1000, # max nr of starts
-                                  valuesBeforeBegin=[50], # 50 kW is value before start
-                                  investArgs = invest_Gaskessel, # see above
-                                  sumFlowHours_max = 1e6, # kWh, overall maximum "flow-work"
+                                  switchOnCosts = 0.01,  # € per start
+                                  switchOn_maxNr = 1000,  # max nr of starts
+                                  valuesBeforeBegin=[50],  # 50 kW is value before start
+                                  invest_parameters= invest_Gaskessel,  # see above
+                                  sumFlowHours_max = 1e6,  # kWh, overall maximum "flow-work"
                                   ),
                      Q_fu = cFlow(label = 'Q_fu', # name
                                   bus = Gas, # linked bus
@@ -147,26 +147,26 @@ costsInvestsizeSegments = [[5,25,25,100], #kW
 #                             [50,250,250,800],#€ (standard-effect)
 #                           ]
 
-invest_Speicher = cInvestArgs(fixCosts = 0, # no fix costs
-                              investmentSize_is_fixed = False, # variable size
-                              costsInInvestsizeSegments = costsInvestsizeSegments, # see above
-                              investment_is_optional=False, # forced invest
-                              specificCosts= {costs: 0.01, CO2: 0.01}, # €/kWh; kg_CO2/kWh
-                              min_investmentSize=0, max_investmentSize=1000) # optimizing between 0...1000 kWh
+invest_Speicher = InvestParameters(fixCosts = 0,  # no fix costs
+                                   investmentSize_is_fixed = False,  # variable size
+                                   costsInInvestsizeSegments = costsInvestsizeSegments,  # see above
+                                   investment_is_optional=False,  # forced invest
+                                   specificCosts= {costs: 0.01, CO2: 0.01},  # €/kWh; kg_CO2/kWh
+                                   min_investmentSize=0, max_investmentSize=1000) # optimizing between 0...1000 kWh
 
 # 4.b) storage itself:
 aSpeicher = cStorage('Speicher',
                      # defining flows:
                      inFlow  = cFlow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),
                      outFlow = cFlow('Q_th_unload',bus = Fernwaerme, nominal_val = 1e4),
-                     capacity_inFlowHours=None, # None, because invest-size is variable
-                     chargeState0_inFlowHours=0, # empty storage at beginning
+                     capacity_inFlowHours=None,  # None, because invest-size is variable
+                     chargeState0_inFlowHours=0,  # empty storage at beginning
                      # charge_state_end_min = 3, # min charge state and end
-                     charge_state_end_max=10, # max charge state and end
-                     eta_load=0.9, eta_unload=1, # efficiency of (un)-loading
-                     fracLossPerHour=0.08, # loss of storage per time
-                     avoidInAndOutAtOnce=True, # no parallel loading and unloading
-                     investArgs=invest_Speicher) # see above
+                     charge_state_end_max=10,  # max charge state and end
+                     eta_load=0.9, eta_unload=1,  # efficiency of (un)-loading
+                     fracLossPerHour=0.08,  # loss of storage per time
+                     avoidInAndOutAtOnce=True,  # no parallel loading and unloading
+                     invest_parameters=invest_Speicher) # see above
  
 
 # 5. definition of sinks and sources:

@@ -17,7 +17,7 @@ from . import flixOptHelperFcts as helpers
 
 from .basicModeling import *  # Modelliersprache
 from .flixBasics import *
-from .flixBasicsPublic import cInvestArgs, TimeSeriesRaw
+from .flixBasicsPublic import InvestParameters, TimeSeriesRaw
 import logging
 
 log = logging.getLogger(__name__)
@@ -1215,20 +1215,20 @@ class cFlow(cME):
 
     @property
     def investmentSize_is_fixed(self) -> bool:
-        # Wenn kein investArg existiert:
-        if self.investArgs is None:
+        # Wenn kein InvestParameters existiert:
+        if self.invest_parameters is None:
             is_fixed = True  # keine variable var_InvestSize
         else:
-            is_fixed = self.investArgs.investmentSize_is_fixed
+            is_fixed = self.invest_parameters.investmentSize_is_fixed
         return is_fixed
 
     @property
     def invest_is_optional(self) -> bool:
-        # Wenn kein investArg existiert:
-        if self.investArgs is None:
+        # Wenn kein InvestParameters existiert:
+        if self.invest_parameters is None:
             is_optional = False  # keine variable var_isInvested
         else:
-            is_optional = self.investArgs.investment_is_optional
+            is_optional = self.invest_parameters.investment_is_optional
         return is_optional
 
     # static var:
@@ -1253,7 +1253,7 @@ class cFlow(cME):
                  valuesBeforeBegin: Optional[List[Skalar]] = None,
                  val_rel: Optional[Numeric_TS] = None,
                  medium: Optional[str] = None,
-                 investArgs: Optional[cInvestArgs] = None,
+                 invest_parameters: Optional[InvestParameters] = None,
                  exists: Numeric_TS = 1,
                  group: Optional[str] = None,
                  **kwargs):
@@ -1328,7 +1328,7 @@ class cFlow(cME):
         medium: string, None
             medium is relevant, if the linked bus only allows a special defined set of media.
             If None, any bus can be used.            
-        investArgs : None or cInvestArgs, optional
+        invest_parameters : None or InvestParameters, optional
             used for investment costs or/and investment-optimization!
         exists : int, array, None
             indicates when a flow is present. Used for timing of Investments. Only contains blocks of 0 and 1.
@@ -1371,14 +1371,14 @@ class cFlow(cME):
             # Check:
             # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
             if (self.nominal_val == cFlow.__nominal_val_default) and \
-                    ((investArgs is None) or (investArgs.investmentSize_is_fixed == True)):
+                    ((invest_parameters is None) or (invest_parameters.investmentSize_is_fixed == True)):
                 # Fehlermeldung:
                 raise Exception(
                     'Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
 
             self.val_rel = TimeSeries('val_rel', val_rel, self)
 
-        self.investArgs = investArgs
+        self.invest_parameters = invest_parameters
         # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
 
         # zugehörige Komponente (wird später von Komponente gefüllt)
@@ -1425,7 +1425,7 @@ class cFlow(cME):
             f"nominal_val={self.nominal_val}",
             f"min/max_rel={self.min_rel}-{self.max_rel}",
             f"medium={self.medium}",
-            f"investArgs={self.investArgs.__str__()}" if self.investArgs else "",
+            f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
             f"val_rel={self.val_rel}" if self.val_rel else "",
             f"costsPerFlowHour={self.costsPerFlowHour}" if self.costsPerFlowHour else "",
             f"costsPerRunningHour={self.costsPerRunningHour}" if self.costsPerRunningHour else "",
@@ -1462,10 +1462,10 @@ class cFlow(cME):
         self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
 
         # prepare invest Feature:
-        if self.investArgs is None:
+        if self.invest_parameters is None:
             self.featureInvest = None  #
         else:
-            self.featureInvest = cFeatureInvest('nominal_val', self, self.investArgs,
+            self.featureInvest = cFeatureInvest('nominal_val', self, self.invest_parameters,
                                                 min_rel=self.min_rel_with_exists,
                                                 max_rel=self.max_rel_with_exists,
                                                 val_rel=self.val_rel,
@@ -2377,7 +2377,7 @@ class cCalculation:
           solving is both done in this method
 
           Take care:
-          Parameters like investArgs, loadfactor etc. does not make sense in
+          Parameters like invest_parameters, loadfactor etc. does not make sense in
           segmented modeling, cause they are newly defined in each segment
 
           Parameters
