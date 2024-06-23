@@ -593,7 +593,7 @@ class flix_results():
             #   if acomp.__class__.__name__ == 'Storage': # nicht schön, da Storage hier noch nicht bekannt
             #     setOfStorages.add(acomp)      
             # for aStorage in setOfStorages:
-            #   chargeState = aStorage.model.var_charge_state.getResult()
+            #   chargeState = aStorage.model.var_charge_state.get_result()
             #   fig.add_trace(go.Scatter(x=timeSeriesWithEnd, y=chargeState, name=aStorage.label+'.chargeState',line_shape='linear',line={'dash' : 'dash'} ),secondary_y = True)
 
             # fig.update_layout(title_text = title,

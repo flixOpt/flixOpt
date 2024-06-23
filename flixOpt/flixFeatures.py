@@ -217,11 +217,11 @@ class cSegment(cFeature):
     def declareVarsAndEqs(self, modBox):
         aLen = modBox.nrOfTimeSteps
         self.model.var_onSeg = VariableTS('onSeg_' + str(self.index), aLen, self, modBox,
-                                          isBinary=True)  # Binär-Variable
-        self.model.var_lambda1 = VariableTS('lambda1_' + str(self.index), aLen, self, modBox, min=0,
-                                            max=1)  # Wertebereich 0..1
-        self.model.var_lambda2 = VariableTS('lambda2_' + str(self.index), aLen, self, modBox, min=0,
-                                            max=1)  # Wertebereich 0..1
+                                          is_binary=True)  # Binär-Variable
+        self.model.var_lambda1 = VariableTS('lambda1_' + str(self.index), aLen, self, modBox, lower_bound=0,
+                                            upper_bound=1)  # Wertebereich 0..1
+        self.model.var_lambda2 = VariableTS('lambda2_' + str(self.index), aLen, self, modBox, lower_bound=0,
+                                            upper_bound=1)  # Wertebereich 0..1
 
 
 # Verhindern gleichzeitig mehrere Flows > 0 
@@ -377,11 +377,11 @@ class cFeatureOn(cFeature):
         # Var On:
         if self.useOn:
             # Before-Variable:
-            self.model.var_on = VariableTS('on', modBox.nrOfTimeSteps, self.owner, modBox, isBinary=True)
+            self.model.var_on = VariableTS('on', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
             self.model.var_on.activateBeforeValues(esBeforeValue=self.on_valuesBeforeBegin[0],
                                                    beforeValueIsStartValue=False)
-            self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, modBox, min=self.onHoursSum_min,
-                                                 max=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei
+            self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, modBox, lower_bound=self.onHoursSum_min,
+                                                 upper_bound=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei
 
         else:
             self.model.var_on = None
@@ -389,7 +389,7 @@ class cFeatureOn(cFeature):
 
         if self.useOff:
             # off-Var is needed:
-            self.model.var_off = VariableTS('off', modBox.nrOfTimeSteps, self.owner, modBox, isBinary=True)
+            self.model.var_off = VariableTS('off', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
 
         # onHours:
         #   i.g. 
@@ -398,19 +398,19 @@ class cFeatureOn(cFeature):
         if self.useOnHours:
             aMax = None if (self.onHours_max is None) else self.onHours_max.active_data
             self.model.var_onHours = VariableTS('onHours', modBox.nrOfTimeSteps, self.owner, modBox,
-                                                min=0, max=aMax)  # min separat
+                                                lower_bound=0, upper_bound=aMax)  # min separat
         # offHours:
         if self.useOffHours:
             aMax = None if (self.offHours_max is None) else self.offHours_max.active_data
             self.model.var_offHours = VariableTS('offHours', modBox.nrOfTimeSteps, self.owner, modBox,
-                                                 min=0, max=aMax)  # min separat
+                                                 lower_bound=0, upper_bound=aMax)  # min separat
 
         # Var SwitchOn
         if self.useSwitchOn:
-            self.model.var_switchOn = VariableTS('switchOn', modBox.nrOfTimeSteps, self.owner, modBox, isBinary=True)
-            self.model.var_switchOff = VariableTS('switchOff', modBox.nrOfTimeSteps, self.owner, modBox, isBinary=True)
+            self.model.var_switchOn = VariableTS('switchOn', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
+            self.model.var_switchOff = VariableTS('switchOff', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
             self.model.var_nrSwitchOn = Variable('nrSwitchOn', 1, self.owner, modBox,
-                                                 max=self.switchOn_maxNr)  # wenn max/min = None, dann bleibt das frei
+                                                 upper_bound=self.switchOn_maxNr)  # wenn max/min = None, dann bleibt das frei
         else:
             self.model.var_switchOn = None
             self.model.var_switchOff = None
@@ -690,10 +690,10 @@ class cFeature_ShareSum(cFeature):
         if self.sharesAreTS:
             lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, modBox.dtInHours)
             ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, modBox.dtInHours)
-            self.model.var_sum_TS = VariableTS('sum_TS', modBox.nrOfTimeSteps, self, modBox, min = lb_TS, max = ub_TS)  # TS
+            self.model.var_sum_TS = VariableTS('sum_TS', modBox.nrOfTimeSteps, self, modBox, lower_bound= lb_TS, upper_bound= ub_TS)  # TS
 
         # Variable für Summe (Skalar-Summe):
-        self.model.var_sum = Variable('sum', 1, self, modBox, min=self.minOfSum, max=self.maxOfSum)  # Skalar
+        self.model.var_sum = Variable('sum', 1, self, modBox, lower_bound=self.minOfSum, upper_bound=self.maxOfSum)  # Skalar
 
         # Gleichungen schon hier definiert, damit andere Elemente beim modeling Beiträge eintragen können:
         if self.sharesAreTS:
@@ -989,11 +989,11 @@ class cFeatureInvest(cFeature):
             self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, value=lb)
         else:
             # Bereich:
-            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, min=lb, max=ub)
+            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, lower_bound=lb, upper_bound=ub)
 
         # b) var_isInvested:
         if self.args.investment_is_optional:
-            self.model.var_isInvested = Variable('isInvested', 1, self, modBox, isBinary=True)
+            self.model.var_isInvested = Variable('isInvested', 1, self, modBox, is_binary=True)
 
             ## investCosts in Segments: ##
         # wenn vorhanden,
@@ -1039,7 +1039,7 @@ class cFeatureInvest(cFeature):
         else:
             raise Exception('Given effect (' + str(aEffect) + ') is not an effect!')
         # new variable, i.e for costs, CO2,... :
-        var_investForEffect = Variable('investCosts_segmented_' + aStr, 1, self, modBox, min=0)
+        var_investForEffect = Variable('investCosts_segmented_' + aStr, 1, self, modBox, lower_bound=0)
         self.model.var_list_investCosts_segmented.append(var_investForEffect)
         return var_investForEffect
 

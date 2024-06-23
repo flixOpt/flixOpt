@@ -310,7 +310,7 @@ print('######### sum Korr_... (wenn vorhanden) #########')
 if calcAgg is not None:
   aggretation_element=list(calcAgg.system.setOfOtherElements)[0]
   for var in aggretation_element.model.variables:
-    print(var.label_full + ':' + str( sum(var.getResult())))
+    print(var.label_full + ':' + str(sum(var.get_result())))
 
 print('')
 

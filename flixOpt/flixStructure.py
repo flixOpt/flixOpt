@@ -138,12 +138,12 @@ class SystemModel(LinearModel):
         print('')
         for aEffect in self.system.globalComp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
-            print('  operation: ' + str(aEffect.operation.model.var_sum.getResult()))
-            print('  invest   : ' + str(aEffect.invest.model.var_sum.getResult()))
-            print('  sum      : ' + str(aEffect.all.model.var_sum.getResult()))
+            print('  operation: ' + str(aEffect.operation.model.var_sum.get_result()))
+            print('  invest   : ' + str(aEffect.invest.model.var_sum.get_result()))
+            print('  sum      : ' + str(aEffect.all.model.var_sum.get_result()))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.getResult()))
+        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.get_result()))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -155,12 +155,12 @@ class SystemModel(LinearModel):
             if aBus.withExcess:
                 if any(self.results[aBus.label]['excessIn'] > 1e-6) or any(
                         self.results[aBus.label]['excessOut'] > 1e-6):
-                    # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
+                    # if any(aBus.excessIn.get_result() > 0) or any(aBus.excessOut.get_result() > 0):
                     print('!!!!! Attention !!!!!')
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.globalComp.penalty.model.var_sum.getResult() > 10:
+        if self.system.globalComp.penalty.model.var_sum.get_result() > 10:
             print('Take care: -> high penalty makes the used gapFrac quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -177,10 +177,10 @@ class SystemModel(LinearModel):
             for aEffect in self.system.globalComp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
-                aDict['operation'] = str(aEffect.operation.model.var_sum.getResult())
-                aDict['invest'] = str(aEffect.invest.model.var_sum.getResult())
-                aDict['sum'] = str(aEffect.all.model.var_sum.getResult())
-            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.getResult())
+                aDict['operation'] = str(aEffect.operation.model.var_sum.get_result())
+                aDict['invest'] = str(aEffect.invest.model.var_sum.get_result())
+                aDict['sum'] = str(aEffect.all.model.var_sum.get_result())
+            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.get_result())
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -199,7 +199,7 @@ class SystemModel(LinearModel):
                      }
             main_results_str['Invest-Decisions'] = aDict
             for aInvestFeature in self.system.allInvestFeatures:
-                investValue = aInvestFeature.model.var_investmentSize.getResult()
+                investValue = aInvestFeature.model.var_investmentSize.get_result()
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
                 if isinstance(investValue, np.ndarray):
@@ -374,12 +374,12 @@ class Element:
         aVar: Variable
         for aVar in self.model.variables:
             # print(aVar.label)
-            aData[aVar.label] = aVar.getResult()
+            aData[aVar.label] = aVar.get_result()
             aVars[aVar.label] = aVar  # link zur Variable
-            if aVar.isBinary and aVar.len > 1:
+            if aVar.is_binary and aVar.length > 1:
                 # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
                 #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.getResult())
+                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.get_result())
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben
@@ -449,7 +449,7 @@ class Element:
         aDict['no inEqs'] = len(self.model.ineqs)
         aDict['no inEqs single'] = sum([ineq.nrOfSingleEquations for ineq in self.model.ineqs])
         aDict['no vars'] = len(self.model.variables)
-        aDict['no vars single'] = sum([var.len for var in self.model.variables])
+        aDict['no vars single'] = sum([var.length for var in self.model.variables])
         return aDict
 
 
@@ -486,7 +486,7 @@ class ElementModel:
     def getVarsAsStr(self) -> List:
         aList = []
         for aVar in self.variables:
-            aList.append(aVar.getStrDescription())
+            aList.append(aVar.get_str_description())
         return aList
 
     def printEqs(self, shiftChars) -> None:
@@ -1107,8 +1107,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Fehlerplus/-minus:
         if self.withExcess:
             # Fehlerplus und -minus definieren
-            self.excessIn = VariableTS('excessIn', len(system_model.timeSeries), self, system_model, min=0)
-            self.excessOut = VariableTS('excessOut', len(system_model.timeSeries), self, system_model, min=0)
+            self.excessIn = VariableTS('excessIn', len(system_model.timeSeries), self, system_model, lower_bound=0)
+            self.excessOut = VariableTS('excessOut', len(system_model.timeSeries), self, system_model, lower_bound=0)
 
     def doModeling(self, system_model, timeIndexe) -> None:
         super().doModeling(system_model, timeIndexe)
@@ -1518,9 +1518,9 @@ class Flow(Element):
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model, min=lb, max=ub, value=fix_value)
-        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, min=self.sumFlowHours_min,
-                                               max=self.sumFlowHours_max)
+        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model, lower_bound=lb, upper_bound=ub, value=fix_value)
+        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, lower_bound=self.sumFlowHours_min,
+                                               upper_bound=self.sumFlowHours_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
@@ -2174,7 +2174,7 @@ class System:
         if not structured:
             aList = []
             for aVar in self.model.variables:
-                aList.append(aVar.getStrDescription())
+                aList.append(aVar.get_str_description())
             return aList
 
         # struktur:
@@ -2225,7 +2225,7 @@ class System:
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe) -> Tuple:
-        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(len(self.timeSeries))
+        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(length(self.timeSeries))
         # Zeitreihen:
         timeSeries = self.timeSeries[chosenEsTimeIndexe]
         # next timestamp as endtime:
@@ -2320,7 +2320,7 @@ class Calculation:
         self.TSlistForAggregation = None  # list of timeseries for aggregation
         # assert from_index < to_index
         # assert from_index >= 0
-        # assert to_index <= len(self.system.timeSeries)-1
+        # assert to_index <= length(self.system.timeSeries)-1
 
         # Wenn chosenEsTimeIndexe = None, dann alle nehmen
         if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.timeSeries))
@@ -2453,8 +2453,8 @@ class Calculation:
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 segmentModBoxBefore = self.segmentModBoxList[i - 1]
-                segmentModBox.beforeValueSet = StartValue(segmentModBoxBefore,
-                                                          segmentModBoxBefore.realNrOfUsedSteps - 1)
+                segmentModBox.beforeValueSet = BeforeValues(segmentModBoxBefore,
+                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
                 print('### beforeValueSet: ###')
                 segmentModBox.beforeValueSet.print()
                 print('#######################')
@@ -2577,7 +2577,7 @@ class Calculation:
         self.TScollectionForAgg.print()
 
         import pandas as pd
-        # seriesDict = {i : self.TSlistForAggregation[i].active_data_vector for i in range(len(self.TSlistForAggregation))}
+        # seriesDict = {i : self.TSlistForAggregation[i].active_data_vector for i in range(length(self.TSlistForAggregation))}
         df_OriginalData = pd.DataFrame(self.TScollectionForAgg.seriesDict,
                                        index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
 

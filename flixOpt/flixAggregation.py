@@ -154,7 +154,7 @@ class flixAggregation:
         # self.periodOccurances = aggregation.clusterPeriodNoOccur
 
         # self.timeStepsPerPeriod = list(range(self.numberOfTimeStepsPerPeriod))
-        # self.periods = list(range(int(len(self.totalTimeSteps) / len(self.timeStepsPerPeriod))))
+        # self.periods = list(range(int(length(self.totalTimeSteps) / length(self.timeStepsPerPeriod))))
 
         # Zeit messen:
         tClusterEnd = time.time()
@@ -227,7 +227,7 @@ class flixAggregation:
         # self.pricePowerIn = dict(zip(model.timeSet, pd.Series(self.timeseries['Strompr.€/MWh'] + 0.5)))
         # self.pricePowerOut = dict(zip(model.timeSet, pd.Series(self.timeseries['Strompr.€/MWh'] - 0.5)))
         # self.tradingPrices = dict(zip(model.tradingSet.data(), [self.pricePowerIn, self.pricePowerOut]))
-        # self.priceCoal = dict(zip(model.timeSet, pd.Series(4.6 for x in range(len(self.timeseries.index)))))
+        # self.priceCoal = dict(zip(model.timeSet, pd.Series(4.6 for x in range(length(self.timeseries.index)))))
 
         # self.fuelCosts['Kohle'] = self.priceCoal
         # self.fuelCosts['Gas'] = self.priceGas
@@ -419,12 +419,12 @@ class cAggregationModeling(flixStructure.Element):
         eq.addSummand(aVar, -1, indexeOfVariable=idx_var2)
 
         # Korrektur: (bisher nur für Binärvariablen:)
-        if aVar.isBinary and self.percentageOfPeriodFreedom > 0:
+        if aVar.is_binary and self.percentageOfPeriodFreedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
             var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
-                              isBinary=True)
+                              is_binary=True)
             var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
-                              isBinary=True)
+                              is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
@@ -445,7 +445,7 @@ class cAggregationModeling(flixStructure.Element):
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
-            self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.len)
+            self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.length)
             eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
             eq_max.addSummandSumOf(var_K1, 1)
             eq_max.addSummandSumOf(var_K0, 1)

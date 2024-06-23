@@ -208,7 +208,7 @@ print(aCalc.results['Boiler']['Q_th']['val']) # access through dict
 print('way 2:')
 print(aCalc.results_struct.Boiler.Q_th.val) # access matlab-struct like
 print('way 3:')
-print(aBoiler.Q_th.model.var_val.getResult()) # access directly through component/flow-variables
+print(aBoiler.Q_th.model.var_val.get_result()) # access directly through component/flow-variables
 #    (warning: there are only temporarily the results of the last executed solve-command of the energy-system)
 
 # 2. post-processing access:

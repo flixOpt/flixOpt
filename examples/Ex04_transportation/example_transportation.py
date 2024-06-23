@@ -46,7 +46,7 @@ nrOfTimeSteps = 4
 sink1 = [0.,   0.,  0., 100 , 40 , 40, 40, 40, 40][:nrOfTimeSteps]
 sink2 = [10., 20., 30., 0   , 40 , 40, 40, 40, 40][:nrOfTimeSteps]
   
-# todo: ggf. Umstellung auf numpy: aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1)
+# todo: ggf. Umstellung auf numpy: aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(length(Q_th_Last)) * datetime.timedelta(hours=1)
 aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(sink1)) * datetime.timedelta(hours=1)
 aTimeSeries = aTimeSeries.astype('datetime64')
 

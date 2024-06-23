@@ -13,6 +13,7 @@ from typing import List, Dict, Optional, Union, Tuple, Literal
 import numpy as np
 from pyomo.contrib import appsi
 
+import flixOpt.flixStructure
 from flixOpt import flixOptHelperFcts as helpers
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
@@ -73,7 +74,7 @@ class LinearModel:
         eq: Equation
         # Variablen erstellen
         for variable in self.variables:
-            variable.transform2MathModel(self)
+            variable.to_math_model(self)
         # Gleichungen erstellen
         for eq in self.eqs:
             eq.transform2MathModel(self)
@@ -97,7 +98,7 @@ class LinearModel:
         self.noOfSingleIneqs = sum([eq.nrOfSingleEquations for eq in self.ineqs])
 
         self.noOfVars = len(self.variables)
-        self.noOfSingleVars = sum([var.len for var in self.variables])
+        self.noOfSingleVars = sum([var.length for var in self.variables])
 
     def solve(self,
               mip_gap: float,
@@ -109,7 +110,7 @@ class LinearModel:
         self.solver_name = solver_name
         t_start = time.time()
         for variable in self.variables:
-            variable.resetResult()  # altes Ergebnis löschen (falls vorhanden)
+            variable.reset_result()  # altes Ergebnis löschen (falls vorhanden)
         if self.modeling_language == 'pyomo':
             if solver_name == 'highs':
               solver = appsi.solvers.Highs()
@@ -158,7 +159,6 @@ class LinearModel:
             raise Exception('not defined for modtype ' + self.modeling_language)
 
         self.duration['solve'] = round(time.time() - t_start, 2)
-
 
     @property
     def infos(self) -> Dict:
@@ -232,79 +232,86 @@ class LinearModel:
         # überschreiben:
         self.model.add_component(aName, py_comp)
 
+    ######## Other Modeling Languages
+
 
 class Variable:
-    def __init__(self, label: str, len: int, myMom, baseModel: LinearModel, isBinary: bool = False,
+    def __init__(self,
+                 label: str,
+                 length: int,
+                 owner,
+                 linear_model: LinearModel,
+                 is_binary: bool = False,
                  value: Optional[Union[int, float]] = None,
-                 min: Optional[Union[int, float]] = None, max: Optional[Union[int, float]] = None):  #TODO: Rename max and min!!
+                 lower_bound: Optional[Union[int, float]] = None,
+                 upper_bound: Optional[Union[int, float]] = None):
         self.label = label
-        self.len = len
-        self.myMom = myMom
-        self.baseModel = baseModel
-        self.isBinary = isBinary
+        self.length = length
+        self.owner: flixOpt.flixStructure.Element = owner
+        self.linear_model = linear_model
+        self.is_binary = is_binary
         self.value = value
-        self.min = min
-        self.max = max
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
 
-        self.indexe = range(self.len)
-        self.label_full = myMom.label + '.' + label
+        self.indices = range(self.length)
+        self.label_full = owner.label + '.' + label
         self.fixed = False
         self.result = None  # Ergebnis
 
-        self.value_vec = helpers.getVector(value, self.len)
-        # boundaries:
-        self.min_vec = helpers.getVector(min, self.len)  # note: auch aus None wird None-Vektor
-        self.max_vec = helpers.getVector(max, self.len)
-        self.__result = None  # Ergebnis-Speicher
+        self._result = None  # Ergebnis-Speicher
         log.debug('Variable created: ' + self.label)
 
         # Check conformity:
         self.label = helpers.checkForAttributeNameConformity(label)
 
         # Wenn Vorgabewert vorhanden:
-        if not (value is None):
+        if value is not None:
             # check if conflict with min/max values
             # Wenn ein Element nicht in min/max-Grenzen
 
-            minOk = (self.min is None) or (np.all(self.value >= self.min_vec))  # prüft elementweise
-            maxOk = (self.max is None) or (np.all(self.value <= self.max_vec))  # prüft elementweise
+            minOk = (self.lower_bound is None) or (np.all(self.value >= self.lower_bound))  # prüft elementweise
+            maxOk = (self.upper_bound is None) or (np.all(self.value <= self.upper_bound))  # prüft elementweise
             if (not (minOk)) or (not (maxOk)):
-                raise Exception('Variable.value' + self.label_full + ' nicht in min/max Grenzen')
+                raise Exception('Variable.value' + self.label_full + ' not inside set bounds')
 
             # Werte in Variable festsetzen:
             self.fixed = True
-            self.value = helpers.getVector(value, len)
+            self.value = helpers.getVector(value, length)
 
         # Register Element:
-        # myMom .variables.append(self) # Komponentenliste
-        baseModel.variables.append(self)  # baseModel-Liste mit allen vars
-        myMom.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
+        # owner .variables.append(self) # Komponentenliste
+        linear_model.variables.append(self)  # linear_model-Liste mit allen vars
+        owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
-    def transform2MathModel(self, baseModel: LinearModel):
-        self.baseModel = baseModel
+    def to_math_model(self, baseModel: LinearModel):
+        self.linear_model = baseModel
 
-        # TODO: self.var ist hier einziges Attribut, das baseModel-spezifisch ist: --> umbetten in baseModel!
+        # TODO: self.var ist hier einziges Attribut, das linear_model-spezifisch ist: --> umbetten in linear_model!
         if baseModel.modeling_language == 'pyomo':
-            if self.isBinary:
-                self.var = pyomoEnv.Var(self.indexe, domain=pyomoEnv.Binary)
-                # self.var = Var(baseModel.timesteps,domain=Binary)
+            if self.is_binary:
+                self.var = pyomoEnv.Var(self.indices, domain=pyomoEnv.Binary)
+                # self.var = Var(linear_model.timesteps,domain=Binary)
             else:
-                self.var = pyomoEnv.Var(self.indexe, within=pyomoEnv.Reals)
+                self.var = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
 
             # Register in pyomo-model:
-            aNameSuffixInPyomo = 'var_' + self.myMom.label + '_' + self.label  # z.B. KWK1_On
+            aNameSuffixInPyomo = 'var_' + self.owner.label + '_' + self.label  # z.B. KWK1_On
             baseModel.registerPyComp(self.var, aNameSuffixInPyomo)
 
-            for i in self.indexe:
+            lower_bound_vector = helpers.getVector(self.lower_bound, self.length)
+            upper_bound_vector = helpers.getVector(self.upper_bound, self.length)
+            value_vector = helpers.getVector(self.value, self.length)
+            for i in self.indices:
                 # Wenn Vorgabe-Wert vorhanden:
-                if self.fixed and (self.value[i] != None):
+                if self.fixed and (value_vector[i] != None):
                     # Fixieren:
-                    self.var[i].value = self.value[i]
+                    self.var[i].value = value_vector[i]
                     self.var[i].fix()
                 else:
                     # Boundaries:
-                    self.var[i].setlb(self.min_vec[i])  # min
-                    self.var[i].setub(self.max_vec[i])  # max
+                    self.var[i].setlb(lower_bound_vector[i])  # min
+                    self.var[i].setub(upper_bound_vector[i])  # max
 
 
         elif baseModel.modeling_language == 'vcxpy':
@@ -312,39 +319,34 @@ class Variable:
         else:
             raise Exception('not defined for modtype ' + baseModel.modeling_language)
 
-    def resetResult(self):
-        self.__result = None
+    def reset_result(self):
+        self._result = None
 
-    def getResult(self):
+    def get_result(self) -> Union[int, float, np.ndarray]:
         # wenn noch nicht abgefragt: (so wird verhindert, dass für jede Abfrage jedesMal neuer Speicher bereitgestellt wird.)
-        if self.__result is None:
-            if self.baseModel.modeling_language == 'pyomo':
+        if self._result is None:
+            if self.linear_model.modeling_language == 'pyomo':
                 # get Data:
                 values = self.var.get_values().values()  # .values() of dict, because {0:0.1, 1:0.3,...}
                 # choose dataType:
-                if self.isBinary:
+                if self.is_binary:
                     dType = np.int8  # geht das vielleicht noch kleiner ???
                 else:
                     dType = float
                 # transform to np-array (fromiter() is 5-7x faster than np.array(list(...)) )
-                self.__result = np.fromiter(values, dtype=dType)
+                self._result = np.fromiter(values, dtype=dType)
                 # Falls skalar:
-                if len(self.__result) == 1:
-                    self.__result = self.__result[0]
+                if len(self._result) == 1:
+                    self._result = self._result[0]
 
-            elif self.baseModel.modeling_language == 'vcxpy':
-                raise Exception('not defined for modtype ' + self.baseModel.modeling_language)
+            elif self.linear_model.modeling_language == 'vcxpy':
+                raise Exception('not defined for modtype ' + self.linear_model.modeling_language)
             else:
-                raise Exception('not defined for modtype ' + self.baseModel.modeling_language)
+                raise Exception('not defined for modtype ' + self.linear_model.modeling_language)
 
-        return self.__result
+        return self._result
 
-    def print(self, shiftChars):
-        # aStr = ' ' * len(shiftChars)
-        aStr = shiftChars + self.getStrDescription()
-        print(aStr)
-
-    def getStrDescription(self):
+    def get_str_description(self) -> str:
         maxChars = 50  # länge begrenzen falls vector-Darstellung
         aStr = 'var'
 
@@ -353,56 +355,51 @@ class Variable:
         else:
             aStr += '   '
 
-        if self.isBinary:
+        if self.is_binary:
             aStr += ' bin '
         else:
             aStr += '     '
 
-        aStr += self.label_full + ': ' + 'len=' + str(self.len)
+        aStr += self.label_full + ': ' + 'length=' + str(self.length)
         if self.fixed:
             aStr += ', fixed =' + str(self.value)[:maxChars]
 
-        aStr += ' min = ' + str(self.min)[:maxChars] + ', max = ' + str(self.max)[:maxChars]
+        aStr += ' min = ' + str(self.lower_bound)[:maxChars] + ', max = ' + str(self.upper_bound)[:maxChars]
 
         return aStr
 
 
-# TODO:
-# class cTS_Variable (Variable):
-#   valuesIsPostTimeStep = False # für Speicherladezustände true!!!
-#   oneValDependsOnPrevious : Bool, optional
-#             if every value depends on previous -> not fixed in aggregation mode. The default is True.
-#   # beforeValues 
-
-
 # Timeseries-Variable, optional mit Before-Werten:
 class VariableTS(Variable):
-    def __init__(self, label: str, len: int, myMom, baseModel: LinearModel, isBinary: bool = False,
+    def __init__(self,
+                 label: str,
+                 length: int,
+                 owner,
+                 linear_model: LinearModel,
+                 is_binary: bool = False,
                  value: Optional[Union[int, float, np.ndarray]] = None,
-                 min: Optional[Union[int, float, np.ndarray]] = None,
-                 max: Optional[Union[int, float, np.ndarray]] = None):
-        assert len > 1, 'len is one, that seems not right for CVariable_TS'
+                 lower_bound: Optional[Union[int, float, np.ndarray]] = None,
+                 upper_bound: Optional[Union[int, float, np.ndarray]] = None):
+        assert length > 1, 'length is one, that seems not right for CVariable_TS'
         self.activated_beforeValues = False
-        super().__init__(label, len, myMom, baseModel, isBinary=isBinary, value=value, min=min, max=max)
+        super().__init__(label, length, owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
 
     # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
-    def activateBeforeValues(self, esBeforeValue,
+    def activateBeforeValues(self,
+                             esBeforeValue,
                              beforeValueIsStartValue) -> None:  # beforeValueIsStartValue heißt ob es Speicherladezustand ist oder Nicht
         # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
         self.beforeValueIsStartValue = beforeValueIsStartValue
         self.esBeforeValue = esBeforeValue  # Standardwerte für Simulationsstart im Energiesystem
         self.activated_beforeValues = True
 
-    def transform2MathModel(self, baseModel:LinearModel) -> None:
-        super().transform2MathModel(baseModel)
-
     # hole Startwert/letzten Wert vor diesem Segment:
     def beforeVal(self):
         assert self.activated_beforeValues, 'activateBeforeValues() not executed'
-        # wenn beforeValue-Datensatz für baseModel gegeben:
-        if self.baseModel.beforeValueSet is not None:
+        # wenn beforeValue-Datensatz für linear_model gegeben:
+        if self.linear_model.beforeValueSet is not None:
             # für Variable rausziehen:
-            (value, time) = self.baseModel.beforeValueSet.getBeforeValues(self)
+            (value, time) = self.linear_model.beforeValueSet.getBeforeValues(self)
             return value
         # sonst Standard-BeforeValues von Energiesystem verwenden:
         else:
@@ -417,13 +414,13 @@ class VariableTS(Variable):
         # sonst:
         else:
             index = lastUsedIndex  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
-        aTime = self.baseModel.timeSeriesWithEnd[index]
-        aValue = self.getResult()[index]
+        aTime = self.linear_model.timeSeriesWithEnd[index]
+        aValue = self.get_result()[index]
         return (aValue, aTime)
 
 
 # managed die Before-Werte des segments:
-class StartValue:
+class BeforeValues:
     def __init__(self, fromBaseModel, lastUsedIndex):
         self.fromBaseModel = fromBaseModel
         self.beforeValues = {}
@@ -438,9 +435,9 @@ class StartValue:
                 self.addBeforeValues(aVar, aValue, aTime)
 
     def addBeforeValues(self, aVar, aValue, aTime):
-        element = aVar.myMom
-        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je baseModel!
-        # beforeValues = aVar.getResult(aValue) # letzten zwei Werte
+        element = aVar.owner
+        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
+        # beforeValues = aVar.get_result(aValue) # letzten zwei Werte
 
         if aKey in self.beforeValues.keys():
             raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')
@@ -449,8 +446,8 @@ class StartValue:
 
     # return (value, time)
     def getBeforeValues(self, aVar):
-        element = aVar.myMom
-        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je baseModel!
+        element = aVar.owner
+        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
         if aKey in self.beforeValues.keys():
             return self.beforeValues[aKey]  # returns (value, time)
         else:
@@ -462,11 +459,15 @@ class StartValue:
 
 
 # class cInequation(Equation):
-#   def __init__(self, label, myMom, baseModel):
-#     super().__init__(label, myMom, baseModel, eqType='ineq')    
+#   def __init__(self, label, owner, linear_model):
+#     super().__init__(label, owner, linear_model, eqType='ineq')
 
 class Equation:
-    def __init__(self, label: str, myMom, baseModel: LinearModel, eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
+    def __init__(self,
+                 label: str,
+                 myMom,
+                 baseModel: LinearModel,
+                 eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
         self.nrOfSingleEquations = 1  # Anzahl der Gleichungen
@@ -482,13 +483,13 @@ class Equation:
         ## Register Element:
         # Equation:
         if eqType == 'ineq':  # lhs <= rhs
-            # myMom .ineqs.append(self) # Komponentenliste
-            baseModel.ineqs.append(self)  # baseModel-Liste mit allen ineqs
+            # owner .ineqs.append(self) # Komponentenliste
+            baseModel.ineqs.append(self)  # linear_model-Liste mit allen ineqs
             myMom.model.ineqs.append(self)
         # Inequation:
         elif eqType == 'eq':
-            # myMom .eqs.append(self) # Komponentenliste
-            baseModel.eqs.append(self)  # baseModel-Liste mit allen eqs
+            # owner .eqs.append(self) # Komponentenliste
+            baseModel.eqs.append(self)  # linear_model-Liste mit allen eqs
             myMom.model.eqs.append(self)
         # Objective:
         elif eqType == 'objective':
@@ -496,7 +497,7 @@ class Equation:
                 baseModel.objective = self
                 myMom.model.objective = self
             else:
-                raise Exception('baseModel.objective ist bereits belegt!')
+                raise Exception('linear_model.objective ist bereits belegt!')
         # Undefined:
         else:
             raise Exception('Equation.eqType ' + str(self.eqType) + ' nicht definiert!')
@@ -508,9 +509,9 @@ class Equation:
 
     def addSummand(self, variable, factor, indexeOfVariable=None):
         # input: 3 Varianten entscheiden über Elemente-Anzahl des Summanden:
-        #   len(variable) = 1             -> len = len(factor)
-        #   len(factor)   = 1             -> len = len(variable)
-        #   len(factor)   = len(variable) -> len = len(factor)
+        #   length(variable) = 1             -> length = length(factor)
+        #   length(factor)   = 1             -> length = length(variable)
+        #   length(factor)   = length(variable) -> length = length(factor)
 
         isSumOf_Type = False  # kein SumOf_Type!
         self.addUniversalSummand(variable, factor, isSumOf_Type, indexeOfVariable)
@@ -594,7 +595,7 @@ class Equation:
                     elif self.eqType == 'ineq':
                         return lhs <= rhs
 
-                # TODO: self.eq ist hier einziges Attribut, das baseModel-spezifisch ist: --> umbetten in baseModel!
+                # TODO: self.eq ist hier einziges Attribut, das linear_model-spezifisch ist: --> umbetten in linear_model!
                 self.eq = pyomoEnv.Constraint(range(self.nrOfSingleEquations),
                                               rule=linearSumRule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
@@ -651,7 +652,7 @@ class Equation:
                 i = 0
             else:
                 i = eqNr
-            #      i     = min(eqNr, aSummand.len-1) # wenn zu groß, dann letzter Eintrag ???
+            #      i     = min(eqNr, aSummand.length-1) # wenn zu groß, dann letzter Eintrag ???
             index = aSummand.indexeOfVariable[i]
             # factor formatieren:
             factor = aSummand.factor_vec[i]
@@ -711,7 +712,7 @@ class Summand:
 
         # wenn nicht definiert, dann alle Indexe
         if self.indexeOfVariable is None:
-            self.indexeOfVariable = variable.indexe  # alle indexe
+            self.indexeOfVariable = variable.indices  # alle indices
 
         self.len_var_indexe = len(self.indexeOfVariable)
 
@@ -732,7 +733,7 @@ class Summand:
             aLen = len_factor
         else:
             raise Exception(
-                'Variable ' + self.variable.label_full + '(len=' + str(len_var_indexe) + ') und Faktor (len=' + str(
+                'Variable ' + self.variable.label_full + '(length=' + str(len_var_indexe) + ') und Faktor (length=' + str(
                     len_factor) + ') müssen gleiche Länge haben oder Skalar sein')
         return aLen
 
@@ -773,7 +774,7 @@ class Summand:
         return expr
 
 
-class SolverLog():
+class SolverLog:
     def __init__(self, solver_name, filename, string=None):
 
         if filename is None:

@@ -15,8 +15,8 @@ Numeric = Union[int, float, np.ndarray]  # Datatype
 # zeitreihenbezogene Input-Daten:
 Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesRaw]
 # Datatype Numeric_TS:
-#   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
-#   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
+#   Skalar      --> wird später dann in array ("Zeitreihe" mit length=nrOfTimeIndexe) übersetzt
+#   np.ndarray  --> muss length=nrOfTimeIndexe haben ("Zeitreihe")
 #   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
