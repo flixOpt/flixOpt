@@ -54,6 +54,7 @@ class LinearModel:
         self.objective_result = None  # Ergebnis
         self.duration = {}  # Laufzeiten
         self.solver_log = None  # logging und parsen des solver-outputs
+        self.before_values: Optional[BeforeValues] = None  # Handling Values before first timestep
 
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
@@ -385,59 +386,61 @@ class VariableTS(Variable):
         super().__init__(label, length, owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
 
     # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
-    def activateBeforeValues(self,
-                             esBeforeValue,
-                             beforeValueIsStartValue) -> None:  # beforeValueIsStartValue heißt ob es Speicherladezustand ist oder Nicht
+    def set_before_value(self,
+                         default_before_value: Union[int, float],
+                         is_start_value: bool) -> None:  # is_start_value heißt ob es Speicherladezustand ist oder Nicht
         # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
-        self.beforeValueIsStartValue = beforeValueIsStartValue
-        self.esBeforeValue = esBeforeValue  # Standardwerte für Simulationsstart im Energiesystem
+        self.before_value_is_start_value = is_start_value
+        self.default_before_value = default_before_value  # Standardwerte für Simulationsstart im Energiesystem
         self.activated_beforeValues = True
 
     # hole Startwert/letzten Wert vor diesem Segment:
-    def beforeVal(self):
-        assert self.activated_beforeValues, 'activateBeforeValues() not executed'
+    @property
+    def before_value(self):
+        assert self.activated_beforeValues, 'set_before_value() not executed'
         # wenn beforeValue-Datensatz für linear_model gegeben:
-        if self.linear_model.beforeValueSet is not None:
+        if self.linear_model.before_values is not None:
             # für Variable rausziehen:
-            (value, time) = self.linear_model.beforeValueSet.getBeforeValues(self)
+            (value, time) = self.linear_model.before_values.getBeforeValues(self)
             return value
         # sonst Standard-BeforeValues von Energiesystem verwenden:
         else:
-            return self.esBeforeValue
+            return self.default_before_value
 
     # hole Startwert/letzten Wert für nächstes Segment:
-    def getBeforeValueForNEXTSegment(self, lastUsedIndex) -> Tuple:
-        assert self.activated_beforeValues, 'activateBeforeValues() not executed'
+    def get_before_value_for_next_segment(self, last_index_of_segment: int) -> Tuple:
+        assert self.activated_beforeValues, 'set_before_value() not executed'
         # Wenn Speicherladezustand o.ä.
-        if self.beforeValueIsStartValue:
-            index = lastUsedIndex + 1  # = Ladezustand zum Startzeitpunkt des nächsten Segments
+        if self.before_value_is_start_value:
+            index = last_index_of_segment + 1  # = Ladezustand zum Startzeitpunkt des nächsten Segments
         # sonst:
         else:
-            index = lastUsedIndex  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
-        aTime = self.linear_model.timeSeriesWithEnd[index]
-        aValue = self.get_result()[index]
-        return (aValue, aTime)
+            index = last_index_of_segment  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
+        time = self.linear_model.timeSeriesWithEnd[index]
+        value = self.get_result()[index]
+        return value, time
 
 
 # managed die Before-Werte des segments:
 class BeforeValues:
-    def __init__(self, fromBaseModel, lastUsedIndex):
-        self.fromBaseModel = fromBaseModel
+    def __init__(self,
+                 variables_ts: List[VariableTS],
+                 lastUsedIndex: int):
         self.beforeValues = {}
         # Sieht dann so aus = {(Element1, aVar1.name): (value, time),
         #                      (Element2, aVar2.name): (value, time),
         #                       ...                       }
-        for aVar in self.fromBaseModel.all_ts_variables:
+        for aVar in variables_ts:
             aVar: VariableTS
             if aVar.activated_beforeValues:
                 # Before-Value holen:
-                (aValue, aTime) = aVar.getBeforeValueForNEXTSegment(lastUsedIndex)
+                (aValue, aTime) = aVar.get_before_value_for_next_segment(lastUsedIndex)
                 self.addBeforeValues(aVar, aValue, aTime)
 
     def addBeforeValues(self, aVar, aValue, aTime):
         element = aVar.owner
         aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
-        # beforeValues = aVar.get_result(aValue) # letzten zwei Werte
+        # before_values = aVar.get_result(aValue) # letzten zwei Werte
 
         if aKey in self.beforeValues.keys():
             raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')

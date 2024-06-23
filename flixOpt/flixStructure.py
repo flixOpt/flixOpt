@@ -52,7 +52,7 @@ class SystemModel(LinearModel):
         # self.objective       = None # objective-Function
         # self.objective_result = None # Ergebnis
 
-        self.beforeValueSet = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
+        self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
         (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
             time_indices)
@@ -1715,11 +1715,11 @@ class Flow(Element):
 
 # class cBeforeValue :
 
-#   def __init__(self, modelingElement, var, esBeforeValues, beforeValueIsStartValue):
+#   def __init__(self, modelingElement, var, esBeforeValues, is_start_value):
 #     self.esBeforeValues  = esBeforeValues # Standardwerte für Simulationsstart im Energiesystem
 #     self.modelingElement = modelingElement 
 #     self.var             = var
-#     self.beforeValueIsStartValue =beforeValueIsStartValue
+#     self.is_start_value =is_start_value
 
 #   def getBeforeValue(self):
 #     if
@@ -2453,10 +2453,10 @@ class Calculation:
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 segmentModBoxBefore = self.segmentModBoxList[i - 1]
-                segmentModBox.beforeValueSet = BeforeValues(segmentModBoxBefore,
-                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
-                print('### beforeValueSet: ###')
-                segmentModBox.beforeValueSet.print()
+                segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
+                                                           segmentModBoxBefore.realNrOfUsedSteps - 1)
+                print('### before_values: ###')
+                segmentModBox.before_values.print()
                 print('#######################')
                 # transferStartValues(segment, segmentBefore)
 
@@ -2791,7 +2791,7 @@ class Calculation:
                         aReferedVariable: VariableTS
                         withEnd = isinstance(aReferedVariable, VariableTS) \
                                   and aReferedVariable.activated_beforeValues \
-                                  and aReferedVariable.beforeValueIsStartValue
+                                  and aReferedVariable.before_value_is_start_value
 
                         # nested:
 

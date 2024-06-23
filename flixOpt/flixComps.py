@@ -776,7 +776,7 @@ class Storage(Component):
 
         self.model.var_charge_state = VariableTS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, lower_bound=lb, upper_bound=ub,
                                                  value=fix_value)  # Eins mehr am Ende!
-        self.model.var_charge_state.activateBeforeValues(self.chargeState0_inFlowHours, True)
+        self.model.var_charge_state.set_before_value(self.chargeState0_inFlowHours, True)
         self.model.var_nettoFlow = VariableTS('nettoFlow', modBox.nrOfTimeSteps, self, modBox,
                                               lower_bound=-np.inf)  # negative Werte zulässig!
 
@@ -832,7 +832,7 @@ class Storage(Component):
         elif helpers.is_number(self.chargeState0_inFlowHours):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
             self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
-            self.eq_charge_state_start.addRightSide(self.model.var_charge_state.beforeVal())  # chargeState_0 !
+            self.eq_charge_state_start.addRightSide(self.model.var_charge_state.before_value)  # chargeState_0 !
             self.eq_charge_state_start.addSummand(self.model.var_charge_state, 1, timeIndexe[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;

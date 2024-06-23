@@ -378,8 +378,8 @@ class cFeatureOn(cFeature):
         if self.useOn:
             # Before-Variable:
             self.model.var_on = VariableTS('on', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
-            self.model.var_on.activateBeforeValues(esBeforeValue=self.on_valuesBeforeBegin[0],
-                                                   beforeValueIsStartValue=False)
+            self.model.var_on.set_before_value(default_before_value=self.on_valuesBeforeBegin[0],
+                                               is_start_value=False)
             self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, modBox, lower_bound=self.onHoursSum_min,
                                                  upper_bound=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei
 
@@ -593,7 +593,7 @@ class cFeatureOn(cFeature):
         eq_SwitchOnOffAtFirstTime.addSummand(self.model.var_on, -1, firstIndex)
         # eq_SwitchOnOffAtFirstTime.addRightSide(-on_valuesBefore[-1]) # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben  
         eq_SwitchOnOffAtFirstTime.addRightSide(
-            -self.model.var_on.beforeVal())  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
+            -self.model.var_on.before_value)  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
 
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1 
