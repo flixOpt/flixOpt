@@ -563,7 +563,7 @@ class Equation:
                 raise Exception(f'Error in Equation "{self.label}": variable = None! is not allowed if the variable is summed up!')
             summand.as_sum_of()  # Umwandlung zu Sum-Of-Skalar
         # Check Variablen-Länge:
-        self._update_nr_of_single_equations(summand.len, summand.variable.label)
+        self._update_nr_of_single_equations(summand.length, summand.variable.label)
         # zu Liste hinzufügen:
         self.listOfSummands.append(summand)
 
@@ -662,7 +662,7 @@ class Equation:
         for aSummand in self.listOfSummands:
             if not first: aStr += ' + '
             first = False
-            if aSummand.len == 1:
+            if aSummand.length == 1:
                 i = 0
             else:
                 i = equation_nr
@@ -678,7 +678,7 @@ class Equation:
                 if i > 0:
                     aStr += '..+'
                 aStr += aElementOfSummandStr
-                if i < aSummand.len:
+                if i < aSummand.length:
                     aStr += '+..'
                 aStr += ')'
             else:
@@ -723,10 +723,12 @@ class Summand:
             self.indices = variable.indices  # alle indices
 
         # Länge ermitteln:
-        self.len = self.check_length()
+        self.length = self.check_length()
 
         # Faktor als Vektor:
-        self.factor_vec = helpers.getVector(factor, self.len)
+        self.factor_vec = helpers.getVector(factor, self.length)
+
+    #@property
 
     def check_length(self):
         length_of_factor = 1 if np.isscalar(self.factor) else len(self.factor)
@@ -748,7 +750,7 @@ class Summand:
             print(
                 'warning: Summand.as_sum_of() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
         self.is_sum_of = True
-        self.len = 1  # jetzt nur noch Skalar!
+        self.length = 1  # jetzt nur noch Skalar!
         return self
 
     # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
@@ -764,7 +766,7 @@ class Summand:
         # Wenn Skalar oder Vektor:
         else:
             # Wenn Skalar:
-            if self.len == 1:
+            if self.length == 1:
                 # ignore argument nrOfEq, because Skalar is used for every single equation
                 nrOfEq = 0
 
