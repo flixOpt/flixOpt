@@ -68,9 +68,6 @@ class LinearModel:
             raise Exception('not defined for modeling_language' + str(self.modeling_language))
 
     def transform2MathModel(self) -> None:
-
-        self.characterize_math_problem()
-
         t_start = time.time()
         eq: Equation
         # Variablen erstellen
@@ -87,19 +84,30 @@ class LinearModel:
 
         self.duration['transform2MathModel'] = round(time.time() - t_start, 2)
 
-    # Attention: is overrided by childclass:
-    def characterize_math_problem(self) -> None:
-        eq: Equation
-        var: Variable
+    @property
+    def nr_of_equations(self) -> int:
+        return len(self.eqs)
 
-        self.noOfEqs = len(self.eqs)
-        self.noOfSingleEqs = sum([eq.nrOfSingleEquations for eq in self.eqs])
+    @property
+    def nr_of_single_equations(self) -> int:
+        return sum([eq.nrOfSingleEquations for eq in self.eqs])
 
-        self.noOfIneqs = len(self.ineqs)
-        self.noOfSingleIneqs = sum([eq.nrOfSingleEquations for eq in self.ineqs])
+    @property
+    def nr_of_inequations(self) -> int:
+        return len(self.ineqs)
 
-        self.noOfVars = len(self.variables)
-        self.noOfSingleVars = sum([var.length for var in self.variables])
+    @property
+    def nr_of_single_inequations(self) -> int:
+        return sum([eq.nrOfSingleEquations for eq in self.ineqs])
+
+    @property
+    def nr_of_variables(self) -> int:
+        return len(self.variables)
+
+    @property
+    def nr_of_single_variables(self) -> int:
+        return sum([var.length for var in self.variables])
+
 
     def solve(self,
               mip_gap: float,
@@ -169,12 +177,12 @@ class LinearModel:
         info_flixModel = {}
         infos['flixModel'] = info_flixModel
 
-        info_flixModel['no eqs'] = self.noOfEqs
-        info_flixModel['no eqs single'] = self.noOfSingleEqs
-        info_flixModel['no inEqs'] = self.noOfIneqs
-        info_flixModel['no inEqs single'] = self.noOfSingleIneqs
-        info_flixModel['no vars'] = self.noOfVars
-        info_flixModel['no vars single'] = self.noOfSingleVars
+        info_flixModel['no eqs'] = self.nr_of_equations
+        info_flixModel['no eqs single'] = self.nr_of_single_equations
+        info_flixModel['no inEqs'] = self.nr_of_inequations
+        info_flixModel['no inEqs single'] = self.nr_of_single_inequations
+        info_flixModel['no vars'] = self.nr_of_variables
+        info_flixModel['no vars single'] = self.nr_of_single_variables
         info_flixModel['no vars TS'] = len(self.all_ts_variables)
 
         if self.solver_log is not None:
@@ -186,9 +194,9 @@ class LinearModel:
         return [variable for variable in self.variables if isinstance(variable, VariableTS)]
 
     def printNoEqsAndVars(self) -> None:
-        print('no of Eqs   (single):' + str(self.noOfEqs) + ' (' + str(self.noOfSingleEqs) + ')')
-        print('no of InEqs (single):' + str(self.noOfIneqs) + ' (' + str(self.noOfSingleIneqs) + ')')
-        print('no of Vars  (single):' + str(self.noOfVars) + ' (' + str(self.noOfSingleVars) + ')')
+        print('no of Eqs   (single):' + str(self.nr_of_equations) + ' (' + str(self.nr_of_single_equations) + ')')
+        print('no of InEqs (single):' + str(self.nr_of_inequations) + ' (' + str(self.nr_of_single_inequations) + ')')
+        print('no of Vars  (single):' + str(self.nr_of_variables) + ' (' + str(self.nr_of_single_variables) + ')')
 
     ##############################################################################################
     ################ pyomo-Spezifisch

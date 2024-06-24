@@ -68,9 +68,6 @@ class SystemModel(LinearModel):
 
     # override:
     def characterize_math_problem(self):  # overriding same method in motherclass!
-
-        super().characterize_math_problem()
-
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
         # self.system.activate_model()
         self._infos['str_Eqs'] = self.system.getEqsAsStr()
