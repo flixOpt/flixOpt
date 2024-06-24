@@ -442,9 +442,9 @@ class Element:
     def getEqsVarsOverview(self) -> Dict:
         aDict = {}
         aDict['no eqs'] = len(self.model.eqs)
-        aDict['no eqs single'] = sum([eq.nrOfSingleEquations for eq in self.model.eqs])
+        aDict['no eqs single'] = sum([eq.nr_of_single_equations for eq in self.model.eqs])
         aDict['no inEqs'] = len(self.model.ineqs)
-        aDict['no inEqs single'] = sum([ineq.nrOfSingleEquations for ineq in self.model.ineqs])
+        aDict['no inEqs single'] = sum([ineq.nr_of_single_equations for ineq in self.model.ineqs])
         aDict['no vars'] = len(self.model.variables)
         aDict['no vars single'] = sum([var.length for var in self.model.variables])
         return aDict
@@ -1548,7 +1548,7 @@ class Flow(Element):
 
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = Equation('onHoursSum_max', self, system_model, 'ineq')
-            eq_onHoursSum_max.add_summand_sum_of(self.model.var_on, 1)
+            eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
             eq_onHoursSum_max.addRightSide(self.onHoursSum_max/system_model.dtInHours)
 
         #
@@ -1559,7 +1559,7 @@ class Flow(Element):
 
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = Equation('onHoursSum_min', self, system_model, 'ineq')
-            eq_onHoursSum_min.add_summand_sum_of(self.model.var_on, -1)
+            eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
             eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/system_model.dtInHours)
 
 
@@ -1570,7 +1570,7 @@ class Flow(Element):
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        eq_sumFlowHours.add_summand_sum_of(self.model.var_val, system_model.dtInHours)
+        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dtInHours, as_sum=True)
         eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
 
         #          

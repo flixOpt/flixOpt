@@ -421,9 +421,9 @@ class cAggregationModeling(flixStructure.Element):
         # Korrektur: (bisher nur für Binärvariablen:)
         if aVar.is_binary and self.percentageOfPeriodFreedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
+            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, modBox,
                               is_binary=True)
-            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
+            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, modBox,
                               is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
@@ -447,8 +447,8 @@ class cAggregationModeling(flixStructure.Element):
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.length)
             eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
-            eq_max.add_summand_sum_of(var_K1, 1)
-            eq_max.add_summand_sum_of(var_K0, 1)
+            eq_max.add_summand(var_K1, 1, as_sum=True)
+            eq_max.add_summand(var_K0, 1, as_sum=True)
             eq_max.addRightSide(self.noOfCorrections)  # Maximum
         return eq
 
@@ -458,4 +458,4 @@ class cAggregationModeling(flixStructure.Element):
         if (self.percentageOfPeriodFreedom > 0) & (self.costsOfPeriodFreedom != 0):
             for var_K in self.var_K_list:
                 # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!
-                globalComp.objective.add_summand_sum_of(var_K, self.costsOfPeriodFreedom)
+                globalComp.objective.add_summand(var_K, self.costsOfPeriodFreedom, as_sum=True)

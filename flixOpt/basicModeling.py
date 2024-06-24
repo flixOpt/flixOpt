@@ -90,7 +90,7 @@ class LinearModel:
 
     @property
     def nr_of_single_equations(self) -> int:
-        return sum([eq.nrOfSingleEquations for eq in self.eqs])
+        return sum([eq.nr_of_single_equations for eq in self.eqs])
 
     @property
     def nr_of_inequations(self) -> int:
@@ -98,7 +98,7 @@ class LinearModel:
 
     @property
     def nr_of_single_inequations(self) -> int:
-        return sum([eq.nrOfSingleEquations for eq in self.ineqs])
+        return sum([eq.nr_of_single_equations for eq in self.ineqs])
 
     @property
     def nr_of_variables(self) -> int:
@@ -482,10 +482,10 @@ class Equation:
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
-        self.nrOfSingleEquations = 1  # Anzahl der Gleichungen
+        self.nr_of_single_equations = 1  # Anzahl der Gleichungen
         self.y = 0  # rechte Seite
+        self.y_vec = np.array([0])
         self.y_shares = []  # liste mit shares von y
-        self.y_vec = helpers.getVector(self.y, self.nrOfSingleEquations)
         self.eqType = eqType
         self.myMom = owner
         self.eq = None  # z.B. für pyomo : pyomoComponente
@@ -519,37 +519,29 @@ class Equation:
         # B_visual; % mit Spaltenüberschriften!
         # maxElementsOfVisualCell = 1e4; % über 10000 Spalten wählt Matlab komische Darstellung
 
-    def add_summand(self, variable, factor, indices_of_variable=None):
-        # input: 3 Varianten entscheiden über Elemente-Anzahl des Summanden:
-        #   length(variable) = 1             -> length = length(factor)
-        #   length(factor)   = 1             -> length = length(variable)
-        #   length(factor)   = length(variable) -> length = length(factor)
-
-        isSumOf_Type = False  # kein SumOf_Type!
-        self._add_summand(variable, factor, isSumOf_Type, indices_of_variable)
-
-    def add_summand_sum_of(self, variable, factor, indices_of_variable=None):
-        isSumOf_Type = True  # SumOf_Type!
-
-        if variable is None:
-            raise Exception('Fehler in eq ' + str(self.label) + ': variable = None!')
-        self._add_summand(variable, factor, isSumOf_Type, indices_of_variable)
-
-    def _add_summand(self, variable, factor, isSumOf_Type, indexeOfVar):
+    def add_summand(self,
+                    variable: Variable,
+                    factor: Union[int, float, np.ndarray],
+                    indices_of_variable: Optional[Union[int, float, np.ndarray]] = None,
+                    as_sum: bool = False):
         if not isinstance(variable, Variable):
-            raise Exception('error in eq ' + self.label + ' : no variable given (variable = ' + str(variable) + ')')
+            raise TypeError(f'Error in Equation "{self.label}": no variable given (variable = "{variable}")')
         # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
-        if np.isscalar(indexeOfVar):
-            indexeOfVar = [indexeOfVar]
-        # Vektor/Summand erstellen:
-        summand = Summand(variable, factor, indexeOfVariable=indexeOfVar)
+        if np.isscalar(indices_of_variable):
+            indices_of_variable = [indices_of_variable]
 
-        if isSumOf_Type:
+        # Vektor/Summand erstellen:
+        summand = Summand(variable, factor, indexeOfVariable=indices_of_variable)
+
+        if as_sum:
+            if variable is None:
+                raise Exception(f'Error in Equation "{self.label}": variable = None! is not allowed if the variable is summed up!')
             summand.sumOf()  # Umwandlung zu Sum-Of-Skalar
         # Check Variablen-Länge:
-        self.__UpdateLengthOfEquations(summand.len, summand.variable.label)
+        self.update_nr_of_single_equations(summand.len, summand.variable.label)
         # zu Liste hinzufügen:
         self.listOfSummands.append(summand)
+
 
     def addRightSide(self, aValue):
         '''
@@ -576,10 +568,10 @@ class Equation:
             y_len = 1
         else:
             y_len = len(self.y)
-        self.__UpdateLengthOfEquations(y_len, 'y')
+        self.update_nr_of_single_equations(y_len, 'y')
 
         # hier erstellen (z.B. für StrDescription notwendig)
-        self.y_vec = helpers.getVector(self.y, self.nrOfSingleEquations)
+        self.y_vec = helpers.getVector(self.y, self.nr_of_single_equations)
 
         # Umsetzung in der gewählten Modellierungssprache:
 
@@ -587,7 +579,7 @@ class Equation:
         log.debug('eq ' + self.label + '.to_math_model()')
 
         # y_vec hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
-        self.y_vec = helpers.getVector(self.y, self.nrOfSingleEquations)
+        self.y_vec = helpers.getVector(self.y, self.nr_of_single_equations)
 
         if baseModel.modeling_language == 'pyomo':
             # 1. Constraints:
@@ -608,7 +600,7 @@ class Equation:
                         return lhs <= rhs
 
                 # TODO: self.eq ist hier einziges Attribut, das linear_model-spezifisch ist: --> umbetten in linear_model!
-                self.eq = pyomoEnv.Constraint(range(self.nrOfSingleEquations),
+                self.eq = pyomoEnv.Constraint(range(self.nr_of_single_equations),
                                               rule=linearSumRule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
                 baseModel.registerPyComp(self.eq,
@@ -617,7 +609,7 @@ class Equation:
             # 2. Zielfunktion:
             elif self.eqType == 'objective':
                 # Anmerkung: nrOfEquation - Check könnte auch weiter vorne schon passieren!
-                if self.nrOfSingleEquations > 1:
+                if self.nr_of_single_equations > 1:
                     raise Exception('Equation muss für objective ein Skalar ergeben!!!')
 
                 # Summierung der Skalare:
@@ -646,14 +638,14 @@ class Equation:
         print(aStr)
 
     def getStrDescription(self, eqNr=0):
-        eqNr = min(eqNr, self.nrOfSingleEquations - 1)
+        eqNr = min(eqNr, self.nr_of_single_equations - 1)
 
         aStr = ''
         # header:
         if self.eqType == 'objective':
             aStr += 'obj' + ': '  # leerzeichen wichtig, sonst im yaml interpretation als dict
         else:
-            aStr += 'eq ' + self.label + '[' + str(eqNr) + ' of ' + str(self.nrOfSingleEquations) + ']: '
+            aStr += 'eq ' + self.label + '[' + str(eqNr) + ' of ' + str(self.nr_of_single_equations) + ']: '
 
         # Summanden:
         first = True
@@ -699,16 +691,15 @@ class Equation:
     # private Methods:
 
     # Anzahl Gleichungen anpassen und check, ob Länge des neuen Vektors ok ist:
-    def __UpdateLengthOfEquations(self, lenOfSummand, SummandLabel):
-        if self.nrOfSingleEquations == 1:
+    def update_nr_of_single_equations(self, lenOfSummand, SummandLabel):
+        if self.nr_of_single_equations == 1:
             # Wenn noch nicht Länge der Vektoren abgelegt, dann bestimmt der erste Vektor-Summand:
-            self.nrOfSingleEquations = lenOfSummand
+            self.nr_of_single_equations = lenOfSummand
             # Update der rechten Seite:
-            self.y_vec = helpers.getVector(self.y, self.nrOfSingleEquations)
+            self.y_vec = helpers.getVector(self.y, self.nr_of_single_equations)
         else:
-            # Wenn Variable länger als bisherige Vektoren in der Gleichung:
-            if (lenOfSummand != 1) & (
-                    lenOfSummand != self.nrOfSingleEquations):  # Wenn kein Skalar & nicht zu Länge der anderen Vektoren passend:
+            # Wenn kein Skalar & nicht zu Länge der anderen Vektoren passend:
+            if (lenOfSummand != 1) & (lenOfSummand != self.nr_of_single_equations):
                 raise Exception(
                     'Variable ' + SummandLabel + ' hat eine nicht passende Länge für Gleichung ' + self.label + '!')
 

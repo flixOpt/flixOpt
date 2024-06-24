@@ -608,7 +608,7 @@ class cFeatureOn(cFeature):
 
         eq_NrSwitchOn = Equation('NrSwitchOn', eqsOwner, modBox)
         eq_NrSwitchOn.add_summand(self.model.var_nrSwitchOn, 1)
-        eq_NrSwitchOn.add_summand_sum_of(self.model.var_switchOn, -1)
+        eq_NrSwitchOn.add_summand(self.model.var_switchOn, -1, as_sum=True)
 
     def addShareToGlobals(self, globalComp, modBox):
 
@@ -706,7 +706,7 @@ class cFeature_ShareSum(cFeature):
             # eq: sum_TS = sum(share_TS_i) # TS
             self.eq_sum_TS.add_summand(self.model.var_sum_TS, -1)
             # eq: sum = sum(sum_TS(t)) # skalar
-            self.eq_sum.add_summand_sum_of(self.model.var_sum_TS, 1)
+            self.eq_sum.add_summand(self.model.var_sum_TS, 1, as_sum=True)
             self.eq_sum.add_summand(self.model.var_sum, -1)
         else:
             # eq: sum = sum(share_i) # skalar
@@ -779,7 +779,7 @@ class cFeature_ShareSum(cFeature):
             else:
                 self.eq_sum_TS.add_summand(variable, factorOfSummand)  # share in global
                 if nameOfShare is not None:
-                    eq_oneShare.add_summand_sum_of(variable, factorOfSummand)  # share itself
+                    eq_oneShare.add_summand(variable, factorOfSummand, as_sum=True)  # share itself
 
 
         else:
