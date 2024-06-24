@@ -556,7 +556,7 @@ class Equation:
             indices_of_variable = [indices_of_variable]
 
         # Vektor/Summand erstellen:
-        summand = Summand(variable, factor, indexeOfVariable=indices_of_variable)
+        summand = Summand(variable, factor, indices=indices_of_variable)
 
         if as_sum:
             if variable is None:
@@ -667,13 +667,13 @@ class Equation:
             else:
                 i = equation_nr
             #      i     = min(equation_nr, aSummand.length-1) # wenn zu groß, dann letzter Eintrag ???
-            index = aSummand.indexeOfVariable[i]
+            index = aSummand.indices[i]
             # factor formatieren:
             factor = aSummand.factor_vec[i]
             factor_str = str(factor) if isinstance(factor, int) else "{:.6}".format(float(factor))
             # Gesamtstring:
             aElementOfSummandStr = factor_str + '* ' + aSummand.variable.label_full + '[' + str(index) + ']'
-            if aSummand.isSumOf_Type:
+            if aSummand.is_sum_of:
                 aStr += '∑('
                 if i > 0:
                     aStr += '..+'
@@ -708,19 +708,22 @@ class Equation:
 
 # Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
 class Summand:
-    def __init__(self, variable, factor, indexeOfVariable=None):  # indices_of_variable default : alle
-        self.__dict__.update(**locals())
-        self.isSumOf_Type = False  # Falls Skalar durch Summation über alle Indexe
-        self.sumOfExpr = None  # Zwischenspeicher für Ergebniswert (damit das nicht immer wieder berechnet wird)
+    def __init__(self,
+                 variable: Variable,
+                 factor: Union[int, float, np.ndarray],
+                 indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
+        self.variable = variable
+        self.factor = factor
+        self.indices = indices
+        self.is_sum_of = False  # Falls Skalar durch Summation über alle Indexe
+        self.sum_of_expression = None  # Zwischenspeicher für Ergebniswert (damit das nicht immer wieder berechnet wird)
 
         # wenn nicht definiert, dann alle Indexe
-        if self.indexeOfVariable is None:
-            self.indexeOfVariable = variable.indices  # alle indices
-
-        self.len_var_indexe = len(self.indexeOfVariable)
+        if self.indices is None:
+            self.indices = variable.indices  # alle indices
 
         # Länge ermitteln:
-        self.len = self.getAndCheckLength(self.len_var_indexe, factor)
+        self.len = self.getAndCheckLength(len(self.indices), factor)
 
         # Faktor als Vektor:
         self.factor_vec = helpers.getVector(factor, self.len)
@@ -745,7 +748,7 @@ class Summand:
         if len == 1:
             print(
                 'warning: Summand.sumOf() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
-        self.isSumOf_Type = True
+        self.is_sum_of = True
         self.len = 1  # jetzt nur noch Skalar!
         return self
 
@@ -753,12 +756,12 @@ class Summand:
     def getMathExpression_Pyomo(self, modType, nrOfEq=0):
         # TODO: alles noch nicht sonderlich schön, weil viele Schleifen --> Performance!
         # Wenn SumOfType:
-        if self.isSumOf_Type:
+        if self.is_sum_of:
             # Wenn Zwischenspeicher leer, dann füllen:
-            if self.sumOfExpr is None:
-                self.sumOfExpr = sum(
-                    self.variable.var[self.indexeOfVariable[j]] * self.factor_vec[j] for j in self.indexeOfVariable)
-            expr = self.sumOfExpr
+            if self.sum_of_expression is None:
+                self.sum_of_expression = sum(
+                    self.variable.var[self.indices[j]] * self.factor_vec[j] for j in self.indices)
+            expr = self.sum_of_expression
         # Wenn Skalar oder Vektor:
         else:
             # Wenn Skalar:
@@ -767,13 +770,13 @@ class Summand:
                 nrOfEq = 0
 
                 # Wenn nur Skalare-Variable bzw. ein Index:
-            if self.len_var_indexe == 1:
+            if len(self.indices) == 1:
                 indexeOfVar = 0
             else:
                 indexeOfVar = nrOfEq
 
             ## expression:
-            expr = self.variable.var[self.indexeOfVariable[indexeOfVar]] * self.factor_vec[nrOfEq]
+            expr = self.variable.var[self.indices[indexeOfVar]] * self.factor_vec[nrOfEq]
         return expr
 
 
