@@ -567,34 +567,26 @@ class Equation:
         # zu Liste hinzufügen:
         self.listOfSummands.append(summand)
 
-
-    def add_constant(self, aValue: Union[int, float, np.ndarray]):
-        '''
+    def add_constant(self, value: Union[int, float, np.ndarray]) -> None:
+        """
           constant value of the right side,
           if method is executed several times, than values are summed up.
 
           Parameters
           ----------
-          aValue : float or array
+          value : float or array
               constant-value of equation [A*x = constant] or [A*x <= constant]
 
           Returns
           -------
           None.
 
-          '''
-        # Wert ablegen
-        self.parts_of_constant.append(aValue)
+          """
+        self.constant = np.add(self.constant, value)  # Adding to current constant
+        self.parts_of_constant.append(value)   # Adding to parts of constants
 
-        # Wert hinzufügen:
-        self.constant = np.add(self.constant, aValue)  # Addieren
-        # Check Variablen-Länge:
-        if np.isscalar(self.constant):
-            y_len = 1
-        else:
-            y_len = len(self.constant)
-        self._update_nr_of_single_equations(y_len, 'constant')
-
+        length = 1 if np.isscalar(self.constant) else len(self.constant)
+        self._update_nr_of_single_equations(length, 'constant')   # Update
         self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)  # Update
 
     def to_math_model(self, baseModel: LinearModel):
