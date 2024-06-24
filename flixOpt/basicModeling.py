@@ -723,25 +723,24 @@ class Summand:
             self.indices = variable.indices  # alle indices
 
         # Länge ermitteln:
-        self.len = self.getAndCheckLength(len(self.indices), factor)
+        self.len = self.check_length()
 
         # Faktor als Vektor:
         self.factor_vec = helpers.getVector(factor, self.len)
 
-    # @staticmethod
-    def getAndCheckLength(self, len_var_indexe, factor):
-        len_factor = 1 if np.isscalar(factor) else len(factor)
-        if len_var_indexe == len_factor:
-            aLen = len_var_indexe
-        elif len_factor == 1:
-            aLen = len_var_indexe
-        elif len_var_indexe == 1:
-            aLen = len_factor
+    def check_length(self):
+        length_of_factor = 1 if np.isscalar(self.factor) else len(self.factor)
+        length_of_indices = len(self.indices)
+        if length_of_indices == length_of_factor:
+            return length_of_indices
+        elif length_of_factor == 1:
+            return length_of_indices
+        elif length_of_indices == 1:
+            return length_of_factor
         else:
-            raise Exception(
-                'Variable ' + self.variable.label_full + '(length=' + str(len_var_indexe) + ') und Faktor (length=' + str(
-                    len_factor) + ') müssen gleiche Länge haben oder Skalar sein')
-        return aLen
+            raise Exception(f'Variable {self.variable.label_full} (length={length_of_indices}) und '
+                            f'Faktor (length={length_of_factor}) müssen gleiche Länge haben oder Skalar sein')
+
 
     # Umwandeln zu Summe aller Elemente:
     def as_sum_of(self):
