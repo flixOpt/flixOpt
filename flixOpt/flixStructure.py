@@ -2025,7 +2025,7 @@ class System:
             element.addShareToGlobals(self.globalComp, self.model)
 
             # transform to Math:
-        self.model.transform2MathModel()
+        self.model.to_math_model()
 
         return self.model
 

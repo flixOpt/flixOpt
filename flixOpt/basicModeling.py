@@ -67,7 +67,7 @@ class LinearModel:
         else:
             raise Exception('not defined for modeling_language' + str(self.modeling_language))
 
-    def transform2MathModel(self) -> None:
+    def to_math_model(self) -> None:
         t_start = time.time()
         eq: Equation
         # Variablen erstellen
@@ -75,14 +75,14 @@ class LinearModel:
             variable.to_math_model(self)
         # Gleichungen erstellen
         for eq in self.eqs:
-            eq.transform2MathModel(self)
+            eq.to_math_model(self)
         # Ungleichungen erstellen:
         for ineq in self.ineqs:
-            ineq.transform2MathModel(self)
+            ineq.to_math_model(self)
         # Zielfunktion erstellen
-        self.objective.transform2MathModel(self)
+        self.objective.to_math_model(self)
 
-        self.duration['transform2MathModel'] = round(time.time() - t_start, 2)
+        self.duration['to_math_model'] = round(time.time() - t_start, 2)
 
     @property
     def nr_of_equations(self) -> int:
@@ -582,8 +582,8 @@ class Equation:
 
         # Umsetzung in der gewählten Modellierungssprache:
 
-    def transform2MathModel(self, baseModel: LinearModel):
-        log.debug('eq ' + self.label + '.transform2MathModel()')
+    def to_math_model(self, baseModel: LinearModel):
+        log.debug('eq ' + self.label + '.to_math_model()')
 
         # y_vec hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         self.y_vec = helpers.getVector(self.y, self.nrOfSingleEquations)
