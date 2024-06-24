@@ -539,7 +539,7 @@ class Equation:
                 raise Exception(f'Error in Equation "{self.label}": variable = None! is not allowed if the variable is summed up!')
             summand.sumOf()  # Umwandlung zu Sum-Of-Skalar
         # Check Variablen-Länge:
-        self.update_nr_of_single_equations(summand.len, summand.variable.label)
+        self._update_nr_of_single_equations(summand.len, summand.variable.label)
         # zu Liste hinzufügen:
         self.listOfSummands.append(summand)
 
@@ -569,7 +569,7 @@ class Equation:
             y_len = 1
         else:
             y_len = len(self.constant)
-        self.update_nr_of_single_equations(y_len, 'constant')
+        self._update_nr_of_single_equations(y_len, 'constant')
 
         # hier erstellen (z.B. für StrDescription notwendig)
         self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)
@@ -684,23 +684,13 @@ class Equation:
 
         return aStr
 
-    ##############################################
-    # private Methods:
-
-    # Anzahl Gleichungen anpassen und check, ob Länge des neuen Vektors ok ist:
-    def update_nr_of_single_equations(self, lenOfSummand, SummandLabel):
+    def _update_nr_of_single_equations(self, length_of_summand: int, label_of_summand: str):
+        """Checks if the new Summand is compatible with the existing Summands"""
         if self.nr_of_single_equations == 1:
-            # Wenn noch nicht Länge der Vektoren abgelegt, dann bestimmt der erste Vektor-Summand:
-            self.nr_of_single_equations = lenOfSummand
-            # Update der rechten Seite:
-            self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)
-        else:
-            # Wenn kein Skalar & nicht zu Länge der anderen Vektoren passend:
-            if (lenOfSummand != 1) & (lenOfSummand != self.nr_of_single_equations):
-                raise Exception(
-                    'Variable ' + SummandLabel + ' hat eine nicht passende Länge für Gleichung ' + self.label + '!')
-
-            # Vektor aus Vektor-Variable und Faktor!
+            self.nr_of_single_equations = length_of_summand  # first Summand defines length of equation
+            self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)  # Update
+        elif (length_of_summand != 1) & (length_of_summand != self.nr_of_single_equations):
+            raise Exception(f'Variable {label_of_summand} hat eine nicht passende Länge für Gleichung {self.label}')
 
 
 # Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
