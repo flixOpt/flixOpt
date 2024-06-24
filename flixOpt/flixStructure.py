@@ -475,9 +475,9 @@ class ElementModel:
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
             for eq in (self.eqs + self.ineqs):
-                aList.append(eq.getStrDescription())
+                aList.append(eq.as_str())
         if not (self.objective is None):
-            aList.append(self.objective.getStrDescription())
+            aList.append(self.objective.as_str())
         return aList
 
     def getVarsAsStr(self) -> List:
