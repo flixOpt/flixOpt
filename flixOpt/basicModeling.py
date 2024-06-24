@@ -482,10 +482,11 @@ class Equation:
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
+        self.constant = 0  # rechte Seite
+
         self.nr_of_single_equations = 1  # Anzahl der Gleichungen
-        self.y = 0  # rechte Seite
-        self.y_vec = np.array([0])
-        self.y_shares = []  # liste mit shares von y
+        self.constant_vector = np.array([0])
+        self.parts_of_constant = []  # liste mit shares von constant
         self.eqType = eqType
         self.myMom = owner
         self.eq = None  # z.B. für pyomo : pyomoComponente
@@ -543,15 +544,15 @@ class Equation:
         self.listOfSummands.append(summand)
 
 
-    def addRightSide(self, aValue):
+    def add_constant(self, aValue: Union[int, float, np.ndarray]):
         '''
-          value of the right side,
+          constant value of the right side,
           if method is executed several times, than values are summed up.
 
           Parameters
           ----------
           aValue : float or array
-              y-value of equation [A*x = y] or [A*x <= y]
+              constant-value of equation [A*x = constant] or [A*x <= constant]
 
           Returns
           -------
@@ -559,27 +560,27 @@ class Equation:
 
           '''
         # Wert ablegen
-        self.y_shares.append(aValue)
+        self.parts_of_constant.append(aValue)
 
         # Wert hinzufügen:
-        self.y = np.add(self.y, aValue)  # Addieren
+        self.constant = np.add(self.constant, aValue)  # Addieren
         # Check Variablen-Länge:
-        if np.isscalar(self.y):
+        if np.isscalar(self.constant):
             y_len = 1
         else:
-            y_len = len(self.y)
-        self.update_nr_of_single_equations(y_len, 'y')
+            y_len = len(self.constant)
+        self.update_nr_of_single_equations(y_len, 'constant')
 
         # hier erstellen (z.B. für StrDescription notwendig)
-        self.y_vec = helpers.getVector(self.y, self.nr_of_single_equations)
+        self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)
 
         # Umsetzung in der gewählten Modellierungssprache:
 
     def to_math_model(self, baseModel: LinearModel):
         log.debug('eq ' + self.label + '.to_math_model()')
 
-        # y_vec hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
-        self.y_vec = helpers.getVector(self.y, self.nr_of_single_equations)
+        # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
+        self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)
 
         if baseModel.modeling_language == 'pyomo':
             # 1. Constraints:
@@ -592,7 +593,7 @@ class Equation:
                     for aSummand in self.listOfSummands:
                         lhs += aSummand.getMathExpression_Pyomo(baseModel.modeling_language,
                                                                 i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
-                    rhs = self.y_vec[i]
+                    rhs = self.constant_vector[i]
                     # Unterscheidung return-value je nach typ:
                     if self.eqType == 'eq':
                         return lhs == rhs
@@ -632,10 +633,6 @@ class Equation:
             raise Exception('not defined for modtype ' + baseModel.modeling_language)
 
             # print i-th equation:
-
-    def print(self, shiftChars, eqNr=0):
-        aStr = ' ' * len(shiftChars) + self.getStrDescription(eqNr=eqNr)
-        print(aStr)
 
     def getStrDescription(self, eqNr=0):
         eqNr = min(eqNr, self.nr_of_single_equations - 1)
@@ -683,7 +680,7 @@ class Equation:
             aStr += ' ? '
 
             # right side:
-        aStr += str(self.y_vec[eqNr])  # todo: hier könnte man noch aufsplitten nach y_shares
+        aStr += str(self.constant_vector[eqNr])  # todo: hier könnte man noch aufsplitten nach parts_of_constant
 
         return aStr
 
@@ -696,7 +693,7 @@ class Equation:
             # Wenn noch nicht Länge der Vektoren abgelegt, dann bestimmt der erste Vektor-Summand:
             self.nr_of_single_equations = lenOfSummand
             # Update der rechten Seite:
-            self.y_vec = helpers.getVector(self.y, self.nr_of_single_equations)
+            self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)
         else:
             # Wenn kein Skalar & nicht zu Länge der anderen Vektoren passend:
             if (lenOfSummand != 1) & (lenOfSummand != self.nr_of_single_equations):

@@ -441,7 +441,7 @@ class cAggregationModeling(flixStructure.Element):
             eq_lock = flixStructure.Equation('lock_K0andK1' + aVar.label_full, self, modBox, eqType='ineq')
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
-            eq_lock.addRightSide(1.1)
+            eq_lock.add_constant(1.1)
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
@@ -449,7 +449,7 @@ class cAggregationModeling(flixStructure.Element):
             eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
-            eq_max.addRightSide(self.noOfCorrections)  # Maximum
+            eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
     def addShareToGlobals(self, globalComp: flixStructure.Global, modBox):

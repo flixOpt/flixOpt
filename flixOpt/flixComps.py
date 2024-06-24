@@ -261,7 +261,7 @@ class LinearTransformer(Component):
                     aFactor = aFactorVec_Dict[outFlow].active_data
                     eq_linearFlowRelation_i.add_summand(outFlow.model.var_val, -aFactor)  # output.val[t] * -1 * factor[t]
 
-                eq_linearFlowRelation_i.addRightSide(0)  # nur zur Komplettisierung der Gleichung
+                eq_linearFlowRelation_i.add_constant(0)  # nur zur Komplettisierung der Gleichung
 
         # (linear) segments:
         # Zusammenhänge zw. inputs & outputs können auch vollständig über Segmente beschrieben werden:
@@ -832,7 +832,7 @@ class Storage(Component):
         elif helpers.is_number(self.chargeState0_inFlowHours):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
             self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
-            self.eq_charge_state_start.addRightSide(self.model.var_charge_state.before_value)  # chargeState_0 !
+            self.eq_charge_state_start.add_constant(self.model.var_charge_state.before_value)  # chargeState_0 !
             self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, timeIndexe[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
@@ -864,13 +864,13 @@ class Storage(Component):
         if self.charge_state_end_max is not None:
             self.eq_charge_state_end_max = Equation('eq_charge_state_end_max', self, modBox, eqType='ineq')
             self.eq_charge_state_end_max.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[-1])
-            self.eq_charge_state_end_max.addRightSide(self.charge_state_end_max)
+            self.eq_charge_state_end_max.add_constant(self.charge_state_end_max)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.charge_state_end_min is not None:
             self.eq_charge_state_end_min = Equation('eq_charge_state_end_min', self, modBox, eqType='ineq')
             self.eq_charge_state_end_min.add_summand(self.model.var_charge_state, -1, timeIndexeChargeState[-1])
-            self.eq_charge_state_end_min.addRightSide(- self.charge_state_end_min)
+            self.eq_charge_state_end_min.add_constant(- self.charge_state_end_min)
 
         # nettoflow:
         # eq: nettoFlow(t) - outFlow(t) + inFlow(t) = 0
@@ -905,7 +905,7 @@ class Storage(Component):
         # obj.ineqs.EntwederLadenOderEntladen = Equation('EntwederLadenOderEntladen');
         # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchLadeMich   ,1);
         # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchEntladeMich,1);
-        # obj.ineqs.EntwederLadenOderEntladen.addRightSide(1);
+        # obj.ineqs.EntwederLadenOderEntladen.add_constant(1);
 
     def addShareToGlobals(self, globalComp: Global, modBox):
         """
@@ -1206,7 +1206,7 @@ class Transportation(Component):
             self.eq_alwaysOn = Equation('alwaysOn', self, modBox, eqType='ineq')
             self.eq_alwaysOn.add_summand(self.in1.model.var_on, -1)
             if (self.in2 is not None): self.eq_alwaysOn.add_summand(self.in2.model.var_on, -1)
-            self.eq_alwaysOn.addRightSide(-.5)  # wg binärungenauigkeit 0.5 statt 1
+            self.eq_alwaysOn.add_constant(-.5)  # wg binärungenauigkeit 0.5 statt 1
 
         # equate nominal value of second direction
         if (self.in2 is not None):

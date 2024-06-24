@@ -1549,7 +1549,7 @@ class Flow(Element):
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = Equation('onHoursSum_max', self, system_model, 'ineq')
             eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
-            eq_onHoursSum_max.addRightSide(self.onHoursSum_max/system_model.dtInHours)
+            eq_onHoursSum_max.add_constant(self.onHoursSum_max / system_model.dtInHours)
 
         #
         # ############## onHoursSum_max: ##############
@@ -1560,7 +1560,7 @@ class Flow(Element):
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = Equation('onHoursSum_min', self, system_model, 'ineq')
             eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
-            eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/system_model.dtInHours)
+            eq_onHoursSum_min.add_constant(-1 * self.onHoursSum_min / system_model.dtInHours)
 
 
         #
@@ -1599,7 +1599,7 @@ class Flow(Element):
                 eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
                                                           -1 * flowHoursPerInvestsize_max)
             else:
-                eq_flowHoursPerInvestsize_Max.addRightSide(self.nominal_val * flowHoursPerInvestsize_max)
+                eq_flowHoursPerInvestsize_Max.add_constant(self.nominal_val * flowHoursPerInvestsize_max)
 
                 ## min load factor:
         #  eq: nominal_val * sum(dt)* load_factor_min <= var_sumFlowHours
@@ -1612,7 +1612,7 @@ class Flow(Element):
                 eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,
                                                           flowHoursPerInvestsize_min)
             else:
-                eq_flowHoursPerInvestsize_Min.addRightSide(-1 * self.nominal_val * flowHoursPerInvestsize_min)
+                eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.nominal_val * flowHoursPerInvestsize_min)
 
         # ############## positiver Gradient ######### 
 
