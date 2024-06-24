@@ -561,7 +561,7 @@ class Equation:
         if as_sum:
             if variable is None:
                 raise Exception(f'Error in Equation "{self.label}": variable = None! is not allowed if the variable is summed up!')
-            summand.sumOf()  # Umwandlung zu Sum-Of-Skalar
+            summand.as_sum_of()  # Umwandlung zu Sum-Of-Skalar
         # Check Variablen-Länge:
         self._update_nr_of_single_equations(summand.len, summand.variable.label)
         # zu Liste hinzufügen:
@@ -744,10 +744,10 @@ class Summand:
         return aLen
 
     # Umwandeln zu Summe aller Elemente:
-    def sumOf(self):
+    def as_sum_of(self):
         if len == 1:
             print(
-                'warning: Summand.sumOf() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
+                'warning: Summand.as_sum_of() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
         self.is_sum_of = True
         self.len = 1  # jetzt nur noch Skalar!
         return self
