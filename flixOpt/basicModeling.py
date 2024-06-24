@@ -525,6 +525,30 @@ class Equation:
                     factor: Union[int, float, np.ndarray],
                     indices_of_variable: Optional[Union[int, float, np.ndarray]] = None,
                     as_sum: bool = False):
+        """
+        Adds a summand to the equation.
+
+        This method creates a summand from the given variable and factor, optionally summing over all indices of the variable.
+        The summand is then added to the list of summands for the equation.
+
+        Parameters:
+        -----------
+        variable : Variable
+            The variable to be used in the summand.
+        factor : Union[int, float, np.ndarray]
+            The factor by which the variable is multiplied.
+        indices_of_variable : Optional[Union[int, float, np.ndarray]], optional
+            Specific indices of the variable to be used. If not provided, all indices are used.
+        as_sum : bool, optional
+            If True, the summand is treated as a sum over all indices of the variable.
+
+        Raises:
+        -------
+        TypeError
+            If the provided variable is not an instance of the Variable class.
+        Exception
+            If the variable is None and as_sum is True.
+        """
         if not isinstance(variable, Variable):
             raise TypeError(f'Error in Equation "{self.label}": no variable given (variable = "{variable}")')
         # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
@@ -571,10 +595,7 @@ class Equation:
             y_len = len(self.constant)
         self._update_nr_of_single_equations(y_len, 'constant')
 
-        # hier erstellen (z.B. für StrDescription notwendig)
-        self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)
-
-        # Umsetzung in der gewählten Modellierungssprache:
+        self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)  # Update
 
     def to_math_model(self, baseModel: LinearModel):
         log.debug('eq ' + self.label + '.to_math_model()')
@@ -634,7 +655,7 @@ class Equation:
 
             # print i-th equation:
 
-    def as_str(self, equation_nr: int=0):
+    def as_str(self, equation_nr: int = 0):
         equation_nr = min(equation_nr, self.nr_of_single_equations - 1)
 
         aStr = ''
