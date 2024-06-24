@@ -266,7 +266,7 @@ class Variable:
         self.indices = range(self.length)
         self.label_full = owner.label + '.' + label
         self.fixed = False
-        self.result = None  # Ergebnis
+        self._result = None  # Ergebnis
 
         self._result = None  # Ergebnis-Speicher
         log.debug('Variable created: ' + self.label)
@@ -331,7 +331,8 @@ class Variable:
     def reset_result(self):
         self._result = None
 
-    def get_result(self) -> Union[int, float, np.ndarray]:
+    @property
+    def result(self) -> Union[int, float, np.ndarray]:
         # wenn noch nicht abgefragt: (so wird verhindert, dass für jede Abfrage jedesMal neuer Speicher bereitgestellt wird.)
         if self._result is None:
             if self.linear_model.modeling_language == 'pyomo':
@@ -425,7 +426,7 @@ class VariableTS(Variable):
         else:
             index = last_index_of_segment  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
         time = self.linear_model.timeSeriesWithEnd[index]
-        value = self.get_result()[index]
+        value = self.result[index]
         return value, time
 
 
@@ -448,7 +449,7 @@ class BeforeValues:
     def addBeforeValues(self, aVar, aValue, aTime):
         element = aVar.owner
         aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
-        # before_values = aVar.get_result(aValue) # letzten zwei Werte
+        # before_values = aVar.result(aValue) # letzten zwei Werte
 
         if aKey in self.beforeValues.keys():
             raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')

@@ -135,12 +135,12 @@ class SystemModel(LinearModel):
         print('')
         for aEffect in self.system.globalComp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
-            print('  operation: ' + str(aEffect.operation.model.var_sum.get_result()))
-            print('  invest   : ' + str(aEffect.invest.model.var_sum.get_result()))
-            print('  sum      : ' + str(aEffect.all.model.var_sum.get_result()))
+            print('  operation: ' + str(aEffect.operation.model.var_sum.result))
+            print('  invest   : ' + str(aEffect.invest.model.var_sum.result))
+            print('  sum      : ' + str(aEffect.all.model.var_sum.result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.get_result()))
+        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -152,12 +152,12 @@ class SystemModel(LinearModel):
             if aBus.withExcess:
                 if any(self.results[aBus.label]['excessIn'] > 1e-6) or any(
                         self.results[aBus.label]['excessOut'] > 1e-6):
-                    # if any(aBus.excessIn.get_result() > 0) or any(aBus.excessOut.get_result() > 0):
+                    # if any(aBus.excessIn.result > 0) or any(aBus.excessOut.result > 0):
                     print('!!!!! Attention !!!!!')
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.globalComp.penalty.model.var_sum.get_result() > 10:
+        if self.system.globalComp.penalty.model.var_sum.result > 10:
             print('Take care: -> high penalty makes the used gapFrac quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -174,10 +174,10 @@ class SystemModel(LinearModel):
             for aEffect in self.system.globalComp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
-                aDict['operation'] = str(aEffect.operation.model.var_sum.get_result())
-                aDict['invest'] = str(aEffect.invest.model.var_sum.get_result())
-                aDict['sum'] = str(aEffect.all.model.var_sum.get_result())
-            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.get_result())
+                aDict['operation'] = str(aEffect.operation.model.var_sum.result)
+                aDict['invest'] = str(aEffect.invest.model.var_sum.result)
+                aDict['sum'] = str(aEffect.all.model.var_sum.result)
+            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -196,7 +196,7 @@ class SystemModel(LinearModel):
                      }
             main_results_str['Invest-Decisions'] = aDict
             for aInvestFeature in self.system.allInvestFeatures:
-                investValue = aInvestFeature.model.var_investmentSize.get_result()
+                investValue = aInvestFeature.model.var_investmentSize.result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
                 if isinstance(investValue, np.ndarray):
@@ -371,12 +371,12 @@ class Element:
         aVar: Variable
         for aVar in self.model.variables:
             # print(aVar.label)
-            aData[aVar.label] = aVar.get_result()
+            aData[aVar.label] = aVar.result
             aVars[aVar.label] = aVar  # link zur Variable
             if aVar.is_binary and aVar.length > 1:
                 # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
                 #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.get_result())
+                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.result)
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben
