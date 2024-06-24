@@ -523,8 +523,8 @@ class Equation:
     def add_summand(self,
                     variable: Variable,
                     factor: Union[int, float, np.ndarray],
-                    indices_of_variable: Optional[Union[int, float, np.ndarray]] = None,
-                    as_sum: bool = False):
+                    indices_of_variable: Optional[Union[int, np.ndarray, range, List[int]]] = None,
+                    as_sum: bool = False) -> None:
         """
         Adds a summand to the equation.
 
@@ -589,7 +589,7 @@ class Equation:
         self._update_nr_of_single_equations(length, 'constant')   # Update
         self.constant_vector = helpers.getVector(self.constant, self.nr_of_single_equations)  # Update
 
-    def to_math_model(self, baseModel: LinearModel):
+    def to_math_model(self, baseModel: LinearModel) -> None:
         log.debug('eq ' + self.label + '.to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
@@ -697,7 +697,7 @@ class Equation:
 
         return aStr
 
-    def _update_nr_of_single_equations(self, length_of_summand: int, label_of_summand: str):
+    def _update_nr_of_single_equations(self, length_of_summand: int, label_of_summand: str) -> None:
         """Checks if the new Summand is compatible with the existing Summands"""
         if self.nr_of_single_equations == 1:
             self.nr_of_single_equations = length_of_summand  # first Summand defines length of equation
