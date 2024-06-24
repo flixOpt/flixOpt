@@ -256,10 +256,10 @@ class LinearTransformer(Component):
                 eq_linearFlowRelation_i = Equation('linearFlowRelation_' + str(i), self, modBox)
                 for inFlow in leftSideFlows:
                     aFactor = aFactorVec_Dict[inFlow].active_data
-                    eq_linearFlowRelation_i.addSummand(inFlow.model.var_val, aFactor)  # input1.val[t]      * factor[t]
+                    eq_linearFlowRelation_i.add_summand(inFlow.model.var_val, aFactor)  # input1.val[t]      * factor[t]
                 for outFlow in rightSideFlows:
                     aFactor = aFactorVec_Dict[outFlow].active_data
-                    eq_linearFlowRelation_i.addSummand(outFlow.model.var_val, -aFactor)  # output.val[t] * -1 * factor[t]
+                    eq_linearFlowRelation_i.add_summand(outFlow.model.var_val, -aFactor)  # output.val[t] * -1 * factor[t]
 
                 eq_linearFlowRelation_i.addRightSide(0)  # nur zur Komplettisierung der Gleichung
 
@@ -800,8 +800,8 @@ class Storage(Component):
 
         # ############### verknüpfung mit anderen Variablen ##################
         # % Pumpstromaufwand Beladen/Entladen
-        # refToStromLastEq.addSummand(obj.vars.Q_th_Lade   ,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
-        # refToStromLastEq.addSummand(obj.vars.Q_th_Entlade,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
+        # refToStromLastEq.add_summand(obj.vars.Q_th_Lade   ,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
+        # refToStromLastEq.add_summand(obj.vars.Q_th_Entlade,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
 
     def getInitialStatesOfNextSection(timeIndex):
         """
@@ -833,12 +833,12 @@ class Storage(Component):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
             self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
             self.eq_charge_state_start.addRightSide(self.model.var_charge_state.before_value)  # chargeState_0 !
-            self.eq_charge_state_start.addSummand(self.model.var_charge_state, 1, timeIndexe[0])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, timeIndexe[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
             self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
-            self.eq_charge_state_start.addSummand(self.model.var_charge_state, 1, timeIndexe[0])
-            self.eq_charge_state_start.addSummand(self.model.var_charge_state, -1, timeIndexe[-1])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, timeIndexe[0])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, -1, timeIndexe[-1])
         else:
             raise Exception('chargeState0_inFlowHours has undefined value = ' + str(self.chargeState0_inFlowHours))
 
@@ -849,35 +849,35 @@ class Storage(Component):
         # charge_state hat ein Index mehr:
         timeIndexeChargeState = range(timeIndexe.start, timeIndexe.stop + 1)
         self.eq_charge_state = Equation('charge_state', self, modBox, eqType='eq')
-        self.eq_charge_state.addSummand(self.model.var_charge_state,
-                                        -1 * (1 - self.fracLossPerHour.active_data * modBox.dtInHours),
+        self.eq_charge_state.add_summand(self.model.var_charge_state,
+                                         -1 * (1 - self.fracLossPerHour.active_data * modBox.dtInHours),
                                         timeIndexeChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
-        self.eq_charge_state.addSummand(self.model.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
-        self.eq_charge_state.addSummand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * modBox.dtInHours)
-        self.eq_charge_state.addSummand(self.outFlow.model.var_val,
-                                        1 / self.eta_unload.active_data * modBox.dtInHours)  # Achtung hier 1/eta!
+        self.eq_charge_state.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
+        self.eq_charge_state.add_summand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * modBox.dtInHours)
+        self.eq_charge_state.add_summand(self.outFlow.model.var_val,
+                                         1 / self.eta_unload.active_data * modBox.dtInHours)  # Achtung hier 1/eta!
 
         # Speicherladezustand am Ende
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.charge_state_end_max is not None:
             self.eq_charge_state_end_max = Equation('eq_charge_state_end_max', self, modBox, eqType='ineq')
-            self.eq_charge_state_end_max.addSummand(self.model.var_charge_state, 1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_max.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[-1])
             self.eq_charge_state_end_max.addRightSide(self.charge_state_end_max)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.charge_state_end_min is not None:
             self.eq_charge_state_end_min = Equation('eq_charge_state_end_min', self, modBox, eqType='ineq')
-            self.eq_charge_state_end_min.addSummand(self.model.var_charge_state, -1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_min.add_summand(self.model.var_charge_state, -1, timeIndexeChargeState[-1])
             self.eq_charge_state_end_min.addRightSide(- self.charge_state_end_min)
 
         # nettoflow:
         # eq: nettoFlow(t) - outFlow(t) + inFlow(t) = 0
         self.eq_nettoFlow = Equation('nettoFlow', self, modBox, eqType='eq')
-        self.eq_nettoFlow.addSummand(self.model.var_nettoFlow, 1)
-        self.eq_nettoFlow.addSummand(self.inFlow.model.var_val, 1)
-        self.eq_nettoFlow.addSummand(self.outFlow.model.var_val, -1)
+        self.eq_nettoFlow.add_summand(self.model.var_nettoFlow, 1)
+        self.eq_nettoFlow.add_summand(self.inFlow.model.var_val, 1)
+        self.eq_nettoFlow.add_summand(self.outFlow.model.var_val, -1)
 
         if self.featureInvest is not None:
             self.featureInvest.doModeling(modBox, timeIndexe)
@@ -886,9 +886,9 @@ class Storage(Component):
         # % Speicherleistung an Bilanzgrenze / Speicher-Ladung / Speicher-Entladung
         # % Q_th(n) + Q_th_Lade(n) - Q_th_Entlade(n) = 0;
         # obj.eqs.Leistungen = Equation('Leistungen');
-        # obj.eqs.Leistungen.addSummand(obj.vars.Q_th        , 1);
-        # obj.eqs.Leistungen.addSummand(obj.vars.Q_th_Lade   , 1);
-        # obj.eqs.Leistungen.addSummand(obj.vars.Q_th_Entlade,-1);
+        # obj.eqs.Leistungen.add_summand(obj.vars.Q_th        , 1);
+        # obj.eqs.Leistungen.add_summand(obj.vars.Q_th_Lade   , 1);
+        # obj.eqs.Leistungen.add_summand(obj.vars.Q_th_Entlade,-1);
 
         # % Bedingungen der binären Variable "IchLadeMich"
         # Q_th_Lade_Max   = obj.inputData.Q_Ladezustand_Max / obj.inputData.eta_Lade /obj.dt; % maximale Entladeleistung, wenn in einem Zeitschritt alles ausgeschoben wird
@@ -903,8 +903,8 @@ class Storage(Component):
         # % Bedingung "Laden ODER Entladen ODER nix von beiden" (insbesondere für KWK-Anlagen wichtig, da gleichzeitiges Entladen und Beladen sonst Kostenoptimum sein kann
         # % eq: IchLadeMich(n) + IchEntladeMich(n) <= 1;
         # obj.ineqs.EntwederLadenOderEntladen = Equation('EntwederLadenOderEntladen');
-        # obj.ineqs.EntwederLadenOderEntladen.addSummand(obj.vars.IchLadeMich   ,1);
-        # obj.ineqs.EntwederLadenOderEntladen.addSummand(obj.vars.IchEntladeMich,1);
+        # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchLadeMich   ,1);
+        # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchEntladeMich,1);
         # obj.ineqs.EntwederLadenOderEntladen.addRightSide(1);
 
     def addShareToGlobals(self, globalComp: Global, modBox):
@@ -1184,28 +1184,28 @@ class Transportation(Component):
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
         self.eq_dir1 = Equation('transport_dir1', self, modBox, eqType='eq')
-        self.eq_dir1.addSummand(self.in1.model.var_val, (1 - self.loss_rel.active_data))
-        self.eq_dir1.addSummand(self.out1.model.var_val, -1)
+        self.eq_dir1.add_summand(self.in1.model.var_val, (1 - self.loss_rel.active_data))
+        self.eq_dir1.add_summand(self.out1.model.var_val, -1)
         if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
             assert self.in1.model.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
-            self.eq_dir1.addSummand(self.in1.model.var_on, -1 * self.loss_abs.active_data)
+            self.eq_dir1.add_summand(self.in1.model.var_on, -1 * self.loss_abs.active_data)
 
         # second direction:        
         if self.in2 is not None:
             # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
             self.eq_dir2 = Equation('transport_dir2', self, modBox, eqType='eq')
-            self.eq_dir2.addSummand(self.in2.model.var_val, 1 - self.loss_rel.active_data)
-            self.eq_dir2.addSummand(self.out2.model.var_val, -1)
+            self.eq_dir2.add_summand(self.in2.model.var_val, 1 - self.loss_rel.active_data)
+            self.eq_dir2.add_summand(self.out2.model.var_val, -1)
             if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
                 assert self.in2.model.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
-                self.eq_dir2.addSummand(self.in2.model.var_on, -1 * self.loss_abs.active_data)
+                self.eq_dir2.add_summand(self.in2.model.var_on, -1 * self.loss_abs.active_data)
 
         # always On (in at least one direction)
         # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
         if self.isAlwaysOn:
             self.eq_alwaysOn = Equation('alwaysOn', self, modBox, eqType='ineq')
-            self.eq_alwaysOn.addSummand(self.in1.model.var_on, -1)
-            if (self.in2 is not None): self.eq_alwaysOn.addSummand(self.in2.model.var_on, -1)
+            self.eq_alwaysOn.add_summand(self.in1.model.var_on, -1)
+            if (self.in2 is not None): self.eq_alwaysOn.add_summand(self.in2.model.var_on, -1)
             self.eq_alwaysOn.addRightSide(-.5)  # wg binärungenauigkeit 0.5 statt 1
 
         # equate nominal value of second direction
@@ -1216,8 +1216,8 @@ class Transportation(Component):
                 if bothInFlowsHaveFeatureInvest:
                     # eq: in1.nom_value = in2.nom_value
                     self.eq_nom_value = Equation('equalSizeInBothDirections', self, modBox, eqType='eq')
-                    self.eq_nom_value.addSummand(self.in1.featureInvest.mod.var_investmentSize, 1)
-                    self.eq_nom_value.addSummand(self.in2.featureInvest.model.var_investmentSize, -1)
+                    self.eq_nom_value.add_summand(self.in1.featureInvest.mod.var_investmentSize, 1)
+                    self.eq_nom_value.add_summand(self.in2.featureInvest.model.var_investmentSize, -1)
                 else:
                     raise Exception(
                         'define invest_parameters also for second In-Flow (values can be empty!)')  # TODO: anders lösen (automatisiert)!

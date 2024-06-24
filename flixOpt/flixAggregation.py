@@ -415,8 +415,8 @@ class cAggregationModeling(flixStructure.Element):
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
         eq = flixStructure.Equation('equalIdx_' + aVar.label_full, self, modBox, eqType='eq')
-        eq.addSummand(aVar, 1, indexeOfVariable=idx_var1)
-        eq.addSummand(aVar, -1, indexeOfVariable=idx_var2)
+        eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
+        eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
         # Korrektur: (bisher nur für Binärvariablen:)
         if aVar.is_binary and self.percentageOfPeriodFreedom > 0:
@@ -431,24 +431,24 @@ class cAggregationModeling(flixStructure.Element):
             # --> correction On(p3) can be:
             #  On(p1,t) = 1 -> On(p3) can be 0 -> K0=1 (,K1=0)
             #  On(p1,t) = 0 -> On(p3) can be 1 -> K1=1 (,K0=1)
-            eq.addSummand(var_K1, +1)
-            eq.addSummand(var_K0, -1)
+            eq.add_summand(var_K1, +1)
+            eq.add_summand(var_K0, -1)
             self.var_K_list.append(var_K1)
             self.var_K_list.append(var_K0)
 
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
             eq_lock = flixStructure.Equation('lock_K0andK1' + aVar.label_full, self, modBox, eqType='ineq')
-            eq_lock.addSummand(var_K0, 1)
-            eq_lock.addSummand(var_K1, 1)
+            eq_lock.add_summand(var_K0, 1)
+            eq_lock.add_summand(var_K1, 1)
             eq_lock.addRightSide(1.1)
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.length)
             eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
-            eq_max.addSummandSumOf(var_K1, 1)
-            eq_max.addSummandSumOf(var_K0, 1)
+            eq_max.add_summand_sum_of(var_K1, 1)
+            eq_max.add_summand_sum_of(var_K0, 1)
             eq_max.addRightSide(self.noOfCorrections)  # Maximum
         return eq
 
@@ -458,4 +458,4 @@ class cAggregationModeling(flixStructure.Element):
         if (self.percentageOfPeriodFreedom > 0) & (self.costsOfPeriodFreedom != 0):
             for var_K in self.var_K_list:
                 # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!
-                globalComp.objective.addSummandSumOf(var_K, self.costsOfPeriodFreedom)
+                globalComp.objective.add_summand_sum_of(var_K, self.costsOfPeriodFreedom)

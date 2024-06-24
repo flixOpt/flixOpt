@@ -1017,13 +1017,13 @@ class Global(Element):
 
         # ####### target function  ###########
         # Strafkosten immer:
-        self.objective.addSummand(self.penalty.model.var_sum, 1)
+        self.objective.add_summand(self.penalty.model.var_sum, 1)
 
         # Definierter Effekt als Zielfunktion:
         objectiveEffect = self.listOfEffectTypes.objectiveEffect()
         if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
-        self.objective.addSummand(objectiveEffect.operation.model.var_sum, 1)
-        self.objective.addSummand(objectiveEffect.invest.model.var_sum, 1)
+        self.objective.add_summand(objectiveEffect.operation.model.var_sum, 1)
+        self.objective.add_summand(objectiveEffect.invest.model.var_sum, 1)
 
 
 class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
@@ -1113,15 +1113,15 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # inputs = outputs
         eq_busbalance = Equation('busBalance', self, system_model)
         for aFlow in self.inputs:
-            eq_busbalance.addSummand(aFlow.model.var_val, 1)
+            eq_busbalance.add_summand(aFlow.model.var_val, 1)
         for aFlow in self.outputs:
-            eq_busbalance.addSummand(aFlow.model.var_val, -1)
+            eq_busbalance.add_summand(aFlow.model.var_val, -1)
 
         # Fehlerplus/-minus:
         if self.withExcess:
             # Hinzufügen zur Bilanz:
-            eq_busbalance.addSummand(self.excessOut, -1)
-            eq_busbalance.addSummand(self.excessIn, 1)
+            eq_busbalance.add_summand(self.excessOut, -1)
+            eq_busbalance.add_summand(self.excessIn, 1)
 
     def addShareToGlobals(self, globalComp, system_model) -> None:
         super().addShareToGlobals(globalComp, system_model)
@@ -1131,8 +1131,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
                                                 self.excessCostsPerFlowHour, system_model.dtInHours)
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut,
                                                 self.excessCostsPerFlowHour, system_model.dtInHours)
-            # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
-            # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
+            # globalComp.penaltyCosts_eq.add_summand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
+            # globalComp.penaltyCosts_eq.add_summand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
 
     def print(self, shiftChars) -> None:
         print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
@@ -1548,7 +1548,7 @@ class Flow(Element):
 
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = Equation('onHoursSum_max', self, system_model, 'ineq')
-            eq_onHoursSum_max.addSummandSumOf(self.model.var_on, 1)
+            eq_onHoursSum_max.add_summand_sum_of(self.model.var_on, 1)
             eq_onHoursSum_max.addRightSide(self.onHoursSum_max/system_model.dtInHours)
 
         #
@@ -1559,7 +1559,7 @@ class Flow(Element):
 
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = Equation('onHoursSum_min', self, system_model, 'ineq')
-            eq_onHoursSum_min.addSummandSumOf(self.model.var_on, -1)
+            eq_onHoursSum_min.add_summand_sum_of(self.model.var_on, -1)
             eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/system_model.dtInHours)
 
 
@@ -1570,8 +1570,8 @@ class Flow(Element):
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        eq_sumFlowHours.addSummandSumOf(self.model.var_val, system_model.dtInHours)
-        eq_sumFlowHours.addSummand(self.model.var_sumFlowHours, -1)
+        eq_sumFlowHours.add_summand_sum_of(self.model.var_val, system_model.dtInHours)
+        eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
 
         #          
         # ############## Constraints für Binärvariablen : ##############
@@ -1594,10 +1594,10 @@ class Flow(Element):
         if self.loadFactor_max is not None:
             flowHoursPerInvestsize_max = system_model.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, system_model, 'ineq')  # general mean
-            eq_flowHoursPerInvestsize_Max.addSummand(self.model.var_sumFlowHours, 1)
+            eq_flowHoursPerInvestsize_Max.add_summand(self.model.var_sumFlowHours, 1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Max.addSummand(self.featureInvest.model.var_investmentSize,
-                                                         -1 * flowHoursPerInvestsize_max)
+                eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
+                                                          -1 * flowHoursPerInvestsize_max)
             else:
                 eq_flowHoursPerInvestsize_Max.addRightSide(self.nominal_val * flowHoursPerInvestsize_max)
 
@@ -1607,10 +1607,10 @@ class Flow(Element):
         if self.loadFactor_min is not None:
             flowHoursPerInvestsize_min = system_model.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, system_model, 'ineq')
-            eq_flowHoursPerInvestsize_Min.addSummand(self.model.var_sumFlowHours, -1)
+            eq_flowHoursPerInvestsize_Min.add_summand(self.model.var_sumFlowHours, -1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Min.addSummand(self.featureInvest.model.var_investmentSize,
-                                                         flowHoursPerInvestsize_min)
+                eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,
+                                                          flowHoursPerInvestsize_min)
             else:
                 eq_flowHoursPerInvestsize_Min.addRightSide(-1 * self.nominal_val * flowHoursPerInvestsize_min)
 
@@ -1647,7 +1647,7 @@ class Flow(Element):
         if self.costsPerFlowHour is not None:
             # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
             # variable_costs          = Summand(self.model.var_val, np.multiply(self.costsPerFlowHour, model.dtInHours))
-            # globalComp.costsOfOperating_eq.addSummand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
+            # globalComp.costsOfOperating_eq.add_summand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.model.var_val, self.costsPerFlowHour,
                                            system_model.dtInHours)
@@ -1989,7 +1989,7 @@ class System:
         # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
 
         # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von chosenEsTimeIndexe abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
-        # --> ist aber nicht sauber durchimplementiert in den ganzehn addSummand()-Befehlen!!
+        # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
         timeIndexe = range(len(self.model.time_indices))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:

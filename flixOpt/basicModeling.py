@@ -477,7 +477,7 @@ class BeforeValues:
 class Equation:
     def __init__(self,
                  label: str,
-                 myMom,
+                 owner,
                  baseModel: LinearModel,
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
@@ -487,7 +487,7 @@ class Equation:
         self.y_shares = []  # liste mit shares von y
         self.y_vec = helpers.getVector(self.y, self.nrOfSingleEquations)
         self.eqType = eqType
-        self.myMom = myMom
+        self.myMom = owner
         self.eq = None  # z.B. für pyomo : pyomoComponente
 
         log.debug('equation created: ' + str(label))
@@ -497,17 +497,17 @@ class Equation:
         if eqType == 'ineq':  # lhs <= rhs
             # owner .ineqs.append(self) # Komponentenliste
             baseModel.ineqs.append(self)  # linear_model-Liste mit allen ineqs
-            myMom.model.ineqs.append(self)
+            owner.model.ineqs.append(self)
         # Inequation:
         elif eqType == 'eq':
             # owner .eqs.append(self) # Komponentenliste
             baseModel.eqs.append(self)  # linear_model-Liste mit allen eqs
-            myMom.model.eqs.append(self)
+            owner.model.eqs.append(self)
         # Objective:
         elif eqType == 'objective':
             if baseModel.objective == None:
                 baseModel.objective = self
-                myMom.model.objective = self
+                owner.model.objective = self
             else:
                 raise Exception('linear_model.objective ist bereits belegt!')
         # Undefined:
@@ -519,37 +519,37 @@ class Equation:
         # B_visual; % mit Spaltenüberschriften!
         # maxElementsOfVisualCell = 1e4; % über 10000 Spalten wählt Matlab komische Darstellung
 
-    def addSummand(self, variable, factor, indexeOfVariable=None):
+    def add_summand(self, variable, factor, indices_of_variable=None):
         # input: 3 Varianten entscheiden über Elemente-Anzahl des Summanden:
         #   length(variable) = 1             -> length = length(factor)
         #   length(factor)   = 1             -> length = length(variable)
         #   length(factor)   = length(variable) -> length = length(factor)
 
         isSumOf_Type = False  # kein SumOf_Type!
-        self.addUniversalSummand(variable, factor, isSumOf_Type, indexeOfVariable)
+        self._add_summand(variable, factor, isSumOf_Type, indices_of_variable)
 
-    def addSummandSumOf(self, variable, factor, indexeOfVariable=None):
+    def add_summand_sum_of(self, variable, factor, indices_of_variable=None):
         isSumOf_Type = True  # SumOf_Type!
 
         if variable is None:
             raise Exception('Fehler in eq ' + str(self.label) + ': variable = None!')
-        self.addUniversalSummand(variable, factor, isSumOf_Type, indexeOfVariable)
+        self._add_summand(variable, factor, isSumOf_Type, indices_of_variable)
 
-    def addUniversalSummand(self, variable, factor, isSumOf_Type, indexeOfVar):
+    def _add_summand(self, variable, factor, isSumOf_Type, indexeOfVar):
         if not isinstance(variable, Variable):
             raise Exception('error in eq ' + self.label + ' : no variable given (variable = ' + str(variable) + ')')
         # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
         if np.isscalar(indexeOfVar):
             indexeOfVar = [indexeOfVar]
         # Vektor/Summand erstellen:
-        aVector = Summand(variable, factor, indexeOfVariable=indexeOfVar)
+        summand = Summand(variable, factor, indexeOfVariable=indexeOfVar)
 
         if isSumOf_Type:
-            aVector.sumOf()  # Umwandlung zu Sum-Of-Skalar
+            summand.sumOf()  # Umwandlung zu Sum-Of-Skalar
         # Check Variablen-Länge:
-        self.__UpdateLengthOfEquations(aVector.len, aVector.variable.label)
+        self.__UpdateLengthOfEquations(summand.len, summand.variable.label)
         # zu Liste hinzufügen:
-        self.listOfSummands.append(aVector)
+        self.listOfSummands.append(summand)
 
     def addRightSide(self, aValue):
         '''
@@ -717,7 +717,7 @@ class Equation:
 
 # Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
 class Summand:
-    def __init__(self, variable, factor, indexeOfVariable=None):  # indexeOfVariable default : alle
+    def __init__(self, variable, factor, indexeOfVariable=None):  # indices_of_variable default : alle
         self.__dict__.update(**locals())
         self.isSumOf_Type = False  # Falls Skalar durch Summation über alle Indexe
         self.sumOfExpr = None  # Zwischenspeicher für Ergebniswert (damit das nicht immer wieder berechnet wird)
