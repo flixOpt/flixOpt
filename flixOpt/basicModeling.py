@@ -634,15 +634,15 @@ class Equation:
 
             # print i-th equation:
 
-    def as_str(self, eqNr=0):
-        eqNr = min(eqNr, self.nr_of_single_equations - 1)
+    def as_str(self, equation_nr: int=0):
+        equation_nr = min(equation_nr, self.nr_of_single_equations - 1)
 
         aStr = ''
         # header:
         if self.eqType == 'objective':
             aStr += 'obj' + ': '  # leerzeichen wichtig, sonst im yaml interpretation als dict
         else:
-            aStr += 'eq ' + self.label + '[' + str(eqNr) + ' of ' + str(self.nr_of_single_equations) + ']: '
+            aStr += 'eq ' + self.label + '[' + str(equation_nr) + ' of ' + str(self.nr_of_single_equations) + ']: '
 
         # Summanden:
         first = True
@@ -652,8 +652,8 @@ class Equation:
             if aSummand.len == 1:
                 i = 0
             else:
-                i = eqNr
-            #      i     = min(eqNr, aSummand.length-1) # wenn zu groß, dann letzter Eintrag ???
+                i = equation_nr
+            #      i     = min(equation_nr, aSummand.length-1) # wenn zu groß, dann letzter Eintrag ???
             index = aSummand.indexeOfVariable[i]
             # factor formatieren:
             factor = aSummand.factor_vec[i]
@@ -680,7 +680,7 @@ class Equation:
             aStr += ' ? '
 
             # right side:
-        aStr += str(self.constant_vector[eqNr])  # todo: hier könnte man noch aufsplitten nach parts_of_constant
+        aStr += str(self.constant_vector[equation_nr])  # todo: hier könnte man noch aufsplitten nach parts_of_constant
 
         return aStr
 
