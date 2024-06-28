@@ -37,8 +37,8 @@ class SystemModel(LinearModel):
         infos.update(self._infos)  # da steht schon zeug drin
         return infos
 
-    def __init__(self, label, aModType, system, time_indices, TS_explicit=None):
-        super().__init__(label, aModType)
+    def __init__(self, label, modeling_language, system, time_indices, TS_explicit=None):
+        super().__init__(label, modeling_language)
         self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
@@ -50,9 +50,9 @@ class SystemModel(LinearModel):
         self.models_of_elements: Dict = {}  # dict with all ElementModel's od Elements in System
 
         # self.objective       = None # objective-Function
-        # self.objective_value = None # Ergebnis
+        # self.objective_result = None # Ergebnis
 
-        self.beforeValueSet = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
+        self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
         (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
             time_indices)
@@ -67,28 +67,25 @@ class SystemModel(LinearModel):
         self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
 
     # override:
-    def _charactarizeProblem(self):  # overriding same method in motherclass!
-
-        super()._charactarizeProblem()
-
+    def characterize_math_problem(self):  # overriding same method in motherclass!
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
         # self.system.activate_model()
         self._infos['str_Eqs'] = self.system.getEqsAsStr()
         self._infos['str_Vars'] = self.system.getVarsAsStr()
 
     # 'gurobi'
-    def solve(self, gapFrac=0.02, timelimit=3600, solver='cbc', displaySolverOutput=True, excessThreshold=0.1,
-              logfileName='solverLog.log', **kwargs):
+    def solve(self, gapFrac=0.02, time_limit_seconds=3600, solver='cbc', solver_output_to_console=True, excessThreshold=0.1,
+              logfile_name='solver_log.log', **kwargs):
         '''        
         Parameters
         ----------
         gapFrac : TYPE, optional
             DESCRIPTION. The default is 0.02.
-        timelimit : TYPE, optional
+        time_limit_seconds : TYPE, optional
             DESCRIPTION. The default is 3600.
         solver : TYPE, optional
             DESCRIPTION. The default is 'cbc'.
-        displaySolverOutput : TYPE, optional
+        solver_output_to_console : TYPE, optional
             DESCRIPTION. The default is True.
         excessThreshold : float, positive!
             threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
@@ -116,7 +113,7 @@ class SystemModel(LinearModel):
 
         self.printNoEqsAndVars()
 
-        super().solve(gapFrac, timelimit, solver, displaySolverOutput, logfileName, **kwargs)
+        super().solve(gapFrac, time_limit_seconds, solver, solver_output_to_console, logfile_name, **kwargs)
 
         if solver == 'gurobi':
             termination_message = self.solver_results['Solver'][0]['Termination message']
@@ -138,14 +135,14 @@ class SystemModel(LinearModel):
         print('')
         for aEffect in self.system.globalComp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
-            print('  operation: ' + str(aEffect.operation.model.var_sum.getResult()))
-            print('  invest   : ' + str(aEffect.invest.model.var_sum.getResult()))
-            print('  sum      : ' + str(aEffect.all.model.var_sum.getResult()))
+            print('  operation: ' + str(aEffect.operation.model.var_sum.result))
+            print('  invest   : ' + str(aEffect.invest.model.var_sum.result))
+            print('  sum      : ' + str(aEffect.all.model.var_sum.result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.getResult()))
+        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
-        print('Result of Obj : ' + str(self.objective_value))
+        print('Result of Obj : ' + str(self.objective_result))
         try:
             print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
         except:
@@ -155,14 +152,14 @@ class SystemModel(LinearModel):
             if aBus.withExcess:
                 if any(self.results[aBus.label]['excessIn'] > 1e-6) or any(
                         self.results[aBus.label]['excessOut'] > 1e-6):
-                    # if any(aBus.excessIn.getResult() > 0) or any(aBus.excessOut.getResult() > 0):
+                    # if any(aBus.excessIn.result > 0) or any(aBus.excessOut.result > 0):
                     print('!!!!! Attention !!!!!')
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.globalComp.penalty.model.var_sum.getResult() > 10:
+        if self.system.globalComp.penalty.model.var_sum.result > 10:
             print('Take care: -> high penalty makes the used gapFrac quite high')
-            print('           -> real costs are not optimized to gapfrac')
+            print('           -> real costs are not optimized to mip_gap')
 
         print('')
         print('##############################################################')
@@ -177,11 +174,11 @@ class SystemModel(LinearModel):
             for aEffect in self.system.globalComp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
-                aDict['operation'] = str(aEffect.operation.model.var_sum.getResult())
-                aDict['invest'] = str(aEffect.invest.model.var_sum.getResult())
-                aDict['sum'] = str(aEffect.all.model.var_sum.getResult())
-            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.getResult())
-            main_results_str['Result of Obj'] = self.objective_value
+                aDict['operation'] = str(aEffect.operation.model.var_sum.result)
+                aDict['invest'] = str(aEffect.invest.model.var_sum.result)
+                aDict['sum'] = str(aEffect.all.model.var_sum.result)
+            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.result)
+            main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
             else:
@@ -199,7 +196,7 @@ class SystemModel(LinearModel):
                      }
             main_results_str['Invest-Decisions'] = aDict
             for aInvestFeature in self.system.allInvestFeatures:
-                investValue = aInvestFeature.model.var_investmentSize.getResult()
+                investValue = aInvestFeature.model.var_investmentSize.result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
                 if isinstance(investValue, np.ndarray):
@@ -374,12 +371,12 @@ class Element:
         aVar: Variable
         for aVar in self.model.variables:
             # print(aVar.label)
-            aData[aVar.label] = aVar.getResult()
+            aData[aVar.label] = aVar.result
             aVars[aVar.label] = aVar  # link zur Variable
-            if aVar.isBinary and aVar.len > 1:
+            if aVar.is_binary and aVar.length > 1:
                 # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
                 #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.getResult())
+                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.result)
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben
@@ -445,11 +442,11 @@ class Element:
     def getEqsVarsOverview(self) -> Dict:
         aDict = {}
         aDict['no eqs'] = len(self.model.eqs)
-        aDict['no eqs single'] = sum([eq.nrOfSingleEquations for eq in self.model.eqs])
+        aDict['no eqs single'] = sum([eq.nr_of_single_equations for eq in self.model.eqs])
         aDict['no inEqs'] = len(self.model.ineqs)
-        aDict['no inEqs single'] = sum([ineq.nrOfSingleEquations for ineq in self.model.ineqs])
+        aDict['no inEqs single'] = sum([ineq.nr_of_single_equations for ineq in self.model.ineqs])
         aDict['no vars'] = len(self.model.variables)
-        aDict['no vars single'] = sum([var.len for var in self.model.variables])
+        aDict['no vars single'] = sum([var.length for var in self.model.variables])
         return aDict
 
 
@@ -478,15 +475,15 @@ class ElementModel:
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
             for eq in (self.eqs + self.ineqs):
-                aList.append(eq.getStrDescription())
+                aList.append(eq.as_str())
         if not (self.objective is None):
-            aList.append(self.objective.getStrDescription())
+            aList.append(self.objective.as_str())
         return aList
 
     def getVarsAsStr(self) -> List:
         aList = []
         for aVar in self.variables:
-            aList.append(aVar.getStrDescription())
+            aList.append(aVar.get_str_description())
         return aList
 
     def printEqs(self, shiftChars) -> None:
@@ -1020,13 +1017,13 @@ class Global(Element):
 
         # ####### target function  ###########
         # Strafkosten immer:
-        self.objective.addSummand(self.penalty.model.var_sum, 1)
+        self.objective.add_summand(self.penalty.model.var_sum, 1)
 
         # Definierter Effekt als Zielfunktion:
         objectiveEffect = self.listOfEffectTypes.objectiveEffect()
         if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
-        self.objective.addSummand(objectiveEffect.operation.model.var_sum, 1)
-        self.objective.addSummand(objectiveEffect.invest.model.var_sum, 1)
+        self.objective.add_summand(objectiveEffect.operation.model.var_sum, 1)
+        self.objective.add_summand(objectiveEffect.invest.model.var_sum, 1)
 
 
 class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
@@ -1107,8 +1104,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Fehlerplus/-minus:
         if self.withExcess:
             # Fehlerplus und -minus definieren
-            self.excessIn = VariableTS('excessIn', len(system_model.timeSeries), self, system_model, min=0)
-            self.excessOut = VariableTS('excessOut', len(system_model.timeSeries), self, system_model, min=0)
+            self.excessIn = VariableTS('excessIn', len(system_model.timeSeries), self, system_model, lower_bound=0)
+            self.excessOut = VariableTS('excessOut', len(system_model.timeSeries), self, system_model, lower_bound=0)
 
     def doModeling(self, system_model, timeIndexe) -> None:
         super().doModeling(system_model, timeIndexe)
@@ -1116,15 +1113,15 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # inputs = outputs
         eq_busbalance = Equation('busBalance', self, system_model)
         for aFlow in self.inputs:
-            eq_busbalance.addSummand(aFlow.model.var_val, 1)
+            eq_busbalance.add_summand(aFlow.model.var_val, 1)
         for aFlow in self.outputs:
-            eq_busbalance.addSummand(aFlow.model.var_val, -1)
+            eq_busbalance.add_summand(aFlow.model.var_val, -1)
 
         # Fehlerplus/-minus:
         if self.withExcess:
             # Hinzufügen zur Bilanz:
-            eq_busbalance.addSummand(self.excessOut, -1)
-            eq_busbalance.addSummand(self.excessIn, 1)
+            eq_busbalance.add_summand(self.excessOut, -1)
+            eq_busbalance.add_summand(self.excessIn, 1)
 
     def addShareToGlobals(self, globalComp, system_model) -> None:
         super().addShareToGlobals(globalComp, system_model)
@@ -1134,8 +1131,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
                                                 self.excessCostsPerFlowHour, system_model.dtInHours)
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut,
                                                 self.excessCostsPerFlowHour, system_model.dtInHours)
-            # globalComp.penaltyCosts_eq.addSummand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
-            # globalComp.penaltyCosts_eq.addSummand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
+            # globalComp.penaltyCosts_eq.add_summand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
+            # globalComp.penaltyCosts_eq.add_summand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
 
     def print(self, shiftChars) -> None:
         print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
@@ -1518,9 +1515,9 @@ class Flow(Element):
             (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model, min=lb, max=ub, value=fix_value)
-        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, min=self.sumFlowHours_min,
-                                               max=self.sumFlowHours_max)
+        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model, lower_bound=lb, upper_bound=ub, value=fix_value)
+        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, lower_bound=self.sumFlowHours_min,
+                                               upper_bound=self.sumFlowHours_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
@@ -1551,8 +1548,8 @@ class Flow(Element):
 
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = Equation('onHoursSum_max', self, system_model, 'ineq')
-            eq_onHoursSum_max.addSummandSumOf(self.model.var_on, 1)
-            eq_onHoursSum_max.addRightSide(self.onHoursSum_max/system_model.dtInHours)
+            eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
+            eq_onHoursSum_max.add_constant(self.onHoursSum_max / system_model.dtInHours)
 
         #
         # ############## onHoursSum_max: ##############
@@ -1562,8 +1559,8 @@ class Flow(Element):
 
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = Equation('onHoursSum_min', self, system_model, 'ineq')
-            eq_onHoursSum_min.addSummandSumOf(self.model.var_on, -1)
-            eq_onHoursSum_min.addRightSide(-1*self.onHoursSum_min/system_model.dtInHours)
+            eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
+            eq_onHoursSum_min.add_constant(-1 * self.onHoursSum_min / system_model.dtInHours)
 
 
         #
@@ -1573,8 +1570,8 @@ class Flow(Element):
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        eq_sumFlowHours.addSummandSumOf(self.model.var_val, system_model.dtInHours)
-        eq_sumFlowHours.addSummand(self.model.var_sumFlowHours, -1)
+        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dtInHours, as_sum=True)
+        eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
 
         #          
         # ############## Constraints für Binärvariablen : ##############
@@ -1597,12 +1594,12 @@ class Flow(Element):
         if self.loadFactor_max is not None:
             flowHoursPerInvestsize_max = system_model.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, system_model, 'ineq')  # general mean
-            eq_flowHoursPerInvestsize_Max.addSummand(self.model.var_sumFlowHours, 1)
+            eq_flowHoursPerInvestsize_Max.add_summand(self.model.var_sumFlowHours, 1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Max.addSummand(self.featureInvest.model.var_investmentSize,
-                                                         -1 * flowHoursPerInvestsize_max)
+                eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
+                                                          -1 * flowHoursPerInvestsize_max)
             else:
-                eq_flowHoursPerInvestsize_Max.addRightSide(self.nominal_val * flowHoursPerInvestsize_max)
+                eq_flowHoursPerInvestsize_Max.add_constant(self.nominal_val * flowHoursPerInvestsize_max)
 
                 ## min load factor:
         #  eq: nominal_val * sum(dt)* load_factor_min <= var_sumFlowHours
@@ -1610,18 +1607,18 @@ class Flow(Element):
         if self.loadFactor_min is not None:
             flowHoursPerInvestsize_min = system_model.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, system_model, 'ineq')
-            eq_flowHoursPerInvestsize_Min.addSummand(self.model.var_sumFlowHours, -1)
+            eq_flowHoursPerInvestsize_Min.add_summand(self.model.var_sumFlowHours, -1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Min.addSummand(self.featureInvest.model.var_investmentSize,
-                                                         flowHoursPerInvestsize_min)
+                eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,
+                                                          flowHoursPerInvestsize_min)
             else:
-                eq_flowHoursPerInvestsize_Min.addRightSide(-1 * self.nominal_val * flowHoursPerInvestsize_min)
+                eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.nominal_val * flowHoursPerInvestsize_min)
 
         # ############## positiver Gradient ######### 
 
         '''        
         if self.positive_gradient == None :                    
-          if model.modType == 'pyomo':
+          if model.modeling_language == 'pyomo':
             def positive_gradient_rule(t):
               if t == 0:
                 return (self.model.var_val[t] - self.val_initial) / model.dtInHours[t] <= self.positive_gradient[t] #             
@@ -1635,10 +1632,10 @@ class Flow(Element):
               self.positive_gradient_constr =  Constraint(model.timestepsOfRun,rule = positive_gradient_rule)   # timestepsOfRun = [start:end]
               # raise error();
             system_model.registerPyComp(self.positive_gradient_constr, self.label + '_positive_gradient_constr')
-          elif model.modType == 'vcxpy':
-            raise Exception('not defined for modtype ' + model.modType)
+          elif model.modeling_language == 'vcxpy':
+            raise Exception('not defined for modtype ' + model.modeling_language)
           else:
-            raise Exception('not defined for modtype ' + model.modType)'''
+            raise Exception('not defined for modtype ' + model.modeling_language)'''
 
         # ############# Beiträge zu globalen constraints ############
 
@@ -1650,7 +1647,7 @@ class Flow(Element):
         if self.costsPerFlowHour is not None:
             # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
             # variable_costs          = Summand(self.model.var_val, np.multiply(self.costsPerFlowHour, model.dtInHours))
-            # globalComp.costsOfOperating_eq.addSummand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
+            # globalComp.costsOfOperating_eq.add_summand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.model.var_val, self.costsPerFlowHour,
                                            system_model.dtInHours)
@@ -1715,11 +1712,11 @@ class Flow(Element):
 
 # class cBeforeValue :
 
-#   def __init__(self, modelingElement, var, esBeforeValues, beforeValueIsStartValue):
+#   def __init__(self, modelingElement, var, esBeforeValues, is_start_value):
 #     self.esBeforeValues  = esBeforeValues # Standardwerte für Simulationsstart im Energiesystem
 #     self.modelingElement = modelingElement 
 #     self.var             = var
-#     self.beforeValueIsStartValue =beforeValueIsStartValue
+#     self.is_start_value =is_start_value
 
 #   def getBeforeValue(self):
 #     if
@@ -1992,7 +1989,7 @@ class System:
         # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
 
         # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von chosenEsTimeIndexe abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
-        # --> ist aber nicht sauber durchimplementiert in den ganzehn addSummand()-Befehlen!!
+        # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
         timeIndexe = range(len(self.model.time_indices))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:
@@ -2028,7 +2025,7 @@ class System:
             element.addShareToGlobals(self.globalComp, self.model)
 
             # transform to Math:
-        self.model.transform2MathModel()
+        self.model.to_math_model()
 
         return self.model
 
@@ -2174,7 +2171,7 @@ class System:
         if not structured:
             aList = []
             for aVar in self.model.variables:
-                aList.append(aVar.getStrDescription())
+                aList.append(aVar.get_str_description())
             return aList
 
         # struktur:
@@ -2225,7 +2222,7 @@ class System:
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe) -> Tuple:
-        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(len(self.timeSeries))
+        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(length(self.timeSeries))
         # Zeitreihen:
         timeSeries = self.timeSeries[chosenEsTimeIndexe]
         # next timestamp as endtime:
@@ -2320,7 +2317,7 @@ class Calculation:
         self.TSlistForAggregation = None  # list of timeseries for aggregation
         # assert from_index < to_index
         # assert from_index >= 0
-        # assert to_index <= len(self.system.timeSeries)-1
+        # assert to_index <= length(self.system.timeSeries)-1
 
         # Wenn chosenEsTimeIndexe = None, dann alle nehmen
         if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.timeSeries))
@@ -2453,10 +2450,10 @@ class Calculation:
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 segmentModBoxBefore = self.segmentModBoxList[i - 1]
-                segmentModBox.beforeValueSet = StartValue(segmentModBoxBefore,
-                                                          segmentModBoxBefore.realNrOfUsedSteps - 1)
-                print('### beforeValueSet: ###')
-                segmentModBox.beforeValueSet.print()
+                segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
+                                                           segmentModBoxBefore.realNrOfUsedSteps - 1)
+                print('### before_values: ###')
+                segmentModBox.before_values.print()
                 print('#######################')
                 # transferStartValues(segment, segmentBefore)
 
@@ -2476,7 +2473,7 @@ class Calculation:
             t_start_solving = time.time()
 
             segmentModBox.solve(**solverProps,
-                                logfileName=self.paths_Log[i])  # keine SolverOutput-Anzeige, da sonst zu viel
+                                logfile_name=self.paths_Log[i])  # keine SolverOutput-Anzeige, da sonst zu viel
             self.durations['solving'] += round(time.time() - t_start_solving, 2)
             ## results adding:
             self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
@@ -2577,7 +2574,7 @@ class Calculation:
         self.TScollectionForAgg.print()
 
         import pandas as pd
-        # seriesDict = {i : self.TSlistForAggregation[i].active_data_vector for i in range(len(self.TSlistForAggregation))}
+        # seriesDict = {i : self.TSlistForAggregation[i].active_data_vector for i in range(length(self.TSlistForAggregation))}
         df_OriginalData = pd.DataFrame(self.TScollectionForAgg.seriesDict,
                                        index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
 
@@ -2694,7 +2691,7 @@ class Calculation:
         if self.calcType not in ['full', 'aggregated']:
             raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
         system_model = self.system_models[0]
-        system_model.solve(**solverProps, logfileName=self.paths_Log[0])
+        system_model.solve(**solverProps, logfile_name=self.paths_Log[0])
 
         if saveResults:
             self._saveSolveInfos()
@@ -2791,7 +2788,7 @@ class Calculation:
                         aReferedVariable: VariableTS
                         withEnd = isinstance(aReferedVariable, VariableTS) \
                                   and aReferedVariable.activated_beforeValues \
-                                  and aReferedVariable.beforeValueIsStartValue
+                                  and aReferedVariable.before_value_is_start_value
 
                         # nested:
 

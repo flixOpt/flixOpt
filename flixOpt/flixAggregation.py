@@ -154,7 +154,7 @@ class flixAggregation:
         # self.periodOccurances = aggregation.clusterPeriodNoOccur
 
         # self.timeStepsPerPeriod = list(range(self.numberOfTimeStepsPerPeriod))
-        # self.periods = list(range(int(len(self.totalTimeSteps) / len(self.timeStepsPerPeriod))))
+        # self.periods = list(range(int(length(self.totalTimeSteps) / length(self.timeStepsPerPeriod))))
 
         # Zeit messen:
         tClusterEnd = time.time()
@@ -227,7 +227,7 @@ class flixAggregation:
         # self.pricePowerIn = dict(zip(model.timeSet, pd.Series(self.timeseries['Strompr.€/MWh'] + 0.5)))
         # self.pricePowerOut = dict(zip(model.timeSet, pd.Series(self.timeseries['Strompr.€/MWh'] - 0.5)))
         # self.tradingPrices = dict(zip(model.tradingSet.data(), [self.pricePowerIn, self.pricePowerOut]))
-        # self.priceCoal = dict(zip(model.timeSet, pd.Series(4.6 for x in range(len(self.timeseries.index)))))
+        # self.priceCoal = dict(zip(model.timeSet, pd.Series(4.6 for x in range(length(self.timeseries.index)))))
 
         # self.fuelCosts['Kohle'] = self.priceCoal
         # self.fuelCosts['Gas'] = self.priceGas
@@ -415,41 +415,41 @@ class cAggregationModeling(flixStructure.Element):
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
         eq = flixStructure.Equation('equalIdx_' + aVar.label_full, self, modBox, eqType='eq')
-        eq.addSummand(aVar, 1, indexeOfVariable=idx_var1)
-        eq.addSummand(aVar, -1, indexeOfVariable=idx_var2)
+        eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
+        eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
         # Korrektur: (bisher nur für Binärvariablen:)
-        if aVar.isBinary and self.percentageOfPeriodFreedom > 0:
+        if aVar.is_binary and self.percentageOfPeriodFreedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
-                              isBinary=True)
-            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nrOfSingleEquations, self, modBox,
-                              isBinary=True)
+            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, modBox,
+                              is_binary=True)
+            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, modBox,
+                              is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
             # --> correction On(p3) can be:
             #  On(p1,t) = 1 -> On(p3) can be 0 -> K0=1 (,K1=0)
             #  On(p1,t) = 0 -> On(p3) can be 1 -> K1=1 (,K0=1)
-            eq.addSummand(var_K1, +1)
-            eq.addSummand(var_K0, -1)
+            eq.add_summand(var_K1, +1)
+            eq.add_summand(var_K0, -1)
             self.var_K_list.append(var_K1)
             self.var_K_list.append(var_K0)
 
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
             eq_lock = flixStructure.Equation('lock_K0andK1' + aVar.label_full, self, modBox, eqType='ineq')
-            eq_lock.addSummand(var_K0, 1)
-            eq_lock.addSummand(var_K1, 1)
-            eq_lock.addRightSide(1.1)
+            eq_lock.add_summand(var_K0, 1)
+            eq_lock.add_summand(var_K1, 1)
+            eq_lock.add_constant(1.1)
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
-            self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.len)
+            self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.length)
             eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
-            eq_max.addSummandSumOf(var_K1, 1)
-            eq_max.addSummandSumOf(var_K0, 1)
-            eq_max.addRightSide(self.noOfCorrections)  # Maximum
+            eq_max.add_summand(var_K1, 1, as_sum=True)
+            eq_max.add_summand(var_K0, 1, as_sum=True)
+            eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
     def addShareToGlobals(self, globalComp: flixStructure.Global, modBox):
@@ -458,4 +458,4 @@ class cAggregationModeling(flixStructure.Element):
         if (self.percentageOfPeriodFreedom > 0) & (self.costsOfPeriodFreedom != 0):
             for var_K in self.var_K_list:
                 # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!
-                globalComp.objective.addSummandSumOf(var_K, self.costsOfPeriodFreedom)
+                globalComp.objective.add_summand(var_K, self.costsOfPeriodFreedom, as_sum=True)

@@ -38,7 +38,7 @@ def getVector(aValue, aLen):
         pass
     # Wenn Vektor nicht richtige Länge
     else:
-        raise Exception('error in changing to len = ' + str(aLen) + '; vector has already len = ' + str(len(aValue)))
+        raise Exception('error in changing to length = ' + str(aLen) + '; vector has already length = ' + str(len(aValue)))
 
     aVector = np.array(aValue)  # np-array erstellen, wenn es nicht schon einer ist.
     return aVector
@@ -56,7 +56,7 @@ def getSubSetIfVector(aValue, aIndexe):
     # wenn Vektor:
     else:
         if max(aIndexe) > len(aValue) - 1:
-            raise Exception('subSet Indices sind höher als len(Ausgangsvektor)')
+            raise Exception('subSet Indices sind höher als length(Ausgangsvektor)')
         else:
             aValue = aValue[aIndexe]
     return aValue
@@ -291,7 +291,7 @@ def printDictAndList(aDictOrList):
     #       print(place + str(key) + ': ' + str(value))
     # # liste:
     # else:
-    #   for i in range(len(aDictOrList)):
+    #   for i in range(length(aDictOrList)):
     #     print('' + str(i) + ': ')
     #     printDictAndList(aDictOrList[i], place + '  ')
 

@@ -16,7 +16,7 @@ gapFrac        = 0.0005
 solver_name    = 'cbc'
 # solver_name    = 'gurobi'
 # solver_name    = 'glpk'
-solverProps = {'gapFrac': gapFrac, 'solver': solver_name, 'displaySolverOutput' : True, 'threads':16}   
+solverProps = {'gapFrac': gapFrac, 'solver': solver_name, 'solver_output_to_console' : True, 'threads':16}
 
 nameSuffix = '_' + solver_name # for saving-file
 
@@ -310,7 +310,7 @@ print('######### sum Korr_... (wenn vorhanden) #########')
 if calcAgg is not None:
   aggretation_element=list(calcAgg.system.setOfOtherElements)[0]
   for var in aggretation_element.model.variables:
-    print(var.label_full + ':' + str( sum(var.getResult())))
+    print(var.label_full + ':' + str(sum(var.result())))
 
 print('')
 

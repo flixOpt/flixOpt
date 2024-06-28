@@ -21,9 +21,9 @@ timelimit = 3600 # seconds until solver abort
 # solver_name = 'gurobi'
 solver_name = 'highs'
 solverProps = {'gapFrac': gapFrac,
-               'timelimit': timelimit,
+               'time_limit_seconds': timelimit,
                'solver': solver_name, 
-               'displaySolverOutput' : displaySolverOutput,
+               'solver_output_to_console' : displaySolverOutput,
                }
 
 #####################
@@ -208,7 +208,7 @@ print(aCalc.results['Boiler']['Q_th']['val']) # access through dict
 print('way 2:')
 print(aCalc.results_struct.Boiler.Q_th.val) # access matlab-struct like
 print('way 3:')
-print(aBoiler.Q_th.model.var_val.getResult()) # access directly through component/flow-variables
+print(aBoiler.Q_th.model.var_val.result()) # access directly through component/flow-variables
 #    (warning: there are only temporarily the results of the last executed solve-command of the energy-system)
 
 # 2. post-processing access:
