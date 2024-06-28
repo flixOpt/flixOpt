@@ -226,7 +226,7 @@ class LinearTransformer(Component):
         else:
             self.feature_linSegments.declare_vars_and_eqs(modBox)
 
-    def doModeling(self, modBox: SystemModel, timeIndexe):
+    def do_modeling(self, modBox: SystemModel, timeIndexe):
         """
         Durchführen der Modellierung?
 
@@ -234,7 +234,7 @@ class LinearTransformer(Component):
         :param timeIndexe:
         :return:
         """
-        super().doModeling(modBox, timeIndexe)
+        super().do_modeling(modBox, timeIndexe)
         # factor_Sets:
         if self.segmentsOfFlows is None:
             # Transformer-Constraints:
@@ -266,7 +266,7 @@ class LinearTransformer(Component):
         # (linear) segments:
         # Zusammenhänge zw. inputs & outputs können auch vollständig über Segmente beschrieben werden:
         else:
-            self.feature_linSegments.doModeling(modBox, timeIndexe)
+            self.feature_linSegments.do_modeling(modBox, timeIndexe)
 
     def print(self, shiftChars):
         """
@@ -812,7 +812,7 @@ class Storage(Component):
         initialStates['chargeState0_inFlowHours'] = charge_state[timeIndexe[0]]
         return initialStates
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, modBox, timeIndexe):
         """
         Durchführen der Modellierung?
 
@@ -820,10 +820,10 @@ class Storage(Component):
         :param timeIndexe:
         :return:
         """
-        super().doModeling(modBox, timeIndexe)
+        super().do_modeling(modBox, timeIndexe)
 
         # Gleichzeitiges Be-/Entladen verhindern:
-        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.doModeling(modBox, timeIndexe)
+        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.do_modeling(modBox, timeIndexe)
 
         # % Speicherladezustand am Start
         if self.chargeState0_inFlowHours is None:
@@ -880,7 +880,7 @@ class Storage(Component):
         self.eq_nettoFlow.add_summand(self.outFlow.model.var_val, -1)
 
         if self.featureInvest is not None:
-            self.featureInvest.doModeling(modBox, timeIndexe)
+            self.featureInvest.do_modeling(modBox, timeIndexe)
 
         # ############# Gleichungen ##########################
         # % Speicherleistung an Bilanzgrenze / Speicher-Ladung / Speicher-Entladung
@@ -984,7 +984,7 @@ class SourceAndSink(Component):
         """
         super().declare_vars_and_eqs(modBox)
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, modBox, timeIndexe):
         """
         Durchführen der Modellierung?
 
@@ -992,10 +992,10 @@ class SourceAndSink(Component):
         :param timeIndexe:
         :return:
         """
-        super().doModeling(modBox, timeIndexe)
+        super().do_modeling(modBox, timeIndexe)
         # Entweder Sink-Flow oder Source-Flow aktiv. Nicht beide Zeitgleich!
         if self.featureAvoidInAndOutAtOnce is not None:
-            self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
+            self.featureAvoidInAndOutAtOnce.do_modeling(modBox, timeIndexe)
 
 
 class Source(Component):
@@ -1174,12 +1174,12 @@ class Transportation(Component):
         """
         super().declare_vars_and_eqs(modBox)
 
-    def doModeling(self, modBox, timeIndexe):
-        super().doModeling(modBox, timeIndexe)
+    def do_modeling(self, modBox, timeIndexe):
+        super().do_modeling(modBox, timeIndexe)
 
         # not both directions at once:
         if self.avoidFlowInBothDirectionsAtOnce and (
-                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
+                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.do_modeling(modBox, timeIndexe)
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)

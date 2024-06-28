@@ -102,7 +102,7 @@ class cFeatureLinearSegmentVars(cFeature):
             # Segmentvariablen erstellen:
             aSegment.declare_vars_and_eqs(modBox)
 
-    def doModeling(self, modBox: SystemModel, timeIndexe):
+    def do_modeling(self, modBox: SystemModel, timeIndexe):
         #########################################
         ## 1. Gleichungen für: Nur ein Segment kann aktiv sein! ##
         # eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0 
@@ -262,7 +262,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
                     self.nrOfExistingOn_vars += 1
                 i += 1
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, modBox, timeIndexe):
         # Nur 1 Flow aktiv! Nicht mehrere Zeitgleich!    
         # "classic":
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
@@ -416,7 +416,7 @@ class cFeatureOn(cFeature):
             self.model.var_switchOff = None
             self.model.var_nrSwitchOn = None
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, modBox, timeIndexe):
         eqsOwner = self
         if self.useOn:
             self.__addConstraintsForOn(eqsOwner, self.flowsDefiningOn, modBox, timeIndexe)
@@ -700,8 +700,8 @@ class cFeature_ShareSum(cFeature):
             self.eq_sum_TS = Equation('bilanz', self, modBox)
         self.eq_sum = Equation('sum', self, modBox)
 
-    def doModeling(self, modBox, timeIndexe):
-        self.shares.doModeling(modBox, timeIndexe)
+    def do_modeling(self, modBox, timeIndexe):
+        self.shares.do_modeling(modBox, timeIndexe)
         if self.sharesAreTS:
             # eq: sum_TS = sum(share_TS_i) # TS
             self.eq_sum_TS.add_summand(self.model.var_sum_TS, -1)
@@ -809,7 +809,7 @@ class cFeatureShares(cFeature):
     def __init__(self, label, owner):
         super().__init__(label, owner)
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, modBox, timeIndexe):
         pass
 
     def declare_vars_and_eqs(self, modBox):
@@ -1043,7 +1043,7 @@ class cFeatureInvest(cFeature):
         self.model.var_list_investCosts_segmented.append(var_investForEffect)
         return var_investForEffect
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, modBox, timeIndexe):
         assert self.definingVar is not None, 'setDefiningVar() still not executed!'
         # wenn var_isInvested existiert:    
         if self.args.optional:
@@ -1060,7 +1060,7 @@ class cFeatureInvest(cFeature):
 
             # if linear Segments defined:
         if self.featureLinearSegments is not None:
-            self.featureLinearSegments.doModeling(modBox, timeIndexe)
+            self.featureLinearSegments.do_modeling(modBox, timeIndexe)
 
     def _add_fixEq_of_definingVar_with_var_investmentSize(self, modBox):
 

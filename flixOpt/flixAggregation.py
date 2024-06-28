@@ -351,7 +351,7 @@ class cAggregationModeling(flixStructure.Element):
     def declare_vars_and_eqs(self, modBox: flixStructure.SystemModel):
         super().declare_vars_and_eqs(modBox)
 
-    def doModeling(self, modBox: flixStructure.SystemModel, timeIndexe):
+    def do_modeling(self, modBox: flixStructure.SystemModel, timeIndexe):
 
         if self.listOfElementsToClusterize is None:
             # Alle:
