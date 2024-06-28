@@ -393,42 +393,32 @@ class Element:
 
         return aData, aVars
 
-    def getEqsAsStr(self):
+    def equations_as_str(self):
 
         ## subelemente durchsuchen:
         subs = {}
         for aSubElement in self.sub_elements:
-            subs[aSubElement.label] = aSubElement.getEqsAsStr()  # rekursiv
+            subs[aSubElement.label] = aSubElement.equations_as_str()  # rekursiv
         ## Element:
 
         # wenn sub-eqs, dann dict:
         if not (subs == {}):
             eqsAsStr = {}
-            eqsAsStr['_self'] = self.model.getEqsAsStr()  # zuerst eigene ...
+            eqsAsStr['_self'] = self.model.equations_as_str()  # zuerst eigene ...
             eqsAsStr.update(subs)  # ... dann sub-Eqs
         # sonst liste:
         else:
-            eqsAsStr = self.model.getEqsAsStr()
+            eqsAsStr = self.model.equations_as_str()
 
         return eqsAsStr
 
-    def getVarsAsStr(self) -> List:
+    def variables_as_str(self) -> List:
         aList = []
-        aList += self.model.getVarsAsStr()
+        aList += self.model.variables_as_str()
         for aSubElement in self.sub_elements:
-            aList += aSubElement.getVarsAsStr()  # rekursiv
+            aList += aSubElement.variables_as_str()  # rekursiv
 
         return aList
-
-    def printEqs(self, shiftChars) -> None:
-        print(shiftChars + '·' + self.label + ':')
-        print(yaml.dump(self.getEqsAsStr(),
-                        allow_unicode=True))
-
-    def printVars(self, shiftChars) -> None:
-        print(shiftChars + self.label + ':')
-        print(yaml.dump(self.getVarsAsStr(),
-                        allow_unicode=True))
 
     def getEqsVarsOverview(self) -> Dict:
         aDict = {}
@@ -453,14 +443,8 @@ class ElementModel:
         self.ineqs = []
         self.objective = None
 
-    def getVar(self, label):
-        return next((x for x in self.variables if x.label == label), None)
-
-    def getEq(self, label):
-        return next((x for x in (self.eqs + self.ineqs) if x.label == label), None)
-
     # Eqs, Ineqs und Objective als Str-Description:
-    def getEqsAsStr(self) -> List:
+    def equations_as_str(self) -> List:
         # Wenn Glg vorhanden:
         eq: Equation
         aList = []
@@ -471,19 +455,11 @@ class ElementModel:
             aList.append(self.objective.as_str())
         return aList
 
-    def getVarsAsStr(self) -> List:
+    def variables_as_str(self) -> List:
         aList = []
         for aVar in self.variables:
             aList.append(aVar.get_str_description())
         return aList
-
-    def printEqs(self, shiftChars) -> None:
-        yaml.dump(self.getEqsAsStr(),
-                  allow_unicode=True)
-
-    def printVars(self, shiftChars) -> None:
-        yaml.dump(self.getVarsAsStr(),
-                  allow_unicode=True)
 
 
 class Effect(Element):
@@ -2118,29 +2094,29 @@ class System:
         aDict['Components'] = aSubDict
         aComp: Element
         for aComp in self.listOfComponents:
-            aSubDict[aComp.label] = aComp.getEqsAsStr()
+            aSubDict[aComp.label] = aComp.equations_as_str()
 
         # buses:
         aSubDict = {}
         aDict['buses'] = aSubDict
         for aBus in self.setOfBuses:
-            aSubDict[aBus.label] = aBus.getEqsAsStr()
+            aSubDict[aBus.label] = aBus.equations_as_str()
 
         # globals:
-        aDict['globals'] = self.globalComp.getEqsAsStr()
+        aDict['globals'] = self.globalComp.equations_as_str()
 
         # flows:
         aSubDict = {}
         aDict['flows'] = aSubDict
         for aComp in self.listOfComponents:
             for aFlow in (aComp.inputs + aComp.outputs):
-                aSubDict[aFlow.label_full] = aFlow.getEqsAsStr()
+                aSubDict[aFlow.label_full] = aFlow.equations_as_str()
 
         # others
         aSubDict = {}
         aDict['others'] = aSubDict
         for element in self.setOfOtherElements:
-            aSubDict[element.label] = element.getEqsAsStr()
+            aSubDict[element.label] = element.equations_as_str()
 
         return aDict
 
@@ -2174,24 +2150,24 @@ class System:
             aDict['Comps'] = subDict
             # comps:
             for aComp in self.listOfComponents:
-                subDict[aComp.label] = aComp.getVarsAsStr()
+                subDict[aComp.label] = aComp.variables_as_str()
                 for aFlow in aComp.inputs + aComp.outputs:
-                    subDict[aComp.label] += aFlow.getVarsAsStr()
+                    subDict[aComp.label] += aFlow.variables_as_str()
 
             # buses:
             subDict = {}
             aDict['buses'] = subDict
             for bus in self.setOfBuses:
-                subDict[bus.label] = bus.getVarsAsStr()
+                subDict[bus.label] = bus.variables_as_str()
 
             # globals:
-            aDict['globals'] = self.globalComp.getVarsAsStr()
+            aDict['globals'] = self.globalComp.variables_as_str()
 
             # others
             aSubDict = {}
             aDict['others'] = aSubDict
             for element in self.setOfOtherElements:
-                aSubDict[element.label] = element.getVarsAsStr()
+                aSubDict[element.label] = element.variables_as_str()
 
             return aDict
 
