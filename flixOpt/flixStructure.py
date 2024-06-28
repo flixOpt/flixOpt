@@ -531,19 +531,11 @@ class Effect(Element):
         super().__init__(label, **kwargs)
         self.label = label
         self.unit = unit
-        # self.allFlow     = allFlow
         self.description = description
         self.is_standard = is_standard
         self.is_objective = is_objective
-        if specific_share_to_other_effects_operation is None:
-            self.specific_share_to_other_effects_operation = {}
-        else:
-            self.specific_share_to_other_effects_operation = specific_share_to_other_effects_operation
-        if specific_share_to_other_effects_invest is None:
-            self.specific_share_to_other_effects_invest = {}
-        else:
-            self.specific_share_to_other_effects_invest = specific_share_to_other_effects_invest
-
+        self.specific_share_to_other_effects_operation = specific_share_to_other_effects_operation or {}
+        self.specific_share_to_other_effects_invest = specific_share_to_other_effects_invest or {}
         self.minimum_operation = minimum_operation
         self.maximum_operation = maximum_operation
         self.minimum_operation_per_hour = minimum_operation_per_hour
@@ -554,22 +546,21 @@ class Effect(Element):
         self.maximum_total = maximum_total
 
         #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ):
-        for effectType, share in self.specific_share_to_other_effects_operation.items():
-            # value überschreiben durch TS:
-            TS_name = 'specificShareToOtherEffect' + '_' + effectType.label
-            self.specific_share_to_other_effects_operation[effectType] = TimeSeries(TS_name,
-                                                                                    specific_share_to_other_effects_operation[
-                                                                                    effectType], self)
+        for effect, share in self.specific_share_to_other_effects_operation.items():
+            name_of_ts = 'specificShareToOtherEffect' + '_' + effect.label
+            self.specific_share_to_other_effects_operation[effect] = TimeSeries(
+                name_of_ts, specific_share_to_other_effects_operation[effect], self)
 
         # ShareSums:
         #TODO: Why as attributes, and not only in sub_elements?
-        self.operation = cFeature_ShareSum(label='operation', owner=self, sharesAreTS=True,
-                                           minOfSum=self.minimum_operation, maxOfSum= self.maximum_operation,
-                                           min_per_hour=self.minimum_operation_per_hour, max_per_hour=self.maximum_operation_per_hour)
-        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False, minOfSum=self.minimum_invest,
-                                        maxOfSum=self.maximum_invest)
-        self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.minimum_total,
-                                     maxOfSum=self.maximum_total)
+        self.operation = cFeature_ShareSum(
+            label='operation', owner=self, sharesAreTS=True,
+            minOfSum=self.minimum_operation, maxOfSum=self.maximum_operation,
+            min_per_hour=self.minimum_operation_per_hour, max_per_hour=self.maximum_operation_per_hour)
+        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False,
+                                        minOfSum=self.minimum_invest, maxOfSum=self.maximum_invest)
+        self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False,
+                                     minOfSum=self.minimum_total, maxOfSum=self.maximum_total)
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
