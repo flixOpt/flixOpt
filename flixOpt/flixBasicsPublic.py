@@ -10,38 +10,47 @@ import numpy as np
 
 # Anmerkung: TimeSeriesRaw separat von TimeSeries wg. Einfachheit für Anwender
 class TimeSeriesRaw:
-    '''
-    timeseries class for transmit timeseries AND special characteristics of timeseries, 
-    i.g. to define weights needed in calcType 'aggregated'
-        EXAMPLE solar:
-        you have several solar timeseries. These should not be overweighted 
-        compared to the remaining timeseries (i.g. heat load, price)!
-        val_rel_solar1 = cTS(sol_array_1, type = 'solar')
-        val_rel_solar2 = cTS(sol_array_2, type = 'solar')
-        val_rel_solar3 = cTS(sol_array_3, type = 'solar')    
-        --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3 
-        (instead of standard weight = 1)
-        
-    Parameters
-    ----------
-    value: 
-        scalar, array, np.array.
-    agg_weight: 
-        weight for calcType 'aggregated'; between 0..1, normally 1.    
-    '''
+    def __init__(self,
+                 value: Union[int, float, np.ndarray],
+                 agg_group: Optional[str] = None,
+                 agg_weight: Optional[float] = None):
+        """
+        timeseries class for transmit timeseries AND special characteristics of timeseries,
+        i.g. to define weights needed in calcType 'aggregated'
+            EXAMPLE solar:
+            you have several solar timeseries. These should not be overweighted
+            compared to the remaining timeseries (i.g. heat load, price)!
+            val_rel_solar1 = TimeSeriesRaw(sol_array_1, type = 'solar')
+            val_rel_solar2 = TimeSeriesRaw(sol_array_2, type = 'solar')
+            val_rel_solar3 = TimeSeriesRaw(sol_array_3, type = 'solar')
+            --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3
+            (instead of standard weight = 1)
 
-    def __init__(self, value: Union[int, float, np.ndarray], agg_type=None, agg_weight=None):
+        Parameters
+        ----------
+        value : Union[int, float, np.ndarray]
+            The timeseries data, which can be a scalar, array, or numpy array.
+        agg_group : str, optional
+            The group this TimeSeriesRaw is a part of. agg_weight is split between members of a group. Default is None.
+        agg_weight : float, optional
+            The weight for calcType 'aggregated', should be between 0 and 1. Default is None.
+
+        Raises
+        ------
+        Exception
+            If both agg_group and agg_weight are set, an exception is raised.
+        """
         self.value = value
-        self.agg_type = agg_type
+        self.agg_group = agg_group
         self.agg_weight = agg_weight
-        if (agg_type is not None) and (agg_weight is not None):
-            raise Exception('Either <agg_type> or explicit <agg_weigth> can be set. Not both!')
+        if (agg_group is not None) and (agg_weight is not None):
+            raise Exception('Either <agg_group> or explicit <agg_weigth> can be set. Not both!')
 
     def __repr__(self):
-        return f"<cTSraw agg_type={self.agg_type!r}, agg_weight={self.agg_weight!r}>"
+        return f"<cTSraw agg_group={self.agg_group!r}, agg_weight={self.agg_weight!r}>"
 
     def __str__(self):
-        agg_info = f"agg_type={self.agg_type}, agg_weight={self.agg_weight}" if self.agg_type or self.agg_weight else "no aggregation info"
+        agg_info = f"agg_group={self.agg_group}, agg_weight={self.agg_weight}" if self.agg_group or self.agg_weight else "no aggregation info"
         return f"Timeseries: {agg_info}"
 
 
