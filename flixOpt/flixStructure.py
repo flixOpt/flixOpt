@@ -615,15 +615,13 @@ class EffectCollection(List[Effect]):
     '''
 
     # return standard effectType:
-    def standardType(self) -> Effect:
+    def standard_effect(self) -> Optional[Effect]:
         aEffect: Effect
-        aStandardEffect = None
-        # TODO: eleganter nach attribut suchen:
         for aEffectType in self:
-            if aEffectType.is_standard: aStandardEffect = aEffectType
-        return aStandardEffect
+            if aEffectType.is_standard:
+                return aEffectType
 
-    def objectiveEffect(self) -> Effect:
+    def objective_effect(self) -> Effect:
         aEffect: Effect
         aObjectiveEffect = None
         # TODO: eleganter nach attribut suchen:
@@ -918,7 +916,7 @@ class Global(Element):
             # Falls None, dann Standard-effekt nutzen:
             effectType: Effect
             if effectType is None:
-                effectType = self.listOfEffectTypes.standardType()
+                effectType = self.listOfEffectTypes.standard_effect()
             elif effectType not in self.listOfEffectTypes:
                 raise Exception('Effect \'' + effectType.label + '\' was not added to model (but used in some costs)!')
 
@@ -984,7 +982,7 @@ class Global(Element):
         self.objective.add_summand(self.penalty.model.var_sum, 1)
 
         # Definierter Effekt als Zielfunktion:
-        objectiveEffect = self.listOfEffectTypes.objectiveEffect()
+        objectiveEffect = self.listOfEffectTypes.objective_effect()
         if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
         self.objective.add_summand(objectiveEffect.operation.model.var_sum, 1)
         self.objective.add_summand(objectiveEffect.invest.model.var_sum, 1)
@@ -1805,10 +1803,10 @@ class System:
             self._checkIfUniqueElement(aNewEffect, self.listOfEffectTypes)
 
             # Wenn Standard-Effekt, und schon einer vorhanden:
-            if (aNewEffect.is_standard) and (self.listOfEffectTypes.standardType() is not None):
+            if (aNewEffect.is_standard) and (self.listOfEffectTypes.standard_effect() is not None):
                 raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
             # Wenn Objective-Effekt, und schon einer vorhanden:
-            if (aNewEffect.is_objective) and (self.listOfEffectTypes.objectiveEffect() is not None):
+            if (aNewEffect.is_objective) and (self.listOfEffectTypes.objective_effect() is not None):
                 raise Exception('objectiveEffekt ist bereits belegt mit ' + self.objectiveEffect.label)
 
             # in liste ergänzen:
