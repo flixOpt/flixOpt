@@ -810,7 +810,7 @@ class Component(Element):
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
         self.featureOn.add_share_to_globals(globalComp, system_model)
 
-    def getDescrAsStr(self) -> Dict:
+    def description_as_str(self) -> Dict:
 
         descr = {}
         inhalt = {'In-Flows': [], 'Out-Flows': []}
@@ -841,10 +841,6 @@ class Component(Element):
                 inhalt['color'] = str(self.color)
 
         return descr
-
-    def print(self, shiftChars) -> None:
-        aFlow: Flow
-        print(yaml.dump(self.getDescrAsStr(), allow_unicode=True))
 
 
 # komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
@@ -2048,12 +2044,12 @@ class System:
         modelDescription['buses'] = {}
         for aBus in self.setOfBuses:
             aBus: Bus
-            modelDescription['buses'].update(aBus.getDescrAsStr())
+            modelDescription['buses'].update(aBus.description_as_str())
         # Comps:
         modelDescription['components'] = {}
         aComp: Component
         for aComp in self.listOfComponents:
-            modelDescription['components'].update(aComp.getDescrAsStr())
+            modelDescription['components'].update(aComp.description_as_str())
 
         # Flows:
         flowList = []
