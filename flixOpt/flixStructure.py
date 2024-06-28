@@ -420,7 +420,7 @@ class Element:
 
         return aList
 
-    def getEqsVarsOverview(self) -> Dict:
+    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
         aDict = {}
         aDict['no eqs'] = len(self.model.eqs)
         aDict['no eqs single'] = sum([eq.nr_of_single_equations for eq in self.model.eqs])
