@@ -259,13 +259,13 @@ class Element:
         return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
 
     @property  # subElements of all layers
-    def subElements_all(self) -> list:  #TODO: List[Element] doesnt work...
-        allSubElements = []  # wichtig, dass neues Listenobjekt!
-        allSubElements += self.subElements
+    def all_sub_elements(self) -> list:  #TODO: List[Element] doesnt work...
+        all_sub_elements = []  # wichtig, dass neues Listenobjekt!
+        all_sub_elements += self.subElements
         for subElem in self.subElements:
             # all subElements of subElement hinzufügen:
-            allSubElements += subElem.subElements_all
-        return allSubElements
+            all_sub_elements += subElem.all_sub_elements
+        return all_sub_elements
 
     # TODO: besser occupied_args
     def __init__(self, label: str, **kwargs):
@@ -321,9 +321,6 @@ class Element:
 
     # 1.
     def finalize(self) -> None:
-        # print('finalize ' + self.label)
-        # gleiches für alle sub Elements:
-        element: Element
         for element in self.subElements:
             element.finalize()
 
@@ -1738,7 +1735,7 @@ class System:
 
         def getInvestFeaturesOfElement(element) -> List[cFeatureInvest]:
             investFeatures = []
-            for aSubComp in element.subElements_all:
+            for aSubComp in element.all_sub_elements:
                 if isinstance(aSubComp, cFeatureInvest):
                     investFeatures.append(aSubComp)
                 investFeatures += getInvestFeaturesOfElement(aSubComp)  # recursive!
