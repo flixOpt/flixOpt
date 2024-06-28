@@ -683,9 +683,9 @@ class Component(Element):
 
         '''
         if on_hours_total_min is not None:
-            raise NotImplementedError("'on_hours_total_min' is not implemented yet for Components. Use FLow directly instead")
+            raise NotImplementedError("'on_hours_total_min' is not implemented yet for Components. Use Flow directly instead")
         if on_hours_total_max is not None:
-            raise NotImplementedError("'on_hours_total_max' is not implemented yet for Components. Use FLow directly instead")
+            raise NotImplementedError("'on_hours_total_max' is not implemented yet for Components. Use Flow directly instead")
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
@@ -700,22 +700,10 @@ class Component(Element):
         # % On Werte vorher durch Flow-values bestimmen:    
         # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
 
+        #TODO: Dict instead of list?
         self.inputs = []  # list of flows
         self.outputs = []  # list of flows
         self.isStorage = False
-
-        # self.base = None # Energysystem I Belong to     
-
-        self.subComps = []  # list of subComponents # für mögliche Baumstruktur!
-
-    # # TODO: ist das noch notwendig?:
-    # def addEnergySystemIBelongTo(self,base): 
-    #   if self.base is not None :
-    #     raise Exception('Komponente ' + self.label + ' wird bereits in anderem Energiesystem verwendet!')
-    #   self.base = base
-    #   # falls subComps existieren:
-    #   for aComp in self.subComps :
-    #     aComp.addEnergySystemIBelongTo(base)
 
     def __str__(self):
         # Representing inputs and outputs by their labels
