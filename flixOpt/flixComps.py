@@ -907,17 +907,17 @@ class Storage(Component):
         # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchEntladeMich,1);
         # obj.ineqs.EntwederLadenOderEntladen.add_constant(1);
 
-    def addShareToGlobals(self, globalComp: Global, system_model):
+    def add_share_to_globals(self, globalComp: Global, system_model):
         """
 
         :param globalComp:
         :param system_model:
         :return:
         """
-        super().addShareToGlobals(globalComp, system_model)
+        super().add_share_to_globals(globalComp, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.addShareToGlobals(globalComp, system_model)
+            self.featureInvest.add_share_to_globals(globalComp, system_model)
 
 
 class SourceAndSink(Component):

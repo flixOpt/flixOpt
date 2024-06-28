@@ -452,7 +452,7 @@ class cAggregationModeling(flixStructure.Element):
             eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
-    def addShareToGlobals(self, globalComp: flixStructure.Global, system_model):
+    def add_share_to_globals(self, globalComp: flixStructure.Global, system_model):
 
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentageOfPeriodFreedom > 0) & (self.costsOfPeriodFreedom != 0):

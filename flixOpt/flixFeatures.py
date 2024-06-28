@@ -610,7 +610,7 @@ class cFeatureOn(cFeature):
         eq_NrSwitchOn.add_summand(self.model.var_nrSwitchOn, 1)
         eq_NrSwitchOn.add_summand(self.model.var_switchOn, -1, as_sum=True)
 
-    def addShareToGlobals(self, globalComp, system_model):
+    def add_share_to_globals(self, globalComp, system_model):
 
         shareHolder = self.owner
         # Anfahrkosten:
@@ -1144,7 +1144,7 @@ class cFeatureInvest(cFeature):
             self.eq_isInvested_2.add_summand(self.model.var_investmentSize, -1)
             self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(system_model.epsilon, self.args.minimum_size))
 
-    def addShareToGlobals(self, globalComp, system_model):
+    def add_share_to_globals(self, globalComp, system_model):
 
         # # fix_effects:
         # wenn fix_effects vorhanden:

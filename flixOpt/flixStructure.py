@@ -221,7 +221,7 @@ class Element:
     1. Element.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
     2. Element.declare_vars_and_eqs() --> Variablen und Eqs definieren.
     3. Element.do_modeling()        --> Modellierung
-    4. Element.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
+    4. Element.add_share_to_globals() --> Beitrag zu Gesamt-Kosten
     """
     system_model: SystemModel
 
@@ -801,14 +801,14 @@ class Component(Element):
         log.debug(str(self.label) + 'do_modeling()')
         self.featureOn.do_modeling(system_model, timeIndexe)
 
-    def addShareToGlobalsOfFlows(self, globalComp, system_model) -> None:
+    def add_share_to_globals_of_flows(self, globalComp, system_model) -> None:
         for aFlow in self.inputs + self.outputs:
-            aFlow.addShareToGlobals(globalComp, system_model)
+            aFlow.add_share_to_globals(globalComp, system_model)
 
     # wird von Kindklassen überschrieben:
-    def addShareToGlobals(self, globalComp, system_model) -> None:
+    def add_share_to_globals(self, globalComp, system_model) -> None:
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
-        self.featureOn.addShareToGlobals(globalComp, system_model)
+        self.featureOn.add_share_to_globals(globalComp, system_model)
 
     def getDescrAsStr(self) -> Dict:
 
@@ -1068,8 +1068,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             eq_busbalance.add_summand(self.excessOut, -1)
             eq_busbalance.add_summand(self.excessIn, 1)
 
-    def addShareToGlobals(self, globalComp, system_model) -> None:
-        super().addShareToGlobals(globalComp, system_model)
+    def add_share_to_globals(self, globalComp, system_model) -> None:
+        super().add_share_to_globals(globalComp, system_model)
         # Strafkosten hinzufügen:
         if self.withExcess:
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessIn,
@@ -1586,7 +1586,7 @@ class Flow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def addShareToGlobals(self, globalComp: Global, system_model) -> None:
+    def add_share_to_globals(self, globalComp: Global, system_model) -> None:
 
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
@@ -1598,10 +1598,10 @@ class Flow(Element):
                                            system_model.dtInHours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
-        self.featureOn.addShareToGlobals(globalComp, system_model)
+        self.featureOn.add_share_to_globals(globalComp, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.addShareToGlobals(globalComp, system_model)
+            self.featureInvest.add_share_to_globals(globalComp, system_model)
 
         ''' in oemof gibt es noch 
              if m.flows[i, o].positive_gradient['ub'][0] is not None:
@@ -1952,8 +1952,8 @@ class System:
             aComp.do_modeling_of_flows(self.model, timeIndexe)
             aComp.do_modeling(self.model, timeIndexe)
 
-            aComp.addShareToGlobalsOfFlows(self.globalComp, self.model)
-            aComp.addShareToGlobals(self.globalComp, self.model)
+            aComp.add_share_to_globals_of_flows(self.globalComp, self.model)
+            aComp.add_share_to_globals(self.globalComp, self.model)
 
         # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
@@ -1961,13 +1961,13 @@ class System:
             log.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
             aBus.do_modeling(self.model, timeIndexe)
-            aBus.addShareToGlobals(self.globalComp, self.model)
+            aBus.add_share_to_globals(self.globalComp, self.model)
 
         # weitere übergeordnete Modellierungen:
         for element in self.setOfOtherElements:
             element.declare_vars_and_eqs(self.model)
             element.do_modeling(self.model, timeIndexe)
-            element.addShareToGlobals(self.globalComp, self.model)
+            element.add_share_to_globals(self.globalComp, self.model)
 
             # transform to Math:
         self.model.to_math_model()
