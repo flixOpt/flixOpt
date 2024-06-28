@@ -639,16 +639,18 @@ class Component(Element):
     basic component class for all components
     '''
     system_model: SystemModel
-    new_init_args = ['label', 'on_valuesBeforeBegin', 'switchOnCosts', 'switchOn_maxNr', 'onHoursSum_min',
-                     'onHoursSum_max', 'costsPerRunningHour', 'exists']
+    new_init_args = ['label', 'on_values_before_begin', 'switch_on_effects', 'switch_on_maximum', 'on_hours_total_min',
+                     'on_hours_total_max', 'on_hour_effects', 'exists']
     not_used_args = ['label']
 
-    def __init__(self, label: str, on_valuesBeforeBegin:Optional[List[Skalar]] = None,
-                 switchOnCosts: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
-                 switchOn_maxNr: Optional[Skalar] = None,
-                 onHoursSum_min: Optional[Skalar] = None,
-                 onHoursSum_max: Optional[Skalar] = None,
-                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+    def __init__(self,
+                 label: str,
+                 on_values_before_begin:Optional[List[Skalar]] = None,
+                 switch_on_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 switch_on_maximum: Optional[Skalar] = None,
+                 on_hours_total_min: Optional[Skalar] = None,
+                 on_hours_total_max: Optional[Skalar] = None,
+                 on_hour_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  exists: Numeric = 1,
                  **kwargs):
         '''
@@ -663,13 +665,13 @@ class Component(Element):
         ----------------------------
         (component is off, if all flows are zero!)
 
-        on_valuesBeforeBegin :  array (TODO: why not scalar?)
+        on_values_before_begin :  array (TODO: why not scalar?)
             Ein(1)/Aus(0)-Wert vor Zeitreihe
-        switchOnCosts : look in Flow for description
-        switchOn_maxNr : look in Flow for description
-        onHoursSum_min : look in Flow for description
-        onHoursSum_max : look in Flow for description
-        costsPerRunningHour : look in Flow for description
+        switch_on_effects : look in Flow for description
+        switch_on_maximum : look in Flow for description
+        on_hours_total_min : look in Flow for description
+        on_hours_total_max : look in Flow for description
+        on_hour_effects : look in Flow for description
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
         **kwargs : TYPE
@@ -680,18 +682,18 @@ class Component(Element):
         None.
 
         '''
-        if onHoursSum_min is not None:
-            raise NotImplementedError("'onHoursSum_min' is not implemented yet for Components. Use FLow directly instead")
-        if onHoursSum_max is not None:
-            raise NotImplementedError("'onHoursSum_max' is not implemented yet for Components. Use FLow directly instead")
+        if on_hours_total_min is not None:
+            raise NotImplementedError("'on_hours_total_min' is not implemented yet for Components. Use FLow directly instead")
+        if on_hours_total_max is not None:
+            raise NotImplementedError("'on_hours_total_max' is not implemented yet for Components. Use FLow directly instead")
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
-        self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
-        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
-        self.switchOn_maxNr = switchOn_maxNr
-        self.onHoursSum_min = onHoursSum_min
-        self.onHoursSum_max = onHoursSum_max
-        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
+        self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
+        self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
+        self.switch_on_maximum = switch_on_maximum
+        self.on_hours_total_min = on_hours_total_min
+        self.on_hours_total_max = on_hours_total_max
+        self.costsPerRunningHour = as_effect_dict_with_ts('on_hour_effects', on_hour_effects, self)
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
@@ -793,9 +795,9 @@ class Component(Element):
         # feature for: On and SwitchOn Vars
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
         flowsDefiningOn = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
-        self.featureOn = cFeatureOn(self, flowsDefiningOn, self.on_valuesBeforeBegin, self.switchOnCosts,
-                                    self.costsPerRunningHour, onHoursSum_min=self.onHoursSum_min,
-                                    onHoursSum_max=self.onHoursSum_max, switchOn_maxNr=self.switchOn_maxNr)
+        self.featureOn = cFeatureOn(self, flowsDefiningOn, self.on_values_before_begin, self.switch_on_effects,
+                                    self.costsPerRunningHour, onHoursSum_min=self.on_hours_total_min,
+                                    onHoursSum_max=self.on_hours_total_max, switchOn_maxNr=self.switch_on_maximum)
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
@@ -1245,7 +1247,7 @@ class Flow(Element):
         iCanSwitchOff : boolean, optional
             flow can be "off", i.e. be zero (only relevant if min_rel > 0) 
             Then a binary var "on" is used. 
-            If any on/off-forcing parameters like "switchOnCosts", "onHours_min" etc. are used, then 
+            If any on/off-forcing parameters like "switch_on_effects", "onHours_min" etc. are used, then
             this is automatically forced.
         onHoursSum_min : scalar, optional
             min. overall sum of operating hours.
@@ -1314,9 +1316,9 @@ class Flow(Element):
         self.onHours_max = None if (onHours_max is None) else TimeSeries('onHours_max', onHours_max, self)
         self.offHours_min = None if (offHours_min is None) else TimeSeries('offHours_min', offHours_min, self)
         self.offHours_max = None if (offHours_max is None) else TimeSeries('offHours_max', offHours_max, self)
-        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
+        self.switchOnCosts = as_effect_dict_with_ts('switch_on_effects', switchOnCosts, self)
         self.switchOn_maxNr = switchOn_maxNr
-        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
+        self.costsPerRunningHour = as_effect_dict_with_ts('on_hour_effects', costsPerRunningHour, self)
         self.sumFlowHours_max = sumFlowHours_max
         self.sumFlowHours_min = sumFlowHours_min
 
@@ -1387,7 +1389,7 @@ class Flow(Element):
             f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
             f"val_rel={self.val_rel}" if self.val_rel else "",
             f"costsPerFlowHour={self.costsPerFlowHour}" if self.costsPerFlowHour else "",
-            f"costsPerRunningHour={self.costsPerRunningHour}" if self.costsPerRunningHour else "",
+            f"on_hour_effects={self.costsPerRunningHour}" if self.costsPerRunningHour else "",
         ]
 
         all_relevant_parts = [part for part in details if part != ""]
@@ -1503,24 +1505,24 @@ class Flow(Element):
 
 
         #
-        # ############## onHoursSum_max: ##############
+        # ############## on_hours_total_max: ##############
         #
 
-        # ineq: sum(var_on(t)) <= onHoursSum_max
+        # ineq: sum(var_on(t)) <= on_hours_total_max
 
         if self.onHoursSum_max is not None:
-            eq_onHoursSum_max = Equation('onHoursSum_max', self, system_model, 'ineq')
+            eq_onHoursSum_max = Equation('on_hours_total_max', self, system_model, 'ineq')
             eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
             eq_onHoursSum_max.add_constant(self.onHoursSum_max / system_model.dtInHours)
 
         #
-        # ############## onHoursSum_max: ##############
+        # ############## on_hours_total_max: ##############
         #
 
-        # ineq: sum(var_on(t)) >= onHoursSum_min
+        # ineq: sum(var_on(t)) >= on_hours_total_min
 
         if self.onHoursSum_min is not None:
-            eq_onHoursSum_min = Equation('onHoursSum_min', self, system_model, 'ineq')
+            eq_onHoursSum_min = Equation('on_hours_total_min', self, system_model, 'ineq')
             eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
             eq_onHoursSum_min.add_constant(-1 * self.onHoursSum_min / system_model.dtInHours)
 
