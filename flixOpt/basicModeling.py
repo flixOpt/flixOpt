@@ -549,6 +549,7 @@ class Equation:
         Exception
             If the variable is None and as_sum is True.
         """
+        # TODO: Functionality to create A Sum of Summand over a specified range of indices? For Limiting stuff per one year...?
         if not isinstance(variable, Variable):
             raise TypeError(f'Error in Equation "{self.label}": no variable given (variable = "{variable}")')
         # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
