@@ -10,9 +10,9 @@ import flixOpt.flixPostprocessing as flixPost
 class BaseTest(unittest.TestCase):
     def setUp(self):
         self.solverProps = {
-            'gapFrac': 0.0001,
+            'mip_gap': 0.0001,
             'time_limit_seconds': 3600,
-            'solver': 'highs',
+            'solver_name': 'highs',
             'solver_output_to_console': True,
         }
 
@@ -253,7 +253,7 @@ class TestComplex(BaseTest):
         es.printVariables()
         es.printEquations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver']}")
+        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
 
         return flixPost.flix_results(aCalc.nameOfCalc).results
 
@@ -298,7 +298,7 @@ class TestComplex(BaseTest):
         es.printVariables()
         es.printEquations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver']}")
+        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
 
         return flixPost.flix_results(aCalc.nameOfCalc).results
 

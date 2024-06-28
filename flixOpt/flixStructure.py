@@ -15,6 +15,7 @@ import numpy as np
 import yaml  # (für json-Schnipsel-print)
 import pprint
 
+import flixOpt.flixStructure
 from . import flixOptHelperFcts as helpers
 from .basicModeling import *  # Modelliersprache
 from .flixBasics import *
@@ -38,7 +39,7 @@ class SystemModel(LinearModel):
         return infos
 
     def __init__(self,
-                 label,
+                 label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
                  system,
                  time_indices: Union[list, range],
@@ -68,12 +69,18 @@ class SystemModel(LinearModel):
         self._infos['str_Vars'] = self.system.getVarsAsStr()
 
     # 'gurobi'
-    def solve(self, gapFrac=0.02, time_limit_seconds=3600, solver='cbc', solver_output_to_console=True, excessThreshold=0.1,
-              logfile_name='solver_log.log', **kwargs):
+    def solve(self,
+              mip_gap: float = 0.02,
+              time_limit_seconds: int = 3600,
+              solver_name: str = 'highs',
+              solver_output_to_console: bool = True,
+              excess_threshold: Union[int, float] = 0.1,
+              logfile_name: str = 'solver_log.log',
+              **kwargs):
         '''        
         Parameters
         ----------
-        gapFrac : TYPE, optional
+        mip_gap : TYPE, optional
             DESCRIPTION. The default is 0.02.
         time_limit_seconds : TYPE, optional
             DESCRIPTION. The default is 3600.
@@ -81,8 +88,8 @@ class SystemModel(LinearModel):
             DESCRIPTION. The default is 'cbc'.
         solver_output_to_console : TYPE, optional
             DESCRIPTION. The default is True.
-        excessThreshold : float, positive!
-            threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
+        excess_threshold : float, positive!
+            threshold for excess: If sum(Excess)>excess_threshold a warning is raised, that an excess occurs
         **kwargs : TYPE
             DESCRIPTION.
   
@@ -107,15 +114,15 @@ class SystemModel(LinearModel):
 
         self.printNoEqsAndVars()
 
-        super().solve(gapFrac, time_limit_seconds, solver, solver_output_to_console, logfile_name, **kwargs)
+        super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
 
-        if solver == 'gurobi':
+        if solver_name == 'gurobi':
             termination_message = self.solver_results['Solver'][0]['Termination message']
-        elif solver == 'glpk':
+        elif solver_name == 'glpk':
             termination_message = self.solver_results['Solver'][0]['Status']
         else:
-            termination_message = 'not implemented for solver yet'
-        print('termination message: "' + termination_message + '"')
+            termination_message = f'not implemented for solver "{solver_name}" yet'
+        print(f'Termination message: "{termination_message}"')
 
         print('')
         # Variablen-Ergebnisse abspeichern:      
@@ -152,7 +159,7 @@ class SystemModel(LinearModel):
 
                     # if penalties exist
         if self.system.globalComp.penalty.model.var_sum.result > 10:
-            print('Take care: -> high penalty makes the used gapFrac quite high')
+            print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
         print('')
@@ -181,8 +188,8 @@ class SystemModel(LinearModel):
             main_results_str['busesWithExcess'] = busesWithExcess
             for aBus in self.system.setOfBuses:
                 if aBus.withExcess:
-                    if sum(self.results[aBus.label]['excessIn']) > excessThreshold or sum(
-                            self.results[aBus.label]['excessOut']) > excessThreshold:
+                    if sum(self.results[aBus.label]['excessIn']) > excess_threshold or sum(
+                            self.results[aBus.label]['excessOut']) > excess_threshold:
                         busesWithExcess.append(aBus.label)
 
             aDict = {'invested': {},

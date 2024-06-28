@@ -52,7 +52,7 @@ class TestExistance(unittest.TestCase):
         self.es.addElements(boiler_exists, self.comps["Boiler"])
         calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
-        calc.solve(solverProps={'gapFrac': 0.05,
+        calc.solve(solverProps={'mip_gap': 0.05,
                                 'time_limit_seconds': 60,
                                 'solver': 'cbc',
                                 'solver_output_to_console': True,
@@ -83,7 +83,7 @@ class TestExistance(unittest.TestCase):
         self.es.addElements(storage_exists, self.comps["CHP"])
         calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
-        calc.solve(solverProps={'gapFrac': 0.05,
+        calc.solve(solverProps={'mip_gap': 0.05,
                                 'time_limit_seconds': 60,
                                 'solver': 'cbc',
                                 'solver_output_to_console': True,

@@ -124,7 +124,7 @@ system.printModel()
 system.printVariables()
 system.printEquations()
 
-solverProps = {'gapFrac': gapFrac, 
+solverProps = {'mip_gap': gapFrac,
                'time_limit_seconds': timelimit,
                'solver': solver_name, 
                'solver_output_to_console' : displaySolverOutput,
