@@ -37,20 +37,18 @@ class SystemModel(LinearModel):
         infos.update(self._infos)  # da steht schon zeug drin
         return infos
 
-    def __init__(self, label, modeling_language, system, time_indices, TS_explicit=None):
+    def __init__(self,
+                 label,
+                 modeling_language: Literal['pyomo', 'cvxpy'],
+                 system,
+                 time_indices: Union[list, range],
+                 TS_explicit=None):
         super().__init__(label, modeling_language)
         self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-        # self.epsilon    = 1e-5 # 
-        # self.variables  = [] # Liste aller Variablen
-        # self.eqs        = [] # Liste aller Gleichungen
-        # self.ineqs      = [] # Liste aller Ungleichungen
         self.models_of_elements: Dict = {}  # dict with all ElementModel's od Elements in System
-
-        # self.objective       = None # objective-Function
-        # self.objective_result = None # Ergebnis
 
         self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
