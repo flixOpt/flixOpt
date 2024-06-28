@@ -55,10 +55,6 @@ class SystemModel(LinearModel):
         (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
             time_indices)
 
-    # extract model of Element:
-    def get_model_of_element(self, aModelingElement):
-        return self.models_of_elements[aModelingElement]
-
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
         # allocation Element -> model
@@ -321,7 +317,7 @@ class Element:
     # activate ohne SubElements!
     def activate_system_model_for_me(self, system_model) -> None:
         self.system_model = system_model
-        self.model = system_model.get_model_of_element(self)
+        self.model = system_model.models_of_elements[self]
 
     # 1.
     def finalize(self) -> None:
