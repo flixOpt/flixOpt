@@ -438,6 +438,7 @@ class ElementModel:
 
     def __init__(self, element: Element):
         self.element = element
+        # TODO: Dicts instead of Lists for referencing?
         self.variables = []
         self.eqs = []
         self.ineqs = []
@@ -467,30 +468,12 @@ class Effect(Element):
     Effect, i.g. costs, CO2 emissions, area, ...
     can be used later afterwards for allocating effects to compontents and flows.
     '''
-    def __str__(self):
-        objective = "Objective" if self.isObjective else ""
-        standart = "Standardeffect" if self.isStandard else ""
-        op_sum = f"OperationSum={self.min_operationSum}-{self.max_operationSum}" \
-            if self.min_operationSum is not None or self.max_operationSum is not None else ""
-        inv_sum = f"InvestSum={self.min_investSum}-{self.max_investSum}" \
-            if self.min_investSum is not None or self.max_investSum is not None else ""
-        tot_sum = f"TotalSum={self.min_Sum}-{self.max_Sum}" \
-            if self.min_Sum is not None or self.max_Sum is not None else ""
-        label_unit = f"{self.label} [{self.unit}]:"
-        desc = f"({self.description})"
-        shares_op = f"Operation Shares={self.specificShareToOtherEffects_operation}" \
-            if self.specificShareToOtherEffects_operation != {} else ""
-        shares_inv = f"Invest Shares={self.specificShareToOtherEffects_invest}"\
-            if self.specificShareToOtherEffects_invest != {} else ""
-
-        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
-
-        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
-
-        return f"<{self.__class__.__name__}> {full_str}"
 
     # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
-    def __init__(self, label: str, unit: str, description: str,
+    def __init__(self,
+                 label: str,
+                 unit: str,
+                 description: str,
                  isStandard: bool = False,
                  isObjective: bool = False,
                  specificShareToOtherEffects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
@@ -604,6 +587,28 @@ class Effect(Element):
         self.all.addVariableShare('operation', self, self.operation.model.var_sum, 1, 1)
         self.all.addVariableShare('invest', self, self.invest.model.var_sum, 1, 1)
         self.all.doModeling(system_model, timeIndexe)
+
+    def __str__(self):
+        objective = "Objective" if self.isObjective else ""
+        standart = "Standardeffect" if self.isStandard else ""
+        op_sum = f"OperationSum={self.min_operationSum}-{self.max_operationSum}" \
+            if self.min_operationSum is not None or self.max_operationSum is not None else ""
+        inv_sum = f"InvestSum={self.min_investSum}-{self.max_investSum}" \
+            if self.min_investSum is not None or self.max_investSum is not None else ""
+        tot_sum = f"TotalSum={self.min_Sum}-{self.max_Sum}" \
+            if self.min_Sum is not None or self.max_Sum is not None else ""
+        label_unit = f"{self.label} [{self.unit}]:"
+        desc = f"({self.description})"
+        shares_op = f"Operation Shares={self.specificShareToOtherEffects_operation}" \
+            if self.specificShareToOtherEffects_operation != {} else ""
+        shares_inv = f"Invest Shares={self.specificShareToOtherEffects_invest}"\
+            if self.specificShareToOtherEffects_invest != {} else ""
+
+        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
+
+        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}> {full_str}"
 
 
 # ModelingElement (Element) Klasse zum Summieren einzelner Shares
