@@ -61,9 +61,9 @@ class TestSimple(BaseTest):
         Fernwaerme = Bus('heat', 'Fernwärme')
         Gas = Bus('fuel', 'Gas')
 
-        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2},
-                     max_per_hour_operation=self.max_emissions_per_hour)
+        costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2},
+                     maximum_operation_per_hour=self.max_emissions_per_hour)
 
         aBoiler = Boiler('Boiler', eta=0.5,
                          Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, min_rel=5 / 50, max_rel=1),
@@ -127,7 +127,7 @@ class TestComplex(BaseTest):
                                        -2.35107029e+03, -2.38500000e+03, 0.00000000e+00, -1.68897826e-10,
                                        -2.16914486e-12], "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['CO2_specificShareToOtherEffects_operation'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['CO2_specific_share_to_other_effects_operation'],
                                       258.63729669618675, "costs doesnt match expected value")
         self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel__Q_th_switchOnCosts'],
                                       0.01, "costs doesnt match expected value")
@@ -220,9 +220,9 @@ class TestComplex(BaseTest):
         Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
         Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
 
-        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
-        PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
+        costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2})
+        PE = Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total=3.5e3)
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
@@ -263,9 +263,9 @@ class TestComplex(BaseTest):
         Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
         Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
 
-        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
-        PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
+        costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2})
+        PE = Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total=3.5e3)
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
@@ -335,7 +335,7 @@ class TestModelingTypes(BaseTest):
         aTimeSeries = (datetime.datetime(2020, 1, 1) + np.arange(len(P_el_Last)) * datetime.timedelta(hours=0.25)).astype('datetime64')
 
         Strom, Fernwaerme, Gas, Kohle = Bus('el', 'Strom'), Bus('heat', 'Fernwärme'), Bus('fuel', 'Gas'), Bus('fuel', 'Kohle')
-        costs, CO2, PE = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True), Effect('CO2', 'kg', 'CO2_e-Emissionen'), Effect('PE', 'kWh_PE', 'Primärenergie')
+        costs, CO2, PE = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True), Effect('CO2', 'kg', 'CO2_e-Emissionen'), Effect('PE', 'kWh_PE', 'Primärenergie')
 
         aGaskessel = Boiler('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, nominal_val=95, min_rel=12 / 95, iCanSwitchOff=True, switchOnCosts=1000, valuesBeforeBegin=[0]))
         aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switchOnCosts=24000, P_el=Flow('P_el', bus=Strom), Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Kohle, nominal_val=288, min_rel=87 / 288), on_valuesBeforeBegin=[0])

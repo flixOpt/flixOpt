@@ -30,8 +30,8 @@ Gas = Bus('fuel', 'Gas') # balancing node/bus of gas
 # ########################
 # ## Effect-Definition: ##
 costs = Effect('costs', '€', 'Kosten',  # name, unit, description
-               isStandard = True,  # standard effect --> shorter input possible (without effect as a key)
-               isObjective = True) # defining costs as objective of optimiziation
+               is_standard= True,  # standard effect --> shorter input possible (without effect as a key)
+               is_objective= True) # defining costs as objective of optimiziation
 
 # ###########################
 # ## Component-Definition: ##

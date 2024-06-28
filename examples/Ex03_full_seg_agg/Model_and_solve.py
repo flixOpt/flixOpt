@@ -154,7 +154,7 @@ Kohle      = Bus('fuel', 'Kohle', excessCostsPerFlowHour = excessCosts);
 
 # Effects
 
-costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)
+costs = Effect('costs', '€', 'Kosten', is_standard= True, is_objective= True)
 CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen') # effectsPerFlowHour = {'costs' : 180} ))
 PE    = Effect('PE', 'kWh_PE', 'Primärenergie')
 

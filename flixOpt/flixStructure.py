@@ -469,23 +469,23 @@ class Effect(Element):
     can be used later afterwards for allocating effects to compontents and flows.
     '''
 
-    # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
+    # is_standard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self,
                  label: str,
                  unit: str,
                  description: str,
-                 isStandard: bool = False,
-                 isObjective: bool = False,
-                 specificShareToOtherEffects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
-                 specificShareToOtherEffects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
-                 min_operationSum: Optional[Skalar] = None,
-                 max_operationSum: Optional[Skalar] = None,
-                 min_investSum: Optional[Skalar] = None,
-                 max_investSum: Optional[Skalar] = None,
-                 min_per_hour_operation: Optional[Numeric_TS] = None,
-                 max_per_hour_operation: Optional[Numeric_TS] = None,
-                 min_Sum: Optional[Skalar] = None,
-                 max_Sum: Optional[Skalar] = None,
+                 is_standard: bool = False,
+                 is_objective: bool = False,
+                 specific_share_to_other_effects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
+                 specific_share_to_other_effects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
+                 minimum_operation: Optional[Skalar] = None,
+                 maximum_operation: Optional[Skalar] = None,
+                 minimum_invest: Optional[Skalar] = None,
+                 maximum_invest: Optional[Skalar] = None,
+                 minimum_operation_per_hour: Optional[Numeric_TS] = None,
+                 maximum_operation_per_hour: Optional[Numeric_TS] = None,
+                 minimum_total: Optional[Skalar] = None,
+                 maximum_total: Optional[Skalar] = None,
                  **kwargs):
         '''        
         Parameters
@@ -496,29 +496,29 @@ class Effect(Element):
             unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
         description : str
             long name
-        isStandard : boolean, optional
+        is_standard : boolean, optional
             true, if Standard-Effect (for direct input of value without effect (alternatively to dict)) , else false
-        isObjective : boolean, optional
+        is_objective : boolean, optional
             true, if optimization target
-        specificShareToOtherEffects_operation : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
+        specific_share_to_other_effects_operation : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
             share to other effects (only operation)
-        specificShareToOtherEffects_invest : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
+        specific_share_to_other_effects_invest : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
             share to other effects (only invest).
-        min_operationSum : scalar, optional
+        minimum_operation : scalar, optional
             minimal sum (only operation) of the effect
-        max_operationSum : scalar, optional
+        maximum_operation : scalar, optional
             maximal sum (nur operation) of the effect.
-        min_per_hour_operation : scalar or TS
+        minimum_operation_per_hour : scalar or TS
             maximum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
-        max_per_hour_operation : scalar or TS
+        maximum_operation_per_hour : scalar or TS
             minimum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
-        min_investSum : scalar, optional
+        minimum_invest : scalar, optional
             minimal sum (only invest) of the effect
-        max_investSum : scalar, optional
+        maximum_invest : scalar, optional
             maximal sum (only invest) of the effect
-        min_Sum : sclalar, optional
+        minimum_total : sclalar, optional
             min sum of effect (invest+operation).
-        max_Sum : scalar, optional
+        maximum_total : scalar, optional
             max sum of effect (invest+operation).
         **kwargs : TYPE
             DESCRIPTION.
@@ -533,42 +533,43 @@ class Effect(Element):
         self.unit = unit
         # self.allFlow     = allFlow
         self.description = description
-        self.isStandard = isStandard
-        self.isObjective = isObjective
-        if specificShareToOtherEffects_operation is None:
-            self.specificShareToOtherEffects_operation = {}
+        self.is_standard = is_standard
+        self.is_objective = is_objective
+        if specific_share_to_other_effects_operation is None:
+            self.specific_share_to_other_effects_operation = {}
         else:
-            self.specificShareToOtherEffects_operation = specificShareToOtherEffects_operation
-        if specificShareToOtherEffects_invest is None:
-            self.specificShareToOtherEffects_invest = {}
+            self.specific_share_to_other_effects_operation = specific_share_to_other_effects_operation
+        if specific_share_to_other_effects_invest is None:
+            self.specific_share_to_other_effects_invest = {}
         else:
-            self.specificShareToOtherEffects_invest = specificShareToOtherEffects_invest
+            self.specific_share_to_other_effects_invest = specific_share_to_other_effects_invest
 
-        self.min_operationSum = min_operationSum
-        self.max_operationSum = max_operationSum
-        self.min_per_hour_operation = min_per_hour_operation
-        self.max_per_hour_operation = max_per_hour_operation
-        self.min_investSum = min_investSum
-        self.max_investSum = max_investSum
-        self.min_Sum = min_Sum
-        self.max_Sum = max_Sum
+        self.minimum_operation = minimum_operation
+        self.maximum_operation = maximum_operation
+        self.minimum_operation_per_hour = minimum_operation_per_hour
+        self.maximum_operation_per_hour = maximum_operation_per_hour
+        self.minimum_invest = minimum_invest
+        self.maximum_invest = maximum_invest
+        self.minimum_total = minimum_total
+        self.maximum_total = maximum_total
 
         #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ):
-        for effectType, share in self.specificShareToOtherEffects_operation.items():
+        for effectType, share in self.specific_share_to_other_effects_operation.items():
             # value überschreiben durch TS:
             TS_name = 'specificShareToOtherEffect' + '_' + effectType.label
-            self.specificShareToOtherEffects_operation[effectType] = TimeSeries(TS_name,
-                                                                                specificShareToOtherEffects_operation[
+            self.specific_share_to_other_effects_operation[effectType] = TimeSeries(TS_name,
+                                                                                    specific_share_to_other_effects_operation[
                                                                                     effectType], self)
 
         # ShareSums:
+        #TODO: Why as attributes, and not only in sub_elements?
         self.operation = cFeature_ShareSum(label='operation', owner=self, sharesAreTS=True,
-                                           minOfSum=self.min_operationSum, maxOfSum= self.max_operationSum,
-                                           min_per_hour=self.min_per_hour_operation, max_per_hour=self.max_per_hour_operation)
-        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False, minOfSum=self.min_investSum,
-                                        maxOfSum=self.max_investSum)
-        self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.min_Sum,
-                                     maxOfSum=self.max_Sum)
+                                           minOfSum=self.minimum_operation, maxOfSum= self.maximum_operation,
+                                           min_per_hour=self.minimum_operation_per_hour, max_per_hour=self.maximum_operation_per_hour)
+        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False, minOfSum=self.minimum_invest,
+                                        maxOfSum=self.maximum_invest)
+        self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.minimum_total,
+                                     maxOfSum=self.maximum_total)
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
@@ -589,20 +590,20 @@ class Effect(Element):
         self.all.doModeling(system_model, timeIndexe)
 
     def __str__(self):
-        objective = "Objective" if self.isObjective else ""
-        standart = "Standardeffect" if self.isStandard else ""
-        op_sum = f"OperationSum={self.min_operationSum}-{self.max_operationSum}" \
-            if self.min_operationSum is not None or self.max_operationSum is not None else ""
-        inv_sum = f"InvestSum={self.min_investSum}-{self.max_investSum}" \
-            if self.min_investSum is not None or self.max_investSum is not None else ""
-        tot_sum = f"TotalSum={self.min_Sum}-{self.max_Sum}" \
-            if self.min_Sum is not None or self.max_Sum is not None else ""
+        objective = "Objective" if self.is_objective else ""
+        standart = "Standardeffect" if self.is_standard else ""
+        op_sum = f"OperationSum={self.minimum_operation}-{self.maximum_operation}" \
+            if self.minimum_operation is not None or self.maximum_operation is not None else ""
+        inv_sum = f"InvestSum={self.minimum_invest}-{self.maximum_invest}" \
+            if self.minimum_invest is not None or self.maximum_invest is not None else ""
+        tot_sum = f"TotalSum={self.minimum_total}-{self.maximum_total}" \
+            if self.minimum_total is not None or self.maximum_total is not None else ""
         label_unit = f"{self.label} [{self.unit}]:"
         desc = f"({self.description})"
-        shares_op = f"Operation Shares={self.specificShareToOtherEffects_operation}" \
-            if self.specificShareToOtherEffects_operation != {} else ""
-        shares_inv = f"Invest Shares={self.specificShareToOtherEffects_invest}"\
-            if self.specificShareToOtherEffects_invest != {} else ""
+        shares_op = f"Operation Shares={self.specific_share_to_other_effects_operation}" \
+            if self.specific_share_to_other_effects_operation != {} else ""
+        shares_inv = f"Invest Shares={self.specific_share_to_other_effects_invest}"\
+            if self.specific_share_to_other_effects_invest != {} else ""
 
         all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
 
@@ -628,7 +629,7 @@ class EffectCollection(List[Effect]):
         aStandardEffect = None
         # TODO: eleganter nach attribut suchen:
         for aEffectType in self:
-            if aEffectType.isStandard: aStandardEffect = aEffectType
+            if aEffectType.is_standard: aStandardEffect = aEffectType
         return aStandardEffect
 
     def objectiveEffect(self) -> Effect:
@@ -636,7 +637,7 @@ class EffectCollection(List[Effect]):
         aObjectiveEffect = None
         # TODO: eleganter nach attribut suchen:
         for aEffectType in self:
-            if aEffectType.isObjective: aObjectiveEffect = aEffectType
+            if aEffectType.is_objective: aObjectiveEffect = aEffectType
         return aObjectiveEffect
 
 
@@ -969,8 +970,8 @@ class Global(Element):
             # Beitrag/Share ergänzen:
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             # alle specificSharesToOtherEffects durchgehen:
-            nameOfShare = 'specificShareToOtherEffects_operation'  # + effectType.label
-            for effectTypeOfShare, specShare_TS in effectType.specificShareToOtherEffects_operation.items():
+            nameOfShare = 'specific_share_to_other_effects_operation'  # + effectType.label
+            for effectTypeOfShare, specShare_TS in effectType.specific_share_to_other_effects_operation.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_op = effectTypeOfShare.operation
                 shareSum_op: cFeature_ShareSum
@@ -980,7 +981,7 @@ class Global(Element):
             # 2. invest:    -> hier ist es Skalar (share)
             # alle specificSharesToOtherEffects durchgehen:
             nameOfShare = 'specificShareToOtherEffects_invest_'  # + effectType.label
-            for effectTypeOfShare, specShare in effectType.specificShareToOtherEffects_invest.items():
+            for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_inv = effectTypeOfShare.invest
                 shareSum_inv: cFeature_ShareSum
@@ -1813,10 +1814,10 @@ class System:
             self._checkIfUniqueElement(aNewEffect, self.listOfEffectTypes)
 
             # Wenn Standard-Effekt, und schon einer vorhanden:
-            if (aNewEffect.isStandard) and (self.listOfEffectTypes.standardType() is not None):
+            if (aNewEffect.is_standard) and (self.listOfEffectTypes.standardType() is not None):
                 raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
             # Wenn Objective-Effekt, und schon einer vorhanden:
-            if (aNewEffect.isObjective) and (self.listOfEffectTypes.objectiveEffect() is not None):
+            if (aNewEffect.is_objective) and (self.listOfEffectTypes.objectiveEffect() is not None):
                 raise Exception('objectiveEffekt ist bereits belegt mit ' + self.objectiveEffect.label)
 
             # in liste ergänzen:
@@ -1931,14 +1932,14 @@ class System:
 
         for effect in self.listOfEffectTypes:
             # operation:
-            for shareEffect in effect.specificShareToOtherEffects_operation.keys():
+            for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
                 assert (
-                        effect not in shareEffect.specificShareToOtherEffects_operation.keys()), 'Error: circular operation-shares \n' + getErrorStr()
+                        effect not in shareEffect.specific_share_to_other_effects_operation.keys()), 'Error: circular operation-shares \n' + getErrorStr()
             # invest:
-            for shareEffect in effect.specificShareToOtherEffects_invest.keys():
+            for shareEffect in effect.specific_share_to_other_effects_invest.keys():
                 assert (
-                        effect not in shareEffect.specificShareToOtherEffects_invest.keys()), 'Error: circular invest-shares \n' + getErrorStr()
+                        effect not in shareEffect.specific_share_to_other_effects_invest.keys()), 'Error: circular invest-shares \n' + getErrorStr()
 
     # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
     def finalize(self) -> None:

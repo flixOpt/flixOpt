@@ -58,11 +58,11 @@ Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=excessCosts)
 
 
 # Effect-Definition:
-costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)
+costs = Effect('costs', '€', 'Kosten', is_standard= True, is_objective= True)
 CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen',
-               specificShareToOtherEffects_operation = {costs: 0.2},
+               specific_share_to_other_effects_operation= {costs: 0.2},
                )
-PE    = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum = 3.5e3)
+PE    = Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total= 3.5e3)
 
 ################################
 # ## definition of components ##

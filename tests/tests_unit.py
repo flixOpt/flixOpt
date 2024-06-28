@@ -13,7 +13,7 @@ class TestExistance(unittest.TestCase):
         aTimeSeries = datetime.datetime(2020, 1, 1) + np.arange(5) * datetime.timedelta(hours=1)
         self.es = System(aTimeSeries.astype('datetime64'))
         self.effects = {
-            "costs": Effect(label="costs", unit="€", isStandard=True, isObjective=True, description="")
+            "costs": Effect(label="costs", unit="€", is_standard=True, is_objective=True, description="")
         }
         self.busses = {
             "Gas": Bus(label="Gas", media="fuel"),
