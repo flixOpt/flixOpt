@@ -160,7 +160,7 @@ class LinearModel:
                 pass
             else:
                 self.solver_log = SolverLog(solver_name, logfile_name)
-                self.solver_log.parseInfos()
+                self.solver_log.parse_infos()
             # Ergebnis Zielfunktion ablegen
             self.objective_result = self.model.objective.expr()
 
@@ -781,15 +781,9 @@ class Summand:
 
 
 class SolverLog:
-    def __init__(self, solver_name, filename, string=None):
-
-        if filename is None:
-
-            self.log = string
-        else:
-            file = open(filename, 'r')
-            self.log = file.read()
-            file.close()
+    def __init__(self, solver_name: str, filename: str):
+        with open(filename, 'r') as file:
+            self.log = file
 
         self.solver_name = solver_name
 
@@ -816,7 +810,7 @@ class SolverLog:
         return infos
 
     # Suche infos aus log:
-    def parseInfos(self):
+    def parse_infos(self):
         if self.solver_name == 'gurobi':
 
             # string-Schnipsel 1:
@@ -866,4 +860,4 @@ class SolverLog:
             print('######################################################')
             print('### No solver-log parsing implemented for glpk yet! ###')
         else:
-            raise Exception('SolverLog.parseInfos() is not defined for solver ' + self.solver_name)
+            raise Exception('SolverLog.parse_infos() is not defined for solver ' + self.solver_name)
