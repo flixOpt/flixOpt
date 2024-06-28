@@ -738,11 +738,11 @@ class Component(Element):
 
         return str_desc
 
-    def registerMeInFlows(self) -> None:
+    def register_component_in_flows(self) -> None:
         for aFlow in self.inputs + self.outputs:
             aFlow.comp = self
 
-    def registerFlowsInBus(self) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def register_flows_in_bus(self) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         #
         # ############## register in Bus: ##############
         #
@@ -753,15 +753,15 @@ class Component(Element):
         for aFlow in self.outputs:
             aFlow.bus.registerInputFlow(aFlow)
 
-    def declareVarsAndEqsOfFlows(self, system_model) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def declare_vars_and_eqs_of_flows(self, system_model: SystemModel) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
             aFlow.declare_vars_and_eqs(system_model)
 
-    def doModelingOfFlows(self, system_model, timeIndexe) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def do_modeling_of_flows(self, system_model: SystemModel, time_indices) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
-            aFlow.do_modeling(system_model, timeIndexe)
+            aFlow.do_modeling(system_model, time_indices)
 
     def get_results(self) -> Tuple[Dict, Dict]:
         # Variablen der Komponente:
@@ -1820,10 +1820,10 @@ class System:
             # aNewComp.addEnergySystemIBelongTo(self)
 
             # Komponente in Flow registrieren
-            aNewComp.registerMeInFlows()
+            aNewComp.register_component_in_flows()
 
             # Flows in Bus registrieren:
-            aNewComp.registerFlowsInBus()
+            aNewComp.register_flows_in_bus()
 
         # register components:
         self.listOfComponents.extend(newListOfComps)
@@ -1953,10 +1953,10 @@ class System:
             aComp: Component
             log.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
-            aComp.declareVarsAndEqsOfFlows(self.model)
+            aComp.declare_vars_and_eqs_of_flows(self.model)
             aComp.declare_vars_and_eqs(self.model)
 
-            aComp.doModelingOfFlows(self.model, timeIndexe)
+            aComp.do_modeling_of_flows(self.model, timeIndexe)
             aComp.do_modeling(self.model, timeIndexe)
 
             aComp.addShareToGlobalsOfFlows(self.globalComp, self.model)
