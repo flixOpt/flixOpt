@@ -20,8 +20,8 @@ class cFeature(Element):
 
     def __init__(self, label, owner, **kwargs):
         self.owner = owner
-        if not self in self.owner.subElements:
-            self.owner.subElements.append(self)  # register in owner
+        if not self in self.owner.sub_elements:
+            self.owner.sub_elements.append(self)  # register in owner
         super().__init__(label, **kwargs)
 
     def __str__(self):

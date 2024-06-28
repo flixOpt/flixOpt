@@ -258,12 +258,12 @@ class Element:
     def label_full(self) -> str:  # standard-Funktion, wird von Kindern teilweise überschrieben
         return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
 
-    @property  # subElements of all layers
+    @property  # sub_elements of all layers
     def all_sub_elements(self) -> list:  #TODO: List[Element] doesnt work...
         all_sub_elements = []  # wichtig, dass neues Listenobjekt!
-        all_sub_elements += self.subElements
-        for subElem in self.subElements:
-            # all subElements of subElement hinzufügen:
+        all_sub_elements += self.sub_elements
+        for subElem in self.sub_elements:
+            # all sub_elements of subElement hinzufügen:
             all_sub_elements += subElem.all_sub_elements
         return all_sub_elements
 
@@ -272,7 +272,7 @@ class Element:
         self.label = label
         self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
 
-        self.subElements: List[Element] = []  # zugehörige Sub-ModelingElements
+        self.sub_elements: List[Element] = []  # zugehörige Sub-ModelingElements
         self.system_model: Optional[SystemModel] = None  # hier kommt die aktive system_model rein
         self.model: Optional[ElementModel] = None  # hier kommen alle Glg und Vars rein
 
@@ -308,10 +308,10 @@ class Element:
 
         return str_desc
 
-    # activate inkl. subElements:
+    # activate inkl. sub_elements:
     def activate_system_model(self, system_model) -> None:
-        for element in self.subElements:
-            element.activate_system_model(system_model)  # inkl. subElements
+        for element in self.sub_elements:
+            element.activate_system_model(system_model)  # inkl. sub_elements
         self.activate_system_model_for_me(system_model)
 
     # activate ohne SubElements!
@@ -321,7 +321,7 @@ class Element:
 
     # 1.
     def finalize(self) -> None:
-        for element in self.subElements:
+        for element in self.sub_elements:
             element.finalize()
 
     # 2.
@@ -329,7 +329,7 @@ class Element:
         # print('new model for ' + self.label)
         # subElemente ebenso:
         element: Element
-        for element in self.subElements:
+        for element in self.sub_elements:
             element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
 
         # create model:
@@ -337,7 +337,7 @@ class Element:
         # register model:
         system_model.register_element_with_model(self, model)
 
-        self.activate_system_model_for_me(system_model)  # subElements werden bereits aktiviert über aElement.createNewMod...()
+        self.activate_system_model_for_me(system_model)  # sub_elements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
     def declareVarsAndEqs(self, system_model) -> None:
@@ -355,7 +355,7 @@ class Element:
         aData = {}
         aVars = {}
         # 1. Unterelemente füllen (rekursiv!):
-        for element in self.subElements:
+        for element in self.sub_elements:
             (aData[element.label], aVars[element.label]) = element.getResults()  # rekursiv
 
         # 2. Variablenwerte ablegen:
@@ -390,7 +390,7 @@ class Element:
 
         ## subelemente durchsuchen:
         subs = {}
-        for aSubElement in self.subElements:
+        for aSubElement in self.sub_elements:
             subs[aSubElement.label] = aSubElement.getEqsAsStr()  # rekursiv
         ## Element:
 
@@ -408,7 +408,7 @@ class Element:
     def getVarsAsStr(self) -> List:
         aList = []
         aList += self.model.getVarsAsStr()
-        for aSubElement in self.subElements:
+        for aSubElement in self.sub_elements:
             aList += aSubElement.getVarsAsStr()  # rekursiv
 
         return aList
@@ -904,7 +904,7 @@ class Global(Element):
         self.penalty = cFeature_ShareSum('penalty', self, sharesAreTS=True)
 
         # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
-        self.subElements.extend(self.listOfEffectTypes)
+        self.sub_elements.extend(self.listOfEffectTypes)
 
     # Beiträge registrieren:
     # effectValues kann sein 
@@ -1462,7 +1462,7 @@ class Flow(Element):
         print('declareVarsAndEqs ' + self.label)
         super().declareVarsAndEqs(system_model)
 
-        self.featureOn.declareVarsAndEqs(system_model)  # TODO: rekursiv aufrufen für subElements
+        self.featureOn.declareVarsAndEqs(system_model)  # TODO: rekursiv aufrufen für sub_elements
 
         self.system_model = system_model
 
@@ -1561,7 +1561,7 @@ class Flow(Element):
         # ############## Constraints für Binärvariablen : ##############
         #
 
-        self.featureOn.doModeling(system_model, timeIndexe)  # TODO: rekursiv aufrufen für subElements
+        self.featureOn.doModeling(system_model, timeIndexe)  # TODO: rekursiv aufrufen für sub_elements
 
         #          
         # ############## Glg. für Investition : ##############
@@ -1952,7 +1952,7 @@ class System:
                 assert (
                         effect not in shareEffect.specificShareToOtherEffects_invest.keys()), 'Error: circular invest-shares \n' + getErrorStr()
 
-    # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch subElements erzeugt!)
+    # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
     def finalize(self) -> None:
         print('finalize all Elements...')
         self.__plausibilityChecks()
@@ -1962,7 +1962,7 @@ class System:
             for element in self.allElementsOfFirstLayer:
                 print(element.label)
                 type(element)
-                element.finalize()  # inklusive subElements!
+                element.finalize()  # inklusive sub_elements!
             self.__finalized = True
 
     def doModelingOfElements(self) -> SystemModel:
@@ -1980,7 +1980,7 @@ class System:
         self.globalComp.declareVarsAndEqs(self.model)  # globale Funktionen erstellen!
         self.globalComp.doModeling(self.model, timeIndexe)  # globale Funktionen erstellen!
 
-        # Komponenten-Modellierung (# inklusive subElements!)
+        # Komponenten-Modellierung (# inklusive sub_elements!)
         for aComp in self.listOfComponents:
             aComp: Component
             log.debug('model ' + aComp.label + '...')
@@ -1994,7 +1994,7 @@ class System:
             aComp.addShareToGlobalsOfFlows(self.globalComp, self.model)
             aComp.addShareToGlobals(self.globalComp, self.model)
 
-        # Bus-Modellierung (# inklusive subElements!)
+        # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
         for aBus in self.setOfBuses:
             log.debug('model ' + aBus.label + '...')
@@ -2040,15 +2040,15 @@ class System:
         if system_model.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
             for element in self.allElementsOfFirstLayer:
-                # BEACHTE: erst nach finalize(), denn da werden noch subElements erst erzeugt!
+                # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
                 if not self.__finalized:
                     raise Exception('activate_model(): --> Geht nicht, da System noch nicht finalized!')
                 # model bauen und in model registrieren.
-                element.create_new_model_and_activate_system_model(self.model)  # inkl. subElements
+                element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:
             # nur Aktivieren:
             for element in self.allElementsOfFirstLayer:  # TODO: Is This a BUG?
-                element.activate_system_model(system_model)  # inkl. subElements
+                element.activate_system_model(system_model)  # inkl. sub_elements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
     def getResultsAfterSolve(self) -> Tuple[Dict, Dict]:
@@ -2057,7 +2057,7 @@ class System:
         # für alle Komponenten:
         for element in self.allElementsOfFirstLayerWithoutFlows:
             # results        füllen:
-            (results[element.label], results_var[element.label]) = element.getResults()  # inklusive subElements!
+            (results[element.label], results_var[element.label]) = element.getResults()  # inklusive sub_elements!
 
         # Zeitdaten ergänzen
         aTime = {}

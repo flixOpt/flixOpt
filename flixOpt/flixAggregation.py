@@ -343,7 +343,7 @@ class cAggregationModeling(flixStructure.Element):
 
         self.var_K_list = []
 
-        # self.subElements.append(self.featureOn)
+        # self.sub_elements.append(self.featureOn)
 
     def finalize(self):
         super().finalize()
