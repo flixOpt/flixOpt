@@ -205,12 +205,12 @@ class TimeSeriesCollection:
         for TS in self.time_series_list:
             if self._get_agg_type(TS) is not None:
                 TSlistWithAggType.append(TS)
-        agg_types = (aTS.TSraw.agg_type for aTS in TSlistWithAggType)
+        agg_types = (aTS.TSraw.agg_group for aTS in TSlistWithAggType)
         return Counter(agg_types)
 
     def _get_agg_type(self, aTS: TimeSeries):
         if (aTS.TSraw is not None):
-            agg_type = aTS.TSraw.agg_type
+            agg_type = aTS.TSraw.agg_group
         else:
             agg_type = None
         return agg_type
@@ -222,10 +222,10 @@ class TimeSeriesCollection:
         elif aTS.TSraw.agg_weight is not None:
             # explicit:
             weight = aTS.TSraw.agg_weight
-        elif aTS.TSraw.agg_type is not None:
-            # via agg_type:
+        elif aTS.TSraw.agg_group is not None:
+            # via agg_group:
             # i.g. n=3 -> weight=1/3
-            weight = 1 / self.agg_type_count[aTS.TSraw.agg_type]
+            weight = 1 / self.agg_type_count[aTS.TSraw.agg_group]
         else:
             weight = 1
             # raise Exception('TSraw is without weight definition.')
@@ -240,7 +240,7 @@ class TimeSeriesCollection:
     def print(self):
         print('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
         for TS in self.time_series_list:
-            aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_type: ' + str(self._get_agg_type(TS)) + ')'
+            aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_group: ' + str(self._get_agg_type(TS)) + ')'
             print(aStr.format(self._getWeight(TS)))
         if len(self.agg_type_count.keys()) > 0:
             print('agg_types: ' + str(list(self.agg_type_count.keys())))

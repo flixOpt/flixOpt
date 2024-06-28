@@ -197,8 +197,8 @@ aGasTarif = Source('Gastarif', source = Flow('Q_Gas', bus = Gas, nominal_val = 1
 
 
 # 2 TS with same aggType (--> implicit defined weigth = 0.5)
-p_feed_in = TimeSeriesRaw(-(p_el - 0.5), agg_type='p_el') # weight shared in group p_el
-p_sell    = TimeSeriesRaw(p_el + 0.5, agg_type='p_el')
+p_feed_in = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el') # weight shared in group p_el
+p_sell    = TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
 aStromEinspeisung = Sink  ('Einspeisung', sink   = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))

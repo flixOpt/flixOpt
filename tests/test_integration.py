@@ -75,8 +75,8 @@ class TestSimple(BaseTest):
                             chargeState0_inFlowHours=0,
                             max_rel_chargeState=1 / 100 * np.array([80., 70., 80., 80, 80, 80, 80, 80, 80, 80]),
                             eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True,
-                            invest_parameters=InvestParameters(fixCosts=20, investmentSize_is_fixed=True,
-                                                                investment_is_optional=False))
+                            invest_parameters=InvestParameters(fix_effects=20, fixed_size=True,
+                                                               optional=False))
         aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, val_rel=self.Q_th_Last))
         aGasTarif = Source('Gastarif',
                            source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
@@ -140,11 +140,11 @@ class TestComplex(BaseTest):
         self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['KWK_switchOnCosts'],
                                       0.0, "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_fixCosts'],
+        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_fix_effects'],
                                       1000, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_specificCosts'],
+        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_specific_effects'],
                                       500, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Speicher_specificCosts'],
+        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Speicher_specific_effects'],
                                       1, "costs doesnt match expected value")
         self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Speicher_linearSegments'],
                                       800, "costs doesnt match expected value")
@@ -224,7 +224,7 @@ class TestComplex(BaseTest):
         CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
         PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
 
-        invest_Gaskessel = InvestParameters(fixCosts=1000, investmentSize_is_fixed=True, investment_is_optional=False, specificCosts={costs: 10, PE: 2})
+        invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
                             Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, loadFactor_max=1.0, loadFactor_min=0.1, min_rel=5 / 50, max_rel=1, onHoursSum_min=0, onHoursSum_max=1000, onHours_max=10, offHours_max=10, switchOnCosts=0.01, switchOn_maxNr=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, sumFlowHours_max=1e6),
                             Q_fu=Flow('Q_fu', bus=Gas, nominal_val=200, min_rel=0, max_rel=1))
@@ -235,7 +235,7 @@ class TestComplex(BaseTest):
                    Q_fu=Flow('Q_fu', bus=Gas, nominal_val=1e3), on_valuesBeforeBegin=[1])
 
         costsInvestsizeSegments = [[5, 25, 25, 100], {costs: [50, 250, 250, 800], PE: [5, 25, 25, 100]}]
-        invest_Speicher = InvestParameters(fixCosts=0, investmentSize_is_fixed=False, costsInInvestsizeSegments=costsInvestsizeSegments, investment_is_optional=False, specificCosts={costs: 0.01, CO2: 0.01}, min_investmentSize=0, max_investmentSize=1000)
+        invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, nominal_val=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, nominal_val=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
         aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, min_rel=0, val_rel=self.Q_th_Last))
@@ -267,7 +267,7 @@ class TestComplex(BaseTest):
         CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
         PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
 
-        invest_Gaskessel = InvestParameters(fixCosts=1000, investmentSize_is_fixed=True, investment_is_optional=False, specificCosts={costs: 10, PE: 2})
+        invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
                             Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, loadFactor_max=1.0, loadFactor_min=0.1, min_rel=5 / 50, max_rel=1, onHoursSum_min=0, onHoursSum_max=1000, onHours_max=10, offHours_max=10, switchOnCosts=0.01, switchOn_maxNr=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, sumFlowHours_max=1e6),
                             Q_fu=Flow('Q_fu', bus=Gas, nominal_val=200, min_rel=0, max_rel=1))
@@ -279,7 +279,7 @@ class TestComplex(BaseTest):
         aKWK = LinearTransformer('KWK', inputs=[Q_fu], outputs=[P_el, Q_th], segmentsOfFlows=segmentsOfFlows, switchOnCosts=0.01, on_valuesBeforeBegin=[1])
 
         costsInvestsizeSegments = [[5, 25, 25, 100], {costs: [50, 250, 250, 800], PE: [5, 25, 25, 100]}]
-        invest_Speicher = InvestParameters(fixCosts=0, investmentSize_is_fixed=False, costsInInvestsizeSegments=costsInvestsizeSegments, investment_is_optional=False, specificCosts={costs: 0.01, CO2: 0.01}, min_investmentSize=0, max_investmentSize=1000)
+        invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, nominal_val=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, nominal_val=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
         aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, min_rel=0, val_rel=self.Q_th_Last))
@@ -345,7 +345,7 @@ class TestModelingTypes(BaseTest):
         aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, val_rel=TS_Q_th_Last)), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, nominal_val=1, val_rel=TS_P_el_Last))
         aKohleTarif, aGasTarif = Source('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, nominal_val=1000, costsPerFlowHour={costs: 4.6, CO2: 0.3})), Source('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: gP, CO2: 0.3}))
 
-        p_feed_in, p_sell = TimeSeriesRaw(-(p_el - 0.5), agg_type='p_el'), TimeSeriesRaw(p_el + 0.5, agg_type='p_el')
+        p_feed_in, p_sell = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el'), TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
         aStromEinspeisung, aStromTarif = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour=p_feed_in)), Source('Stromtarif', source=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour={costs: p_sell, CO2: 0.3}))
         aStromEinspeisung.sink.costsPerFlowHour[None].aggregation_weight = .5
         aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
