@@ -555,13 +555,13 @@ class Equation:
         if np.isscalar(indices_of_variable):
             indices_of_variable = [indices_of_variable]
 
-        # Vektor/Summand erstellen:
-        summand = Summand(variable, factor, indices=indices_of_variable)
-
-        if as_sum:
+        if not as_sum:
+            summand = Summand(variable, factor, indices=indices_of_variable)
+        else:
             if variable is None:
                 raise Exception(f'Error in Equation "{self.label}": variable = None! is not allowed if the variable is summed up!')
-            summand.as_sum_of()  # Umwandlung zu Sum-Of-Skalar
+            summand = SumOfSummand(variable, factor, indices=indices_of_variable)
+
         # Check Variablen-Länge:
         self._update_nr_of_single_equations(summand.length, summand.variable.label)
         # zu Liste hinzufügen:
@@ -600,12 +600,11 @@ class Equation:
             if self.eqType in ['eq', 'ineq']:
 
                 # lineare Summierung für i-te Gleichung:
-                def linearSumRule(model, i):
+                def linear_sum_pyomo_rule(model, i):
                     lhs = 0
                     aSummand: Summand
                     for aSummand in self.listOfSummands:
-                        lhs += aSummand.getMathExpression_Pyomo(baseModel.modeling_language,
-                                                                i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
+                        lhs += aSummand.math_expression(i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
                     rhs = self.constant_vector[i]
                     # Unterscheidung return-value je nach typ:
                     if self.eqType == 'eq':
@@ -615,7 +614,7 @@ class Equation:
 
                 # TODO: self.eq ist hier einziges Attribut, das linear_model-spezifisch ist: --> umbetten in linear_model!
                 self.eq = pyomoEnv.Constraint(range(self.nr_of_single_equations),
-                                              rule=linearSumRule)  # Nebenbedingung erstellen
+                                              rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
                 baseModel.registerPyComp(self.eq,
                                          'eq_' + self.myMom.label + '_' + self.label)  # in pyomo-Modell mit eindeutigem Namen registrieren
@@ -630,7 +629,7 @@ class Equation:
                 def linearSumRule_Skalar(model):
                     skalar = 0
                     for aSummand in self.listOfSummands:
-                        skalar += aSummand.getMathExpression_Pyomo(baseModel.modeling_language)  # kein i übergeben, da skalar
+                        skalar += aSummand.math_expression(baseModel.modeling_language)  # kein i übergeben, da skalar
                     return skalar
 
                 self.eq = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
@@ -673,7 +672,7 @@ class Equation:
             factor_str = str(factor) if isinstance(factor, int) else "{:.6}".format(float(factor))
             # Gesamtstring:
             aElementOfSummandStr = factor_str + '* ' + aSummand.variable.label_full + '[' + str(index) + ']'
-            if aSummand.is_sum_of:
+            if isinstance(aSummand, SumOfSummand):
                 aStr += '∑('
                 if i > 0:
                     aStr += '..+'
@@ -715,8 +714,6 @@ class Summand:
         self.variable = variable
         self.factor = factor
         self.indices = indices
-        self.is_sum_of = False  # Falls Skalar durch Summation über alle Indexe
-        self.sum_of_expression = None  # Zwischenspeicher für Ergebniswert (damit das nicht immer wieder berechnet wird)
 
         # wenn nicht definiert, dann alle Indexe
         if self.indices is None:
@@ -729,6 +726,21 @@ class Summand:
         self.factor_vec = helpers.getVector(factor, self.length)
 
     def _check_length(self):
+        """
+        Determines and returns the length of the summand by comparing the lengths of the factor and the variable indices.
+        Sets the attribute .length to this value.
+
+        Returns:
+        --------
+        int
+            The length of the summand, which is the length of the indices if they match the length of the factor,
+            or the length of the longer one if one of them is a scalar.
+
+        Raises:
+        -------
+        Exception
+            If the lengths of the factor and the variable indices do not match and neither is a scalar.
+        """
         length_of_factor = 1 if np.isscalar(self.factor) else len(self.factor)
         length_of_indices = len(self.indices)
         if length_of_indices == length_of_factor:
@@ -741,43 +753,31 @@ class Summand:
             raise Exception(f'Variable {self.variable.label_full} (length={length_of_indices}) und '
                             f'Faktor (length={length_of_factor}) müssen gleiche Länge haben oder Skalar sein')
 
-    def as_sum_of(self):
-        """
-        Transforms the Summand to a Sum of all Elements of the Summand
-        """
-        if len == 1:
-            print(f'warning: Summand.as_sum_of() does not make sense for Variable {self.variable.label}, '
-                  f'because only one vector-element already')
-        self.is_sum_of = True
-        self.length = 1  # jetzt nur noch Skalar!
-        return self
-
     # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
-    def getMathExpression_Pyomo(self, modType, nrOfEq=0):
-        # TODO: alles noch nicht sonderlich schön, weil viele Schleifen --> Performance!
-        # Wenn SumOfType:
-        if self.is_sum_of:
-            # Wenn Zwischenspeicher leer, dann füllen:
-            if self.sum_of_expression is None:
-                self.sum_of_expression = sum(
-                    self.variable.var[self.indices[j]] * self.factor_vec[j] for j in self.indices)
-            expr = self.sum_of_expression
-        # Wenn Skalar oder Vektor:
+    def math_expression(self, at_index: int = 0):
+        if self.length == 1:
+            return self.variable.var[self.indices[0]] * self.factor_vec[0]  # ignore argument at_index, because Skalar is used for every single equation
+        if len(self.indices) == 1:
+            return self.variable.var[self.indices[0]] * self.factor_vec[at_index]
+        return self.variable.var[self.indices[at_index]] * self.factor_vec[at_index]
+
+class SumOfSummand(Summand):
+    def __init__(self,
+                 variable: Variable,
+                 factor: Union[int, float, np.ndarray],
+                 indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
+        super().__init__(variable, factor, indices)
+
+        self._math_expression = None
+        self.length = 1
+
+    def math_expression(self, at_index=0):
+        # at index doesn't do anything. Can be removed, but induces changes elsewhere (Inherritance)
+        if self._math_expression is not None:
+            return self._math_expression
         else:
-            # Wenn Skalar:
-            if self.length == 1:
-                # ignore argument nrOfEq, because Skalar is used for every single equation
-                nrOfEq = 0
-
-                # Wenn nur Skalare-Variable bzw. ein Index:
-            if len(self.indices) == 1:
-                indexeOfVar = 0
-            else:
-                indexeOfVar = nrOfEq
-
-            ## expression:
-            expr = self.variable.var[self.indices[indexeOfVar]] * self.factor_vec[nrOfEq]
-        return expr
+            self._math_expression = sum(self.variable.var[self.indices[j]] * self.factor_vec[j] for j in self.indices)
+            return self._math_expression
 
 
 class SolverLog:
