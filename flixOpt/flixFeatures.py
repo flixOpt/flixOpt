@@ -97,19 +97,19 @@ class cFeatureLinearSegmentVars(cFeature):
             newSegment.create_new_model_and_activate_system_model(self.system_model)
             self.listOfSegments.append(newSegment)
 
-    def declare_vars_and_eqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         for aSegment in self.listOfSegments:
             # Segmentvariablen erstellen:
-            aSegment.declare_vars_and_eqs(modBox)
+            aSegment.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, modBox: SystemModel, timeIndexe):
+    def do_modeling(self, system_model: SystemModel, timeIndexe):
         #########################################
         ## 1. Gleichungen für: Nur ein Segment kann aktiv sein! ##
         # eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0 
         # -> Wenn Variable On(t) nicht existiert, dann nur 
         # eq:          Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                                         
 
-        self.eq_IcanOnlyBeInOneSegment = Equation('ICanOnlyBeInOneSegment', self, modBox)
+        self.eq_IcanOnlyBeInOneSegment = Equation('ICanOnlyBeInOneSegment', self, system_model)
 
         # a) zusätzlich zu Aufenthalt in Segmenten kann alles auch Null sein:
         if (self.var_on is not None) and (
@@ -128,7 +128,7 @@ class cFeatureLinearSegmentVars(cFeature):
         for aSegment in self.listOfSegments:
             aNameOfEq = 'Lambda_onSeg_' + str(aSegment.index)
 
-            eq_Lambda_onSeg = Equation(aNameOfEq, self, modBox)
+            eq_Lambda_onSeg = Equation(aNameOfEq, self, system_model)
             eq_Lambda_onSeg.add_summand(aSegment.model.var_onSeg, -1);
             eq_Lambda_onSeg.add_summand(aSegment.model.var_lambda1, 1);
             eq_Lambda_onSeg.add_summand(aSegment.model.var_lambda2, 1);
@@ -142,7 +142,7 @@ class cFeatureLinearSegmentVars(cFeature):
 
         for aVar in self.segmentsOfVars.keys():
             # aVar = aFlow.model.var_val
-            eqLambda = Equation(aVar.label + '_lambda', self, modBox)  # z.B. Q_th(t)
+            eqLambda = Equation(aVar.label + '_lambda', self, system_model)  # z.B. Q_th(t)
             eqLambda.add_summand(aVar, -1)
             for aSegment in self.listOfSegments:
                 #  Stützstellen einfügen:
@@ -187,7 +187,7 @@ class cFeatureLinearSegmentSet(cFeatureLinearSegmentVars):
         self.checkListOfFlows = checkListOfFlows
         super().__init__(label, owner)
 
-    def declare_vars_and_eqs(self, modBox):
+    def declare_vars_and_eqs(self, system_model):
         # 1. Variablen-Segmente definieren:
         segmentsOfVars = {}
         for flow in self.segmentsOfFlows_TS:
@@ -202,7 +202,7 @@ class cFeatureLinearSegmentSet(cFeatureLinearSegmentVars):
                                checkListOfVars=checkListOfVars)  # todo: das ist nur hier, damit schon variablen Bekannt
 
         # 2. declare vars:      
-        super().declare_vars_and_eqs(modBox)
+        super().declare_vars_and_eqs(system_model)
 
 
 # Abschnittsweise linear, 1 Abschnitt:
@@ -214,13 +214,13 @@ class cSegment(cFeature):
         self.samplePoints = samplePoints
         self.index = index
 
-    def declare_vars_and_eqs(self, modBox):
-        aLen = modBox.nrOfTimeSteps
-        self.model.var_onSeg = VariableTS('onSeg_' + str(self.index), aLen, self, modBox,
+    def declare_vars_and_eqs(self, system_model):
+        aLen = system_model.nrOfTimeSteps
+        self.model.var_onSeg = VariableTS('onSeg_' + str(self.index), aLen, self, system_model,
                                           is_binary=True)  # Binär-Variable
-        self.model.var_lambda1 = VariableTS('lambda1_' + str(self.index), aLen, self, modBox, lower_bound=0,
+        self.model.var_lambda1 = VariableTS('lambda1_' + str(self.index), aLen, self, system_model, lower_bound=0,
                                             upper_bound=1)  # Wertebereich 0..1
-        self.model.var_lambda2 = VariableTS('lambda2_' + str(self.index), aLen, self, modBox, lower_bound=0,
+        self.model.var_lambda2 = VariableTS('lambda2_' + str(self.index), aLen, self, system_model, lower_bound=0,
                                             upper_bound=1)  # Wertebereich 0..1
 
 
@@ -262,7 +262,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
                     self.nrOfExistingOn_vars += 1
                 i += 1
 
-    def do_modeling(self, modBox, timeIndexe):
+    def do_modeling(self, system_model, timeIndexe):
         # Nur 1 Flow aktiv! Nicht mehrere Zeitgleich!    
         # "classic":
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
@@ -275,7 +275,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
         # 3)    geht nur, wenn alle flow.min >= 0
         # --> könnte man auch umsetzen (statt activateOnValue() für die Flows, aber sollte aufs selbe wie "new" kommen)
 
-        self.eq_flowLock = Equation('flowLock', self, modBox, eqType='ineq')
+        self.eq_flowLock = Equation('flowLock', self, system_model, eqType='ineq')
         # Summanden hinzufügen:
         for aFlow in self.flows:
             # + flow_i.on(t):
@@ -372,15 +372,15 @@ class cFeatureOn(cFeature):
     #   # else :
     #   #   raise Exception('featureOwner ' + self.featureOwner.label + ' has no attribute var_on or it is already used')
 
-    def declare_vars_and_eqs(self, modBox):
+    def declare_vars_and_eqs(self, system_model):
         # Beachte: Variablen gehören nicht diesem Element, sondern varOwner (meist ist das der featureOwner)!!!  
         # Var On:
         if self.useOn:
             # Before-Variable:
-            self.model.var_on = VariableTS('on', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
+            self.model.var_on = VariableTS('on', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
             self.model.var_on.set_before_value(default_before_value=self.on_valuesBeforeBegin[0],
                                                is_start_value=False)
-            self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, modBox, lower_bound=self.onHoursSum_min,
+            self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, system_model, lower_bound=self.onHoursSum_min,
                                                  upper_bound=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei
 
         else:
@@ -389,7 +389,7 @@ class cFeatureOn(cFeature):
 
         if self.useOff:
             # off-Var is needed:
-            self.model.var_off = VariableTS('off', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
+            self.model.var_off = VariableTS('off', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
 
         # onHours:
         #   i.g. 
@@ -397,43 +397,43 @@ class cFeatureOn(cFeature):
         #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
         if self.useOnHours:
             aMax = None if (self.onHours_max is None) else self.onHours_max.active_data
-            self.model.var_onHours = VariableTS('onHours', modBox.nrOfTimeSteps, self.owner, modBox,
+            self.model.var_onHours = VariableTS('onHours', system_model.nrOfTimeSteps, self.owner, system_model,
                                                 lower_bound=0, upper_bound=aMax)  # min separat
         # offHours:
         if self.useOffHours:
             aMax = None if (self.offHours_max is None) else self.offHours_max.active_data
-            self.model.var_offHours = VariableTS('offHours', modBox.nrOfTimeSteps, self.owner, modBox,
+            self.model.var_offHours = VariableTS('offHours', system_model.nrOfTimeSteps, self.owner, system_model,
                                                  lower_bound=0, upper_bound=aMax)  # min separat
 
         # Var SwitchOn
         if self.useSwitchOn:
-            self.model.var_switchOn = VariableTS('switchOn', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
-            self.model.var_switchOff = VariableTS('switchOff', modBox.nrOfTimeSteps, self.owner, modBox, is_binary=True)
-            self.model.var_nrSwitchOn = Variable('nrSwitchOn', 1, self.owner, modBox,
+            self.model.var_switchOn = VariableTS('switchOn', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
+            self.model.var_switchOff = VariableTS('switchOff', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
+            self.model.var_nrSwitchOn = Variable('nrSwitchOn', 1, self.owner, system_model,
                                                  upper_bound=self.switchOn_maxNr)  # wenn max/min = None, dann bleibt das frei
         else:
             self.model.var_switchOn = None
             self.model.var_switchOff = None
             self.model.var_nrSwitchOn = None
 
-    def do_modeling(self, modBox, timeIndexe):
+    def do_modeling(self, system_model, timeIndexe):
         eqsOwner = self
         if self.useOn:
-            self.__addConstraintsForOn(eqsOwner, self.flowsDefiningOn, modBox, timeIndexe)
+            self.__addConstraintsForOn(eqsOwner, self.flowsDefiningOn, system_model, timeIndexe)
         if self.useOff:
-            self.__addConstraintsForOff(eqsOwner, modBox, timeIndexe)
+            self.__addConstraintsForOff(eqsOwner, system_model, timeIndexe)
         if self.useSwitchOn:
-            self.__addConstraintsForSwitchOnSwitchOff(eqsOwner, modBox, timeIndexe)
+            self.__addConstraintsForSwitchOnSwitchOff(eqsOwner, system_model, timeIndexe)
         if self.useOnHours:
             cFeatureOn.__addConstraintsForOnTimeOfBinary(
                 self.model.var_onHours, self.model.var_on, self.onHours_min,
-                eqsOwner, modBox, timeIndexe)
+                eqsOwner, system_model, timeIndexe)
         if self.useOffHours:
             cFeatureOn.__addConstraintsForOnTimeOfBinary(
                 self.model.var_offHours, self.model.var_off, self.offHours_min,
-                eqsOwner, modBox, timeIndexe)
+                eqsOwner, system_model, timeIndexe)
 
-    def __addConstraintsForOn(self, eqsOwner, flowsDefiningOn, modBox, timeIndexe):
+    def __addConstraintsForOn(self, eqsOwner, flowsDefiningOn, system_model, timeIndexe):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
 
         # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig 
@@ -446,7 +446,7 @@ class cFeatureOn(cFeature):
         #### Bedingung 1) ####
 
         # Glg. wird erstellt und auch gleich in featureOwner registiert:
-        eq1 = Equation('On_Constraint_1', eqsOwner, modBox, eqType='ineq')
+        eq1 = Equation('On_Constraint_1', eqsOwner, system_model, eqType='ineq')
         # TODO: eventuell label besser über  nameOfIneq = [aOnVariable.name '_Constraint_1']; % z.B. On_Constraint_1
 
         # Wenn nur 1 Leistungsvariable (!Unterscheidet sich von >1 Leistungsvariablen wg. Minimum-Beachtung!):
@@ -463,7 +463,7 @@ class cFeatureOn(cFeature):
             else:
                 min_val = aFlow.nominal_val * aFlow.min_rel.active_data
 
-            eq1.add_summand(self.model.var_on, 1 * np.maximum(modBox.epsilon, min_val),
+            eq1.add_summand(self.model.var_on, 1 * np.maximum(system_model.epsilon, min_val),
                             timeIndexe)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
 
         # Bei mehreren Leistungsvariablen:
@@ -474,14 +474,14 @@ class cFeatureOn(cFeature):
             # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
             for aFlow in flowsDefiningOn:
                 eq1.add_summand(aFlow.model.var_val, -1, timeIndexe)
-            eq1.add_summand(self.model.var_on, 1 * modBox.epsilon,
+            eq1.add_summand(self.model.var_on, 1 * system_model.epsilon,
                             timeIndexe)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
 
         #######################################################################
         #### Bedingung 2) ####
 
         # Glg. wird erstellt und auch gleich in featureOwner registiert:
-        eq2 = Equation('On_Constraint_2', eqsOwner, modBox, eqType='ineq')
+        eq2 = Equation('On_Constraint_2', eqsOwner, system_model, eqType='ineq')
         # Wenn nur 1 Leistungsvariable:
         #  eq: Q_th(t) <= Q_th_max * On(t)
         # (Leistung>0 -> On = 1 | On=0 -> Leistung<=0)
@@ -510,16 +510,16 @@ class cFeatureOn(cFeature):
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
                     int(sumOfFlowMax / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
 
-    def __addConstraintsForOff(self, eqsOwner, modBox, timeIndexe):
+    def __addConstraintsForOff(self, eqsOwner, system_model, timeIndexe):
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
-        eq_var_off = Equation('var_off', self, modBox, eqType='eq')
+        eq_var_off = Equation('var_off', self, system_model, eqType='eq')
         eq_var_off.add_summand(self.model.var_off, 1)
         eq_var_off.add_summand(self.model.var_on, 1)
         eq_var_off.add_constant(1)
 
     @staticmethod  # to be sure not using any self-Variables
-    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, onHours_min, eqsOwner, modBox, timeIndexe):
+    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, onHours_min, eqsOwner, system_model, timeIndexe):
         '''
         i.g. 
         var_bin        = [0 0 1 1 1 1 0 1 1 1 0 ...]
@@ -533,27 +533,27 @@ class cFeatureOn(cFeature):
         # 1) eq: onHours(t) <= On(t)*Big | On(t)=0 -> onHours(t) = 0
         # mit Big = dtInHours_tot
         aLabel = var_bin_onTime.label
-        ineq_1 = Equation(aLabel + '_constraint_1', eqsOwner, modBox, eqType='ineq')
+        ineq_1 = Equation(aLabel + '_constraint_1', eqsOwner, system_model, eqType='ineq')
         ineq_1.add_summand(var_bin_onTime, 1)
-        ineq_1.add_summand(var_bin, -1 * modBox.dtInHours_tot)
+        ineq_1.add_summand(var_bin, -1 * system_model.dtInHours_tot)
 
         # 2a) eq: onHours(t) - onHours(t-1) <= dt(t)
         #    on(t)=1 -> ...<= dt(t)
         #    on(t)=0 -> onHours(t-1)>=
-        ineq_2a = Equation(aLabel + '_constraint_2a', eqsOwner, modBox, eqType='ineq')
+        ineq_2a = Equation(aLabel + '_constraint_2a', eqsOwner, system_model, eqType='ineq')
         ineq_2a.add_summand(var_bin_onTime, 1, timeIndexe[1:])  # onHours(t)
         ineq_2a.add_summand(var_bin_onTime, -1, timeIndexe[0:-1])  # onHours(t-1)
-        ineq_2a.add_constant(modBox.dtInHours[1:])  # dt(t)
+        ineq_2a.add_constant(system_model.dtInHours[1:])  # dt(t)
 
         # 2b) eq:  onHours(t) - onHours(t-1)             >=  dt(t) - Big*(1-On(t)))
         #    eq: -onHours(t) + onHours(t-1) + On(t)*Big <= -dt(t) + Big
         # with Big = dtInHours_tot # (Big = maxOnHours, should be usable, too!)
-        Big = modBox.dtInHours_tot
-        ineq_2b = Equation(aLabel + '_constraint_2b', eqsOwner, modBox, eqType='ineq')
+        Big = system_model.dtInHours_tot
+        ineq_2b = Equation(aLabel + '_constraint_2b', eqsOwner, system_model, eqType='ineq')
         ineq_2b.add_summand(var_bin_onTime, -1, timeIndexe[1:])  # onHours(t)
         ineq_2b.add_summand(var_bin_onTime, 1, timeIndexe[0:-1])  # onHours(t-1)
         ineq_2b.add_summand(var_bin, Big, timeIndexe[1:])  # on(t)
-        ineq_2b.add_constant(-modBox.dtInHours[1:] + Big)  # dt(t)
+        ineq_2b.add_constant(-system_model.dtInHours[1:] + Big)  # dt(t)
 
         # 3) check onHours_min before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
@@ -561,7 +561,7 @@ class cFeatureOn(cFeature):
             # Note: switchOff-step is when: On(t)-On(t-1) == -1
             # eq:  onHours(t-1) >= minOnHours * -1 * [On(t)-On(t-1)]
             # eq: -onHours(t-1) - onHours_min * On(t) + onHours_min*On(t-1) <= 0
-            ineq_min = Equation(aLabel + '_min', eqsOwner, modBox, eqType='ineq')
+            ineq_min = Equation(aLabel + '_min', eqsOwner, system_model, eqType='ineq')
             ineq_min.add_summand(var_bin_onTime, -1, timeIndexe[0:-1])  # onHours(t-1)
             ineq_min.add_summand(var_bin, -1 * onHours_min.active_data, timeIndexe[1:])  # on(t)
             ineq_min.add_summand(var_bin, onHours_min.active_data, timeIndexe[0:-1])  # on(t-1)
@@ -569,15 +569,15 @@ class cFeatureOn(cFeature):
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)
         firstIndex = timeIndexe[0]  # only first element
-        eq_first = Equation(aLabel + '_firstTimeStep', eqsOwner, modBox)
+        eq_first = Equation(aLabel + '_firstTimeStep', eqsOwner, system_model)
         eq_first.add_summand(var_bin_onTime, 1, firstIndex)
-        eq_first.add_summand(var_bin, -1 * modBox.dtInHours[firstIndex], firstIndex)
+        eq_first.add_summand(var_bin, -1 * system_model.dtInHours[firstIndex], firstIndex)
 
-    def __addConstraintsForSwitchOnSwitchOff(self, eqsOwner, modBox, timeIndexe):
+    def __addConstraintsForSwitchOnSwitchOff(self, eqsOwner, system_model, timeIndexe):
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1) 
 
-        eq_SwitchOnOff_andOn = Equation('SwitchOnOff_andOn', eqsOwner, modBox)
+        eq_SwitchOnOff_andOn = Equation('SwitchOnOff_andOn', eqsOwner, system_model)
         eq_SwitchOnOff_andOn.add_summand(self.model.var_switchOn, 1, timeIndexe[1:])  # SwitchOn(t)
         eq_SwitchOnOff_andOn.add_summand(self.model.var_switchOff, -1, timeIndexe[1:])  # SwitchOff(t)
         eq_SwitchOnOff_andOn.add_summand(self.model.var_on, -1, timeIndexe[1:])  # On(t)
@@ -586,7 +586,7 @@ class cFeatureOn(cFeature):
         ## Ersten Wert SwitchOn(t=1) bzw. SwitchOff(t=1) festlegen
         # eq: SwitchOn(t=1)-SwitchOff(t=1) = On(t=1)- ValueBeforeBeginOfTimeSeries;      
 
-        eq_SwitchOnOffAtFirstTime = Equation('SwitchOnOffAtFirstTime', eqsOwner, modBox)
+        eq_SwitchOnOffAtFirstTime = Equation('SwitchOnOffAtFirstTime', eqsOwner, system_model)
         firstIndex = timeIndexe[0]  # nur erstes Element!
         eq_SwitchOnOffAtFirstTime.add_summand(self.model.var_switchOn, 1, firstIndex)
         eq_SwitchOnOffAtFirstTime.add_summand(self.model.var_switchOff, -1, firstIndex)
@@ -598,7 +598,7 @@ class cFeatureOn(cFeature):
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1 
 
-        ineq = Equation('SwitchOnOrSwitchOff', eqsOwner, modBox, eqType='ineq')
+        ineq = Equation('SwitchOnOrSwitchOff', eqsOwner, system_model, eqType='ineq')
         ineq.add_summand(self.model.var_switchOn, 1)
         ineq.add_summand(self.model.var_switchOff, 1)
         ineq.add_constant(1)
@@ -606,11 +606,11 @@ class cFeatureOn(cFeature):
         ## Anzahl Starts:
         # eq: nrSwitchOn = sum(SwitchOn(t))  
 
-        eq_NrSwitchOn = Equation('NrSwitchOn', eqsOwner, modBox)
+        eq_NrSwitchOn = Equation('NrSwitchOn', eqsOwner, system_model)
         eq_NrSwitchOn.add_summand(self.model.var_nrSwitchOn, 1)
         eq_NrSwitchOn.add_summand(self.model.var_switchOn, -1, as_sum=True)
 
-    def addShareToGlobals(self, globalComp, modBox):
+    def addShareToGlobals(self, globalComp, system_model):
 
         shareHolder = self.owner
         # Anfahrkosten:
@@ -619,7 +619,7 @@ class cFeatureOn(cFeature):
         # Betriebskosten:
         if self.costsPerRunningHour is not None:  # and any(self.costsPerRunningHour):
             globalComp.addShareToOperation('costsPerRunningHour', shareHolder, self.model.var_on,
-                                           self.costsPerRunningHour, modBox.dtInHours)
+                                           self.costsPerRunningHour, system_model.dtInHours)
             # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.costsPerRunningHour.active_data, model.dtInHours))# np.multiply = elementweise Multiplikation
 
 
@@ -680,28 +680,28 @@ class cFeature_ShareSum(cFeature):
 
     # def setProperties(self, min = 0, max = nan)
 
-    def declare_vars_and_eqs(self, modBox):
-        super().declare_vars_and_eqs(modBox)
-        self.shares.declare_vars_and_eqs(modBox)
+    def declare_vars_and_eqs(self, system_model):
+        super().declare_vars_and_eqs(system_model)
+        self.shares.declare_vars_and_eqs(system_model)
 
         # TODO: summe auch über Bus abbildbar!
         #   -> aber Beachte Effekt ist nicht einfach gleichzusetzen mit Flow, da hier eine Menge z.b. in € im Zeitschritt übergeben wird
         # variable für alle TS zusammen (TS-Summe):
         if self.sharesAreTS:
-            lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, modBox.dtInHours)
-            ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, modBox.dtInHours)
-            self.model.var_sum_TS = VariableTS('sum_TS', modBox.nrOfTimeSteps, self, modBox, lower_bound= lb_TS, upper_bound= ub_TS)  # TS
+            lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, system_model.dtInHours)
+            ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, system_model.dtInHours)
+            self.model.var_sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self, system_model, lower_bound= lb_TS, upper_bound= ub_TS)  # TS
 
         # Variable für Summe (Skalar-Summe):
-        self.model.var_sum = Variable('sum', 1, self, modBox, lower_bound=self.minOfSum, upper_bound=self.maxOfSum)  # Skalar
+        self.model.var_sum = Variable('sum', 1, self, system_model, lower_bound=self.minOfSum, upper_bound=self.maxOfSum)  # Skalar
 
         # Gleichungen schon hier definiert, damit andere Elemente beim modeling Beiträge eintragen können:
         if self.sharesAreTS:
-            self.eq_sum_TS = Equation('bilanz', self, modBox)
-        self.eq_sum = Equation('sum', self, modBox)
+            self.eq_sum_TS = Equation('bilanz', self, system_model)
+        self.eq_sum = Equation('sum', self, system_model)
 
-    def do_modeling(self, modBox, timeIndexe):
-        self.shares.do_modeling(modBox, timeIndexe)
+    def do_modeling(self, system_model, timeIndexe):
+        self.shares.do_modeling(system_model, timeIndexe)
         if self.sharesAreTS:
             # eq: sum_TS = sum(share_TS_i) # TS
             self.eq_sum_TS.add_summand(self.model.var_sum_TS, -1)
@@ -809,13 +809,13 @@ class cFeatureShares(cFeature):
     def __init__(self, label, owner):
         super().__init__(label, owner)
 
-    def do_modeling(self, modBox, timeIndexe):
+    def do_modeling(self, system_model, timeIndexe):
         pass
 
-    def declare_vars_and_eqs(self, modBox):
-        super().declare_vars_and_eqs(modBox)
+    def declare_vars_and_eqs(self, system_model):
+        super().declare_vars_and_eqs(system_model)
 
-    def get_eqOfNewShare(self, nameOfShare, shareHolder, modBox):
+    def get_eqOfNewShare(self, nameOfShare, shareHolder, system_model):
         '''         
         creates variable and equation for every share for 
         publishing share-values in results
@@ -833,8 +833,8 @@ class cFeatureShares(cFeature):
             full_name_of_share = shareHolder.label_full + '_' + nameOfShare
         except:
             pass
-        var_oneShare = Variable(full_name_of_share, 1, self, modBox)  # Skalar
-        eq_oneShare = Equation(full_name_of_share, self, modBox)
+        var_oneShare = Variable(full_name_of_share, 1, self, system_model)  # Skalar
+        eq_oneShare = Equation(full_name_of_share, self, system_model)
         eq_oneShare.add_summand(var_oneShare, -1)
 
         return eq_oneShare
@@ -962,7 +962,7 @@ class cFeatureInvest(cFeature):
         self.definingVar = definingVar
         self.definingVar_On = definingVar_On
 
-    def declare_vars_and_eqs(self, modBox):
+    def declare_vars_and_eqs(self, system_model):
 
         # a) var_investmentSize: (wird immer gebaut, auch wenn fix)           
 
@@ -986,23 +986,23 @@ class cFeatureInvest(cFeature):
 
         if lb == ub:
             # fix:
-            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, value=lb)
+            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, system_model, value=lb)
         else:
             # Bereich:
-            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, lower_bound=lb, upper_bound=ub)
+            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, system_model, lower_bound=lb, upper_bound=ub)
 
         # b) var_isInvested:
         if self.args.optional:
-            self.model.var_isInvested = Variable('isInvested', 1, self, modBox, is_binary=True)
+            self.model.var_isInvested = Variable('isInvested', 1, self, system_model, is_binary=True)
 
             ## investCosts in Segments: ##
         # wenn vorhanden,
         if self.featureLinearSegments is not None:
-            self._defineCostSegments(modBox)
-            self.featureLinearSegments.declare_vars_and_eqs(modBox)
+            self._defineCostSegments(system_model)
+            self.featureLinearSegments.declare_vars_and_eqs(system_model)
 
     # definingInvestcosts in Segments:
-    def _defineCostSegments(self, modBox: SystemModel):
+    def _defineCostSegments(self, system_model: SystemModel):
         investSizeSegs = self.args.effects_in_segments[0]  # segments of investSize
         costSegs = self.args.effects_in_segments[1]  # effect-dict with segments as entries
         costSegs = as_effect_dict(costSegs)
@@ -1015,7 +1015,7 @@ class cFeatureInvest(cFeature):
         self.model.var_list_investCosts_segmented = []
         self.investVar_effect_dict = {}  # benötigt
         for aEffect, aSegmentCosts in costSegs.items():
-            var_investForEffect = self.__create_var_segmentedInvestCost(aEffect, modBox)
+            var_investForEffect = self.__create_var_segmentedInvestCost(aEffect, system_model)
             aSegment = {var_investForEffect: aSegmentCosts}  # i.e. {var_investCosts_segmented_costs : [0,10, 10,30]}
             segmentsOfVars |= aSegment  #
             self.investVar_effect_dict |= {aEffect: var_investForEffect}
@@ -1030,53 +1030,53 @@ class cFeatureInvest(cFeature):
         self.featureLinearSegments.defineSegments(segmentsOfVars, var_on=var_isInvested,
                                                   checkListOfVars=list(segmentsOfVars.keys()))
 
-    def __create_var_segmentedInvestCost(self, aEffect, modBox):
+    def __create_var_segmentedInvestCost(self, aEffect, system_model):
         # define cost-Variable (=costs through segmented Investsize-costs):
         if isinstance(aEffect, Effect):
             aStr = aEffect.label
         elif aEffect is None:
-            aStr = modBox.system.listOfEffectTypes.standardType().label  # Standard-Effekt
+            aStr = system_model.system.listOfEffectTypes.standardType().label  # Standard-Effekt
         else:
             raise Exception('Given effect (' + str(aEffect) + ') is not an effect!')
         # new variable, i.e for costs, CO2,... :
-        var_investForEffect = Variable('investCosts_segmented_' + aStr, 1, self, modBox, lower_bound=0)
+        var_investForEffect = Variable('investCosts_segmented_' + aStr, 1, self, system_model, lower_bound=0)
         self.model.var_list_investCosts_segmented.append(var_investForEffect)
         return var_investForEffect
 
-    def do_modeling(self, modBox, timeIndexe):
+    def do_modeling(self, system_model, timeIndexe):
         assert self.definingVar is not None, 'setDefiningVar() still not executed!'
         # wenn var_isInvested existiert:    
         if self.args.optional:
-            self._add_defining_var_isInvested(modBox)
+            self._add_defining_var_isInvested(system_model)
 
         # Bereich von definingVar in Abh. von var_investmentSize:
 
         # Wenn fixer relativer Lastgang:
         if self.val_rel is not None:
-            self._add_fixEq_of_definingVar_with_var_investmentSize(modBox)
+            self._add_fixEq_of_definingVar_with_var_investmentSize(system_model)
         # Wenn nicht fix:
         else:
-            self._add_max_min_of_definingVar_with_var_investmentSize(modBox)
+            self._add_max_min_of_definingVar_with_var_investmentSize(system_model)
 
             # if linear Segments defined:
         if self.featureLinearSegments is not None:
-            self.featureLinearSegments.do_modeling(modBox, timeIndexe)
+            self.featureLinearSegments.do_modeling(system_model, timeIndexe)
 
-    def _add_fixEq_of_definingVar_with_var_investmentSize(self, modBox):
+    def _add_fixEq_of_definingVar_with_var_investmentSize(self, system_model):
 
         ## Gleichung zw. DefiningVar und Investgröße:    
         # eq: definingVar(t) = var_investmentSize * val_rel
 
-        self.eq_fix_via_investmentSize = Equation('fix_via_InvestmentSize', self, modBox, 'eq')
+        self.eq_fix_via_investmentSize = Equation('fix_via_InvestmentSize', self, system_model, 'eq')
         self.eq_fix_via_investmentSize.add_summand(self.definingVar, 1)
         self.eq_fix_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.val_rel.active_data))
 
-    def _add_max_min_of_definingVar_with_var_investmentSize(self, modBox):
+    def _add_max_min_of_definingVar_with_var_investmentSize(self, system_model):
 
         ## 1. Gleichung: Maximum durch Investmentgröße ##     
         # eq: definingVar(t) <=                var_investmentSize * max_rel(t)     
         # eq: P(t) <= max_rel(t) * P_inv    
-        self.eq_max_via_investmentSize = Equation('max_via_InvestmentSize', self, modBox, 'ineq')
+        self.eq_max_via_investmentSize = Equation('max_via_InvestmentSize', self, system_model, 'ineq')
         self.eq_max_via_investmentSize.add_summand(self.definingVar, 1)
         # TODO: Changed by FB
         # self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.active_data))
@@ -1087,7 +1087,7 @@ class cFeatureInvest(cFeature):
 
         # Glg nur, wenn nicht Kombination On und fixed:
         if not (self._existOn and self.args.fixed_size):
-            self.eq_min_via_investmentSize = Equation('min_via_investmentSize', self, modBox, 'ineq')
+            self.eq_min_via_investmentSize = Equation('min_via_investmentSize', self, system_model, 'ineq')
 
         if self._existOn:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
@@ -1099,7 +1099,7 @@ class cFeatureInvest(cFeature):
                 # äquivalent zu:.
                 # eq: - definingVar(t) + Big * On(t) + min_rel(t) * investmentSize <= Big
 
-                Big = helpers.max_args(self.min_rel.active_data * self.args.maximum_size, modBox.epsilon)
+                Big = helpers.max_args(self.min_rel.active_data * self.args.maximum_size, system_model.epsilon)
 
                 self.eq_min_via_investmentSize.add_summand(self.definingVar, -1)
                 self.eq_min_via_investmentSize.add_summand(self.definingVar_On, Big)  # übergebene On-Variable
@@ -1116,13 +1116,13 @@ class cFeatureInvest(cFeature):
 
             #### Defining var_isInvested ####
 
-    def _add_defining_var_isInvested(self, modBox):
+    def _add_defining_var_isInvested(self, system_model):
 
         # wenn fixed, dann const:
         if self.args.fixed_size:
 
             # eq: investmentSize = isInvested * nominalValue            
-            self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, modBox, 'eq')
+            self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, system_model, 'eq')
             self.eq_isInvested_1.add_summand(self.model.var_investmentSize, -1)
             self.eq_isInvested_1.add_summand(self.model.var_isInvested, self.fixedInvestmentSize)
 
@@ -1132,7 +1132,7 @@ class cFeatureInvest(cFeature):
             # eq1: P_invest <= isInvested * investSize_max
             # (isInvested = 0 -> P_invest=0  |  P_invest>0 -> isInvested = 1 ->  P_invest < investSize_max )   
 
-            self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, modBox, 'ineq')
+            self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, system_model, 'ineq')
             self.eq_isInvested_1.add_summand(self.model.var_investmentSize, 1)
             self.eq_isInvested_1.add_summand(self.model.var_isInvested,
                                              np.multiply(-1, self.args.maximum_size))  # Variable ist Skalar!
@@ -1140,11 +1140,11 @@ class cFeatureInvest(cFeature):
             ## 2. Gleichung (skalar):                  
             # eq2: P_invest  >= isInvested * max(epsilon, investSize_min)
             # (isInvested = 1 -> P_invest>0  |  P_invest=0 -> isInvested = 0)
-            self.eq_isInvested_2 = Equation('isInvested_constraint_2', self, modBox, 'ineq')
+            self.eq_isInvested_2 = Equation('isInvested_constraint_2', self, system_model, 'ineq')
             self.eq_isInvested_2.add_summand(self.model.var_investmentSize, -1)
-            self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(modBox.epsilon, self.args.minimum_size))
+            self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(system_model.epsilon, self.args.minimum_size))
 
-    def addShareToGlobals(self, globalComp, modBox):
+    def addShareToGlobals(self, globalComp, system_model):
 
         # # fix_effects:
         # wenn fix_effects vorhanden:
