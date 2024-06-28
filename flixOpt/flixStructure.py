@@ -797,15 +797,8 @@ class Component(Element):
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-        # super().declare_vars_and_eqs(model)
-
     def do_modeling(self, system_model, timeIndexe) -> None:
         log.debug(str(self.label) + 'do_modeling()')
-        # super().do_modeling(model,timeIndexe)
-
-        #
-        # ############## Constraints für Binärvariablen : ##############
-        #
         self.featureOn.do_modeling(system_model, timeIndexe)
 
     def addShareToGlobalsOfFlows(self, globalComp, system_model) -> None:
