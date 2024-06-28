@@ -386,13 +386,6 @@ class Element:
 
         return aData, aVars
 
-    # so kurze Schreibweise wie möglich, daher:
-    def var(self, label):
-        self.model.getVar(label)
-
-    def eq(self, label):
-        self.model.getEq(label)
-
     def getEqsAsStr(self):
 
         ## subelemente durchsuchen:
