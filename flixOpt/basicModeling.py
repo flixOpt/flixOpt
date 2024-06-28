@@ -390,7 +390,7 @@ class VariableTS(Variable):
                  value: Optional[Union[int, float, np.ndarray]] = None,
                  lower_bound: Optional[Union[int, float, np.ndarray]] = None,
                  upper_bound: Optional[Union[int, float, np.ndarray]] = None):
-        assert length > 1, 'length is one, that seems not right for CVariable_TS'
+        assert length > 1, 'length is one, that seems not right for VariableTS'
         self.activated_beforeValues = False
         super().__init__(label, length, owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
 
@@ -746,8 +746,8 @@ class Summand:
         Transforms the Summand to a Sum of all Elements of the Summand
         """
         if len == 1:
-            print(
-                'warning: Summand.as_sum_of() senceless für Variable ' + self.variable.label + ', because only one vector-element already')
+            print(f'warning: Summand.as_sum_of() does not make sense for Variable {self.variable.label}, '
+                  f'because only one vector-element already')
         self.is_sum_of = True
         self.length = 1  # jetzt nur noch Skalar!
         return self
