@@ -348,8 +348,8 @@ class cAggregationModeling(flixStructure.Element):
     def finalize(self):
         super().finalize()
 
-    def declareVarsAndEqs(self, modBox: flixStructure.SystemModel):
-        super().declareVarsAndEqs(modBox)
+    def declare_vars_and_eqs(self, modBox: flixStructure.SystemModel):
+        super().declare_vars_and_eqs(modBox)
 
     def doModeling(self, modBox: flixStructure.SystemModel, timeIndexe):
 

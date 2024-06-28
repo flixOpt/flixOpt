@@ -210,21 +210,21 @@ class LinearTransformer(Component):
                                                                 get_var_on=get_var_on,
                                                                 checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
 
-    def declareVarsAndEqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
         :param modBox:
         :return:
         """
-        super().declareVarsAndEqs(modBox)  # (ab hier sollte auch self.model.var_on dann vorhanden sein)
+        super().declare_vars_and_eqs(modBox)  # (ab hier sollte auch self.model.var_on dann vorhanden sein)
 
         # factor-sets:
         if self.segmentsOfFlows is None:
             pass
         # linear segments:
         else:
-            self.feature_linSegments.declareVarsAndEqs(modBox)
+            self.feature_linSegments.declare_vars_and_eqs(modBox)
 
     def doModeling(self, modBox: SystemModel, timeIndexe):
         """
@@ -737,14 +737,14 @@ class Storage(Component):
 
         self.isStorage = True  # for postprocessing
 
-    def declareVarsAndEqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
         :param modBox:
         :return:
         """
-        super().declareVarsAndEqs(modBox)
+        super().declare_vars_and_eqs(modBox)
 
         # Variablen:
 
@@ -783,7 +783,7 @@ class Storage(Component):
         # erst hier, da definingVar vorher nicht belegt!
         if self.featureInvest is not None:
             self.featureInvest.setDefiningVar(self.model.var_charge_state, None)  # None, da kein On-Wert
-            self.featureInvest.declareVarsAndEqs(modBox)
+            self.featureInvest.declare_vars_and_eqs(modBox)
 
         # obj.vars.Q_Ladezustand   .setBoundaries(0, obj.inputData.Q_Ladezustand_Max);
         # obj.vars.Q_th_Lade       .setBoundaries(0, inf);
@@ -975,14 +975,14 @@ class SourceAndSink(Component):
         else:
             self.featureAvoidInAndOutAtOnce = None
 
-    def declareVarsAndEqs(self, modBox):
+    def declare_vars_and_eqs(self, modBox):
         """
         Deklarieren von Variablen und Gleichungen
 
         :param modBox:
         :return:
         """
-        super().declareVarsAndEqs(modBox)
+        super().declare_vars_and_eqs(modBox)
 
     def doModeling(self, modBox, timeIndexe):
         """
@@ -1165,14 +1165,14 @@ class Transportation(Component):
             self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
                                                                              [self.in1, self.in2])
 
-    def declareVarsAndEqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, modBox: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
         
         :param modBox:
         :return:
         """
-        super().declareVarsAndEqs(modBox)
+        super().declare_vars_and_eqs(modBox)
 
     def doModeling(self, modBox, timeIndexe):
         super().doModeling(modBox, timeIndexe)

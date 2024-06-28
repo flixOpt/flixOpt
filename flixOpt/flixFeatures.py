@@ -97,10 +97,10 @@ class cFeatureLinearSegmentVars(cFeature):
             newSegment.create_new_model_and_activate_system_model(self.system_model)
             self.listOfSegments.append(newSegment)
 
-    def declareVarsAndEqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, modBox: SystemModel):
         for aSegment in self.listOfSegments:
             # Segmentvariablen erstellen:
-            aSegment.declareVarsAndEqs(modBox)
+            aSegment.declare_vars_and_eqs(modBox)
 
     def doModeling(self, modBox: SystemModel, timeIndexe):
         #########################################
@@ -187,7 +187,7 @@ class cFeatureLinearSegmentSet(cFeatureLinearSegmentVars):
         self.checkListOfFlows = checkListOfFlows
         super().__init__(label, owner)
 
-    def declareVarsAndEqs(self, modBox):
+    def declare_vars_and_eqs(self, modBox):
         # 1. Variablen-Segmente definieren:
         segmentsOfVars = {}
         for flow in self.segmentsOfFlows_TS:
@@ -202,7 +202,7 @@ class cFeatureLinearSegmentSet(cFeatureLinearSegmentVars):
                                checkListOfVars=checkListOfVars)  # todo: das ist nur hier, damit schon variablen Bekannt
 
         # 2. declare vars:      
-        super().declareVarsAndEqs(modBox)
+        super().declare_vars_and_eqs(modBox)
 
 
 # Abschnittsweise linear, 1 Abschnitt:
@@ -214,7 +214,7 @@ class cSegment(cFeature):
         self.samplePoints = samplePoints
         self.index = index
 
-    def declareVarsAndEqs(self, modBox):
+    def declare_vars_and_eqs(self, modBox):
         aLen = modBox.nrOfTimeSteps
         self.model.var_onSeg = VariableTS('onSeg_' + str(self.index), aLen, self, modBox,
                                           is_binary=True)  # Binär-Variable
@@ -372,7 +372,7 @@ class cFeatureOn(cFeature):
     #   # else :
     #   #   raise Exception('featureOwner ' + self.featureOwner.label + ' has no attribute var_on or it is already used')
 
-    def declareVarsAndEqs(self, modBox):
+    def declare_vars_and_eqs(self, modBox):
         # Beachte: Variablen gehören nicht diesem Element, sondern varOwner (meist ist das der featureOwner)!!!  
         # Var On:
         if self.useOn:
@@ -680,9 +680,9 @@ class cFeature_ShareSum(cFeature):
 
     # def setProperties(self, min = 0, max = nan)
 
-    def declareVarsAndEqs(self, modBox):
-        super().declareVarsAndEqs(modBox)
-        self.shares.declareVarsAndEqs(modBox)
+    def declare_vars_and_eqs(self, modBox):
+        super().declare_vars_and_eqs(modBox)
+        self.shares.declare_vars_and_eqs(modBox)
 
         # TODO: summe auch über Bus abbildbar!
         #   -> aber Beachte Effekt ist nicht einfach gleichzusetzen mit Flow, da hier eine Menge z.b. in € im Zeitschritt übergeben wird
@@ -812,8 +812,8 @@ class cFeatureShares(cFeature):
     def doModeling(self, modBox, timeIndexe):
         pass
 
-    def declareVarsAndEqs(self, modBox):
-        super().declareVarsAndEqs(modBox)
+    def declare_vars_and_eqs(self, modBox):
+        super().declare_vars_and_eqs(modBox)
 
     def get_eqOfNewShare(self, nameOfShare, shareHolder, modBox):
         '''         
@@ -962,7 +962,7 @@ class cFeatureInvest(cFeature):
         self.definingVar = definingVar
         self.definingVar_On = definingVar_On
 
-    def declareVarsAndEqs(self, modBox):
+    def declare_vars_and_eqs(self, modBox):
 
         # a) var_investmentSize: (wird immer gebaut, auch wenn fix)           
 
@@ -999,7 +999,7 @@ class cFeatureInvest(cFeature):
         # wenn vorhanden,
         if self.featureLinearSegments is not None:
             self._defineCostSegments(modBox)
-            self.featureLinearSegments.declareVarsAndEqs(modBox)
+            self.featureLinearSegments.declare_vars_and_eqs(modBox)
 
     # definingInvestcosts in Segments:
     def _defineCostSegments(self, modBox: SystemModel):

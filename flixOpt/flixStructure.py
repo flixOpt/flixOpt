@@ -219,7 +219,7 @@ class Element:
     Element mit Variablen und Gleichungen
     -> besitzt Methoden, die jede Kindklasse ergänzend füllt:
     1. Element.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
-    2. Element.declareVarsAndEqs() --> Variablen und Eqs definieren.
+    2. Element.declare_vars_and_eqs() --> Variablen und Eqs definieren.
     3. Element.doModeling()        --> Modellierung
     4. Element.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
     """
@@ -229,7 +229,7 @@ class Element:
     not_used_args = []
 
     @classmethod
-    def getInitArgs(cls):
+    def get_init_args(cls):
         '''
         diese (Klassen-)Methode holt aus dieser und den Kindklassen
         alle zulässigen Argumente der Kindklasse!
@@ -238,8 +238,8 @@ class Element:
         ### 1. Argumente der Mutterklasse (rekursiv) ###
         # wird rekursiv aufgerufen bis man bei Mutter-Klasse cModelingElement ankommt.
         # nur bis zu cArgsClass zurück gehen:
-        if hasattr(cls.__base__, 'getInitArgs'):  # man könnte auch schreiben: if cls.__name__ == cArgsClass
-            allArgsFromMotherClass = cls.__base__.getInitArgs()  # rekursiv in Mutterklasse aufrufen
+        if hasattr(cls.__base__, 'get_init_args'):  # man könnte auch schreiben: if cls.__name__ == cArgsClass
+            allArgsFromMotherClass = cls.__base__.get_init_args()  # rekursiv in Mutterklasse aufrufen
 
         # wenn cls.__base__ also bereits eine Ebene UNTER cArgsClass:
         else:
@@ -294,7 +294,7 @@ class Element:
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, Flow) and key in self.getInitArgs() and key != "label"
+               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
         }
 
         remaining_data_keys = sorted(remaining_data.keys())
@@ -347,10 +347,10 @@ class Element:
         self.activate_system_model_for_me(system_model)  # sub_elements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
-    def declareVarsAndEqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model) -> None:
         #   #   # Features preparing:
         #   # for aFeature in self.features:
-        #   #   aFeature.declareVarsAndEqs(model)
+        #   #   aFeature.declare_vars_and_eqs(model)
         pass
 
     # def doModeling(self,model,timeIndexe):
@@ -358,12 +358,12 @@ class Element:
     #   aFeature.doModeling(model, timeIndexe)
 
     # Ergebnisse als dict ausgeben:    
-    def getResults(self) -> Tuple[Dict, Dict]:
+    def get_results(self) -> Tuple[Dict, Dict]:
         aData = {}
         aVars = {}
         # 1. Unterelemente füllen (rekursiv!):
         for element in self.sub_elements:
-            (aData[element.label], aVars[element.label]) = element.getResults()  # rekursiv
+            (aData[element.label], aVars[element.label]) = element.get_results()  # rekursiv
 
         # 2. Variablenwerte ablegen:
         aVar: Variable
@@ -611,15 +611,15 @@ class Effect(Element):
         self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.min_Sum,
                                      maxOfSum=self.max_Sum)
 
-    def declareVarsAndEqs(self, system_model) -> None:
-        super().declareVarsAndEqs(system_model)
-        self.operation.declareVarsAndEqs(system_model)
-        self.invest.declareVarsAndEqs(system_model)
-        self.all.declareVarsAndEqs(system_model)
+    def declare_vars_and_eqs(self, system_model) -> None:
+        super().declare_vars_and_eqs(system_model)
+        self.operation.declare_vars_and_eqs(system_model)
+        self.invest.declare_vars_and_eqs(system_model)
+        self.all.declare_vars_and_eqs(system_model)
 
     def doModeling(self, system_model, timeIndexe) -> None:
         print('modeling ' + self.label)
-        super().declareVarsAndEqs(system_model)
+        super().declare_vars_and_eqs(system_model)
         self.operation.doModeling(system_model, timeIndexe)
         self.invest.doModeling(system_model, timeIndexe)
 
@@ -754,7 +754,7 @@ class Component(Element):
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, Flow) and key in self.getInitArgs() and key != "label"
+               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
         }
 
         remaining_data_keys = sorted(remaining_data.keys())
@@ -795,16 +795,16 @@ class Component(Element):
     def declareVarsAndEqsOfFlows(self, system_model) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
-            aFlow.declareVarsAndEqs(system_model)
+            aFlow.declare_vars_and_eqs(system_model)
 
     def doModelingOfFlows(self, system_model, timeIndexe) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
             aFlow.doModeling(system_model, timeIndexe)
 
-    def getResults(self) -> Tuple[Dict, Dict]:
+    def get_results(self) -> Tuple[Dict, Dict]:
         # Variablen der Komponente:
-        (results, results_var) = super().getResults()
+        (results, results_var) = super().get_results()
 
         # Variablen der In-/Out-Puts ergänzen:
         for aFlow in self.inputs + self.outputs:
@@ -813,7 +813,7 @@ class Component(Element):
                 flowLabel = aFlow.label_full  # Kessel_Q_th
             else:
                 flowLabel = aFlow.label  # Q_th
-            (results[flowLabel], results_var[flowLabel]) = aFlow.getResults()
+            (results[flowLabel], results_var[flowLabel]) = aFlow.get_results()
         return results, results_var
 
     def finalize(self) -> None:
@@ -826,17 +826,17 @@ class Component(Element):
                                     self.costsPerRunningHour, onHoursSum_min=self.onHoursSum_min,
                                     onHoursSum_max=self.onHoursSum_max, switchOn_maxNr=self.switchOn_maxNr)
 
-    def declareVarsAndEqs(self, system_model) -> None:
-        super().declareVarsAndEqs(system_model)
+    def declare_vars_and_eqs(self, system_model) -> None:
+        super().declare_vars_and_eqs(system_model)
 
-        self.featureOn.declareVarsAndEqs(system_model)
+        self.featureOn.declare_vars_and_eqs(system_model)
 
         # Binärvariablen holen (wenn vorh., sonst None):
         #   (hier und nicht erst bei doModeling, da linearSegments die Variable zum Modellieren benötigt!)
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-        # super().declareVarsAndEqs(model)
+        # super().declare_vars_and_eqs(model)
 
     def doModeling(self, system_model, timeIndexe) -> None:
         log.debug(str(self.label) + 'doModeling()')
@@ -958,15 +958,15 @@ class Global(Element):
             else:
                 raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
 
-    def declareVarsAndEqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model) -> None:
 
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
 
-        super().declareVarsAndEqs(system_model)
+        super().declare_vars_and_eqs(system_model)
 
         for effect in self.listOfEffectTypes:
-            effect.declareVarsAndEqs(system_model)
-        self.penalty.declareVarsAndEqs(system_model)
+            effect.declare_vars_and_eqs(system_model)
+        self.penalty.declare_vars_and_eqs(system_model)
 
         self.objective = Equation('obj', self, system_model, 'objective')
 
@@ -1090,8 +1090,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
                                 ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
                                 )
 
-    def declareVarsAndEqs(self, system_model) -> None:
-        super().declareVarsAndEqs(system_model)
+    def declare_vars_and_eqs(self, system_model) -> None:
+        super().declare_vars_and_eqs(system_model)
         # Fehlerplus/-minus:
         if self.withExcess:
             # Fehlerplus und -minus definieren
@@ -1465,11 +1465,11 @@ class Flow(Element):
         super().finalize()
 
 
-    def declareVarsAndEqs(self, system_model: SystemModel) -> None:
-        print('declareVarsAndEqs ' + self.label)
-        super().declareVarsAndEqs(system_model)
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
+        print('declare_vars_and_eqs ' + self.label)
+        super().declare_vars_and_eqs(system_model)
 
-        self.featureOn.declareVarsAndEqs(system_model)  # TODO: rekursiv aufrufen für sub_elements
+        self.featureOn.declare_vars_and_eqs(system_model)  # TODO: rekursiv aufrufen für sub_elements
 
         self.system_model = system_model
 
@@ -1516,7 +1516,7 @@ class Flow(Element):
         # erst hier, da definingVar vorher nicht belegt!
         if self.featureInvest is not None:
             self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
-            self.featureInvest.declareVarsAndEqs(system_model)
+            self.featureInvest.declare_vars_and_eqs(system_model)
 
     def doModeling(self, system_model: SystemModel, timeIndexe) -> None:
         # super().doModeling(model,timeIndexe)
@@ -1984,7 +1984,7 @@ class System:
         timeIndexe = range(len(self.model.time_indices))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:
-        self.globalComp.declareVarsAndEqs(self.model)  # globale Funktionen erstellen!
+        self.globalComp.declare_vars_and_eqs(self.model)  # globale Funktionen erstellen!
         self.globalComp.doModeling(self.model, timeIndexe)  # globale Funktionen erstellen!
 
         # Komponenten-Modellierung (# inklusive sub_elements!)
@@ -1993,7 +1993,7 @@ class System:
             log.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
             aComp.declareVarsAndEqsOfFlows(self.model)
-            aComp.declareVarsAndEqs(self.model)
+            aComp.declare_vars_and_eqs(self.model)
 
             aComp.doModelingOfFlows(self.model, timeIndexe)
             aComp.doModeling(self.model, timeIndexe)
@@ -2005,13 +2005,13 @@ class System:
         aBus: Bus
         for aBus in self.setOfBuses:
             log.debug('model ' + aBus.label + '...')
-            aBus.declareVarsAndEqs(self.model)
+            aBus.declare_vars_and_eqs(self.model)
             aBus.doModeling(self.model, timeIndexe)
             aBus.addShareToGlobals(self.globalComp, self.model)
 
         # weitere übergeordnete Modellierungen:
         for element in self.setOfOtherElements:
-            element.declareVarsAndEqs(self.model)
+            element.declare_vars_and_eqs(self.model)
             element.doModeling(self.model, timeIndexe)
             element.addShareToGlobals(self.globalComp, self.model)
 
@@ -2064,7 +2064,7 @@ class System:
         # für alle Komponenten:
         for element in self.allElementsOfFirstLayerWithoutFlows:
             # results        füllen:
-            (results[element.label], results_var[element.label]) = element.getResults()  # inklusive sub_elements!
+            (results[element.label], results_var[element.label]) = element.get_results()  # inklusive sub_elements!
 
         # Zeitdaten ergänzen
         aTime = {}
