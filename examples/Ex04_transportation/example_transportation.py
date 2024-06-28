@@ -81,18 +81,18 @@ loss_abs = 1
 loss_rel = 0.1
 # loss_rel = 0
 
-invest1 = InvestParameters(fixCosts=10,
-                           investmentSize_is_fixed=False,
-                           investment_is_optional=True,
-                           max_investmentSize=1000,
-                           specificCosts=1)
+invest1 = InvestParameters(fix_effects=10,
+                           fixed_size=False,
+                           optional=True,
+                           maximum_size=1000,
+                           specific_effects=1)
 
 # only for getting realizing investSize-Variable:
-invest2 = InvestParameters(fixCosts=0,
-                           investmentSize_is_fixed=False,
-                           investment_is_optional=True,
-                           max_investmentSize=1000,
-                           specificCosts=0
+invest2 = InvestParameters(fix_effects=0,
+                           fixed_size=False,
+                           optional=True,
+                           maximum_size=1000,
+                           specific_effects=0
                            )
 
 aTransporter = Transportation('Rohr',

@@ -19,7 +19,7 @@ timelimit = 3600
 
 # solver_name = 'glpk' # warning, glpk quickly has numerical problems with big and epsilon
 # solver_name = 'gurobi'
-solver_name    = 'cbc'
+solver_name    = 'highs'
 nrOfThreads    = 1
 
 # ## calculation-options - you can vary! ###
@@ -70,10 +70,10 @@ PE    = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum = 3.5e3)
 
 # 1. definition of boiler #
 # 1. a) investment-options:
-invest_Gaskessel = InvestParameters(fixCosts = 1000,  # 1000 € investment costs
-                                    investmentSize_is_fixed = True,  # fix nominal size
-                                    investment_is_optional=False,  # forced investment
-                                    specificCosts= {costs:10, PE:2},  # specific costs: 10 €/kW; 2 kWh_PE/kW
+invest_Gaskessel = InvestParameters(fix_effects= 1000,  # 1000 € investment costs
+                                    fixed_size= True,  # fix nominal size
+                                    optional=False,  # forced investment
+                                    specific_effects= {costs:10, PE:2},  # specific costs: 10 €/kW; 2 kWh_PE/kW
                                     )
 # invest_Gaskessel = None #
 # 1. b) boiler itself:
@@ -147,12 +147,12 @@ costsInvestsizeSegments = [[5,25,25,100], #kW
 #                             [50,250,250,800],#€ (standard-effect)
 #                           ]
 
-invest_Speicher = InvestParameters(fixCosts = 0,  # no fix costs
-                                   investmentSize_is_fixed = False,  # variable size
-                                   costsInInvestsizeSegments = costsInvestsizeSegments,  # see above
-                                   investment_is_optional=False,  # forced invest
-                                   specificCosts= {costs: 0.01, CO2: 0.01},  # €/kWh; kg_CO2/kWh
-                                   min_investmentSize=0, max_investmentSize=1000) # optimizing between 0...1000 kWh
+invest_Speicher = InvestParameters(fix_effects= 0,  # no fix costs
+                                   fixed_size= False,  # variable size
+                                   effects_in_segments= costsInvestsizeSegments,  # see above
+                                   optional=False,  # forced invest
+                                   specific_effects= {costs: 0.01, CO2: 0.01},  # €/kWh; kg_CO2/kWh
+                                   minimum_size=0, maximum_size=1000) # optimizing between 0...1000 kWh
 
 # 4.b) storage itself:
 aSpeicher = Storage('Speicher',

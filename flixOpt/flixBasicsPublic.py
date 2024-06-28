@@ -52,32 +52,32 @@ class InvestParameters:
     '''
 
     def __init__(self,
-                 fixCosts: Optional[Union[Dict,int, float]] = None,
-                 divestCosts: Optional[Union[Dict,int, float]] = None,
-                 investmentSize_is_fixed: bool = True,
-                 investment_is_optional: bool = True,  # Investition ist weglassbar
-                 specificCosts: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
-                 costsInInvestsizeSegments: Optional[Union[Dict, List]] = None,
-                 min_investmentSize: Union[int, float] = 0,  # nur wenn nominal_val_is_fixed = False
-                 max_investmentSize: Union[int, float] = 1e9,  # nur wenn nominal_val_is_fixed = False
+                 fix_effects: Optional[Union[Dict,int, float]] = None,
+                 divest_effects: Optional[Union[Dict,int, float]] = None,
+                 fixed_size: bool = True,
+                 optional: bool = True,  # Investition ist weglassbar
+                 specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
+                 effects_in_segments: Optional[Union[Dict, List]] = None,
+                 minimum_size: Union[int, float] = 0,  # nur wenn nominal_val_is_fixed = False
+                 maximum_size: Union[int, float] = 1e9,  # nur wenn nominal_val_is_fixed = False
                  **kwargs):
-        '''
+        """
         Parameters
         ----------
-        fixCosts : None or scalar, optional
+        fix_effects : None or scalar, optional
             Fixed investment costs if invested.
             (Attention: Annualize costs to chosen period!)
-        divestCosts : None or scalar, optional
+        divest_effects : None or scalar, optional
             Fixed divestment costs (if not invested, e.g., demolition costs or contractual penalty).
-        investmentSize_is_fixed : bool, optional
+        fixed_size : bool, optional
             Determines if the investment size is fixed. If its not fixed, uses naminal_val as an optimization variable.
-        investment_is_optional : bool, optional
+        optional : bool, optional
             If True, investment is not forced.
-        specificCosts : scalar or Dict[Effect: Union[int, float, np.ndarray], optional
+        specific_effects : scalar or Dict[Effect: Union[int, float, np.ndarray], optional
             Specific costs, e.g., in €/kW_nominal or €/m²_nominal.
             Example: {costs: 3, CO2: 0.3} with costs and CO2 representing an Object of class Effect
             (Attention: Annualize costs to chosen period!)
-        costsInInvestsizeSegments : list or List[ List[Union[int,float]], Dict[cEffecType: Union[List[Union[int,float]], optional
+        effects_in_segments : list or List[ List[Union[int,float]], Dict[cEffecType: Union[List[Union[int,float]], optional
             Linear relation in segments [invest_segments, cost_segments].
             Example 1:
                 [           [5, 25, 25, 100],       # nominal_value in kW
@@ -90,21 +90,21 @@ class InvestParameters:
                     [50,250,250,800]        # value for standart effect, typically €
                  ]  # €
             (Attention: Annualize costs to chosen period!)
-            (Args 'specificCosts' and 'fixCosts' can be used in parallel to InvestsizeSegments)
-        min_investmentSize : scalar
+            (Args 'specific_effects' and 'fix_effects' can be used in parallel to InvestsizeSegments)
+        minimum_size : scalar
             Min nominal value (only if: nominal_val_is_fixed = False).
-        max_investmentSize : scalar
+        maximum_size : scalar
             Max nominal value (only if: nominal_val_is_fixed = False).
-        '''
+        """
 
-        self.fixCosts = fixCosts
-        self.divestCosts = divestCosts
-        self.investmentSize_is_fixed = investmentSize_is_fixed
-        self.investment_is_optional = investment_is_optional
-        self.specificCosts = specificCosts
-        self.costsInInvestsizeSegments = costsInInvestsizeSegments
-        self.min_investmentSize = min_investmentSize
-        self.max_investmentSize = max_investmentSize
+        self.fix_effects = fix_effects
+        self.divest_effects = divest_effects
+        self.fixed_size = fixed_size
+        self.optional = optional
+        self.specific_effects = specific_effects
+        self.effects_in_segments = effects_in_segments
+        self.minimum_size = minimum_size
+        self.maximum_size = maximum_size
 
         super().__init__(**kwargs)
 
@@ -113,13 +113,13 @@ class InvestParameters:
 
     def __str__(self):
         details = [
-            f"fixCosts={self.fixCosts}" if self.fixCosts else ""
-            f"divestCosts={self.divestCosts}" if self.divestCosts else ""
-            f"specificCosts={self.specificCosts}" if self.specificCosts else ""
-            f"Fixed Size" if self.investmentSize_is_fixed else ""
-            f"Optional" if self.investment_is_optional else ""
-            f"min/max_Size=[{self.min_investmentSize}-{self.max_investmentSize}]"
-            f"costsInInvestsizeSegments={self.costsInInvestsizeSegments}, " if self.costsInInvestsizeSegments else ""
+            f"fix_effects={self.fi}" if self.fix_effects else ""
+            f"divest_effects={self.divest_effects}" if self.divest_effects else ""
+            f"specific_effects={self.specific_effects}" if self.specific_effects else ""
+            f"Fixed Size" if self.fixed_size else ""
+            f"Optional" if self.optional else ""
+            f"min/max_Size=[{self.minimum_size}-{self.maximum_size}]"
+            f"effects_in_segments={self.effects_in_segments}, " if self.effects_in_segments else ""
         ]
 
         all_relevant_parts = [part for part in details if part != ""]

@@ -458,7 +458,7 @@ class cFeatureOn(cFeature):
             eq1.add_summand(aFlow.model.var_val, -1, timeIndexe)
             # wenn variabler Nennwert:
             if aFlow.nominal_val is None:
-                min_val = aFlow.invest_parameters.min_investmentSize * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
+                min_val = aFlow.invest_parameters.minimum_size * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
             # wenn fixer Nennwert
             else:
                 min_val = aFlow.nominal_val * aFlow.min_rel.active_data
@@ -495,7 +495,7 @@ class cFeatureOn(cFeature):
             eq2.add_summand(aFlow.model.var_val, 1 / nrOfFlows, timeIndexe)
             # wenn variabler Nennwert:
             if aFlow.nominal_val is None:
-                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.invest_parameters.max_investmentSize  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
+                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.invest_parameters.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
                 sumOfFlowMax += aFlow.max_rel.active_data * aFlow.nominal_val
 
@@ -903,13 +903,13 @@ class cFeatureInvest(cFeature):
 
         # segmented investcosts:
         self.featureLinearSegments = None
-        if self.args.costsInInvestsizeSegments is not None:
+        if self.args.effects_in_segments is not None:
             self.featureLinearSegments = cFeatureLinearSegmentVars('segmentedInvestcosts', self)
 
     def checkPlausibility(self):
         # Check fixedInvestmentSize:
         # todo: vielleicht ist es aber auch ok, wenn der nominal_val belegt ist und einfach nicht genutzt wird....
-        if self.args.investmentSize_is_fixed:
+        if self.args.fixed_size:
             assert ((self.fixedInvestmentSize is not None) and (
                         self.fixedInvestmentSize != 0)), 'fixedInvestmentSize muss gesetzt werden'
         else:
@@ -930,21 +930,21 @@ class cFeatureInvest(cFeature):
         onIsUsedAndvalIsNotFix = (self.val_rel is None) and onIsUsed
 
         # min-Wert:
-        if self.args.investment_is_optional:
+        if self.args.optional:
             lb = 0  # can be zero (if no invest) (than for all timesteps)
         elif onIsUsedAndvalIsNotFix:
             lb = 0  # can switch off and therefore be zero
         else:
-            if self.args.investmentSize_is_fixed:
+            if self.args.fixed_size:
                 lb = min_rel_eff * self.fixedInvestmentSize  # immer an
             else:
-                lb = min_rel_eff * self.args.min_investmentSize  # investSize is variabel
+                lb = min_rel_eff * self.args.minimum_size  # investSize is variabel
 
         #  max-Wert:
-        if self.args.investmentSize_is_fixed:
+        if self.args.fixed_size:
             ub = max_rel_eff * self.fixedInvestmentSize
         else:
-            ub = max_rel_eff * self.args.max_investmentSize  # investSize is variabel
+            ub = max_rel_eff * self.args.maximum_size  # investSize is variabel
 
         # ub und lb gleich, dann fix:
         if np.all(ub == lb):  # np.all -> kann listen oder werte vergleichen
@@ -968,20 +968,20 @@ class cFeatureInvest(cFeature):
 
         # lb..ub of investSize unterscheiden:        
         # min:
-        if self.args.investment_is_optional:
+        if self.args.optional:
             lb = 0
             # Wenn invest nicht optional:
         else:
-            if self.args.investmentSize_is_fixed:
+            if self.args.fixed_size:
                 lb = self.fixedInvestmentSize  # einschränken, damit P_inv = P_nom !
             else:
-                lb = self.args.min_investmentSize  #
+                lb = self.args.minimum_size  #
         # max:
-        if self.args.investmentSize_is_fixed:
+        if self.args.fixed_size:
             ub = self.fixedInvestmentSize
             # wenn nicht fixed:
         else:
-            ub = self.args.max_investmentSize
+            ub = self.args.maximum_size
             # Definition:
 
         if lb == ub:
@@ -992,7 +992,7 @@ class cFeatureInvest(cFeature):
             self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, modBox, lower_bound=lb, upper_bound=ub)
 
         # b) var_isInvested:
-        if self.args.investment_is_optional:
+        if self.args.optional:
             self.model.var_isInvested = Variable('isInvested', 1, self, modBox, is_binary=True)
 
             ## investCosts in Segments: ##
@@ -1003,8 +1003,8 @@ class cFeatureInvest(cFeature):
 
     # definingInvestcosts in Segments:
     def _defineCostSegments(self, modBox: SystemModel):
-        investSizeSegs = self.args.costsInInvestsizeSegments[0]  # segments of investSize
-        costSegs = self.args.costsInInvestsizeSegments[1]  # effect-dict with segments as entries
+        investSizeSegs = self.args.effects_in_segments[0]  # segments of investSize
+        costSegs = self.args.effects_in_segments[1]  # effect-dict with segments as entries
         costSegs = as_effect_dict(costSegs)
 
         ## 1. create segments for investSize and every effect##
@@ -1021,7 +1021,7 @@ class cFeatureInvest(cFeature):
             self.investVar_effect_dict |= {aEffect: var_investForEffect}
 
         ## 2. on_var: ##
-        if self.args.investment_is_optional:
+        if self.args.optional:
             var_isInvested = self.model.var_isInvested
         else:
             var_isInvested = None
@@ -1046,7 +1046,7 @@ class cFeatureInvest(cFeature):
     def doModeling(self, modBox, timeIndexe):
         assert self.definingVar is not None, 'setDefiningVar() still not executed!'
         # wenn var_isInvested existiert:    
-        if self.args.investment_is_optional:
+        if self.args.optional:
             self._add_defining_var_isInvested(modBox)
 
         # Bereich von definingVar in Abh. von var_investmentSize:
@@ -1086,12 +1086,12 @@ class cFeatureInvest(cFeature):
         ## 2. Gleichung: Minimum durch Investmentgröße ##        
 
         # Glg nur, wenn nicht Kombination On und fixed:
-        if not (self._existOn and self.args.investmentSize_is_fixed):
+        if not (self._existOn and self.args.fixed_size):
             self.eq_min_via_investmentSize = Equation('min_via_investmentSize', self, modBox, 'ineq')
 
         if self._existOn:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
-            if not self.args.investmentSize_is_fixed:
+            if not self.args.fixed_size:
                 # eq: definingVar(t) >= Big * (On(t)-1) + investmentSize * min_rel(t)
                 #     ... mit Big = max(min_rel*P_inv_max, epsilon)
                 # (P < min_rel*P_inv -> On=0 | On=1 -> P >= min_rel*P_inv)
@@ -1099,7 +1099,7 @@ class cFeatureInvest(cFeature):
                 # äquivalent zu:.
                 # eq: - definingVar(t) + Big * On(t) + min_rel(t) * investmentSize <= Big
 
-                Big = helpers.max_args(self.min_rel.active_data * self.args.max_investmentSize, modBox.epsilon)
+                Big = helpers.max_args(self.min_rel.active_data * self.args.maximum_size, modBox.epsilon)
 
                 self.eq_min_via_investmentSize.add_summand(self.definingVar, -1)
                 self.eq_min_via_investmentSize.add_summand(self.definingVar_On, Big)  # übergebene On-Variable
@@ -1119,7 +1119,7 @@ class cFeatureInvest(cFeature):
     def _add_defining_var_isInvested(self, modBox):
 
         # wenn fixed, dann const:
-        if self.args.investmentSize_is_fixed:
+        if self.args.fixed_size:
 
             # eq: investmentSize = isInvested * nominalValue            
             self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, modBox, 'eq')
@@ -1135,51 +1135,51 @@ class cFeatureInvest(cFeature):
             self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, modBox, 'ineq')
             self.eq_isInvested_1.add_summand(self.model.var_investmentSize, 1)
             self.eq_isInvested_1.add_summand(self.model.var_isInvested,
-                                             np.multiply(-1, self.args.max_investmentSize))  # Variable ist Skalar!
+                                             np.multiply(-1, self.args.maximum_size))  # Variable ist Skalar!
 
             ## 2. Gleichung (skalar):                  
             # eq2: P_invest  >= isInvested * max(epsilon, investSize_min)
             # (isInvested = 1 -> P_invest>0  |  P_invest=0 -> isInvested = 0)
             self.eq_isInvested_2 = Equation('isInvested_constraint_2', self, modBox, 'ineq')
             self.eq_isInvested_2.add_summand(self.model.var_investmentSize, -1)
-            self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(modBox.epsilon, self.args.min_investmentSize))
+            self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(modBox.epsilon, self.args.minimum_size))
 
     def addShareToGlobals(self, globalComp, modBox):
 
-        # # fixCosts:
-        # wenn fixCosts vorhanden:
-        if not (self.args.fixCosts is None) and self.args.fixCosts != 0:
-            if self.args.investment_is_optional:
+        # # fix_effects:
+        # wenn fix_effects vorhanden:
+        if not (self.args.fix_effects is None) and self.args.fix_effects != 0:
+            if self.args.optional:
                 # fix Share to InvestCosts: 
-                # share: + isInvested * fixCosts
-                globalComp.addShareToInvest('fixCosts', self.owner, self.model.var_isInvested, self.args.fixCosts, 1)
+                # share: + isInvested * fix_effects
+                globalComp.addShareToInvest('fix_effects', self.owner, self.model.var_isInvested, self.args.fix_effects, 1)
             else:
-                # share: + fixCosts
-                globalComp.addConstantShareToInvest('fixCosts', self.owner, self.args.fixCosts,
+                # share: + fix_effects
+                globalComp.addConstantShareToInvest('fix_effects', self.owner, self.args.fix_effects,
                                                     1)  # fester Wert hinufügen
 
-        # # divestCosts:
+        # # divest_effects:
 
-        if not (self.args.divestCosts is None) and self.args.divestCost != 0:
-            if self.args.investment_is_optional:
+        if not (self.args.divest_effects is None) and self.args.divestCost != 0:
+            if self.args.optional:
                 # fix Share to InvestCosts: 
-                # share: [(1- isInvested) * divestCosts]
-                # share: [divestCosts - isInvested * divestCosts]
-                # 1. part of share [+ divestCosts]:
-                globalComp.addConstantShareToInvest('divestCosts', self.owner, self.args.divestCosts, 1)
-                # 2. part of share [- isInvested * divestCosts]:
+                # share: [(1- isInvested) * divest_effects]
+                # share: [divest_effects - isInvested * divest_effects]
+                # 1. part of share [+ divest_effects]:
+                globalComp.addConstantShareToInvest('divest_effects', self.owner, self.args.divest_effects, 1)
+                # 2. part of share [- isInvested * divest_effects]:
                 globalComp.addShareToInvest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
-                                            self.args.divestCosts, -1)
+                                            self.args.divest_effects, -1)
                 # TODO : these 2 parts should be one share!
             else:
                 pass  # no divest costs if invest is not optional
 
-        # # specificCosts:
-        # wenn specificCosts vorhanden:
-        if not (self.args.specificCosts is None):
-            # share: + investmentSize (=var)   * specificCosts
-            globalComp.addShareToInvest('specificCosts', self.owner, self.model.var_investmentSize,
-                                        self.args.specificCosts, 1)
+        # # specific_effects:
+        # wenn specific_effects vorhanden:
+        if not (self.args.specific_effects is None):
+            # share: + investmentSize (=var)   * specific_effects
+            globalComp.addShareToInvest('specific_effects', self.owner, self.model.var_investmentSize,
+                                        self.args.specific_effects, 1)
 
         # # segmentedCosts:                                        
         if self.featureLinearSegments is not None:

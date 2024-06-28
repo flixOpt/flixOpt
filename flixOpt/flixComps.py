@@ -187,7 +187,7 @@ class LinearTransformer(Component):
             # check if investsize is variable for any flow:            
             for flow in (self.inputs + self.outputs):
                 if (flow.invest_parameters is not None) and \
-                        not (flow.invest_parameters.investmentSize_is_fixed):
+                        not (flow.invest_parameters.fixed_size):
                     raise Exception('linearSegmentsOfFlows (in ' +
                                     self.label_full +
                                     ') and variable nominal_value' +
@@ -646,7 +646,7 @@ class Storage(Component):
         capacity_inFlowHours : float or None
             nominal capacity of the storage 
             float: capacity in FlowHours
-            None:  if invest_parameters.investmentSize_is_fixed = False
+            None:  if invest_parameters.fixed_size = False
         min_rel_chargeState : float or TS, optional
             minimum relative charge state. The default is 0.
         max_rel_chargeState : float or TS, optional

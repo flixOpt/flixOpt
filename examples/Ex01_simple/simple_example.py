@@ -92,9 +92,9 @@ aSpeicher = Storage('Speicher',
                     eta_load=0.9, eta_unload=1,  #loading efficiency factor, unloading efficiency factor
                     fracLossPerHour=0.08,  # 8 %/h; 8 percent of storage loading level is lossed every hour
                     avoidInAndOutAtOnce=True,  # no parallel loading and unloading at one time
-                    invest_parameters=InvestParameters(fixCosts=20,
-                                                        investmentSize_is_fixed=True,
-                                                        investment_is_optional=False)
+                    invest_parameters=InvestParameters(fix_effects=20,
+                                                       fixed_size=True,
+                                                       optional=False)
                     )
  
 # # 3. sinks and sources #

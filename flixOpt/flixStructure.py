@@ -1216,7 +1216,7 @@ class Flow(Element):
         if self.invest_parameters is None:
             is_fixed = True  # keine variable var_InvestSize
         else:
-            is_fixed = self.invest_parameters.investmentSize_is_fixed
+            is_fixed = self.invest_parameters.fixed_size
         return is_fixed
 
     @property
@@ -1225,7 +1225,7 @@ class Flow(Element):
         if self.invest_parameters is None:
             is_optional = False  # keine variable var_isInvested
         else:
-            is_optional = self.invest_parameters.investment_is_optional
+            is_optional = self.invest_parameters.optional
         return is_optional
 
     # static var:
@@ -1368,7 +1368,7 @@ class Flow(Element):
             # Check:
             # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
             if (self.nominal_val == Flow.__nominal_val_default) and \
-                    ((invest_parameters is None) or (invest_parameters.investmentSize_is_fixed == True)):
+                    ((invest_parameters is None) or (invest_parameters.fixed_size == True)):
                 # Fehlermeldung:
                 raise Exception(
                     'Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
