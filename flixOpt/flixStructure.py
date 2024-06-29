@@ -476,8 +476,8 @@ class Effect(Element):
                  description: str,
                  is_standard: bool = False,
                  is_objective: bool = False,
-                 specific_share_to_other_effects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
-                 specific_share_to_other_effects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
+                 specific_share_to_other_effects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used as type hint
+                 specific_share_to_other_effects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used as type hint
                  minimum_operation: Optional[Skalar] = None,
                  maximum_operation: Optional[Skalar] = None,
                  minimum_invest: Optional[Skalar] = None,
