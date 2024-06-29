@@ -1730,7 +1730,7 @@ class System:
 
         # timeSeries: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
 
-    def __init__(self, timeSeries, dt_last=None):
+    def __init__(self, timeSeries: np.ndarray[np.datetime64], dt_last=None):
         '''
           Parameters
           ----------
