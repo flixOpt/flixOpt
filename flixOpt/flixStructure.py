@@ -1146,6 +1146,9 @@ class Flow(Element):
     flows are inputs and outputs of components
     '''
 
+    # static var:
+    _nominal_val_default = 1e9  # Großer Gültigkeitsbereich als Standard
+
     @property
     def label_full(self) -> str:
         # Wenn im Erstellungsprozess comp noch nicht bekannt:
@@ -1171,14 +1174,11 @@ class Flow(Element):
         # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
         return False if self.invest_parameters is None else self.invest_parameters.optional
 
-    # static var:
-    __nominal_val_default = 1e9  # Großer Gültigkeitsbereich als Standard
-
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
                  min_rel: Numeric_TS = 0,
                  max_rel: Numeric_TS = 1,
-                 nominal_val: Optional[Skalar] =__nominal_val_default,
+                 nominal_val: Optional[Skalar] =_nominal_val_default,
                  loadFactor_min: Optional[Skalar] = None, loadFactor_max: Optional[Skalar] = None,
                  #positive_gradient=None,
                  costsPerFlowHour: Optional[Union[Numeric_TS, EffectTypeDict]] =None,
@@ -1310,7 +1310,7 @@ class Flow(Element):
         else:
             # Check:
             # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
-            if (self.nominal_val == Flow.__nominal_val_default) and \
+            if (self.nominal_val == Flow._nominal_val_default) and \
                     ((invest_parameters is None) or (invest_parameters.fixed_size == True)):
                 # Fehlermeldung:
                 raise Exception(
