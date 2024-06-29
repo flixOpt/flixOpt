@@ -1177,8 +1177,8 @@ class Flow(Element):
 
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
-                 min_rel: Numeric_TS = 0,
-                 max_rel: Numeric_TS = 1,
+                 min_rel: Numeric_TS = 0,   # TODO: Rename?
+                 max_rel: Numeric_TS = 1,   # TODO: Rename?
                  size: Optional[Skalar] = _default_size,
                  load_factor_min: Optional[Skalar] = None, load_factor_max: Optional[Skalar] = None,
                  #positive_gradient=None,
@@ -1195,7 +1195,7 @@ class Flow(Element):
                  running_hour_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  flow_hours_total_max: Optional[Skalar] = None, flow_hours_total_min: Optional[Skalar] = None,
                  valuesBeforeBegin: Optional[List[Skalar]] = None,
-                 val_rel: Optional[Numeric_TS] = None,
+                 val_rel: Optional[Numeric_TS] = None,   # TODO: Rename?
                  medium: Optional[str] = None,
                  invest_parameters: Optional[InvestParameters] = None,
                  exists: Numeric_TS = 1,
@@ -1331,6 +1331,7 @@ class Flow(Element):
         on_valuesBeforeBegin = 1 * (self.valuesBeforeBegin >= 0.0001)
         # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
+        #TODO: Why not in sub_elements?
         self.featureOn = cFeatureOn(self, flowsDefiningOn,
                                     on_valuesBeforeBegin,
                                     self.switch_on_effects,
