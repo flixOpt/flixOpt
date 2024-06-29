@@ -771,10 +771,10 @@ class Component(Element):
         for aFlow in self.inputs + self.outputs:
             # z.B. results['Q_th'] = {'val':..., 'on': ..., ...}
             if isinstance(self, Bus):
-                flowLabel = aFlow.label_full  # Kessel_Q_th
+                flow_label = aFlow.label_full  # Kessel_Q_th
             else:
-                flowLabel = aFlow.label  # Q_th
-            (results[flowLabel], results_var[flowLabel]) = aFlow.get_results()
+                flow_label = aFlow.label  # Q_th
+            (results[flow_label], results_var[flow_label]) = aFlow.get_results()
         return results, results_var
 
     def finalize(self) -> None:
@@ -782,8 +782,8 @@ class Component(Element):
 
         # feature for: On and SwitchOn Vars
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
-        flowsDefiningOn = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
-        self.featureOn = cFeatureOn(self, flowsDefiningOn, self.on_values_before_begin, self.switch_on_effects,
+        flows_defining_on = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
+        self.featureOn = cFeatureOn(self, flows_defining_on, self.on_values_before_begin, self.switch_on_effects,
                                     self.effects_per_running_hour, onHoursSum_min=self.on_hours_total_min,
                                     onHoursSum_max=self.on_hours_total_max, switchOn_maxNr=self.switch_on_maximum)
 
