@@ -1705,7 +1705,7 @@ class System:
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
         self.global_comp = Global('global_comp')
-        self.__finalized = False  # wenn die Elements alle finalisiert sind, dann True
+        self._finalized = False  # wenn die Elements alle finalisiert sind, dann True
         self.model: Optional[SystemModel] = None  # later activated
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
         # self.addComponents(self.global_comp)
@@ -1861,17 +1861,17 @@ class System:
         print('finalize all Elements...')
         self.__plausibilityChecks()
         # nur EINMAL ausführen: Finalisieren der Elements:
-        if not self.__finalized:
+        if not self._finalized:
             # finalize Elements for modeling:
             for element in self.elements_of_fists_layer:
                 print(element.label)
                 type(element)
                 element.finalize()  # inklusive sub_elements!
-            self.__finalized = True
+            self._finalized = True
 
     def doModelingOfElements(self) -> SystemModel:
 
-        if not self.__finalized:
+        if not self._finalized:
             raise Exception('modeling not possible, because Energysystem is not finalized')
 
         # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
@@ -1945,7 +1945,7 @@ class System:
             log.debug('create model-Vars for Elements of EnergySystem')
             for element in self.elements_of_fists_layer:
                 # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
-                if not self.__finalized:
+                if not self._finalized:
                     raise Exception('activate_model(): --> Geht nicht, da System noch nicht finalized!')
                 # model bauen und in model registrieren.
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
