@@ -517,11 +517,11 @@ class flix_results():
                                                                          minFlowHours)
 
         # append excessValues:
-        if 'excessIn' in self.results[busOrComponent].keys():
+        if 'excess_input' in self.results[busOrComponent].keys():
             # in and out zusammenfassen:
 
-            excessIn = self.results[busOrComponent]['excessIn']
-            excessOut = - self.results[busOrComponent]['excessOut']
+            excessIn = self.results[busOrComponent]['excess_input']
+            excessOut = - self.results[busOrComponent]['excess_output']
 
             if flix_results.isGreaterMinFlowHours(excessIn, self.dt_in_hours, minFlowHours):
                 y_pos['excess_in'] = excessIn
