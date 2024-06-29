@@ -748,10 +748,10 @@ class Component(Element):
         #
         # input ist output von Bus:
         for aFlow in self.inputs:
-            aFlow.bus.registerOutputFlow(aFlow)  # ist das schön programmiert?
+            aFlow.bus.register_output_flow(aFlow)  # ist das schön programmiert?
         # output ist input von Bus:
         for aFlow in self.outputs:
-            aFlow.bus.registerInputFlow(aFlow)
+            aFlow.bus.register_input_flow(aFlow)
 
     def declare_vars_and_eqs_of_flows(self, system_model: SystemModel) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
@@ -1046,24 +1046,27 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
     def with_excess(self) -> bool:
         return False if self.excess_effects_per_flow_hour is None else True
 
-    def registerInputFlow(self, aFlow) -> None:
-        self.inputs.append(aFlow)
-        self.checkMedium(aFlow)
+    def register_input_flow(self, flow) -> None:
+        flow: Flow
+        self.inputs.append(flow)
+        self.checkMedium(flow)
 
-    def registerOutputFlow(self, aFlow) -> None:
-        self.outputs.append(aFlow)
-        self.checkMedium(aFlow)
+    def register_output_flow(self, flow) -> None:
+        flow: Flow
+        self.outputs.append(flow)
+        self.checkMedium(flow)
 
-    def checkMedium(self, aFlow) -> None:
+    def checkMedium(self, flow) -> None:
+        flow: Flow
         # Wenn noch nicht belegt
-        if aFlow.medium is not None:
+        if flow.medium is not None:
             # set gemeinsamer Medien:
             # commonMedium = self.media & aFlow.medium
             # wenn leer, data.h. kein gemeinsamer Eintrag:
-            if (aFlow.medium is not None) and (self.media is not None) and \
-                    (not (aFlow.medium in self.media)):
+            if (flow.medium is not None) and (self.media is not None) and \
+                    (not (flow.medium in self.media)):
                 raise Exception('in Bus ' + self.label + ' : registerFlow(): medium \''
-                                + str(aFlow.medium) + '\' of ' + aFlow.label_full +
+                                + str(flow.medium) + '\' of ' + flow.label_full +
                                 ' and media ' + str(self.media) + ' of bus ' +
                                 self.label_full + '  have no common medium!' +
                                 ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
