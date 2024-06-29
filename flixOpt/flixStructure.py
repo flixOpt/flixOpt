@@ -1707,8 +1707,6 @@ class System:
         self.global_comp = Global('global_comp')
         self._finalized = False  # wenn die Elements alle finalisiert sind, dann True
         self.model: Optional[SystemModel] = None  # later activated
-        # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
-        # self.addComponents(self.global_comp)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>"
@@ -1721,52 +1719,36 @@ class System:
         return f"Energy System with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
-    def addEffects(self, *args: Effect) -> None:
-        newListOfEffects = list(args)
-        for aNewEffect in newListOfEffects:
-            print('Register new effect ' + aNewEffect.label)
-            # check if already exists:
-            self._checkIfUniqueElement(aNewEffect, self.effects)
-
+    def add_effects(self, *args: Effect) -> None:
+        new_effects = list(args)
+        for new_effect in new_effects:
+            print('Register new effect ' + new_effect.label)
+            self._checkIfUniqueElement(new_effect, self.effects)   # check if already exists
             # Wenn Standard-Effekt, und schon einer vorhanden:
-            if (aNewEffect.is_standard) and (self.effects.standard_effect is not None):
-                raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
+            if new_effect.is_standard and self.effects.standard_effect is not None:
+                raise Exception(f'standardEffekt ist bereits belegt mit {self.effects.standard_effect.label}')
             # Wenn Objective-Effekt, und schon einer vorhanden:
-            if (aNewEffect.is_objective) and (self.effects.objective_effect is not None):
-                raise Exception('objectiveEffekt ist bereits belegt mit ' + self.objectiveEffect.label)
+            if new_effect.is_objective and self.effects.objective_effect is not None:
+                raise Exception(f'objectiveEffekt ist bereits belegt mit {self.effects.standard_effect.label}')
 
-            # in liste ergänzen:
-            self.effects.append(aNewEffect)
+            self.effects.append(new_effect)   # in liste ergänzen:
 
-        # an global_comp durchreichen: TODO: doppelte Haltung in system und global_comp ist so nicht schick.
-        self.global_comp.listOfEffectTypes = self.effects
+        # TODO: doppelte Haltung in system und global_comp ist so nicht schick.
+        self.global_comp.listOfEffectTypes = self.effects   # an global_comp durchreichen
 
-    # Komponenten registrieren:
-    def addComponents(self, *args: Component) -> None:
-
-        newListOfComps = list(args)
-        # für alle neuen Komponenten:
-        for aNewComp in newListOfComps:
-            # Check ob schon vorhanden:
-            print('Register new Component ' + aNewComp.label)
-            # check if already exists:
-            self._checkIfUniqueElement(aNewComp, self.components)
-
-            # # base in Komponente registrieren:
-            # aNewComp.addEnergySystemIBelongTo(self)
-
-            # Komponente in Flow registrieren
-            aNewComp.register_component_in_flows()
-
-            # Flows in Bus registrieren:
-            aNewComp.register_flows_in_bus()
-
-        # register components:
-        self.components.extend(newListOfComps)
+    def add_components(self, *args: Component) -> None:
+        # Komponenten registrieren:
+        new_components = list(args)
+        for new_component in new_components:
+            print('Register new Component ' + new_component.label)
+            self._checkIfUniqueElement(new_component, self.components)   # check if already exists:
+            new_component.register_component_in_flows()   # Komponente in Flow registrieren
+            new_component.register_flows_in_bus()   # Flows in Bus registrieren:
+        self.components.extend(new_components)   # Add to existing list of components
 
         # Element registrieren ganz allgemein:
 
-    def addElements(self, *args: Element) -> None:
+    def add_elements(self, *args: Element) -> None:
         '''
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
 
@@ -1779,15 +1761,14 @@ class System:
 
         for new_element in list(args):
             if isinstance(new_element, Component):
-                self.addComponents(new_element)
+                self.add_components(new_element)
             elif isinstance(new_element, Effect):
-                self.addEffects(new_element)
+                self.add_effects(new_element)
             elif isinstance(new_element, Element):
                 # check if already exists:
                 self._checkIfUniqueElement(new_element, self.other_elements)
                 # register Element:
                 self.other_elements.add(new_element)
-
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
@@ -1803,7 +1784,7 @@ class System:
 
         '''
 
-        self.addElements(*args)
+        self.add_elements(*args)
         self.temporary_elements += args  # Register temporary Elements
 
     def deleteTemporaryElements(self):  # function just implemented, still not used

@@ -131,11 +131,11 @@ aStromEinspeisung = Sink('Einspeisung',
 # ## Build energysystem - Registering of all elements ##
 
 system = System(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
-system.addComponents(aSpeicher) # adding components
-system.addEffects(costs, CO2) # adding defined effects
-system.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
-system.addComponents(aStromEinspeisung) # adding components
-system.addComponents(aKWK) # adding components
+system.add_components(aSpeicher) # adding components
+system.add_effects(costs, CO2) # adding defined effects
+system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
+system.add_components(aStromEinspeisung) # adding components
+system.add_components(aKWK) # adding components
 
 
 # choose used timeindexe:

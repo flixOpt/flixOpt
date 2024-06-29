@@ -48,8 +48,8 @@ class TestExistance(unittest.TestCase):
                                Q_th=Flow(label="Q_th", size=size, bus=self.busses["Heat"]),
                                Q_fu=Flow(label="Q_fu", bus=self.busses["Gas"])
                                )
-        self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())
-        self.es.addElements(boiler_exists, self.comps["Boiler"])
+        self.es.add_elements(*self.effects.values(), *self.sinks_n_sources.values())
+        self.es.add_elements(boiler_exists, self.comps["Boiler"])
         calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
         calc.solve(solverProps={'mip_gap': 0.05,
@@ -79,8 +79,8 @@ class TestExistance(unittest.TestCase):
                                               bus=self.busses["Gas"])
                                  )
 
-        self.es.addElements(*self.effects.values(), *self.sinks_n_sources.values())
-        self.es.addElements(storage_exists, self.comps["CHP"])
+        self.es.add_elements(*self.effects.values(), *self.sinks_n_sources.values())
+        self.es.add_elements(storage_exists, self.comps["CHP"])
         calc = Calculation('Sim1', self.es, 'pyomo')
         calc.doModelingAsOneSegment()
         calc.solve(solverProps={'mip_gap': 0.05,

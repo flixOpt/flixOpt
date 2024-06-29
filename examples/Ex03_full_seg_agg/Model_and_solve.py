@@ -209,14 +209,14 @@ aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
 # Zusammenführung:
 system = System(aTimeSeries, last_time_step_hours=None)
-# system.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
-system.addEffects(costs)
-system.addEffects(CO2, PE)
-system.addComponents(aGaskessel,aWaermeLast,aStromLast,aGasTarif,aKohleTarif)
-system.addComponents(aStromEinspeisung,aStromTarif)
-system.addComponents(aKWK)
+# system.add_components(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
+system.add_effects(costs)
+system.add_effects(CO2, PE)
+system.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif)
+system.add_components(aStromEinspeisung, aStromTarif)
+system.add_components(aKWK)
 
-system.addComponents(aSpeicher)
+system.add_components(aSpeicher)
 
 # system.mainSystem.extractSubSystem([0,1,2])
 

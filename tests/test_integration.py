@@ -83,11 +83,11 @@ class TestSimple(BaseTest):
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * self.p_el))
 
         es = System(self.aTimeSeries, last_time_step_hours=None)
-        es.addComponents(aSpeicher)
-        es.addEffects(costs, CO2)
-        es.addComponents(aBoiler, aWaermeLast, aGasTarif)
-        es.addComponents(aStromEinspeisung)
-        es.addComponents(aKWK)
+        es.add_components(aSpeicher)
+        es.add_effects(costs, CO2)
+        es.add_components(aBoiler, aWaermeLast, aGasTarif)
+        es.add_components(aStromEinspeisung)
+        es.add_components(aKWK)
 
         time_indices = None
 
@@ -243,8 +243,8 @@ class TestComplex(BaseTest):
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
         es = System(self.aTimeSeries, last_time_step_hours=None)
-        es.addEffects(costs, CO2, PE)
-        es.addComponents(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
+        es.add_effects(costs, CO2, PE)
+        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
         aCalc = Calculation('Sim1', es, 'pyomo', None)
         aCalc.doModelingAsOneSegment()
@@ -287,9 +287,9 @@ class TestComplex(BaseTest):
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
         es = System(self.aTimeSeries, last_time_step_hours=None)
-        es.addEffects(costs, CO2, PE)
-        es.addComponents(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
-        es.addComponents(aSpeicher)
+        es.add_effects(costs, CO2, PE)
+        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
+        es.add_components(aSpeicher)
 
         aCalc = Calculation('Sim1', es, 'pyomo', None)
         aCalc.doModelingAsOneSegment()
@@ -351,8 +351,8 @@ class TestModelingTypes(BaseTest):
         aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
         es = System(aTimeSeries, last_time_step_hours=None)
-        es.addEffects(costs, CO2, PE)
-        es.addComponents(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
+        es.add_effects(costs, CO2, PE)
+        es.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
 
         if doFullCalc:
             calc = Calculation('fullModel', es, 'pyomo')

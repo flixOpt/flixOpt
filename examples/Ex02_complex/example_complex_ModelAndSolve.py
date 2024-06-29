@@ -196,16 +196,16 @@ aStromEinspeisung = Sink('Einspeisung',
 
 system = System(aTimeSeries, last_time_step_hours=None) # creating System
 
-system.addEffects(costs, CO2, PE) # adding effects
-system.addComponents(aGaskessel, aWaermeLast, aGasTarif) # adding components
-system.addComponents(aStromEinspeisung) # adding components
+system.add_effects(costs, CO2, PE) # adding effects
+system.add_components(aGaskessel, aWaermeLast, aGasTarif) # adding components
+system.add_components(aStromEinspeisung) # adding components
 
 if useCHPwithLinearSegments:
-    system.addComponents(aKWK2) # adding components
+    system.add_components(aKWK2) # adding components
 else:
-    system.addComponents(aKWK) # adding components
+    system.add_components(aKWK) # adding components
     
-system.addComponents(aSpeicher) # adding components
+system.add_components(aSpeicher) # adding components
 
 ################################
 # ## modeling and calculation ##

@@ -72,8 +72,8 @@ aGasTarif = Source('Gastarif',
 # ## Build energysystem - Registering of all elements ##
 
 system = System(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
-system.addEffects(costs) # adding defined effects
-system.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
+system.add_effects(costs) # adding defined effects
+system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
 
 # choose used timeindexe:
 time_indices = None # all timeindexe are used
