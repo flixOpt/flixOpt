@@ -1032,7 +1032,7 @@ class cFeatureInvest(cFeature):
         if isinstance(aEffect, Effect):
             aStr = aEffect.label
         elif aEffect is None:
-            aStr = system_model.system.listOfEffectTypes.standard_effect().label  # Standard-Effekt
+            aStr = system_model.system.effects.standard_effect.label  # Standard-Effekt
         else:
             raise Exception('Given effect (' + str(aEffect) + ') is not an effect!')
         # new variable, i.e for costs, CO2,... :

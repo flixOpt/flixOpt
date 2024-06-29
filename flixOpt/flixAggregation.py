@@ -355,7 +355,7 @@ class cAggregationModeling(flixStructure.Element):
 
         if self.listOfElementsToClusterize is None:
             # Alle:
-            compSet = set(self.system.listOfComponents)
+            compSet = set(self.system.components)
             flowSet = self.system.flows
         else:
             # Ausgewählte:

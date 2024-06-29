@@ -614,13 +614,14 @@ class EffectCollection(List[Effect]):
     internal effect list for simple handling of effects
     '''
 
-    # return standard effectType:
+    @property
     def standard_effect(self) -> Optional[Effect]:
         aEffect: Effect
         for aEffectType in self:
             if aEffectType.is_standard:
                 return aEffectType
 
+    @property
     def objective_effect(self) -> Effect:
         aEffect: Effect
         aObjectiveEffect = None
@@ -918,7 +919,7 @@ class Global(Element):
             # Falls None, dann Standard-effekt nutzen:
             effect: Effect
             if effect is None:
-                effect = self.listOfEffectTypes.standard_effect()
+                effect = self.listOfEffectTypes.standard_effect
             elif effect not in self.listOfEffectTypes:
                 raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
 
@@ -984,7 +985,7 @@ class Global(Element):
         self.objective.add_summand(self.penalty.model.var_sum, 1)
 
         # Definierter Effekt als Zielfunktion:
-        objectiveEffect = self.listOfEffectTypes.objective_effect()
+        objectiveEffect = self.listOfEffectTypes.objective_effect
         if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
         self.objective.add_summand(objectiveEffect.operation.model.var_sum, 1)
         self.objective.add_summand(objectiveEffect.invest.model.var_sum, 1)
@@ -1633,8 +1634,8 @@ class System:
 
     @property
     def elements_of_first_layer_wo_flows(self) -> List[Element]:
-        return (self.listOfComponents + list(self.buses) + [self.globalComp] + self.listOfEffectTypes +
-                list(self.setOfOtherElements))
+        return (self.components + list(self.buses) + [self.globalComp] + self.effects +
+                list(self.other_elements))
 
     @property
     def elements_of_fists_layer(self) -> List[Element]:
@@ -1660,7 +1661,7 @@ class System:
     # Achtung: Funktion wird nicht nur für Getter genutzt.
     @property
     def flows(self) -> Set[Flow]:
-        return {flow for comp in self.listOfComponents for flow in comp.inputs + comp.outputs}
+        return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
 
     # get all TS in one list:
     @property
@@ -1677,19 +1678,20 @@ class System:
 
         # time_series: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
 
-    def __init__(self, time_series: np.ndarray[np.datetime64], last_time_step_hours: Optional[Union[int, float]] = None):
-        '''
+    def __init__(self,
+                 time_series: np.ndarray[np.datetime64],
+                 last_time_step_hours: Optional[Union[int, float]] = None):
+        """
           Parameters
           ----------
-          time_series : np.array of datetime64
+          time_series : np.ndarray of datetime64
               timeseries of the data
           last_time_step_hours : for calc
               The duration of last time step.
               Storages needs this time-duration for calculation of charge state
               after last time step.
               If None, then last time increment of time_series is used.
-
-        '''
+        """
         self.time_series = time_series
         self.last_time_step_hours = last_time_step_hours
 
@@ -1697,9 +1699,9 @@ class System:
         helpers.checkTimeSeries('global esTimeSeries', self.time_series_with_end)
 
         # defaults:
-        self.listOfComponents = []
-        self.setOfOtherElements = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
-        self.listOfEffectTypes = EffectCollection()  # Kosten, CO2, Primärenergie, ...
+        self.components: List[Component] = []
+        self.other_elements: Set[Element] = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
+        self.effects: EffectCollection = EffectCollection()  # Kosten, CO2, Primärenergie, ...
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         self.standardEffect = None  # Standard-Effekt, zumeist Kosten
         self.objectiveEffect = None  # Zielfunktions-Effekt, z.B. Kosten oder CO2
@@ -1711,13 +1713,13 @@ class System:
         # self.addComponents(self.globalComp)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} with {len(self.listOfComponents)} components and {len(self.listOfEffectTypes)} effects>"
+        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>"
 
     def __str__(self):
         components = '\n'.join(component.__str__() for component in
-                               sorted(self.listOfComponents, key=lambda component: component.label.upper()))
+                               sorted(self.components, key=lambda component: component.label.upper()))
         effects = '\n'.join(effect.__str__() for effect in
-                               sorted(self.listOfEffectTypes, key=lambda effect: effect.label.upper()))
+                               sorted(self.effects, key=lambda effect: effect.label.upper()))
         return f"Energy System with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
@@ -1726,20 +1728,20 @@ class System:
         for aNewEffect in newListOfEffects:
             print('Register new effect ' + aNewEffect.label)
             # check if already exists:
-            self._checkIfUniqueElement(aNewEffect, self.listOfEffectTypes)
+            self._checkIfUniqueElement(aNewEffect, self.effects)
 
             # Wenn Standard-Effekt, und schon einer vorhanden:
-            if (aNewEffect.is_standard) and (self.listOfEffectTypes.standard_effect() is not None):
+            if (aNewEffect.is_standard) and (self.effects.standard_effect is not None):
                 raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
             # Wenn Objective-Effekt, und schon einer vorhanden:
-            if (aNewEffect.is_objective) and (self.listOfEffectTypes.objective_effect() is not None):
+            if (aNewEffect.is_objective) and (self.effects.objective_effect is not None):
                 raise Exception('objectiveEffekt ist bereits belegt mit ' + self.objectiveEffect.label)
 
             # in liste ergänzen:
-            self.listOfEffectTypes.append(aNewEffect)
+            self.effects.append(aNewEffect)
 
         # an globalComp durchreichen: TODO: doppelte Haltung in system und globalComp ist so nicht schick.
-        self.globalComp.listOfEffectTypes = self.listOfEffectTypes
+        self.globalComp.listOfEffectTypes = self.effects
 
     # Komponenten registrieren:
     def addComponents(self, *args: Component) -> None:
@@ -1750,7 +1752,7 @@ class System:
             # Check ob schon vorhanden:
             print('Register new Component ' + aNewComp.label)
             # check if already exists:
-            self._checkIfUniqueElement(aNewComp, self.listOfComponents)
+            self._checkIfUniqueElement(aNewComp, self.components)
 
             # # base in Komponente registrieren:
             # aNewComp.addEnergySystemIBelongTo(self)
@@ -1762,7 +1764,7 @@ class System:
             aNewComp.register_flows_in_bus()
 
         # register components:
-        self.listOfComponents.extend(newListOfComps)
+        self.components.extend(newListOfComps)
 
         # Element registrieren ganz allgemein:
 
@@ -1784,9 +1786,9 @@ class System:
                 self.addEffects(new_element)
             elif isinstance(new_element, Element):
                 # check if already exists:
-                self._checkIfUniqueElement(new_element, self.setOfOtherElements)
+                self._checkIfUniqueElement(new_element, self.other_elements)
                 # register Element:
-                self.setOfOtherElements.add(new_element)
+                self.other_elements.add(new_element)
 
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
@@ -1812,10 +1814,10 @@ class System:
         '''
         for temporary_element in self.temporary_elements:
             # delete them again in the lists:
-            self.listOfComponents.remove(temporary_element)
+            self.components.remove(temporary_element)
             self.buses.remove(temporary_element)
-            self.setOfOtherElements.remove(temporary_element)
-            self.listOfEffectTypes.remove(temporary_element)
+            self.other_elements.remove(temporary_element)
+            self.effects.remove(temporary_element)
             self.flows(temporary_element)
 
     def _checkIfUniqueElement(self, aElement: Element, listOfExistingLists: list) -> None:
@@ -1845,7 +1847,7 @@ class System:
                     '  ' + effect.label + ' -> has share in: ' + shareEffect.label + '\n' \
                                                                                      '  ' + shareEffect.label + ' -> has share in: ' + effect.label
 
-        for effect in self.listOfEffectTypes:
+        for effect in self.effects:
             # operation:
             for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
@@ -1885,7 +1887,7 @@ class System:
         self.globalComp.do_modeling(self.model, time_indices)  # globale Funktionen erstellen!
 
         # Komponenten-Modellierung (# inklusive sub_elements!)
-        for aComp in self.listOfComponents:
+        for aComp in self.components:
             aComp: Component
             log.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
@@ -1907,7 +1909,7 @@ class System:
             aBus.add_share_to_globals(self.globalComp, self.model)
 
         # weitere übergeordnete Modellierungen:
-        for element in self.setOfOtherElements:
+        for element in self.other_elements:
             element.declare_vars_and_eqs(self.model)
             element.do_modeling(self.model, time_indices)
             element.add_share_to_globals(self.globalComp, self.model)
@@ -1995,7 +1997,7 @@ class System:
         # Comps:
         modelDescription['components'] = {}
         aComp: Component
-        for aComp in self.listOfComponents:
+        for aComp in self.components:
             modelDescription['components'].update(aComp.description())
 
         # Flows:
@@ -2014,7 +2016,7 @@ class System:
         aSubDict = {}
         aDict['Components'] = aSubDict
         aComp: Element
-        for aComp in self.listOfComponents:
+        for aComp in self.components:
             aSubDict[aComp.label] = aComp.description_of_equations()
 
         # buses:
@@ -2029,14 +2031,14 @@ class System:
         # flows:
         aSubDict = {}
         aDict['flows'] = aSubDict
-        for aComp in self.listOfComponents:
+        for aComp in self.components:
             for aFlow in (aComp.inputs + aComp.outputs):
                 aSubDict[aFlow.label_full] = aFlow.description_of_equations()
 
         # others
         aSubDict = {}
         aDict['others'] = aSubDict
-        for element in self.setOfOtherElements:
+        for element in self.other_elements:
             aSubDict[element.label] = element.description_of_equations()
 
         return aDict
@@ -2070,7 +2072,7 @@ class System:
             subDict = {}
             aDict['Comps'] = subDict
             # comps:
-            for aComp in self.listOfComponents:
+            for aComp in self.components:
                 subDict[aComp.label] = aComp.description_of_variables()
                 for aFlow in aComp.inputs + aComp.outputs:
                     subDict[aComp.label] += aFlow.description_of_variables()
@@ -2087,7 +2089,7 @@ class System:
             # others
             aSubDict = {}
             aDict['others'] = aSubDict
-            for element in self.setOfOtherElements:
+            for element in self.other_elements:
                 aSubDict[element.label] = element.description_of_variables()
 
             return aDict
