@@ -1162,13 +1162,9 @@ class Flow(Element):
         return True if self in self.comp.inputs else False
 
     @property
-    def investmentSize_is_fixed(self) -> bool:
-        # Wenn kein InvestParameters existiert:
-        if self.invest_parameters is None:
-            is_fixed = True  # keine variable var_InvestSize
-        else:
-            is_fixed = self.invest_parameters.fixed_size
-        return is_fixed
+    def size_is_fixed(self) -> bool:
+        # Wenn kein InvestParameters existiert --> True; Wenn Investparameter, den Wert davon nehmen
+        return True if self.invest_parameters is None else self.invest_parameters.fixed_size
 
     @property
     def invest_is_optional(self) -> bool:
