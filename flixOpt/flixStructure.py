@@ -1560,36 +1560,35 @@ class Flow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def add_share_to_globals(self, globalComp: Global, system_model) -> None:
+    def add_share_to_globals(self, global_comp: Global, system_model) -> None:
 
         # Arbeitskosten:
         if self.effects_per_flow_hour is not None:
-            # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
-            # variable_costs          = Summand(self.model.var_val, np.multiply(self.effects_per_flow_hour, model.dt_in_hours))
-            # globalComp.costsOfOperating_eq.add_summand(self.model.var_val, np.multiply(self.effects_per_flow_hour.active_data, model.dt_in_hours)) # np.multiply = elementweise Multiplikation
-            shareHolder = self
-            globalComp.add_share_to_operation('effects_per_flow_hour', shareHolder, self.model.var_val, self.effects_per_flow_hour,
-                                              system_model.dt_in_hours)
+            owner = self
+            global_comp.add_share_to_operation(
+                'effects_per_flow_hour', owner, self.model.var_val,
+                self.effects_per_flow_hour, system_model.dt_in_hours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
-        self.featureOn.add_share_to_globals(globalComp, system_model)
+        self.featureOn.add_share_to_globals(global_comp, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.add_share_to_globals(globalComp, system_model)
+            self.featureInvest.add_share_to_globals(global_comp, system_model)
 
-        ''' in oemof gibt es noch 
-             if m.flows[i, o].positive_gradient['ub'][0] is not None:
-                    for t in m.TIMESTEPS:
-                        gradient_costs += (self.positive_gradient[i, o, t] *
-                                           m.flows[i, o].positive_gradient[
-                                               'costs'])
-        
-                if m.flows[i, o].negative_gradient['ub'][0] is not None:
-                    for t in m.TIMESTEPS:
-                        gradient_costs += (self.negative_gradient[i, o, t] *
-                                           m.flows[i, o].negative_gradient[
-                                               'costs'])
-        '''
+        """
+        in oemof gibt es noch 
+            if m.flows[i, o].positive_gradient['ub'][0] is not None:
+                for t in m.TIMESTEPS:
+                    gradient_costs += (self.positive_gradient[i, o, t] *
+                                       m.flows[i, o].positive_gradient[
+                                           'costs'])
+            
+            if m.flows[i, o].negative_gradient['ub'][0] is not None:
+                for t in m.TIMESTEPS:
+                    gradient_costs += (self.negative_gradient[i, o, t] *
+                                       m.flows[i, o].negative_gradient[
+                                           'costs'])
+        """
 
     def getStrDescr(self, type='full') -> Dict:
         aDescr = {}
