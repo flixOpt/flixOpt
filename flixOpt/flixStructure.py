@@ -1623,17 +1623,6 @@ class Flow(Element):
         if self.medium is None:    # nicht überschreiben, nur wenn leer:
             self.medium = medium
 
-# class cBeforeValue :
-
-#   def __init__(self, modelingElement, var, esBeforeValues, is_start_value):
-#     self.esBeforeValues  = esBeforeValues # Standardwerte für Simulationsstart im Energiesystem
-#     self.modelingElement = modelingElement 
-#     self.var             = var
-#     self.is_start_value =is_start_value
-
-#   def getBeforeValue(self):
-#     if
-
 
 class System:
     '''
