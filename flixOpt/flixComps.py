@@ -226,15 +226,15 @@ class LinearTransformer(Component):
         else:
             self.feature_linSegments.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, timeIndexe):
+    def do_modeling(self, system_model: SystemModel, time_indices):
         """
         Durchführen der Modellierung?
 
         :param system_model:
-        :param timeIndexe:
+        :param time_indices:
         :return:
         """
-        super().do_modeling(system_model, timeIndexe)
+        super().do_modeling(system_model, time_indices)
         # factor_Sets:
         if self.segmentsOfFlows is None:
             # Transformer-Constraints:
@@ -266,7 +266,7 @@ class LinearTransformer(Component):
         # (linear) segments:
         # Zusammenhänge zw. inputs & outputs können auch vollständig über Segmente beschrieben werden:
         else:
-            self.feature_linSegments.do_modeling(system_model, timeIndexe)
+            self.feature_linSegments.do_modeling(system_model, time_indices)
 
     def print(self, shiftChars):
         """
@@ -809,21 +809,21 @@ class Storage(Component):
 
         :return:
         """
-        initialStates['chargeState0_inFlowHours'] = charge_state[timeIndexe[0]]
+        initialStates['chargeState0_inFlowHours'] = charge_state[time_indices[0]]
         return initialStates
 
-    def do_modeling(self, system_model, timeIndexe):
+    def do_modeling(self, system_model, time_indices):
         """
         Durchführen der Modellierung?
 
         :param system_model:
-        :param timeIndexe:
+        :param time_indices:
         :return:
         """
-        super().do_modeling(system_model, timeIndexe)
+        super().do_modeling(system_model, time_indices)
 
         # Gleichzeitiges Be-/Entladen verhindern:
-        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.do_modeling(system_model, timeIndexe)
+        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.do_modeling(system_model, time_indices)
 
         # % Speicherladezustand am Start
         if self.chargeState0_inFlowHours is None:
@@ -833,12 +833,12 @@ class Storage(Component):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
             self.eq_charge_state_start = Equation('charge_state_start', self, system_model, eqType='eq')
             self.eq_charge_state_start.add_constant(self.model.var_charge_state.before_value)  # chargeState_0 !
-            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, timeIndexe[0])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, time_indices[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
             self.eq_charge_state_start = Equation('charge_state_start', self, system_model, eqType='eq')
-            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, timeIndexe[0])
-            self.eq_charge_state_start.add_summand(self.model.var_charge_state, -1, timeIndexe[-1])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, time_indices[0])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, -1, time_indices[-1])
         else:
             raise Exception('chargeState0_inFlowHours has undefined value = ' + str(self.chargeState0_inFlowHours))
 
@@ -847,13 +847,13 @@ class Storage(Component):
         # Q_Ladezustand(n+1) + (-1+VerlustanteilProStunde*dt(n)) *Q_Ladezustand(n) -  dt(n)*eta_Lade*Q_th_Lade(n) +  dt(n)* 1/eta_Entlade*Q_th_Entlade(n)  = 0
 
         # charge_state hat ein Index mehr:
-        timeIndexeChargeState = range(timeIndexe.start, timeIndexe.stop + 1)
+        time_indicesChargeState = range(time_indices.start, time_indices.stop + 1)
         self.eq_charge_state = Equation('charge_state', self, system_model, eqType='eq')
         self.eq_charge_state.add_summand(self.model.var_charge_state,
                                          -1 * (1 - self.fracLossPerHour.active_data * system_model.dt_in_hours),
-                                        timeIndexeChargeState[
+                                        time_indicesChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
-        self.eq_charge_state.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
+        self.eq_charge_state.add_summand(self.model.var_charge_state, 1, time_indicesChargeState[1:])  # 1:end
         self.eq_charge_state.add_summand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * system_model.dt_in_hours)
         self.eq_charge_state.add_summand(self.outFlow.model.var_val,
                                          1 / self.eta_unload.active_data * system_model.dt_in_hours)  # Achtung hier 1/eta!
@@ -863,13 +863,13 @@ class Storage(Component):
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.charge_state_end_max is not None:
             self.eq_charge_state_end_max = Equation('eq_charge_state_end_max', self, system_model, eqType='ineq')
-            self.eq_charge_state_end_max.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_max.add_summand(self.model.var_charge_state, 1, time_indicesChargeState[-1])
             self.eq_charge_state_end_max.add_constant(self.charge_state_end_max)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.charge_state_end_min is not None:
             self.eq_charge_state_end_min = Equation('eq_charge_state_end_min', self, system_model, eqType='ineq')
-            self.eq_charge_state_end_min.add_summand(self.model.var_charge_state, -1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_min.add_summand(self.model.var_charge_state, -1, time_indicesChargeState[-1])
             self.eq_charge_state_end_min.add_constant(- self.charge_state_end_min)
 
         # nettoflow:
@@ -880,7 +880,7 @@ class Storage(Component):
         self.eq_nettoFlow.add_summand(self.outFlow.model.var_val, -1)
 
         if self.featureInvest is not None:
-            self.featureInvest.do_modeling(system_model, timeIndexe)
+            self.featureInvest.do_modeling(system_model, time_indices)
 
         # ############# Gleichungen ##########################
         # % Speicherleistung an Bilanzgrenze / Speicher-Ladung / Speicher-Entladung
@@ -984,18 +984,18 @@ class SourceAndSink(Component):
         """
         super().declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model, timeIndexe):
+    def do_modeling(self, system_model, time_indices):
         """
         Durchführen der Modellierung?
 
         :param system_model:
-        :param timeIndexe:
+        :param time_indices:
         :return:
         """
-        super().do_modeling(system_model, timeIndexe)
+        super().do_modeling(system_model, time_indices)
         # Entweder Sink-Flow oder Source-Flow aktiv. Nicht beide Zeitgleich!
         if self.featureAvoidInAndOutAtOnce is not None:
-            self.featureAvoidInAndOutAtOnce.do_modeling(system_model, timeIndexe)
+            self.featureAvoidInAndOutAtOnce.do_modeling(system_model, time_indices)
 
 
 class Source(Component):
@@ -1174,12 +1174,12 @@ class Transportation(Component):
         """
         super().declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model, timeIndexe):
-        super().do_modeling(system_model, timeIndexe)
+    def do_modeling(self, system_model, time_indices):
+        super().do_modeling(system_model, time_indices)
 
         # not both directions at once:
         if self.avoidFlowInBothDirectionsAtOnce and (
-                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.do_modeling(system_model, timeIndexe)
+                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.do_modeling(system_model, time_indices)
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)

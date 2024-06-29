@@ -353,9 +353,9 @@ class Element:
         #   #   aFeature.declare_vars_and_eqs(model)
         pass
 
-    # def do_modeling(self,model,timeIndexe):
+    # def do_modeling(self,model,time_indices):
     #   # for aFeature in self.features:
-    #   aFeature.do_modeling(model, timeIndexe)
+    #   aFeature.do_modeling(model, time_indices)
 
     # Ergebnisse als dict ausgeben:    
     def get_results(self) -> Tuple[Dict, Dict]:
@@ -568,17 +568,17 @@ class Effect(Element):
         self.invest.declare_vars_and_eqs(system_model)
         self.all.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model, timeIndexe) -> None:
+    def do_modeling(self, system_model, time_indices) -> None:
         print('modeling ' + self.label)
         super().declare_vars_and_eqs(system_model)
-        self.operation.do_modeling(system_model, timeIndexe)
-        self.invest.do_modeling(system_model, timeIndexe)
+        self.operation.do_modeling(system_model, time_indices)
+        self.invest.do_modeling(system_model, time_indices)
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
         self.all.addVariableShare('operation', self, self.operation.model.var_sum, 1, 1)
         self.all.addVariableShare('invest', self, self.invest.model.var_sum, 1, 1)
-        self.all.do_modeling(system_model, timeIndexe)
+        self.all.do_modeling(system_model, time_indices)
 
     def __str__(self):
         objective = "Objective" if self.is_objective else ""
@@ -797,9 +797,9 @@ class Component(Element):
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-    def do_modeling(self, system_model, timeIndexe) -> None:
+    def do_modeling(self, system_model, time_indices) -> None:
         log.debug(str(self.label) + 'do_modeling()')
-        self.featureOn.do_modeling(system_model, timeIndexe)
+        self.featureOn.do_modeling(system_model, time_indices)
 
     def add_share_to_globals_of_flows(self, globalComp, system_model) -> None:
         for aFlow in self.inputs + self.outputs:
@@ -947,14 +947,14 @@ class Global(Element):
 
     #  eq_objective = Equation('objective',self,model,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def do_modeling(self, system_model, timeIndexe) -> None:
-        # super().do_modeling(model,timeIndexe)
+    def do_modeling(self, system_model, time_indices) -> None:
+        # super().do_modeling(model,time_indices)
 
-        self.penalty.do_modeling(system_model, timeIndexe)
+        self.penalty.do_modeling(system_model, time_indices)
         ## Gleichungen bauen für Effekte: ##
         effect: Effect
         for effect in self.listOfEffectTypes:
-            effect.do_modeling(system_model, timeIndexe)
+            effect.do_modeling(system_model, time_indices)
 
         ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
         for effectType in self.listOfEffectTypes:
@@ -1080,8 +1080,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             self.excessIn = VariableTS('excessIn', len(system_model.time_series), self, system_model, lower_bound=0)
             self.excessOut = VariableTS('excessOut', len(system_model.time_series), self, system_model, lower_bound=0)
 
-    def do_modeling(self, system_model, timeIndexe) -> None:
-        super().do_modeling(system_model, timeIndexe)
+    def do_modeling(self, system_model, time_indices) -> None:
+        super().do_modeling(system_model, time_indices)
 
         # inputs = outputs
         eq_busbalance = Equation('busBalance', self, system_model)
@@ -1500,11 +1500,11 @@ class Flow(Element):
             self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
             self.featureInvest.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, timeIndexe) -> None:
-        # super().do_modeling(model,timeIndexe)
+    def do_modeling(self, system_model: SystemModel, time_indices) -> None:
+        # super().do_modeling(model,time_indices)
 
         # for aFeature in self.features:
-        #   aFeature.do_modeling(model,timeIndexe)
+        #   aFeature.do_modeling(model,time_indices)
 
         #
         # ############## Variablen aktivieren: ##############
@@ -1550,14 +1550,14 @@ class Flow(Element):
         # ############## Constraints für Binärvariablen : ##############
         #
 
-        self.featureOn.do_modeling(system_model, timeIndexe)  # TODO: rekursiv aufrufen für sub_elements
+        self.featureOn.do_modeling(system_model, time_indices)  # TODO: rekursiv aufrufen für sub_elements
 
         #          
         # ############## Glg. für Investition : ##############
         #
 
         if self.featureInvest is not None:
-            self.featureInvest.do_modeling(system_model, timeIndexe)
+            self.featureInvest.do_modeling(system_model, time_indices)
 
         ## ############## full load fraction bzw. load factor ##############
 
@@ -1961,13 +1961,13 @@ class System:
 
         # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
 
-        # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von time_indices abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
+        # TODO: Achtung time_indices kann auch nur ein Teilbereich von time_indices abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
         # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
-        timeIndexe = range(len(self.model.time_indices))
+        time_indices = range(len(self.model.time_indices))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:
         self.globalComp.declare_vars_and_eqs(self.model)  # globale Funktionen erstellen!
-        self.globalComp.do_modeling(self.model, timeIndexe)  # globale Funktionen erstellen!
+        self.globalComp.do_modeling(self.model, time_indices)  # globale Funktionen erstellen!
 
         # Komponenten-Modellierung (# inklusive sub_elements!)
         for aComp in self.listOfComponents:
@@ -1977,8 +1977,8 @@ class System:
             aComp.declare_vars_and_eqs_of_flows(self.model)
             aComp.declare_vars_and_eqs(self.model)
 
-            aComp.do_modeling_of_flows(self.model, timeIndexe)
-            aComp.do_modeling(self.model, timeIndexe)
+            aComp.do_modeling_of_flows(self.model, time_indices)
+            aComp.do_modeling(self.model, time_indices)
 
             aComp.add_share_to_globals_of_flows(self.globalComp, self.model)
             aComp.add_share_to_globals(self.globalComp, self.model)
@@ -1988,13 +1988,13 @@ class System:
         for aBus in self.setOfBuses:
             log.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
-            aBus.do_modeling(self.model, timeIndexe)
+            aBus.do_modeling(self.model, time_indices)
             aBus.add_share_to_globals(self.globalComp, self.model)
 
         # weitere übergeordnete Modellierungen:
         for element in self.setOfOtherElements:
             element.declare_vars_and_eqs(self.model)
-            element.do_modeling(self.model, timeIndexe)
+            element.do_modeling(self.model, time_indices)
             element.add_share_to_globals(self.globalComp, self.model)
 
             # transform to Math:

@@ -60,7 +60,7 @@ class TimeSeries:
         self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
         self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
 
-        self.active_time_indices = None  # aktuelle timeIndexe der model
+        self.active_time_indices = None  # aktuelle time_indices der model
 
         owner.TS_list.append(self)  # Register TimeSeries in owner
 
