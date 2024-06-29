@@ -1170,6 +1170,11 @@ class Flow(Element):
         # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
         return False if self.invest_parameters is None else self.invest_parameters.optional
 
+    @property
+    def on_variable_is_forced(self) -> bool:
+        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
+        return self.can_switch_off & np.any(self.min_rel.data > 0)
+
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
                  min_rel: Numeric_TS = 0,
@@ -1320,22 +1325,10 @@ class Flow(Element):
         if (self.medium is not None) and (not isinstance(self.medium, str)):
             raise Exception('medium must be a string or None')
 
-        # defaults:
-
-        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        if isinstance(min_rel, (np.ndarray, list)):
-            self.__useOn_fromProps = can_switch_off & (any(min_rel) > 0)
-        else:
-            self.__useOn_fromProps = can_switch_off & (min_rel > 0)
-
-        # self.prepared          = False # ob __declareVarsAndEqs() ausgeführt
-
-        # feature for: On and SwitchOn Vars (builds only if necessary)
-        # -> feature bereits hier, da andere Elemente featureOn.activateOnValue() nutzen wollen
-        flowsDefiningOn = [
-            self]  # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
-        on_valuesBeforeBegin = 1 * (
-                    self.valuesBeforeBegin >= 0.0001)  # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
+        # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
+        flowsDefiningOn = [self]
+        # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
+        on_valuesBeforeBegin = 1 * (self.valuesBeforeBegin >= 0.0001)
         # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
         self.featureOn = cFeatureOn(self, flowsDefiningOn,
@@ -1349,7 +1342,7 @@ class Flow(Element):
                                     off_hours_min=self.off_hours_min,
                                     off_hours_max=self.off_hours_max,
                                     switch_on_total_max=self.switch_on_total_max,
-                                    useOn_explicit=self.__useOn_fromProps)
+                                    useOn_explicit=self.on_variable_is_forced)
 
 
     def __str__(self):
