@@ -1398,8 +1398,6 @@ class Flow(Element):
                                                 investmentSize=self.size,
                                                 featureOn=self.featureOn)
 
-
-
         super().finalize()
 
 
@@ -1410,16 +1408,6 @@ class Flow(Element):
         self.featureOn.declare_vars_and_eqs(system_model)  # TODO: rekursiv aufrufen für sub_elements
 
         self.system_model = system_model
-
-        # Skalare zu Vektoren #
-        # -> schöner wäre das bei Init, aber da gibt es noch keine Info über Länge)
-        # -> überprüfen, ob nur für pyomo notwendig!
-
-        # timesteps = model.timesteps  
-        ############################           
-
-        ## min/max Werte:
-        #  min-Wert:
 
         def getMinMaxOfDefiningVar():
             # Wenn fixer Lastgang:
