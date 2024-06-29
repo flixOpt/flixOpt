@@ -620,7 +620,7 @@ class cFeatureOn(cFeature):
         if self.running_hour_effects is not None:  # and any(self.running_hour_effects):
             globalComp.add_share_to_operation('running_hour_effects', shareHolder, self.model.var_on,
                                               self.running_hour_effects, system_model.dt_in_hours)
-            # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
+            # global_comp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als cFeature_TSShareSum

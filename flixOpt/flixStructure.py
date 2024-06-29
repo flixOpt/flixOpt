@@ -134,14 +134,14 @@ class SystemModel(LinearModel):
         print('##############################################################')
         print('################### finished #################################')
         print('')
-        for aEffect in self.system.globalComp.listOfEffectTypes:
+        for aEffect in self.system.global_comp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
             print('  operation: ' + str(aEffect.operation.model.var_sum.result))
             print('  invest   : ' + str(aEffect.invest.model.var_sum.result))
             print('  sum      : ' + str(aEffect.all.model.var_sum.result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.result))
+        print('penaltyCosts     : ' + str(self.system.global_comp.penalty.model.var_sum.result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -158,7 +158,7 @@ class SystemModel(LinearModel):
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.globalComp.penalty.model.var_sum.result > 10:
+        if self.system.global_comp.penalty.model.var_sum.result > 10:
             print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -172,13 +172,13 @@ class SystemModel(LinearModel):
 
             aEffectDict = {}
             main_results_str['Effects'] = aEffectDict
-            for aEffect in self.system.globalComp.listOfEffectTypes:
+            for aEffect in self.system.global_comp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
                 aDict['operation'] = str(aEffect.operation.model.var_sum.result)
                 aDict['invest'] = str(aEffect.invest.model.var_sum.result)
                 aDict['sum'] = str(aEffect.all.model.var_sum.result)
-            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.result)
+            main_results_str['penaltyCosts'] = str(self.system.global_comp.penalty.model.var_sum.result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -1634,7 +1634,7 @@ class System:
 
     @property
     def elements_of_first_layer_wo_flows(self) -> List[Element]:
-        return (self.components + list(self.buses) + [self.globalComp] + self.effects +
+        return (self.components + list(self.buses) + [self.global_comp] + self.effects +
                 list(self.other_elements))
 
     @property
@@ -1704,11 +1704,11 @@ class System:
         self.effects: EffectCollection = EffectCollection()  # Kosten, CO2, Primärenergie, ...
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
-        self.globalComp = Global('globalComp')
+        self.global_comp = Global('global_comp')
         self.__finalized = False  # wenn die Elements alle finalisiert sind, dann True
         self.model: Optional[SystemModel] = None  # later activated
         # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
-        # self.addComponents(self.globalComp)
+        # self.addComponents(self.global_comp)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>"
@@ -1738,8 +1738,8 @@ class System:
             # in liste ergänzen:
             self.effects.append(aNewEffect)
 
-        # an globalComp durchreichen: TODO: doppelte Haltung in system und globalComp ist so nicht schick.
-        self.globalComp.listOfEffectTypes = self.effects
+        # an global_comp durchreichen: TODO: doppelte Haltung in system und global_comp ist so nicht schick.
+        self.global_comp.listOfEffectTypes = self.effects
 
     # Komponenten registrieren:
     def addComponents(self, *args: Component) -> None:
@@ -1881,8 +1881,8 @@ class System:
         time_indices = range(len(self.model.time_indices))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:
-        self.globalComp.declare_vars_and_eqs(self.model)  # globale Funktionen erstellen!
-        self.globalComp.do_modeling(self.model, time_indices)  # globale Funktionen erstellen!
+        self.global_comp.declare_vars_and_eqs(self.model)  # globale Funktionen erstellen!
+        self.global_comp.do_modeling(self.model, time_indices)  # globale Funktionen erstellen!
 
         # Komponenten-Modellierung (# inklusive sub_elements!)
         for aComp in self.components:
@@ -1895,8 +1895,8 @@ class System:
             aComp.do_modeling_of_flows(self.model, time_indices)
             aComp.do_modeling(self.model, time_indices)
 
-            aComp.add_share_to_globals_of_flows(self.globalComp, self.model)
-            aComp.add_share_to_globals(self.globalComp, self.model)
+            aComp.add_share_to_globals_of_flows(self.global_comp, self.model)
+            aComp.add_share_to_globals(self.global_comp, self.model)
 
         # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
@@ -1904,13 +1904,13 @@ class System:
             log.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
             aBus.do_modeling(self.model, time_indices)
-            aBus.add_share_to_globals(self.globalComp, self.model)
+            aBus.add_share_to_globals(self.global_comp, self.model)
 
         # weitere übergeordnete Modellierungen:
         for element in self.other_elements:
             element.declare_vars_and_eqs(self.model)
             element.do_modeling(self.model, time_indices)
-            element.add_share_to_globals(self.globalComp, self.model)
+            element.add_share_to_globals(self.global_comp, self.model)
 
             # transform to Math:
         self.model.to_math_model()
@@ -2024,7 +2024,7 @@ class System:
             aSubDict[aBus.label] = aBus.description_of_equations()
 
         # globals:
-        aDict['globals'] = self.globalComp.description_of_equations()
+        aDict['globals'] = self.global_comp.description_of_equations()
 
         # flows:
         aSubDict = {}
@@ -2082,7 +2082,7 @@ class System:
                 subDict[bus.label] = bus.description_of_variables()
 
             # globals:
-            aDict['globals'] = self.globalComp.description_of_variables()
+            aDict['globals'] = self.global_comp.description_of_variables()
 
             # others
             aSubDict = {}

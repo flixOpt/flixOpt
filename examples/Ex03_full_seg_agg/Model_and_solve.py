@@ -298,8 +298,8 @@ if (not calcSegs is None) and (not calcFull is None):
 
 
     for aModBox in calcSegs.segmentModBoxList:  
-      plt.plot(aModBox.time_series, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs')
-    plt.plot(calcFull.time_series       , calcFull.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs (full)') 
+      plt.plot(aModBox.time_series, aModBox.results_struct.global_comp.costs.operation.sum_TS, label='costs')
+    plt.plot(calcFull.time_series, calcFull.results_struct.global_comp.costs.operation.sum_TS, ':', label='costs (full)')
     plt.legend()
     plt.grid()
     plt.show()
@@ -321,7 +321,7 @@ for aResult in listOfCalcs:
   aResult.listOfModbox[0].printNoEqsAndVars()
   # print(aResult.infos)
   # print(aResult.duration)
-  print('costs: ' + str(aResult.results_struct.globalComp.costs.all.sum))
+  print('costs: ' + str(aResult.results_struct.global_comp.costs.all.sum))
 
 #######################
 ### post processing ###
@@ -338,19 +338,19 @@ if doFullCalc:
     listOfResults.append(full)
     # del calcFull
     
-    costs = full.results_struct.globalComp.costs.all.sum
+    costs = full.results_struct.global_comp.costs.all.sum
 
 if doAggregatedCalc:
     agg = flixPost.flix_results(calcAgg.nameOfCalc)
     listOfResults.append(agg)
     # del calcAgg
-    costs = agg.results_struct.globalComp.costs.all.sum
+    costs = agg.results_struct.global_comp.costs.all.sum
 
 if doSegmentedCalc:
     seg = flixPost.flix_results(calcSegs.nameOfCalc)
     listOfResults.append(seg)
     # del calcSegs
-    costs = seg.results_struct.globalComp.costs.all.sum
+    costs = seg.results_struct.global_comp.costs.all.sum
 
 
 ###### plotting #######
@@ -374,7 +374,7 @@ def uebersichtsPlot(aCalc):
   
   plotFlow(aCalc, aCalc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
   
-  plt.plot(aCalc.time_series, aCalc.results_struct.globalComp.costs.operation.sum_TS, '--', label='costs (operating)')
+  plt.plot(aCalc.time_series, aCalc.results_struct.global_comp.costs.operation.sum_TS, '--', label='costs (operating)')
   
   if hasattr(aCalc.results_struct,'Speicher'):
     plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_unload.val, where ='post', label='Speicher_unload')
@@ -396,7 +396,7 @@ for aResult in listOfResults:
 
 print('## penalty: ##')
 for aResult in listOfResults:
-  print('Kosten penalty Sim1: ',sum(aResult.results_struct.globalComp.penalty.sum_TS))
+  print('Kosten penalty Sim1: ', sum(aResult.results_struct.global_comp.penalty.sum_TS))
 
 
 # loading yaml-datei:
