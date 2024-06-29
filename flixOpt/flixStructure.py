@@ -869,44 +869,57 @@ class Global(Element):
     #   2. TS oder skalar 
     #     -> Zuweisung zu Standard-EffektType      
 
-    def addShareToOperation(self, nameOfShare, shareHolder, aVariable, effect_values, factor) -> None:
-        if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
-        self.__addShare('operation', nameOfShare, shareHolder, effect_values, factor, aVariable)
+    def add_share_to_operation(self,
+                               name_of_share: str,
+                               owner: Element,
+                               variable: Variable,
+                               effect_values: Dict[Optional[Effect], TimeSeries],
+                               factor: Numeric) -> None:
+        if variable is None: raise Exception('add_share_to_operation() needs variable or use addConstantShare instead')
+        self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
 
-    def addConstantShareToOperation(self, nameOfShare, shareHolder, effect_values, factor) -> None:
-        self.__addShare('operation', nameOfShare, shareHolder, effect_values, factor)
+    def add_constant_share_to_operation(self,
+                               name_of_share: str,
+                               owner: Element,
+                               effect_values: Dict[Optional[Effect], TimeSeries],
+                               factor: Numeric) -> None:
+        self._add_share('operation', name_of_share, owner, effect_values, factor)
 
     def addShareToInvest(self, nameOfShare, shareHolder, aVariable, effect_values, factor) -> None:
         if aVariable is None: raise Exception('addShareToInvest() needs variable or use addConstantShare instead')
-        self.__addShare('invest', nameOfShare, shareHolder, effect_values, factor, aVariable)
+        self._add_share('invest', nameOfShare, shareHolder, effect_values, factor, aVariable)
 
     def addConstantShareToInvest(self, nameOfShare, shareHolder, effect_values, factor) -> None:
-        self.__addShare('invest', nameOfShare, shareHolder, effect_values, factor)
+        self._add_share('invest', nameOfShare, shareHolder, effect_values, factor)
 
         # wenn aVariable = None, dann constanter Share
 
-    def __addShare(self, operationOrInvest, nameOfShare, shareHolder, effect_values, factor, aVariable=None) -> None:
+    def _add_share(self,
+                   operation_or_invest: Literal['operation', 'invest'],
+                   name_of_share: str,
+                   owner: Element,
+                   effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                   factor: Numeric,
+                   variable: Optional[Variable] = None) -> None:
         aEffectSum: cFeature_ShareSum
 
         effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effekttypen, die einen Wert haben, anhängen:
-        for effectType, value in effect_values_dict.items():
+        for effect, value in effect_values_dict.items():
             # Falls None, dann Standard-effekt nutzen:
-            effectType: Effect
-            if effectType is None:
-                effectType = self.listOfEffectTypes.standard_effect()
-            elif effectType not in self.listOfEffectTypes:
-                raise Exception('Effect \'' + effectType.label + '\' was not added to model (but used in some costs)!')
+            effect: Effect
+            if effect is None:
+                effect = self.listOfEffectTypes.standard_effect()
+            elif effect not in self.listOfEffectTypes:
+                raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
 
-            if operationOrInvest == 'operation':
-                effectType.operation.addShare(nameOfShare, shareHolder, aVariable, value,
-                                              factor)  # hier darf aVariable auch None sein!
-            elif operationOrInvest == 'invest':
-                effectType.invest.addShare(nameOfShare, shareHolder, aVariable, value,
-                                           factor)  # hier darf aVariable auch None sein!
+            if operation_or_invest == 'operation':
+                effect.operation.addShare(name_of_share, owner, variable, value, factor)  # hier darf aVariable auch None sein!
+            elif operation_or_invest == 'invest':
+                effect.invest.addShare(name_of_share, owner, variable, value, factor)  # hier darf aVariable auch None sein!
             else:
-                raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
+                raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
     def declare_vars_and_eqs(self, system_model) -> None:
 
@@ -1590,8 +1603,8 @@ class Flow(Element):
             # variable_costs          = Summand(self.model.var_val, np.multiply(self.costsPerFlowHour, model.dt_in_hours))
             # globalComp.costsOfOperating_eq.add_summand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dt_in_hours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
-            globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.model.var_val, self.costsPerFlowHour,
-                                           system_model.dt_in_hours)
+            globalComp.add_share_to_operation('costsPerFlowHour', shareHolder, self.model.var_val, self.costsPerFlowHour,
+                                              system_model.dt_in_hours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
         self.featureOn.add_share_to_globals(globalComp, system_model)
