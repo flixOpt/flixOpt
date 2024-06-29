@@ -196,7 +196,7 @@ class SystemModel(LinearModel):
                      'not invested': {}
                      }
             main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.system.allInvestFeatures:
+            for aInvestFeature in self.system.invest_features:
                 investValue = aInvestFeature.model.var_investmentSize.result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
@@ -1632,30 +1632,30 @@ class System:
     ## Properties:
 
     @property
-    def allElementsOfFirstLayerWithoutFlows(self) -> List[Element]:
+    def elements_of_first_layer_wo_flows(self) -> List[Element]:
         return (self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +
                 list(self.setOfOtherElements))
 
     @property
-    def allElementsOfFirstLayer(self) -> List[Element]:
-        return self.allElementsOfFirstLayerWithoutFlows + list(self.setOfFlows)
+    def elements_of_fists_layer(self) -> List[Element]:
+        return self.elements_of_first_layer_wo_flows + list(self.setOfFlows)
 
     @property
-    def allInvestFeatures(self) -> List[cFeatureInvest]:
-        allInvestFeatures = []
+    def invest_features(self) -> List[cFeatureInvest]:
+        all_invest_features = []
 
-        def getInvestFeaturesOfElement(element) -> List[cFeatureInvest]:
-            investFeatures = []
+        def get_invest_features_of_element(element: Element) -> List[cFeatureInvest]:
+            invest_features = []
             for aSubComp in element.all_sub_elements:
                 if isinstance(aSubComp, cFeatureInvest):
-                    investFeatures.append(aSubComp)
-                investFeatures += getInvestFeaturesOfElement(aSubComp)  # recursive!
-            return investFeatures
+                    invest_features.append(aSubComp)
+                invest_features += get_invest_features_of_element(aSubComp)  # recursive!
+            return invest_features
 
-        for element in self.allElementsOfFirstLayer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
-            allInvestFeatures += getInvestFeaturesOfElement(element)
+        for element in self.elements_of_fists_layer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
+            all_invest_features += get_invest_features_of_element(element)
 
-        return allInvestFeatures
+        return all_invest_features
 
     # Achtung: Funktion wird nicht nur für Getter genutzt.
     def getFlows(self, listOfComps=None) -> Set[Flow]:
@@ -1676,7 +1676,7 @@ class System:
     def all_TS_in_elements(self) -> List[TimeSeries]:
         element: Element
         all_TS = []
-        for element in self.allElementsOfFirstLayer:
+        for element in self.elements_of_fists_layer:
             all_TS += element.TS_list
         return all_TS
 
@@ -1877,7 +1877,7 @@ class System:
         # nur EINMAL ausführen: Finalisieren der Elements:
         if not self.__finalized:
             # finalize Elements for modeling:
-            for element in self.allElementsOfFirstLayer:
+            for element in self.elements_of_fists_layer:
                 print(element.label)
                 type(element)
                 element.finalize()  # inklusive sub_elements!
@@ -1957,7 +1957,7 @@ class System:
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
-            for element in self.allElementsOfFirstLayer:
+            for element in self.elements_of_fists_layer:
                 # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
                 if not self.__finalized:
                     raise Exception('activate_model(): --> Geht nicht, da System noch nicht finalized!')
@@ -1965,7 +1965,7 @@ class System:
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:
             # nur Aktivieren:
-            for element in self.allElementsOfFirstLayer:  # TODO: Is This a BUG?
+            for element in self.elements_of_fists_layer:  # TODO: Is This a BUG?
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
@@ -1973,7 +1973,7 @@ class System:
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
         # für alle Komponenten:
-        for element in self.allElementsOfFirstLayerWithoutFlows:
+        for element in self.elements_of_first_layer_wo_flows:
             # results        füllen:
             (results[element.label], results_var[element.label]) = element.get_results()  # inklusive sub_elements!
 
@@ -2308,7 +2308,7 @@ class Calculation:
         # system finalisieren:
         self.system.finalize()
 
-        if len(self.system.allInvestFeatures) > 0:
+        if len(self.system.invest_features) > 0:
             raise Exception('segmented calculation with Invest-Parameters does not make sense!')
 
         # nrOfTimeSteps = self.to_index - self.from_index +1
