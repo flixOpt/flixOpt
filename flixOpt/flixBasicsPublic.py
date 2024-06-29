@@ -122,7 +122,7 @@ class InvestParameters:
 
     def __str__(self):
         details = [
-            f"fix_effects={self.fi}" if self.fix_effects else ""
+            f"fix_effects={self.fix_effects}" if self.fix_effects else ""
             f"divest_effects={self.divest_effects}" if self.divest_effects else ""
             f"specific_effects={self.specific_effects}" if self.specific_effects else ""
             f"Fixed Size" if self.fixed_size else ""
