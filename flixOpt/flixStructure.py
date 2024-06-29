@@ -1049,28 +1049,22 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
     def register_input_flow(self, flow) -> None:
         flow: Flow
         self.inputs.append(flow)
-        self.checkMedium(flow)
+        self.check_medium(flow)
 
     def register_output_flow(self, flow) -> None:
         flow: Flow
         self.outputs.append(flow)
-        self.checkMedium(flow)
+        self.check_medium(flow)
 
-    def checkMedium(self, flow) -> None:
+    def check_medium(self, flow) -> None:
         flow: Flow
-        # Wenn noch nicht belegt
-        if flow.medium is not None:
-            # set gemeinsamer Medien:
-            # commonMedium = self.media & aFlow.medium
-            # wenn leer, data.h. kein gemeinsamer Eintrag:
-            if (flow.medium is not None) and (self.media is not None) and \
-                    (not (flow.medium in self.media)):
-                raise Exception('in Bus ' + self.label + ' : registerFlow(): medium \''
-                                + str(flow.medium) + '\' of ' + flow.label_full +
-                                ' and media ' + str(self.media) + ' of bus ' +
-                                self.label_full + '  have no common medium!' +
-                                ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
-                                )
+        if self.media is not None and flow.medium is not None and flow.medium not in self.media:
+            raise Exception(
+                f"In Bus {self.label}: register_flows_in_bus(): Medium '{flow.medium}' of {flow.label_full} "
+                f"and media {self.media} of bus {self.label_full} have no common medium! "
+                f"Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! "
+                f"OR generally deactivate media-check by setting media in bus-definition to None."
+            )
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
