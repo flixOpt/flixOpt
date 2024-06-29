@@ -703,7 +703,7 @@ class Component(Element):
         #TODO: Dict instead of list?
         self.inputs = []  # list of flows
         self.outputs = []  # list of flows
-        self.isStorage = False
+        self.is_storage = False  #TODO: Use isinstance instead?
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -828,8 +828,8 @@ class Component(Element):
         for aFlow in self.outputs:
             inhalt['Out-Flows'].append(aFlow.getStrDescr(type=descrType))  # '  <- Flow: '))
 
-        if self.isStorage:
-            inhalt['isStorage'] = self.isStorage
+        if self.is_storage:
+            inhalt['is_storage'] = self.is_storage
         inhalt['class'] = type(self).__name__
 
         if hasattr(self, 'group'):

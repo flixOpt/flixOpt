@@ -63,8 +63,8 @@ class cFlow_post():
         return loadFactor
 
     def belongToStorage(self):
-        if 'isStorage' in self.flixResults.infos_system['components'][self.comp].keys():
-            return self.flixResults.infos_system['components'][self.comp]['isStorage']
+        if 'is_storage' in self.flixResults.infos_system['components'][self.comp].keys():
+            return self.flixResults.infos_system['components'][self.comp]['is_storage']
         else:
             return False
 
