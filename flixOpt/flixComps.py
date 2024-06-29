@@ -850,13 +850,13 @@ class Storage(Component):
         timeIndexeChargeState = range(timeIndexe.start, timeIndexe.stop + 1)
         self.eq_charge_state = Equation('charge_state', self, system_model, eqType='eq')
         self.eq_charge_state.add_summand(self.model.var_charge_state,
-                                         -1 * (1 - self.fracLossPerHour.active_data * system_model.dtInHours),
+                                         -1 * (1 - self.fracLossPerHour.active_data * system_model.dt_in_hours),
                                         timeIndexeChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
         self.eq_charge_state.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
-        self.eq_charge_state.add_summand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * system_model.dtInHours)
+        self.eq_charge_state.add_summand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * system_model.dt_in_hours)
         self.eq_charge_state.add_summand(self.outFlow.model.var_val,
-                                         1 / self.eta_unload.active_data * system_model.dtInHours)  # Achtung hier 1/eta!
+                                         1 / self.eta_unload.active_data * system_model.dt_in_hours)  # Achtung hier 1/eta!
 
         # Speicherladezustand am Ende
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:

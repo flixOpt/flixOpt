@@ -105,13 +105,13 @@ def uebersichtsPlot(aCalc):
   
   plotFlow(aCalc, aCalc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
   
-  plt.plot(aCalc.timeSeries, aCalc.results_struct.globalComp.costs.operation.sum_TS, '--', label='costs (operating)') 
+  plt.plot(aCalc.time_series, aCalc.results_struct.globalComp.costs.operation.sum_TS, '--', label='costs (operating)')
   
   if hasattr(aCalc.results_struct,'Speicher'):
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_unload.val, where = 'post', label='Speicher_unload')
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_load.val  , where = 'post', label='Speicher_load')
-    plt.plot(aCalc.timeSeriesWithEnd, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
-  # plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher., label='Speicher_load')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_unload.val, where ='post', label='Speicher_unload')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_load.val, where ='post', label='Speicher_load')
+    plt.plot(aCalc.time_series_with_end, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
+  # plt.step(aCalc.time_series, aCalc.results_struct.Speicher., label='Speicher_load')
   plt.grid(axis='y')
   plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
   plt.show()

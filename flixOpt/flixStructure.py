@@ -53,7 +53,7 @@ class SystemModel(LinearModel):
 
         self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
-        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
+        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = system.getTimeDataOfTimeIndexe(
             time_indices)
 
     # register ModelingElements and belonging Mod:
@@ -1045,8 +1045,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Fehlerplus/-minus:
         if self.withExcess:
             # Fehlerplus und -minus definieren
-            self.excessIn = VariableTS('excessIn', len(system_model.timeSeries), self, system_model, lower_bound=0)
-            self.excessOut = VariableTS('excessOut', len(system_model.timeSeries), self, system_model, lower_bound=0)
+            self.excessIn = VariableTS('excessIn', len(system_model.time_series), self, system_model, lower_bound=0)
+            self.excessOut = VariableTS('excessOut', len(system_model.time_series), self, system_model, lower_bound=0)
 
     def do_modeling(self, system_model, timeIndexe) -> None:
         super().do_modeling(system_model, timeIndexe)
@@ -1069,11 +1069,11 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Strafkosten hinzufügen:
         if self.withExcess:
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessIn,
-                                                self.excessCostsPerFlowHour, system_model.dtInHours)
+                                                self.excessCostsPerFlowHour, system_model.dt_in_hours)
             globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut,
-                                                self.excessCostsPerFlowHour, system_model.dtInHours)
-            # globalComp.penaltyCosts_eq.add_summand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
-            # globalComp.penaltyCosts_eq.add_summand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
+                                                self.excessCostsPerFlowHour, system_model.dt_in_hours)
+            # globalComp.penaltyCosts_eq.add_summand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dt_in_hours))
+            # globalComp.penaltyCosts_eq.add_summand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dt_in_hours))
 
     def print(self, shiftChars) -> None:
         print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
@@ -1490,7 +1490,7 @@ class Flow(Element):
         if self.onHoursSum_max is not None:
             eq_onHoursSum_max = Equation('on_hours_total_max', self, system_model, 'ineq')
             eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
-            eq_onHoursSum_max.add_constant(self.onHoursSum_max / system_model.dtInHours)
+            eq_onHoursSum_max.add_constant(self.onHoursSum_max / system_model.dt_in_hours)
 
         #
         # ############## on_hours_total_max: ##############
@@ -1501,7 +1501,7 @@ class Flow(Element):
         if self.onHoursSum_min is not None:
             eq_onHoursSum_min = Equation('on_hours_total_min', self, system_model, 'ineq')
             eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
-            eq_onHoursSum_min.add_constant(-1 * self.onHoursSum_min / system_model.dtInHours)
+            eq_onHoursSum_min.add_constant(-1 * self.onHoursSum_min / system_model.dt_in_hours)
 
 
         #
@@ -1511,7 +1511,7 @@ class Flow(Element):
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dtInHours, as_sum=True)
+        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dt_in_hours, as_sum=True)
         eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
 
         #          
@@ -1533,7 +1533,7 @@ class Flow(Element):
         #  eq: var_sumFlowHours <= nominal_val * dt_tot * load_factor_max
 
         if self.loadFactor_max is not None:
-            flowHoursPerInvestsize_max = system_model.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
+            flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, system_model, 'ineq')  # general mean
             eq_flowHoursPerInvestsize_Max.add_summand(self.model.var_sumFlowHours, 1)
             if self.featureInvest is not None:
@@ -1546,7 +1546,7 @@ class Flow(Element):
         #  eq: nominal_val * sum(dt)* load_factor_min <= var_sumFlowHours
 
         if self.loadFactor_min is not None:
-            flowHoursPerInvestsize_min = system_model.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
+            flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, system_model, 'ineq')
             eq_flowHoursPerInvestsize_Min.add_summand(self.model.var_sumFlowHours, -1)
             if self.featureInvest is not None:
@@ -1562,9 +1562,9 @@ class Flow(Element):
           if model.modeling_language == 'pyomo':
             def positive_gradient_rule(t):
               if t == 0:
-                return (self.model.var_val[t] - self.val_initial) / model.dtInHours[t] <= self.positive_gradient[t] #             
+                return (self.model.var_val[t] - self.val_initial) / model.dt_in_hours[t] <= self.positive_gradient[t] #             
               else: 
-                return (self.model.var_val[t] - self.model.var_val[t-1])    / model.dtInHours[t] <= self.positive_gradient[t] #
+                return (self.model.var_val[t] - self.model.var_val[t-1])    / model.dt_in_hours[t] <= self.positive_gradient[t] #
   
             # Erster Zeitschritt beachten:          
             if (self.val_initial == None) & (start == 0):
@@ -1587,11 +1587,11 @@ class Flow(Element):
         # Arbeitskosten:
         if self.costsPerFlowHour is not None:
             # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
-            # variable_costs          = Summand(self.model.var_val, np.multiply(self.costsPerFlowHour, model.dtInHours))
-            # globalComp.costsOfOperating_eq.add_summand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
+            # variable_costs          = Summand(self.model.var_val, np.multiply(self.costsPerFlowHour, model.dt_in_hours))
+            # globalComp.costsOfOperating_eq.add_summand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dt_in_hours)) # np.multiply = elementweise Multiplikation
             shareHolder = self
             globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.model.var_val, self.costsPerFlowHour,
-                                           system_model.dtInHours)
+                                           system_model.dt_in_hours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
         self.featureOn.add_share_to_globals(globalComp, system_model)
@@ -1728,26 +1728,26 @@ class System:
             setOfBuses.add(aFlow.bus)
         return setOfBuses
 
-        # timeSeries: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
+        # time_series: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
 
-    def __init__(self, timeSeries: np.ndarray[np.datetime64], dt_last=None):
+    def __init__(self, time_series: np.ndarray[np.datetime64], last_time_step_hours: Optional[Union[int, float]] = None):
         '''
           Parameters
           ----------
-          timeSeries : np.array of datetime64
+          time_series : np.array of datetime64
               timeseries of the data
-          dt_last : for calc
+          last_time_step_hours : for calc
               The duration of last time step.
               Storages needs this time-duration for calculation of charge state
               after last time step.
-              If None, then last time increment of timeSeries is used.
+              If None, then last time increment of time_series is used.
 
         '''
-        self.timeSeries = timeSeries
-        self.dt_last = dt_last
+        self.time_series = time_series
+        self.last_time_step_hours = last_time_step_hours
 
-        self.timeSeriesWithEnd = helpers.getTimeSeriesWithEnd(timeSeries, dt_last)
-        helpers.checkTimeSeries('global esTimeSeries', self.timeSeriesWithEnd)
+        self.time_series_with_end = helpers.getTimeSeriesWithEnd(time_series, last_time_step_hours)
+        helpers.checkTimeSeries('global esTimeSeries', self.time_series_with_end)
 
         # defaults:
         self.listOfComponents = []
@@ -2019,10 +2019,10 @@ class System:
         # Zeitdaten ergänzen
         aTime = {}
         results['time'] = aTime
-        aTime['timeSeriesWithEnd'] = self.model.timeSeriesWithEnd
-        aTime['timeSeries'] = self.model.timeSeries
-        aTime['dtInHours'] = self.model.dtInHours
-        aTime['dtInHours_tot'] = self.model.dtInHours_tot
+        aTime['time_series_with_end'] = self.model.time_series_with_end
+        aTime['time_series'] = self.model.time_series
+        aTime['dt_in_hours'] = self.model.dt_in_hours
+        aTime['dt_in_hours_total'] = self.model.dt_in_hours_total
 
         return results, results_var
 
@@ -2163,20 +2163,20 @@ class System:
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe) -> Tuple:
-        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(length(self.timeSeries))
+        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(length(self.time_series))
         # Zeitreihen:
-        timeSeries = self.timeSeries[chosenEsTimeIndexe]
+        time_series = self.time_series[chosenEsTimeIndexe]
         # next timestamp as endtime:
-        endTime = self.timeSeriesWithEnd[chosenEsTimeIndexe[-1] + 1]
-        timeSeriesWithEnd = np.append(timeSeries, endTime)
+        endTime = self.time_series_with_end[chosenEsTimeIndexe[-1] + 1]
+        time_series_with_end = np.append(time_series, endTime)
 
         # Zeitdifferenz:
         #              zweites bis Letztes            - erstes bis Vorletztes
-        dt = timeSeriesWithEnd[1:] - timeSeriesWithEnd[0:-1]
-        dtInHours = dt / np.timedelta64(1, 'h')
-        # dtInHours    = dt.total_seconds() / 3600
-        dtInHours_tot = sum(dtInHours)  # Gesamtzeit
-        return (timeSeries, timeSeriesWithEnd, dtInHours, dtInHours_tot)
+        dt = time_series_with_end[1:] - time_series_with_end[0:-1]
+        dt_in_hours = dt / np.timedelta64(1, 'h')
+        # dt_in_hours    = dt.total_seconds() / 3600
+        dt_in_hours_total = sum(dt_in_hours)  # Gesamtzeit
+        return (time_series, time_series_with_end, dt_in_hours, dt_in_hours_total)
 
 
 # Standardoptimierung segmentiert/nicht segmentiert
@@ -2258,15 +2258,15 @@ class Calculation:
         self.TSlistForAggregation = None  # list of timeseries for aggregation
         # assert from_index < to_index
         # assert from_index >= 0
-        # assert to_index <= length(self.system.timeSeries)-1
+        # assert to_index <= length(self.system.time_series)-1
 
         # Wenn chosenEsTimeIndexe = None, dann alle nehmen
-        if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.timeSeries))
-        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
+        if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.time_series))
+        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = system.getTimeDataOfTimeIndexe(
             self.chosenEsTimeIndexe)
-        helpers.checkTimeSeries('chosenEsTimeIndexe', self.timeSeries)
+        helpers.checkTimeSeries('chosenEsTimeIndexe', self.time_series)
 
-        self.nrOfTimeSteps = len(self.timeSeries)
+        self.nrOfTimeSteps = len(self.time_series)
 
         self.__results = None
         self.__results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
@@ -2352,7 +2352,7 @@ class Calculation:
         assert nrOfUsedSteps <= segmentLen
         assert segmentLen <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
 
-        # timeSeriesOfSim = self.system.timeSeries[from_index:to_index+1]
+        # time_seriesOfSim = self.system.time_series[from_index:to_index+1]
 
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
         nrOfSimSegments = math.ceil((self.nrOfTimeSteps) / nrOfUsedSteps)
@@ -2493,13 +2493,13 @@ class Calculation:
         self.system.activateInTS(self.chosenEsTimeIndexe)
 
         # Zeitdaten generieren:
-        (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.system.getTimeDataOfTimeIndexe(
+        (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = self.system.getTimeDataOfTimeIndexe(
             self.chosenEsTimeIndexe)
 
         # check equidistant timesteps:
-        if max(dtInHours) - min(dtInHours) != 0:
+        if max(dt_in_hours) - min(dt_in_hours) != 0:
             raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(
-                min(dtInHours)) + ' bis ' + str(max(dtInHours)) + ' h')
+                min(dt_in_hours)) + ' bis ' + str(max(dt_in_hours)) + ' h')
 
         print('#########################')
         print('## TS for aggregation ###')
@@ -2520,7 +2520,7 @@ class Calculation:
                                        index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
 
         # Check, if timesteps fit in Period:
-        stepsPerPeriod = periodLengthInHours / self.dtInHours[0]
+        stepsPerPeriod = periodLengthInHours / self.dt_in_hours[0]
         if not stepsPerPeriod.is_integer():
             raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
 
@@ -2529,7 +2529,7 @@ class Calculation:
         from . import flixAggregation as flixAgg
         dataAgg = flixAgg.flixAggregation('aggregation',
                                           timeseries=df_OriginalData,
-                                          hoursPerTimeStep=self.dtInHours[0],
+                                          hoursPerTimeStep=self.dt_in_hours[0],
                                           hoursPerPeriod=periodLengthInHours,
                                           hasTSA=False,
                                           noTypicalPeriods=noTypicalPeriods,
@@ -2719,9 +2719,9 @@ class Calculation:
                 if isinstance(val, np.ndarray) or isinstance(val, np.float64) or np.isscalar(val):
 
                     # Beachte Länge (withEnd z.B. bei Speicherfüllstand)
-                    if key in ['timeSeries', 'dtInHours', 'dtInHours_tot']:
+                    if key in ['time_series', 'dt_in_hours', 'dt_in_hours_total']:
                         withEnd = False
-                    elif key in ['timeSeriesWithEnd']:
+                    elif key in ['time_series_with_end']:
                         withEnd = True
                     else:
                         # Beachte Speicherladezustand und ähnliche Variablen:

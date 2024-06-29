@@ -531,11 +531,11 @@ class cFeatureOn(cFeature):
         # TODO: Einfachere Variante von Peter umsetzen!
 
         # 1) eq: onHours(t) <= On(t)*Big | On(t)=0 -> onHours(t) = 0
-        # mit Big = dtInHours_tot
+        # mit Big = dt_in_hours_total
         aLabel = var_bin_onTime.label
         ineq_1 = Equation(aLabel + '_constraint_1', eqsOwner, system_model, eqType='ineq')
         ineq_1.add_summand(var_bin_onTime, 1)
-        ineq_1.add_summand(var_bin, -1 * system_model.dtInHours_tot)
+        ineq_1.add_summand(var_bin, -1 * system_model.dt_in_hours_total)
 
         # 2a) eq: onHours(t) - onHours(t-1) <= dt(t)
         #    on(t)=1 -> ...<= dt(t)
@@ -543,17 +543,17 @@ class cFeatureOn(cFeature):
         ineq_2a = Equation(aLabel + '_constraint_2a', eqsOwner, system_model, eqType='ineq')
         ineq_2a.add_summand(var_bin_onTime, 1, timeIndexe[1:])  # onHours(t)
         ineq_2a.add_summand(var_bin_onTime, -1, timeIndexe[0:-1])  # onHours(t-1)
-        ineq_2a.add_constant(system_model.dtInHours[1:])  # dt(t)
+        ineq_2a.add_constant(system_model.dt_in_hours[1:])  # dt(t)
 
         # 2b) eq:  onHours(t) - onHours(t-1)             >=  dt(t) - Big*(1-On(t)))
         #    eq: -onHours(t) + onHours(t-1) + On(t)*Big <= -dt(t) + Big
-        # with Big = dtInHours_tot # (Big = maxOnHours, should be usable, too!)
-        Big = system_model.dtInHours_tot
+        # with Big = dt_in_hours_total # (Big = maxOnHours, should be usable, too!)
+        Big = system_model.dt_in_hours_total
         ineq_2b = Equation(aLabel + '_constraint_2b', eqsOwner, system_model, eqType='ineq')
         ineq_2b.add_summand(var_bin_onTime, -1, timeIndexe[1:])  # onHours(t)
         ineq_2b.add_summand(var_bin_onTime, 1, timeIndexe[0:-1])  # onHours(t-1)
         ineq_2b.add_summand(var_bin, Big, timeIndexe[1:])  # on(t)
-        ineq_2b.add_constant(-system_model.dtInHours[1:] + Big)  # dt(t)
+        ineq_2b.add_constant(-system_model.dt_in_hours[1:] + Big)  # dt(t)
 
         # 3) check onHours_min before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
@@ -571,7 +571,7 @@ class cFeatureOn(cFeature):
         firstIndex = timeIndexe[0]  # only first element
         eq_first = Equation(aLabel + '_firstTimeStep', eqsOwner, system_model)
         eq_first.add_summand(var_bin_onTime, 1, firstIndex)
-        eq_first.add_summand(var_bin, -1 * system_model.dtInHours[firstIndex], firstIndex)
+        eq_first.add_summand(var_bin, -1 * system_model.dt_in_hours[firstIndex], firstIndex)
 
     def __addConstraintsForSwitchOnSwitchOff(self, eqsOwner, system_model, timeIndexe):
         # % Schaltänderung aus On-Variable
@@ -619,8 +619,8 @@ class cFeatureOn(cFeature):
         # Betriebskosten:
         if self.costsPerRunningHour is not None:  # and any(self.effects_per_running_hour):
             globalComp.addShareToOperation('effects_per_running_hour', shareHolder, self.model.var_on,
-                                           self.costsPerRunningHour, system_model.dtInHours)
-            # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.effects_per_running_hour.active_data, model.dtInHours))# np.multiply = elementweise Multiplikation
+                                           self.costsPerRunningHour, system_model.dt_in_hours)
+            # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.effects_per_running_hour.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als cFeature_TSShareSum
@@ -688,8 +688,8 @@ class cFeature_ShareSum(cFeature):
         #   -> aber Beachte Effekt ist nicht einfach gleichzusetzen mit Flow, da hier eine Menge z.b. in € im Zeitschritt übergeben wird
         # variable für alle TS zusammen (TS-Summe):
         if self.sharesAreTS:
-            lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, system_model.dtInHours)
-            ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, system_model.dtInHours)
+            lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, system_model.dt_in_hours)
+            ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, system_model.dt_in_hours)
             self.model.var_sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self, system_model, lower_bound= lb_TS, upper_bound= ub_TS)  # TS
 
         # Variable für Summe (Skalar-Summe):

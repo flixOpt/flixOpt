@@ -14,23 +14,23 @@ from .flixStructure import *
 
 def plotFlow(calc, aFlow_value, label, withPoints=True):
     # Linie:
-    plt.step(calc.timeSeries, aFlow_value, where='post', label=label)
+    plt.step(calc.time_series, aFlow_value, where='post', label=label)
     # Punkte dazu:
     if withPoints:
         # TODO: gleiche Farbe!
         # aStr = 'C' + str(i) + 'o'
         aStr = 'o'
-        plt.plot(calc.timeSeries, aFlow_value, aStr)
+        plt.plot(calc.time_series, aFlow_value, aStr)
 
 
 # TODO: könnte man ggf. schöner mit dict-result machen bzw. sollte auch mit dict-result gehen!
 def plotOn(mb, aVar_struct, var_label, y, plotSwitchOnOff=True):
     try:
-        plt.step(mb.timeSeries, aVar_struct.on_ * y, ':', where='post', label=var_label + '_On')
+        plt.step(mb.time_series, aVar_struct.on_ * y, ':', where='post', label=var_label + '_On')
         if plotSwitchOnOff:
             try:
-                plt.step(mb.timeSeries, aVar_struct.switchOn_ * y, '+', where='post', label=var_label + '_SwitchOn')
-                plt.step(mb.timeSeries, aVar_struct.switchOff_ * y, 'x', where='post', label=var_label + '_SwitchOff')
+                plt.step(mb.time_series, aVar_struct.switchOn_ * y, '+', where='post', label=var_label + '_SwitchOn')
+                plt.step(mb.time_series, aVar_struct.switchOff_ * y, 'x', where='post', label=var_label + '_SwitchOff')
             except:
                 pass
     except:
@@ -45,5 +45,5 @@ def plotOn(mb, aVar_struct, var_label, y, plotSwitchOnOff=True):
 #       # aVal:
 #       eval('aVal = aModBox.' + results_struct_As_String)
 #       # aTimeSeries:
-#       aTimeSeries = aModBox.timeSeriesWithEnd[:length(aVal)] # ggf. um 1 kürzen, wenn kein Speicherladezustand
+#       aTimeSeries = aModBox.time_series_with_end[:length(aVal)] # ggf. um 1 kürzen, wenn kein Speicherladezustand
 #       plt.step(aTimeSeries, aVal, where = 'post')

@@ -208,7 +208,7 @@ aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, nomi
 aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
 
 # Zusammenführung:
-system = System(aTimeSeries, dt_last=None)
+system = System(aTimeSeries, last_time_step_hours=None)
 # system.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 system.addEffects(costs)
 system.addEffects(CO2, PE)
@@ -280,26 +280,26 @@ if doAggregatedCalc :
 
 if (not calcSegs is None) and (not calcFull is None):
     fig, ax = plt.subplots(figsize=(10, 5))
-    plt.plot(calcSegs.timeSeriesWithEnd, calcSegs.results_struct.Speicher.charge_state, '-', label='chargeState (complete)') 
+    plt.plot(calcSegs.time_series_with_end, calcSegs.results_struct.Speicher.charge_state, '-', label='chargeState (complete)') 
     for aModBox in calcSegs.segmentModBoxList:  
-      plt.plot(aModBox.timeSeriesWithEnd, aModBox.results_struct.Speicher.charge_state, ':', label='chargeState') 
+      plt.plot(aModBox.time_series_with_end, aModBox.results_struct.Speicher.charge_state, ':', label='chargeState') 
 
-    # plt.plot(calcFull.timeSeriesWithEnd, calcFull.results_struct.Speicher.charge_state, '-.', label='chargeState (full)') 
+    # plt.plot(calcFull.time_series_with_end, calcFull.results_struct.Speicher.charge_state, '-.', label='chargeState (full)') 
     plt.legend()
     plt.grid()
     plt.show()
 
     for aModBox in calcSegs.segmentModBoxList:  
-      plt.plot(aModBox.timeSeries       , aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
-    plt.plot(calcFull.timeSeries       , calcFull.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
+      plt.plot(aModBox.time_series, aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
+    plt.plot(calcFull.time_series       , calcFull.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
     plt.legend()
     plt.grid()
     plt.show()
 
 
     for aModBox in calcSegs.segmentModBoxList:  
-      plt.plot(aModBox.timeSeries, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs') 
-    plt.plot(calcFull.timeSeries       , calcFull.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs (full)') 
+      plt.plot(aModBox.time_series, aModBox.results_struct.globalComp.costs.operation.sum_TS, label='costs')
+    plt.plot(calcFull.time_series       , calcFull.results_struct.globalComp.costs.operation.sum_TS, ':', label='costs (full)') 
     plt.legend()
     plt.grid()
     plt.show()
@@ -374,13 +374,13 @@ def uebersichtsPlot(aCalc):
   
   plotFlow(aCalc, aCalc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
   
-  plt.plot(aCalc.timeSeries, aCalc.results_struct.globalComp.costs.operation.sum_TS, '--', label='costs (operating)') 
+  plt.plot(aCalc.time_series, aCalc.results_struct.globalComp.costs.operation.sum_TS, '--', label='costs (operating)')
   
   if hasattr(aCalc.results_struct,'Speicher'):
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_unload.val, where = 'post', label='Speicher_unload')
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_load.val  , where = 'post', label='Speicher_load')
-    plt.plot(aCalc.timeSeriesWithEnd, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
-  # plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher., label='Speicher_load')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_unload.val, where ='post', label='Speicher_unload')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_load.val, where ='post', label='Speicher_load')
+    plt.plot(aCalc.time_series_with_end, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
+  # plt.step(aCalc.time_series, aCalc.results_struct.Speicher., label='Speicher_load')
   plt.grid(axis='y')
   plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
   plt.show()

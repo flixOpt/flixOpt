@@ -425,7 +425,7 @@ class VariableTS(Variable):
         # sonst:
         else:
             index = last_index_of_segment  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
-        time = self.linear_model.timeSeriesWithEnd[index]
+        time = self.linear_model.time_series_with_end[index]
         value = self.result[index]
         return value, time
 
