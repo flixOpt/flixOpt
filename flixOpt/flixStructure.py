@@ -1096,13 +1096,6 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_output,
                                                  self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
-    def print(self, shiftChars) -> None:
-        print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
-            len(self.outputs)) + ' Out-Flows registered')
-
-        print(shiftChars + '   medium: ' + str(self.medium))
-        super().print(shiftChars)
-
 
 # Medien definieren:
 class MediumCollection:
