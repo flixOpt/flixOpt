@@ -1168,12 +1168,8 @@ class Flow(Element):
 
     @property
     def invest_is_optional(self) -> bool:
-        # Wenn kein InvestParameters existiert:
-        if self.invest_parameters is None:
-            is_optional = False  # keine variable var_isInvested
-        else:
-            is_optional = self.invest_parameters.optional
-        return is_optional
+        # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
+        return False if self.invest_parameters is None else self.invest_parameters.optional
 
     # static var:
     __nominal_val_default = 1e9  # Großer Gültigkeitsbereich als Standard
