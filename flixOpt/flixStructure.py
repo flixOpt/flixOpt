@@ -1409,30 +1409,32 @@ class Flow(Element):
 
         self.system_model = system_model
 
-        def getMinMaxOfDefiningVar():
+        def min_max_of_defining_variable() -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
+            """
+            Returns the lower and upper bound and the fixed value of the defining variable.
+            Returns: (lower_bound, upper_bound, fixed_value)
+            """
             # Wenn fixer Lastgang:
             if self.val_rel is not None:
                 # min = max = val !
+                lower_bound = None
+                upper_bound = None
                 fix_value = self.val_rel.active_data * self.size
-                lb = None
-                ub = None
             else:
-                if self.featureOn.useOn:
-                    lb = 0
-                else:
-                    lb = self.min_rel_with_exists.active_data * self.size  # immer an
-                ub = self.max_rel_with_exists.active_data * self.size
+                lower_bound = 0 if self.featureOn.useOn else self.min_rel_with_exists.active_data * self.size
+                upper_bound = self.max_rel_with_exists.active_data * self.size
                 fix_value = None
-            return (lb, ub, fix_value)
+            return lower_bound, upper_bound, fix_value
 
         # wenn keine Investrechnung:
         if self.featureInvest is None:
-            (lb, ub, fix_value) = getMinMaxOfDefiningVar()
+            (lower_bound, upper_bound, fix_value) = min_max_of_defining_variable()
         else:
-            (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
+            (lower_bound, upper_bound, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model, lower_bound=lb, upper_bound=ub, value=fix_value)
+        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model,
+                                        lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value)
         self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, lower_bound=self.flow_hours_total_min,
                                                upper_bound=self.flow_hours_total_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
