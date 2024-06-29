@@ -453,7 +453,7 @@ class ElementModel:
             for eq in (self.eqs + self.ineqs):
                 aList.append(eq.as_str())
         if not (self.objective is None):
-            aList.append(self.objective.as_str())
+            aList.append(self.objective.description())
         return aList
 
     def variables_as_str(self) -> List:
@@ -824,9 +824,9 @@ class Component(Element):
             descrType = 'for comp-list'
 
         for aFlow in self.inputs:
-            inhalt['In-Flows'].append(aFlow.getStrDescr(type=descrType))  # '  -> Flow: '))
+            inhalt['In-Flows'].append(aFlow.description(type=descrType))  # '  -> Flow: '))
         for aFlow in self.outputs:
-            inhalt['Out-Flows'].append(aFlow.getStrDescr(type=descrType))  # '  <- Flow: '))
+            inhalt['Out-Flows'].append(aFlow.description(type=descrType))  # '  <- Flow: '))
 
         if self.is_storage:
             inhalt['is_storage'] = self.is_storage
@@ -1590,7 +1590,7 @@ class Flow(Element):
                                            'costs'])
         """
 
-    def getStrDescr(self, type='full') -> Dict:
+    def description(self, type: str = 'full') -> Dict:
         aDescr = {}
         if type == 'for bus-list':
             # aDescr = str(self.comp.label) + '.'
@@ -1618,15 +1618,10 @@ class Flow(Element):
 
         return aDescr
 
-    # def printWithBus(self):
-    #   return (str(self.label) + ' @Bus ' + str(self.bus.label))
-    # def printWithComp(self):
-    #   return (str(self.comp.label) + '.' +  str(self.label))
-
     # Preset medium (only if not setted explicitly by user)
-    def setMediumIfNotSet(self, medium) -> None:
-        # nicht überschreiben, nur wenn leer:
-        if self.medium is None: self.medium = medium
+    def set_medium_if_not_set(self, medium) -> None:
+        if self.medium is None:    # nicht überschreiben, nur wenn leer:
+            self.medium = medium
 
 # class cBeforeValue :
 
@@ -2033,7 +2028,7 @@ class System:
         modelDescription['flows'] = flowList
         aFlow: Flow
         for aFlow in self.setOfFlows:
-            flowList.append(aFlow.getStrDescr())
+            flowList.append(aFlow.description())
 
         return modelDescription
 

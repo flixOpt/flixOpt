@@ -339,8 +339,8 @@ class Boiler(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        Q_fu.set_medium_if_not_set(MediumCollection.fuel)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -387,8 +387,8 @@ class Power2Heat(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -430,8 +430,8 @@ class HeatPump(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
@@ -472,8 +472,8 @@ class CoolingTower(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.specificElectricityDemand_bounds = [0, 1]  # 0 < eta_th < 1
@@ -527,9 +527,9 @@ class CHP(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
-        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_fu.set_medium_if_not_set(MediumCollection.fuel)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
 
         # Plausibilität eta:
         self.eta_th_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -581,9 +581,9 @@ class HeatPumpWithSource(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
-        Q_ab.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
+        Q_ab.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
