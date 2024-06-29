@@ -1703,8 +1703,6 @@ class System:
         self.other_elements: Set[Element] = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
         self.effects: EffectCollection = EffectCollection()  # Kosten, CO2, Primärenergie, ...
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
-        self.standardEffect = None  # Standard-Effekt, zumeist Kosten
-        self.objectiveEffect = None  # Zielfunktions-Effekt, z.B. Kosten oder CO2
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
         self.globalComp = Global('globalComp')
         self.__finalized = False  # wenn die Elements alle finalisiert sind, dann True
