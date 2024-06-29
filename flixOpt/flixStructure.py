@@ -1723,7 +1723,7 @@ class System:
         new_effects = list(args)
         for new_effect in new_effects:
             print('Register new effect ' + new_effect.label)
-            self._checkIfUniqueElement(new_effect, self.effects)   # check if already exists
+            self._check_if_element_is_unique(new_effect, self.effects)   # check if already exists
             # Wenn Standard-Effekt, und schon einer vorhanden:
             if new_effect.is_standard and self.effects.standard_effect is not None:
                 raise Exception(f'standardEffekt ist bereits belegt mit {self.effects.standard_effect.label}')
@@ -1741,7 +1741,7 @@ class System:
         new_components = list(args)
         for new_component in new_components:
             print('Register new Component ' + new_component.label)
-            self._checkIfUniqueElement(new_component, self.components)   # check if already exists:
+            self._check_if_element_is_unique(new_component, self.components)   # check if already exists:
             new_component.register_component_in_flows()   # Komponente in Flow registrieren
             new_component.register_flows_in_bus()   # Flows in Bus registrieren:
         self.components.extend(new_components)   # Add to existing list of components
@@ -1766,13 +1766,13 @@ class System:
                 self.add_effects(new_element)
             elif isinstance(new_element, Element):
                 # check if already exists:
-                self._checkIfUniqueElement(new_element, self.other_elements)
+                self._check_if_element_is_unique(new_element, self.other_elements)
                 # register Element:
                 self.other_elements.add(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def addTemporaryElements(self, *args: Element) -> None:
+    def add_temporary_elements(self, *args: Element) -> None:
         '''
         add temporary modeling elements, only valid for one calculation,
         i.g. cAggregationModeling-Element
@@ -1787,7 +1787,7 @@ class System:
         self.add_elements(*args)
         self.temporary_elements += args  # Register temporary Elements
 
-    def deleteTemporaryElements(self):  # function just implemented, still not used
+    def delete_temporary_elements(self):  # function just implemented, still not used
         '''
         deletes all registered temporary Elements
         '''
@@ -1799,7 +1799,7 @@ class System:
             self.effects.remove(temporary_element)
             self.flows(temporary_element)
 
-    def _checkIfUniqueElement(self, aElement: Element, listOfExistingLists: list) -> None:
+    def _check_if_element_is_unique(self, element: Element, existing_elements: List[Element]) -> None:
         '''
         checks if element or label of element already exists in list
 
@@ -1807,17 +1807,17 @@ class System:
         ----------
         aElement : Element
             new element to check
-        listOfExistingLists : list
+        existing_elements : list
             list of already registered elements
         '''
 
         # check if element is already registered:
-        if aElement in listOfExistingLists:
-            raise Exception('Element \'' + aElement.label + '\' already added to cEnergysystem!')
+        if element in existing_elements:
+            raise Exception('Element \'' + element.label + '\' already added to cEnergysystem!')
 
             # check if name is already used:
-        if aElement.label in [elem.label for elem in listOfExistingLists]:
-            raise Exception('Elementname \'' + aElement.label + '\' already used in another element!')
+        if element.label in [elem.label for elem in existing_elements]:
+            raise Exception('Elementname \'' + element.label + '\' already used in another element!')
 
     def __plausibilityChecks(self) -> None:
         # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
@@ -2525,7 +2525,7 @@ class Calculation:
                                                         costsOfPeriodFreedom=costsOfPeriodFreedom)
 
         # temporary Modeling-Element for equalizing indices of aggregation:
-        self.system.addTemporaryElements(aggregationModel)
+        self.system.add_temporary_elements(aggregationModel)
 
         if fixBinaryVarsOnly:
             TS_explicit = None
