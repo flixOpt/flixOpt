@@ -1315,10 +1315,11 @@ class Flow(Element):
                 raise Exception(
                     'Achtung: Wenn val_rel genutzt wird, muss zugehöriges size definiert werden, da: value = val_rel * size!')
             self.val_rel = TimeSeries('val_rel', val_rel, self)
-        if (medium is not None) and (not isinstance(medium, str)):
+
+        self.medium = medium
+        if (self.medium is not None) and (not isinstance(self.medium, str)):
             raise Exception('medium must be a string or None')
-        else:
-            self.medium = medium
+
         # defaults:
 
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
