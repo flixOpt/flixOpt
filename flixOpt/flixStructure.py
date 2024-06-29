@@ -1074,32 +1074,27 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             self.excess_input = VariableTS('excess_input', len(system_model.time_series), self, system_model, lower_bound=0)
             self.excess_output = VariableTS('excess_output', len(system_model.time_series), self, system_model, lower_bound=0)
 
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
         super().do_modeling(system_model, time_indices)
 
         # inputs = outputs
-        eq_busbalance = Equation('busBalance', self, system_model)
+        bus_balance = Equation('busBalance', self, system_model)
         for aFlow in self.inputs:
-            eq_busbalance.add_summand(aFlow.model.var_val, 1)
+            bus_balance.add_summand(aFlow.model.var_val, 1)
         for aFlow in self.outputs:
-            eq_busbalance.add_summand(aFlow.model.var_val, -1)
+            bus_balance.add_summand(aFlow.model.var_val, -1)
 
-        # Fehlerplus/-minus:
-        if self.with_excess:
-            # Hinzufügen zur Bilanz:
-            eq_busbalance.add_summand(self.excess_output, -1)
-            eq_busbalance.add_summand(self.excess_input, 1)
+        if self.with_excess:   # Fehlerplus/-minus hinzufügen zur Bilanz:
+            bus_balance.add_summand(self.excess_output, -1)
+            bus_balance.add_summand(self.excess_input, 1)
 
-    def add_share_to_globals(self, globalComp, system_model) -> None:
-        super().add_share_to_globals(globalComp, system_model)
-        # Strafkosten hinzufügen:
-        if self.with_excess:
-            globalComp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_input,
-                                                self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            globalComp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_output,
-                                                self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            # globalComp.penaltyCosts_eq.add_summand(self.excess_input , np.multiply(self.excess_effects_per_flow_hour, model.dt_in_hours))
-            # globalComp.penaltyCosts_eq.add_summand(self.excess_output, np.multiply(self.excess_effects_per_flow_hour, model.dt_in_hours))
+    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
+        super().add_share_to_globals(global_comp, system_model)
+        if self.with_excess:   # Strafkosten hinzufügen:
+            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_input,
+                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
+            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_output,
+                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
     def print(self, shiftChars) -> None:
         print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
