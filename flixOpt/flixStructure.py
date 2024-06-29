@@ -879,10 +879,10 @@ class Global(Element):
         self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
 
     def add_constant_share_to_operation(self,
-                               name_of_share: str,
-                               owner: Element,
-                               effect_values: Dict[Optional[Effect], TimeSeries],
-                               factor: Numeric) -> None:
+                                        name_of_share: str,
+                                        owner: Element,
+                                        effect_values: Dict[Optional[Effect], TimeSeries],
+                                        factor: Numeric) -> None:
         self._add_share('operation', name_of_share, owner, effect_values, factor)
 
     def add_share_to_invest(self,
@@ -911,8 +911,6 @@ class Global(Element):
                    effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
                    factor: Numeric,
                    variable: Optional[Variable] = None) -> None:
-        aEffectSum: cFeature_ShareSum
-
         effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effekttypen, die einen Wert haben, anhängen:
@@ -925,9 +923,11 @@ class Global(Element):
                 raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
 
             if operation_or_invest == 'operation':
-                effect.operation.addShare(name_of_share, owner, variable, value, factor)  # hier darf aVariable auch None sein!
+                effect.operation.addShare(name_of_share, owner, variable, value,
+                                          factor)  # hier darf aVariable auch None sein!
             elif operation_or_invest == 'invest':
-                effect.invest.addShare(name_of_share, owner, variable, value, factor)  # hier darf aVariable auch None sein!
+                effect.invest.addShare(name_of_share, owner, variable, value,
+                                       factor)  # hier darf aVariable auch None sein!
             else:
                 raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
@@ -952,7 +952,7 @@ class Global(Element):
 
         self.penalty.do_modeling(system_model, timeIndexe)
         ## Gleichungen bauen für Effekte: ##
-        effect : Effect
+        effect: Effect
         for effect in self.listOfEffectTypes:
             effect.do_modeling(system_model, timeIndexe)
 
