@@ -393,30 +393,30 @@ class Element:
 
         return aData, aVars
 
-    def equations_as_str(self):
+    def description_of_equations(self):
 
         ## subelemente durchsuchen:
         subs = {}
         for aSubElement in self.sub_elements:
-            subs[aSubElement.label] = aSubElement.equations_as_str()  # rekursiv
+            subs[aSubElement.label] = aSubElement.description_of_equations()  # rekursiv
         ## Element:
 
         # wenn sub-eqs, dann dict:
         if not (subs == {}):
             eqsAsStr = {}
-            eqsAsStr['_self'] = self.model.equations_as_str()  # zuerst eigene ...
+            eqsAsStr['_self'] = self.model.description_of_equations()  # zuerst eigene ...
             eqsAsStr.update(subs)  # ... dann sub-Eqs
         # sonst liste:
         else:
-            eqsAsStr = self.model.equations_as_str()
+            eqsAsStr = self.model.description_of_equations()
 
         return eqsAsStr
 
-    def variables_as_str(self) -> List:
+    def description_of_variables(self) -> List:
         aList = []
-        aList += self.model.variables_as_str()
+        aList += self.model.description_of_variables()
         for aSubElement in self.sub_elements:
-            aList += aSubElement.variables_as_str()  # rekursiv
+            aList += aSubElement.description_of_variables()  # rekursiv
 
         return aList
 
@@ -445,18 +445,18 @@ class ElementModel:
         self.objective = None
 
     # Eqs, Ineqs und Objective als Str-Description:
-    def equations_as_str(self) -> List:
+    def description_of_equations(self) -> List:
         # Wenn Glg vorhanden:
         eq: Equation
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
             for eq in (self.eqs + self.ineqs):
-                aList.append(eq.as_str())
+                aList.append(eq.description())
         if not (self.objective is None):
             aList.append(self.objective.description())
         return aList
 
-    def variables_as_str(self) -> List:
+    def description_of_variables(self) -> List:
         aList = []
         for aVar in self.variables:
             aList.append(aVar.get_str_description())
@@ -810,7 +810,7 @@ class Component(Element):
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
         self.featureOn.add_share_to_globals(globalComp, system_model)
 
-    def description_as_str(self) -> Dict:
+    def description(self) -> Dict:
 
         descr = {}
         inhalt = {'In-Flows': [], 'Out-Flows': []}
@@ -2016,12 +2016,12 @@ class System:
         modelDescription['buses'] = {}
         for aBus in self.setOfBuses:
             aBus: Bus
-            modelDescription['buses'].update(aBus.description_as_str())
+            modelDescription['buses'].update(aBus.description())
         # Comps:
         modelDescription['components'] = {}
         aComp: Component
         for aComp in self.listOfComponents:
-            modelDescription['components'].update(aComp.description_as_str())
+            modelDescription['components'].update(aComp.description())
 
         # Flows:
         flowList = []
@@ -2040,29 +2040,29 @@ class System:
         aDict['Components'] = aSubDict
         aComp: Element
         for aComp in self.listOfComponents:
-            aSubDict[aComp.label] = aComp.equations_as_str()
+            aSubDict[aComp.label] = aComp.description_of_equations()
 
         # buses:
         aSubDict = {}
         aDict['buses'] = aSubDict
         for aBus in self.setOfBuses:
-            aSubDict[aBus.label] = aBus.equations_as_str()
+            aSubDict[aBus.label] = aBus.description_of_equations()
 
         # globals:
-        aDict['globals'] = self.globalComp.equations_as_str()
+        aDict['globals'] = self.globalComp.description_of_equations()
 
         # flows:
         aSubDict = {}
         aDict['flows'] = aSubDict
         for aComp in self.listOfComponents:
             for aFlow in (aComp.inputs + aComp.outputs):
-                aSubDict[aFlow.label_full] = aFlow.equations_as_str()
+                aSubDict[aFlow.label_full] = aFlow.description_of_equations()
 
         # others
         aSubDict = {}
         aDict['others'] = aSubDict
         for element in self.setOfOtherElements:
-            aSubDict[element.label] = element.equations_as_str()
+            aSubDict[element.label] = element.description_of_equations()
 
         return aDict
 
@@ -2096,24 +2096,24 @@ class System:
             aDict['Comps'] = subDict
             # comps:
             for aComp in self.listOfComponents:
-                subDict[aComp.label] = aComp.variables_as_str()
+                subDict[aComp.label] = aComp.description_of_variables()
                 for aFlow in aComp.inputs + aComp.outputs:
-                    subDict[aComp.label] += aFlow.variables_as_str()
+                    subDict[aComp.label] += aFlow.description_of_variables()
 
             # buses:
             subDict = {}
             aDict['buses'] = subDict
             for bus in self.setOfBuses:
-                subDict[bus.label] = bus.variables_as_str()
+                subDict[bus.label] = bus.description_of_variables()
 
             # globals:
-            aDict['globals'] = self.globalComp.variables_as_str()
+            aDict['globals'] = self.globalComp.description_of_variables()
 
             # others
             aSubDict = {}
             aDict['others'] = aSubDict
             for element in self.setOfOtherElements:
-                aSubDict[element.label] = element.variables_as_str()
+                aSubDict[element.label] = element.description_of_variables()
 
             return aDict
 

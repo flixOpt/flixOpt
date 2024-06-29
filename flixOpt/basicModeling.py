@@ -647,7 +647,7 @@ class Equation:
 
             # print i-th equation:
 
-    def as_str(self, equation_nr: int = 0) -> str:
+    def description(self, equation_nr: int = 0) -> str:
         equation_nr = min(equation_nr, self.nr_of_single_equations - 1)
 
         aStr = ''
