@@ -1152,11 +1152,11 @@ class cFeatureInvest(cFeature):
             if self.args.optional:
                 # fix Share to InvestCosts: 
                 # share: + isInvested * fix_effects
-                globalComp.addShareToInvest('fix_effects', self.owner, self.model.var_isInvested, self.args.fix_effects, 1)
+                globalComp.add_share_to_invest('fix_effects', self.owner, self.model.var_isInvested, self.args.fix_effects, 1)
             else:
                 # share: + fix_effects
-                globalComp.addConstantShareToInvest('fix_effects', self.owner, self.args.fix_effects,
-                                                    1)  # fester Wert hinufügen
+                globalComp.add_constant_share_to_invest('fix_effects', self.owner, self.args.fix_effects,
+                                                        1)  # fester Wert hinufügen
 
         # # divest_effects:
 
@@ -1166,10 +1166,10 @@ class cFeatureInvest(cFeature):
                 # share: [(1- isInvested) * divest_effects]
                 # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
-                globalComp.addConstantShareToInvest('divest_effects', self.owner, self.args.divest_effects, 1)
+                globalComp.add_constant_share_to_invest('divest_effects', self.owner, self.args.divest_effects, 1)
                 # 2. part of share [- isInvested * divest_effects]:
-                globalComp.addShareToInvest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
-                                            self.args.divest_effects, -1)
+                globalComp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
+                                               self.args.divest_effects, -1)
                 # TODO : these 2 parts should be one share!
             else:
                 pass  # no divest costs if invest is not optional
@@ -1178,10 +1178,10 @@ class cFeatureInvest(cFeature):
         # wenn specific_effects vorhanden:
         if not (self.args.specific_effects is None):
             # share: + investmentSize (=var)   * specific_effects
-            globalComp.addShareToInvest('specific_effects', self.owner, self.model.var_investmentSize,
-                                        self.args.specific_effects, 1)
+            globalComp.add_share_to_invest('specific_effects', self.owner, self.model.var_investmentSize,
+                                           self.args.specific_effects, 1)
 
         # # segmentedCosts:                                        
         if self.featureLinearSegments is not None:
             for effect, var_investSegs in self.investVar_effect_dict.items():
-                globalComp.addShareToInvest('linearSegments', self.owner, var_investSegs, {effect: 1}, 1)
+                globalComp.add_share_to_invest('linearSegments', self.owner, var_investSegs, {effect: 1}, 1)

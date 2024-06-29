@@ -885,12 +885,22 @@ class Global(Element):
                                factor: Numeric) -> None:
         self._add_share('operation', name_of_share, owner, effect_values, factor)
 
-    def addShareToInvest(self, nameOfShare, shareHolder, aVariable, effect_values, factor) -> None:
-        if aVariable is None: raise Exception('addShareToInvest() needs variable or use addConstantShare instead')
-        self._add_share('invest', nameOfShare, shareHolder, effect_values, factor, aVariable)
+    def add_share_to_invest(self,
+                            name_of_share: str,
+                            owner: Element,
+                            variable: Variable,
+                            effect_values: Dict[Optional[Effect], TimeSeries],
+                            factor: Numeric) -> None:
+        if variable is None:
+            raise Exception('add_share_to_invest() needs variable or use addConstantShare instead')
+        self._add_share('invest', name_of_share, owner, effect_values, factor, variable)
 
-    def addConstantShareToInvest(self, nameOfShare, shareHolder, effect_values, factor) -> None:
-        self._add_share('invest', nameOfShare, shareHolder, effect_values, factor)
+    def add_constant_share_to_invest(self,
+                                     name_of_share: str,
+                                     owner: Element,
+                                     effect_values: Dict[Optional[Effect], TimeSeries],
+                                     factor: Numeric) -> None:
+        self._add_share('invest', name_of_share, owner, effect_values, factor)
 
         # wenn aVariable = None, dann constanter Share
 
