@@ -52,9 +52,9 @@ print('################### start of modeling #################################')
 # ## Bus-Definition: ##
 #######################
 #                 Typ         Name              
-Strom = Bus('el', 'Strom', excessCostsPerFlowHour=excessCosts)
-Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=excessCosts)
-Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=excessCosts)
+Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=excessCosts)
+Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=excessCosts)
+Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=excessCosts)
 
 
 # Effect-Definition:

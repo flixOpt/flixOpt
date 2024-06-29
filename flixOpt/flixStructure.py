@@ -996,14 +996,14 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
     (penalty flow is excess can be activated)
     '''
 
-    # --> excessCostsPerFlowHour
+    # --> excess_effects_per_flow_hour
     #        none/ 0 -> kein Exzess berücksichtigt
     #        > 0 berücksichtigt
 
-    new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
+    new_init_args = ['media', 'label', 'excess_effects_per_flow_hour']
     not_used_args = ['label']
 
-    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Optional[Numeric_TS] = 1e5, **kwargs):
+    def __init__(self, media: str, label: str, excess_effects_per_flow_hour: Optional[Numeric_TS] = 1e5, **kwargs):
         '''
         Parameters
         ----------
@@ -1015,7 +1015,7 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             example 2: media = {'gas','biogas','H2'} -> flows of these media are allowed
         label : str
             name.
-        excessCostsPerFlowHour : none or scalar, array or TimeSeriesRaw
+        excess_effects_per_flow_hour : none or scalar, array or TimeSeriesRaw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calcType = aggregated!)
@@ -1034,9 +1034,9 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         else:
             raise Exception('no valid input for argument media!')
 
-        if (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0):
+        if (excess_effects_per_flow_hour is not None) and (excess_effects_per_flow_hour > 0):
             self.withExcess = True
-            self.excessCostsPerFlowHour = TimeSeries('excessCostsPerFlowHour', excessCostsPerFlowHour, self)
+            self.excessCostsPerFlowHour = TimeSeries('excess_effects_per_flow_hour', excess_effects_per_flow_hour, self)
         else:
             self.withExcess = False
 
@@ -1091,12 +1091,12 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         super().add_share_to_globals(globalComp, system_model)
         # Strafkosten hinzufügen:
         if self.withExcess:
-            globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessIn,
+            globalComp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excessIn,
                                                 self.excessCostsPerFlowHour, system_model.dt_in_hours)
-            globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut,
+            globalComp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excessOut,
                                                 self.excessCostsPerFlowHour, system_model.dt_in_hours)
-            # globalComp.penaltyCosts_eq.add_summand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dt_in_hours))
-            # globalComp.penaltyCosts_eq.add_summand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dt_in_hours))
+            # globalComp.penaltyCosts_eq.add_summand(self.excessIn , np.multiply(self.excess_effects_per_flow_hour, model.dt_in_hours))
+            # globalComp.penaltyCosts_eq.add_summand(self.excessOut, np.multiply(self.excess_effects_per_flow_hour, model.dt_in_hours))
 
     def print(self, shiftChars) -> None:
         print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(

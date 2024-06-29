@@ -216,9 +216,9 @@ class TestComplex(BaseTest):
 
     def basic_model(self):
         # Define the components and energy system
-        Strom = Bus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
-        Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
-        Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
+        Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=self.excessCosts)
+        Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=self.excessCosts)
+        Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=self.excessCosts)
 
         costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
         CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2})
@@ -259,9 +259,9 @@ class TestComplex(BaseTest):
 
     def segments_of_flows_model(self):
         # Define the components and energy system
-        Strom = Bus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
-        Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
-        Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
+        Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=self.excessCosts)
+        Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=self.excessCosts)
+        Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=self.excessCosts)
 
         costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
         CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2})

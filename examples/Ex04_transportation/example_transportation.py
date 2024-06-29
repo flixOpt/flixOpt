@@ -63,8 +63,8 @@ print('################### start of modeling #################################')
 
 # Bus-Definition:
 #                 Typ         Name              
-heat1 = Bus('heat', 'heat1', excessCostsPerFlowHour = excessCosts);
-heat2 = Bus('heat', 'heat2', excessCostsPerFlowHour = excessCosts);
+heat1 = Bus('heat', 'heat1', excess_effects_per_flow_hour= excessCosts);
+heat2 = Bus('heat', 'heat2', excess_effects_per_flow_hour= excessCosts);
 
 # Effect-Definition:
 costs = Effect('costs', '€', 'Kosten', is_standard= True, is_objective= True)

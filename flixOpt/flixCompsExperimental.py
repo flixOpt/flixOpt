@@ -177,7 +177,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
         segPel = [0, 0] + segPel
 
     HelperBus = Bus(label='Helper' + label + 'In', media=None,
-                    excessCostsPerFlowHour=None)  # balancing node/bus of electricity
+                    excess_effects_per_flow_hour=None)  # balancing node/bus of electricity
     # Handling min_rel and max_rel
     max_rel = kwargs.pop("max_rel", 1)
     checkExists(max_rel)
