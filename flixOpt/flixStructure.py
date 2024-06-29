@@ -1638,7 +1638,7 @@ class System:
 
     @property
     def elements_of_fists_layer(self) -> List[Element]:
-        return self.elements_of_first_layer_wo_flows + list(self.setOfFlows)
+        return self.elements_of_first_layer_wo_flows + list(self.flows)
 
     @property
     def invest_features(self) -> List[cFeatureInvest]:
@@ -1658,18 +1658,9 @@ class System:
         return all_invest_features
 
     # Achtung: Funktion wird nicht nur für Getter genutzt.
-    def getFlows(self, listOfComps=None) -> Set[Flow]:
-        setOfFlows = set()
-        # standardmäßig Flows aller Komponenten:
-        if listOfComps is None:
-            listOfComps = self.listOfComponents
-        # alle comps durchgehen:
-        for comp in listOfComps:
-            newFlows = comp.inputs + comp.outputs
-            setOfFlows = setOfFlows | set(newFlows)
-        return setOfFlows
-
-    setOfFlows = property(getFlows)
+    @property
+    def flows(self) -> Set[Flow]:
+        return {flow for comp in self.listOfComponents for flow in comp.inputs + comp.outputs}
 
     # get all TS in one list:
     @property
@@ -1680,12 +1671,12 @@ class System:
             all_TS += element.TS_list
         return all_TS
 
-    # aktuelles Bus-Set ausgeben (generiert sich aus dem setOfFlows):
+    # aktuelle busse ausgeben (generiert sich aus flows):
     @property
     def setOfBuses(self) -> Set[Bus]:
         setOfBuses = set()
         # Flow-Liste durchgehen::
-        for aFlow in self.setOfFlows:
+        for aFlow in self.flows:
             setOfBuses.add(aFlow.bus)
         return setOfBuses
 
@@ -1830,7 +1821,7 @@ class System:
             self.setOfBuses.remove(temporary_element)
             self.setOfOtherElements.remove(temporary_element)
             self.listOfEffectTypes.remove(temporary_element)
-            self.setOfFlows(temporary_element)
+            self.flows(temporary_element)
 
     def _checkIfUniqueElement(self, aElement: Element, listOfExistingLists: list) -> None:
         '''
@@ -2016,7 +2007,7 @@ class System:
         flowList = []
         modelDescription['flows'] = flowList
         aFlow: Flow
-        for aFlow in self.setOfFlows:
+        for aFlow in self.flows:
             flowList.append(aFlow.description())
 
         return modelDescription

@@ -356,11 +356,11 @@ class cAggregationModeling(flixStructure.Element):
         if self.listOfElementsToClusterize is None:
             # Alle:
             compSet = set(self.system.listOfComponents)
-            flowSet = self.system.setOfFlows
+            flowSet = self.system.flows
         else:
             # Ausgewählte:
             compSet = set(self.listOfElementsToClusterize)
-            flowSet = self.system.getFlows(self.listOfElementsToClusterize)
+            flowSet = {flow for flow in self.system.flows if flow.comp in self.listOfElementsToClusterize}
 
         flow: flixStructure.Flow
 
