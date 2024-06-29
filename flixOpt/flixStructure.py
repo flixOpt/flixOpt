@@ -149,7 +149,7 @@ class SystemModel(LinearModel):
         except:
             print
         print('')
-        for aBus in self.system.setOfBuses:
+        for aBus in self.system.buses:
             if aBus.with_excess:
                 if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
                         self.results[aBus.label]['excess_output'] > 1e-6):
@@ -186,7 +186,7 @@ class SystemModel(LinearModel):
                 main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
             main_results_str['busesWithExcess'] = busesWithExcess
-            for aBus in self.system.setOfBuses:
+            for aBus in self.system.buses:
                 if aBus.with_excess:
                     if sum(self.results[aBus.label]['excess_input']) > excess_threshold or sum(
                             self.results[aBus.label]['excess_output']) > excess_threshold:
@@ -1633,7 +1633,7 @@ class System:
 
     @property
     def elements_of_first_layer_wo_flows(self) -> List[Element]:
-        return (self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +
+        return (self.listOfComponents + list(self.buses) + [self.globalComp] + self.listOfEffectTypes +
                 list(self.setOfOtherElements))
 
     @property
@@ -1664,21 +1664,16 @@ class System:
 
     # get all TS in one list:
     @property
-    def all_TS_in_elements(self) -> List[TimeSeries]:
+    def all_time_series_in_elements(self) -> List[TimeSeries]:
         element: Element
         all_TS = []
         for element in self.elements_of_fists_layer:
             all_TS += element.TS_list
         return all_TS
 
-    # aktuelle busse ausgeben (generiert sich aus flows):
     @property
-    def setOfBuses(self) -> Set[Bus]:
-        setOfBuses = set()
-        # Flow-Liste durchgehen::
-        for aFlow in self.flows:
-            setOfBuses.add(aFlow.bus)
-        return setOfBuses
+    def buses(self) -> Set[Bus]:
+        return {flow.bus for flow in self.flows}
 
         # time_series: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
 
@@ -1818,7 +1813,7 @@ class System:
         for temporary_element in self.temporary_elements:
             # delete them again in the lists:
             self.listOfComponents.remove(temporary_element)
-            self.setOfBuses.remove(temporary_element)
+            self.buses.remove(temporary_element)
             self.setOfOtherElements.remove(temporary_element)
             self.listOfEffectTypes.remove(temporary_element)
             self.flows(temporary_element)
@@ -1905,7 +1900,7 @@ class System:
 
         # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
-        for aBus in self.setOfBuses:
+        for aBus in self.buses:
             log.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
             aBus.do_modeling(self.model, time_indices)
@@ -1928,7 +1923,7 @@ class System:
         if dictOfTSAndExplicitData is None:
             dictOfTSAndExplicitData = {}
 
-        for aTS in self.all_TS_in_elements:
+        for aTS in self.all_time_series_in_elements:
             # Wenn explicitData vorhanden:
             if aTS in dictOfTSAndExplicitData.keys():
                 explicitData = dictOfTSAndExplicitData[aTS]
@@ -1994,7 +1989,7 @@ class System:
         # Anmerkung buses und comps als dict, weil Namen eindeutig!
         # Buses:
         modelDescription['buses'] = {}
-        for aBus in self.setOfBuses:
+        for aBus in self.buses:
             aBus: Bus
             modelDescription['buses'].update(aBus.description())
         # Comps:
@@ -2025,7 +2020,7 @@ class System:
         # buses:
         aSubDict = {}
         aDict['buses'] = aSubDict
-        for aBus in self.setOfBuses:
+        for aBus in self.buses:
             aSubDict[aBus.label] = aBus.description_of_equations()
 
         # globals:
@@ -2083,7 +2078,7 @@ class System:
             # buses:
             subDict = {}
             aDict['buses'] = subDict
-            for bus in self.setOfBuses:
+            for bus in self.buses:
                 subDict[bus.label] = bus.description_of_variables()
 
             # globals:
@@ -2461,7 +2456,7 @@ class Calculation:
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
-        self.TSlistForAggregation = [item for item in self.system.all_TS_in_elements if item.is_array]
+        self.TSlistForAggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
         self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
                                                        addPeakMax_TSraw=addPeakMax,
                                                        addPeakMin_TSraw=addPeakMin,
