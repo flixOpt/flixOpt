@@ -34,7 +34,7 @@ class cFlow_post():
         self.flixResults = flixResults
         self.comp_post = flixResults.postObjOfStr(self.comp)
         # Richtung:    
-        self.isInputInComp = aDescr['isInputInComp']
+        self.isInputInComp = aDescr['is_input_in_comp']
         if self.isInputInComp:
             self.from_node = self.bus
             self.to_node = self.comp

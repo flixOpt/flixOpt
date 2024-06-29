@@ -1157,12 +1157,9 @@ class Flow(Element):
         return comp_label + separator + self.label  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
 
     @property  # Richtung
-    def isInputInComp(self) -> bool:
+    def is_input_in_comp(self) -> bool:
         comp: Component
-        if self in self.comp.inputs:
-            return True
-        else:
-            return False
+        return True if self in self.comp.inputs else False
 
     @property
     def investmentSize_is_fixed(self) -> bool:
@@ -1640,7 +1637,7 @@ class Flow(Element):
             aDescr['label'] = self.label
             aDescr['comp'] = self.comp.label
             aDescr['bus'] = self.bus.label
-            aDescr['isInputInComp'] = self.isInputInComp
+            aDescr['is_input_in_comp'] = self.is_input_in_comp
             if hasattr(self, 'group'):
                 if self.group is not None:
                     aDescr["group"] = self.group
