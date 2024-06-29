@@ -1345,6 +1345,8 @@ class Flow(Element):
                                     switch_on_total_max=self.switch_on_total_max,
                                     useOn_explicit=self.on_variable_is_forced)
 
+        self.featureInvest: Optional[cFeatureInvest] = None   # Is defined in finalize()
+
 
     def __str__(self):
         details = [
@@ -1388,9 +1390,7 @@ class Flow(Element):
         self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
 
         # prepare invest Feature:
-        if self.invest_parameters is None:
-            self.featureInvest = None  #
-        else:
+        if self.invest_parameters is not None:
             self.featureInvest = cFeatureInvest('size', self, self.invest_parameters,
                                                 min_rel=self.min_rel_with_exists,
                                                 max_rel=self.max_rel_with_exists,
