@@ -1821,28 +1821,30 @@ class System:
         if element.label in [elem.label for elem in existing_elements]:
             raise Exception('Elementname \'' + element.label + '\' already used in another element!')
 
-    def __plausibilityChecks(self) -> None:
+    def _plausibility_checks(self) -> None:
         # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
-        def getErrorStr():
-            return \
-                    '  ' + effect.label + ' -> has share in: ' + shareEffect.label + '\n' \
-                                                                                     '  ' + shareEffect.label + ' -> has share in: ' + effect.label
+
+        def error_str(effect_label: str, shareEffect_label: str):
+            return (
+                f'  {effect_label} -> has share in: {shareEffect_label}\n'
+                f'  {shareEffect_label} -> has share in: {effect_label}'
+            )
 
         for effect in self.effects:
             # operation:
             for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-                assert (
-                        effect not in shareEffect.specific_share_to_other_effects_operation.keys()), 'Error: circular operation-shares \n' + getErrorStr()
+                assert (effect not in shareEffect.specific_share_to_other_effects_operation.keys(),
+                        f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}')
             # invest:
             for shareEffect in effect.specific_share_to_other_effects_invest.keys():
-                assert (
-                        effect not in shareEffect.specific_share_to_other_effects_invest.keys()), 'Error: circular invest-shares \n' + getErrorStr()
+                assert (effect not in shareEffect.specific_share_to_other_effects_invest.keys(),
+                        f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}')
 
     # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
     def finalize(self) -> None:
         print('finalize all Elements...')
-        self.__plausibilityChecks()
+        self._plausibility_checks()
         # nur EINMAL ausführen: Finalisieren der Elements:
         if not self._finalized:
             # finalize Elements for modeling:
