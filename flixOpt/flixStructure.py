@@ -1373,8 +1373,8 @@ class Flow(Element):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
-    def activateOnValue(self) -> None:
-        self.featureOn.activateOnValueExplicitly()
+    def force_on_variable(self) -> None:
+        self.featureOn.force_on_variable()
 
     def finalize(self) -> None:
         self.plausibility_test()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)

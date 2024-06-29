@@ -967,8 +967,8 @@ class SourceAndSink(Component):
             flow.group = self.group
 
         # Erzwinge die Erstellung der On-Variablen, da notwendig für gleichung
-        self.source.activateOnValue()
-        self.sink.activateOnValue()
+        self.source.force_on_variable()
+        self.sink.force_on_variable()
 
         if self.avoidInAndOutAtOnce:
             self.featureAvoidInAndOutAtOnce = cFeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])

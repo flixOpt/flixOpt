@@ -241,7 +241,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
         if self.typ == 'classic':
             # "classic" -> alle Flows brauchen Binärvariable:
             for aFlow in self.flows:
-                aFlow.activateOnValue()
+                aFlow.force_on_variable()
 
         elif self.typ == 'new':
             # "new" -> n-1 Flows brauchen Binärvariable: (eine wird eingespart)
@@ -258,7 +258,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
                 aFlow = flows[i]
                 # Falls noch nicht on-Var für flow existiert, dann erzwingen:
                 if not aFlow.featureOn.useOn:
-                    aFlow.activateOnValue()
+                    aFlow.force_on_variable()
                     self.nrOfExistingOn_vars += 1
                 i += 1
 
@@ -273,7 +273,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
         # 1)	bin + flow1/flow1_max <= 1
         # 2)	bin - flow2/flow2_max >= 0
         # 3)    geht nur, wenn alle flow.min >= 0
-        # --> könnte man auch umsetzen (statt activateOnValue() für die Flows, aber sollte aufs selbe wie "new" kommen)
+        # --> könnte man auch umsetzen (statt force_on_variable() für die Flows, aber sollte aufs selbe wie "new" kommen)
 
         self.eq_flowLock = Equation('flowLock', self, system_model, eqType='ineq')
         # Summanden hinzufügen:
@@ -352,7 +352,7 @@ class cFeatureOn(cFeature):
         self.useSwitchOn = self.useSwitchOn | useSwitchOn_explicit
 
     # Befehl von außen zum Erzwingen einer On-Variable:
-    def activateOnValueExplicitly(self):
+    def force_on_variable(self):
         self.useOn = True
 
     # varOwner braucht die Variable auch:
