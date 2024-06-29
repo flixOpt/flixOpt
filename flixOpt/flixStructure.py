@@ -42,7 +42,7 @@ class SystemModel(LinearModel):
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
                  system,
-                 time_indices: Union[list[int], range],
+                 time_indices: Union[List[int], range],
                  TS_explicit=None):
         super().__init__(label, modeling_language)
         self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
@@ -568,7 +568,7 @@ class Effect(Element):
         self.invest.declare_vars_and_eqs(system_model)
         self.all.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model, time_indices) -> None:
+    def do_modeling(self, system_model, time_indices: Union[List[int], range]) -> None:
         print('modeling ' + self.label)
         super().declare_vars_and_eqs(system_model)
         self.operation.do_modeling(system_model, time_indices)
@@ -758,7 +758,7 @@ class Component(Element):
         for aFlow in self.inputs + self.outputs:
             aFlow.declare_vars_and_eqs(system_model)
 
-    def do_modeling_of_flows(self, system_model: SystemModel, time_indices) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def do_modeling_of_flows(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
             aFlow.do_modeling(system_model, time_indices)
@@ -797,7 +797,7 @@ class Component(Element):
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-    def do_modeling(self, system_model, time_indices) -> None:
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
         log.debug(str(self.label) + 'do_modeling()')
         self.featureOn.do_modeling(system_model, time_indices)
 
@@ -947,7 +947,7 @@ class Global(Element):
 
     #  eq_objective = Equation('objective',self,model,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def do_modeling(self, system_model, time_indices) -> None:
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
         # super().do_modeling(model,time_indices)
 
         self.penalty.do_modeling(system_model, time_indices)
@@ -1080,7 +1080,7 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             self.excessIn = VariableTS('excessIn', len(system_model.time_series), self, system_model, lower_bound=0)
             self.excessOut = VariableTS('excessOut', len(system_model.time_series), self, system_model, lower_bound=0)
 
-    def do_modeling(self, system_model, time_indices) -> None:
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
         super().do_modeling(system_model, time_indices)
 
         # inputs = outputs
@@ -1500,7 +1500,7 @@ class Flow(Element):
             self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
             self.featureInvest.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, time_indices) -> None:
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
         # super().do_modeling(model,time_indices)
 
         # for aFeature in self.features:
@@ -2262,7 +2262,7 @@ class Calculation:
         return self.__results_struct
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modType, time_indices=None, pathForSaving='results', ):
+    def __init__(self, label, system: System, modType, time_indices: Optional[list[int]] = None, pathForSaving='results'):
         '''
         Parameters
         ----------

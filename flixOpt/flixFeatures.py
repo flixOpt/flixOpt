@@ -102,7 +102,7 @@ class cFeatureLinearSegmentVars(cFeature):
             # Segmentvariablen erstellen:
             aSegment.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, time_indices):
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         #########################################
         ## 1. Gleichungen für: Nur ein Segment kann aktiv sein! ##
         # eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0 
@@ -262,7 +262,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
                     self.nrOfExistingOn_vars += 1
                 i += 1
 
-    def do_modeling(self, system_model, time_indices):
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         # Nur 1 Flow aktiv! Nicht mehrere Zeitgleich!    
         # "classic":
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
@@ -416,7 +416,7 @@ class cFeatureOn(cFeature):
             self.model.var_switchOff = None
             self.model.var_nrSwitchOn = None
 
-    def do_modeling(self, system_model, time_indices):
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         eqsOwner = self
         if self.useOn:
             self.__addConstraintsForOn(eqsOwner, self.flowsDefiningOn, system_model, time_indices)
@@ -433,7 +433,7 @@ class cFeatureOn(cFeature):
                 self.model.var_offHours, self.model.var_off, self.offHours_min,
                 eqsOwner, system_model, time_indices)
 
-    def __addConstraintsForOn(self, eqsOwner, flowsDefiningOn, system_model, time_indices):
+    def __addConstraintsForOn(self, eqsOwner, flowsDefiningOn, system_model, time_indices: Union[list[int], range]):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
 
         # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig 
@@ -510,7 +510,7 @@ class cFeatureOn(cFeature):
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
                     int(sumOfFlowMax / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
 
-    def __addConstraintsForOff(self, eqsOwner, system_model, time_indices):
+    def __addConstraintsForOff(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
         eq_var_off = Equation('var_off', self, system_model, eqType='eq')
@@ -519,7 +519,7 @@ class cFeatureOn(cFeature):
         eq_var_off.add_constant(1)
 
     @staticmethod  # to be sure not using any self-Variables
-    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, onHours_min, eqsOwner, system_model, time_indices):
+    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, onHours_min, eqsOwner, system_model, time_indices: Union[list[int], range]):
         '''
         i.g. 
         var_bin        = [0 0 1 1 1 1 0 1 1 1 0 ...]
@@ -573,7 +573,7 @@ class cFeatureOn(cFeature):
         eq_first.add_summand(var_bin_onTime, 1, firstIndex)
         eq_first.add_summand(var_bin, -1 * system_model.dt_in_hours[firstIndex], firstIndex)
 
-    def __addConstraintsForSwitchOnSwitchOff(self, eqsOwner, system_model, time_indices):
+    def __addConstraintsForSwitchOnSwitchOff(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1) 
 
@@ -700,7 +700,7 @@ class cFeature_ShareSum(cFeature):
             self.eq_sum_TS = Equation('bilanz', self, system_model)
         self.eq_sum = Equation('sum', self, system_model)
 
-    def do_modeling(self, system_model, time_indices):
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         self.shares.do_modeling(system_model, time_indices)
         if self.sharesAreTS:
             # eq: sum_TS = sum(share_TS_i) # TS
@@ -809,7 +809,7 @@ class cFeatureShares(cFeature):
     def __init__(self, label, owner):
         super().__init__(label, owner)
 
-    def do_modeling(self, system_model, time_indices):
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         pass
 
     def declare_vars_and_eqs(self, system_model):
@@ -1043,7 +1043,7 @@ class cFeatureInvest(cFeature):
         self.model.var_list_investCosts_segmented.append(var_investForEffect)
         return var_investForEffect
 
-    def do_modeling(self, system_model, time_indices):
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         assert self.definingVar is not None, 'setDefiningVar() still not executed!'
         # wenn var_isInvested existiert:    
         if self.args.optional:
