@@ -467,7 +467,7 @@ class BeforeValues:
 
     def print(self):
         for (element, varName) in self.beforeValues.keys():
-            print(element.label + '.' + varName + ' = ' + str(self.beforeValues[(element, varName)]))
+            print(element.label + '__' + varName + ' = ' + str(self.beforeValues[(element, varName)]))
 
 
 # class cInequation(Equation):

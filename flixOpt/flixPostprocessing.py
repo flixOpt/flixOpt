@@ -261,7 +261,7 @@ class flix_results():
         for aFlow in flows:
             flowHours = aFlow.getFlowHours()
             if flowHours > small:
-                FH[aFlow.comp + '.' + aFlow.label] = aFlow.getFlowHours()
+                FH[aFlow.comp + '__' + aFlow.label] = aFlow.getFlowHours()
         return FH
 
     # def plotFullLoadHours(self):
@@ -345,7 +345,7 @@ class flix_results():
                     others_Sum += aSum
                 else:
                     sums = np.append(sums, aSum)
-                    labels.append(aFlow.comp + '.' + aFlow.label)
+                    labels.append(aFlow.comp + '__' + aFlow.label)
                     colors.append(aFlow.color)
 
         if others_Sum > 0:
