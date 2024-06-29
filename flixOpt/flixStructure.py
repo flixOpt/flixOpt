@@ -1131,9 +1131,8 @@ class MediumCollection:
             return False
 
 
-# input/output-dock (TODO:
 class Connection:
-    pass
+    # input/output-dock (TODO:
     # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
     # input wären wie Flow,aber statt bus : connectsTo -> hier andere Connection oder aber Bus (dort keine Connection, weil nicht notwendig)
 
