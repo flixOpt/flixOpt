@@ -617,10 +617,10 @@ class cFeatureOn(cFeature):
         if self.switchOnCosts is not None:  # and any(self.switch_on_effects.active_data != 0):
             globalComp.addShareToOperation('switch_on_effects', shareHolder, self.model.var_switchOn, self.switchOnCosts, 1)
         # Betriebskosten:
-        if self.costsPerRunningHour is not None:  # and any(self.on_hour_effects):
-            globalComp.addShareToOperation('on_hour_effects', shareHolder, self.model.var_on,
+        if self.costsPerRunningHour is not None:  # and any(self.effects_per_running_hour):
+            globalComp.addShareToOperation('effects_per_running_hour', shareHolder, self.model.var_on,
                                            self.costsPerRunningHour, system_model.dtInHours)
-            # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.on_hour_effects.active_data, model.dtInHours))# np.multiply = elementweise Multiplikation
+            # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.effects_per_running_hour.active_data, model.dtInHours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als cFeature_TSShareSum

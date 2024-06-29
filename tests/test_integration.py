@@ -131,7 +131,7 @@ class TestComplex(BaseTest):
                                       258.63729669618675, "costs doesnt match expected value")
         self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel__Q_th_switch_on_effects'],
                                       0.01, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel_on_hour_effects'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel_effects_per_running_hour'],
                                       -0.0, "costs doesnt match expected value")
         self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Gastarif__Q_Gas_costsPerFlowHour'],
                                       39.09153113079115, "costs doesnt match expected value")
@@ -225,7 +225,7 @@ class TestComplex(BaseTest):
         PE = Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total=3.5e3)
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
-        aGaskessel = Boiler('Kessel', eta=0.5, on_hour_effects={costs: 0, CO2: 1000},
+        aGaskessel = Boiler('Kessel', eta=0.5, effects_per_running_hour={costs: 0, CO2: 1000},
                             Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, loadFactor_max=1.0, loadFactor_min=0.1, min_rel=5 / 50, max_rel=1, onHoursSum_min=0, onHoursSum_max=1000, onHours_max=10, offHours_max=10, switchOnCosts=0.01, switchOn_maxNr=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, sumFlowHours_max=1e6),
                             Q_fu=Flow('Q_fu', bus=Gas, nominal_val=200, min_rel=0, max_rel=1))
 
@@ -268,7 +268,7 @@ class TestComplex(BaseTest):
         PE = Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total=3.5e3)
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
-        aGaskessel = Boiler('Kessel', eta=0.5, on_hour_effects={costs: 0, CO2: 1000},
+        aGaskessel = Boiler('Kessel', eta=0.5, effects_per_running_hour={costs: 0, CO2: 1000},
                             Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, loadFactor_max=1.0, loadFactor_min=0.1, min_rel=5 / 50, max_rel=1, onHoursSum_min=0, onHoursSum_max=1000, onHours_max=10, offHours_max=10, switchOnCosts=0.01, switchOn_maxNr=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, sumFlowHours_max=1e6),
                             Q_fu=Flow('Q_fu', bus=Gas, nominal_val=200, min_rel=0, max_rel=1))
 
