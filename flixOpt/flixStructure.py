@@ -1815,7 +1815,9 @@ class System:
         if element in existing_elements:
             raise Exception('Element \'' + element.label + '\' already added to cEnergysystem!')
 
-            # check if name is already used:
+        # check if name is already used:
+        # TODO: Check all elements instead of only a list that is passed?
+        # TODO: An Effect with the same label as another element is not allowed, or is it?
         if element.label in [elem.label for elem in existing_elements]:
             raise Exception('Elementname \'' + element.label + '\' already used in another element!')
 
