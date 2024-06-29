@@ -79,26 +79,26 @@ invest_Gaskessel = InvestParameters(fix_effects= 1000,  # 1000 € investment co
 # 1. b) boiler itself:
 aGaskessel = Boiler('Kessel',
                     eta = 0.5,  # efficiency ratio
-                    costsPerRunningHour = {costs:0, CO2:1000},  # 1000 kg_CO2/h (just for testing)
+                    running_hour_effects = {costs:0, CO2:1000},  # 1000 kg_CO2/h (just for testing)
                     # defining flows:
                     Q_th = Flow(label   ='Q_th',  # name
                                 bus = Fernwaerme,  # linked bus
                                 size=50,  # 50 kW_th nominal size
-                                loadFactor_max = 1.0,  # maximal mean power 50 kW
-                                loadFactor_min = 0.1,  # minimal mean power 5 kW
+                                load_factor_max= 1.0,  # maximal mean power 50 kW
+                                load_factor_min= 0.1,  # minimal mean power 5 kW
                                 min_rel = 5/50,  # 10 % part load
                                 max_rel = 1,  # 50 kW
-                                onHoursSum_min = 0,  # minimum of working hours
-                                onHoursSum_max = 1000,  # maximum of working hours
-                                onHours_max = 10,  # maximum of working hours in one step
-                                offHours_max = 10,  # maximum of off hours in one step
-                                # onHours_min = 2, # minimum on hours in one step
-                                # offHours_min = 4, # minimum off hours in one step
-                                switchOnCosts = 0.01,  # € per start
-                                switchOn_maxNr = 1000,  # max nr of starts
+                                on_hours_total_min= 0,  # minimum of working hours
+                                on_hours_total_max= 1000,  # maximum of working hours
+                                on_hours_max= 10,  # maximum of working hours in one step
+                                off_hours_max = 10,  # maximum of off hours in one step
+                                # on_hours_min = 2, # minimum on hours in one step
+                                # off_hours_min = 4, # minimum off hours in one step
+                                switch_on_effects = 0.01,  # € per start
+                                switch_on_total_max = 1000,  # max nr of starts
                                 valuesBeforeBegin=[50],  # 50 kW is value before start
                                 invest_parameters= invest_Gaskessel,  # see above
-                                sumFlowHours_max = 1e6,  # kWh, overall maximum "flow-work"
+                                flow_hours_total_max = 1e6,  # kWh, overall maximum "flow-work"
                                 ),
                     Q_fu = Flow(label ='Q_fu',  # name
                                 bus = Gas,  # linked bus
@@ -107,7 +107,7 @@ aGaskessel = Boiler('Kessel',
                                 max_rel = 1))
 
 # 2. defining of CHP-unit:
-aKWK  = CHP('BHKW2', eta_th = 0.5, eta_el = 0.4, switchOnCosts =  0.01,
+aKWK  = CHP('BHKW2', eta_th = 0.5, eta_el = 0.4, switch_on_effects =  0.01,
             P_el = Flow('P_el', bus = Strom, size=60, min_rel =5 / 60, ),
             Q_th = Flow('Q_th', bus = Fernwaerme, size=1e3),
             Q_fu = Flow('Q_fu', bus = Gas, size=1e3), on_valuesBeforeBegin = [1])
@@ -125,7 +125,7 @@ segmentsOfFlows = ({P_el: [5  ,30, 40,60 ], # elements an be list (timeseries)
                    Q_th: [6  ,35, 45,100], 
                    Q_fu: [12 ,70, 90,200]})
 
-aKWK2 = LinearTransformer('BHKW2', inputs = [Q_fu], outputs = [P_el, Q_th], segmentsOfFlows = segmentsOfFlows, switchOnCosts = 0.01, on_valuesBeforeBegin = [1])
+aKWK2 = LinearTransformer('BHKW2', inputs = [Q_fu], outputs = [P_el, Q_th], segmentsOfFlows = segmentsOfFlows, switch_on_effects = 0.01, on_valuesBeforeBegin = [1])
 
 
 
@@ -182,12 +182,12 @@ aGasTarif = Source('Gastarif',
                    source = Flow('Q_Gas',
                                  bus = Gas,  # linked bus
                                  size=1000,  # defining nominal size
-                                 costsPerFlowHour= {costs: 0.04, CO2: 0.3}))
+                                 effects_per_flow_hour= {costs: 0.04, CO2: 0.3}))
 # 5.c) feed-in of electricity:
 aStromEinspeisung = Sink('Einspeisung',
                          sink = Flow('P_el',
                                      bus = Strom,  # linked bus
-                                     costsPerFlowHour = -1*np.array(p_el)))# feed-in tariff
+                                     effects_per_flow_hour=-1 * np.array(p_el)))# feed-in tariff
 
 
 ##########################

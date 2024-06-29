@@ -22,13 +22,13 @@ class TestExistance(unittest.TestCase):
         }
         self.sinks_n_sources = {
             "GasSource": Source(label="GasSource", source=Flow(label="Gasmarkt", bus=self.busses["Gas"],
-                                                               costsPerFlowHour=np.array([20, 15, 13, 25, 26]))),
+                                                               effects_per_flow_hour=np.array([20, 15, 13, 25, 26]))),
             "HeatSink": Sink(label="HeatSink", sink=Flow(label="Heating_Network",
                                                          size=1,
                                                          val_rel= np.linspace(0, 100, len(self.es.time_series)),
                                                          bus=self.busses["Heat"])),
             "PowerSource": Source(label="PowerSource", source=Flow(label="Power_Grid", bus=self.busses["Power"],
-                                                                   costsPerFlowHour=np.array([100, 20, 60, 40, 5])))
+                                                                   effects_per_flow_hour=np.array([100, 20, 60, 40, 5])))
         }
         self.comps = {
             "Boiler": Boiler(label="Boiler", eta=0.5,

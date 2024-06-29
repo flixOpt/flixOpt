@@ -65,7 +65,7 @@ aGasTarif = Source('Gastarif',
                                  size=1000,  # nominal size, i.e. 1000 kW maximum
                                  # defining effect-shares.
                                  #    Here not only "costs", but also CO2-emissions:
-                                 costsPerFlowHour= 0.04)) # 0.04 €/kWh
+                                 effects_per_flow_hour= 0.04)) # 0.04 €/kWh
 
 
 # ######################################################

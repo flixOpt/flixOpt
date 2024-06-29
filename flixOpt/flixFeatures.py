@@ -302,25 +302,25 @@ class cFeatureOn(cFeature):
     # #   self.flows  = flows
     # #   self.model.var_on = None
     def __init__(self, owner, flowsDefiningOn, on_valuesBeforeBegin,
-                 switchOnCosts, costsPerRunningHour,
+                 switch_on_effects, running_hour_effects,
                  onHoursSum_min=None, onHoursSum_max=None,
                  onHours_min=None, onHours_max=None,
-                 offHours_min=None, offHours_max=None,
-                 switchOn_maxNr=None,
+                 off_hours_min=None, off_hours_max=None,
+                 switch_on_total_max=None,
                  useOn_explicit=False,
                  useSwitchOn_explicit=False):
         super().__init__('featureOn', owner)
         self.flowsDefiningOn = flowsDefiningOn
         self.on_valuesBeforeBegin = on_valuesBeforeBegin
-        self.switchOnCosts = switchOnCosts
-        self.costsPerRunningHour = costsPerRunningHour
+        self.switch_on_effects = switch_on_effects
+        self.running_hour_effects = running_hour_effects
         self.onHoursSum_min = onHoursSum_min  # scalar
         self.onHoursSum_max = onHoursSum_max  # scalar
         self.onHours_min = onHours_min  # TimeSeries
         self.onHours_max = onHours_max  # TimeSeries
-        self.offHours_min = offHours_min  # TimeSeries
-        self.offHours_max = offHours_max  # TimeSeries
-        self.switchOn_maxNr = switchOn_maxNr
+        self.off_hours_min = off_hours_min  # TimeSeries
+        self.off_hours_max = off_hours_max  # TimeSeries
+        self.switch_on_total_max = switch_on_total_max
         # default:
         self.useOn = False
         self.useOff = False
@@ -329,12 +329,12 @@ class cFeatureOn(cFeature):
         self.useOffHours = False
 
         # Notwendige Variablen entsprechend der übergebenen Parameter:        
-        paramsForcingOn = [costsPerRunningHour, onHoursSum_min, onHoursSum_max,
-                           onHours_min, onHours_max, offHours_min, offHours_max]
+        paramsForcingOn = [running_hour_effects, onHoursSum_min, onHoursSum_max,
+                           onHours_min, onHours_max, off_hours_min, off_hours_max]
         if any(param is not None for param in paramsForcingOn):
             self.useOn = True
 
-        paramsForcingSwitchOn = [switchOnCosts, switchOn_maxNr, onHoursSum_max, onHoursSum_min]
+        paramsForcingSwitchOn = [switch_on_effects, switch_on_total_max, onHoursSum_max, onHoursSum_min]
         if any(param is not None for param in paramsForcingSwitchOn):
             self.useOn = True
             self.useSwitchOn = True
@@ -343,7 +343,7 @@ class cFeatureOn(cFeature):
         if any(param is not None for param in paramsForcingOnHours):
             self.useOnHours = True
 
-        paramsForcingOffHours = [self.offHours_min, self.offHours_max]  # offHoursSum alway realized
+        paramsForcingOffHours = [self.off_hours_min, self.off_hours_max]  # offHoursSum alway realized
         if any(param is not None for param in paramsForcingOffHours):
             self.useOffHours = True
 
@@ -401,7 +401,7 @@ class cFeatureOn(cFeature):
                                                 lower_bound=0, upper_bound=aMax)  # min separat
         # offHours:
         if self.useOffHours:
-            aMax = None if (self.offHours_max is None) else self.offHours_max.active_data
+            aMax = None if (self.off_hours_max is None) else self.off_hours_max.active_data
             self.model.var_offHours = VariableTS('offHours', system_model.nrOfTimeSteps, self.owner, system_model,
                                                  lower_bound=0, upper_bound=aMax)  # min separat
 
@@ -410,7 +410,7 @@ class cFeatureOn(cFeature):
             self.model.var_switchOn = VariableTS('switchOn', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
             self.model.var_switchOff = VariableTS('switchOff', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
             self.model.var_nrSwitchOn = Variable('nrSwitchOn', 1, self.owner, system_model,
-                                                 upper_bound=self.switchOn_maxNr)  # wenn max/min = None, dann bleibt das frei
+                                                 upper_bound=self.switch_on_total_max)  # wenn max/min = None, dann bleibt das frei
         else:
             self.model.var_switchOn = None
             self.model.var_switchOff = None
@@ -430,7 +430,7 @@ class cFeatureOn(cFeature):
                 eqsOwner, system_model, time_indices)
         if self.useOffHours:
             cFeatureOn.__addConstraintsForOnTimeOfBinary(
-                self.model.var_offHours, self.model.var_off, self.offHours_min,
+                self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 eqsOwner, system_model, time_indices)
 
     def __addConstraintsForOn(self, eqsOwner, flowsDefiningOn, system_model, time_indices: Union[list[int], range]):
@@ -555,12 +555,12 @@ class cFeatureOn(cFeature):
         ineq_2b.add_summand(var_bin, Big, time_indices[1:])  # on(t)
         ineq_2b.add_constant(-system_model.dt_in_hours[1:] + Big)  # dt(t)
 
-        # 3) check onHours_min before switchOff-step
+        # 3) check on_hours_min before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
         if onHours_min is not None:
             # Note: switchOff-step is when: On(t)-On(t-1) == -1
             # eq:  onHours(t-1) >= minOnHours * -1 * [On(t)-On(t-1)]
-            # eq: -onHours(t-1) - onHours_min * On(t) + onHours_min*On(t-1) <= 0
+            # eq: -onHours(t-1) - on_hours_min * On(t) + on_hours_min*On(t-1) <= 0
             ineq_min = Equation(aLabel + '_min', eqsOwner, system_model, eqType='ineq')
             ineq_min.add_summand(var_bin_onTime, -1, time_indices[0:-1])  # onHours(t-1)
             ineq_min.add_summand(var_bin, -1 * onHours_min.active_data, time_indices[1:])  # on(t)
@@ -614,13 +614,13 @@ class cFeatureOn(cFeature):
 
         shareHolder = self.owner
         # Anfahrkosten:
-        if self.switchOnCosts is not None:  # and any(self.switch_on_effects.active_data != 0):
-            globalComp.add_share_to_operation('switch_on_effects', shareHolder, self.model.var_switchOn, self.switchOnCosts, 1)
+        if self.switch_on_effects is not None:  # and any(self.switch_on_effects.active_data != 0):
+            globalComp.add_share_to_operation('switch_on_effects', shareHolder, self.model.var_switchOn, self.switch_on_effects, 1)
         # Betriebskosten:
-        if self.costsPerRunningHour is not None:  # and any(self.effects_per_running_hour):
-            globalComp.add_share_to_operation('effects_per_running_hour', shareHolder, self.model.var_on,
-                                              self.costsPerRunningHour, system_model.dt_in_hours)
-            # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.effects_per_running_hour.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
+        if self.running_hour_effects is not None:  # and any(self.running_hour_effects):
+            globalComp.add_share_to_operation('running_hour_effects', shareHolder, self.model.var_on,
+                                              self.running_hour_effects, system_model.dt_in_hours)
+            # globalComp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als cFeature_TSShareSum

@@ -117,14 +117,14 @@ aGasTarif = Source('Gastarif',
                                  size=1000,  # nominal size, i.e. 1000 kW maximum
                                  # defining effect-shares.
                                  #    Here not only "costs", but also CO2-emissions:
-                                 costsPerFlowHour= {costs: 0.04, CO2: 0.3})) # 0.04 €/kWh, 0.3 kg_CO2/kWh
+                                 effects_per_flow_hour= {costs: 0.04, CO2: 0.3})) # 0.04 €/kWh, 0.3 kg_CO2/kWh
 
 # sink of electricity feed-in:
 aStromEinspeisung = Sink('Einspeisung',
                          # defining input-flow:
                          sink=Flow('P_el',  # name
                                    bus = Strom,  # linked to bus "Strom"
-                                   costsPerFlowHour = -1*p_el)) # gains (negative costs) per kWh
+                                   effects_per_flow_hour=-1 * p_el)) # gains (negative costs) per kWh
 
 
 # ######################################################

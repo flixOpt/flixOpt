@@ -72,8 +72,8 @@ costs = Effect('costs', '€', 'Kosten', is_standard= True, is_objective= True)
 
 aSink1   = Sink   ('Sink1', sink   = Flow('Q_th', bus = heat1, size=1, val_rel = sink1))
 aSink2   = Sink   ('Sink2', sink   = Flow('Q_th', bus = heat2, size=1, val_rel = sink2))
-aSource1 = Source ('Source1', source = Flow('Q_th', bus = heat1, size=60, costsPerFlowHour = -1))
-aSource2 = Source ('Source2', source = Flow('Q_th', bus = heat2, size=60, costsPerFlowHour = -1)) # doppelt so teuer
+aSource1 = Source ('Source1', source = Flow('Q_th', bus = heat1, size=60, effects_per_flow_hour= -1))
+aSource2 = Source ('Source2', source = Flow('Q_th', bus = heat2, size=60, effects_per_flow_hour= -1)) # doppelt so teuer
 
 
 loss_abs = 1
