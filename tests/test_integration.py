@@ -89,9 +89,9 @@ class TestSimple(BaseTest):
         es.addComponents(aStromEinspeisung)
         es.addComponents(aKWK)
 
-        chosenEsTimeIndexe = None
+        time_indices = None
 
-        aCalc = Calculation('Test_Sim', es, 'pyomo', chosenEsTimeIndexe)
+        aCalc = Calculation('Test_Sim', es, 'pyomo', time_indices)
         aCalc.doModelingAsOneSegment()
 
         es.printModel()

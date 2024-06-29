@@ -1929,7 +1929,7 @@ class System:
 
         # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
 
-        # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von chosenEsTimeIndexe abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
+        # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von time_indices abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
         # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
         timeIndexe = range(len(self.model.time_indices))
 
@@ -2167,7 +2167,7 @@ class System:
                                                                                         np.ndarray[np.datetime64],
                                                                                         np.ndarray[np.float64],
                                                                                         np.float64]:
-        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(length(self.time_series))
+        # if time_indices is None, dann alle : time_indices = range(length(self.time_series))
         # Zeitreihen:
         time_series = self.time_series[time_indices]
         # next timestamp as endtime:
@@ -2196,7 +2196,7 @@ class Calculation:
         calcInfos = self._infos
         infos['calculation'] = calcInfos
         calcInfos['name'] = self.label
-        calcInfos['no ChosenIndexe'] = len(self.chosenEsTimeIndexe)
+        calcInfos['no ChosenIndexe'] = len(self.time_indices)
         calcInfos['calcType'] = self.calcType
         calcInfos['duration'] = self.durations
         infos['system_description'] = self.system.getSystemDescr()
@@ -2229,8 +2229,8 @@ class Calculation:
                 raise Exception('calcType ' + str(self.calcType) + ' not defined')
         return self.__results_struct
 
-    # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modType, chosenEsTimeIndexe=None, pathForSaving='results', ):
+    # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
+    def __init__(self, label, system: System, modType, time_indices=None, pathForSaving='results', ):
         '''
         Parameters
         ----------
@@ -2240,7 +2240,7 @@ class Calculation:
             system which should be calculated
         modType : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
-        chosenEsTimeIndexe : None, list
+        time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
         pathForSaving : str
             Path for result files. The default is 'results'.
@@ -2250,7 +2250,7 @@ class Calculation:
         self.nameOfCalc = None  # name for storing results
         self.system = system
         self.modType = modType
-        self.chosenEsTimeIndexe = chosenEsTimeIndexe
+        self.time_indices = time_indices
         self.pathForSaving = pathForSaving
         self.calcType = None  # 'full', 'segmented', 'aggregated'
         self._infos = {}
@@ -2264,11 +2264,11 @@ class Calculation:
         # assert from_index >= 0
         # assert to_index <= length(self.system.time_series)-1
 
-        # Wenn chosenEsTimeIndexe = None, dann alle nehmen
-        if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.time_series))
+        # Wenn time_indices = None, dann alle nehmen
+        if self.time_indices is None: self.time_indices = range(len(system.time_series))
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
-            system.get_time_data_from_indices(self.chosenEsTimeIndexe))
-        helpers.checkTimeSeries('chosenEsTimeIndexe', self.time_series)
+            system.get_time_data_from_indices(self.time_indices))
+        helpers.checkTimeSeries('time_indices', self.time_series)
 
         self.nrOfTimeSteps = len(self.time_series)
 
@@ -2291,7 +2291,7 @@ class Calculation:
         t_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen:
         system_model = SystemModel(self.label, self.modType, self.system,
-                                   self.chosenEsTimeIndexe)  # alle Indexe nehmen!
+                                   self.time_indices)  # alle Indexe nehmen!
         # model aktivieren:
         self.system.activate_model(system_model)
         # modellieren:
@@ -2361,7 +2361,7 @@ class Calculation:
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
         nrOfSimSegments = math.ceil((self.nrOfTimeSteps) / nrOfUsedSteps)
         self._infos['segmentedProps']['nrOfSegments'] = nrOfSimSegments
-        print('indexe        : ' + str(self.chosenEsTimeIndexe[0]) + '...' + str(self.chosenEsTimeIndexe[-1]))
+        print('indexe        : ' + str(self.time_indices[0]) + '...' + str(self.time_indices[-1]))
         print('segmentLen    : ' + str(segmentLen))
         print('usedSteps     : ' + str(nrOfUsedSteps))
         print('-> nr of Sims : ' + str(nrOfSimSegments))
@@ -2371,11 +2371,11 @@ class Calculation:
 
         for i in range(nrOfSimSegments):
             startIndex_calc = i * nrOfUsedSteps
-            endIndex_calc = min(startIndex_calc + segmentLen - 1, len(self.chosenEsTimeIndexe) - 1)
+            endIndex_calc = min(startIndex_calc + segmentLen - 1, len(self.time_indices) - 1)
 
-            startIndex_global = self.chosenEsTimeIndexe[startIndex_calc]
-            endIndex_global = self.chosenEsTimeIndexe[endIndex_calc]  # inklusiv
-            indexe_global = self.chosenEsTimeIndexe[startIndex_calc:endIndex_calc + 1]  # inklusive endIndex
+            startIndex_global = self.time_indices[startIndex_calc]
+            endIndex_global = self.time_indices[endIndex_calc]  # inklusiv
+            indexe_global = self.time_indices[startIndex_calc:endIndex_calc + 1]  # inklusive endIndex
 
             # new realNrOfUsedSteps:
             # if last Segment:
@@ -2494,11 +2494,11 @@ class Calculation:
         self.calcType = 'aggregated'
         t_start_agg = time.time()
         # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-        self.system.activateInTS(self.chosenEsTimeIndexe)
+        self.system.activateInTS(self.time_indices)
 
         # Zeitdaten generieren:
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
-            self.system.get_time_data_from_indices(self.chosenEsTimeIndexe))
+            self.system.get_time_data_from_indices(self.time_indices))
 
         # check equidistant timesteps:
         if max(dt_in_hours) - min(dt_in_hours) != 0:
@@ -2618,7 +2618,7 @@ class Calculation:
 
         t_m_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.label, self.modType, self.system, self.chosenEsTimeIndexe,
+        system_model = SystemModel(self.label, self.modType, self.system, self.time_indices,
                                    TS_explicit)  # alle Indexe nehmen!
         self.system_models.append(system_model)
         # model aktivieren:

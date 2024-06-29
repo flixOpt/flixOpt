@@ -221,8 +221,8 @@ system.addComponents(aSpeicher)
 # system.mainSystem.extractSubSystem([0,1,2])
 
 
-chosenEsTimeIndexe = None
-# chosenEsTimeIndexe = [1,3,5]
+time_indices = None
+# time_indices = [1,3,5]
 
 ########################
 ######## Lösung ########
@@ -231,7 +231,7 @@ listOfCalcs = []
 
 # Roh-Rechnung:
 if doFullCalc:
-  calcFull = Calculation('fullModel', system, 'pyomo', chosenEsTimeIndexe)
+  calcFull = Calculation('fullModel', system, 'pyomo', time_indices)
   calcFull.doModelingAsOneSegment()
   
   system.printModel()
@@ -244,7 +244,7 @@ if doFullCalc:
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
-   calcSegs = Calculation('segModel', system, 'pyomo', chosenEsTimeIndexe)
+   calcSegs = Calculation('segModel', system, 'pyomo', time_indices)
    calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, nameSuffix = nameSuffix)
    listOfCalcs.append(calcSegs)
 

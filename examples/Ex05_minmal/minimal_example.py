@@ -76,7 +76,7 @@ system.addEffects(costs) # adding defined effects
 system.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
 
 # choose used timeindexe:
-chosenEsTimeIndexe = None # all timeindexe are used
+time_indices = None # all timeindexe are used
 
 # ## modeling the system ##
 
@@ -84,7 +84,7 @@ chosenEsTimeIndexe = None # all timeindexe are used
 aCalc = Calculation('Sim1',  # name of calculation
                     system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
-                    chosenEsTimeIndexe) # used time steps
+                    time_indices) # used time steps
 
 # 2. modeling:
 aCalc.doModelingAsOneSegment() # mathematic modeling of system

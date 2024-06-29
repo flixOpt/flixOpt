@@ -112,11 +112,11 @@ system.addComponents(aSink2, aSource1, aSource2)
 if useAdditionalSink1 : system.addComponents(aSink1)
 if useRohr : system.addComponents(aTransporter)
 
-chosenEsTimeIndexe = None
-# chosenEsTimeIndexe = [1,3,5]
+time_indices = None
+# time_indices = [1,3,5]
 
 ## modeling "full":
-aCalc = Calculation('Sim1', system, 'pyomo', chosenEsTimeIndexe)
+aCalc = Calculation('Sim1', system, 'pyomo', time_indices)
 aCalc.doModelingAsOneSegment()
 
 # PRINT Model-Charactaricstics:

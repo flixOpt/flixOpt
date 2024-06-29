@@ -139,8 +139,8 @@ system.addComponents(aKWK) # adding components
 
 
 # choose used timeindexe:
-chosenEsTimeIndexe = None # all timeindexe are used
-# chosenEsTimeIndexe = [1,3,5] # only a subset shall be used
+time_indices = None # all timeindexe are used
+# time_indices = [1,3,5] # only a subset shall be used
 
 # ## modeling the system ##
 
@@ -148,7 +148,7 @@ chosenEsTimeIndexe = None # all timeindexe are used
 aCalc = Calculation('Sim1',  # name of calculation
                     system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
-                    chosenEsTimeIndexe) # used time steps
+                    time_indices) # used time steps
 
 # 2. modeling:
 aCalc.doModelingAsOneSegment() # mathematic modeling of system

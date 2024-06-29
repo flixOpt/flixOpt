@@ -211,11 +211,11 @@ system.addComponents(aSpeicher) # adding components
 # ## modeling and calculation ##
 ################################
 
-chosenEsTimeIndexe = None
-# chosenEsTimeIndexe = [1,3,5]
+time_indices = None
+# time_indices = [1,3,5]
 
 # ## modeling "full" calculation:
-aCalc = Calculation('Sim1', system, 'pyomo', chosenEsTimeIndexe)
+aCalc = Calculation('Sim1', system, 'pyomo', time_indices)
 aCalc.doModelingAsOneSegment()
 
 # print Model-Charactaricstics:
