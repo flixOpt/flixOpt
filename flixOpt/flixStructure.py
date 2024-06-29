@@ -1152,12 +1152,8 @@ class Flow(Element):
     @property
     def label_full(self) -> str:
         # Wenn im Erstellungsprozess comp noch nicht bekannt:
-        if self.comp is None:
-            comp_label = 'unknownComp'
-        else:
-            comp_label = self.comp.label
-        separator = '__'  # wichtig, sonst geht results_struct nicht
-        return comp_label + separator + self.label  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
+        comp_label = 'unknownComp' if self.comp is None else self.comp.label
+        return f'{comp_label}__{self.label}'  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
 
     @property  # Richtung
     def is_input_in_comp(self) -> bool:
