@@ -1301,27 +1301,20 @@ class Flow(Element):
         self.flow_hours_total_min = flow_hours_total_min
 
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
-        self.group = group # TODO: wird überschrieben von Component!
+        self.group = group   # TODO: wird überschrieben von Component!
         self.valuesBeforeBegin = np.array(valuesBeforeBegin) if valuesBeforeBegin else np.array([0, 0])  # list -> np-array
 
-        if val_rel is None:
-            self.val_rel = None  # damit man noch einfach rauskriegt, ob es belegt wurde
-        else:
-            # Check:
+        self.invest_parameters = invest_parameters   # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
+        self.comp = None   # zugehörige Komponente (wird später von Komponente gefüllt)
+
+        self.val_rel = None
+        if val_rel is not None:
             # Wenn noch size noch Default, aber investmentSize nicht optimiert werden soll:
-            if (self.size == Flow._default_size) and \
-                    ((invest_parameters is None) or (invest_parameters.fixed_size == True)):
-                # Fehlermeldung:
+            size_is_default = self.size == Flow._default_size
+            if size_is_default and self.size_is_fixed:
                 raise Exception(
                     'Achtung: Wenn val_rel genutzt wird, muss zugehöriges size definiert werden, da: value = val_rel * size!')
-
             self.val_rel = TimeSeries('val_rel', val_rel, self)
-
-        self.invest_parameters = invest_parameters
-        # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
-
-        # zugehörige Komponente (wird später von Komponente gefüllt)
-        self.comp = None
         if (medium is not None) and (not isinstance(medium, str)):
             raise Exception('medium must be a string or None')
         else:
