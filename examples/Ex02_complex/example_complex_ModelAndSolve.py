@@ -96,7 +96,7 @@ aGaskessel = Boiler('Kessel',
                                 # off_hours_min = 4, # minimum off hours in one step
                                 switch_on_effects = 0.01,  # € per start
                                 switch_on_total_max = 1000,  # max nr of starts
-                                valuesBeforeBegin=[50],  # 50 kW is value before start
+                                values_before_begin=[50],  # 50 kW is value before start
                                 invest_parameters= invest_Gaskessel,  # see above
                                 flow_hours_total_max = 1e6,  # kWh, overall maximum "flow-work"
                                 ),
@@ -110,7 +110,7 @@ aGaskessel = Boiler('Kessel',
 aKWK  = CHP('BHKW2', eta_th = 0.5, eta_el = 0.4, switch_on_effects =  0.01,
             P_el = Flow('P_el', bus = Strom, size=60, min_rel =5 / 60, ),
             Q_th = Flow('Q_th', bus = Fernwaerme, size=1e3),
-            Q_fu = Flow('Q_fu', bus = Gas, size=1e3), on_valuesBeforeBegin = [1])
+            Q_fu = Flow('Q_fu', bus = Gas, size=1e3), on_values_before_begin = [1])
 
 
 # 3. defining a alternative CHP-unit with linear segments :
@@ -125,7 +125,7 @@ segmentsOfFlows = ({P_el: [5  ,30, 40,60 ], # elements an be list (timeseries)
                    Q_th: [6  ,35, 45,100], 
                    Q_fu: [12 ,70, 90,200]})
 
-aKWK2 = LinearTransformer('BHKW2', inputs = [Q_fu], outputs = [P_el, Q_th], segmentsOfFlows = segmentsOfFlows, switch_on_effects = 0.01, on_valuesBeforeBegin = [1])
+aKWK2 = LinearTransformer('BHKW2', inputs = [Q_fu], outputs = [P_el, Q_th], segmentsOfFlows = segmentsOfFlows, switch_on_effects = 0.01, on_values_before_begin = [1])
 
 
 

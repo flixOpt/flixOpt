@@ -301,7 +301,7 @@ class cFeatureOn(cFeature):
     # #   self.nameOfVariable = nameOfVariable
     # #   self.flows  = flows
     # #   self.model.var_on = None
-    def __init__(self, owner, flowsDefiningOn, on_valuesBeforeBegin,
+    def __init__(self, owner, flowsDefiningOn, on_values_before_begin,
                  switch_on_effects, running_hour_effects,
                  onHoursSum_min=None, onHoursSum_max=None,
                  onHours_min=None, onHours_max=None,
@@ -311,7 +311,7 @@ class cFeatureOn(cFeature):
                  useSwitchOn_explicit=False):
         super().__init__('featureOn', owner)
         self.flowsDefiningOn = flowsDefiningOn
-        self.on_valuesBeforeBegin = on_valuesBeforeBegin
+        self.on_values_before_begin = on_values_before_begin
         self.switch_on_effects = switch_on_effects
         self.running_hour_effects = running_hour_effects
         self.onHoursSum_min = onHoursSum_min  # scalar
@@ -378,7 +378,7 @@ class cFeatureOn(cFeature):
         if self.useOn:
             # Before-Variable:
             self.model.var_on = VariableTS('on', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
-            self.model.var_on.set_before_value(default_before_value=self.on_valuesBeforeBegin[0],
+            self.model.var_on.set_before_value(default_before_value=self.on_values_before_begin[0],
                                                is_start_value=False)
             self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, system_model, lower_bound=self.onHoursSum_min,
                                                  upper_bound=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei

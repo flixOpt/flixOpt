@@ -226,7 +226,7 @@ class TestComplex(BaseTest):
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, running_hour_effects={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
                             Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, max_rel=1))
 
         aKWK = CHP('KWK', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01, on_values_before_begin=[1],
@@ -269,7 +269,7 @@ class TestComplex(BaseTest):
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, running_hour_effects={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
                             Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, max_rel=1))
 
         P_el = Flow('P_el', bus=Strom, size=60, max_rel=55)
@@ -337,7 +337,7 @@ class TestModelingTypes(BaseTest):
         Strom, Fernwaerme, Gas, Kohle = Bus('el', 'Strom'), Bus('heat', 'Fernwärme'), Bus('fuel', 'Gas'), Bus('fuel', 'Kohle')
         costs, CO2, PE = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True), Effect('CO2', 'kg', 'CO2_e-Emissionen'), Effect('PE', 'kWh_PE', 'Primärenergie')
 
-        aGaskessel = Boiler('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, size=95, min_rel=12 / 95, can_switch_off=True, switch_on_effects=1000, valuesBeforeBegin=[0]))
+        aGaskessel = Boiler('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, size=95, min_rel=12 / 95, can_switch_off=True, switch_on_effects=1000, values_before_begin=[0]))
         aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switch_on_effects=24000, P_el=Flow('P_el', bus=Strom), Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Kohle, size=288, min_rel=87 / 288), on_values_before_begin=[0])
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', size=137, bus=Fernwaerme), outFlow=Flow('Q_th_unload', size=158, bus=Fernwaerme), capacity_inFlowHours=684, chargeState0_inFlowHours=137, charge_state_end_min=137, charge_state_end_max=158, eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
 

@@ -698,7 +698,7 @@ class Component(Element):
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:    
-        # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
+        # self.on_valuesBefore = 1 * (self.featureOwner.values_before_begin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
 
         #TODO: Dict instead of list?
         self.inputs = []  # list of flows
@@ -1194,7 +1194,7 @@ class Flow(Element):
                  switch_on_total_max: Optional[Skalar] = None,
                  running_hour_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  flow_hours_total_max: Optional[Skalar] = None, flow_hours_total_min: Optional[Skalar] = None,
-                 valuesBeforeBegin: Optional[List[Skalar]] = None,
+                 values_before_begin: Optional[List[Skalar]] = None,
                  val_rel: Optional[Numeric_TS] = None,   # TODO: Rename?
                  medium: Optional[str] = None,
                  invest_parameters: Optional[InvestParameters] = None,
@@ -1259,7 +1259,7 @@ class Flow(Element):
         flow_hours_total_min : TYPE, optional
             minimum flow-hours ("flow-work") 
             (if size is not const, maybe load_factor_min fits better for you!)
-        valuesBeforeBegin : list (TODO: why not scalar?), optional
+        values_before_begin : list (TODO: why not scalar?), optional
             Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'), 
             # TODO: integration of option for 'first is last'
         val_rel : scalar, array, TimeSeriesRaw, optional
@@ -1307,7 +1307,7 @@ class Flow(Element):
 
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
         self.group = group   # TODO: wird überschrieben von Component!
-        self.valuesBeforeBegin = np.array(valuesBeforeBegin) if valuesBeforeBegin else np.array([0, 0])  # list -> np-array
+        self.values_before_begin = np.array(values_before_begin) if values_before_begin else np.array([0, 0])  # list -> np-array
 
         self.invest_parameters = invest_parameters   # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
         self.comp = None   # zugehörige Komponente (wird später von Komponente gefüllt)
@@ -1328,12 +1328,12 @@ class Flow(Element):
         # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
         flowsDefiningOn = [self]
         # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
-        on_valuesBeforeBegin = 1 * (self.valuesBeforeBegin >= 0.0001)
+        on_values_before_begin = 1 * (self.values_before_begin >= 0.0001)
         # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
         #TODO: Why not in sub_elements?
         self.featureOn = cFeatureOn(self, flowsDefiningOn,
-                                    on_valuesBeforeBegin,
+                                    on_values_before_begin,
                                     self.switch_on_effects,
                                     self.running_hour_effects,
                                     onHoursSum_min=self.on_hours_total_min,
