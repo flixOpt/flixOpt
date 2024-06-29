@@ -42,7 +42,7 @@ class SystemModel(LinearModel):
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
                  system,
-                 time_indices: Union[list, range],
+                 time_indices: Union[list[int], range],
                  TS_explicit=None):
         super().__init__(label, modeling_language)
         self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
