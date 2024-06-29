@@ -53,8 +53,8 @@ class SystemModel(LinearModel):
 
         self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
-        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = system.getTimeDataOfTimeIndexe(
-            time_indices)
+        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
+            system.get_time_data_from_indices(time_indices))
 
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
@@ -2162,12 +2162,16 @@ class System:
         yaml.dump(self.getVarsAsStr(structured=True))
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
-    def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe) -> Tuple:
+    def get_time_data_from_indices(self, time_indices: Union[List[int], range]) -> Tuple[
+                                                                                        np.ndarray[np.datetime64],
+                                                                                        np.ndarray[np.datetime64],
+                                                                                        np.ndarray[np.float64],
+                                                                                        np.float64]:
         # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(length(self.time_series))
         # Zeitreihen:
-        time_series = self.time_series[chosenEsTimeIndexe]
+        time_series = self.time_series[time_indices]
         # next timestamp as endtime:
-        endTime = self.time_series_with_end[chosenEsTimeIndexe[-1] + 1]
+        endTime = self.time_series_with_end[time_indices[-1] + 1]
         time_series_with_end = np.append(time_series, endTime)
 
         # Zeitdifferenz:
@@ -2262,8 +2266,8 @@ class Calculation:
 
         # Wenn chosenEsTimeIndexe = None, dann alle nehmen
         if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.time_series))
-        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = system.getTimeDataOfTimeIndexe(
-            self.chosenEsTimeIndexe)
+        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
+            system.get_time_data_from_indices(self.chosenEsTimeIndexe))
         helpers.checkTimeSeries('chosenEsTimeIndexe', self.time_series)
 
         self.nrOfTimeSteps = len(self.time_series)
@@ -2493,8 +2497,8 @@ class Calculation:
         self.system.activateInTS(self.chosenEsTimeIndexe)
 
         # Zeitdaten generieren:
-        (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = self.system.getTimeDataOfTimeIndexe(
-            self.chosenEsTimeIndexe)
+        (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
+            self.system.get_time_data_from_indices(self.chosenEsTimeIndexe))
 
         # check equidistant timesteps:
         if max(dt_in_hours) - min(dt_in_hours) != 0:
