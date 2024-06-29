@@ -1409,7 +1409,7 @@ class Flow(Element):
 
         self.system_model = system_model
 
-        def min_max_of_defining_variable() -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
+        def bounds_of_defining_variable() -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
             """
             Returns the lower and upper bound and the fixed value of the defining variable.
             Returns: (lower_bound, upper_bound, fixed_value)
@@ -1428,9 +1428,9 @@ class Flow(Element):
 
         # wenn keine Investrechnung:
         if self.featureInvest is None:
-            (lower_bound, upper_bound, fix_value) = min_max_of_defining_variable()
+            (lower_bound, upper_bound, fix_value) = bounds_of_defining_variable()
         else:
-            (lower_bound, upper_bound, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
+            (lower_bound, upper_bound, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
         self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model,

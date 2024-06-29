@@ -915,46 +915,43 @@ class cFeatureInvest(cFeature):
         else:
             assert self.fixedInvestmentSize is None, '!' + self.nameOfInvestmentSize + ' of ' + self.owner.label_full + ' must be None if investmentSize is variable'
 
-    def getMinMaxOfDefiningVar(self):
+    def bounds_of_defining_variable(self) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
 
-        # Wenn fixer relativer Lastgang:
-        if self.val_rel is not None:
+        if self.val_rel is not None:   # Wenn fixer relativer Lastgang:
             # max_rel = min_rel = val_rel !
-            min_rel_eff = self.val_rel.active_data
-            max_rel_eff = min_rel_eff
+            min_rel = self.val_rel.active_data
+            max_rel = self.val_rel.active_data
         else:
-            min_rel_eff = self.min_rel.active_data
-            max_rel_eff = self.max_rel.active_data
+            min_rel = self.min_rel.active_data
+            max_rel = self.max_rel.active_data
 
-        onIsUsed = ((self.featureOn is not None) and (self.featureOn.useOn))
-        onIsUsedAndvalIsNotFix = (self.val_rel is None) and onIsUsed
+        on_is_used = self.featureOn is not None and self.featureOn.useOn
+        on_is_used_and_val_is_not_fix = (self.val_rel is None) and on_is_used
 
         # min-Wert:
-        if self.args.optional:
-            lb = 0  # can be zero (if no invest) (than for all timesteps)
-        elif onIsUsedAndvalIsNotFix:
-            lb = 0  # can switch off and therefore be zero
+        if self.args.optional or on_is_used_and_val_is_not_fix:
+            lower_bound = 0  # can be zero (if no invest) or can switch off
         else:
             if self.args.fixed_size:
-                lb = min_rel_eff * self.fixedInvestmentSize  # immer an
+                lower_bound = min_rel * self.fixedInvestmentSize  # immer an
             else:
-                lb = min_rel_eff * self.args.minimum_size  # investSize is variabel
+                lower_bound = min_rel * self.args.minimum_size  # investSize is variabel
 
         #  max-Wert:
         if self.args.fixed_size:
-            ub = max_rel_eff * self.fixedInvestmentSize
+            upper_bound = max_rel * self.fixedInvestmentSize
         else:
-            ub = max_rel_eff * self.args.maximum_size  # investSize is variabel
+            upper_bound = max_rel * self.args.maximum_size  # investSize is variabel
 
-        # ub und lb gleich, dann fix:
-        if np.all(ub == lb):  # np.all -> kann listen oder werte vergleichen
-            fix_value = ub
-            ub = None
-            lb = None
+        # upper_bound und lower_bound gleich, dann fix:
+        if np.all(upper_bound == lower_bound):  # np.all -> kann listen oder werte vergleichen
+            fix_value = upper_bound
+            upper_bound = None
+            lower_bound = None
         else:
             fix_value = None
 
-        return (lb, ub, fix_value)
+        return lower_bound, upper_bound, fix_value
 
     # Variablenreferenz kann erst später hinzugefügt werden, da erst später erstellt:
     # todo-> abändern durch Variable-Dummies

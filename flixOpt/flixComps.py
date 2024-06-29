@@ -763,7 +763,7 @@ class Storage(Component):
                 ub = np.append(ub, self.capacity_inFlowHours)  # charge_state_end_max)
 
         else:
-            (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
+            (lb, ub, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
             if np.isscalar(lb):
                 pass
