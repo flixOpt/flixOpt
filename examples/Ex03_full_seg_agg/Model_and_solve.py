@@ -162,19 +162,19 @@ PE    = Effect('PE', 'kWh_PE', 'Primärenergie')
 
 aGaskessel = Boiler('Kessel', eta  = 0.85,  # , effects_per_running_hour = {costs:0,CO2:1000},#, switch_on_effects = 0
                     Q_th = Flow(label   ='Q_th', bus = Fernwaerme),  # maxGradient = 5),
-                    Q_fu = Flow(label   ='Q_fu', bus = Gas, nominal_val = 95, min_rel =12 / 95, iCanSwitchOff = True, switchOnCosts=1000, valuesBeforeBegin=[0]))
+                    Q_fu = Flow(label   ='Q_fu', bus = Gas, size=95, min_rel =12 / 95, iCanSwitchOff = True, switchOnCosts=1000, valuesBeforeBegin=[0]))
 
 
 aKWK  = CHP('BHKW2', eta_th = 0.58, eta_el=0.22, switchOnCosts =  24000,
             P_el = Flow('P_el', bus = Strom),
             Q_th = Flow('Q_th', bus = Fernwaerme),
-            Q_fu = Flow('Q_fu', bus = Kohle, nominal_val = 288, min_rel =87 / 288), on_valuesBeforeBegin = [0])
+            Q_fu = Flow('Q_fu', bus = Kohle, size=288, min_rel =87 / 288), on_valuesBeforeBegin = [0])
 
 
 
 aSpeicher = Storage('Speicher',
-                    inFlow  = Flow('Q_th_load', nominal_val = 137, bus = Fernwaerme),
-                    outFlow = Flow('Q_th_unload', nominal_val = 158, bus = Fernwaerme),
+                    inFlow  = Flow('Q_th_load', size=137, bus = Fernwaerme),
+                    outFlow = Flow('Q_th_unload', size=158, bus = Fernwaerme),
                     capacity_inFlowHours = 684,
                     chargeState0_inFlowHours = 137,
                     charge_state_end_min = 137,
@@ -185,15 +185,15 @@ aSpeicher = Storage('Speicher',
  
 
 TS_Q_th_Last = TimeSeriesRaw(Q_th_Last)
-aWaermeLast = Sink  ('Wärmelast', sink   = Flow('Q_th_Last', bus = Fernwaerme, nominal_val = 1, val_rel = TS_Q_th_Last))
+aWaermeLast = Sink  ('Wärmelast', sink   = Flow('Q_th_Last', bus = Fernwaerme, size=1, val_rel = TS_Q_th_Last))
 
 # TS with explicit defined weight
 TS_P_el_Last = TimeSeriesRaw(P_el_Last, agg_weight = 0.7) # explicit defined weight
-aStromLast = Sink('Stromlast', sink = Flow('P_el_Last', bus = Strom, nominal_val = 1, val_rel = TS_P_el_Last))
+aStromLast = Sink('Stromlast', sink = Flow('P_el_Last', bus = Strom, size=1, val_rel = TS_P_el_Last))
 
-aKohleTarif = Source('Kohletarif', source = Flow('Q_Kohle', bus = Kohle, nominal_val = 1000, costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
+aKohleTarif = Source('Kohletarif', source = Flow('Q_Kohle', bus = Kohle, size=1000, costsPerFlowHour= {costs: 4.6, CO2: 0.3}))
 
-aGasTarif = Source('Gastarif', source = Flow('Q_Gas', bus = Gas, nominal_val = 1000, costsPerFlowHour= {costs: gP, CO2: 0.3}))
+aGasTarif = Source('Gastarif', source = Flow('Q_Gas', bus = Gas, size=1000, costsPerFlowHour= {costs: gP, CO2: 0.3}))
 
 
 # 2 TS with same aggType (--> implicit defined weigth = 0.5)
@@ -201,10 +201,10 @@ p_feed_in = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el') # weight shared in gr
 p_sell    = TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
-aStromEinspeisung = Sink  ('Einspeisung', sink   = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour = p_feed_in))
+aStromEinspeisung = Sink  ('Einspeisung', sink   = Flow('P_el', bus = Strom, size=1000, costsPerFlowHour = p_feed_in))
 aStromEinspeisung.sink.costsPerFlowHour[None].aggregation_weight = .5
 
-aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, nominal_val = 1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))
+aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, size=1000, costsPerFlowHour= {costs: p_sell, CO2: 0.3}))
 aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
 
 # Zusammenführung:

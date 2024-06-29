@@ -457,11 +457,11 @@ class cFeatureOn(cFeature):
             aFlow = flowsDefiningOn[0]
             eq1.add_summand(aFlow.model.var_val, -1, time_indices)
             # wenn variabler Nennwert:
-            if aFlow.nominal_val is None:
+            if aFlow.size is None:
                 min_val = aFlow.invest_parameters.minimum_size * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
             # wenn fixer Nennwert
             else:
-                min_val = aFlow.nominal_val * aFlow.min_rel.active_data
+                min_val = aFlow.size * aFlow.min_rel.active_data
 
             eq1.add_summand(self.model.var_on, 1 * np.maximum(system_model.epsilon, min_val),
                             time_indices)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
@@ -494,10 +494,10 @@ class cFeatureOn(cFeature):
         for aFlow in flowsDefiningOn:
             eq2.add_summand(aFlow.model.var_val, 1 / nrOfFlows, time_indices)
             # wenn variabler Nennwert:
-            if aFlow.nominal_val is None:
+            if aFlow.size is None:
                 sumOfFlowMax += aFlow.max_rel.active_data * aFlow.invest_parameters.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
-                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.nominal_val
+                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.size
 
         eq2.add_summand(self.model.var_on, - sumOfFlowMax / nrOfFlows, time_indices)  #
 
@@ -841,8 +841,8 @@ class cFeatureShares(cFeature):
 
 
 class cFeatureInvest(cFeature):
-    # -> var_name            : z.B. "nominal_val", "capacity_inFlowHours"
-    # -> fixedInvestmentSize : nominal_val, capacity_inFlowHours, ...
+    # -> var_name            : z.B. "size", "capacity_inFlowHours"
+    # -> fixedInvestmentSize : size, capacity_inFlowHours, ...
     # -> definingVar         : z.B. flow.model.var_val
     # -> min_rel,max_rel     : ist relatives Min,Max der definingVar bzgl. investmentSize
 
@@ -878,7 +878,7 @@ class cFeatureInvest(cFeature):
             (val = val_rel * investmentSize)
         investmentSize : scalar or None
             value of fixed investmentSize (None if no fixed investmentSize)
-            Flow: investmentSize = nominal_val
+            Flow: investmentSize=size
             Storage: investmentSize =
         featureOn : cFeatureOn
             cFeatureOn of the definingVar (if it has a cFeatureOn)
@@ -908,7 +908,7 @@ class cFeatureInvest(cFeature):
 
     def checkPlausibility(self):
         # Check fixedInvestmentSize:
-        # todo: vielleicht ist es aber auch ok, wenn der nominal_val belegt ist und einfach nicht genutzt wird....
+        # todo: vielleicht ist es aber auch ok, wenn der size belegt ist und einfach nicht genutzt wird....
         if self.args.fixed_size:
             assert ((self.fixedInvestmentSize is not None) and (
                         self.fixedInvestmentSize != 0)), 'fixedInvestmentSize muss gesetzt werden'
@@ -1121,7 +1121,7 @@ class cFeatureInvest(cFeature):
         # wenn fixed, dann const:
         if self.args.fixed_size:
 
-            # eq: investmentSize = isInvested * nominalValue            
+            # eq: investmentSize = isInvested * size
             self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, system_model, 'eq')
             self.eq_isInvested_1.add_summand(self.model.var_investmentSize, -1)
             self.eq_isInvested_1.add_summand(self.model.var_isInvested, self.fixedInvestmentSize)

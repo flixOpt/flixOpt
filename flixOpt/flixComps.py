@@ -190,7 +190,7 @@ class LinearTransformer(Component):
                         not (flow.invest_parameters.fixed_size):
                     raise Exception('linearSegmentsOfFlows (in ' +
                                     self.label_full +
-                                    ') and variable nominal_value' +
+                                    ') and variable sizeue' +
                                     '(invest_size) (in flow ' +
                                     flow.label_full +
                                     ') , does not make sense together!')

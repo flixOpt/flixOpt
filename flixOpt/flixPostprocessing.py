@@ -52,14 +52,14 @@ class cFlow_post():
 
     def getLoadFactor(self, small=1e-2):
         loadFactor = None
-        if ('invest' in self.results.keys()) and ('nominal_val' in self.results['invest'].keys()):
+        if ('invest' in self.results.keys()) and ('size' in self.results['invest'].keys()):
             flowHours = self.getFlowHours()
             #  loadFactor = Arbeit / Nennleistung / Zeitbereich = kWh / kW_N / h 
-            nominal_val = self.results['invest']['nominal_val']
-            if nominal_val < small:
+            size = self.results['invest']['size']
+            if size < small:
                 loadFactor = None
             else:
-                loadFactor = flowHours / self.results['invest']['nominal_val'] / self.flixResults.dt_in_hours_total
+                loadFactor = flowHours / self.results['invest']['size'] / self.flixResults.dt_in_hours_total
         return loadFactor
 
     def belongToStorage(self):

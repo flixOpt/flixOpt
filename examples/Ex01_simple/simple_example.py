@@ -63,7 +63,7 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                  # defining the output-flow = thermal -flow
                  Q_th = Flow(label ='Q_th',  # name of flow
                              bus = Fernwaerme,  # define, where flow is linked to (here: Fernwaerme-Bus)
-                             nominal_val = 50,  # kW; nominal_size of boiler
+                             size=50,  # kW; nominal_size of boiler
                              min_rel = 5/50,  # 10 % minimum load, i.e. 5 kW
                              max_rel = 1,  # 100 % maximum load, i.e. 50 kW
                              ),
@@ -76,7 +76,7 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
 aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency, electric efficiency
             # defining flows:
             P_el = Flow('P_el', bus = Strom,
-                        nominal_val = 60,  # 60 kW_el
+                        size=60,  # 60 kW_el
                         min_rel = 5/60, ),  # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
             Q_th = Flow('Q_th', bus = Fernwaerme),
             Q_fu = Flow('Q_fu', bus = Gas))
@@ -84,8 +84,8 @@ aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency,
 # # 2. storage #
 
 aSpeicher = Storage('Speicher',
-                    inFlow  = Flow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),  # load-flow, maximum load-power: 1e4 kW
-                    outFlow = Flow('Q_th_unload', bus = Fernwaerme, nominal_val = 1e4),  # unload-flow, maximum load-power: 1e4 kW
+                    inFlow  = Flow('Q_th_load', bus = Fernwaerme, size=1e4),  # load-flow, maximum load-power: 1e4 kW
+                    outFlow = Flow('Q_th_unload', bus = Fernwaerme, size=1e4),  # unload-flow, maximum load-power: 1e4 kW
                     capacity_inFlowHours=30,  # 30 kWh; storage capacity
                     chargeState0_inFlowHours=0,  # empty storage at first time step
                     max_rel_chargeState = 1/100*np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
@@ -104,17 +104,17 @@ aWaermeLast = Sink('Wärmelast',
                    # defining input-flow:
                    sink   = Flow('Q_th_Last',  # name
                                  bus = Fernwaerme,  # linked to bus "Fernwaerme"
-                                 nominal_val = 1,  # nominal_value
+                                 size=1,  # sizeue
                                  val_rel = Q_th_Last)) # fixed profile
                                    # relative fixed values (timeseries) of the flow
-                                   # value = val_rel * nominal_val
+                                   # value = val_rel * size
     
 # source of gas:
 aGasTarif = Source('Gastarif',
                    # defining output-flow:
                    source = Flow('Q_Gas',  # name
                                  bus = Gas,  # linked to bus "Gas"
-                                 nominal_val = 1000,  # nominal size, i.e. 1000 kW maximum
+                                 size=1000,  # nominal size, i.e. 1000 kW maximum
                                  # defining effect-shares.
                                  #    Here not only "costs", but also CO2-emissions:
                                  costsPerFlowHour= {costs: 0.04, CO2: 0.3})) # 0.04 €/kWh, 0.3 kg_CO2/kWh

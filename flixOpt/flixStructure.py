@@ -1147,7 +1147,7 @@ class Flow(Element):
     '''
 
     # static var:
-    _nominal_val_default = 1e9  # Großer Gültigkeitsbereich als Standard
+    _default_size=1e9  # Großer Gültigkeitsbereich als Standard
 
     @property
     def label_full(self) -> str:
@@ -1174,7 +1174,7 @@ class Flow(Element):
                  bus: Bus = None,  # TODO: Is this for sure Optional?
                  min_rel: Numeric_TS = 0,
                  max_rel: Numeric_TS = 1,
-                 nominal_val: Optional[Skalar] =_nominal_val_default,
+                 size: Optional[Skalar] = _default_size,
                  loadFactor_min: Optional[Skalar] = None, loadFactor_max: Optional[Skalar] = None,
                  #positive_gradient=None,
                  costsPerFlowHour: Optional[Union[Numeric_TS, EffectTypeDict]] =None,
@@ -1201,10 +1201,10 @@ class Flow(Element):
         bus : Bus, optional
             bus to which flow is linked
         min_rel : scalar, array, TimeSeriesRaw, optional
-            min value is min_rel multiplied by nominal_val
+            min value is min_rel multiplied by size
         max_rel : scalar, array, TimeSeriesRaw, optional
-            max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
-        nominal_val : scalar. None if is a nominal value is a opt-variable, optional
+            max value is max_rel multiplied by size. If size = max then max_rel=1
+        size : scalar. None if is a nominal value is a opt-variable, optional
             nominal value/ invest size (linked to min_rel, max_rel and others). 
             i.g. kW, area, volume, pieces, 
             möglichst immer so stark wie möglich einschränken 
@@ -1247,16 +1247,16 @@ class Flow(Element):
             costs for operating, i.g. in € per hour
         sumFlowHours_max : TYPE, optional
             maximum flow-hours ("flow-work") 
-            (if nominal_val is not const, maybe loadFactor_max fits better for you!)
+            (if size is not const, maybe loadFactor_max fits better for you!)
         sumFlowHours_min : TYPE, optional
             minimum flow-hours ("flow-work") 
-            (if nominal_val is not const, maybe loadFactor_min fits better for you!)
+            (if size is not const, maybe loadFactor_min fits better for you!)
         valuesBeforeBegin : list (TODO: why not scalar?), optional
             Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'), 
             # TODO: integration of option for 'first is last'
         val_rel : scalar, array, TimeSeriesRaw, optional
             fixed relative values for flow (if given). 
-            val(t) := val_rel(t) * nominal_val(t)
+            val(t) := val_rel(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;
             (min_rel u. max_rel are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
@@ -1276,7 +1276,7 @@ class Flow(Element):
         super().__init__(label, **kwargs)
         # args to attributes:
         self.bus = bus
-        self.nominal_val = nominal_val  # skalar!
+        self.size = size  # skalar!
         self.min_rel = TimeSeries('min_rel', min_rel, self)
         self.max_rel = TimeSeries('max_rel', max_rel, self)
 
@@ -1305,12 +1305,12 @@ class Flow(Element):
             self.val_rel = None  # damit man noch einfach rauskriegt, ob es belegt wurde
         else:
             # Check:
-            # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
-            if (self.nominal_val == Flow._nominal_val_default) and \
+            # Wenn noch size noch Default, aber investmentSize nicht optimiert werden soll:
+            if (self.size == Flow._default_size) and \
                     ((invest_parameters is None) or (invest_parameters.fixed_size == True)):
                 # Fehlermeldung:
                 raise Exception(
-                    'Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
+                    'Achtung: Wenn val_rel genutzt wird, muss zugehöriges size definiert werden, da: value = val_rel * size!')
 
             self.val_rel = TimeSeries('val_rel', val_rel, self)
 
@@ -1358,7 +1358,7 @@ class Flow(Element):
     def __str__(self):
         details = [
             f"bus={self.bus.label if self.bus else 'None'}",
-            f"nominal_val={self.nominal_val}",
+            f"size={self.size}",
             f"min/max_rel={self.min_rel}-{self.max_rel}",
             f"medium={self.medium}",
             f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
@@ -1401,11 +1401,11 @@ class Flow(Element):
         if self.invest_parameters is None:
             self.featureInvest = None  #
         else:
-            self.featureInvest = cFeatureInvest('nominal_val', self, self.invest_parameters,
+            self.featureInvest = cFeatureInvest('size', self, self.invest_parameters,
                                                 min_rel=self.min_rel_with_exists,
                                                 max_rel=self.max_rel_with_exists,
                                                 val_rel=self.val_rel,
-                                                investmentSize=self.nominal_val,
+                                                investmentSize=self.size,
                                                 featureOn=self.featureOn)
 
 
@@ -1435,15 +1435,15 @@ class Flow(Element):
             # Wenn fixer Lastgang:
             if self.val_rel is not None:
                 # min = max = val !
-                fix_value = self.val_rel.active_data * self.nominal_val
+                fix_value = self.val_rel.active_data * self.size
                 lb = None
                 ub = None
             else:
                 if self.featureOn.useOn:
                     lb = 0
                 else:
-                    lb = self.min_rel_with_exists.active_data * self.nominal_val  # immer an
-                ub = self.max_rel_with_exists.active_data * self.nominal_val
+                    lb = self.min_rel_with_exists.active_data * self.size  # immer an
+                ub = self.max_rel_with_exists.active_data * self.size
                 fix_value = None
             return (lb, ub, fix_value)
 
@@ -1528,7 +1528,7 @@ class Flow(Element):
         ## ############## full load fraction bzw. load factor ##############
 
         ## max load factor:
-        #  eq: var_sumFlowHours <= nominal_val * dt_tot * load_factor_max
+        #  eq: var_sumFlowHours <= size * dt_tot * load_factor_max
 
         if self.loadFactor_max is not None:
             flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
@@ -1538,10 +1538,10 @@ class Flow(Element):
                 eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
                                                           -1 * flowHoursPerInvestsize_max)
             else:
-                eq_flowHoursPerInvestsize_Max.add_constant(self.nominal_val * flowHoursPerInvestsize_max)
+                eq_flowHoursPerInvestsize_Max.add_constant(self.size * flowHoursPerInvestsize_max)
 
                 ## min load factor:
-        #  eq: nominal_val * sum(dt)* load_factor_min <= var_sumFlowHours
+        #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
 
         if self.loadFactor_min is not None:
             flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
@@ -1551,7 +1551,7 @@ class Flow(Element):
                 eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,
                                                           flowHoursPerInvestsize_min)
             else:
-                eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.nominal_val * flowHoursPerInvestsize_min)
+                eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.size * flowHoursPerInvestsize_min)
 
         # ############## positiver Gradient ######### 
 
