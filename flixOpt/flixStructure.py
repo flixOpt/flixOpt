@@ -1367,10 +1367,9 @@ class Flow(Element):
 
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
-    def plausiTest(self) -> None:
-        # Plausi-Check min < max:
-        if np.any(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data)):
-            # if np.any(np.asarray(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data) )):
+    def plausibility_test(self) -> None:
+        # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
+        if np.any(self.min_rel.data > self.max_rel.data):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
@@ -1378,7 +1377,7 @@ class Flow(Element):
         self.featureOn.activateOnValueExplicitly()
 
     def finalize(self) -> None:
-        self.plausiTest()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
+        self.plausibility_test()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
 
 
         # exist-merge aus Flow.exist und Comp.exist
