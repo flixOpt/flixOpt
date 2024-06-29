@@ -264,7 +264,7 @@ class Variable:
         self.upper_bound = upper_bound
 
         self.indices = range(self.length)
-        self.label_full = owner.label + '.' + label
+        self.label_full = owner.label + '__' + label
         self.fixed = False
         self._result = None  # Ergebnis
 
