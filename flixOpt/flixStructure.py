@@ -979,7 +979,8 @@ class Global(Element):
             for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_inv = effectTypeOfShare.invest
-                shareSum_inv: flixOpt.flixFeatures.cFeature_ShareSum
+                from flixOpt.flixFeatures import cFeature_ShareSum
+                shareSum_inv: cFeature_ShareSum
                 shareHolder = effectType
                 shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
 
