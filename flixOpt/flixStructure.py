@@ -8,18 +8,19 @@ developed by Felix Panitz* and Peter Stange*
 import math
 import time
 import textwrap
-from typing import List, Set, Tuple, Dict, Union, Optional
+import pprint
+from typing import List, Set, Tuple, Dict, Union, Optional, TYPE_CHECKING
 import logging
 
 import numpy as np
 import yaml  # (für json-Schnipsel-print)
-import pprint
 
-import flixOpt.flixStructure
 from . import flixOptHelperFcts as helpers
 from .basicModeling import *  # Modelliersprache
 from .flixBasics import *
 from .flixBasicsPublic import InvestParameters, TimeSeriesRaw
+if TYPE_CHECKING:  # for type checking and preventing circular imports
+    from flixFeatures import cFeatureInvest
 
 log = logging.getLogger(__name__)
 
@@ -553,6 +554,7 @@ class Effect(Element):
 
         # ShareSums:
         #TODO: Why as attributes, and not only in sub_elements?
+        from flixOpt.flixFeatures import cFeature_ShareSum
         self.operation = cFeature_ShareSum(
             label='operation', owner=self, sharesAreTS=True,
             minOfSum=self.minimum_operation, maxOfSum=self.maximum_operation,
@@ -631,7 +633,6 @@ class EffectCollection(List[Effect]):
         return aObjectiveEffect
 
 
-from .flixFeatures import *
 EffectTypeDict = Dict[Effect, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
@@ -780,6 +781,7 @@ class Component(Element):
 
     def finalize(self) -> None:
         super().finalize()
+        from flixOpt.flixFeatures import cFeatureOn
 
         # feature for: On and SwitchOn Vars
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
@@ -859,6 +861,7 @@ class Global(Element):
 
     def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
+        from flixOpt.flixFeatures import cFeature_ShareSum
         self.penalty = cFeature_ShareSum('penalty', self, sharesAreTS=True)
 
         # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
@@ -966,7 +969,7 @@ class Global(Element):
             for effectTypeOfShare, specShare_TS in effectType.specific_share_to_other_effects_operation.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_op = effectTypeOfShare.operation
-                shareSum_op: cFeature_ShareSum
+                shareSum_op: flixOpt.flixFeatures.cFeature_ShareSum
                 shareHolder = effectType
                 shareSum_op.addVariableShare(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
                                              specShare_TS, 1)
@@ -976,7 +979,7 @@ class Global(Element):
             for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_inv = effectTypeOfShare.invest
-                shareSum_inv: cFeature_ShareSum
+                shareSum_inv: flixOpt.flixFeatures.cFeature_ShareSum
                 shareHolder = effectType
                 shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
 
@@ -1333,6 +1336,7 @@ class Flow(Element):
         # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
         #TODO: Why not in sub_elements?
+        from flixOpt.flixFeatures import cFeatureOn, cFeatureInvest
         self.featureOn = cFeatureOn(self, flowsDefiningOn,
                                     on_values_before_begin,
                                     self.switch_on_effects,
@@ -1392,6 +1396,7 @@ class Flow(Element):
 
         # prepare invest Feature:
         if self.invest_parameters is not None:
+            from flixOpt.flixFeatures import cFeatureInvest
             self.featureInvest = cFeatureInvest('size', self, self.invest_parameters,
                                                 min_rel=self.min_rel_with_exists,
                                                 max_rel=self.max_rel_with_exists,
@@ -1642,13 +1647,13 @@ class System:
         return self.elements_of_first_layer_wo_flows + list(self.flows)
 
     @property
-    def invest_features(self) -> List[cFeatureInvest]:
+    def invest_features(self) -> List['cFeatureInvest']:
         all_invest_features = []
 
-        def get_invest_features_of_element(element: Element) -> List[cFeatureInvest]:
+        def get_invest_features_of_element(element: Element) -> List['cFeatureInvest']:
             invest_features = []
             for aSubComp in element.all_sub_elements:
-                if isinstance(aSubComp, cFeatureInvest):
+                if isinstance(aSubComp, flixOpt.flixFeatures.cFeatureInvest):
                     invest_features.append(aSubComp)
                 invest_features += get_invest_features_of_element(aSubComp)  # recursive!
             return invest_features
