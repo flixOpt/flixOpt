@@ -720,7 +720,7 @@ class Feature_ShareSum(Feature):
         self.min_per_hour = None if (min_per_hour is None) else TimeSeries('min_per_hour', min_per_hour, self)
         self.shares = FeatureShares('shares', self)
 
-    def declare_vars_and_eqs(self, system_model):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         super().declare_vars_and_eqs(system_model)
         self.shares.declare_vars_and_eqs(system_model)
 
@@ -740,7 +740,7 @@ class Feature_ShareSum(Feature):
             self.eq_sum_TS = Equation('bilanz', self, system_model)
         self.eq_sum = Equation('sum', self, system_model)
 
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         self.shares.do_modeling(system_model, time_indices)
         if self.shares_are_time_series:
             # eq: sum_TS = sum(share_TS_i) # TS
@@ -752,8 +752,8 @@ class Feature_ShareSum(Feature):
             # eq: sum = sum(share_i) # skalar
             self.eq_sum.add_summand(self.model.var_sum, -1)
 
-    def addConstantShare(self, nameOfShare, shareHolder, factor1, factor2):
-        '''
+    def add_constant_share(self, name_of_share: Optional[str], share_holder: Element, factor1, factor2):
+        """
         Beiträge zu Effekt_Sum registrieren
 
         Parameters
@@ -767,19 +767,19 @@ class Feature_ShareSum(Feature):
         -------
         None.
 
-        '''
-        self.addShare(self, nameOfShare, shareHolder, None, factor1, factor2)
+        """
+        self.add_share(self, name_of_share, share_holder, None, factor1, factor2)
 
-    def addVariableShare(self, nameOfShare, shareHolder, variable, factor1,
-                         factor2):  # if variable = None, then fix Share
+    def add_variable_share(self, name_of_share: Optional[str], share_holder: Element, variable, factor1,
+                           factor2):  # if variable = None, then fix Share
         if variable is None: raise Exception(
-            'addVariableShare() needs variable as input or use addConstantShare() instead')
-        self.addShare(nameOfShare, shareHolder, variable, factor1, factor2)
+            'add_variable_share() needs variable as input or use add_constant_share() instead')
+        self.add_share(name_of_share, share_holder, variable, factor1, factor2)
 
     # allgemein variable oder constant (dann variable = None):
     # if variable = None, then fix Share    
-    def addShare(self, nameOfShare, shareHolder, variable, factor1, factor2):
-        '''
+    def add_share(self, name_of_share: Optional[str], share_holder: Element, variable, factor1, factor2):
+        """
         share to a sum
 
         Parameters
@@ -790,17 +790,16 @@ class Feature_ShareSum(Feature):
             DESCRIPTION.
         factor2 : TYPE
             DESCRIPTION.
-        nameOfShare : str or None
+        name_of_share : str or None
             None, if it is not a real share (i.g. -1*var_sum )
 
         Returns
         -------
         None.
-
-        '''
+        """
         # var and eq for publishing share-values in results:                    
-        if nameOfShare is not None:
-            eq_oneShare = self.shares.get_eqOfNewShare(nameOfShare, shareHolder, self.system_model)
+        if name_of_share is not None:
+            eq_oneShare = self.shares.get_eqOfNewShare(name_of_share, share_holder, self.system_model)
 
         if self.shares_are_time_series:
 
@@ -813,12 +812,12 @@ class Feature_ShareSum(Feature):
             # if constant share:      
             if variable is None:
                 self.eq_sum_TS.add_constant(-1 * factorOfSummand)  # share in global
-                if nameOfShare is not None:
+                if name_of_share is not None:
                     eq_oneShare.add_constant(-1 * sum(factorOfSummand))  # share itself
             # if variable share:
             else:
                 self.eq_sum_TS.add_summand(variable, factorOfSummand)  # share in global
-                if nameOfShare is not None:
+                if name_of_share is not None:
                     eq_oneShare.add_summand(variable, factorOfSummand, as_sum=True)  # share itself
 
 
@@ -830,12 +829,12 @@ class Feature_ShareSum(Feature):
             # if constant share:
             if variable is None:
                 self.eq_sum.add_constant(-1 * factorOfSummand)  # share in global
-                if nameOfShare is not None:
+                if name_of_share is not None:
                     eq_oneShare.add_constant(-1 * factorOfSummand)  # share itself
             # if variable share:
             else:
                 self.eq_sum.add_summand(variable, factorOfSummand)  # share in global
-                if nameOfShare is not None:
+                if name_of_share is not None:
                     eq_oneShare.add_summand(variable, factorOfSummand)  # share itself
 
 

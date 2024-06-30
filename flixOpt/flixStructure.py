@@ -578,8 +578,8 @@ class Effect(Element):
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
-        self.all.addVariableShare('operation', self, self.operation.model.var_sum, 1, 1)
-        self.all.addVariableShare('invest', self, self.invest.model.var_sum, 1, 1)
+        self.all.add_variable_share('operation', self, self.operation.model.var_sum, 1, 1)
+        self.all.add_variable_share('invest', self, self.invest.model.var_sum, 1, 1)
         self.all.do_modeling(system_model, time_indices)
 
     def __str__(self):
@@ -879,7 +879,7 @@ class Global(Element):
                                variable: Variable,
                                effect_values: Dict[Optional[Effect], TimeSeries],
                                factor: Numeric) -> None:
-        if variable is None: raise Exception('add_share_to_operation() needs variable or use addConstantShare instead')
+        if variable is None: raise Exception('add_share_to_operation() needs variable or use add_constant_share instead')
         self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
 
     def add_constant_share_to_operation(self,
@@ -896,7 +896,7 @@ class Global(Element):
                             effect_values: Dict[Optional[Effect], TimeSeries],
                             factor: Numeric) -> None:
         if variable is None:
-            raise Exception('add_share_to_invest() needs variable or use addConstantShare instead')
+            raise Exception('add_share_to_invest() needs variable or use add_constant_share instead')
         self._add_share('invest', name_of_share, owner, effect_values, factor, variable)
 
     def add_constant_share_to_invest(self,
@@ -927,11 +927,11 @@ class Global(Element):
                 raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
 
             if operation_or_invest == 'operation':
-                effect.operation.addShare(name_of_share, owner, variable, value,
-                                          factor)  # hier darf aVariable auch None sein!
+                effect.operation.add_share(name_of_share, owner, variable, value,
+                                           factor)  # hier darf aVariable auch None sein!
             elif operation_or_invest == 'invest':
-                effect.invest.addShare(name_of_share, owner, variable, value,
-                                       factor)  # hier darf aVariable auch None sein!
+                effect.invest.add_share(name_of_share, owner, variable, value,
+                                        factor)  # hier darf aVariable auch None sein!
             else:
                 raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
@@ -971,8 +971,8 @@ class Global(Element):
                 shareSum_op = effectTypeOfShare.operation
                 shareSum_op: flixOpt.flixFeatures.Feature_ShareSum
                 shareHolder = effectType
-                shareSum_op.addVariableShare(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
-                                             specShare_TS, 1)
+                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
+                                               specShare_TS, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             # alle specificSharesToOtherEffects durchgehen:
             nameOfShare = 'specificShareToOtherEffects_invest_'  # + effectType.label
@@ -982,7 +982,7 @@ class Global(Element):
                 from flixOpt.flixFeatures import Feature_ShareSum
                 shareSum_inv: Feature_ShareSum
                 shareHolder = effectType
-                shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
+                shareSum_inv.add_variable_share(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
 
         # ####### target function  ###########
         # Strafkosten immer:
@@ -1096,10 +1096,10 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
         super().add_share_to_globals(global_comp, system_model)
         if self.with_excess:   # Strafkosten hinzufügen:
-            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_input,
-                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_output,
-                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_input,
+                                                   self.excess_effects_per_flow_hour, system_model.dt_in_hours)
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_output,
+                                                   self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
 
 # Medien definieren:
