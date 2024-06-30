@@ -277,7 +277,7 @@ class FeatureAvoidFlowsAtOnce(Feature):
             # Anzahl on_vars solange erhöhen bis mindestens n-1 vorhanden:
             i = 0
             while existing_on_variables < (len(self.flows) - 1):
-                aFlow = flows[i]
+                aFlow = self.flows[i]
                 # Falls noch nicht on-Var für flow existiert, dann erzwingen:
                 if not aFlow.featureOn.useOn:
                     aFlow.force_on_variable()
@@ -311,8 +311,10 @@ class FeatureAvoidFlowsAtOnce(Feature):
         if self.typ == 'classic':
             self.eq_flowLock.add_constant(
                 1.1)  # sicherheitshalber etwas mehr, damit auch leicht größer Binärvariablen 1.00001 funktionieren.
-        elif typ == 'new':
+        elif self.typ == 'new':
             self.eq_flowLock.add_constant(1)  # TODO: hier ggf. Problem bei großen Binärungenauigkeit!!!!
+        else:
+            raise NotImplementedError(f'FeatureAvoidFlowsAtOnce: "{self.typ=}" not implemented!')
 
 
 ## Klasse, die in Komponenten UND Flows benötigt wird: ##
