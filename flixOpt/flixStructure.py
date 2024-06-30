@@ -1382,7 +1382,7 @@ class Flow(Element):
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
     def force_on_variable(self) -> None:
-        self.featureOn.force_on_variable()
+        self.featureOn.force_on = True
 
     def finalize(self) -> None:
         self.plausibility_test()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)

@@ -360,7 +360,7 @@ class FeatureOn(Feature):
         self.off_hours_min = off_hours_min  # TimeSeries
         self.off_hours_max = off_hours_max  # TimeSeries
         self.switch_on_total_max = switch_on_total_max
-        self.force_on = force_on
+        self.force_on = force_on   # Can be set to True if needed, even after creation
         self.force_switch_on = force_switch_on
 
     @property
@@ -389,11 +389,6 @@ class FeatureOn(Feature):
                                                    self.on_hours_total_min,
                                                    self.on_hours_total_max])
                 or self.force_switch_on)
-
-
-    # Befehl von außen zum Erzwingen einer On-Variable:
-    def force_on_variable(self):
-        self.force_on = True
 
     # varOwner braucht die Variable auch:
     def getVar_on(self):
