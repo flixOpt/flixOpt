@@ -903,11 +903,16 @@ class FeatureInvest(Feature):
     def on_variable_is_used(self):  # existiert On-variable
         return True if self.featureOn is not None and self.featureOn.use_on else False
 
-    def __init__(self, nameOfInvestmentSize, owner, invest_parameters: InvestParameters, min_rel, max_rel, val_rel, investmentSize,
-                 featureOn=None):
-        '''
-        
-
+    def __init__(self,
+                 nameOfInvestmentSize: str,
+                 owner: Element,
+                 invest_parameters: InvestParameters,
+                 min_rel: TimeSeries,
+                 max_rel: TimeSeries,
+                 val_rel: Optional[TimeSeries],
+                 investmentSize: Optional[Skalar],
+                 featureOn: Optional[FeatureOn] = None):
+        """
         Parameters
         ----------
         nameOfInvestmentSize : TYPE
@@ -935,8 +940,8 @@ class FeatureInvest(Feature):
         Returns
         -------
         None.
+        """
 
-        '''
         super().__init__('invest', owner)
         self.nameOfInvestmentSize = nameOfInvestmentSize
         self.owner = owner
