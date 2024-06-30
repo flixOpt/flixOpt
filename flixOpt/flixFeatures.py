@@ -954,6 +954,7 @@ class FeatureInvest(Feature):
         self.check_plausibility()
 
         self.defining_variable = None
+        self.defining_on_variable = None
 
         self.featureLinearSegments = None   # segmented investcosts:
         if self.invest_parameters.effects_in_segments is not None:
@@ -1010,9 +1011,9 @@ class FeatureInvest(Feature):
 
     # Variablenreferenz kann erst später hinzugefügt werden, da erst später erstellt:
     # todo-> abändern durch Variable-Dummies
-    def setDefiningVar(self, definingVar, definingVar_On):
-        self.defining_variable = definingVar
-        self.definingVar_On = definingVar_On
+    def set_defining_variables(self, defining_variable: VariableTS, defining_on_variable: Optional[VariableTS]):
+        self.defining_variable = defining_variable
+        self.defining_on_variable = defining_on_variable
 
     def declare_vars_and_eqs(self, system_model):
 
@@ -1097,7 +1098,7 @@ class FeatureInvest(Feature):
         return var_investForEffect
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
-        assert self.defining_variable is not None, 'setDefiningVar() still not executed!'
+        assert self.defining_variable is not None, 'set_defining_variables() still not executed!'
         # wenn var_isInvested existiert:    
         if self.invest_parameters.optional:
             self._add_defining_var_isInvested(system_model)
@@ -1155,7 +1156,7 @@ class FeatureInvest(Feature):
                 Big = helpers.max_args(self.min_rel.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
 
                 self.eq_min_via_investmentSize.add_summand(self.defining_variable, -1)
-                self.eq_min_via_investmentSize.add_summand(self.definingVar_On, Big)  # übergebene On-Variable
+                self.eq_min_via_investmentSize.add_summand(self.defining_on_variable, Big)  # übergebene On-Variable
                 self.eq_min_via_investmentSize.add_summand(self.model.var_investmentSize, self.min_rel.active_data)
                 self.eq_min_via_investmentSize.add_constant(Big)
                 # Anmerkung: Glg bei Spezialfall min_rel = 0 redundant zu FeatureOn-Glg.

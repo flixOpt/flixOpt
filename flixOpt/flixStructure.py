@@ -1450,7 +1450,7 @@ class Flow(Element):
 
         # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
-            self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
+            self.featureInvest.set_defining_variables(self.model.var_val, self.model.var_on)
             self.featureInvest.declare_vars_and_eqs(system_model)
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:

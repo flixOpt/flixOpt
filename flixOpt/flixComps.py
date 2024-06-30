@@ -783,7 +783,7 @@ class Storage(Component):
 
         # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
-            self.featureInvest.setDefiningVar(self.model.var_charge_state, None)  # None, da kein On-Wert
+            self.featureInvest.set_defining_variables(self.model.var_charge_state, None)  # None, da kein On-Wert
             self.featureInvest.declare_vars_and_eqs(system_model)
 
         # obj.vars.Q_Ladezustand   .setBoundaries(0, obj.inputData.Q_Ladezustand_Max);
