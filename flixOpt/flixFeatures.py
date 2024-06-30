@@ -322,31 +322,41 @@ class FeatureAvoidFlowsAtOnce(Feature):
 class FeatureOn(Feature):
     """
     Klasse, die in Komponenten UND Flows benötigt wird
+    
+        def __init__(self,
+                 label: str,
+                 on_values_before_begin:Optional[List[Skalar]] = None,
+                 switch_on_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 switch_on_total_max: Optional[Skalar] = None,
+                 on_hours_total_min: Optional[Skalar] = None,
+                 on_hours_total_max: Optional[Skalar] = None,
+                 running_hour_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+    
     """
     def __init__(self,
                  owner: Element,
-                 flowsDefiningOn: List[Flow],
+                 flows_defining_on: List[Flow],
                  on_values_before_begin: List[int],
                  switch_on_effects: Optional[EffectTypeDict] = None,
                  running_hour_effects: Optional[EffectTypeDict] = None,
-                 onHoursSum_min: Optional[int] = None,
-                 onHoursSum_max: Optional[int] = None,
-                 onHours_min: Optional[Numeric] = None,
-                 onHours_max: Optional[Numeric] = None,
+                 on_hours_total_min: Optional[int] = None,
+                 on_hours_total_max: Optional[int] = None,
+                 on_hours_min: Optional[Numeric] = None,
+                 on_hours_max: Optional[Numeric] = None,
                  off_hours_min: Optional[Numeric] = None,
                  off_hours_max: Optional[Numeric] = None,
                  switch_on_total_max: Optional[int] = None,
-                 useOn_explicit: bool = False,
-                 useSwitchOn_explicit: bool = False):
+                 force_on: bool = False,
+                 force_switch_on: bool = False):
         super().__init__('featureOn', owner)
-        self.flowsDefiningOn = flowsDefiningOn
+        self.flows_defining_on = flows_defining_on
         self.on_values_before_begin = on_values_before_begin
         self.switch_on_effects = switch_on_effects
         self.running_hour_effects = running_hour_effects
-        self.onHoursSum_min = onHoursSum_min  # scalar
-        self.onHoursSum_max = onHoursSum_max  # scalar
-        self.onHours_min = onHours_min  # TimeSeries
-        self.onHours_max = onHours_max  # TimeSeries
+        self.on_hours_total_min = on_hours_total_min  # scalar
+        self.on_hours_total_max = on_hours_total_max  # scalar
+        self.on_hours_min = on_hours_min  # TimeSeries
+        self.on_hours_max = on_hours_max  # TimeSeries
         self.off_hours_min = off_hours_min  # TimeSeries
         self.off_hours_max = off_hours_max  # TimeSeries
         self.switch_on_total_max = switch_on_total_max
@@ -358,17 +368,17 @@ class FeatureOn(Feature):
         self.useOffHours = False
 
         # Notwendige Variablen entsprechend der übergebenen Parameter:        
-        paramsForcingOn = [running_hour_effects, onHoursSum_min, onHoursSum_max,
-                           onHours_min, onHours_max, off_hours_min, off_hours_max]
+        paramsForcingOn = [running_hour_effects, on_hours_total_min, on_hours_total_max,
+                           on_hours_min, on_hours_max, off_hours_min, off_hours_max]
         if any(param is not None for param in paramsForcingOn):
             self.useOn = True
 
-        paramsForcingSwitchOn = [switch_on_effects, switch_on_total_max, onHoursSum_max, onHoursSum_min]
+        paramsForcingSwitchOn = [switch_on_effects, switch_on_total_max, on_hours_total_max, on_hours_total_min]
         if any(param is not None for param in paramsForcingSwitchOn):
             self.useOn = True
             self.useSwitchOn = True
 
-        paramsForcingOnHours = [self.onHours_min, self.onHours_max]  # onHoursSum alway realized
+        paramsForcingOnHours = [self.on_hours_min, self.on_hours_max]  # onHoursSum alway realized
         if any(param is not None for param in paramsForcingOnHours):
             self.useOnHours = True
 
@@ -376,9 +386,9 @@ class FeatureOn(Feature):
         if any(param is not None for param in paramsForcingOffHours):
             self.useOffHours = True
 
-        self.useOn = self.useOn | useOn_explicit | self.useOnHours | self.useOffHours
+        self.useOn = self.useOn | force_on | self.useOnHours | self.useOffHours
         self.useOff = self.useOffHours
-        self.useSwitchOn = self.useSwitchOn | useSwitchOn_explicit
+        self.useSwitchOn = self.useSwitchOn | force_switch_on
 
     # Befehl von außen zum Erzwingen einer On-Variable:
     def force_on_variable(self):
@@ -409,8 +419,8 @@ class FeatureOn(Feature):
             self.model.var_on = VariableTS('on', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
             self.model.var_on.set_before_value(default_before_value=self.on_values_before_begin[0],
                                                is_start_value=False)
-            self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, system_model, lower_bound=self.onHoursSum_min,
-                                                 upper_bound=self.onHoursSum_max)  # wenn max/min = None, dann bleibt das frei
+            self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, system_model, lower_bound=self.on_hours_total_min,
+                                                 upper_bound=self.on_hours_total_max)  # wenn max/min = None, dann bleibt das frei
 
         else:
             self.model.var_on = None
@@ -425,7 +435,7 @@ class FeatureOn(Feature):
         #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
         #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
         if self.useOnHours:
-            aMax = None if (self.onHours_max is None) else self.onHours_max.active_data
+            aMax = None if (self.on_hours_max is None) else self.on_hours_max.active_data
             self.model.var_onHours = VariableTS('onHours', system_model.nrOfTimeSteps, self.owner, system_model,
                                                 lower_bound=0, upper_bound=aMax)  # min separat
         # offHours:
@@ -448,28 +458,28 @@ class FeatureOn(Feature):
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         eqsOwner = self
         if self.useOn:
-            self.__addConstraintsForOn(eqsOwner, self.flowsDefiningOn, system_model, time_indices)
+            self.__addConstraintsForOn(eqsOwner, self.flows_defining_on, system_model, time_indices)
         if self.useOff:
             self.__addConstraintsForOff(eqsOwner, system_model, time_indices)
         if self.useSwitchOn:
             self.__addConstraintsForSwitchOnSwitchOff(eqsOwner, system_model, time_indices)
         if self.useOnHours:
             FeatureOn.__addConstraintsForOnTimeOfBinary(
-                self.model.var_onHours, self.model.var_on, self.onHours_min,
+                self.model.var_onHours, self.model.var_on, self.on_hours_min,
                 eqsOwner, system_model, time_indices)
         if self.useOffHours:
             FeatureOn.__addConstraintsForOnTimeOfBinary(
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 eqsOwner, system_model, time_indices)
 
-    def __addConstraintsForOn(self, eqsOwner, flowsDefiningOn, system_model, time_indices: Union[list[int], range]):
+    def __addConstraintsForOn(self, eqsOwner, flows_defining_on, system_model, time_indices: Union[list[int], range]):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
 
         # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig 
         # %            (und dann auch nur wenn erstes Segment bei Q_th=0 beginnt. Dann soll bei Q_th=0 (d.h. die Maschine ist Aus) On = 0 und segment1.onSeg = 0):)
         # %            Fazit: Wenn kein Performance-Verlust durch mehr Gleichungen, dann egal!      
 
-        nrOfFlows = len(flowsDefiningOn)
+        nrOfFlows = len(flows_defining_on)
         assert nrOfFlows > 0, 'Achtung: mindestens 1 Flow notwendig'
         #######################################################################
         #### Bedingung 1) ####
@@ -483,7 +493,7 @@ class FeatureOn(Feature):
             ## Leistung<=MinLeistung -> On = 0 | On=1 -> Leistung>MinLeistung
             # eq: Q_th(t) - max(Epsilon, Q_th_min) * On(t) >= 0  (mit Epsilon = sehr kleine Zahl, wird nur im Falle Q_th_min = 0 gebraucht)
             # gleichbedeutend mit eq: -Q_th(t) + max(Epsilon, Q_th_min)* On(t) <= 0 
-            aFlow = flowsDefiningOn[0]
+            aFlow = flows_defining_on[0]
             eq1.add_summand(aFlow.model.var_val, -1, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
@@ -501,7 +511,7 @@ class FeatureOn(Feature):
             # Nur wenn alle Flows = 0, dann ist On = 0
             ## 1) sum(alle Leistung)=0 -> On = 0 | On=1 -> sum(alle Leistungen) > 0
             # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
-            for aFlow in flowsDefiningOn:
+            for aFlow in flows_defining_on:
                 eq1.add_summand(aFlow.model.var_val, -1, time_indices)
             eq1.add_summand(self.model.var_on, 1 * system_model.epsilon,
                             time_indices)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
@@ -520,7 +530,7 @@ class FeatureOn(Feature):
         #  --> damit Gleichungswerte nicht zu groß werden, noch durch nrOfFlows geteilt:
         #  eq: sum( Leistung(t,i) / nrOfFlows ) - sum(Leistung_max(i)) / nrOfFlows * On(t) <= 0
         sumOfFlowMax = 0
-        for aFlow in flowsDefiningOn:
+        for aFlow in flows_defining_on:
             eq2.add_summand(aFlow.model.var_val, 1 / nrOfFlows, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
@@ -548,7 +558,7 @@ class FeatureOn(Feature):
         eq_var_off.add_constant(1)
 
     @staticmethod  # to be sure not using any self-Variables
-    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, onHours_min, eqsOwner, system_model, time_indices: Union[list[int], range]):
+    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, on_hours_min, eqsOwner, system_model, time_indices: Union[list[int], range]):
         '''
         i.g. 
         var_bin        = [0 0 1 1 1 1 0 1 1 1 0 ...]
@@ -586,14 +596,14 @@ class FeatureOn(Feature):
 
         # 3) check on_hours_min before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
-        if onHours_min is not None:
+        if on_hours_min is not None:
             # Note: switchOff-step is when: On(t)-On(t-1) == -1
             # eq:  onHours(t-1) >= minOnHours * -1 * [On(t)-On(t-1)]
             # eq: -onHours(t-1) - on_hours_min * On(t) + on_hours_min*On(t-1) <= 0
             ineq_min = Equation(aLabel + '_min', eqsOwner, system_model, eqType='ineq')
             ineq_min.add_summand(var_bin_onTime, -1, time_indices[0:-1])  # onHours(t-1)
-            ineq_min.add_summand(var_bin, -1 * onHours_min.active_data, time_indices[1:])  # on(t)
-            ineq_min.add_summand(var_bin, onHours_min.active_data, time_indices[0:-1])  # on(t-1)
+            ineq_min.add_summand(var_bin, -1 * on_hours_min.active_data, time_indices[1:])  # on(t)
+            ineq_min.add_summand(var_bin, on_hours_min.active_data, time_indices[0:-1])  # on(t-1)
 
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)

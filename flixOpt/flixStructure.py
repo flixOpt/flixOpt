@@ -787,8 +787,8 @@ class Component(Element):
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
         flows_defining_on = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
         self.featureOn = FeatureOn(self, flows_defining_on, self.on_values_before_begin, self.switch_on_effects,
-                                   self.running_hour_effects, onHoursSum_min=self.on_hours_total_min,
-                                   onHoursSum_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
+                                   self.running_hour_effects, on_hours_total_min=self.on_hours_total_min,
+                                   on_hours_total_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
@@ -1331,25 +1331,25 @@ class Flow(Element):
             raise Exception('medium must be a string or None')
 
         # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
-        flowsDefiningOn = [self]
+        flows_defining_on = [self]
         # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
         on_values_before_begin = 1 * (self.values_before_begin >= 0.0001)
         # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
         #TODO: Why not in sub_elements?
         from flixOpt.flixFeatures import FeatureOn, FeatureInvest
-        self.featureOn = FeatureOn(self, flowsDefiningOn,
+        self.featureOn = FeatureOn(self, flows_defining_on,
                                    on_values_before_begin,
                                    self.switch_on_effects,
                                    self.running_hour_effects,
-                                   onHoursSum_min=self.on_hours_total_min,
-                                   onHoursSum_max=self.on_hours_total_max,
-                                   onHours_min=self.on_hours_min,
-                                   onHours_max=self.on_hours_max,
+                                   on_hours_total_min=self.on_hours_total_min,
+                                   on_hours_total_max=self.on_hours_total_max,
+                                   on_hours_min=self.on_hours_min,
+                                   on_hours_max=self.on_hours_max,
                                    off_hours_min=self.off_hours_min,
                                    off_hours_max=self.off_hours_max,
                                    switch_on_total_max=self.switch_on_total_max,
-                                   useOn_explicit=self.on_variable_is_forced)
+                                   force_on=self.on_variable_is_forced)
 
         self.featureInvest: Optional[FeatureInvest] = None   # Is defined in finalize()
 
@@ -1473,9 +1473,9 @@ class Flow(Element):
         # ineq: sum(var_on(t)) <= on_hours_total_max
 
         if self.on_hours_total_max is not None:
-            eq_onHoursSum_max = Equation('on_hours_total_max', self, system_model, 'ineq')
-            eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
-            eq_onHoursSum_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
+            eq_on_hours_total_max = Equation('on_hours_total_max', self, system_model, 'ineq')
+            eq_on_hours_total_max.add_summand(self.model.var_on, 1, as_sum=True)
+            eq_on_hours_total_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
 
         #
         # ############## on_hours_total_max: ##############
@@ -1484,9 +1484,9 @@ class Flow(Element):
         # ineq: sum(var_on(t)) >= on_hours_total_min
 
         if self.on_hours_total_min is not None:
-            eq_onHoursSum_min = Equation('on_hours_total_min', self, system_model, 'ineq')
-            eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
-            eq_onHoursSum_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
+            eq_on_hours_total_min = Equation('on_hours_total_min', self, system_model, 'ineq')
+            eq_on_hours_total_min.add_summand(self.model.var_on, -1, as_sum=True)
+            eq_on_hours_total_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
 
 
         #
