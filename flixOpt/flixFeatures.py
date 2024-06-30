@@ -812,7 +812,7 @@ class Feature_ShareSum(Feature):
         """
         # var and eq for publishing share-values in results:                    
         if name_of_share is not None:
-            eq_oneShare = self.shares.get_eqOfNewShare(name_of_share, share_holder, self.system_model)
+            eq_oneShare = self.shares.get_equation_of_new_share(name_of_share, share_holder, self.system_model)
 
         if self.shares_are_time_series:
 
@@ -852,23 +852,25 @@ class Feature_ShareSum(Feature):
 
 
 class FeatureShares(Feature):
-    ''' 
+    """
     used to list all shares
     (owner is Feature_ShareSum)
-    
-    '''
+    """
 
-    def __init__(self, label, owner):
+    def __init__(self, label: str, owner: Feature_ShareSum):
         super().__init__(label, owner)
 
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         pass
 
-    def declare_vars_and_eqs(self, system_model):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         super().declare_vars_and_eqs(system_model)
 
-    def get_eqOfNewShare(self, nameOfShare, shareHolder, system_model):
-        '''         
+    def get_equation_of_new_share(self,
+                                  name_of_share: str,
+                                  share_holder: Element,
+                                  system_model: SystemModel) -> Equation:
+        """
         creates variable and equation for every share for 
         publishing share-values in results
 
@@ -879,10 +881,9 @@ class FeatureShares(Feature):
         Returns
         -------
         eq_oneShare : Equation
-
-        '''
+        """
         try:
-            full_name_of_share = shareHolder.label_full + '_' + nameOfShare
+            full_name_of_share = share_holder.label_full + '_' + name_of_share
         except:
             pass
         var_oneShare = Variable(full_name_of_share, 1, self, system_model)  # Skalar
