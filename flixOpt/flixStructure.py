@@ -1027,7 +1027,7 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         excess_effects_per_flow_hour : none or scalar, array or TimeSeriesRaw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
-            (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calcType = aggregated!)
+            (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
         exists : not implemented yet for Bus!
         **kwargs : TYPE
             DESCRIPTION.
@@ -2139,7 +2139,7 @@ class Calculation:
         infos['calculation'] = calcInfos
         calcInfos['name'] = self.label
         calcInfos['no ChosenIndexe'] = len(self.time_indices)
-        calcInfos['calcType'] = self.calcType
+        calcInfos['calculation_type'] = self.calculation_type
         calcInfos['duration'] = self.durations
         infos['system_description'] = self.system.description_of_system()
         infos['system_models'] = {}
@@ -2151,28 +2151,28 @@ class Calculation:
     @property
     def results(self):
         # wenn noch nicht belegt, dann aus system_model holen
-        if self.__results is None:
-            self.__results = self.system_models[0].results
+        if self._results is None:
+            self._results = self.system_models[0].results
 
             # (bei segmented Calc ist das schon explizit belegt.)
-        return self.__results
+        return self._results
 
     @property
     def results_struct(self):
         # Wenn noch nicht ermittelt:
-        if (self.__results_struct is None):
+        if (self._results_struct is None):
             # Neurechnen (nur bei Segments)
-            if (self.calcType == 'segmented'):
-                self.__results_struct = helpers.createStructFromDictInDict(self.results)
+            if (self.calculation_type == 'segmented'):
+                self._results_struct = helpers.createStructFromDictInDict(self.results)
             # nur eine system_model vorhanden ('full','aggregated')
             elif len(self.system_models) == 1:
-                self.__results_struct = self.system_models[0].results_struct
+                self._results_struct = self.system_models[0].results_struct
             else:
-                raise Exception('calcType ' + str(self.calcType) + ' not defined')
-        return self.__results_struct
+                raise Exception('calculation_type ' + str(self.calculation_type) + ' not defined')
+        return self._results_struct
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modType, time_indices: Optional[list[int]] = None, pathForSaving='results'):
+    def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None, pathForSaving='results'):
         '''
         Parameters
         ----------
@@ -2189,34 +2189,27 @@ class Calculation:
 
         '''
         self.label = label
-        self.nameOfCalc = None  # name for storing results
+        self.nameOfCalc = None  # name for storing results   # TODO: Why nameOfClac and label???
         self.system = system
-        self.modType = modType
+        self.modeling_language = modeling_language
         self.time_indices = time_indices
-        self.pathForSaving = pathForSaving
-        self.calcType = None  # 'full', 'segmented', 'aggregated'
+        self.path_for_saving = pathForSaving
+        self.calculation_type = None  # 'full', 'segmented', 'aggregated'
         self._infos = {}
 
         self.system_models: List[SystemModel] = []  # liste der ModelBoxes (nur bei Segmentweise mehrere!)
-        self.durations = {}  # Dauer der einzelnen Dinge
-        self.durations['modeling'] = 0
-        self.durations['solving'] = 0
-        self.TSlistForAggregation = None  # list of timeseries for aggregation
-        # assert from_index < to_index
-        # assert from_index >= 0
-        # assert to_index <= length(self.system.time_series)-1
+        self.durations = {'modeling': 0, 'solving': 0}   # Dauer der einzelnen Dinge
+        self.time_series_for_aggregation = None  # list of timeseries for aggregation
 
         self.time_indices = time_indices or range(len(system.time_series))  # Wenn time_indices = None, dann alle nehmen
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             system.get_time_data_from_indices(self.time_indices))
         helpers.checkTimeSeries('time_indices', self.time_series)
 
-        self.nrOfTimeSteps = len(self.time_series)
-
-        self.__results = None
-        self.__results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
-        self.segmentModBoxList = []  # model list
-        self.dataAgg = None  # aggregationStuff (if calcType = 'aggregated')
+        self._results = None
+        self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
+        self.segmented_system_models = []  # model list
+        self.aggregation_data = None  # aggregationStuff (if calculation_type = 'aggregated')
 
     # Variante1:
     def do_modeling_as_one_segment(self):
@@ -2225,13 +2218,13 @@ class Calculation:
 
         '''
         self.check_if_already_modeled()
-        self.calcType = 'full'
+        self.calculation_type = 'full'
         # System finalisieren:
         self.system.finalize()
 
         t_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen:
-        system_model = SystemModel(self.label, self.modType, self.system,
+        system_model = SystemModel(self.label, self.modeling_language, self.system,
                                    self.time_indices)  # alle Indexe nehmen!
         # model aktivieren:
         self.system.activate_model(system_model)
@@ -2280,7 +2273,7 @@ class Calculation:
           '''
         self.check_if_already_modeled()
         self._infos['segmentedProps'] = {'segmentLen': segmentLen, 'nrUsedSteps': nrOfUsedSteps}
-        self.calcType = 'segmented'
+        self.calculation_type = 'segmented'
         print('##############################################################')
         print('#################### segmented Solving #######################')
 
@@ -2292,15 +2285,13 @@ class Calculation:
         if len(self.system.invest_features) > 0:
             raise Exception('segmented calculation with Invest-Parameters does not make sense!')
 
-        # nrOfTimeSteps = self.to_index - self.from_index +1
-
         assert nrOfUsedSteps <= segmentLen
-        assert segmentLen <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
+        assert segmentLen <= len(self.time_series), 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
 
         # time_seriesOfSim = self.system.time_series[from_index:to_index+1]
 
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
-        nrOfSimSegments = math.ceil((self.nrOfTimeSteps) / nrOfUsedSteps)
+        nrOfSimSegments = math.ceil((len(self.time_series)) / nrOfUsedSteps)
         self._infos['segmentedProps']['nrOfSegments'] = nrOfSimSegments
         print('indexe        : ' + str(self.time_indices[0]) + '...' + str(self.time_indices[-1]))
         print('segmentLen    : ' + str(segmentLen))
@@ -2330,13 +2321,13 @@ class Calculation:
 
             # Modellierungsbox / TimePeriod-Box bauen:
             label = self.label + '_seg' + str(i)
-            segmentModBox = SystemModel(label, self.modType, self.system, indexe_global)  # alle Indexe nehmen!
+            segmentModBox = SystemModel(label, self.modeling_language, self.system, indexe_global)  # alle Indexe nehmen!
             segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 from flixOpt.basicModeling import BeforeValues
-                segmentModBoxBefore = self.segmentModBoxList[i - 1]
+                segmentModBoxBefore = self.segmented_system_models[i - 1]
                 segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
                 print('### before_values: ###')
@@ -2352,7 +2343,7 @@ class Calculation:
             self.system.do_modeling_of_elements()
             self.durations['modeling'] += round(time.time() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
-            self.segmentModBoxList.append(segmentModBox)
+            self.segmented_system_models.append(segmentModBox)
             # übergeordnete system_model-Liste:
             self.system_models.append(segmentModBox)
 
@@ -2433,7 +2424,7 @@ class Calculation:
                                           'percentageOfPeriodFreedom': percentageOfPeriodFreedom,
                                           'costsOfPeriodFreedom': costsOfPeriodFreedom}
 
-        self.calcType = 'aggregated'
+        self.calculation_type = 'aggregated'
         t_start_agg = time.time()
         # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
         self.system.activate_indices_in_time_series(self.time_indices)
@@ -2452,9 +2443,9 @@ class Calculation:
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
-        self.TSlistForAggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
+        self.time_series_for_aggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
         from flixOpt.flixBasics import TimeSeriesCollection
-        self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
+        self.TScollectionForAgg = TimeSeriesCollection(self.time_series_for_aggregation,
                                                        addPeakMax_TSraw=addPeakMax,
                                                        addPeakMin_TSraw=addPeakMin,
                                                        )
@@ -2462,7 +2453,7 @@ class Calculation:
         self.TScollectionForAgg.print()
 
         import pandas as pd
-        # seriesDict = {i : self.TSlistForAggregation[i].active_data_vector for i in range(length(self.TSlistForAggregation))}
+        # seriesDict = {i : self.time_series_for_aggregation[i].active_data_vector for i in range(length(self.time_series_for_aggregation))}
         df_OriginalData = pd.DataFrame(self.TScollectionForAgg.seriesDict,
                                        index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
 
@@ -2486,14 +2477,14 @@ class Calculation:
                                           addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
 
         dataAgg.cluster()
-        self.dataAgg = dataAgg
+        self.aggregation_data = dataAgg
 
         self._infos['aggregatedProps']['periodsOrder'] = str(list(dataAgg.aggregation.clusterOrder))
 
-        # dataAgg.aggregation.clusterPeriodIdx
-        # dataAgg.aggregation.clusterOrder
-        # dataAgg.aggregation.clusterPeriodNoOccur
-        # dataAgg.aggregation.predictOriginalData()
+        # aggregation_data.aggregation.clusterPeriodIdx
+        # aggregation_data.aggregation.clusterOrder
+        # aggregation_data.aggregation.clusterPeriodNoOccur
+        # aggregation_data.aggregation.predictOriginalData()
         # self.periodsOrder = aggregation.clusterOrder
         # self.periodOccurances = aggregation.clusterPeriodNoOccur
 
@@ -2505,17 +2496,17 @@ class Calculation:
         plt.plot(df_OriginalData.values)
         for label_TS, agg_values in dataAgg.totalTimeseries.items():
             # aLabel = str(i)
-            # aLabel = self.TSlistForAggregation[i].label_full
+            # aLabel = self.time_series_for_aggregation[i].label_full
             plt.plot(agg_values.values, '--', label=label_TS)
-        if len(self.TSlistForAggregation) < 10:  # wenn nicht zu viele
+        if len(self.time_series_for_aggregation) < 10:  # wenn nicht zu viele
             plt.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center')
         plt.show()
 
         # ### Some infos as print ###
 
         print('TS Aggregation:')
-        for i in range(len(self.TSlistForAggregation)):
-            aLabel = self.TSlistForAggregation[i].label_full
+        for i in range(len(self.time_series_for_aggregation)):
+            aLabel = self.time_series_for_aggregation[i].label_full
             print('TS ' + str(aLabel))
             print('  max_agg:' + str(max(dataAgg.totalTimeseries[aLabel])))
             print('  max_orig:' + str(max(df_OriginalData[aLabel])))
@@ -2548,8 +2539,8 @@ class Calculation:
         else:
             # neue (Explizit)-Werte für TS sammeln::
             TS_explicit = {}
-            for i in range(len(self.TSlistForAggregation)):
-                TS = self.TSlistForAggregation[i]
+            for i in range(len(self.time_series_for_aggregation)):
+                TS = self.time_series_for_aggregation[i]
                 # todo: agg-Wert für TS:
                 TS_explicit[TS] = dataAgg.totalTimeseries[TS.label_full].values  # nur data-array ohne Zeit
 
@@ -2561,7 +2552,7 @@ class Calculation:
 
         t_m_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.label, self.modType, self.system, self.time_indices,
+        system_model = SystemModel(self.label, self.modeling_language, self.system, self.time_indices,
                                    TS_explicit)  # alle Indexe nehmen!
         self.system_models.append(system_model)
         # model aktivieren:
@@ -2576,8 +2567,8 @@ class Calculation:
 
         self._define_path_names(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
 
-        if self.calcType not in ['full', 'aggregated']:
-            raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
+        if self.calculation_type not in ['full', 'aggregated']:
+            raise Exception('calculation_type ' + self.calculation_type + ' needs no solve()-Command (only for ' + str())
         system_model = self.system_models[0]
         system_model.solve(**solverProps, logfile_name=self.paths_Log[0])
 
@@ -2617,9 +2608,9 @@ class Calculation:
             self.path_Info = None
 
     def check_if_already_modeled(self):
-        if self.calcType is not None:
+        if self.calculation_type is not None:
             raise Exception(
-                f'Another modeling-Method ({self.calcType=}) was already executed with this Calculation-Object.\n'
+                f'Another modeling-Method ({self.calculation_type=}) was already executed with this Calculation-Object.\n'
                 f'Always create a new instance of Calculation for new modeling/solving-command!')
 
         if self.system.temporary_elements:  # if some element in this list
@@ -2651,8 +2642,8 @@ class Calculation:
     def _add_segment_results(self, segment, startIndex_calc, realNrOfUsedSteps):
         # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
 
-        if (self.__results is None):
-            self.__results = {}  # leeres Dict als Ausgangszustand
+        if (self._results is None):
+            self._results = {}  # leeres Dict als Ausgangszustand
 
         def append_new_results_to_dict_values(result: Dict, result_to_append: Dict, result_to_append_var: Dict):
             if result == {}:
@@ -2714,7 +2705,7 @@ class Calculation:
                     append_new_results_to_dict_values(result[key], result_to_append[key], resultToAppend_sub)  # hier rekursiv!
 
         # rekursiv:
-        append_new_results_to_dict_values(self.__results, segment.results, segment.results_var)
+        append_new_results_to_dict_values(self._results, segment.results, segment.results_var)
 
         # results füllen:
         # ....

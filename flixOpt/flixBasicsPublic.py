@@ -16,7 +16,7 @@ class TimeSeriesRaw:
                  agg_weight: Optional[float] = None):
         """
         timeseries class for transmit timeseries AND special characteristics of timeseries,
-        i.g. to define weights needed in calcType 'aggregated'
+        i.g. to define weights needed in calculation_type 'aggregated'
             EXAMPLE solar:
             you have several solar timeseries. These should not be overweighted
             compared to the remaining timeseries (i.g. heat load, price)!
@@ -33,7 +33,7 @@ class TimeSeriesRaw:
         agg_group : str, optional
             The group this TimeSeriesRaw is a part of. agg_weight is split between members of a group. Default is None.
         agg_weight : float, optional
-            The weight for calcType 'aggregated', should be between 0 and 1. Default is None.
+            The weight for calculation_type 'aggregated', should be between 0 and 1. Default is None.
 
         Raises
         ------

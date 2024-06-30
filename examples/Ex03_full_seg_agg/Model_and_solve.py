@@ -281,7 +281,7 @@ if doAggregatedCalc :
 if (not calcSegs is None) and (not calcFull is None):
     fig, ax = plt.subplots(figsize=(10, 5))
     plt.plot(calcSegs.time_series_with_end, calcSegs.results_struct.Speicher.charge_state, '-', label='chargeState (complete)') 
-    for aModBox in calcSegs.segmentModBoxList:  
+    for aModBox in calcSegs.segmented_system_models:
       plt.plot(aModBox.time_series_with_end, aModBox.results_struct.Speicher.charge_state, ':', label='chargeState') 
 
     # plt.plot(calcFull.time_series_with_end, calcFull.results_struct.Speicher.charge_state, '-.', label='chargeState (full)') 
@@ -289,7 +289,7 @@ if (not calcSegs is None) and (not calcFull is None):
     plt.grid()
     plt.show()
 
-    for aModBox in calcSegs.segmentModBoxList:  
+    for aModBox in calcSegs.segmented_system_models:
       plt.plot(aModBox.time_series, aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
     plt.plot(calcFull.time_series       , calcFull.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
     plt.legend()
@@ -297,7 +297,7 @@ if (not calcSegs is None) and (not calcFull is None):
     plt.show()
 
 
-    for aModBox in calcSegs.segmentModBoxList:  
+    for aModBox in calcSegs.segmented_system_models:
       plt.plot(aModBox.time_series, aModBox.results_struct.global_comp.costs.operation.sum_TS, label='costs')
     plt.plot(calcFull.time_series, calcFull.results_struct.global_comp.costs.operation.sum_TS, ':', label='costs (full)')
     plt.legend()

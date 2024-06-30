@@ -38,10 +38,10 @@ def plotOn(mb, aVar_struct, var_label, y, plotSwitchOnOff=True):
 
 # # Input z.B. 'results_struct.KWK.Q_th.on' oder [KWK,'Q_th','on']
 # def plotSegmentedValue(calc : Calculation, results_struct_As_String_OR_keyList):
-#   if length(calc.segmentModBoxList) == 0 :
+#   if length(calc.segmented_system_models) == 0 :
 #     raise Exception 'Keine Segmente vorhanden!'
 #   else :
-#     for aModBox in calc.segmentModBoxList:
+#     for aModBox in calc.segmented_system_models:
 #       # aVal:
 #       eval('aVal = aModBox.' + results_struct_As_String)
 #       # aTimeSeries:
