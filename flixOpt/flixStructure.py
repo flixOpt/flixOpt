@@ -1428,7 +1428,7 @@ class Flow(Element):
                 upper_bound = None
                 fix_value = self.val_rel.active_data * self.size
             else:
-                lower_bound = 0 if self.featureOn.useOn else self.min_rel_with_exists.active_data * self.size
+                lower_bound = 0 if self.featureOn.use_on else self.min_rel_with_exists.active_data * self.size
                 upper_bound = self.max_rel_with_exists.active_data * self.size
                 fix_value = None
             return lower_bound, upper_bound, fix_value

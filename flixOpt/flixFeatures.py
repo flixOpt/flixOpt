@@ -271,7 +271,7 @@ class FeatureAvoidFlowsAtOnce(Feature):
             # 1. Get nr of existing on_vars in Flows
             existing_on_variables = 0
             for aFlow in self.flows:
-                existing_on_variables += aFlow.featureOn.useOn
+                existing_on_variables += aFlow.featureOn.use_on
 
             # 2. Add necessary further flow binaries:
             # Anzahl on_vars solange erhöhen bis mindestens n-1 vorhanden:
@@ -279,7 +279,7 @@ class FeatureAvoidFlowsAtOnce(Feature):
             while existing_on_variables < (len(self.flows) - 1):
                 aFlow = self.flows[i]
                 # Falls noch nicht on-Var für flow existiert, dann erzwingen:
-                if not aFlow.featureOn.useOn:
+                if not aFlow.featureOn.use_on:
                     aFlow.force_on_variable()
                     existing_on_variables += 1
                 i += 1
@@ -364,26 +364,26 @@ class FeatureOn(Feature):
         self.force_switch_on = force_switch_on
 
     @property
-    def useOn(self) -> bool:
+    def use_on(self) -> bool:
         return (any(param is not None for param in [self.running_hour_effects,
                                                     self.on_hours_total_min,
                                                     self.on_hours_total_max])
-                or self.force_on or self.useSwitchOn or self.useOnHours or self.useOffHours or self.useOff)
+                or self.force_on or self.use_switch_on or self.use_on_hours or self.use_off_hours or self.use_off)
 
     @property
-    def useOff(self) -> bool:
-        return self.useOffHours
+    def use_off(self) -> bool:
+        return self.use_off_hours
 
     @property
-    def useOnHours(self) -> bool:
+    def use_on_hours(self) -> bool:
         return any(param is not None for param in [self.on_hours_min, self.on_hours_max])
 
     @property
-    def useOffHours(self) -> bool:
+    def use_off_hours(self) -> bool:
         return any(param is not None for param in [self.off_hours_min, self.off_hours_max])
 
     @property
-    def useSwitchOn(self) -> bool:
+    def use_switch_on(self) -> bool:
         return (any(param is not None for param in [self.switch_on_effects,
                                                    self.switch_on_total_max,
                                                    self.on_hours_total_min,
@@ -415,7 +415,7 @@ class FeatureOn(Feature):
     def declare_vars_and_eqs(self, system_model):
         # Beachte: Variablen gehören nicht diesem Element, sondern varOwner (meist ist das der featureOwner)!!!  
         # Var On:
-        if self.useOn:
+        if self.use_on:
             # Before-Variable:
             self.model.var_on = VariableTS('on', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
             self.model.var_on.set_before_value(default_before_value=self.on_values_before_begin[0],
@@ -427,7 +427,7 @@ class FeatureOn(Feature):
             self.model.var_on = None
             self.model.var_onHoursSum = None
 
-        if self.useOff:
+        if self.use_off:
             # off-Var is needed:
             self.model.var_off = VariableTS('off', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
 
@@ -435,18 +435,18 @@ class FeatureOn(Feature):
         #   i.g. 
         #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
         #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
-        if self.useOnHours:
+        if self.use_on_hours:
             aMax = None if (self.on_hours_max is None) else self.on_hours_max.active_data
             self.model.var_onHours = VariableTS('onHours', system_model.nrOfTimeSteps, self.owner, system_model,
                                                 lower_bound=0, upper_bound=aMax)  # min separat
         # offHours:
-        if self.useOffHours:
+        if self.use_off_hours:
             aMax = None if (self.off_hours_max is None) else self.off_hours_max.active_data
             self.model.var_offHours = VariableTS('offHours', system_model.nrOfTimeSteps, self.owner, system_model,
                                                  lower_bound=0, upper_bound=aMax)  # min separat
 
         # Var SwitchOn
-        if self.useSwitchOn:
+        if self.use_switch_on:
             self.model.var_switchOn = VariableTS('switchOn', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
             self.model.var_switchOff = VariableTS('switchOff', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
             self.model.var_nrSwitchOn = Variable('nrSwitchOn', 1, self.owner, system_model,
@@ -458,17 +458,17 @@ class FeatureOn(Feature):
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         eqsOwner = self
-        if self.useOn:
+        if self.use_on:
             self.__addConstraintsForOn(eqsOwner, self.flows_defining_on, system_model, time_indices)
-        if self.useOff:
+        if self.use_off:
             self.__addConstraintsForOff(eqsOwner, system_model, time_indices)
-        if self.useSwitchOn:
+        if self.use_switch_on:
             self.__addConstraintsForSwitchOnSwitchOff(eqsOwner, system_model, time_indices)
-        if self.useOnHours:
+        if self.use_on_hours:
             FeatureOn.__addConstraintsForOnTimeOfBinary(
                 self.model.var_onHours, self.model.var_on, self.on_hours_min,
                 eqsOwner, system_model, time_indices)
-        if self.useOffHours:
+        if self.use_off_hours:
             FeatureOn.__addConstraintsForOnTimeOfBinary(
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 eqsOwner, system_model, time_indices)
@@ -891,7 +891,7 @@ class FeatureInvest(Feature):
         if self.featureOn is None:
             existOn = False
         else:
-            existOn = self.featureOn.useOn
+            existOn = self.featureOn.use_on
         return existOn
 
     def __init__(self, nameOfInvestmentSize, owner, invest_parameters: InvestParameters, min_rel, max_rel, val_rel, investmentSize,
@@ -965,7 +965,7 @@ class FeatureInvest(Feature):
             min_rel = self.min_rel.active_data
             max_rel = self.max_rel.active_data
 
-        on_is_used = self.featureOn is not None and self.featureOn.useOn
+        on_is_used = self.featureOn is not None and self.featureOn.use_on
         on_is_used_and_val_is_not_fix = (self.val_rel is None) and on_is_used
 
         # min-Wert:
