@@ -100,17 +100,18 @@ class FeatureLinearSegmentVars(Feature):
                 raise Exception('segments_of_variables is missing the following vars: ' + get_str_of_set(missing_vars))
 
         # Aufteilen der Daten in die Segmente:
-        for aSecNr in range(int(self.nr_of_segments)):
+        for section_index in range(int(self.nr_of_segments)):
             # samplePoints für das Segment extrahieren:
             # z.B.   {var1:[TS1.1, TS1.2]
             #         var2:[TS2.1, TS2.2]}            
-            samplePointsOfSegment = FeatureLinearSegmentVars.__extractSamplePoints4Segment(segments_of_variables, aSecNr)
+            sample_points_of_segment = (
+                FeatureLinearSegmentVars._extract_sample_points_for_segment(self.segments_of_variables, section_index))
             # Segment erstellen und in Liste::
-            newSegment = Segment('seg_' + str(aSecNr), self, samplePointsOfSegment, aSecNr)
+            new_segment = Segment(f'seg_{section_index}', self, sample_points_of_segment, section_index)
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
             # todo: alle Elemente sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
-            newSegment.create_new_model_and_activate_system_model(self.system_model)
-            self.segments.append(newSegment)
+            new_segment.create_new_model_and_activate_system_model(self.system_model)
+            self.segments.append(new_segment)
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
         for aSegment in self.segments:
@@ -127,15 +128,14 @@ class FeatureLinearSegmentVars(Feature):
         self.eq_IcanOnlyBeInOneSegment = Equation('ICanOnlyBeInOneSegment', self, system_model)
 
         # a) zusätzlich zu Aufenthalt in Segmenten kann alles auch Null sein:
-        if (self.var_on is not None) and (
-                self.var_on is not None):  # Eigentlich wird die On-Variable durch linearSegment-equations bereits vollständig definiert.
-            self.eq_IcanOnlyBeInOneSegment.add_summand(self.var_on, -1);
-        # b) Aufenthalt nur in Segmenten erlaubt:
+        if (self.var_on is not None) and (self.var_on is not None):
+            # TODO: # Eigentlich wird die On-Variable durch linearSegment-equations bereits vollständig definiert.
+            self.eq_IcanOnlyBeInOneSegment.add_summand(self.var_on, -1)
         else:
-            self.eq_IcanOnlyBeInOneSegment.add_constant(1);  #
+            self.eq_IcanOnlyBeInOneSegment.add_constant(1)   # b) Aufenthalt nur in Segmenten erlaubt:
 
         for aSegment in self.segments:
-            self.eq_IcanOnlyBeInOneSegment.add_summand(aSegment.model.var_onSeg, 1);
+            self.eq_IcanOnlyBeInOneSegment.add_summand(aSegment.model.var_onSeg, 1)
 
             #################################
         ## 2. Gleichungen der Segmente ##
@@ -178,14 +178,16 @@ class FeatureLinearSegmentVars(Feature):
                                      samplePoint2)  # Spalte 2 (Faktor kann hier Skalar sein oder Vektor)
 
     # extract the 2 TS_vectors for the segment:
-    def __extractSamplePoints4Segment(samplePointsOfAllSegments, nrOfSegment):
-        samplePoints4Segment = {}
+    @staticmethod
+    def _extract_sample_points_for_segment(sample_points_of_all_segments, segment_index):
+        # sample_points_of_all_segments = {var1:[TS1.1, TS1.2]
+        sample_points_for_segments = {}
         # für alle Variablen Segment-Stützstellen holen:
-        aSpalteOfSecStart = (nrOfSegment) * 2  # 0, 2, 4
-        for aVar in samplePointsOfAllSegments.keys():
+        start_column_of_section = segment_index * 2  # 0, 2, 4
+        for aVar in sample_points_of_all_segments.keys():
             # 1. und 2. Stützstellen des Segments auswählen:
-            samplePoints4Segment[aVar] = samplePointsOfAllSegments[aVar][aSpalteOfSecStart: aSpalteOfSecStart + 2]
-        return samplePoints4Segment
+            sample_points_for_segments[aVar] = sample_points_of_all_segments[aVar][start_column_of_section: start_column_of_section + 2]
+        return sample_points_for_segments
 
 
 class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
