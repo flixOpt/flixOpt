@@ -664,9 +664,16 @@ class FeatureOn(Feature):
 # TODO: als Feature_TSShareSum
 class Feature_ShareSum(Feature):
 
-    def __init__(self, label, owner, sharesAreTS, maxOfSum=None, minOfSum=None, max_per_hour = None, min_per_hour = None):
+    def __init__(self,
+                 label: str,
+                 owner: Element,
+                 shares_are_time_series: bool,
+                 total_max: Optional[Skalar] = None,
+                 total_min: Optional[Skalar] = None,
+                 max_per_hour: Optional[Numeric] = None,
+                 min_per_hour: Optional[Numeric] = None):
         '''
-        sharesAreTS = True : 
+        shares_are_time_series = True :
           Output: 
             var_all (TS), var_sum
           variables:
@@ -676,7 +683,7 @@ class Feature_ShareSum(Feature):
             eq_sum_TS : sum_TS = sum(share_TS_i) # Zeitserie
             eq_sum    : sum    = sum(sum_TS(t)) # skalar
 
-        # sharesAreTS = False: 
+        # shares_are_time_series = False:
         #   Output: 
         #     var_sum
         #   Equations:
@@ -688,35 +695,30 @@ class Feature_ShareSum(Feature):
             DESCRIPTION.
         owner : TYPE
             DESCRIPTION.
-        sharesAreTS : TYPE
+        shares_are_time_series : TYPE
             DESCRIPTION.
-        maxOfSum : TYPE, optional
+        total_max : TYPE, optional
             DESCRIPTION. The default is None.
-        minOfSum : TYPE, optional
+        total_min : TYPE, optional
             DESCRIPTION. The default is None.
-        max_per_hour : scalar or list(TS) (if sharesAreTS=True)
+        max_per_hour : scalar or list(TS) (if shares_are_time_series=True)
             maximum value per hour of shareSum;
-            only usable if sharesAreTS=True         
-        min_per_hour : scalar or list(TS) (if sharesAreTS=True)
+            only usable if shares_are_time_series=True
+        min_per_hour : scalar or list(TS) (if shares_are_time_series=True)
             minimum value per hour of shareSum of each timestep    
-            only usable if sharesAreTS=True 
+            only usable if shares_are_time_series=True
 
         '''
         super().__init__(label, owner)
-        self.sharesAreTS = sharesAreTS
-        self.maxOfSum = maxOfSum
-        self.minOfSum = minOfSum
-        max_min_per_hour_is_not_None = (max_per_hour is not None) or (min_per_hour is not None)
-        if (not self.sharesAreTS) and max_min_per_hour_is_not_None:
-            raise Exception('max_per_hour or min_per_hour can only be used, if sharesAreTS==True!')
+        self.shares_are_time_series = shares_are_time_series
+        self.total_max = total_max
+        self.total_min = total_min
+        max_min_per_hour_is_used = (max_per_hour is not None) or (min_per_hour is not None)
+        if max_min_per_hour_is_used and not self.shares_are_time_series:
+            raise Exception('max_per_hour or min_per_hour can only be used, if shares_are_time_series==True!')
         self.max_per_hour = None if (max_per_hour is None) else TimeSeries('max_per_hour', max_per_hour, self)
         self.min_per_hour = None if (min_per_hour is None) else TimeSeries('min_per_hour', min_per_hour, self)
-        
-
         self.shares = FeatureShares('shares', self)
-        # self.effectType = effectType    
-
-    # def setProperties(self, min = 0, max = nan)
 
     def declare_vars_and_eqs(self, system_model):
         super().declare_vars_and_eqs(system_model)
@@ -725,22 +727,22 @@ class Feature_ShareSum(Feature):
         # TODO: summe auch über Bus abbildbar!
         #   -> aber Beachte Effekt ist nicht einfach gleichzusetzen mit Flow, da hier eine Menge z.b. in € im Zeitschritt übergeben wird
         # variable für alle TS zusammen (TS-Summe):
-        if self.sharesAreTS:
+        if self.shares_are_time_series:
             lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, system_model.dt_in_hours)
             ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, system_model.dt_in_hours)
             self.model.var_sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self, system_model, lower_bound= lb_TS, upper_bound= ub_TS)  # TS
 
         # Variable für Summe (Skalar-Summe):
-        self.model.var_sum = Variable('sum', 1, self, system_model, lower_bound=self.minOfSum, upper_bound=self.maxOfSum)  # Skalar
+        self.model.var_sum = Variable('sum', 1, self, system_model, lower_bound=self.total_min, upper_bound=self.total_max)  # Skalar
 
         # Gleichungen schon hier definiert, damit andere Elemente beim modeling Beiträge eintragen können:
-        if self.sharesAreTS:
+        if self.shares_are_time_series:
             self.eq_sum_TS = Equation('bilanz', self, system_model)
         self.eq_sum = Equation('sum', self, system_model)
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         self.shares.do_modeling(system_model, time_indices)
-        if self.sharesAreTS:
+        if self.shares_are_time_series:
             # eq: sum_TS = sum(share_TS_i) # TS
             self.eq_sum_TS.add_summand(self.model.var_sum_TS, -1)
             # eq: sum = sum(sum_TS(t)) # skalar
@@ -756,9 +758,9 @@ class Feature_ShareSum(Feature):
 
         Parameters
         ----------
-        factor1 : TS oder skalar, bei sharesAreTS=False nur skalar
+        factor1 : TS oder skalar, bei shares_are_time_series=False nur skalar
             DESCRIPTION.
-        factor2 : TS oder skalar, bei sharesAreTS=False nur skalar
+        factor2 : TS oder skalar, bei shares_are_time_series=False nur skalar
             DESCRIPTION.
 
         Returns
@@ -800,7 +802,7 @@ class Feature_ShareSum(Feature):
         if nameOfShare is not None:
             eq_oneShare = self.shares.get_eqOfNewShare(nameOfShare, shareHolder, self.system_model)
 
-        if self.sharesAreTS:
+        if self.shares_are_time_series:
 
             # Falls TimeSeries, Daten auslesen:
             if isinstance(factor1, TimeSeries): factor1 = factor1.active_data

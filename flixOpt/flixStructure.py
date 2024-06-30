@@ -556,13 +556,13 @@ class Effect(Element):
         #TODO: Why as attributes, and not only in sub_elements?
         from flixOpt.flixFeatures import Feature_ShareSum
         self.operation = Feature_ShareSum(
-            label='operation', owner=self, sharesAreTS=True,
-            minOfSum=self.minimum_operation, maxOfSum=self.maximum_operation,
+            label='operation', owner=self, shares_are_time_series=True,
+            total_min=self.minimum_operation, total_max=self.maximum_operation,
             min_per_hour=self.minimum_operation_per_hour, max_per_hour=self.maximum_operation_per_hour)
-        self.invest = Feature_ShareSum(label='invest', owner=self, sharesAreTS=False,
-                                       minOfSum=self.minimum_invest, maxOfSum=self.maximum_invest)
-        self.all = Feature_ShareSum(label='all', owner=self, sharesAreTS=False,
-                                    minOfSum=self.minimum_total, maxOfSum=self.maximum_total)
+        self.invest = Feature_ShareSum(label='invest', owner=self, shares_are_time_series=False,
+                                       total_min=self.minimum_invest, total_max=self.maximum_invest)
+        self.all = Feature_ShareSum(label='all', owner=self, shares_are_time_series=False,
+                                    total_min=self.minimum_total, total_max=self.maximum_total)
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
@@ -862,7 +862,7 @@ class Global(Element):
     def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
         from flixOpt.flixFeatures import Feature_ShareSum
-        self.penalty = Feature_ShareSum('penalty', self, sharesAreTS=True)
+        self.penalty = Feature_ShareSum('penalty', self, shares_are_time_series=True)
 
         # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
         self.sub_elements.extend(self.listOfEffectTypes)
