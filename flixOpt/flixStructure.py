@@ -1856,8 +1856,7 @@ class System:
         if not self._finalized:
             # finalize Elements for modeling:
             for element in self.elements_of_fists_layer:
-                print(element.label)
-                type(element)
+                print(element.label)   #TODO: Remove this print??
                 element.finalize()  # inklusive sub_elements!
             self._finalized = True
 
