@@ -26,11 +26,11 @@ log = logging.getLogger(__name__)
 ##############################################################
 ## Funktionalität/Features zum Anhängen an die Komponenten: ##  
 
-class cFeature(Element):
+class Feature(Element):
 
-    def __init__(self, label, owner, **kwargs):
+    def __init__(self, label: str, owner: Element, **kwargs):
         self.owner = owner
-        if not self in self.owner.sub_elements:
+        if self not in self.owner.sub_elements:
             self.owner.sub_elements.append(self)  # register in owner
         super().__init__(label, **kwargs)
 
@@ -46,7 +46,7 @@ class cFeature(Element):
 
 
 # Abschnittsweise linear:
-class cFeatureLinearSegmentVars(cFeature):
+class FeatureLinearSegmentVars(Feature):
     # TODO: beser wäre hier schon Übergabe segmentsOfVars, aber schwierig, weil diese hier noch nicht vorhanden sind!
     def __init__(self, label, owner):
         super().__init__(label, owner)
@@ -99,9 +99,9 @@ class cFeatureLinearSegmentVars(cFeature):
             # samplePoints für das Segment extrahieren:
             # z.B.   {var1:[TS1.1, TS1.2]
             #         var2:[TS2.1, TS2.2]}            
-            samplePointsOfSegment = cFeatureLinearSegmentVars.__extractSamplePoints4Segment(segmentsOfVars, aSecNr)
+            samplePointsOfSegment = FeatureLinearSegmentVars.__extractSamplePoints4Segment(segmentsOfVars, aSecNr)
             # Segment erstellen und in Liste::
-            newSegment = cSegment('seg_' + str(aSecNr), self, samplePointsOfSegment, aSecNr)
+            newSegment = Segment('seg_' + str(aSecNr), self, samplePointsOfSegment, aSecNr)
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
             # todo: alle Elemente sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
             newSegment.create_new_model_and_activate_system_model(self.system_model)
@@ -183,7 +183,7 @@ class cFeatureLinearSegmentVars(cFeature):
         return samplePoints4Segment
 
 
-class cFeatureLinearSegmentSet(cFeatureLinearSegmentVars):
+class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
     # TODO: beser wäre segmentsOfVars, aber schwierig, weil diese hier noch nicht vorhanden sind!
     def __init__(self, label, owner, segmentsOfFlows_TS, get_var_on=None, checkListOfFlows=None):
         # segementsData - Elemente sind Listen!.
@@ -216,7 +216,7 @@ class cFeatureLinearSegmentSet(cFeatureLinearSegmentVars):
 
 
 # Abschnittsweise linear, 1 Abschnitt:
-class cSegment(cFeature):
+class Segment(Feature):
     def __init__(self, label, owner, samplePoints, index):
         super().__init__(label, owner)
 
@@ -235,7 +235,7 @@ class cSegment(cFeature):
 
 
 # Verhindern gleichzeitig mehrere Flows > 0 
-class cFeatureAvoidFlowsAtOnce(cFeature):
+class FeatureAvoidFlowsAtOnce(Feature):
 
     def __init__(self, label, owner, flows, typ='classic'):
         super().__init__(label, owner)
@@ -293,7 +293,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
                 self.eq_flowLock.add_summand(aFlow.model.var_on, 1)
                 # + flow_i.val(t)/flow_i.max
             else:  # nur bei "new"
-                assert aFlow.min >= 0, 'cFeatureAvoidFlowsAtOnce(): typ "new" geht nur für Flows mit min >= 0!'
+                assert aFlow.min >= 0, 'FeatureAvoidFlowsAtOnce(): typ "new" geht nur für Flows mit min >= 0!'
                 self.eq_flowLock.add_summand(aFlow.model.var_val, 1 / aFlow.max)
 
         if self.typ == 'classic':
@@ -304,7 +304,7 @@ class cFeatureAvoidFlowsAtOnce(cFeature):
 
 
 ## Klasse, die in Komponenten UND Flows benötigt wird: ##
-class cFeatureOn(cFeature):
+class FeatureOn(Feature):
     # def __init__(self, featureOwner, nameOfVariable, useOn, useSwitchOn):  
     # #   # on definierende Variablen:
     # #   self.featureOwner = featureOwner
@@ -435,11 +435,11 @@ class cFeatureOn(cFeature):
         if self.useSwitchOn:
             self.__addConstraintsForSwitchOnSwitchOff(eqsOwner, system_model, time_indices)
         if self.useOnHours:
-            cFeatureOn.__addConstraintsForOnTimeOfBinary(
+            FeatureOn.__addConstraintsForOnTimeOfBinary(
                 self.model.var_onHours, self.model.var_on, self.onHours_min,
                 eqsOwner, system_model, time_indices)
         if self.useOffHours:
-            cFeatureOn.__addConstraintsForOnTimeOfBinary(
+            FeatureOn.__addConstraintsForOnTimeOfBinary(
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 eqsOwner, system_model, time_indices)
 
@@ -633,8 +633,8 @@ class cFeatureOn(cFeature):
             # global_comp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
 
-# TODO: als cFeature_TSShareSum
-class cFeature_ShareSum(cFeature):
+# TODO: als Feature_TSShareSum
+class Feature_ShareSum(Feature):
 
     def __init__(self, label, owner, sharesAreTS, maxOfSum=None, minOfSum=None, max_per_hour = None, min_per_hour = None):
         '''
@@ -685,7 +685,7 @@ class cFeature_ShareSum(cFeature):
         self.min_per_hour = None if (min_per_hour is None) else TimeSeries('min_per_hour', min_per_hour, self)
         
 
-        self.shares = cFeatureShares('shares', self)
+        self.shares = FeatureShares('shares', self)
         # self.effectType = effectType    
 
     # def setProperties(self, min = 0, max = nan)
@@ -809,10 +809,10 @@ class cFeature_ShareSum(cFeature):
                     eq_oneShare.add_summand(variable, factorOfSummand)  # share itself
 
 
-class cFeatureShares(cFeature):
+class FeatureShares(Feature):
     ''' 
     used to list all shares
-    (owner is cFeature_ShareSum)
+    (owner is Feature_ShareSum)
     
     '''
 
@@ -850,7 +850,7 @@ class cFeatureShares(cFeature):
         return eq_oneShare
 
 
-class cFeatureInvest(cFeature):
+class FeatureInvest(Feature):
     # -> var_name            : z.B. "size", "capacity_inFlowHours"
     # -> fixedInvestmentSize : size, capacity_inFlowHours, ...
     # -> definingVar         : z.B. flow.model.var_val
@@ -890,8 +890,8 @@ class cFeatureInvest(cFeature):
             value of fixed investmentSize (None if no fixed investmentSize)
             Flow: investmentSize=size
             Storage: investmentSize =
-        featureOn : cFeatureOn
-            cFeatureOn of the definingVar (if it has a cFeatureOn)
+        featureOn : FeatureOn
+            FeatureOn of the definingVar (if it has a cFeatureOn)
 
         Returns
         -------
@@ -914,7 +914,7 @@ class cFeatureInvest(cFeature):
         # segmented investcosts:
         self.featureLinearSegments = None
         if self.args.effects_in_segments is not None:
-            self.featureLinearSegments = cFeatureLinearSegmentVars('segmentedInvestcosts', self)
+            self.featureLinearSegments = FeatureLinearSegmentVars('segmentedInvestcosts', self)
 
     def checkPlausibility(self):
         # Check fixedInvestmentSize:
@@ -1033,7 +1033,7 @@ class cFeatureInvest(cFeature):
         else:
             var_isInvested = None
 
-        ## 3. transfer segmentsOfVars to cFeatureLinearSegmentVars: ##
+        ## 3. transfer segmentsOfVars to FeatureLinearSegmentVars: ##
         self.featureLinearSegments.defineSegments(segmentsOfVars, var_on=var_isInvested,
                                                   checkListOfVars=list(segmentsOfVars.keys()))
 
@@ -1113,9 +1113,9 @@ class cFeatureInvest(cFeature):
                 self.eq_min_via_investmentSize.add_summand(self.definingVar_On, Big)  # übergebene On-Variable
                 self.eq_min_via_investmentSize.add_summand(self.model.var_investmentSize, self.min_rel.active_data)
                 self.eq_min_via_investmentSize.add_constant(Big)
-                # Anmerkung: Glg bei Spezialfall min_rel = 0 redundant zu cFeatureOn-Glg.
+                # Anmerkung: Glg bei Spezialfall min_rel = 0 redundant zu FeatureOn-Glg.
             else:
-                pass  # Bereits in cFeatureOn mit P>= On(t)*Min ausreichend definiert
+                pass  # Bereits in FeatureOn mit P>= On(t)*Min ausreichend definiert
         else:
             # eq: definingVar(t) >= investmentSize * min_rel(t)    
 

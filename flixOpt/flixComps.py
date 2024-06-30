@@ -207,9 +207,9 @@ class LinearTransformer(Component):
             def get_var_on():
                 return self.model.var_on
 
-            self.feature_linSegments = cFeatureLinearSegmentSet('linearSegments', self, self.segmentsOfFlows_TS,
-                                                                get_var_on=get_var_on,
-                                                                checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
+            self.feature_linSegments = FeatureLinearSegmentSet('linearSegments', self, self.segmentsOfFlows_TS,
+                                                               get_var_on=get_var_on,
+                                                               checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
         """
@@ -719,16 +719,16 @@ class Storage(Component):
         self.featureInvest = None
 
         if self.avoidInAndOutAtOnce:
-            self.featureAvoidInAndOut = cFeatureAvoidFlowsAtOnce('feature_avoidInAndOutAtOnce', self,
-                                                                 [self.inFlow, self.outFlow])
+            self.featureAvoidInAndOut = FeatureAvoidFlowsAtOnce('feature_avoidInAndOutAtOnce', self,
+                                                                [self.inFlow, self.outFlow])
 
         if self.invest_parameters is not None:
-            self.featureInvest = cFeatureInvest('used_capacity_inFlowHours', self, self.invest_parameters,
-                                                min_rel=self.min_rel_chargeState,
-                                                max_rel=self.max_rel_chargeState,
-                                                val_rel=None,  # kein vorgegebenes Profil
-                                                investmentSize=self.capacity_inFlowHours,
-                                                featureOn=None)  # hier gibt es kein On-Wert
+            self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.invest_parameters,
+                                               min_rel=self.min_rel_chargeState,
+                                               max_rel=self.max_rel_chargeState,
+                                               val_rel=None,  # kein vorgegebenes Profil
+                                               investmentSize=self.capacity_inFlowHours,
+                                               featureOn=None)  # hier gibt es kein On-Wert
 
         # Medium-Check:
         if not (MediumCollection.checkIfFits(inFlow.medium, outFlow.medium)):
@@ -972,7 +972,7 @@ class SourceAndSink(Component):
         self.sink.force_on_variable()
 
         if self.avoidInAndOutAtOnce:
-            self.featureAvoidInAndOutAtOnce = cFeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])
+            self.featureAvoidInAndOutAtOnce = FeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])
         else:
             self.featureAvoidInAndOutAtOnce = None
 
@@ -1163,8 +1163,8 @@ class Transportation(Component):
         self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
 
         if self.avoidFlowInBothDirectionsAtOnce and (in2 is not None):
-            self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
-                                                                             [self.in1, self.in2])
+            self.featureAvoidBothDirectionsAtOnce = FeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
+                                                                            [self.in1, self.in2])
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
         """

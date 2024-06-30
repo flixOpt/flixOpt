@@ -54,7 +54,7 @@ class TimeSeriesRaw:
         return f"Timeseries: {agg_info}"
 
 
-# Sammlung von Props für Investitionskosten (für cFeatureInvest)
+# Sammlung von Props für Investitionskosten (für FeatureInvest)
 class InvestParameters:
     '''
     collects arguments for invest-stuff
