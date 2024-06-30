@@ -100,7 +100,7 @@ class FeatureLinearSegmentVars(Feature):
 
         # Aufteilen der Daten in die Segmente:
         for section_index in range(int(self.nr_of_segments)):
-            # samplePoints für das Segment extrahieren:
+            # sample_points für das Segment extrahieren:
             # z.B.   {var1:[TS1.1, TS1.2]
             #         var2:[TS2.1, TS2.2]}            
             sample_points_of_segment = (
@@ -160,8 +160,8 @@ class FeatureLinearSegmentVars(Feature):
             eqLambda.add_summand(aVar, -1)
             for aSegment in self.segments:
                 #  Stützstellen einfügen:
-                stuetz1 = aSegment.samplePoints[aVar][0]
-                stuetz2 = aSegment.samplePoints[aVar][1]
+                stuetz1 = aSegment.sample_points[aVar][0]
+                stuetz2 = aSegment.sample_points[aVar][1]
                 # wenn Stützstellen TS_vector:
                 if isinstance(stuetz1, TimeSeries):
                     samplePoint1 = stuetz1.active_data
@@ -221,22 +221,27 @@ class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
         super().declare_vars_and_eqs(system_model)   # 2. declare vars:
 
 
-# Abschnittsweise linear, 1 Abschnitt:
 class Segment(Feature):
-    def __init__(self, label, owner, samplePoints, index):
+    """
+    Für Abschnittsweise Linearisierung ist das ein Abschnitt
+    """
+    def __init__(self,
+                 label: str,
+                 owner: Element,
+                 sample_points: Dict[Variable, Tuple[Numeric, Numeric]],
+                 index):
         super().__init__(label, owner)
-
         self.label = label
-        self.samplePoints = samplePoints
+        self.sample_points = sample_points
         self.index = index
 
     def declare_vars_and_eqs(self, system_model):
-        aLen = system_model.nrOfTimeSteps
-        self.model.var_onSeg = VariableTS('onSeg_' + str(self.index), aLen, self, system_model,
+        length = system_model.nrOfTimeSteps
+        self.model.var_onSeg = VariableTS(f'onSeg_{self.index}', length, self, system_model,
                                           is_binary=True)  # Binär-Variable
-        self.model.var_lambda1 = VariableTS('lambda1_' + str(self.index), aLen, self, system_model, lower_bound=0,
+        self.model.var_lambda1 = VariableTS(f'lambda1_{self.index}', length, self, system_model, lower_bound=0,
                                             upper_bound=1)  # Wertebereich 0..1
-        self.model.var_lambda2 = VariableTS('lambda2_' + str(self.index), aLen, self, system_model, lower_bound=0,
+        self.model.var_lambda2 = VariableTS(f'lambda2_{self.index}', length, self, system_model, lower_bound=0,
                                             upper_bound=1)  # Wertebereich 0..1
 
 
