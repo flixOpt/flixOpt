@@ -360,39 +360,40 @@ class FeatureOn(Feature):
         self.off_hours_min = off_hours_min  # TimeSeries
         self.off_hours_max = off_hours_max  # TimeSeries
         self.switch_on_total_max = switch_on_total_max
-        # default:
-        self.useOn = False
-        self.useOff = False
-        self.useSwitchOn = False
-        self.useOnHours = False
-        self.useOffHours = False
+        self.force_on = force_on
+        self.force_switch_on = force_switch_on
 
-        # Notwendige Variablen entsprechend der übergebenen Parameter:        
-        paramsForcingOn = [running_hour_effects, on_hours_total_min, on_hours_total_max,
-                           on_hours_min, on_hours_max, off_hours_min, off_hours_max]
-        if any(param is not None for param in paramsForcingOn):
-            self.useOn = True
+    @property
+    def useOn(self) -> bool:
+        return (any(param is not None for param in [self.running_hour_effects,
+                                                    self.on_hours_total_min,
+                                                    self.on_hours_total_max])
+                or self.force_on or self.useSwitchOn or self.useOnHours or self.useOffHours or self.useOff)
 
-        paramsForcingSwitchOn = [switch_on_effects, switch_on_total_max, on_hours_total_max, on_hours_total_min]
-        if any(param is not None for param in paramsForcingSwitchOn):
-            self.useOn = True
-            self.useSwitchOn = True
+    @property
+    def useOff(self) -> bool:
+        return self.useOffHours
 
-        paramsForcingOnHours = [self.on_hours_min, self.on_hours_max]  # onHoursSum alway realized
-        if any(param is not None for param in paramsForcingOnHours):
-            self.useOnHours = True
+    @property
+    def useOnHours(self) -> bool:
+        return any(param is not None for param in [self.on_hours_min, self.on_hours_max])
 
-        paramsForcingOffHours = [self.off_hours_min, self.off_hours_max]  # offHoursSum alway realized
-        if any(param is not None for param in paramsForcingOffHours):
-            self.useOffHours = True
+    @property
+    def useOffHours(self) -> bool:
+        return any(param is not None for param in [self.off_hours_min, self.off_hours_max])
 
-        self.useOn = self.useOn | force_on | self.useOnHours | self.useOffHours
-        self.useOff = self.useOffHours
-        self.useSwitchOn = self.useSwitchOn | force_switch_on
+    @property
+    def useSwitchOn(self) -> bool:
+        return (any(param is not None for param in [self.switch_on_effects,
+                                                   self.switch_on_total_max,
+                                                   self.on_hours_total_min,
+                                                   self.on_hours_total_max])
+                or self.force_switch_on)
+
 
     # Befehl von außen zum Erzwingen einer On-Variable:
     def force_on_variable(self):
-        self.useOn = True
+        self.force_on = True
 
     # varOwner braucht die Variable auch:
     def getVar_on(self):
