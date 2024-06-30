@@ -454,7 +454,7 @@ class FeatureOn(Feature):
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         eqsOwner = self
         if self.use_on:
-            self._add_on_constraints(eqsOwner, self.flows_defining_on, system_model, time_indices)
+            self._add_on_constraints(system_model, time_indices)
         if self.use_off:
             self._add_off_constraints(eqsOwner, system_model, time_indices)
         if self.use_switch_on:
@@ -468,28 +468,27 @@ class FeatureOn(Feature):
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 eqsOwner, system_model, time_indices)
 
-    def _add_on_constraints(self, eqsOwner: Feature, flows_defining_on, system_model, time_indices: Union[list[int], range]):
+    def _add_on_constraints(self, system_model, time_indices: Union[list[int], range]):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
 
         # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig 
         # %            (und dann auch nur wenn erstes Segment bei Q_th=0 beginnt. Dann soll bei Q_th=0 (d.h. die Maschine ist Aus) On = 0 und segment1.onSeg = 0):)
         # %            Fazit: Wenn kein Performance-Verlust durch mehr Gleichungen, dann egal!      
 
-        nrOfFlows = len(flows_defining_on)
-        assert nrOfFlows > 0, 'Achtung: mindestens 1 Flow notwendig'
-        #######################################################################
+        nr_of_flows = len(self.flows_defining_on)
+        assert nr_of_flows > 0, 'Achtung: mindestens 1 Flow notwendig'
         #### Bedingung 1) ####
 
         # Glg. wird erstellt und auch gleich in featureOwner registiert:
-        eq1 = Equation('On_Constraint_1', eqsOwner, system_model, eqType='ineq')
+        eq1 = Equation('On_Constraint_1', self, system_model, eqType='ineq')
         # TODO: eventuell label besser über  nameOfIneq = [aOnVariable.name '_Constraint_1']; % z.B. On_Constraint_1
 
         # Wenn nur 1 Leistungsvariable (!Unterscheidet sich von >1 Leistungsvariablen wg. Minimum-Beachtung!):
-        if nrOfFlows == 1:
+        if len(self.flows_defining_on) == 1:
             ## Leistung<=MinLeistung -> On = 0 | On=1 -> Leistung>MinLeistung
             # eq: Q_th(t) - max(Epsilon, Q_th_min) * On(t) >= 0  (mit Epsilon = sehr kleine Zahl, wird nur im Falle Q_th_min = 0 gebraucht)
             # gleichbedeutend mit eq: -Q_th(t) + max(Epsilon, Q_th_min)* On(t) <= 0 
-            aFlow = flows_defining_on[0]
+            aFlow = self.flows_defining_on[0]
             eq1.add_summand(aFlow.model.var_val, -1, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
@@ -503,47 +502,45 @@ class FeatureOn(Feature):
 
         # Bei mehreren Leistungsvariablen:
         else:
-
             # Nur wenn alle Flows = 0, dann ist On = 0
             ## 1) sum(alle Leistung)=0 -> On = 0 | On=1 -> sum(alle Leistungen) > 0
             # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
-            for aFlow in flows_defining_on:
+            for aFlow in self.flows_defining_on:
                 eq1.add_summand(aFlow.model.var_val, -1, time_indices)
             eq1.add_summand(self.model.var_on, 1 * system_model.epsilon,
                             time_indices)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
 
-        #######################################################################
         #### Bedingung 2) ####
 
         # Glg. wird erstellt und auch gleich in featureOwner registiert:
-        eq2 = Equation('On_Constraint_2', eqsOwner, system_model, eqType='ineq')
+        eq2 = Equation('On_Constraint_2', self, system_model, eqType='ineq')
         # Wenn nur 1 Leistungsvariable:
         #  eq: Q_th(t) <= Q_th_max * On(t)
         # (Leistung>0 -> On = 1 | On=0 -> Leistung<=0)
         # Bei mehreren Leistungsvariablen:
         ## sum(alle Leistung) >0 -> On = 1 | On=0 -> sum(Leistung)=0
         #  eq: sum( Leistung(t,i))              - sum(Leistung_max(i))             * On(t) <= 0
-        #  --> damit Gleichungswerte nicht zu groß werden, noch durch nrOfFlows geteilt:
-        #  eq: sum( Leistung(t,i) / nrOfFlows ) - sum(Leistung_max(i)) / nrOfFlows * On(t) <= 0
+        #  --> damit Gleichungswerte nicht zu groß werden, noch durch nr_of_flows geteilt:
+        #  eq: sum( Leistung(t,i) / nr_of_flows ) - sum(Leistung_max(i)) / nr_of_flows * On(t) <= 0
         sumOfFlowMax = 0
-        for aFlow in flows_defining_on:
-            eq2.add_summand(aFlow.model.var_val, 1 / nrOfFlows, time_indices)
+        for aFlow in self.flows_defining_on:
+            eq2.add_summand(aFlow.model.var_val, 1 / nr_of_flows, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
                 sumOfFlowMax += aFlow.max_rel.active_data * aFlow.invest_parameters.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
                 sumOfFlowMax += aFlow.max_rel.active_data * aFlow.size
 
-        eq2.add_summand(self.model.var_on, - sumOfFlowMax / nrOfFlows, time_indices)  #
+        eq2.add_summand(self.model.var_on, - sumOfFlowMax / nr_of_flows, time_indices)  #
 
         if isinstance(sumOfFlowMax, (np.ndarray, list)):
-            if max(sumOfFlowMax) / nrOfFlows > 1000: log.warning(
+            if max(sumOfFlowMax) / nr_of_flows > 1000: log.warning(
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
-                    int(max(sumOfFlowMax) / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
+                    int(max(sumOfFlowMax) / nr_of_flows)) + '). Ggf. falsche Ergebnisse !!!')
         else:
-            if sumOfFlowMax / nrOfFlows > 1000: log.warning(
+            if sumOfFlowMax / nr_of_flows > 1000: log.warning(
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
-                    int(sumOfFlowMax / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
+                    int(sumOfFlowMax / nr_of_flows)) + '). Ggf. falsche Ergebnisse !!!')
 
     def _add_off_constraints(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
         # Definition var_off:
