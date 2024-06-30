@@ -12,8 +12,8 @@ import logging
 
 import numpy as np
 
-from flixOpt.flixStructure import Element, SystemModel, Flow  # Grundstruktur
-from flixOpt.flixBasics import TimeSeries, Numeric, as_effect_dict, Skalar
+from flixOpt.flixStructure import Element, SystemModel, Flow, EffectTypeDict  # Grundstruktur
+from flixOpt.flixBasics import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.basicModeling import Variable, VariableTS, Equation
 from flixOpt.flixBasicsPublic import InvestParameters
 import flixOpt.flixOptHelperFcts as helpers
@@ -325,19 +325,19 @@ class FeatureOn(Feature):
     """
     def __init__(self,
                  owner: Element,
-                 flowsDefiningOn,
-                 on_values_before_begin,
-                 switch_on_effects,
-                 running_hour_effects,
-                 onHoursSum_min=None,
-                 onHoursSum_max=None,
-                 onHours_min=None,
-                 onHours_max=None,
-                 off_hours_min=None,
-                 off_hours_max=None,
-                 switch_on_total_max=None,
-                 useOn_explicit=False,
-                 useSwitchOn_explicit=False):
+                 flowsDefiningOn: List[Flow],
+                 on_values_before_begin: List[int],
+                 switch_on_effects: Optional[EffectTypeDict] = None,
+                 running_hour_effects: Optional[EffectTypeDict] = None,
+                 onHoursSum_min: Optional[int] = None,
+                 onHoursSum_max: Optional[int] = None,
+                 onHours_min: Optional[Numeric] = None,
+                 onHours_max: Optional[Numeric] = None,
+                 off_hours_min: Optional[Numeric] = None,
+                 off_hours_max: Optional[Numeric] = None,
+                 switch_on_total_max: Optional[int] = None,
+                 useOn_explicit: bool = False,
+                 useSwitchOn_explicit: bool = False):
         super().__init__('featureOn', owner)
         self.flowsDefiningOn = flowsDefiningOn
         self.on_values_before_begin = on_values_before_begin
