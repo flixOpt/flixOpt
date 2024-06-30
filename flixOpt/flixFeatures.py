@@ -459,11 +459,11 @@ class FeatureOn(Feature):
         if self.use_switch_on:
             self.add_switch_constraints(system_model, time_indices)
         if self.use_on_hours:
-            FeatureOn._add_on_duration_constraints(
+            FeatureOn._add_duration_constraints(
                 self.model.var_onHours, self.model.var_on, self.on_hours_min,
                 self, system_model, time_indices)
         if self.use_off_hours:
-            FeatureOn._add_on_duration_constraints(
+            FeatureOn._add_duration_constraints(
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 self, system_model, time_indices)
 
@@ -550,30 +550,35 @@ class FeatureOn(Feature):
         eq_var_off.add_constant(1)
 
     @staticmethod  # to be sure not using any self-Variables
-    def _add_on_duration_constraints(var_bin_onTime, var_bin, on_hours_min, eqsOwner, system_model, time_indices: Union[list[int], range]):
+    def _add_duration_constraints(duration_variable: VariableTS,
+                                  binary_variable: VariableTS,
+                                  minimum_duration: Optional[TimeSeries],
+                                  eqsOwner: Element,
+                                  system_model: SystemModel,
+                                  time_indices: Union[list[int], range]):
         '''
         i.g. 
-        var_bin        = [0 0 1 1 1 1 0 1 1 1 0 ...]
-        var_bin_onTime = [0 0 1 2 3 4 0 1 2 3 0 ...] (bei dt=1)
+        binary_variable        = [0 0 1 1 1 1 0 1 1 1 0 ...]
+        duration_variable = [0 0 1 2 3 4 0 1 2 3 0 ...] (bei dt=1)
                                             |-> min_onHours = 3!
         
-        if you wanna count zeros, define var_bin_off: = 1-var_bin before!
+        if you want to count zeros, define var_bin_off: = 1-binary_variable before!
         '''
         # TODO: Einfachere Variante von Peter umsetzen!
 
         # 1) eq: onHours(t) <= On(t)*Big | On(t)=0 -> onHours(t) = 0
         # mit Big = dt_in_hours_total
-        aLabel = var_bin_onTime.label
+        aLabel = duration_variable.label
         ineq_1 = Equation(aLabel + '_constraint_1', eqsOwner, system_model, eqType='ineq')
-        ineq_1.add_summand(var_bin_onTime, 1)
-        ineq_1.add_summand(var_bin, -1 * system_model.dt_in_hours_total)
+        ineq_1.add_summand(duration_variable, 1)
+        ineq_1.add_summand(binary_variable, -1 * system_model.dt_in_hours_total)
 
         # 2a) eq: onHours(t) - onHours(t-1) <= dt(t)
         #    on(t)=1 -> ...<= dt(t)
         #    on(t)=0 -> onHours(t-1)>=
         ineq_2a = Equation(aLabel + '_constraint_2a', eqsOwner, system_model, eqType='ineq')
-        ineq_2a.add_summand(var_bin_onTime, 1, time_indices[1:])  # onHours(t)
-        ineq_2a.add_summand(var_bin_onTime, -1, time_indices[0:-1])  # onHours(t-1)
+        ineq_2a.add_summand(duration_variable, 1, time_indices[1:])  # onHours(t)
+        ineq_2a.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
         ineq_2a.add_constant(system_model.dt_in_hours[1:])  # dt(t)
 
         # 2b) eq:  onHours(t) - onHours(t-1)             >=  dt(t) - Big*(1-On(t)))
@@ -581,28 +586,30 @@ class FeatureOn(Feature):
         # with Big = dt_in_hours_total # (Big = maxOnHours, should be usable, too!)
         Big = system_model.dt_in_hours_total
         ineq_2b = Equation(aLabel + '_constraint_2b', eqsOwner, system_model, eqType='ineq')
-        ineq_2b.add_summand(var_bin_onTime, -1, time_indices[1:])  # onHours(t)
-        ineq_2b.add_summand(var_bin_onTime, 1, time_indices[0:-1])  # onHours(t-1)
-        ineq_2b.add_summand(var_bin, Big, time_indices[1:])  # on(t)
+        ineq_2b.add_summand(duration_variable, -1, time_indices[1:])  # onHours(t)
+        ineq_2b.add_summand(duration_variable, 1, time_indices[0:-1])  # onHours(t-1)
+        ineq_2b.add_summand(binary_variable, Big, time_indices[1:])  # on(t)
         ineq_2b.add_constant(-system_model.dt_in_hours[1:] + Big)  # dt(t)
 
-        # 3) check on_hours_min before switchOff-step
+        # 3) check minimum_duration before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
-        if on_hours_min is not None:
+        if minimum_duration is not None:
             # Note: switchOff-step is when: On(t)-On(t-1) == -1
             # eq:  onHours(t-1) >= minOnHours * -1 * [On(t)-On(t-1)]
-            # eq: -onHours(t-1) - on_hours_min * On(t) + on_hours_min*On(t-1) <= 0
+            # eq: -onHours(t-1) - minimum_duration * On(t) + minimum_duration*On(t-1) <= 0
             ineq_min = Equation(aLabel + '_min', eqsOwner, system_model, eqType='ineq')
-            ineq_min.add_summand(var_bin_onTime, -1, time_indices[0:-1])  # onHours(t-1)
-            ineq_min.add_summand(var_bin, -1 * on_hours_min.active_data, time_indices[1:])  # on(t)
-            ineq_min.add_summand(var_bin, on_hours_min.active_data, time_indices[0:-1])  # on(t-1)
+            ineq_min.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
+            ineq_min.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
+            ineq_min.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
+
+        # TODO: Maximum Duration?? Is this not modeled yet?
 
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)
         firstIndex = time_indices[0]  # only first element
         eq_first = Equation(aLabel + '_firstTimeStep', eqsOwner, system_model)
-        eq_first.add_summand(var_bin_onTime, 1, firstIndex)
-        eq_first.add_summand(var_bin, -1 * system_model.dt_in_hours[firstIndex], firstIndex)
+        eq_first.add_summand(duration_variable, 1, firstIndex)
+        eq_first.add_summand(binary_variable, -1 * system_model.dt_in_hours[firstIndex], firstIndex)
 
     def add_switch_constraints(self, system_model, time_indices: Union[list[int], range]):
         # % Schaltänderung aus On-Variable
