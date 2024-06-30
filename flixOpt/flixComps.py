@@ -10,6 +10,7 @@ import textwrap
 
 from . import flixOptHelperFcts as helpers
 from .basicModeling import *
+from .flixBasics import effect_values_to_ts
 from .flixStructure import *
 from .flixFeatures import *
 

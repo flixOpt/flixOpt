@@ -9,16 +9,16 @@ import math
 import time
 import textwrap
 import pprint
-from typing import List, Set, Tuple, Dict, Union, Optional, TYPE_CHECKING
+from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
 
 import numpy as np
 import yaml  # (für json-Schnipsel-print)
 
-from . import flixOptHelperFcts as helpers
-from .basicModeling import *  # Modelliersprache
-from .flixBasics import *
-from .flixBasicsPublic import InvestParameters, TimeSeriesRaw
+from flixOpt import flixOptHelperFcts as helpers
+from flixOpt.basicModeling import LinearModel, Variable, VariableTS, Equation  # Modelliersprache
+from flixOpt.flixBasics import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
+from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixFeatures import cFeatureInvest
 
@@ -78,7 +78,7 @@ class SystemModel(LinearModel):
               excess_threshold: Union[int, float] = 0.1,
               logfile_name: str = 'solver_log.log',
               **kwargs):
-        '''        
+        '''
         Parameters
         ----------
         mip_gap : TYPE, optional
@@ -93,15 +93,15 @@ class SystemModel(LinearModel):
             threshold for excess: If sum(Excess)>excess_threshold a warning is raised, that an excess occurs
         **kwargs : TYPE
             DESCRIPTION.
-  
+
         Returns
         -------
         main_results_str : TYPE
             DESCRIPTION.
-  
+
         '''
 
-        # check valid solver options:        
+        # check valid solver options:
         if len(kwargs) > 0:
             for key in kwargs.keys():
                 if key not in ['threads']:
@@ -126,8 +126,8 @@ class SystemModel(LinearModel):
         print(f'Termination message: "{termination_message}"')
 
         print('')
-        # Variablen-Ergebnisse abspeichern:      
-        # 1. dict:  
+        # Variablen-Ergebnisse abspeichern:
+        # 1. dict:
         (self.results, self.results_var) = self.system.getResultsAfterSolve()
         # 2. struct:
         self.results_struct = helpers.createStructFromDictInDict(self.results)
@@ -358,7 +358,7 @@ class Element:
     #   # for aFeature in self.features:
     #   aFeature.do_modeling(model, time_indices)
 
-    # Ergebnisse als dict ausgeben:    
+    # Ergebnisse als dict ausgeben:
     def get_results(self) -> Tuple[Dict, Dict]:
         aData = {}
         aVars = {}
@@ -488,7 +488,7 @@ class Effect(Element):
                  minimum_total: Optional[Skalar] = None,
                  maximum_total: Optional[Skalar] = None,
                  **kwargs):
-        '''        
+        '''
         Parameters
         ----------
         label : str
@@ -607,7 +607,7 @@ class Effect(Element):
 
 # ModelingElement (Element) Klasse zum Summieren einzelner Shares
 # geht für skalar und TS
-# z.B. invest.costs 
+# z.B. invest.costs
 
 
 # Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
@@ -637,7 +637,7 @@ EffectTypeDict = Dict[Effect, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class Component(Element):
-    ''' 
+    '''
     basic component class for all components
     '''
     system_model: SystemModel
@@ -656,14 +656,14 @@ class Component(Element):
                  exists: Numeric = 1,
                  **kwargs):
         '''
-        
+
 
         Parameters
         ----------
         label : str
             name.
-        
-        Parameters of on/off-feature 
+
+        Parameters of on/off-feature
         ----------------------------
         (component is off, if all flows are zero!)
 
@@ -699,7 +699,7 @@ class Component(Element):
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
-        # % On Werte vorher durch Flow-values bestimmen:    
+        # % On Werte vorher durch Flow-values bestimmen:
         # self.on_valuesBefore = 1 * (self.featureOwner.values_before_begin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
 
         #TODO: Dict instead of list?
@@ -848,7 +848,7 @@ class Component(Element):
 
 # komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
 class Global(Element):
-    ''' 
+    '''
     storing global modeling stuff like effect equations and optimization target
     '''
 
@@ -868,10 +868,10 @@ class Global(Element):
         self.sub_elements.extend(self.listOfEffectTypes)
 
     # Beiträge registrieren:
-    # effectValues kann sein 
-    #   1. {effecttype1 : TS, effectType2: : TS} oder 
-    #   2. TS oder skalar 
-    #     -> Zuweisung zu Standard-EffektType      
+    # effectValues kann sein
+    #   1. {effecttype1 : TS, effectType2: : TS} oder
+    #   2. TS oder skalar
+    #     -> Zuweisung zu Standard-EffektType
 
     def add_share_to_operation(self,
                                name_of_share: str,
@@ -1015,8 +1015,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         """
         Parameters
         ----------
-        media : None, str or set of str            
-            media or set of allowed media of the coupled flows, 
+        media : None, str or set of str
+            media or set of allowed media of the coupled flows,
             if None, then any flow is allowed
             example 1: media = None -> every media is allowed
             example 1: media = 'gas' -> flows with medium 'gas' are allowed
@@ -1116,7 +1116,7 @@ class MediumCollection:
     def addMedium(attrName, strOfMedium):
         '''
         add new medium to predefined media
-        
+
         Parameters
         ----------
         attrName : str
@@ -1143,7 +1143,7 @@ class Connection:
     def __init__(self):
         raise NotImplementedError()
 
-# todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
+# todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs
 # Fluss/Strippe
 class Flow(Element):
     '''
@@ -1217,13 +1217,13 @@ class Flow(Element):
         max_rel : scalar, array, TimeSeriesRaw, optional
             max value is max_rel multiplied by size. If size = max then max_rel=1
         size : scalar. None if is a nominal value is a opt-variable, optional
-            nominal value/ invest size (linked to min_rel, max_rel and others). 
-            i.g. kW, area, volume, pieces, 
-            möglichst immer so stark wie möglich einschränken 
+            nominal value/ invest size (linked to min_rel, max_rel and others).
+            i.g. kW, area, volume, pieces,
+            möglichst immer so stark wie möglich einschränken
             (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)
         load_factor_min : scalar, optional
-            minimal load factor  general: avg Flow per nominalVal/investSize 
-            (e.g. boiler, kW/kWh=h; solarthermal: kW/m²; 
+            minimal load factor  general: avg Flow per nominalVal/investSize
+            (e.g. boiler, kW/kWh=h; solarthermal: kW/m²;
              def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
         load_factor_max : scalar, optional
             maximal load factor (see minimal load factor)
@@ -1232,8 +1232,8 @@ class Flow(Element):
         effects_per_flow_hour : scalar, array, TimeSeriesRaw, optional
             operational costs, costs per flow-"work"
         can_switch_off : boolean, optional
-            flow can be "off", i.e. be zero (only relevant if min_rel > 0) 
-            Then a binary var "on" is used. 
+            flow can be "off", i.e. be zero (only relevant if min_rel > 0)
+            Then a binary var "on" is used.
             If any on/off-forcing parameters like "switch_on_effects", "on_hours_min" etc. are used, then
             this is automatically forced.
         on_hours_total_min : scalar, optional
@@ -1251,23 +1251,23 @@ class Flow(Element):
         off_hours_max : scalar, optional
             max sum of non-operating hours in one piece
         switch_on_effects : scalar, array, TimeSeriesRaw, optional
-            cost of one switch from off (var_on=0) to on (var_on=1), 
+            cost of one switch from off (var_on=0) to on (var_on=1),
             unit i.g. in Euro
         switch_on_total_max : integer, optional
             max nr of switchOn operations
         running_hour_effects : scalar or TS, optional
             costs for operating, i.g. in € per hour
         flow_hours_total_max : TYPE, optional
-            maximum flow-hours ("flow-work") 
+            maximum flow-hours ("flow-work")
             (if size is not const, maybe load_factor_max fits better for you!)
         flow_hours_total_min : TYPE, optional
-            minimum flow-hours ("flow-work") 
+            minimum flow-hours ("flow-work")
             (if size is not const, maybe load_factor_min fits better for you!)
         values_before_begin : list (TODO: why not scalar?), optional
-            Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'), 
+            Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'),
             # TODO: integration of option for 'first is last'
         val_rel : scalar, array, TimeSeriesRaw, optional
-            fixed relative values for flow (if given). 
+            fixed relative values for flow (if given).
             val(t) := val_rel(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;
             (min_rel u. max_rel are making sense anymore)
@@ -1275,7 +1275,7 @@ class Flow(Element):
             If the load-profile is just an upper limit, use max_rel instead.
         medium: string, None
             medium is relevant, if the linked bus only allows a special defined set of media.
-            If None, any bus can be used.            
+            If None, any bus can be used.
         invest_parameters : None or InvestParameters, optional
             used for investment costs or/and investment-optimization!
         exists : int, array, None
@@ -1438,7 +1438,7 @@ class Flow(Element):
         else:
             (lower_bound, upper_bound, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
-        # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
+        # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?
         self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model,
                                         lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value)
         self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, lower_bound=self.flow_hours_total_min,
@@ -1462,7 +1462,7 @@ class Flow(Element):
         # ############## Variablen aktivieren: ##############
         #
 
-        # todo -> für pyomo: fix()        
+        # todo -> für pyomo: fix()
 
 
         #
@@ -1490,7 +1490,7 @@ class Flow(Element):
 
         #
         # ############## sumFlowHours: ##############
-        #        
+        #
 
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
@@ -1498,13 +1498,13 @@ class Flow(Element):
         eq_sumFlowHours.add_summand(self.model.var_val, system_model.dt_in_hours, as_sum=True)
         eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
 
-        #          
+        #
         # ############## Constraints für Binärvariablen : ##############
         #
 
         self.featureOn.do_modeling(system_model, time_indices)  # TODO: rekursiv aufrufen für sub_elements
 
-        #          
+        #
         # ############## Glg. für Investition : ##############
         #
 
@@ -1539,7 +1539,7 @@ class Flow(Element):
             else:
                 eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.size * flowHoursPerInvestsize_min)
 
-        # ############## positiver Gradient ######### 
+        # ############## positiver Gradient #########
 
         '''        
         if self.positive_gradient == None :                    
@@ -1575,7 +1575,7 @@ class Flow(Element):
                 'effects_per_flow_hour', owner, self.model.var_val,
                 self.effects_per_flow_hour, system_model.dt_in_hours)
 
-        # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
+        # Anfahrkosten, Betriebskosten, ... etc ergänzen:
         self.featureOn.add_share_to_globals(global_comp, system_model)
 
         if self.featureInvest is not None:
@@ -1652,8 +1652,9 @@ class System:
 
         def get_invest_features_of_element(element: Element) -> List['cFeatureInvest']:
             invest_features = []
+            from flixOpt.flixFeatures import cFeatureInvest
             for aSubComp in element.all_sub_elements:
-                if isinstance(aSubComp, flixOpt.flixFeatures.cFeatureInvest):
+                if isinstance(aSubComp, cFeatureInvest):
                     invest_features.append(aSubComp)
                 invest_features += get_invest_features_of_element(aSubComp)  # recursive!
             return invest_features
@@ -2330,6 +2331,7 @@ class Calculation:
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
+                from flixOpt.basicModeling import BeforeValues
                 segmentModBoxBefore = self.segmentModBoxList[i - 1]
                 segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
@@ -2447,6 +2449,7 @@ class Calculation:
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
         self.TSlistForAggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
+        from flixOpt.flixBasics import TimeSeriesCollection
         self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
                                                        addPeakMax_TSraw=addPeakMax,
                                                        addPeakMin_TSraw=addPeakMin,
