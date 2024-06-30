@@ -2224,7 +2224,7 @@ class Calculation:
           modeling full problem
 
         '''
-        self.checkIfAlreadyModeled()
+        self.check_if_already_modeled()
         self.calcType = 'full'
         # System finalisieren:
         self.system.finalize()
@@ -2278,7 +2278,7 @@ class Calculation:
               path for output. The default is 'results/'.
 
           '''
-        self.checkIfAlreadyModeled()
+        self.check_if_already_modeled()
         self._infos['segmentedProps'] = {'segmentLen': segmentLen, 'nrUsedSteps': nrOfUsedSteps}
         self.calcType = 'segmented'
         print('##############################################################')
@@ -2308,7 +2308,7 @@ class Calculation:
         print('-> nr of Sims : ' + str(nrOfSimSegments))
         print('')
 
-        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults=True, nr_of_system_models=nrOfSimSegments)
+        self._define_path_names(namePrefix, nameSuffix, aPath, saveResults=True, nr_of_system_models=nrOfSimSegments)
 
         for i in range(nrOfSimSegments):
             startIndex_calc = i * nrOfUsedSteps
@@ -2363,11 +2363,11 @@ class Calculation:
                                 logfile_name=self.paths_Log[i])  # keine SolverOutput-Anzeige, da sonst zu viel
             self.durations['solving'] += round(time.time() - t_start_solving, 2)
             ## results adding:
-            self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
+            self._add_segment_results(segmentModBox, startIndex_calc, realNrOfUsedSteps)
 
         self.durations['model, solve and segmentStuff'] = round(time.time() - t_start, 2)
 
-        self._saveSolveInfos()
+        self._save_solve_infos()
 
     def do_aggregated_modeling(self, periodLengthInHours, noTypicalPeriods,
                                useExtremePeriods, fixStorageFlows,
@@ -2423,7 +2423,7 @@ class Calculation:
             DESCRIPTION.
 
         '''
-        self.checkIfAlreadyModeled()
+        self.check_if_already_modeled()
 
         self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
                                           'noTypicalPeriods': noTypicalPeriods,
@@ -2574,7 +2574,7 @@ class Calculation:
 
     def solve(self, solverProps, namePrefix='', nameSuffix='', aPath='results/', saveResults=True):
 
-        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
+        self._define_path_names(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
 
         if self.calcType not in ['full', 'aggregated']:
             raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
@@ -2582,9 +2582,9 @@ class Calculation:
         system_model.solve(**solverProps, logfile_name=self.paths_Log[0])
 
         if saveResults:
-            self._saveSolveInfos()
+            self._save_solve_infos()
 
-    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1):
+    def _define_path_names(self, namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1):
         import datetime
         import pathlib
 
@@ -2616,7 +2616,8 @@ class Calculation:
             self.path_Data = None
             self.path_Info = None
 
-    def checkIfAlreadyModeled(self):
+    def check_if_already_modeled(self):
+        # TODO: Property??
 
         if self.calcType is not None:
             raise Exception(
@@ -2626,7 +2627,7 @@ class Calculation:
             raise Exception(
                 'the Energysystem has some temporary modelingElements from previous calculation (i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
 
-    def _saveSolveInfos(self):
+    def _save_solve_infos(self):
         import yaml
         # Daten:
         # with open(yamlPath_Data, 'w') as f:
@@ -2647,7 +2648,7 @@ class Calculation:
         print(aStr)
         print('#' * len(aStr))
 
-    def __addSegmentResults(self, segment, startIndex_calc, realNrOfUsedSteps):
+    def _add_segment_results(self, segment, startIndex_calc, realNrOfUsedSteps):
         # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
 
         if (self.__results is None):
