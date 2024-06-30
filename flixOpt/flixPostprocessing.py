@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 import pickle
 import yaml
-from . import flixOptHelperFcts as helpers
+from flixOpt import flixOptHelperFcts as helpers
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt  # für Plots im Postprocessing

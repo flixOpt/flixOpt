@@ -5,9 +5,9 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-from .flixStructure import *
-from .flixFeatures import *
-from .flixComps import LinearTransformer, CHP
+from flixOpt.flixStructure import *
+from flixOpt.flixFeatures import *
+from flixOpt.flixComps import LinearTransformer, CHP
 from flixOpt.flixOptHelperFcts import checkExists
 
 

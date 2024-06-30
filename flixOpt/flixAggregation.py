@@ -289,9 +289,9 @@ class flixAggregation:
         self.totalTimeseries.to_csv(pathAgg + filename)
 
 
-from . import flixStructure
-from . import flixComps
-from .basicModeling import *
+from flixOpt import flixStructure
+from flixOpt import flixComps
+from flixOpt.basicModeling import *
 
 
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung

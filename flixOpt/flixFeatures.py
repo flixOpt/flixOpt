@@ -12,13 +12,13 @@ import logging
 
 import numpy as np
 
-from .flixStructure import Element, SystemModel  # Grundstruktur
-from .flixBasics import TimeSeries, Numeric, as_effect_dict
-from .basicModeling import Variable, VariableTS, Equation
-from .flixBasicsPublic import InvestParameters
+from flixOpt.flixStructure import Element, SystemModel  # Grundstruktur
+from flixOpt.flixBasics import TimeSeries, Numeric, as_effect_dict
+from flixOpt.basicModeling import Variable, VariableTS, Equation
+from flixOpt.flixBasicsPublic import InvestParameters
 import flixOpt.flixOptHelperFcts as helpers
 if TYPE_CHECKING:
-    from .flixStructure import Flow, Effect
+    from flixOpt.flixStructure import Flow, Effect
 
 log = logging.getLogger(__name__)
 

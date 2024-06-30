@@ -6,8 +6,8 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import numpy as np
-from . import flixOptHelperFcts as helpers
-from .flixBasicsPublic import TimeSeriesRaw
+from flixOpt import flixOptHelperFcts as helpers
+from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from typing import Union, Optional, List, Dict, Any
 
 Skalar = Union[int, float]  # Datatype

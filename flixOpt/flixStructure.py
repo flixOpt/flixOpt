@@ -2469,7 +2469,7 @@ class Calculation:
 
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
-        from . import flixAggregation as flixAgg
+        from flixOpt import flixAggregation as flixAgg
         dataAgg = flixAgg.flixAggregation('aggregation',
                                           timeseries=df_OriginalData,
                                           hoursPerTimeStep=self.dt_in_hours[0],

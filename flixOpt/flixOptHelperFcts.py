@@ -13,7 +13,7 @@ import re
 import math  # für nan
 import matplotlib.pyplot as plt
 
-from .flixBasicsPublic import TimeSeriesRaw
+from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from typing import Union
 
 

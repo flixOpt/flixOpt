@@ -8,11 +8,11 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 import textwrap
 
-from . import flixOptHelperFcts as helpers
-from .basicModeling import *
-from .flixBasics import effect_values_to_ts
-from .flixStructure import *
-from .flixFeatures import *
+from flixOpt import flixOptHelperFcts as helpers
+from flixOpt.basicModeling import *
+from flixOpt.flixBasics import effect_values_to_ts
+from flixOpt.flixStructure import *
+from flixOpt.flixFeatures import *
 
 
 class LinearTransformer(Component):
