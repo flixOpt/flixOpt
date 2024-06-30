@@ -454,21 +454,21 @@ class FeatureOn(Feature):
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
         eqsOwner = self
         if self.use_on:
-            self.__addConstraintsForOn(eqsOwner, self.flows_defining_on, system_model, time_indices)
+            self._add_on_constraints(eqsOwner, self.flows_defining_on, system_model, time_indices)
         if self.use_off:
-            self.__addConstraintsForOff(eqsOwner, system_model, time_indices)
+            self._add_off_constraints(eqsOwner, system_model, time_indices)
         if self.use_switch_on:
-            self.__addConstraintsForSwitchOnSwitchOff(eqsOwner, system_model, time_indices)
+            self.add_switch_constraints(eqsOwner, system_model, time_indices)
         if self.use_on_hours:
-            FeatureOn.__addConstraintsForOnTimeOfBinary(
+            FeatureOn._add_on_duration_constraints(
                 self.model.var_onHours, self.model.var_on, self.on_hours_min,
                 eqsOwner, system_model, time_indices)
         if self.use_off_hours:
-            FeatureOn.__addConstraintsForOnTimeOfBinary(
+            FeatureOn._add_on_duration_constraints(
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 eqsOwner, system_model, time_indices)
 
-    def __addConstraintsForOn(self, eqsOwner, flows_defining_on, system_model, time_indices: Union[list[int], range]):
+    def _add_on_constraints(self, eqsOwner: Feature, flows_defining_on, system_model, time_indices: Union[list[int], range]):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
 
         # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig 
@@ -545,7 +545,7 @@ class FeatureOn(Feature):
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
                     int(sumOfFlowMax / nrOfFlows)) + '). Ggf. falsche Ergebnisse !!!')
 
-    def __addConstraintsForOff(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
+    def _add_off_constraints(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
         eq_var_off = Equation('var_off', self, system_model, eqType='eq')
@@ -554,7 +554,7 @@ class FeatureOn(Feature):
         eq_var_off.add_constant(1)
 
     @staticmethod  # to be sure not using any self-Variables
-    def __addConstraintsForOnTimeOfBinary(var_bin_onTime, var_bin, on_hours_min, eqsOwner, system_model, time_indices: Union[list[int], range]):
+    def _add_on_duration_constraints(var_bin_onTime, var_bin, on_hours_min, eqsOwner, system_model, time_indices: Union[list[int], range]):
         '''
         i.g. 
         var_bin        = [0 0 1 1 1 1 0 1 1 1 0 ...]
@@ -608,7 +608,7 @@ class FeatureOn(Feature):
         eq_first.add_summand(var_bin_onTime, 1, firstIndex)
         eq_first.add_summand(var_bin, -1 * system_model.dt_in_hours[firstIndex], firstIndex)
 
-    def __addConstraintsForSwitchOnSwitchOff(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
+    def add_switch_constraints(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1) 
 
