@@ -305,10 +305,12 @@ class FeatureAvoidFlowsAtOnce(Feature):
                 self.eq_flowLock.add_summand(aFlow.model.var_on, 1)
                 # + flow_i.val(t)/flow_i.max
             else:  # nur bei "new"
+                # TODO: Review this .min - Whats meant here?
                 assert aFlow.min >= 0, 'FeatureAvoidFlowsAtOnce(): typ "new" geht nur für Flows mit min >= 0!'
                 self.eq_flowLock.add_summand(aFlow.model.var_val, 1 / aFlow.max)
 
         if self.typ == 'classic':
+            # TODO: Decrease the value 1.1?
             self.eq_flowLock.add_constant(
                 1.1)  # sicherheitshalber etwas mehr, damit auch leicht größer Binärvariablen 1.00001 funktionieren.
         elif self.typ == 'new':
