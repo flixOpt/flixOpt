@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 ## TODO:
 # featureAvoidFlowsAtOnce:
 # neue Variante (typ="new") austesten
-from typing import Optional, Union, Tuple, Dict, List, TYPE_CHECKING
+from typing import Optional, Union, Tuple, Dict, List, Set, TYPE_CHECKING
 import logging
 
 import numpy as np
@@ -61,6 +61,10 @@ class FeatureLinearSegmentVars(Feature):
         nr_of_columns = len(next(iter(self.segments_of_variables.values())))   # Anzahl Spalten
         return nr_of_columns / 2  # Anzahl der Spalten der Matrix / 2 = Anzahl der Segmente
 
+    @property
+    def variables(self) -> Set[Variable]:
+        return set(self.segments_of_variables.keys())
+
     # segements separat erst jetzt definieren, damit Variablen schon erstellt sind.
     # todo: wenn Variable-Dummys existieren, dann kann das alles in __init__
     def define_segments(self,
@@ -96,7 +100,7 @@ class FeatureLinearSegmentVars(Feature):
                 raise Exception('segments_of_variables is missing the following vars: ' + get_str_of_set(missing_vars))
 
         # Aufteilen der Daten in die Segmente:
-        for aSecNr in range(int(self.nrOfSegments)):
+        for aSecNr in range(int(self.nr_of_segments)):
             # samplePoints für das Segment extrahieren:
             # z.B.   {var1:[TS1.1, TS1.2]
             #         var2:[TS2.1, TS2.2]}            
