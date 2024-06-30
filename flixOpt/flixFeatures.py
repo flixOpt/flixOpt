@@ -7,13 +7,13 @@ developed by Felix Panitz* and Peter Stange*
 ## TODO:
 # featureAvoidFlowsAtOnce:
 # neue Variante (typ="new") austesten
-from typing import Optional, Union, Tuple, TYPE_CHECKING
+from typing import Optional, Union, Tuple, Dict, List, TYPE_CHECKING
 import logging
 
 import numpy as np
 
 from flixOpt.flixStructure import Element, SystemModel  # Grundstruktur
-from flixOpt.flixBasics import TimeSeries, Numeric, as_effect_dict
+from flixOpt.flixBasics import TimeSeries, Numeric, as_effect_dict, Skalar
 from flixOpt.basicModeling import Variable, VariableTS, Equation
 from flixOpt.flixBasicsPublic import InvestParameters
 import flixOpt.flixOptHelperFcts as helpers
@@ -47,26 +47,33 @@ class Feature(Element):
 
 # Abschnittsweise linear:
 class FeatureLinearSegmentVars(Feature):
-    # TODO: beser wäre hier schon Übergabe segmentsOfVars, aber schwierig, weil diese hier noch nicht vorhanden sind!
-    def __init__(self, label, owner):
+    # TODO: beser wäre hier schon Übergabe segments_of_variables, aber schwierig, weil diese hier noch nicht vorhanden sind!
+    def __init__(self, label: str, owner: Element):
         super().__init__(label, owner)
+        self.eq_IcanOnlyBeInOneSegment: Equation = None
+        self.segments_of_variables: Dict[Variable, List[Skalar]] = None
+        self.segments: List[Segment] = []
+        self.var_on: Optional[Variable] = None
 
     # segements separat erst jetzt definieren, damit Variablen schon erstellt sind.
     # todo: wenn Variable-Dummys existieren, dann kann das alles in __init__
-    def defineSegments(self, segmentsOfVars, var_on, checkListOfVars):
+    def define_segments(self,
+                        segments_of_variables: Dict[Variable, List[Skalar]],
+                        var_on: Optional[Variable],
+                        vars_for_check: List[Variable]):
         # segementsData - Elemente sind Listen!.
-        # segmentsOfVars = {var_Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Indexspezfika (z.B. für Zeitreihenabbildung) über arrays oder TS!!
+        # segments_of_variables = {var_Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Indexspezfika (z.B. für Zeitreihenabbildung) über arrays oder TS!!
         #                   var_P_el: [ 2  , 5,    5, 8 ],
         #                   var_Q_th: [ 2.5, 4,    4, 12]}
 
         # -> onVariable ist optional
         # -> auch einzelne zulässige Punkte können über Segment ausgedrückt werden, z.B. [5, 5]
 
-        self.segmentsOfVars = segmentsOfVars
+        self.segments_of_variables = segments_of_variables
         self.var_on = var_on
 
         # Anzahl Segmente bestimmen:      
-        segmentDataOfFirstVariable = next(iter(segmentsOfVars.values()))
+        segmentDataOfFirstVariable = next(iter(segments_of_variables.values()))
         nrOfColumns = len(segmentDataOfFirstVariable)  # Anzahl Spalten
         self.nrOfSegments = nrOfColumns / 2  # Anzahl der Spalten der Matrix / 2 = Anzahl der Segmente
 
@@ -75,10 +82,10 @@ class FeatureLinearSegmentVars(Feature):
             raise Exception('Nr of Values should be even, because pairs (start,end of every section)')
 
         # Check, ob alle Variables vorhanden:
-        if checkListOfVars is not None:
-            setOfVars = set(segmentsOfVars.keys())
-            toMuchSet = setOfVars - set(checkListOfVars)
-            missingSet = set(checkListOfVars) - setOfVars
+        if vars_for_check is not None:
+            setOfVars = set(segments_of_variables.keys())
+            toMuchSet = setOfVars - set(vars_for_check)
+            missingSet = set(vars_for_check) - setOfVars
 
             # Wenn Unterschiede vorhanden:
             def getStrOfSet(aSet):
@@ -89,26 +96,25 @@ class FeatureLinearSegmentVars(Feature):
 
             # überflüssige Flows:
             if toMuchSet:
-                raise Exception('segmentsOfVars-Definition has not necessary vars: ' + getStrOfSet(toMuchSet))
+                raise Exception('segments_of_variables-Definition has not necessary vars: ' + getStrOfSet(toMuchSet))
             # fehlende Flows:
             if missingSet:
-                raise Exception('segmentsOfVars miss following vars: ' + getStrOfSet(missingSet))
+                raise Exception('segments_of_variables miss following vars: ' + getStrOfSet(missingSet))
         # Aufteilen der Daten in die Segmente:
-        self.listOfSegments = []
         for aSecNr in range(int(self.nrOfSegments)):
             # samplePoints für das Segment extrahieren:
             # z.B.   {var1:[TS1.1, TS1.2]
             #         var2:[TS2.1, TS2.2]}            
-            samplePointsOfSegment = FeatureLinearSegmentVars.__extractSamplePoints4Segment(segmentsOfVars, aSecNr)
+            samplePointsOfSegment = FeatureLinearSegmentVars.__extractSamplePoints4Segment(segments_of_variables, aSecNr)
             # Segment erstellen und in Liste::
             newSegment = Segment('seg_' + str(aSecNr), self, samplePointsOfSegment, aSecNr)
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
             # todo: alle Elemente sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
             newSegment.create_new_model_and_activate_system_model(self.system_model)
-            self.listOfSegments.append(newSegment)
+            self.segments.append(newSegment)
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
-        for aSegment in self.listOfSegments:
+        for aSegment in self.segments:
             # Segmentvariablen erstellen:
             aSegment.declare_vars_and_eqs(system_model)
 
@@ -129,13 +135,13 @@ class FeatureLinearSegmentVars(Feature):
         else:
             self.eq_IcanOnlyBeInOneSegment.add_constant(1);  #
 
-        for aSegment in self.listOfSegments:
+        for aSegment in self.segments:
             self.eq_IcanOnlyBeInOneSegment.add_summand(aSegment.model.var_onSeg, 1);
 
             #################################
         ## 2. Gleichungen der Segmente ##
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0    
-        for aSegment in self.listOfSegments:
+        for aSegment in self.segments:
             aNameOfEq = 'Lambda_onSeg_' + str(aSegment.index)
 
             eq_Lambda_onSeg = Equation(aNameOfEq, self, system_model)
@@ -150,11 +156,11 @@ class FeatureLinearSegmentVars(Feature):
         #  mit -> j                   = Segmentnummer 
         #      -> Q_th_1_j, Q_th_2_j  = Stützstellen des Segments (können auch Vektor sein)
 
-        for aVar in self.segmentsOfVars.keys():
+        for aVar in self.segments_of_variables.keys():
             # aVar = aFlow.model.var_val
             eqLambda = Equation(aVar.label + '_lambda', self, system_model)  # z.B. Q_th(t)
             eqLambda.add_summand(aVar, -1)
-            for aSegment in self.listOfSegments:
+            for aSegment in self.segments:
                 #  Stützstellen einfügen:
                 stuetz1 = aSegment.samplePoints[aVar][0]
                 stuetz2 = aSegment.samplePoints[aVar][1]
@@ -184,7 +190,7 @@ class FeatureLinearSegmentVars(Feature):
 
 
 class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
-    # TODO: beser wäre segmentsOfVars, aber schwierig, weil diese hier noch nicht vorhanden sind!
+    # TODO: beser wäre segments_of_variables, aber schwierig, weil diese hier noch nicht vorhanden sind!
     def __init__(self, label, owner, segmentsOfFlows_TS, get_var_on=None, checkListOfFlows=None):
         # segementsData - Elemente sind Listen!.
         # segmentsOfFlows = {Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Zeitreihenabbildung über arrays!!!
@@ -207,9 +213,9 @@ class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
         for flow in self.checkListOfFlows:
             checkListOfVars.append(flow.model.var_val)
 
-        # hier erst Variablen vorhanden un damit segmentsOfVars definierbar!
-        super().defineSegments(segmentsOfVars, var_on=self.get_var_on(),
-                               checkListOfVars=checkListOfVars)  # todo: das ist nur hier, damit schon variablen Bekannt
+        # hier erst Variablen vorhanden un damit segments_of_variables definierbar!
+        super().define_segments(segmentsOfVars, var_on=self.get_var_on(),
+                                vars_for_check=checkListOfVars)  # todo: das ist nur hier, damit schon variablen Bekannt
 
         # 2. declare vars:      
         super().declare_vars_and_eqs(system_model)
@@ -1033,9 +1039,9 @@ class FeatureInvest(Feature):
         else:
             var_isInvested = None
 
-        ## 3. transfer segmentsOfVars to FeatureLinearSegmentVars: ##
-        self.featureLinearSegments.defineSegments(segmentsOfVars, var_on=var_isInvested,
-                                                  checkListOfVars=list(segmentsOfVars.keys()))
+        ## 3. transfer segments_of_variables to FeatureLinearSegmentVars: ##
+        self.featureLinearSegments.define_segments(segmentsOfVars, var_on=var_isInvested,
+                                                   vars_for_check=list(segmentsOfVars.keys()))
 
     def __create_var_segmentedInvestCost(self, aEffect, system_model):
         # define cost-Variable (=costs through segmented Investsize-costs):
