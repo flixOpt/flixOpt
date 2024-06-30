@@ -452,21 +452,20 @@ class FeatureOn(Feature):
             self.model.var_nrSwitchOn = None
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
-        eqsOwner = self
         if self.use_on:
             self._add_on_constraints(system_model, time_indices)
         if self.use_off:
-            self._add_off_constraints(eqsOwner, system_model, time_indices)
+            self._add_off_constraints(system_model, time_indices)
         if self.use_switch_on:
-            self.add_switch_constraints(eqsOwner, system_model, time_indices)
+            self.add_switch_constraints(system_model, time_indices)
         if self.use_on_hours:
             FeatureOn._add_on_duration_constraints(
                 self.model.var_onHours, self.model.var_on, self.on_hours_min,
-                eqsOwner, system_model, time_indices)
+                self, system_model, time_indices)
         if self.use_off_hours:
             FeatureOn._add_on_duration_constraints(
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
-                eqsOwner, system_model, time_indices)
+                self, system_model, time_indices)
 
     def _add_on_constraints(self, system_model, time_indices: Union[list[int], range]):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
@@ -542,7 +541,7 @@ class FeatureOn(Feature):
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
                     int(sumOfFlowMax / nr_of_flows)) + '). Ggf. falsche Ergebnisse !!!')
 
-    def _add_off_constraints(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
+    def _add_off_constraints(self, system_model, time_indices: Union[list[int], range]):
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
         eq_var_off = Equation('var_off', self, system_model, eqType='eq')
@@ -605,11 +604,11 @@ class FeatureOn(Feature):
         eq_first.add_summand(var_bin_onTime, 1, firstIndex)
         eq_first.add_summand(var_bin, -1 * system_model.dt_in_hours[firstIndex], firstIndex)
 
-    def add_switch_constraints(self, eqsOwner, system_model, time_indices: Union[list[int], range]):
+    def add_switch_constraints(self, system_model, time_indices: Union[list[int], range]):
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1) 
 
-        eq_SwitchOnOff_andOn = Equation('SwitchOnOff_andOn', eqsOwner, system_model)
+        eq_SwitchOnOff_andOn = Equation('SwitchOnOff_andOn', self, system_model)
         eq_SwitchOnOff_andOn.add_summand(self.model.var_switchOn, 1, time_indices[1:])  # SwitchOn(t)
         eq_SwitchOnOff_andOn.add_summand(self.model.var_switchOff, -1, time_indices[1:])  # SwitchOff(t)
         eq_SwitchOnOff_andOn.add_summand(self.model.var_on, -1, time_indices[1:])  # On(t)
@@ -618,7 +617,7 @@ class FeatureOn(Feature):
         ## Ersten Wert SwitchOn(t=1) bzw. SwitchOff(t=1) festlegen
         # eq: SwitchOn(t=1)-SwitchOff(t=1) = On(t=1)- ValueBeforeBeginOfTimeSeries;      
 
-        eq_SwitchOnOffAtFirstTime = Equation('SwitchOnOffAtFirstTime', eqsOwner, system_model)
+        eq_SwitchOnOffAtFirstTime = Equation('SwitchOnOffAtFirstTime', self, system_model)
         firstIndex = time_indices[0]  # nur erstes Element!
         eq_SwitchOnOffAtFirstTime.add_summand(self.model.var_switchOn, 1, firstIndex)
         eq_SwitchOnOffAtFirstTime.add_summand(self.model.var_switchOff, -1, firstIndex)
@@ -630,7 +629,7 @@ class FeatureOn(Feature):
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1 
 
-        ineq = Equation('SwitchOnOrSwitchOff', eqsOwner, system_model, eqType='ineq')
+        ineq = Equation('SwitchOnOrSwitchOff', self, system_model, eqType='ineq')
         ineq.add_summand(self.model.var_switchOn, 1)
         ineq.add_summand(self.model.var_switchOff, 1)
         ineq.add_constant(1)
@@ -638,7 +637,7 @@ class FeatureOn(Feature):
         ## Anzahl Starts:
         # eq: nrSwitchOn = sum(SwitchOn(t))  
 
-        eq_NrSwitchOn = Equation('NrSwitchOn', eqsOwner, system_model)
+        eq_NrSwitchOn = Equation('NrSwitchOn', self, system_model)
         eq_NrSwitchOn.add_summand(self.model.var_nrSwitchOn, 1)
         eq_NrSwitchOn.add_summand(self.model.var_switchOn, -1, as_sum=True)
 
