@@ -55,6 +55,12 @@ class FeatureLinearSegmentVars(Feature):
         self.segments: List[Segment] = []
         self.var_on: Optional[Variable] = None
 
+    @property
+    def nr_of_segments(self) -> Skalar:
+        # Anzahl Segmente bestimmen:
+        nr_of_columns = len(next(iter(self.segments_of_variables.values())))   # Anzahl Spalten
+        return nr_of_columns / 2  # Anzahl der Spalten der Matrix / 2 = Anzahl der Segmente
+
     # segements separat erst jetzt definieren, damit Variablen schon erstellt sind.
     # todo: wenn Variable-Dummys existieren, dann kann das alles in __init__
     def define_segments(self,
@@ -72,13 +78,7 @@ class FeatureLinearSegmentVars(Feature):
         self.segments_of_variables = segments_of_variables
         self.var_on = var_on
 
-        # Anzahl Segmente bestimmen:      
-        segmentDataOfFirstVariable = next(iter(segments_of_variables.values()))
-        nrOfColumns = len(segmentDataOfFirstVariable)  # Anzahl Spalten
-        self.nrOfSegments = nrOfColumns / 2  # Anzahl der Spalten der Matrix / 2 = Anzahl der Segmente
-
-        # Check ob gerade Anzahl an Werten:
-        if not self.nrOfSegments.is_integer():
+        if not self.nr_of_segments.is_integer():   # Check ob gerade Anzahl an Werten:
             raise Exception('Nr of Values should be even, because pairs (start,end of every section)')
 
         # Check, ob alle Variables vorhanden:
