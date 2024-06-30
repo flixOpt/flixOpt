@@ -50,7 +50,7 @@ class FeatureLinearSegmentVars(Feature):
     # TODO: beser wäre hier schon Übergabe segments_of_variables, aber schwierig, weil diese hier noch nicht vorhanden sind!
     def __init__(self, label: str, owner: Element):
         super().__init__(label, owner)
-        self.eq_IcanOnlyBeInOneSegment: Equation = None
+        self.eq_canOnlyBeInOneSegment: Equation = None
         self.segments_of_variables: Dict[Variable, List[Skalar]] = None
         self.segments: List[Segment] = []
         self.var_on: Optional[Variable] = None
@@ -125,28 +125,28 @@ class FeatureLinearSegmentVars(Feature):
         # -> Wenn Variable On(t) nicht existiert, dann nur 
         # eq:          Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                                         
 
-        self.eq_IcanOnlyBeInOneSegment = Equation('ICanOnlyBeInOneSegment', self, system_model)
+        self.eq_canOnlyBeInOneSegment = Equation('ICanOnlyBeInOneSegment', self, system_model)
 
         # a) zusätzlich zu Aufenthalt in Segmenten kann alles auch Null sein:
         if (self.var_on is not None) and (self.var_on is not None):
             # TODO: # Eigentlich wird die On-Variable durch linearSegment-equations bereits vollständig definiert.
-            self.eq_IcanOnlyBeInOneSegment.add_summand(self.var_on, -1)
+            self.eq_canOnlyBeInOneSegment.add_summand(self.var_on, -1)
         else:
-            self.eq_IcanOnlyBeInOneSegment.add_constant(1)   # b) Aufenthalt nur in Segmenten erlaubt:
+            self.eq_canOnlyBeInOneSegment.add_constant(1)   # b) Aufenthalt nur in Segmenten erlaubt:
 
         for aSegment in self.segments:
-            self.eq_IcanOnlyBeInOneSegment.add_summand(aSegment.model.var_onSeg, 1)
+            self.eq_canOnlyBeInOneSegment.add_summand(aSegment.model.var_onSeg, 1)
 
             #################################
         ## 2. Gleichungen der Segmente ##
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0    
         for aSegment in self.segments:
-            aNameOfEq = 'Lambda_onSeg_' + str(aSegment.index)
+            name_of_equation = f'Lambda_onSeg_{aSegment.index}'
 
-            eq_Lambda_onSeg = Equation(aNameOfEq, self, system_model)
-            eq_Lambda_onSeg.add_summand(aSegment.model.var_onSeg, -1);
-            eq_Lambda_onSeg.add_summand(aSegment.model.var_lambda1, 1);
-            eq_Lambda_onSeg.add_summand(aSegment.model.var_lambda2, 1);
+            eq_Lambda_onSeg = Equation(name_of_equation, self, system_model)
+            eq_Lambda_onSeg.add_summand(aSegment.model.var_onSeg, -1)
+            eq_Lambda_onSeg.add_summand(aSegment.model.var_lambda1, 1)
+            eq_Lambda_onSeg.add_summand(aSegment.model.var_lambda2, 1)
 
             ##################################################
         ## 3. Gleichungen für die Variablen mit lambda: ##
@@ -155,7 +155,7 @@ class FeatureLinearSegmentVars(Feature):
         #  mit -> j                   = Segmentnummer 
         #      -> Q_th_1_j, Q_th_2_j  = Stützstellen des Segments (können auch Vektor sein)
 
-        for aVar in self.segments_of_variables.keys():
+        for aVar in self.variables:
             # aVar = aFlow.model.var_val
             eqLambda = Equation(aVar.label + '_lambda', self, system_model)  # z.B. Q_th(t)
             eqLambda.add_summand(aVar, -1)
