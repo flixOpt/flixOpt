@@ -2617,15 +2617,15 @@ class Calculation:
             self.path_Info = None
 
     def check_if_already_modeled(self):
-        # TODO: Property??
-
         if self.calcType is not None:
             raise Exception(
-                'An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this Calculation-Object. \n Always create a new instance of Calculation for new modeling/solving-command!')
+                f'Another modeling-Method ({self.calcType=}) was already executed with this Calculation-Object.\n'
+                f'Always create a new instance of Calculation for new modeling/solving-command!')
 
         if self.system.temporary_elements:  # if some element in this list
             raise Exception(
-                'the Energysystem has some temporary modelingElements from previous calculation (i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
+                f'The Energysystem has some temporary modelingElements from previous calculation '
+                f'(i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
 
     def _save_solve_infos(self):
         import yaml
@@ -2643,7 +2643,7 @@ class Calculation:
                       allow_unicode=True,
                       sort_keys=False)
 
-        aStr = '# saved calculation ' + self.nameOfCalc + ' #'
+        aStr = f'# saved calculation {self.nameOfCalc} #'
         print('#' * len(aStr))
         print(aStr)
         print('#' * len(aStr))
@@ -2654,13 +2654,13 @@ class Calculation:
         if (self.__results is None):
             self.__results = {}  # leeres Dict als Ausgangszustand
 
-        def appendNewResultsToDictValues(result, resultToAppend, resultToAppendVar):
+        def append_new_results_to_dict_values(result: Dict, result_to_append: Dict, result_to_append_var: Dict):
             if result == {}:
                 firstFill = True  # jeweils neuer Dict muss erzeugt werden für globales Dict
             else:
                 firstFill = False
 
-            for key, val in resultToAppend.items():
+            for key, val in result_to_append.items():
                 # print(key)
 
                 # Wenn val ein Wert ist:
@@ -2673,7 +2673,7 @@ class Calculation:
                         withEnd = True
                     else:
                         # Beachte Speicherladezustand und ähnliche Variablen:
-                        aReferedVariable = resultToAppendVar[key]
+                        aReferedVariable = result_to_append_var[key]
                         aReferedVariable: VariableTS
                         withEnd = isinstance(aReferedVariable, VariableTS) \
                                   and aReferedVariable.activated_beforeValues \
@@ -2707,14 +2707,14 @@ class Calculation:
                 else:
                     if firstFill: result[key] = {}
 
-                    if (resultToAppendVar is not None) and key in resultToAppendVar.keys():
-                        resultToAppend_sub = resultToAppendVar[key]
+                    if (result_to_append_var is not None) and key in result_to_append_var.keys():
+                        resultToAppend_sub = result_to_append_var[key]
                     else:  # z.B. bei time (da keine Variablen)
                         resultToAppend_sub = None
-                    appendNewResultsToDictValues(result[key], resultToAppend[key], resultToAppend_sub)  # hier rekursiv!
+                    append_new_results_to_dict_values(result[key], result_to_append[key], resultToAppend_sub)  # hier rekursiv!
 
         # rekursiv:
-        appendNewResultsToDictValues(self.__results, segment.results, segment.results_var)
+        append_new_results_to_dict_values(self.__results, segment.results, segment.results_var)
 
         # results füllen:
         # ....
