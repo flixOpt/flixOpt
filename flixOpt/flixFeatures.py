@@ -951,7 +951,7 @@ class FeatureInvest(Feature):
         self.val_rel = val_rel
         self.investment_size = investment_size  # nominalValue
         self.featureOn = featureOn
-        self.checkPlausibility()
+        self.check_plausibility()
 
         self.defining_variable = None
 
@@ -959,14 +959,16 @@ class FeatureInvest(Feature):
         if self.invest_parameters.effects_in_segments is not None:
             self.featureLinearSegments = FeatureLinearSegmentVars('segmentedInvestcosts', self)
 
-    def checkPlausibility(self):
+    def check_plausibility(self):
         # Check investment_size:
         # todo: vielleicht ist es aber auch ok, wenn der size belegt ist und einfach nicht genutzt wird....
         if self.invest_parameters.fixed_size:
-            assert ((self.investment_size is not None) and (
-                    self.investment_size != 0)), 'investment_size muss gesetzt werden'
-        else:
-            assert self.investment_size is None, '!' + self.name_of_investment_size + ' of ' + self.owner.label_full + ' must be None if investment_size is variable'
+            if self.investment_size in (None, 0):
+                raise ValueError(f'In {self.name_of_investment_size=} in {self.owner.label=}: '
+                                 f'investment_size must be > 0 if an Investment with a fixed size is made')
+        elif self.investment_size is not None:
+            raise Exception(f'!{self.name_of_investment_size=} of {self.owner.label_full=} '
+                            f'must be None if investment_size is variable')
 
     def bounds_of_defining_variable(self) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
 
