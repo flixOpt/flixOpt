@@ -220,8 +220,8 @@ aCalc.doModelingAsOneSegment()
 
 # print Model-Charactaricstics:
 system.printModel()
-system.printVariables()
-system.printEquations()
+system.print_variables()
+system.print_equations()
 
 solverProps = {'mip_gap': gapFrac,
                'time_limit_seconds': timelimit,

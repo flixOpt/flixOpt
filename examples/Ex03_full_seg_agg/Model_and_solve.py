@@ -235,8 +235,8 @@ if doFullCalc:
   calcFull.doModelingAsOneSegment()
   
   system.printModel()
-  system.printVariables()
-  system.printEquations()
+  system.print_variables()
+  system.print_equations()
     
   calcFull.solve(solverProps, nameSuffix=nameSuffix)
   listOfCalcs.append(calcFull)
@@ -263,8 +263,8 @@ if doAggregatedCalc :
                                  addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
                                  )
     
-    system.printVariables()
-    system.printEquations()
+    system.print_variables()
+    system.print_equations()
     
     calcAgg.solve(solverProps, nameSuffix = nameSuffix)
     listOfCalcs.append(calcAgg)

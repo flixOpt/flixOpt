@@ -66,8 +66,8 @@ class SystemModel(LinearModel):
     def characterize_math_problem(self):  # overriding same method in motherclass!
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
         # self.system.activate_model()
-        self._infos['str_Eqs'] = self.system.getEqsAsStr()
-        self._infos['str_Vars'] = self.system.getVarsAsStr()
+        self._infos['str_Eqs'] = self.system.description_of_equations()
+        self._infos['str_Vars'] = self.system.description_of_variables()
 
     # 'gurobi'
     def solve(self,
@@ -128,7 +128,7 @@ class SystemModel(LinearModel):
         print('')
         # Variablen-Ergebnisse abspeichern:
         # 1. dict:
-        (self.results, self.results_var) = self.system.getResultsAfterSolve()
+        (self.results, self.results_var) = self.system.get_results_after_solve()
         # 2. struct:
         self.results_struct = helpers.createStructFromDictInDict(self.results)
 
@@ -1910,19 +1910,22 @@ class System:
         return self.model
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activate_system_model)
-    def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None) -> None:
+    def activate_indices_in_time_series(
+            self, indices: Union[List[int], range],
+            alternative_data_for_time_series: Optional[Dict[TimeSeries, np.ndarray]] = None) -> None:
+        # TODO: Aggreagation functionality to other part of framework?
         aTS: TimeSeries
-        if dictOfTSAndExplicitData is None:
-            dictOfTSAndExplicitData = {}
+        if alternative_data_for_time_series is None:
+            alternative_data_for_time_series = {}
 
         for aTS in self.all_time_series_in_elements:
             # Wenn explicitData vorhanden:
-            if aTS in dictOfTSAndExplicitData.keys():
-                explicitData = dictOfTSAndExplicitData[aTS]
+            if aTS in alternative_data_for_time_series.keys():
+                explicitData = alternative_data_for_time_series[aTS]
             else:
                 explicitData = None
                 # Aktivieren:
-            aTS.activate(chosenTimeIndexe, explicitData)
+            aTS.activate(indices, explicitData)
 
     def activate_model(self, system_model: SystemModel) -> None:
         self.model = system_model
@@ -1930,7 +1933,7 @@ class System:
         element: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
-        self.activateInTS(system_model.time_indices, system_model.TS_explicit)
+        self.activate_indices_in_time_series(system_model.time_indices, system_model.TS_explicit)
 
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
@@ -1947,7 +1950,7 @@ class System:
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
-    def getResultsAfterSolve(self) -> Tuple[Dict, Dict]:
+    def get_results_after_solve(self) -> Tuple[Dict, Dict]:
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
         # für alle Komponenten:
@@ -1973,9 +1976,9 @@ class System:
         print('########## Short String Description of Energysystem ##########')
         print('')
 
-        print(yaml.dump(self.getSystemDescr()))
+        print(yaml.dump(self.description_of_system()))
 
-    def getSystemDescr(self, flowsWithBusInfo=False) -> Dict:
+    def description_of_system(self, flowsWithBusInfo=False) -> Dict:
         modelDescription = {}
 
         # Anmerkung buses und comps als dict, weil Namen eindeutig!
@@ -1999,7 +2002,7 @@ class System:
 
         return modelDescription
 
-    def getEqsAsStr(self) -> Dict:
+    def description_of_equations(self) -> Dict:
         aDict = {}
 
         # comps:
@@ -2033,18 +2036,18 @@ class System:
 
         return aDict
 
-    def printEquations(self) -> None:
+    def print_equations(self) -> None:
 
         print('')
         print('##############################################################')
         print('################# Equations of Energysystem ##################')
         print('')
 
-        print(yaml.dump(self.getEqsAsStr(),
+        print(yaml.dump(self.description_of_equations(),
                         default_flow_style=False,
                         allow_unicode=True))
 
-    def getVarsAsStr(self, structured=True) -> Union[List, Dict]:
+    def description_of_variables(self, structured=True) -> Union[List, Dict]:
         aVar: Variable
 
         # liste:
@@ -2084,7 +2087,7 @@ class System:
 
             return aDict
 
-    def printVariables(self) -> None:
+    def print_variables(self) -> None:
         print('')
         print('##############################################################')
         print('################# Variables of Energysystem ##################')
@@ -2092,13 +2095,13 @@ class System:
         print('############# a) as list : ################')
         print('')
 
-        yaml.dump(self.getVarsAsStr(structured=False))
+        yaml.dump(self.description_of_variables(structured=False))
 
         print('')
         print('############# b) structured : ################')
         print('')
 
-        yaml.dump(self.getVarsAsStr(structured=True))
+        yaml.dump(self.description_of_variables(structured=True))
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def get_time_data_from_indices(self, time_indices: Union[List[int], range]) -> Tuple[
@@ -2138,7 +2141,7 @@ class Calculation:
         calcInfos['no ChosenIndexe'] = len(self.time_indices)
         calcInfos['calcType'] = self.calcType
         calcInfos['duration'] = self.durations
-        infos['system_description'] = self.system.getSystemDescr()
+        infos['system_description'] = self.system.description_of_system()
         infos['system_models'] = {}
         infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
         infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
@@ -2433,7 +2436,7 @@ class Calculation:
         self.calcType = 'aggregated'
         t_start_agg = time.time()
         # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-        self.system.activateInTS(self.time_indices)
+        self.system.activate_indices_in_time_series(self.time_indices)
 
         # Zeitdaten generieren:
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (

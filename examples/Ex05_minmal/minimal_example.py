@@ -91,8 +91,8 @@ aCalc.doModelingAsOneSegment() # mathematic modeling of system
 
 # 3. (optional) print Model-Characteristics:
 system.printModel() # string-output:network structure of model
-system.printVariables() # string output: variables of model
-system.printEquations() # string-output: equations of model
+system.print_variables() # string output: variables of model
+system.print_equations() # string-output: equations of model
 
 
 # #################

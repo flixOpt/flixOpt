@@ -95,8 +95,8 @@ class TestSimple(BaseTest):
         aCalc.doModelingAsOneSegment()
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
         aCalc.solve(self.solverProps, nameSuffix='_highs')
 
@@ -250,8 +250,8 @@ class TestComplex(BaseTest):
         aCalc.doModelingAsOneSegment()
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
         aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
 
@@ -295,8 +295,8 @@ class TestComplex(BaseTest):
         aCalc.doModelingAsOneSegment()
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
         aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
 
@@ -365,8 +365,8 @@ class TestModelingTypes(BaseTest):
             calc.doAggregatedModeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
         if not doSegmentedCalc:
             calc.solve(self.solverProps)
