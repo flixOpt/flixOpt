@@ -752,7 +752,11 @@ class Feature_ShareSum(Feature):
             # eq: sum = sum(share_i) # skalar
             self.eq_sum.add_summand(self.model.var_sum, -1)
 
-    def add_constant_share(self, name_of_share: Optional[str], share_holder: Element, factor1, factor2):
+    def add_constant_share(self,
+                           name_of_share: Optional[str],
+                           share_holder: Element,
+                           factor1: Numeric_TS,
+                           factor2: Numeric_TS):
         """
         Beiträge zu Effekt_Sum registrieren
 
@@ -770,15 +774,24 @@ class Feature_ShareSum(Feature):
         """
         self.add_share(self, name_of_share, share_holder, None, factor1, factor2)
 
-    def add_variable_share(self, name_of_share: Optional[str], share_holder: Element, variable, factor1,
-                           factor2):  # if variable = None, then fix Share
-        if variable is None: raise Exception(
-            'add_variable_share() needs variable as input or use add_constant_share() instead')
+    def add_variable_share(self,
+                           name_of_share: Optional[str],
+                           share_holder: Element,
+                           variable: Variable,
+                           factor1: Numeric_TS,
+                           factor2: Numeric_TS):  # if variable = None, then fix Share
+        if variable is None:
+            raise Exception('add_variable_share() needs variable as input or use add_constant_share() instead')
         self.add_share(name_of_share, share_holder, variable, factor1, factor2)
 
     # allgemein variable oder constant (dann variable = None):
     # if variable = None, then fix Share    
-    def add_share(self, name_of_share: Optional[str], share_holder: Element, variable, factor1, factor2):
+    def add_share(self,
+                  name_of_share: Optional[str],
+                  share_holder: Element,
+                  variable: Optional[Variable],
+                  factor1: Numeric_TS,
+                  factor2: Numeric_TS):
         """
         share to a sum
 
