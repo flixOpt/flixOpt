@@ -72,7 +72,7 @@ class LinearTransformer(Component):
         '''
 
         super().__init__(label, **kwargs)
-        # args to attributes:
+        # invest_parameters to attributes:
         self.inputs = inputs
         self.outputs = outputs
         self.factor_Sets = factor_Sets
@@ -334,7 +334,7 @@ class Boiler(LinearTransformer):
 
         super().__init__(label, inputs=[Q_fu], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
 
-        # args to attributes:
+        # invest_parameters to attributes:
         self.eta = TimeSeries('eta', eta, self)  # thermischer Wirkungsgrad
         self.Q_fu = Q_fu
         self.Q_th = Q_th
@@ -382,7 +382,7 @@ class Power2Heat(LinearTransformer):
 
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
 
-        # args to attributes:
+        # invest_parameters to attributes:
         self.eta = TimeSeries('eta', eta, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
@@ -425,7 +425,7 @@ class HeatPump(LinearTransformer):
         heatPump_bilanz = {P_el: COP, Q_th: 1}  # TODO: Achtung eta ist hier noch nicht TS-vector!!!
         super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[heatPump_bilanz], **kwargs)
 
-        # args to attributes:
+        # invest_parameters to attributes:
         self.COP = TimeSeries('COP', COP, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_th = Q_th
@@ -466,7 +466,7 @@ class CoolingTower(LinearTransformer):
                              Q_th: -specificElectricityDemand}  # eq: 1 * P_el - specificElectricityDemand * Q_th = 0  # TODO: Achtung eta ist hier noch nicht TS-vector!!!
         super().__init__(label, inputs=[P_el, Q_th], outputs=[], factor_Sets=[auxElectricity_eq], **kwargs)
 
-        # args to attributes:
+        # invest_parameters to attributes:
         self.specificElectricityDemand = TimeSeries('specificElectricityDemand', specificElectricityDemand,
                                                     self)  # thermischer Wirkungsgrad
         self.P_el = P_el
@@ -520,7 +520,7 @@ class CHP(LinearTransformer):
         #                      inputs         outputs               lineare Gleichungen
         super().__init__(label, inputs=[Q_fu], outputs=[P_el, Q_th], factor_Sets=[waerme_glg, strom_glg], **kwargs)
 
-        # args to attributes:
+        # invest_parameters to attributes:
         self.eta_th = TimeSeries('eta_th', eta_th, self)
         self.eta_el = TimeSeries('eta_el', eta_el, self)
         self.Q_fu = Q_fu
@@ -575,7 +575,7 @@ class HeatPumpWithSource(LinearTransformer):
         super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
                          factor_Sets=[heatPump_bilanzEl, heatPump_bilanzAb], **kwargs)
 
-        # args to attributes:
+        # invest_parameters to attributes:
         self.COP = TimeSeries('COP', COP, self)  # thermischer Wirkungsgrad
         self.P_el = P_el
         self.Q_ab = Q_ab
@@ -680,7 +680,7 @@ class Storage(Component):
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
         super().__init__(label, **kwargs)
 
-        # args to attributes:
+        # invest_parameters to attributes:
         self.inputs = [inFlow]
         self.outputs = [outFlow]
         self.inFlow = inFlow
@@ -727,7 +727,7 @@ class Storage(Component):
                                                min_rel=self.min_rel_chargeState,
                                                max_rel=self.max_rel_chargeState,
                                                val_rel=None,  # kein vorgegebenes Profil
-                                               investmentSize=self.capacity_inFlowHours,
+                                               investment_size=self.capacity_inFlowHours,
                                                featureOn=None)  # hier gibt es kein On-Wert
 
         # Medium-Check:
@@ -781,7 +781,7 @@ class Storage(Component):
         self.model.var_nettoFlow = VariableTS('nettoFlow', system_model.nrOfTimeSteps, self, system_model,
                                               lower_bound=-np.inf)  # negative Werte zulässig!
 
-        # erst hier, da definingVar vorher nicht belegt!
+        # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
             self.featureInvest.setDefiningVar(self.model.var_charge_state, None)  # None, da kein On-Wert
             self.featureInvest.declare_vars_and_eqs(system_model)

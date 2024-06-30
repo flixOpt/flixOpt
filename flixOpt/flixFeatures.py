@@ -895,47 +895,47 @@ class FeatureShares(Feature):
 
 class FeatureInvest(Feature):
     # -> var_name            : z.B. "size", "capacity_inFlowHours"
-    # -> fixedInvestmentSize : size, capacity_inFlowHours, ...
-    # -> definingVar         : z.B. flow.model.var_val
-    # -> min_rel,max_rel     : ist relatives Min,Max der definingVar bzgl. investmentSize
+    # -> investment_size : size, capacity_inFlowHours, ...
+    # -> defining_variable         : z.B. flow.model.var_val
+    # -> min_rel,max_rel     : ist relatives Min,Max der defining_variable bzgl. investment_size
 
     @property
     def on_variable_is_used(self):  # existiert On-variable
         return True if self.featureOn is not None and self.featureOn.use_on else False
 
     def __init__(self,
-                 nameOfInvestmentSize: str,
+                 name_of_investment_size: str,
                  owner: Element,
                  invest_parameters: InvestParameters,
                  min_rel: TimeSeries,
                  max_rel: TimeSeries,
                  val_rel: Optional[TimeSeries],
-                 investmentSize: Optional[Skalar],
+                 investment_size: Optional[Skalar],
                  featureOn: Optional[FeatureOn] = None):
         """
         Parameters
         ----------
-        nameOfInvestmentSize : TYPE
+        name_of_investment_size : TYPE
             DESCRIPTION.
         owner : TYPE
             owner of this Element
         invest_parameters : InvestParameters
             arguments for modeling
         min_rel : scalar or TS
-            given min_rel of definingVar 
+            given min_rel of defining_variable
             (min = min_rel * investmentSize)
         max_rel : scalar or TS        
-            given max_rel of definingVar
+            given max_rel of defining_variable
             (max = max_rel * investmentSize)
         val_rel : scalar or TS
-            given val_rel of definingVar
+            given val_rel of defining_variable
             (val = val_rel * investmentSize)
-        investmentSize : scalar or None
+        investment_size : scalar or None
             value of fixed investmentSize (None if no fixed investmentSize)
             Flow: investmentSize=size
             Storage: investmentSize =
         featureOn : FeatureOn
-            FeatureOn of the definingVar (if it has a cFeatureOn)
+            FeatureOn of the defining_variable (if it has a cFeatureOn)
 
         Returns
         -------
@@ -943,31 +943,30 @@ class FeatureInvest(Feature):
         """
 
         super().__init__('invest', owner)
-        self.nameOfInvestmentSize = nameOfInvestmentSize
+        self.name_of_investment_size = name_of_investment_size
         self.owner = owner
-        self.args = invest_parameters
-        self.definingVar = None
+        self.invest_parameters = invest_parameters
         self.max_rel = max_rel
         self.min_rel = min_rel
         self.val_rel = val_rel
-        self.fixedInvestmentSize = investmentSize  # nominalValue
+        self.investment_size = investment_size  # nominalValue
         self.featureOn = featureOn
-
         self.checkPlausibility()
 
-        # segmented investcosts:
-        self.featureLinearSegments = None
-        if self.args.effects_in_segments is not None:
+        self.defining_variable = None
+
+        self.featureLinearSegments = None   # segmented investcosts:
+        if self.invest_parameters.effects_in_segments is not None:
             self.featureLinearSegments = FeatureLinearSegmentVars('segmentedInvestcosts', self)
 
     def checkPlausibility(self):
-        # Check fixedInvestmentSize:
+        # Check investment_size:
         # todo: vielleicht ist es aber auch ok, wenn der size belegt ist und einfach nicht genutzt wird....
-        if self.args.fixed_size:
-            assert ((self.fixedInvestmentSize is not None) and (
-                        self.fixedInvestmentSize != 0)), 'fixedInvestmentSize muss gesetzt werden'
+        if self.invest_parameters.fixed_size:
+            assert ((self.investment_size is not None) and (
+                    self.investment_size != 0)), 'investment_size muss gesetzt werden'
         else:
-            assert self.fixedInvestmentSize is None, '!' + self.nameOfInvestmentSize + ' of ' + self.owner.label_full + ' must be None if investmentSize is variable'
+            assert self.investment_size is None, '!' + self.name_of_investment_size + ' of ' + self.owner.label_full + ' must be None if investment_size is variable'
 
     def bounds_of_defining_variable(self) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
 
@@ -983,19 +982,19 @@ class FeatureInvest(Feature):
         on_is_used_and_val_is_not_fix = (self.val_rel is None) and on_is_used
 
         # min-Wert:
-        if self.args.optional or on_is_used_and_val_is_not_fix:
+        if self.invest_parameters.optional or on_is_used_and_val_is_not_fix:
             lower_bound = 0  # can be zero (if no invest) or can switch off
         else:
-            if self.args.fixed_size:
-                lower_bound = min_rel * self.fixedInvestmentSize  # immer an
+            if self.invest_parameters.fixed_size:
+                lower_bound = min_rel * self.investment_size  # immer an
             else:
-                lower_bound = min_rel * self.args.minimum_size  # investSize is variabel
+                lower_bound = min_rel * self.invest_parameters.minimum_size  # investSize is variabel
 
         #  max-Wert:
-        if self.args.fixed_size:
-            upper_bound = max_rel * self.fixedInvestmentSize
+        if self.invest_parameters.fixed_size:
+            upper_bound = max_rel * self.investment_size
         else:
-            upper_bound = max_rel * self.args.maximum_size  # investSize is variabel
+            upper_bound = max_rel * self.invest_parameters.maximum_size  # investSize is variabel
 
         # upper_bound und lower_bound gleich, dann fix:
         if np.all(upper_bound == lower_bound):  # np.all -> kann listen oder werte vergleichen
@@ -1010,7 +1009,7 @@ class FeatureInvest(Feature):
     # Variablenreferenz kann erst später hinzugefügt werden, da erst später erstellt:
     # todo-> abändern durch Variable-Dummies
     def setDefiningVar(self, definingVar, definingVar_On):
-        self.definingVar = definingVar
+        self.defining_variable = definingVar
         self.definingVar_On = definingVar_On
 
     def declare_vars_and_eqs(self, system_model):
@@ -1019,31 +1018,31 @@ class FeatureInvest(Feature):
 
         # lb..ub of investSize unterscheiden:        
         # min:
-        if self.args.optional:
+        if self.invest_parameters.optional:
             lb = 0
             # Wenn invest nicht optional:
         else:
-            if self.args.fixed_size:
-                lb = self.fixedInvestmentSize  # einschränken, damit P_inv = P_nom !
+            if self.invest_parameters.fixed_size:
+                lb = self.investment_size  # einschränken, damit P_inv = P_nom !
             else:
-                lb = self.args.minimum_size  #
+                lb = self.invest_parameters.minimum_size  #
         # max:
-        if self.args.fixed_size:
-            ub = self.fixedInvestmentSize
+        if self.invest_parameters.fixed_size:
+            ub = self.investment_size
             # wenn nicht fixed:
         else:
-            ub = self.args.maximum_size
+            ub = self.invest_parameters.maximum_size
             # Definition:
 
         if lb == ub:
             # fix:
-            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, system_model, value=lb)
+            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model, value=lb)
         else:
             # Bereich:
-            self.model.var_investmentSize = Variable(self.nameOfInvestmentSize, 1, self, system_model, lower_bound=lb, upper_bound=ub)
+            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model, lower_bound=lb, upper_bound=ub)
 
         # b) var_isInvested:
-        if self.args.optional:
+        if self.invest_parameters.optional:
             self.model.var_isInvested = Variable('isInvested', 1, self, system_model, is_binary=True)
 
             ## investCosts in Segments: ##
@@ -1054,8 +1053,8 @@ class FeatureInvest(Feature):
 
     # definingInvestcosts in Segments:
     def _defineCostSegments(self, system_model: SystemModel):
-        investSizeSegs = self.args.effects_in_segments[0]  # segments of investSize
-        costSegs = self.args.effects_in_segments[1]  # effect-dict with segments as entries
+        investSizeSegs = self.invest_parameters.effects_in_segments[0]  # segments of investSize
+        costSegs = self.invest_parameters.effects_in_segments[1]  # effect-dict with segments as entries
         costSegs = as_effect_dict(costSegs)
 
         ## 1. create segments for investSize and every effect##
@@ -1072,7 +1071,7 @@ class FeatureInvest(Feature):
             self.investVar_effect_dict |= {aEffect: var_investForEffect}
 
         ## 2. on_var: ##
-        if self.args.optional:
+        if self.invest_parameters.optional:
             var_isInvested = self.model.var_isInvested
         else:
             var_isInvested = None
@@ -1096,12 +1095,12 @@ class FeatureInvest(Feature):
         return var_investForEffect
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
-        assert self.definingVar is not None, 'setDefiningVar() still not executed!'
+        assert self.defining_variable is not None, 'setDefiningVar() still not executed!'
         # wenn var_isInvested existiert:    
-        if self.args.optional:
+        if self.invest_parameters.optional:
             self._add_defining_var_isInvested(system_model)
 
-        # Bereich von definingVar in Abh. von var_investmentSize:
+        # Bereich von defining_variable in Abh. von var_investmentSize:
 
         # Wenn fixer relativer Lastgang:
         if self.val_rel is not None:
@@ -1117,19 +1116,19 @@ class FeatureInvest(Feature):
     def _add_fixEq_of_definingVar_with_var_investmentSize(self, system_model):
 
         ## Gleichung zw. DefiningVar und Investgröße:    
-        # eq: definingVar(t) = var_investmentSize * val_rel
+        # eq: defining_variable(t) = var_investmentSize * val_rel
 
         self.eq_fix_via_investmentSize = Equation('fix_via_InvestmentSize', self, system_model, 'eq')
-        self.eq_fix_via_investmentSize.add_summand(self.definingVar, 1)
+        self.eq_fix_via_investmentSize.add_summand(self.defining_variable, 1)
         self.eq_fix_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.val_rel.active_data))
 
     def _add_max_min_of_definingVar_with_var_investmentSize(self, system_model):
 
         ## 1. Gleichung: Maximum durch Investmentgröße ##     
-        # eq: definingVar(t) <=                var_investmentSize * max_rel(t)     
+        # eq: defining_variable(t) <=                var_investmentSize * max_rel(t)
         # eq: P(t) <= max_rel(t) * P_inv    
         self.eq_max_via_investmentSize = Equation('max_via_InvestmentSize', self, system_model, 'ineq')
-        self.eq_max_via_investmentSize.add_summand(self.definingVar, 1)
+        self.eq_max_via_investmentSize.add_summand(self.defining_variable, 1)
         # TODO: Changed by FB
         # self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.active_data))
         self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.data))
@@ -1138,22 +1137,22 @@ class FeatureInvest(Feature):
         ## 2. Gleichung: Minimum durch Investmentgröße ##        
 
         # Glg nur, wenn nicht Kombination On und fixed:
-        if not (self.on_variable_is_used and self.args.fixed_size):
+        if not (self.on_variable_is_used and self.invest_parameters.fixed_size):
             self.eq_min_via_investmentSize = Equation('min_via_investmentSize', self, system_model, 'ineq')
 
         if self.on_variable_is_used:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
-            if not self.args.fixed_size:
-                # eq: definingVar(t) >= Big * (On(t)-1) + investmentSize * min_rel(t)
+            if not self.invest_parameters.fixed_size:
+                # eq: defining_variable(t) >= Big * (On(t)-1) + investment_size * min_rel(t)
                 #     ... mit Big = max(min_rel*P_inv_max, epsilon)
                 # (P < min_rel*P_inv -> On=0 | On=1 -> P >= min_rel*P_inv)
 
                 # äquivalent zu:.
-                # eq: - definingVar(t) + Big * On(t) + min_rel(t) * investmentSize <= Big
+                # eq: - defining_variable(t) + Big * On(t) + min_rel(t) * investment_size <= Big
 
-                Big = helpers.max_args(self.min_rel.active_data * self.args.maximum_size, system_model.epsilon)
+                Big = helpers.max_args(self.min_rel.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
 
-                self.eq_min_via_investmentSize.add_summand(self.definingVar, -1)
+                self.eq_min_via_investmentSize.add_summand(self.defining_variable, -1)
                 self.eq_min_via_investmentSize.add_summand(self.definingVar_On, Big)  # übergebene On-Variable
                 self.eq_min_via_investmentSize.add_summand(self.model.var_investmentSize, self.min_rel.active_data)
                 self.eq_min_via_investmentSize.add_constant(Big)
@@ -1161,9 +1160,9 @@ class FeatureInvest(Feature):
             else:
                 pass  # Bereits in FeatureOn mit P>= On(t)*Min ausreichend definiert
         else:
-            # eq: definingVar(t) >= investmentSize * min_rel(t)    
+            # eq: defining_variable(t) >= investment_size * min_rel(t)
 
-            self.eq_min_via_investmentSize.add_summand(self.definingVar, -1)
+            self.eq_min_via_investmentSize.add_summand(self.defining_variable, -1)
             self.eq_min_via_investmentSize.add_summand(self.model.var_investmentSize, self.min_rel.active_data)
 
             #### Defining var_isInvested ####
@@ -1171,12 +1170,12 @@ class FeatureInvest(Feature):
     def _add_defining_var_isInvested(self, system_model):
 
         # wenn fixed, dann const:
-        if self.args.fixed_size:
+        if self.invest_parameters.fixed_size:
 
-            # eq: investmentSize = isInvested * size
+            # eq: investment_size = isInvested * size
             self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, system_model, 'eq')
             self.eq_isInvested_1.add_summand(self.model.var_investmentSize, -1)
-            self.eq_isInvested_1.add_summand(self.model.var_isInvested, self.fixedInvestmentSize)
+            self.eq_isInvested_1.add_summand(self.model.var_isInvested, self.investment_size)
 
             # wenn nicht fix, dann Bereich:
         else:
@@ -1187,51 +1186,51 @@ class FeatureInvest(Feature):
             self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, system_model, 'ineq')
             self.eq_isInvested_1.add_summand(self.model.var_investmentSize, 1)
             self.eq_isInvested_1.add_summand(self.model.var_isInvested,
-                                             np.multiply(-1, self.args.maximum_size))  # Variable ist Skalar!
+                                             np.multiply(-1, self.invest_parameters.maximum_size))  # Variable ist Skalar!
 
             ## 2. Gleichung (skalar):                  
             # eq2: P_invest  >= isInvested * max(epsilon, investSize_min)
             # (isInvested = 1 -> P_invest>0  |  P_invest=0 -> isInvested = 0)
             self.eq_isInvested_2 = Equation('isInvested_constraint_2', self, system_model, 'ineq')
             self.eq_isInvested_2.add_summand(self.model.var_investmentSize, -1)
-            self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(system_model.epsilon, self.args.minimum_size))
+            self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(system_model.epsilon, self.invest_parameters.minimum_size))
 
     def add_share_to_globals(self, globalComp, system_model):
 
         # # fix_effects:
         # wenn fix_effects vorhanden:
-        if not (self.args.fix_effects is None) and self.args.fix_effects != 0:
-            if self.args.optional:
+        if not (self.invest_parameters.fix_effects is None) and self.invest_parameters.fix_effects != 0:
+            if self.invest_parameters.optional:
                 # fix Share to InvestCosts: 
                 # share: + isInvested * fix_effects
-                globalComp.add_share_to_invest('fix_effects', self.owner, self.model.var_isInvested, self.args.fix_effects, 1)
+                globalComp.add_share_to_invest('fix_effects', self.owner, self.model.var_isInvested, self.invest_parameters.fix_effects, 1)
             else:
                 # share: + fix_effects
-                globalComp.add_constant_share_to_invest('fix_effects', self.owner, self.args.fix_effects,
+                globalComp.add_constant_share_to_invest('fix_effects', self.owner, self.invest_parameters.fix_effects,
                                                         1)  # fester Wert hinufügen
 
         # # divest_effects:
 
-        if not (self.args.divest_effects is None) and self.args.divestCost != 0:
-            if self.args.optional:
+        if not (self.invest_parameters.divest_effects is None) and self.invest_parameters.divestCost != 0:
+            if self.invest_parameters.optional:
                 # fix Share to InvestCosts: 
                 # share: [(1- isInvested) * divest_effects]
                 # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
-                globalComp.add_constant_share_to_invest('divest_effects', self.owner, self.args.divest_effects, 1)
+                globalComp.add_constant_share_to_invest('divest_effects', self.owner, self.invest_parameters.divest_effects, 1)
                 # 2. part of share [- isInvested * divest_effects]:
                 globalComp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
-                                               self.args.divest_effects, -1)
+                                               self.invest_parameters.divest_effects, -1)
                 # TODO : these 2 parts should be one share!
             else:
                 pass  # no divest costs if invest is not optional
 
         # # specific_effects:
         # wenn specific_effects vorhanden:
-        if not (self.args.specific_effects is None):
-            # share: + investmentSize (=var)   * specific_effects
+        if not (self.invest_parameters.specific_effects is None):
+            # share: + investment_size (=var)   * specific_effects
             globalComp.add_share_to_invest('specific_effects', self.owner, self.model.var_investmentSize,
-                                           self.args.specific_effects, 1)
+                                           self.invest_parameters.specific_effects, 1)
 
         # # segmentedCosts:                                        
         if self.featureLinearSegments is not None:

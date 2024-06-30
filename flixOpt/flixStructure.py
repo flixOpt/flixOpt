@@ -1319,7 +1319,7 @@ class Flow(Element):
 
         self.val_rel = None
         if val_rel is not None:
-            # Wenn noch size noch Default, aber investmentSize nicht optimiert werden soll:
+            # Wenn noch size noch Default, aber investment_size nicht optimiert werden soll:
             size_is_default = self.size == Flow._default_size
             if size_is_default and self.size_is_fixed:
                 raise Exception(
@@ -1402,7 +1402,7 @@ class Flow(Element):
                                                min_rel=self.min_rel_with_exists,
                                                max_rel=self.max_rel_with_exists,
                                                val_rel=self.val_rel,
-                                               investmentSize=self.size,
+                                               investment_size=self.size,
                                                featureOn=self.featureOn)
 
         super().finalize()
@@ -1448,7 +1448,7 @@ class Flow(Element):
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-        # erst hier, da definingVar vorher nicht belegt!
+        # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
             self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
             self.featureInvest.declare_vars_and_eqs(system_model)

@@ -339,7 +339,7 @@ class cAggregationModeling(flixStructure.Element):
         self.costsOfPeriodFreedom = costsOfPeriodFreedom
 
         super().__init__(label, **kwargs)
-        # args to attributes:
+        # invest_parameters to attributes:
 
         self.var_K_list = []
 
