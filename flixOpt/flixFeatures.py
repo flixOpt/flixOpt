@@ -12,7 +12,7 @@ import logging
 
 import numpy as np
 
-from flixOpt.flixStructure import Element, SystemModel, Flow, EffectTypeDict  # Grundstruktur
+from flixOpt.flixStructure import Element, SystemModel, Flow, EffectTypeDict, Global  # Grundstruktur
 from flixOpt.flixBasics import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.basicModeling import Variable, VariableTS, Equation
 from flixOpt.flixBasicsPublic import InvestParameters
@@ -407,7 +407,7 @@ class FeatureOn(Feature):
     #   # else :
     #   #   raise Exception('featureOwner ' + self.featureOwner.label + ' has no attribute var_on or it is already used')
 
-    def declare_vars_and_eqs(self, system_model):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         # Beachte: Variablen gehören nicht diesem Element, sondern varOwner (meist ist das der featureOwner)!!!  
         # Var On:
         if self.use_on:
@@ -451,7 +451,7 @@ class FeatureOn(Feature):
             self.model.var_switchOff = None
             self.model.var_nrSwitchOn = None
 
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         if self.use_on:
             self._add_on_constraints(system_model, time_indices)
         if self.use_off:
@@ -467,7 +467,7 @@ class FeatureOn(Feature):
                 self.model.var_offHours, self.model.var_off, self.off_hours_min,
                 self, system_model, time_indices)
 
-    def _add_on_constraints(self, system_model, time_indices: Union[list[int], range]):
+    def _add_on_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
 
         # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig 
@@ -541,7 +541,7 @@ class FeatureOn(Feature):
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
                     int(sumOfFlowMax / nr_of_flows)) + '). Ggf. falsche Ergebnisse !!!')
 
-    def _add_off_constraints(self, system_model, time_indices: Union[list[int], range]):
+    def _add_off_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
         eq_var_off = Equation('var_off', self, system_model, eqType='eq')
@@ -611,7 +611,7 @@ class FeatureOn(Feature):
         eq_first.add_summand(duration_variable, 1, firstIndex)
         eq_first.add_summand(binary_variable, -1 * system_model.dt_in_hours[firstIndex], firstIndex)
 
-    def add_switch_constraints(self, system_model, time_indices: Union[list[int], range]):
+    def add_switch_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1) 
 
@@ -648,16 +648,16 @@ class FeatureOn(Feature):
         eq_NrSwitchOn.add_summand(self.model.var_nrSwitchOn, 1)
         eq_NrSwitchOn.add_summand(self.model.var_switchOn, -1, as_sum=True)
 
-    def add_share_to_globals(self, globalComp, system_model):
+    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel):
 
         shareHolder = self.owner
         # Anfahrkosten:
         if self.switch_on_effects is not None:  # and any(self.switch_on_effects.active_data != 0):
-            globalComp.add_share_to_operation('switch_on_effects', shareHolder, self.model.var_switchOn, self.switch_on_effects, 1)
+            global_comp.add_share_to_operation('switch_on_effects', shareHolder, self.model.var_switchOn, self.switch_on_effects, 1)
         # Betriebskosten:
         if self.running_hour_effects is not None:  # and any(self.running_hour_effects):
-            globalComp.add_share_to_operation('running_hour_effects', shareHolder, self.model.var_on,
-                                              self.running_hour_effects, system_model.dt_in_hours)
+            global_comp.add_share_to_operation('running_hour_effects', shareHolder, self.model.var_on,
+                                               self.running_hour_effects, system_model.dt_in_hours)
             # global_comp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
 
