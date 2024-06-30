@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 ## TODO:
 # featureAvoidFlowsAtOnce:
 # neue Variante (typ="new") austesten
-from typing import Optional, Union, Tuple, Dict, List, Set, Callable, TYPE_CHECKING
+from typing import Optional, Union, Tuple, Dict, List, Set, Callable, Literal, TYPE_CHECKING
 import logging
 
 import numpy as np
@@ -206,6 +206,7 @@ class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
         self.segments_of_flows = segments_of_flows
         self.get_var_on = get_var_on
         self.flows = flows
+        self.eq_flowLock = None
         super().__init__(label, owner)
 
     def declare_vars_and_eqs(self, system_model):
@@ -248,7 +249,7 @@ class Segment(Feature):
 # Verhindern gleichzeitig mehrere Flows > 0 
 class FeatureAvoidFlowsAtOnce(Feature):
 
-    def __init__(self, label, owner, flows, typ='classic'):
+    def __init__(self, label: str, owner: Element, flows: List[Flow], typ: Literal['classic', 'new'] = 'classic'):
         super().__init__(label, owner)
         self.flows = flows
         self.typ = typ
@@ -268,19 +269,19 @@ class FeatureAvoidFlowsAtOnce(Feature):
             # "new" -> n-1 Flows brauchen Binärvariable: (eine wird eingespart)
 
             # 1. Get nr of existing on_vars in Flows
-            self.nrOfExistingOn_vars = 0
+            existing_on_variables = 0
             for aFlow in self.flows:
-                self.nrOfExistingOn_vars += aFlow.featureOn.useOn
+                existing_on_variables += aFlow.featureOn.useOn
 
             # 2. Add necessary further flow binaries:
             # Anzahl on_vars solange erhöhen bis mindestens n-1 vorhanden:
             i = 0
-            while self.nrOfExistingOn_vars < (len(self.flows) - 1):
+            while existing_on_variables < (len(self.flows) - 1):
                 aFlow = flows[i]
                 # Falls noch nicht on-Var für flow existiert, dann erzwingen:
                 if not aFlow.featureOn.useOn:
                     aFlow.force_on_variable()
-                    self.nrOfExistingOn_vars += 1
+                    existing_on_variables += 1
                 i += 1
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]):
