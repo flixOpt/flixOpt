@@ -151,7 +151,7 @@ aCalc = Calculation('Sim1',  # name of calculation
                     time_indices) # used time steps
 
 # 2. modeling:
-aCalc.doModelingAsOneSegment() # mathematic modeling of system
+aCalc.do_modeling_as_one_segment() # mathematic modeling of system
 
 # 3. (optional) print Model-Characteristics:
 system.printModel() # string-output:network structure of model

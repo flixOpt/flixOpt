@@ -51,7 +51,7 @@ class TestExistance(unittest.TestCase):
         self.es.add_elements(*self.effects.values(), *self.sinks_n_sources.values())
         self.es.add_elements(boiler_exists, self.comps["Boiler"])
         calc = Calculation('Sim1', self.es, 'pyomo')
-        calc.doModelingAsOneSegment()
+        calc.do_modeling_as_one_segment()
         calc.solve(solverProps={'mip_gap': 0.05,
                                 'time_limit_seconds': 60,
                                 'solver': 'cbc',
@@ -82,7 +82,7 @@ class TestExistance(unittest.TestCase):
         self.es.add_elements(*self.effects.values(), *self.sinks_n_sources.values())
         self.es.add_elements(storage_exists, self.comps["CHP"])
         calc = Calculation('Sim1', self.es, 'pyomo')
-        calc.doModelingAsOneSegment()
+        calc.do_modeling_as_one_segment()
         calc.solve(solverProps={'mip_gap': 0.05,
                                 'time_limit_seconds': 60,
                                 'solver': 'cbc',

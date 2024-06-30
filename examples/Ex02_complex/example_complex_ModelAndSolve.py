@@ -216,7 +216,7 @@ time_indices = None
 
 # ## modeling "full" calculation:
 aCalc = Calculation('Sim1', system, 'pyomo', time_indices)
-aCalc.doModelingAsOneSegment()
+aCalc.do_modeling_as_one_segment()
 
 # print Model-Charactaricstics:
 system.printModel()

@@ -92,7 +92,7 @@ class TestSimple(BaseTest):
         time_indices = None
 
         aCalc = Calculation('Test_Sim', es, 'pyomo', time_indices)
-        aCalc.doModelingAsOneSegment()
+        aCalc.do_modeling_as_one_segment()
 
         es.printModel()
         es.print_variables()
@@ -247,7 +247,7 @@ class TestComplex(BaseTest):
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
         aCalc = Calculation('Sim1', es, 'pyomo', None)
-        aCalc.doModelingAsOneSegment()
+        aCalc.do_modeling_as_one_segment()
 
         es.printModel()
         es.print_variables()
@@ -292,7 +292,7 @@ class TestComplex(BaseTest):
         es.add_components(aSpeicher)
 
         aCalc = Calculation('Sim1', es, 'pyomo', None)
-        aCalc.doModelingAsOneSegment()
+        aCalc.do_modeling_as_one_segment()
 
         es.printModel()
         es.print_variables()
@@ -356,13 +356,13 @@ class TestModelingTypes(BaseTest):
 
         if doFullCalc:
             calc = Calculation('fullModel', es, 'pyomo')
-            calc.doModelingAsOneSegment()
+            calc.do_modeling_as_one_segment()
         if doSegmentedCalc:
             calc = Calculation('segModel', es, 'pyomo')
-            calc.doSegmentedModelingAndSolving(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
+            calc.do_segmented_modeling_and_solving(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
         if doAggregatedCalc:
             calc = Calculation('aggModel', es, 'pyomo')
-            calc.doAggregatedModeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
+            calc.do_aggregated_modeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
 
         es.printModel()
         es.print_variables()

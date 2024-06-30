@@ -232,7 +232,7 @@ listOfCalcs = []
 # Roh-Rechnung:
 if doFullCalc:
   calcFull = Calculation('fullModel', system, 'pyomo', time_indices)
-  calcFull.doModelingAsOneSegment()
+  calcFull.do_modeling_as_one_segment()
   
   system.printModel()
   system.print_variables()
@@ -245,23 +245,23 @@ if doFullCalc:
 if doSegmentedCalc :
 
    calcSegs = Calculation('segModel', system, 'pyomo', time_indices)
-   calcSegs.doSegmentedModelingAndSolving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, nameSuffix = nameSuffix)
+   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, nameSuffix = nameSuffix)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
 
 if doAggregatedCalc :    
     calcAgg = Calculation('aggModel', system, 'pyomo')
-    calcAgg.doAggregatedModeling(periodLengthInHours, 
-                                 noTypicalPeriods, 
-                                 useExtremeValues, 
-                                 fixStorageFlows, 
-                                 fixBinaryVarsOnly, 
-                                 percentageOfPeriodFreedom = percentageOfPeriodFreedom,
-                                 costsOfPeriodFreedom = costsOfPeriodFreedom,
-                                 addPeakMax=[TS_Q_th_Last], # add timeseries of period with maxPeak explicitly
-                                 addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
-                                 )
+    calcAgg.do_aggregated_modeling(periodLengthInHours,
+                                   noTypicalPeriods,
+                                   useExtremeValues,
+                                   fixStorageFlows,
+                                   fixBinaryVarsOnly,
+                                   percentageOfPeriodFreedom = percentageOfPeriodFreedom,
+                                   costsOfPeriodFreedom = costsOfPeriodFreedom,
+                                   addPeakMax=[TS_Q_th_Last],  # add timeseries of period with maxPeak explicitly
+                                   addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
+                                   )
     
     system.print_variables()
     system.print_equations()

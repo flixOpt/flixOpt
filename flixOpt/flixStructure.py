@@ -2219,7 +2219,7 @@ class Calculation:
         self.dataAgg = None  # aggregationStuff (if calcType = 'aggregated')
 
     # Variante1:
-    def doModelingAsOneSegment(self):
+    def do_modeling_as_one_segment(self):
         '''
           modeling full problem
 
@@ -2243,8 +2243,8 @@ class Calculation:
         return system_model
 
     # Variante2:
-    def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix='', nameSuffix='',
-                                      aPath='results/'):
+    def do_segmented_modeling_and_solving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix='', nameSuffix='',
+                                          aPath='results/'):
         '''
           Dividing and Modeling the problem in (overlapped) time-segments.
           Storage values as result of segment n are overtaken
@@ -2369,12 +2369,12 @@ class Calculation:
 
         self._saveSolveInfos()
 
-    def doAggregatedModeling(self, periodLengthInHours, noTypicalPeriods,
-                             useExtremePeriods, fixStorageFlows,
-                             fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
-                             costsOfPeriodFreedom=0,
-                             addPeakMax=[],
-                             addPeakMin=[]):
+    def do_aggregated_modeling(self, periodLengthInHours, noTypicalPeriods,
+                               useExtremePeriods, fixStorageFlows,
+                               fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
+                               costsOfPeriodFreedom=0,
+                               addPeakMax=[],
+                               addPeakMin=[]):
         '''
         method of aggregated modeling.
         1. Finds typical periods.
