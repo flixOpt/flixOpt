@@ -81,25 +81,20 @@ class FeatureLinearSegmentVars(Feature):
         if not self.nr_of_segments.is_integer():   # Check ob gerade Anzahl an Werten:
             raise Exception('Nr of Values should be even, because pairs (start,end of every section)')
 
-        # Check, ob alle Variables vorhanden:
         if vars_for_check is not None:
-            setOfVars = set(segments_of_variables.keys())
-            toMuchSet = setOfVars - set(vars_for_check)
-            missingSet = set(vars_for_check) - setOfVars
+            set_of_vars = set(segments_of_variables.keys())
+            extra_vars = set_of_vars - set(vars_for_check)
+            missing_vars = set(vars_for_check) - set_of_vars
 
-            # Wenn Unterschiede vorhanden:
-            def getStrOfSet(aSet):
-                aStr = []
-                for aVar in aSet:
-                    aStr += ',' + aVar.label_full
-                return aStr
+            def get_str_of_set(a_set):
+                return ','.join(var.label_full for var in a_set)
 
-            # überflüssige Flows:
-            if toMuchSet:
-                raise Exception('segments_of_variables-Definition has not necessary vars: ' + getStrOfSet(toMuchSet))
-            # fehlende Flows:
-            if missingSet:
-                raise Exception('segments_of_variables miss following vars: ' + getStrOfSet(missingSet))
+            if extra_vars:
+                raise Exception('segments_of_variables-Definition has unnecessary vars: ' + get_str_of_set(extra_vars))
+
+            if missing_vars:
+                raise Exception('segments_of_variables is missing the following vars: ' + get_str_of_set(missing_vars))
+
         # Aufteilen der Daten in die Segmente:
         for aSecNr in range(int(self.nrOfSegments)):
             # samplePoints für das Segment extrahieren:
