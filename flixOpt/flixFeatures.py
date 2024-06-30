@@ -602,7 +602,7 @@ class FeatureOn(Feature):
             ineq_min.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
             ineq_min.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
 
-        # TODO: Maximum Duration?? Is this not modeled yet?
+        # TODO: Maximum Duration?? Is this not modeled yet?!!
 
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)
