@@ -69,8 +69,8 @@ print(calc1.results_struct.Kessel.Q_th.val)
 
 
 # Beispiele von Zugriff:
-sum(calc1.results_struct.globalComp.costs.operation.sum_TS)
-calc1.results_struct.globalComp.costs.operation.sum
+sum(calc1.results_struct.global_comp.costs.operation.sum_TS)
+calc1.results_struct.global_comp.costs.operation.sum
 
 fuel = calc1.results_struct.Gastarif.Q_Gas.val * 0.04 - calc1.results_struct.Einspeisung.P_el.val * 0.7
 print(fuel)
@@ -105,13 +105,13 @@ def uebersichtsPlot(aCalc):
   
   plotFlow(aCalc, aCalc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
   
-  plt.plot(aCalc.timeSeries, aCalc.results_struct.globalComp.costs.operation.sum_TS, '--', label='costs (operating)') 
+  plt.plot(aCalc.time_series, aCalc.results_struct.global_comp.costs.operation.sum_TS, '--', label='costs (operating)')
   
   if hasattr(aCalc.results_struct,'Speicher'):
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_unload.val, where = 'post', label='Speicher_unload')
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_load.val  , where = 'post', label='Speicher_load')
-    plt.plot(aCalc.timeSeriesWithEnd, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
-  # plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher., label='Speicher_load')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_unload.val, where ='post', label='Speicher_unload')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_load.val, where ='post', label='Speicher_load')
+    plt.plot(aCalc.time_series_with_end, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
+  # plt.step(aCalc.time_series, aCalc.results_struct.Speicher., label='Speicher_load')
   plt.grid(axis='y')
   plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
   plt.show()

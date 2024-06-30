@@ -10,9 +10,9 @@ import flixOpt.flixPostprocessing as flixPost
 class BaseTest(unittest.TestCase):
     def setUp(self):
         self.solverProps = {
-            'gapFrac': 0.0001,
+            'mip_gap': 0.0001,
             'time_limit_seconds': 3600,
-            'solver': 'highs',
+            'solver_name': 'highs',
             'solver_output_to_console': True,
         }
 
@@ -61,42 +61,42 @@ class TestSimple(BaseTest):
         Fernwaerme = Bus('heat', 'Fernwärme')
         Gas = Bus('fuel', 'Gas')
 
-        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2},
-                     max_per_hour_operation=self.max_emissions_per_hour)
+        costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2},
+                     maximum_operation_per_hour=self.max_emissions_per_hour)
 
         aBoiler = Boiler('Boiler', eta=0.5,
-                         Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, min_rel=5 / 50, max_rel=1),
+                         Q_th=Flow('Q_th', bus=Fernwaerme, size=50, min_rel=5 / 50, max_rel=1),
                          Q_fu=Flow('Q_fu', bus=Gas))
-        aKWK = CHP('CHP_unit', eta_th=0.5, eta_el=0.4, P_el=Flow('P_el', bus=Strom, nominal_val=60, min_rel=5 / 60),
+        aKWK = CHP('CHP_unit', eta_th=0.5, eta_el=0.4, P_el=Flow('P_el', bus=Strom, size=60, min_rel=5 / 60),
                    Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Gas))
-        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, nominal_val=1e4),
-                            outFlow=Flow('Q_th_unload', bus=Fernwaerme, nominal_val=1e4), capacity_inFlowHours=30,
+        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4),
+                            outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=30,
                             chargeState0_inFlowHours=0,
                             max_rel_chargeState=1 / 100 * np.array([80., 70., 80., 80, 80, 80, 80, 80, 80, 80]),
                             eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True,
                             invest_parameters=InvestParameters(fix_effects=20, fixed_size=True,
                                                                optional=False))
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, val_rel=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, val_rel=self.Q_th_Last))
         aGasTarif = Source('Gastarif',
-                           source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
-        aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, costsPerFlowHour=-1 * self.p_el))
+                           source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
+        aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * self.p_el))
 
-        es = System(self.aTimeSeries, dt_last=None)
-        es.addComponents(aSpeicher)
-        es.addEffects(costs, CO2)
-        es.addComponents(aBoiler, aWaermeLast, aGasTarif)
-        es.addComponents(aStromEinspeisung)
-        es.addComponents(aKWK)
+        es = System(self.aTimeSeries, last_time_step_hours=None)
+        es.add_components(aSpeicher)
+        es.add_effects(costs, CO2)
+        es.add_components(aBoiler, aWaermeLast, aGasTarif)
+        es.add_components(aStromEinspeisung)
+        es.add_components(aKWK)
 
-        chosenEsTimeIndexe = None
+        time_indices = None
 
-        aCalc = Calculation('Test_Sim', es, 'pyomo', chosenEsTimeIndexe)
-        aCalc.doModelingAsOneSegment()
+        aCalc = Calculation('Test_Sim', es, 'pyomo', time_indices)
+        aCalc.do_modeling_as_one_segment()
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
         aCalc.solve(self.solverProps, nameSuffix='_highs')
 
@@ -127,17 +127,17 @@ class TestComplex(BaseTest):
                                        -2.35107029e+03, -2.38500000e+03, 0.00000000e+00, -1.68897826e-10,
                                        -2.16914486e-12], "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['CO2_specificShareToOtherEffects_operation'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['CO2_specific_share_to_other_effects_operation'],
                                       258.63729669618675, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel__Q_th_switchOnCosts'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel__Q_th_switch_on_effects'],
                                       0.01, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel_costsPerRunningHour'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel_running_hour_effects'],
                                       -0.0, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Gastarif__Q_Gas_costsPerFlowHour'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Gastarif__Q_Gas_effects_per_flow_hour'],
                                       39.09153113079115, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Einspeisung__P_el_costsPerFlowHour'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Einspeisung__P_el_effects_per_flow_hour'],
                                       -14196.61245231646, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['KWK_switchOnCosts'],
+        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['KWK_switch_on_effects'],
                                       0.0, "costs doesnt match expected value")
 
         self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_fix_effects'],
@@ -216,89 +216,89 @@ class TestComplex(BaseTest):
 
     def basic_model(self):
         # Define the components and energy system
-        Strom = Bus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
-        Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
-        Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
+        Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=self.excessCosts)
+        Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=self.excessCosts)
+        Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=self.excessCosts)
 
-        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
-        PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
+        costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2})
+        PE = Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total=3.5e3)
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
-        aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, loadFactor_max=1.0, loadFactor_min=0.1, min_rel=5 / 50, max_rel=1, onHoursSum_min=0, onHoursSum_max=1000, onHours_max=10, offHours_max=10, switchOnCosts=0.01, switchOn_maxNr=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, sumFlowHours_max=1e6),
-                            Q_fu=Flow('Q_fu', bus=Gas, nominal_val=200, min_rel=0, max_rel=1))
+        aGaskessel = Boiler('Kessel', eta=0.5, running_hour_effects={costs: 0, CO2: 1000},
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, max_rel=1))
 
-        aKWK = CHP('KWK', eta_th=0.5, eta_el=0.4, switchOnCosts=0.01,
-                   P_el=Flow('P_el', bus=Strom, nominal_val=60, min_rel=5 / 60),
-                   Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=1e3),
-                   Q_fu=Flow('Q_fu', bus=Gas, nominal_val=1e3), on_valuesBeforeBegin=[1])
+        aKWK = CHP('KWK', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01, on_values_before_begin=[1],
+                   P_el=Flow('P_el', bus=Strom, size=60, min_rel=5 / 60),
+                   Q_th=Flow('Q_th', bus=Fernwaerme, size=1e3),
+                   Q_fu=Flow('Q_fu', bus=Gas, size=1e3))
 
         costsInvestsizeSegments = [[5, 25, 25, 100], {costs: [50, 250, 250, 800], PE: [5, 25, 25, 100]}]
         invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
-        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, nominal_val=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, nominal_val=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
+        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, min_rel=0, val_rel=self.Q_th_Last))
-        aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
-        aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, costsPerFlowHour=-1 * np.array(self.P_el_Last)))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, val_rel=self.Q_th_Last))
+        aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
+        aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
-        es = System(self.aTimeSeries, dt_last=None)
-        es.addEffects(costs, CO2, PE)
-        es.addComponents(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
+        es = System(self.aTimeSeries, last_time_step_hours=None)
+        es.add_effects(costs, CO2, PE)
+        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
         aCalc = Calculation('Sim1', es, 'pyomo', None)
-        aCalc.doModelingAsOneSegment()
+        aCalc.do_modeling_as_one_segment()
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver']}")
+        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
 
         return flixPost.flix_results(aCalc.nameOfCalc).results
 
     def segments_of_flows_model(self):
         # Define the components and energy system
-        Strom = Bus('el', 'Strom', excessCostsPerFlowHour=self.excessCosts)
-        Fernwaerme = Bus('heat', 'Fernwärme', excessCostsPerFlowHour=self.excessCosts)
-        Gas = Bus('fuel', 'Gas', excessCostsPerFlowHour=self.excessCosts)
+        Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=self.excessCosts)
+        Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=self.excessCosts)
+        Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=self.excessCosts)
 
-        costs = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True)
-        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specificShareToOtherEffects_operation={costs: 0.2})
-        PE = Effect('PE', 'kWh_PE', 'Primärenergie', max_Sum=3.5e3)
+        costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
+        CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2})
+        PE = Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total=3.5e3)
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
-        aGaskessel = Boiler('Kessel', eta=0.5, costsPerRunningHour={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, nominal_val=50, loadFactor_max=1.0, loadFactor_min=0.1, min_rel=5 / 50, max_rel=1, onHoursSum_min=0, onHoursSum_max=1000, onHours_max=10, offHours_max=10, switchOnCosts=0.01, switchOn_maxNr=1000, valuesBeforeBegin=[50], invest_parameters=invest_Gaskessel, sumFlowHours_max=1e6),
-                            Q_fu=Flow('Q_fu', bus=Gas, nominal_val=200, min_rel=0, max_rel=1))
+        aGaskessel = Boiler('Kessel', eta=0.5, running_hour_effects={costs: 0, CO2: 1000},
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, max_rel=1))
 
-        P_el = Flow('P_el', bus=Strom, nominal_val=60, max_rel=55)
+        P_el = Flow('P_el', bus=Strom, size=60, max_rel=55)
         Q_th = Flow('Q_th', bus=Fernwaerme)
         Q_fu = Flow('Q_fu', bus=Gas)
         segmentsOfFlows = {P_el: [5, 30, 40, 60], Q_th: [6, 35, 45, 100], Q_fu: [12, 70, 90, 200]}
-        aKWK = LinearTransformer('KWK', inputs=[Q_fu], outputs=[P_el, Q_th], segmentsOfFlows=segmentsOfFlows, switchOnCosts=0.01, on_valuesBeforeBegin=[1])
+        aKWK = LinearTransformer('KWK', inputs=[Q_fu], outputs=[P_el, Q_th], segmentsOfFlows=segmentsOfFlows, switch_on_effects=0.01, on_values_before_begin=[1])
 
         costsInvestsizeSegments = [[5, 25, 25, 100], {costs: [50, 250, 250, 800], PE: [5, 25, 25, 100]}]
         invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
-        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, nominal_val=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, nominal_val=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
+        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, min_rel=0, val_rel=self.Q_th_Last))
-        aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: 0.04, CO2: 0.3}))
-        aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, costsPerFlowHour=-1 * np.array(self.P_el_Last)))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, val_rel=self.Q_th_Last))
+        aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
+        aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
-        es = System(self.aTimeSeries, dt_last=None)
-        es.addEffects(costs, CO2, PE)
-        es.addComponents(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
-        es.addComponents(aSpeicher)
+        es = System(self.aTimeSeries, last_time_step_hours=None)
+        es.add_effects(costs, CO2, PE)
+        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
+        es.add_components(aSpeicher)
 
         aCalc = Calculation('Sim1', es, 'pyomo', None)
-        aCalc.doModelingAsOneSegment()
+        aCalc.do_modeling_as_one_segment()
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver']}")
+        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
 
         return flixPost.flix_results(aCalc.nameOfCalc).results
 
@@ -335,38 +335,38 @@ class TestModelingTypes(BaseTest):
         aTimeSeries = (datetime.datetime(2020, 1, 1) + np.arange(len(P_el_Last)) * datetime.timedelta(hours=0.25)).astype('datetime64')
 
         Strom, Fernwaerme, Gas, Kohle = Bus('el', 'Strom'), Bus('heat', 'Fernwärme'), Bus('fuel', 'Gas'), Bus('fuel', 'Kohle')
-        costs, CO2, PE = Effect('costs', '€', 'Kosten', isStandard=True, isObjective=True), Effect('CO2', 'kg', 'CO2_e-Emissionen'), Effect('PE', 'kWh_PE', 'Primärenergie')
+        costs, CO2, PE = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True), Effect('CO2', 'kg', 'CO2_e-Emissionen'), Effect('PE', 'kWh_PE', 'Primärenergie')
 
-        aGaskessel = Boiler('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, nominal_val=95, min_rel=12 / 95, iCanSwitchOff=True, switchOnCosts=1000, valuesBeforeBegin=[0]))
-        aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switchOnCosts=24000, P_el=Flow('P_el', bus=Strom), Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Kohle, nominal_val=288, min_rel=87 / 288), on_valuesBeforeBegin=[0])
-        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', nominal_val=137, bus=Fernwaerme), outFlow=Flow('Q_th_unload', nominal_val=158, bus=Fernwaerme), capacity_inFlowHours=684, chargeState0_inFlowHours=137, charge_state_end_min=137, charge_state_end_max=158, eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
+        aGaskessel = Boiler('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, size=95, min_rel=12 / 95, can_switch_off=True, switch_on_effects=1000, values_before_begin=[0]))
+        aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switch_on_effects=24000, P_el=Flow('P_el', bus=Strom), Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Kohle, size=288, min_rel=87 / 288), on_values_before_begin=[0])
+        aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', size=137, bus=Fernwaerme), outFlow=Flow('Q_th_unload', size=158, bus=Fernwaerme), capacity_inFlowHours=684, chargeState0_inFlowHours=137, charge_state_end_min=137, charge_state_end_max=158, eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
 
         TS_Q_th_Last, TS_P_el_Last = TimeSeriesRaw(Q_th_Last), TimeSeriesRaw(P_el_Last, agg_weight=0.7)
-        aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, nominal_val=1, val_rel=TS_Q_th_Last)), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, nominal_val=1, val_rel=TS_P_el_Last))
-        aKohleTarif, aGasTarif = Source('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, nominal_val=1000, costsPerFlowHour={costs: 4.6, CO2: 0.3})), Source('Gastarif', source=Flow('Q_Gas', bus=Gas, nominal_val=1000, costsPerFlowHour={costs: gP, CO2: 0.3}))
+        aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, val_rel=TS_Q_th_Last)), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, val_rel=TS_P_el_Last))
+        aKohleTarif, aGasTarif = Source('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3})), Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: gP, CO2: 0.3}))
 
         p_feed_in, p_sell = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el'), TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
-        aStromEinspeisung, aStromTarif = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour=p_feed_in)), Source('Stromtarif', source=Flow('P_el', bus=Strom, nominal_val=1000, costsPerFlowHour={costs: p_sell, CO2: 0.3}))
-        aStromEinspeisung.sink.costsPerFlowHour[None].aggregation_weight = .5
-        aStromTarif.source.costsPerFlowHour[costs].aggregation_weight = .5
+        aStromEinspeisung, aStromTarif = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour=p_feed_in)), Source('Stromtarif', source=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour={costs: p_sell, CO2: 0.3}))
+        aStromEinspeisung.sink.effects_per_flow_hour[None].aggregation_weight = .5
+        aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
-        es = System(aTimeSeries, dt_last=None)
-        es.addEffects(costs, CO2, PE)
-        es.addComponents(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
+        es = System(aTimeSeries, last_time_step_hours=None)
+        es.add_effects(costs, CO2, PE)
+        es.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
 
         if doFullCalc:
             calc = Calculation('fullModel', es, 'pyomo')
-            calc.doModelingAsOneSegment()
+            calc.do_modeling_as_one_segment()
         if doSegmentedCalc:
             calc = Calculation('segModel', es, 'pyomo')
-            calc.doSegmentedModelingAndSolving(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
+            calc.do_segmented_modeling_and_solving(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
         if doAggregatedCalc:
             calc = Calculation('aggModel', es, 'pyomo')
-            calc.doAggregatedModeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
+            calc.do_aggregated_modeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
 
         es.printModel()
-        es.printVariables()
-        es.printEquations()
+        es.print_variables()
+        es.print_equations()
 
         if not doSegmentedCalc:
             calc.solve(self.solverProps)

@@ -8,10 +8,11 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 import textwrap
 
-from . import flixOptHelperFcts as helpers
-from .basicModeling import *
-from .flixStructure import *
-from .flixFeatures import *
+from flixOpt import flixOptHelperFcts as helpers
+from flixOpt.basicModeling import *
+from flixOpt.flixBasics import effect_values_to_ts
+from flixOpt.flixStructure import *
+from flixOpt.flixFeatures import *
 
 
 class LinearTransformer(Component):
@@ -190,7 +191,7 @@ class LinearTransformer(Component):
                         not (flow.invest_parameters.fixed_size):
                     raise Exception('linearSegmentsOfFlows (in ' +
                                     self.label_full +
-                                    ') and variable nominal_value' +
+                                    ') and variable sizeue' +
                                     '(invest_size) (in flow ' +
                                     flow.label_full +
                                     ') , does not make sense together!')
@@ -210,31 +211,31 @@ class LinearTransformer(Component):
                                                                 get_var_on=get_var_on,
                                                                 checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
 
-    def declareVarsAndEqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
-        :param modBox:
+        :param system_model:
         :return:
         """
-        super().declareVarsAndEqs(modBox)  # (ab hier sollte auch self.model.var_on dann vorhanden sein)
+        super().declare_vars_and_eqs(system_model)  # (ab hier sollte auch self.model.var_on dann vorhanden sein)
 
         # factor-sets:
         if self.segmentsOfFlows is None:
             pass
         # linear segments:
         else:
-            self.feature_linSegments.declareVarsAndEqs(modBox)
+            self.feature_linSegments.declare_vars_and_eqs(system_model)
 
-    def doModeling(self, modBox: SystemModel, timeIndexe):
+    def do_modeling(self, system_model: SystemModel, time_indices):
         """
         Durchführen der Modellierung?
 
-        :param modBox:
-        :param timeIndexe:
+        :param system_model:
+        :param time_indices:
         :return:
         """
-        super().doModeling(modBox, timeIndexe)
+        super().do_modeling(system_model, time_indices)
         # factor_Sets:
         if self.segmentsOfFlows is None:
             # Transformer-Constraints:
@@ -253,7 +254,7 @@ class LinearTransformer(Component):
                 leftSideFlows = inputs_set & aFactorVec_Dict.keys()  # davon nur die input-flows, die in Glg sind.
                 rightSideFlows = outputs_set & aFactorVec_Dict.keys()  # davon nur die output-flows, die in Glg. sind.
 
-                eq_linearFlowRelation_i = Equation('linearFlowRelation_' + str(i), self, modBox)
+                eq_linearFlowRelation_i = Equation('linearFlowRelation_' + str(i), self, system_model)
                 for inFlow in leftSideFlows:
                     aFactor = aFactorVec_Dict[inFlow].active_data
                     eq_linearFlowRelation_i.add_summand(inFlow.model.var_val, aFactor)  # input1.val[t]      * factor[t]
@@ -266,7 +267,7 @@ class LinearTransformer(Component):
         # (linear) segments:
         # Zusammenhänge zw. inputs & outputs können auch vollständig über Segmente beschrieben werden:
         else:
-            self.feature_linSegments.doModeling(modBox, timeIndexe)
+            self.feature_linSegments.do_modeling(system_model, time_indices)
 
     def print(self, shiftChars):
         """
@@ -339,8 +340,8 @@ class Boiler(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        Q_fu.set_medium_if_not_set(MediumCollection.fuel)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -387,8 +388,8 @@ class Power2Heat(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -430,8 +431,8 @@ class HeatPump(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
@@ -472,8 +473,8 @@ class CoolingTower(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.specificElectricityDemand_bounds = [0, 1]  # 0 < eta_th < 1
@@ -527,9 +528,9 @@ class CHP(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        Q_fu.setMediumIfNotSet(MediumCollection.fuel)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
-        P_el.setMediumIfNotSet(MediumCollection.el)
+        Q_fu.set_medium_if_not_set(MediumCollection.fuel)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
 
         # Plausibilität eta:
         self.eta_th_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
@@ -581,9 +582,9 @@ class HeatPumpWithSource(LinearTransformer):
         self.Q_th = Q_th
 
         # allowed medium:
-        P_el.setMediumIfNotSet(MediumCollection.el)
-        Q_th.setMediumIfNotSet(MediumCollection.heat)
-        Q_ab.setMediumIfNotSet(MediumCollection.heat)
+        P_el.set_medium_if_not_set(MediumCollection.el)
+        Q_th.set_medium_if_not_set(MediumCollection.heat)
+        Q_ab.set_medium_if_not_set(MediumCollection.heat)
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
@@ -737,14 +738,14 @@ class Storage(Component):
 
         self.isStorage = True  # for postprocessing
 
-    def declareVarsAndEqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
 
-        :param modBox:
+        :param system_model:
         :return:
         """
-        super().declareVarsAndEqs(modBox)
+        super().declare_vars_and_eqs(system_model)
 
         # Variablen:
 
@@ -763,7 +764,7 @@ class Storage(Component):
                 ub = np.append(ub, self.capacity_inFlowHours)  # charge_state_end_max)
 
         else:
-            (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
+            (lb, ub, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
             if np.isscalar(lb):
                 pass
@@ -774,16 +775,16 @@ class Storage(Component):
             else:
                 ub = np.append(ub, ub[-1])  # charge_state_end_max)
 
-        self.model.var_charge_state = VariableTS('charge_state', modBox.nrOfTimeSteps + 1, self, modBox, lower_bound=lb, upper_bound=ub,
+        self.model.var_charge_state = VariableTS('charge_state', system_model.nrOfTimeSteps + 1, self, system_model, lower_bound=lb, upper_bound=ub,
                                                  value=fix_value)  # Eins mehr am Ende!
         self.model.var_charge_state.set_before_value(self.chargeState0_inFlowHours, True)
-        self.model.var_nettoFlow = VariableTS('nettoFlow', modBox.nrOfTimeSteps, self, modBox,
+        self.model.var_nettoFlow = VariableTS('nettoFlow', system_model.nrOfTimeSteps, self, system_model,
                                               lower_bound=-np.inf)  # negative Werte zulässig!
 
         # erst hier, da definingVar vorher nicht belegt!
         if self.featureInvest is not None:
             self.featureInvest.setDefiningVar(self.model.var_charge_state, None)  # None, da kein On-Wert
-            self.featureInvest.declareVarsAndEqs(modBox)
+            self.featureInvest.declare_vars_and_eqs(system_model)
 
         # obj.vars.Q_Ladezustand   .setBoundaries(0, obj.inputData.Q_Ladezustand_Max);
         # obj.vars.Q_th_Lade       .setBoundaries(0, inf);
@@ -809,21 +810,21 @@ class Storage(Component):
 
         :return:
         """
-        initialStates['chargeState0_inFlowHours'] = charge_state[timeIndexe[0]]
+        initialStates['chargeState0_inFlowHours'] = charge_state[time_indices[0]]
         return initialStates
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, system_model, time_indices):
         """
         Durchführen der Modellierung?
 
-        :param modBox:
-        :param timeIndexe:
+        :param system_model:
+        :param time_indices:
         :return:
         """
-        super().doModeling(modBox, timeIndexe)
+        super().do_modeling(system_model, time_indices)
 
         # Gleichzeitiges Be-/Entladen verhindern:
-        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.doModeling(modBox, timeIndexe)
+        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.do_modeling(system_model, time_indices)
 
         # % Speicherladezustand am Start
         if self.chargeState0_inFlowHours is None:
@@ -831,14 +832,14 @@ class Storage(Component):
             pass
         elif helpers.is_number(self.chargeState0_inFlowHours):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
-            self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
+            self.eq_charge_state_start = Equation('charge_state_start', self, system_model, eqType='eq')
             self.eq_charge_state_start.add_constant(self.model.var_charge_state.before_value)  # chargeState_0 !
-            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, timeIndexe[0])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, time_indices[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
-            self.eq_charge_state_start = Equation('charge_state_start', self, modBox, eqType='eq')
-            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, timeIndexe[0])
-            self.eq_charge_state_start.add_summand(self.model.var_charge_state, -1, timeIndexe[-1])
+            self.eq_charge_state_start = Equation('charge_state_start', self, system_model, eqType='eq')
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, 1, time_indices[0])
+            self.eq_charge_state_start.add_summand(self.model.var_charge_state, -1, time_indices[-1])
         else:
             raise Exception('chargeState0_inFlowHours has undefined value = ' + str(self.chargeState0_inFlowHours))
 
@@ -847,40 +848,40 @@ class Storage(Component):
         # Q_Ladezustand(n+1) + (-1+VerlustanteilProStunde*dt(n)) *Q_Ladezustand(n) -  dt(n)*eta_Lade*Q_th_Lade(n) +  dt(n)* 1/eta_Entlade*Q_th_Entlade(n)  = 0
 
         # charge_state hat ein Index mehr:
-        timeIndexeChargeState = range(timeIndexe.start, timeIndexe.stop + 1)
-        self.eq_charge_state = Equation('charge_state', self, modBox, eqType='eq')
+        time_indicesChargeState = range(time_indices.start, time_indices.stop + 1)
+        self.eq_charge_state = Equation('charge_state', self, system_model, eqType='eq')
         self.eq_charge_state.add_summand(self.model.var_charge_state,
-                                         -1 * (1 - self.fracLossPerHour.active_data * modBox.dtInHours),
-                                        timeIndexeChargeState[
+                                         -1 * (1 - self.fracLossPerHour.active_data * system_model.dt_in_hours),
+                                        time_indicesChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
-        self.eq_charge_state.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[1:])  # 1:end
-        self.eq_charge_state.add_summand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * modBox.dtInHours)
+        self.eq_charge_state.add_summand(self.model.var_charge_state, 1, time_indicesChargeState[1:])  # 1:end
+        self.eq_charge_state.add_summand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * system_model.dt_in_hours)
         self.eq_charge_state.add_summand(self.outFlow.model.var_val,
-                                         1 / self.eta_unload.active_data * modBox.dtInHours)  # Achtung hier 1/eta!
+                                         1 / self.eta_unload.active_data * system_model.dt_in_hours)  # Achtung hier 1/eta!
 
         # Speicherladezustand am Ende
         # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.charge_state_end_max is not None:
-            self.eq_charge_state_end_max = Equation('eq_charge_state_end_max', self, modBox, eqType='ineq')
-            self.eq_charge_state_end_max.add_summand(self.model.var_charge_state, 1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_max = Equation('eq_charge_state_end_max', self, system_model, eqType='ineq')
+            self.eq_charge_state_end_max.add_summand(self.model.var_charge_state, 1, time_indicesChargeState[-1])
             self.eq_charge_state_end_max.add_constant(self.charge_state_end_max)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.charge_state_end_min is not None:
-            self.eq_charge_state_end_min = Equation('eq_charge_state_end_min', self, modBox, eqType='ineq')
-            self.eq_charge_state_end_min.add_summand(self.model.var_charge_state, -1, timeIndexeChargeState[-1])
+            self.eq_charge_state_end_min = Equation('eq_charge_state_end_min', self, system_model, eqType='ineq')
+            self.eq_charge_state_end_min.add_summand(self.model.var_charge_state, -1, time_indicesChargeState[-1])
             self.eq_charge_state_end_min.add_constant(- self.charge_state_end_min)
 
         # nettoflow:
         # eq: nettoFlow(t) - outFlow(t) + inFlow(t) = 0
-        self.eq_nettoFlow = Equation('nettoFlow', self, modBox, eqType='eq')
+        self.eq_nettoFlow = Equation('nettoFlow', self, system_model, eqType='eq')
         self.eq_nettoFlow.add_summand(self.model.var_nettoFlow, 1)
         self.eq_nettoFlow.add_summand(self.inFlow.model.var_val, 1)
         self.eq_nettoFlow.add_summand(self.outFlow.model.var_val, -1)
 
         if self.featureInvest is not None:
-            self.featureInvest.doModeling(modBox, timeIndexe)
+            self.featureInvest.do_modeling(system_model, time_indices)
 
         # ############# Gleichungen ##########################
         # % Speicherleistung an Bilanzgrenze / Speicher-Ladung / Speicher-Entladung
@@ -907,17 +908,17 @@ class Storage(Component):
         # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchEntladeMich,1);
         # obj.ineqs.EntwederLadenOderEntladen.add_constant(1);
 
-    def addShareToGlobals(self, globalComp: Global, modBox):
+    def add_share_to_globals(self, globalComp: Global, system_model):
         """
 
         :param globalComp:
-        :param modBox:
+        :param system_model:
         :return:
         """
-        super().addShareToGlobals(globalComp, modBox)
+        super().add_share_to_globals(globalComp, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.addShareToGlobals(globalComp, modBox)
+            self.featureInvest.add_share_to_globals(globalComp, system_model)
 
 
 class SourceAndSink(Component):
@@ -967,35 +968,35 @@ class SourceAndSink(Component):
             flow.group = self.group
 
         # Erzwinge die Erstellung der On-Variablen, da notwendig für gleichung
-        self.source.activateOnValue()
-        self.sink.activateOnValue()
+        self.source.force_on_variable()
+        self.sink.force_on_variable()
 
         if self.avoidInAndOutAtOnce:
             self.featureAvoidInAndOutAtOnce = cFeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])
         else:
             self.featureAvoidInAndOutAtOnce = None
 
-    def declareVarsAndEqs(self, modBox):
+    def declare_vars_and_eqs(self, system_model):
         """
         Deklarieren von Variablen und Gleichungen
 
-        :param modBox:
+        :param system_model:
         :return:
         """
-        super().declareVarsAndEqs(modBox)
+        super().declare_vars_and_eqs(system_model)
 
-    def doModeling(self, modBox, timeIndexe):
+    def do_modeling(self, system_model, time_indices):
         """
         Durchführen der Modellierung?
 
-        :param modBox:
-        :param timeIndexe:
+        :param system_model:
+        :param time_indices:
         :return:
         """
-        super().doModeling(modBox, timeIndexe)
+        super().do_modeling(system_model, time_indices)
         # Entweder Sink-Flow oder Source-Flow aktiv. Nicht beide Zeitgleich!
         if self.featureAvoidInAndOutAtOnce is not None:
-            self.featureAvoidInAndOutAtOnce.doModeling(modBox, timeIndexe)
+            self.featureAvoidInAndOutAtOnce.do_modeling(system_model, time_indices)
 
 
 class Source(Component):
@@ -1130,7 +1131,7 @@ class Transportation(Component):
             absolut loss. is active until on=0 for in-flows
             example: loss_abs=2 -> 2 kW fix loss on transportation
         ... featureOnVars for Active Transportation:
-        switchOnCosts : 
+        switch_on_effects : 
             #costs of switch rohr on
         exists : Warning! Functionality not implemented!
 
@@ -1165,25 +1166,25 @@ class Transportation(Component):
             self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
                                                                              [self.in1, self.in2])
 
-    def declareVarsAndEqs(self, modBox: SystemModel):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         """
         Deklarieren von Variablen und Gleichungen
         
-        :param modBox:
+        :param system_model:
         :return:
         """
-        super().declareVarsAndEqs(modBox)
+        super().declare_vars_and_eqs(system_model)
 
-    def doModeling(self, modBox, timeIndexe):
-        super().doModeling(modBox, timeIndexe)
+    def do_modeling(self, system_model, time_indices):
+        super().do_modeling(system_model, time_indices)
 
         # not both directions at once:
         if self.avoidFlowInBothDirectionsAtOnce and (
-                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
+                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.do_modeling(system_model, time_indices)
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
-        self.eq_dir1 = Equation('transport_dir1', self, modBox, eqType='eq')
+        self.eq_dir1 = Equation('transport_dir1', self, system_model, eqType='eq')
         self.eq_dir1.add_summand(self.in1.model.var_val, (1 - self.loss_rel.active_data))
         self.eq_dir1.add_summand(self.out1.model.var_val, -1)
         if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
@@ -1193,7 +1194,7 @@ class Transportation(Component):
         # second direction:        
         if self.in2 is not None:
             # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
-            self.eq_dir2 = Equation('transport_dir2', self, modBox, eqType='eq')
+            self.eq_dir2 = Equation('transport_dir2', self, system_model, eqType='eq')
             self.eq_dir2.add_summand(self.in2.model.var_val, 1 - self.loss_rel.active_data)
             self.eq_dir2.add_summand(self.out2.model.var_val, -1)
             if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
@@ -1203,7 +1204,7 @@ class Transportation(Component):
         # always On (in at least one direction)
         # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
         if self.isAlwaysOn:
-            self.eq_alwaysOn = Equation('alwaysOn', self, modBox, eqType='ineq')
+            self.eq_alwaysOn = Equation('alwaysOn', self, system_model, eqType='ineq')
             self.eq_alwaysOn.add_summand(self.in1.model.var_on, -1)
             if (self.in2 is not None): self.eq_alwaysOn.add_summand(self.in2.model.var_on, -1)
             self.eq_alwaysOn.add_constant(-.5)  # wg binärungenauigkeit 0.5 statt 1
@@ -1215,7 +1216,7 @@ class Transportation(Component):
             if oneInFlowHasFeatureInvest:
                 if bothInFlowsHaveFeatureInvest:
                     # eq: in1.nom_value = in2.nom_value
-                    self.eq_nom_value = Equation('equalSizeInBothDirections', self, modBox, eqType='eq')
+                    self.eq_nom_value = Equation('equalSizeInBothDirections', self, system_model, eqType='eq')
                     self.eq_nom_value.add_summand(self.in1.featureInvest.mod.var_investmentSize, 1)
                     self.eq_nom_value.add_summand(self.in2.featureInvest.model.var_investmentSize, -1)
                 else:

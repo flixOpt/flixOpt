@@ -9,28 +9,28 @@ import numpy as np
 import math  # für nan
 import matplotlib.pyplot as plt
 import pandas as pd
-from .flixStructure import *
+from flixOpt.flixStructure import *
 
 
 def plotFlow(calc, aFlow_value, label, withPoints=True):
     # Linie:
-    plt.step(calc.timeSeries, aFlow_value, where='post', label=label)
+    plt.step(calc.time_series, aFlow_value, where='post', label=label)
     # Punkte dazu:
     if withPoints:
         # TODO: gleiche Farbe!
         # aStr = 'C' + str(i) + 'o'
         aStr = 'o'
-        plt.plot(calc.timeSeries, aFlow_value, aStr)
+        plt.plot(calc.time_series, aFlow_value, aStr)
 
 
 # TODO: könnte man ggf. schöner mit dict-result machen bzw. sollte auch mit dict-result gehen!
 def plotOn(mb, aVar_struct, var_label, y, plotSwitchOnOff=True):
     try:
-        plt.step(mb.timeSeries, aVar_struct.on_ * y, ':', where='post', label=var_label + '_On')
+        plt.step(mb.time_series, aVar_struct.on_ * y, ':', where='post', label=var_label + '_On')
         if plotSwitchOnOff:
             try:
-                plt.step(mb.timeSeries, aVar_struct.switchOn_ * y, '+', where='post', label=var_label + '_SwitchOn')
-                plt.step(mb.timeSeries, aVar_struct.switchOff_ * y, 'x', where='post', label=var_label + '_SwitchOff')
+                plt.step(mb.time_series, aVar_struct.switchOn_ * y, '+', where='post', label=var_label + '_SwitchOn')
+                plt.step(mb.time_series, aVar_struct.switchOff_ * y, 'x', where='post', label=var_label + '_SwitchOff')
             except:
                 pass
     except:
@@ -38,12 +38,12 @@ def plotOn(mb, aVar_struct, var_label, y, plotSwitchOnOff=True):
 
 # # Input z.B. 'results_struct.KWK.Q_th.on' oder [KWK,'Q_th','on']
 # def plotSegmentedValue(calc : Calculation, results_struct_As_String_OR_keyList):
-#   if length(calc.segmentModBoxList) == 0 :
+#   if length(calc.segmented_system_models) == 0 :
 #     raise Exception 'Keine Segmente vorhanden!'
 #   else :
-#     for aModBox in calc.segmentModBoxList:
+#     for aModBox in calc.segmented_system_models:
 #       # aVal:
 #       eval('aVal = aModBox.' + results_struct_As_String)
 #       # aTimeSeries:
-#       aTimeSeries = aModBox.timeSeriesWithEnd[:length(aVal)] # ggf. um 1 kürzen, wenn kein Speicherladezustand
+#       aTimeSeries = aModBox.time_series_with_end[:length(aVal)] # ggf. um 1 kürzen, wenn kein Speicherladezustand
 #       plt.step(aTimeSeries, aVal, where = 'post')

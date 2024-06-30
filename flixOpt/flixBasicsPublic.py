@@ -16,7 +16,7 @@ class TimeSeriesRaw:
                  agg_weight: Optional[float] = None):
         """
         timeseries class for transmit timeseries AND special characteristics of timeseries,
-        i.g. to define weights needed in calcType 'aggregated'
+        i.g. to define weights needed in calculation_type 'aggregated'
             EXAMPLE solar:
             you have several solar timeseries. These should not be overweighted
             compared to the remaining timeseries (i.g. heat load, price)!
@@ -33,7 +33,7 @@ class TimeSeriesRaw:
         agg_group : str, optional
             The group this TimeSeriesRaw is a part of. agg_weight is split between members of a group. Default is None.
         agg_weight : float, optional
-            The weight for calcType 'aggregated', should be between 0 and 1. Default is None.
+            The weight for calculation_type 'aggregated', should be between 0 and 1. Default is None.
 
         Raises
         ------
@@ -67,8 +67,8 @@ class InvestParameters:
                  optional: bool = True,  # Investition ist weglassbar
                  specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
                  effects_in_segments: Optional[Union[Dict, List]] = None,
-                 minimum_size: Union[int, float] = 0,  # nur wenn nominal_val_is_fixed = False
-                 maximum_size: Union[int, float] = 1e9,  # nur wenn nominal_val_is_fixed = False
+                 minimum_size: Union[int, float] = 0,  # nur wenn size_is_fixed = False
+                 maximum_size: Union[int, float] = 1e9,  # nur wenn size_is_fixed = False
                  **kwargs):
         """
         Parameters
@@ -89,21 +89,21 @@ class InvestParameters:
         effects_in_segments : list or List[ List[Union[int,float]], Dict[cEffecType: Union[List[Union[int,float]], optional
             Linear relation in segments [invest_segments, cost_segments].
             Example 1:
-                [           [5, 25, 25, 100],       # nominal_value in kW
+                [           [5, 25, 25, 100],       # size in kW
                  {costs:    [50,250,250,800],       # €
                   PE:       [5, 25, 25, 100]        # kWh_PrimaryEnergy
                   }
                 ]
             Example 2 (if only standard-effect):
-                [   [5, 25, 25, 100],  # kW # nominal_value in kW
+                [   [5, 25, 25, 100],  # kW # size in kW
                     [50,250,250,800]        # value for standart effect, typically €
                  ]  # €
             (Attention: Annualize costs to chosen period!)
             (Args 'specific_effects' and 'fix_effects' can be used in parallel to InvestsizeSegments)
         minimum_size : scalar
-            Min nominal value (only if: nominal_val_is_fixed = False).
+            Min nominal value (only if: size_is_fixed = False).
         maximum_size : scalar
-            Max nominal value (only if: nominal_val_is_fixed = False).
+            Max nominal value (only if: size_is_fixed = False).
         """
 
         self.fix_effects = fix_effects
@@ -122,7 +122,7 @@ class InvestParameters:
 
     def __str__(self):
         details = [
-            f"fix_effects={self.fi}" if self.fix_effects else ""
+            f"fix_effects={self.fix_effects}" if self.fix_effects else ""
             f"divest_effects={self.divest_effects}" if self.divest_effects else ""
             f"specific_effects={self.specific_effects}" if self.specific_effects else ""
             f"Fixed Size" if self.fixed_size else ""

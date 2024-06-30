@@ -289,9 +289,9 @@ class flixAggregation:
         self.totalTimeseries.to_csv(pathAgg + filename)
 
 
-from . import flixStructure
-from . import flixComps
-from .basicModeling import *
+from flixOpt import flixStructure
+from flixOpt import flixComps
+from flixOpt.basicModeling import *
 
 
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
@@ -343,24 +343,24 @@ class cAggregationModeling(flixStructure.Element):
 
         self.var_K_list = []
 
-        # self.subElements.append(self.featureOn)
+        # self.sub_elements.append(self.featureOn)
 
     def finalize(self):
         super().finalize()
 
-    def declareVarsAndEqs(self, modBox: flixStructure.SystemModel):
-        super().declareVarsAndEqs(modBox)
+    def declare_vars_and_eqs(self, system_model: flixStructure.SystemModel):
+        super().declare_vars_and_eqs(system_model)
 
-    def doModeling(self, modBox: flixStructure.SystemModel, timeIndexe):
+    def do_modeling(self, system_model: flixStructure.SystemModel, time_indices: Union[list[int], range]):
 
         if self.listOfElementsToClusterize is None:
             # Alle:
-            compSet = set(self.system.listOfComponents)
-            flowSet = self.system.setOfFlows
+            compSet = set(self.system.components)
+            flowSet = self.system.flows
         else:
             # Ausgewählte:
             compSet = set(self.listOfElementsToClusterize)
-            flowSet = self.system.getFlows(self.listOfElementsToClusterize)
+            flowSet = {flow for flow in self.system.flows if flow.comp in self.listOfElementsToClusterize}
 
         flow: flixStructure.Flow
 
@@ -373,16 +373,16 @@ class cAggregationModeling(flixStructure.Element):
                 # On-Variablen:
                 if element.model.var_on is not None:
                     aVar = element.model.var_on
-                    aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=True)
+                    aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=True)
                     # SwitchOn-Variablen:
                 if element.model.var_switchOn is not None:
                     aVar = element.model.var_switchOn
                     # --> hier ersten Index weglassen:
-                    aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=False)
+                    aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=False)
                 if element.model.var_switchOff is not None:
                     aVar = element.model.var_switchOff
                     # --> hier ersten Index weglassen:
-                    aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=False)
+                    aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=False)
 
                     # todo: nicht schön! Zugriff muss über alle cTSVariablen erfolgen!
                 # Nicht-Binär-Variablen:
@@ -390,9 +390,9 @@ class cAggregationModeling(flixStructure.Element):
                     # Value-Variablen:
                     if hasattr(element.model, 'var_val'):
                         aVar = element.model.var_val
-                        aEq = self.getEqForLinkedIndexe(aVar, modBox, fixFirstIndexOfPeriod=True)
+                        aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=True)
 
-    def getEqForLinkedIndexe(self, aVar, modBox, fixFirstIndexOfPeriod):
+    def getEqForLinkedIndexe(self, aVar, system_model, fixFirstIndexOfPeriod):
         aVar: Variable
         # todo!: idx_var1/2 wird jedes mal gemacht! nicht schick
 
@@ -414,16 +414,16 @@ class cAggregationModeling(flixStructure.Element):
                 idx_var1 = np.append(idx_var1, v1[:minLen])
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
-        eq = flixStructure.Equation('equalIdx_' + aVar.label_full, self, modBox, eqType='eq')
+        eq = flixStructure.Equation('equalIdx_' + aVar.label_full, self, system_model, eqType='eq')
         eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
         eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
         # Korrektur: (bisher nur für Binärvariablen:)
         if aVar.is_binary and self.percentageOfPeriodFreedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, modBox,
+            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, system_model,
                               is_binary=True)
-            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, modBox,
+            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, system_model,
                               is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
@@ -438,7 +438,7 @@ class cAggregationModeling(flixStructure.Element):
 
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
-            eq_lock = flixStructure.Equation('lock_K0andK1' + aVar.label_full, self, modBox, eqType='ineq')
+            eq_lock = flixStructure.Equation('lock_K0andK1' + aVar.label_full, self, system_model, eqType='ineq')
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
             eq_lock.add_constant(1.1)
@@ -446,13 +446,13 @@ class cAggregationModeling(flixStructure.Element):
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.length)
-            eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, modBox, eqType='ineq')
+            eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
             eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
-    def addShareToGlobals(self, globalComp: flixStructure.Global, modBox):
+    def add_share_to_globals(self, globalComp: flixStructure.Global, system_model):
 
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentageOfPeriodFreedom > 0) & (self.costsOfPeriodFreedom != 0):

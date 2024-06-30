@@ -13,7 +13,7 @@ import re
 import math  # für nan
 import matplotlib.pyplot as plt
 
-from .flixBasicsPublic import TimeSeriesRaw
+from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from typing import Union
 
 
@@ -224,19 +224,19 @@ class cDataBox2:
         return astr
 
 
-def getTimeSeriesWithEnd(timeSeries, dt_last=None):
+def getTimeSeriesWithEnd(time_series, dt_last=None):
     ######################################
     ## letzten Zeitpunkt hinzufügen:
     # Wenn nicht gegeben:
     if dt_last is None:
         # wie vorletztes dt:
-        dt_last = timeSeries[-1] - timeSeries[-2]
+        dt_last = time_series[-1] - time_series[-2]
 
     # Zeitpunkt nach letztem Zeitschritt:
-    t_end = timeSeries[-1] + dt_last
-    timeSeriesWithEnd = np.append(timeSeries, t_end)
+    t_end = time_series[-1] + dt_last
+    time_series_with_end = np.append(time_series, t_end)
 
-    return timeSeriesWithEnd
+    return time_series_with_end
 
 
 ''' Tests:
@@ -250,18 +250,18 @@ helpers.getVector(np.array([1,2]),3)
 
 
 # check sowohl für globale Zeitreihe, als auch für chosenIndexe:
-def checkTimeSeries(aStr, timeSeries):
+def checkTimeSeries(aStr, time_series):
     # Zeitdifferenz:
     #              zweites bis Letztes            - erstes bis Vorletztes
-    dt = timeSeries[1:] - timeSeries[0:-1]
-    # dtInHours    = dt.total_seconds() / 3600
-    dtInHours = dt / np.timedelta64(1, 'h')
+    dt = time_series[1:] - time_series[0:-1]
+    # dt_in_hours    = dt.total_seconds() / 3600
+    dt_in_hours = dt / np.timedelta64(1, 'h')
 
     # unterschiedliche dt:
-    if max(dtInHours) - min(dtInHours) != 0:
+    if max(dt_in_hours) - min(dt_in_hours) != 0:
         print(aStr + ': !! Achtung !! unterschiedliche delta_t von ' + str(min(dt)) + 'h bis ' + str(max(dt)) + ' h')
     # negative dt:
-    if min(dtInHours) < 0:
+    if min(dt_in_hours) < 0:
         raise Exception(aStr + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
 
 

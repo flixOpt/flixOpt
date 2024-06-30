@@ -5,20 +5,22 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import numpy as np
 import math
 import time
-import yaml  # (für json-Schnipsel-print)
-import pprint
 import textwrap
-from typing import List, Set, Tuple, Dict, Union, Optional
-
-from . import flixOptHelperFcts as helpers
-
-from .basicModeling import *  # Modelliersprache
-from .flixBasics import *
-from .flixBasicsPublic import InvestParameters, TimeSeriesRaw
+import pprint
+from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
+
+import numpy as np
+import yaml  # (für json-Schnipsel-print)
+
+from flixOpt import flixOptHelperFcts as helpers
+from flixOpt.basicModeling import LinearModel, Variable, VariableTS, Equation  # Modelliersprache
+from flixOpt.flixBasics import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
+from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
+if TYPE_CHECKING:  # for type checking and preventing circular imports
+    from flixFeatures import cFeatureInvest
 
 log = logging.getLogger(__name__)
 
@@ -37,29 +39,23 @@ class SystemModel(LinearModel):
         infos.update(self._infos)  # da steht schon zeug drin
         return infos
 
-    def __init__(self, label, modeling_language, system, time_indices, TS_explicit=None):
+    def __init__(self,
+                 label: str,
+                 modeling_language: Literal['pyomo', 'cvxpy'],
+                 system,
+                 time_indices: Union[List[int], range],
+                 TS_explicit=None):
         super().__init__(label, modeling_language)
         self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-        # self.epsilon    = 1e-5 # 
-        # self.variables  = [] # Liste aller Variablen
-        # self.eqs        = [] # Liste aller Gleichungen
-        # self.ineqs      = [] # Liste aller Ungleichungen
         self.models_of_elements: Dict = {}  # dict with all ElementModel's od Elements in System
-
-        # self.objective       = None # objective-Function
-        # self.objective_result = None # Ergebnis
 
         self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
-        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
-            time_indices)
-
-    # extract model of Element:
-    def get_model_of_element(self, aModelingElement):
-        return self.models_of_elements[aModelingElement]
+        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
+            system.get_time_data_from_indices(time_indices))
 
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
@@ -70,16 +66,22 @@ class SystemModel(LinearModel):
     def characterize_math_problem(self):  # overriding same method in motherclass!
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
         # self.system.activate_model()
-        self._infos['str_Eqs'] = self.system.getEqsAsStr()
-        self._infos['str_Vars'] = self.system.getVarsAsStr()
+        self._infos['str_Eqs'] = self.system.description_of_equations()
+        self._infos['str_Vars'] = self.system.description_of_variables()
 
     # 'gurobi'
-    def solve(self, gapFrac=0.02, time_limit_seconds=3600, solver='cbc', solver_output_to_console=True, excessThreshold=0.1,
-              logfile_name='solver_log.log', **kwargs):
-        '''        
+    def solve(self,
+              mip_gap: float = 0.02,
+              time_limit_seconds: int = 3600,
+              solver_name: str = 'highs',
+              solver_output_to_console: bool = True,
+              excess_threshold: Union[int, float] = 0.1,
+              logfile_name: str = 'solver_log.log',
+              **kwargs):
+        '''
         Parameters
         ----------
-        gapFrac : TYPE, optional
+        mip_gap : TYPE, optional
             DESCRIPTION. The default is 0.02.
         time_limit_seconds : TYPE, optional
             DESCRIPTION. The default is 3600.
@@ -87,19 +89,19 @@ class SystemModel(LinearModel):
             DESCRIPTION. The default is 'cbc'.
         solver_output_to_console : TYPE, optional
             DESCRIPTION. The default is True.
-        excessThreshold : float, positive!
-            threshold for excess: If sum(Excess)>excessThreshold a warning is raised, that an excess is occurs
+        excess_threshold : float, positive!
+            threshold for excess: If sum(Excess)>excess_threshold a warning is raised, that an excess occurs
         **kwargs : TYPE
             DESCRIPTION.
-  
+
         Returns
         -------
         main_results_str : TYPE
             DESCRIPTION.
-  
+
         '''
 
-        # check valid solver options:        
+        # check valid solver options:
         if len(kwargs) > 0:
             for key in kwargs.keys():
                 if key not in ['threads']:
@@ -113,34 +115,34 @@ class SystemModel(LinearModel):
 
         self.printNoEqsAndVars()
 
-        super().solve(gapFrac, time_limit_seconds, solver, solver_output_to_console, logfile_name, **kwargs)
+        super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
 
-        if solver == 'gurobi':
+        if solver_name == 'gurobi':
             termination_message = self.solver_results['Solver'][0]['Termination message']
-        elif solver == 'glpk':
+        elif solver_name == 'glpk':
             termination_message = self.solver_results['Solver'][0]['Status']
         else:
-            termination_message = 'not implemented for solver yet'
-        print('termination message: "' + termination_message + '"')
+            termination_message = f'not implemented for solver "{solver_name}" yet'
+        print(f'Termination message: "{termination_message}"')
 
         print('')
-        # Variablen-Ergebnisse abspeichern:      
-        # 1. dict:  
-        (self.results, self.results_var) = self.system.getResultsAfterSolve()
+        # Variablen-Ergebnisse abspeichern:
+        # 1. dict:
+        (self.results, self.results_var) = self.system.get_results_after_solve()
         # 2. struct:
         self.results_struct = helpers.createStructFromDictInDict(self.results)
 
         print('##############################################################')
         print('################### finished #################################')
         print('')
-        for aEffect in self.system.globalComp.listOfEffectTypes:
+        for aEffect in self.system.global_comp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
             print('  operation: ' + str(aEffect.operation.model.var_sum.result))
             print('  invest   : ' + str(aEffect.invest.model.var_sum.result))
             print('  sum      : ' + str(aEffect.all.model.var_sum.result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.globalComp.penalty.model.var_sum.result))
+        print('penaltyCosts     : ' + str(self.system.global_comp.penalty.model.var_sum.result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -148,17 +150,17 @@ class SystemModel(LinearModel):
         except:
             print
         print('')
-        for aBus in self.system.setOfBuses:
-            if aBus.withExcess:
-                if any(self.results[aBus.label]['excessIn'] > 1e-6) or any(
-                        self.results[aBus.label]['excessOut'] > 1e-6):
-                    # if any(aBus.excessIn.result > 0) or any(aBus.excessOut.result > 0):
+        for aBus in self.system.buses:
+            if aBus.with_excess:
+                if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
+                        self.results[aBus.label]['excess_output'] > 1e-6):
+                    # if any(aBus.excess_input.result > 0) or any(aBus.excess_output.result > 0):
                     print('!!!!! Attention !!!!!')
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.globalComp.penalty.model.var_sum.result > 10:
-            print('Take care: -> high penalty makes the used gapFrac quite high')
+        if self.system.global_comp.penalty.model.var_sum.result > 10:
+            print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
         print('')
@@ -171,13 +173,13 @@ class SystemModel(LinearModel):
 
             aEffectDict = {}
             main_results_str['Effects'] = aEffectDict
-            for aEffect in self.system.globalComp.listOfEffectTypes:
+            for aEffect in self.system.global_comp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
                 aDict['operation'] = str(aEffect.operation.model.var_sum.result)
                 aDict['invest'] = str(aEffect.invest.model.var_sum.result)
                 aDict['sum'] = str(aEffect.all.model.var_sum.result)
-            main_results_str['penaltyCosts'] = str(self.system.globalComp.penalty.model.var_sum.result)
+            main_results_str['penaltyCosts'] = str(self.system.global_comp.penalty.model.var_sum.result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -185,17 +187,17 @@ class SystemModel(LinearModel):
                 main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
             main_results_str['busesWithExcess'] = busesWithExcess
-            for aBus in self.system.setOfBuses:
-                if aBus.withExcess:
-                    if sum(self.results[aBus.label]['excessIn']) > excessThreshold or sum(
-                            self.results[aBus.label]['excessOut']) > excessThreshold:
+            for aBus in self.system.buses:
+                if aBus.with_excess:
+                    if sum(self.results[aBus.label]['excess_input']) > excess_threshold or sum(
+                            self.results[aBus.label]['excess_output']) > excess_threshold:
                         busesWithExcess.append(aBus.label)
 
             aDict = {'invested': {},
                      'not invested': {}
                      }
             main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.system.allInvestFeatures:
+            for aInvestFeature in self.system.invest_features:
                 investValue = aInvestFeature.model.var_investmentSize.result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
@@ -218,9 +220,9 @@ class Element:
     Element mit Variablen und Gleichungen
     -> besitzt Methoden, die jede Kindklasse ergänzend füllt:
     1. Element.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
-    2. Element.declareVarsAndEqs() --> Variablen und Eqs definieren.
-    3. Element.doModeling()        --> Modellierung
-    4. Element.addShareToGlobals() --> Beitrag zu Gesamt-Kosten
+    2. Element.declare_vars_and_eqs() --> Variablen und Eqs definieren.
+    3. Element.do_modeling()        --> Modellierung
+    4. Element.add_share_to_globals() --> Beitrag zu Gesamt-Kosten
     """
     system_model: SystemModel
 
@@ -228,7 +230,7 @@ class Element:
     not_used_args = []
 
     @classmethod
-    def getInitArgs(cls):
+    def get_init_args(cls):
         '''
         diese (Klassen-)Methode holt aus dieser und den Kindklassen
         alle zulässigen Argumente der Kindklasse!
@@ -237,8 +239,8 @@ class Element:
         ### 1. Argumente der Mutterklasse (rekursiv) ###
         # wird rekursiv aufgerufen bis man bei Mutter-Klasse cModelingElement ankommt.
         # nur bis zu cArgsClass zurück gehen:
-        if hasattr(cls.__base__, 'getInitArgs'):  # man könnte auch schreiben: if cls.__name__ == cArgsClass
-            allArgsFromMotherClass = cls.__base__.getInitArgs()  # rekursiv in Mutterklasse aufrufen
+        if hasattr(cls.__base__, 'get_init_args'):  # man könnte auch schreiben: if cls.__name__ == cArgsClass
+            allArgsFromMotherClass = cls.__base__.get_init_args()  # rekursiv in Mutterklasse aufrufen
 
         # wenn cls.__base__ also bereits eine Ebene UNTER cArgsClass:
         else:
@@ -264,21 +266,21 @@ class Element:
     def label_full(self) -> str:  # standard-Funktion, wird von Kindern teilweise überschrieben
         return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
 
-    @property  # subElements of all layers
-    def subElements_all(self) -> list:  #TODO: List[Element] doesnt work...
-        allSubElements = []  # wichtig, dass neues Listenobjekt!
-        allSubElements += self.subElements
-        for subElem in self.subElements:
-            # all subElements of subElement hinzufügen:
-            allSubElements += subElem.subElements_all
-        return allSubElements
+    @property  # sub_elements of all layers
+    def all_sub_elements(self) -> list:  #TODO: List[Element] doesnt work...
+        all_sub_elements = []  # wichtig, dass neues Listenobjekt!
+        all_sub_elements += self.sub_elements
+        for subElem in self.sub_elements:
+            # all sub_elements of subElement hinzufügen:
+            all_sub_elements += subElem.all_sub_elements
+        return all_sub_elements
 
     # TODO: besser occupied_args
     def __init__(self, label: str, **kwargs):
         self.label = label
         self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
 
-        self.subElements: List[Element] = []  # zugehörige Sub-ModelingElements
+        self.sub_elements: List[Element] = []  # zugehörige Sub-ModelingElements
         self.system_model: Optional[SystemModel] = None  # hier kommt die aktive system_model rein
         self.model: Optional[ElementModel] = None  # hier kommen alle Glg und Vars rein
 
@@ -293,7 +295,7 @@ class Element:
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, Flow) and key in self.getInitArgs() and key != "label"
+               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
         }
 
         remaining_data_keys = sorted(remaining_data.keys())
@@ -314,23 +316,20 @@ class Element:
 
         return str_desc
 
-    # activate inkl. subElements:
+    # activate inkl. sub_elements:
     def activate_system_model(self, system_model) -> None:
-        for element in self.subElements:
-            element.activate_system_model(system_model)  # inkl. subElements
+        for element in self.sub_elements:
+            element.activate_system_model(system_model)  # inkl. sub_elements
         self.activate_system_model_for_me(system_model)
 
     # activate ohne SubElements!
     def activate_system_model_for_me(self, system_model) -> None:
         self.system_model = system_model
-        self.model = system_model.get_model_of_element(self)
+        self.model = system_model.models_of_elements[self]
 
     # 1.
     def finalize(self) -> None:
-        # print('finalize ' + self.label)
-        # gleiches für alle sub Elements:
-        element: Element
-        for element in self.subElements:
+        for element in self.sub_elements:
             element.finalize()
 
     # 2.
@@ -338,7 +337,7 @@ class Element:
         # print('new model for ' + self.label)
         # subElemente ebenso:
         element: Element
-        for element in self.subElements:
+        for element in self.sub_elements:
             element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
 
         # create model:
@@ -346,26 +345,26 @@ class Element:
         # register model:
         system_model.register_element_with_model(self, model)
 
-        self.activate_system_model_for_me(system_model)  # subElements werden bereits aktiviert über aElement.createNewMod...()
+        self.activate_system_model_for_me(system_model)  # sub_elements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
-    def declareVarsAndEqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model) -> None:
         #   #   # Features preparing:
         #   # for aFeature in self.features:
-        #   #   aFeature.declareVarsAndEqs(model)
+        #   #   aFeature.declare_vars_and_eqs(model)
         pass
 
-    # def doModeling(self,model,timeIndexe):
+    # def do_modeling(self,model,time_indices):
     #   # for aFeature in self.features:
-    #   aFeature.doModeling(model, timeIndexe)
+    #   aFeature.do_modeling(model, time_indices)
 
-    # Ergebnisse als dict ausgeben:    
-    def getResults(self) -> Tuple[Dict, Dict]:
+    # Ergebnisse als dict ausgeben:
+    def get_results(self) -> Tuple[Dict, Dict]:
         aData = {}
         aVars = {}
         # 1. Unterelemente füllen (rekursiv!):
-        for element in self.subElements:
-            (aData[element.label], aVars[element.label]) = element.getResults()  # rekursiv
+        for element in self.sub_elements:
+            (aData[element.label], aVars[element.label]) = element.get_results()  # rekursiv
 
         # 2. Variablenwerte ablegen:
         aVar: Variable
@@ -395,51 +394,34 @@ class Element:
 
         return aData, aVars
 
-    # so kurze Schreibweise wie möglich, daher:
-    def var(self, label):
-        self.model.getVar(label)
-
-    def eq(self, label):
-        self.model.getEq(label)
-
-    def getEqsAsStr(self):
+    def description_of_equations(self):
 
         ## subelemente durchsuchen:
         subs = {}
-        for aSubElement in self.subElements:
-            subs[aSubElement.label] = aSubElement.getEqsAsStr()  # rekursiv
+        for aSubElement in self.sub_elements:
+            subs[aSubElement.label] = aSubElement.description_of_equations()  # rekursiv
         ## Element:
 
         # wenn sub-eqs, dann dict:
         if not (subs == {}):
             eqsAsStr = {}
-            eqsAsStr['_self'] = self.model.getEqsAsStr()  # zuerst eigene ...
+            eqsAsStr['_self'] = self.model.description_of_equations()  # zuerst eigene ...
             eqsAsStr.update(subs)  # ... dann sub-Eqs
         # sonst liste:
         else:
-            eqsAsStr = self.model.getEqsAsStr()
+            eqsAsStr = self.model.description_of_equations()
 
         return eqsAsStr
 
-    def getVarsAsStr(self) -> List:
+    def description_of_variables(self) -> List:
         aList = []
-        aList += self.model.getVarsAsStr()
-        for aSubElement in self.subElements:
-            aList += aSubElement.getVarsAsStr()  # rekursiv
+        aList += self.model.description_of_variables()
+        for aSubElement in self.sub_elements:
+            aList += aSubElement.description_of_variables()  # rekursiv
 
         return aList
 
-    def printEqs(self, shiftChars) -> None:
-        print(shiftChars + '·' + self.label + ':')
-        print(yaml.dump(self.getEqsAsStr(),
-                        allow_unicode=True))
-
-    def printVars(self, shiftChars) -> None:
-        print(shiftChars + self.label + ':')
-        print(yaml.dump(self.getVarsAsStr(),
-                        allow_unicode=True))
-
-    def getEqsVarsOverview(self) -> Dict:
+    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
         aDict = {}
         aDict['no eqs'] = len(self.model.eqs)
         aDict['no eqs single'] = sum([eq.nr_of_single_equations for eq in self.model.eqs])
@@ -457,42 +439,29 @@ class ElementModel:
 
     def __init__(self, element: Element):
         self.element = element
+        # TODO: Dicts instead of Lists for referencing?
         self.variables = []
         self.eqs = []
         self.ineqs = []
         self.objective = None
 
-    def getVar(self, label):
-        return next((x for x in self.variables if x.label == label), None)
-
-    def getEq(self, label):
-        return next((x for x in (self.eqs + self.ineqs) if x.label == label), None)
-
     # Eqs, Ineqs und Objective als Str-Description:
-    def getEqsAsStr(self) -> List:
+    def description_of_equations(self) -> List:
         # Wenn Glg vorhanden:
         eq: Equation
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
             for eq in (self.eqs + self.ineqs):
-                aList.append(eq.as_str())
+                aList.append(eq.description())
         if not (self.objective is None):
-            aList.append(self.objective.as_str())
+            aList.append(self.objective.description())
         return aList
 
-    def getVarsAsStr(self) -> List:
+    def description_of_variables(self) -> List:
         aList = []
         for aVar in self.variables:
             aList.append(aVar.get_str_description())
         return aList
-
-    def printEqs(self, shiftChars) -> None:
-        yaml.dump(self.getEqsAsStr(),
-                  allow_unicode=True)
-
-    def printVars(self, shiftChars) -> None:
-        yaml.dump(self.getVarsAsStr(),
-                  allow_unicode=True)
 
 
 class Effect(Element):
@@ -500,44 +469,26 @@ class Effect(Element):
     Effect, i.g. costs, CO2 emissions, area, ...
     can be used later afterwards for allocating effects to compontents and flows.
     '''
-    def __str__(self):
-        objective = "Objective" if self.isObjective else ""
-        standart = "Standardeffect" if self.isStandard else ""
-        op_sum = f"OperationSum={self.min_operationSum}-{self.max_operationSum}" \
-            if self.min_operationSum is not None or self.max_operationSum is not None else ""
-        inv_sum = f"InvestSum={self.min_investSum}-{self.max_investSum}" \
-            if self.min_investSum is not None or self.max_investSum is not None else ""
-        tot_sum = f"TotalSum={self.min_Sum}-{self.max_Sum}" \
-            if self.min_Sum is not None or self.max_Sum is not None else ""
-        label_unit = f"{self.label} [{self.unit}]:"
-        desc = f"({self.description})"
-        shares_op = f"Operation Shares={self.specificShareToOtherEffects_operation}" \
-            if self.specificShareToOtherEffects_operation != {} else ""
-        shares_inv = f"Invest Shares={self.specificShareToOtherEffects_invest}"\
-            if self.specificShareToOtherEffects_invest != {} else ""
 
-        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
-
-        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
-
-        return f"<{self.__class__.__name__}> {full_str}"
-
-    # isStandard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
-    def __init__(self, label: str, unit: str, description: str,
-                 isStandard: bool = False,
-                 isObjective: bool = False,
-                 specificShareToOtherEffects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
-                 specificShareToOtherEffects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used...
-                 min_operationSum: Optional[Skalar] = None,
-                 max_operationSum: Optional[Skalar] = None,
-                 min_investSum: Optional[Skalar] = None,
-                 max_investSum: Optional[Skalar] = None,
-                 min_per_hour_operation: Optional[Numeric_TS] = None,
-                 max_per_hour_operation: Optional[Numeric_TS] = None,
-                 min_Sum: Optional[Skalar] = None,
-                 max_Sum: Optional[Skalar] = None,
+    # is_standard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
+    def __init__(self,
+                 label: str,
+                 unit: str,
+                 description: str,
+                 is_standard: bool = False,
+                 is_objective: bool = False,
+                 specific_share_to_other_effects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used as type hint
+                 specific_share_to_other_effects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used as type hint
+                 minimum_operation: Optional[Skalar] = None,
+                 maximum_operation: Optional[Skalar] = None,
+                 minimum_invest: Optional[Skalar] = None,
+                 maximum_invest: Optional[Skalar] = None,
+                 minimum_operation_per_hour: Optional[Numeric_TS] = None,
+                 maximum_operation_per_hour: Optional[Numeric_TS] = None,
+                 minimum_total: Optional[Skalar] = None,
+                 maximum_total: Optional[Skalar] = None,
                  **kwargs):
-        '''        
+        '''
         Parameters
         ----------
         label : str
@@ -546,29 +497,29 @@ class Effect(Element):
             unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
         description : str
             long name
-        isStandard : boolean, optional
+        is_standard : boolean, optional
             true, if Standard-Effect (for direct input of value without effect (alternatively to dict)) , else false
-        isObjective : boolean, optional
+        is_objective : boolean, optional
             true, if optimization target
-        specificShareToOtherEffects_operation : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
+        specific_share_to_other_effects_operation : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
             share to other effects (only operation)
-        specificShareToOtherEffects_invest : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
+        specific_share_to_other_effects_invest : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
             share to other effects (only invest).
-        min_operationSum : scalar, optional
+        minimum_operation : scalar, optional
             minimal sum (only operation) of the effect
-        max_operationSum : scalar, optional
+        maximum_operation : scalar, optional
             maximal sum (nur operation) of the effect.
-        min_per_hour_operation : scalar or TS
+        minimum_operation_per_hour : scalar or TS
             maximum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
-        max_per_hour_operation : scalar or TS
+        maximum_operation_per_hour : scalar or TS
             minimum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
-        min_investSum : scalar, optional
+        minimum_invest : scalar, optional
             minimal sum (only invest) of the effect
-        max_investSum : scalar, optional
+        maximum_invest : scalar, optional
             maximal sum (only invest) of the effect
-        min_Sum : sclalar, optional
+        minimum_total : sclalar, optional
             min sum of effect (invest+operation).
-        max_Sum : scalar, optional
+        maximum_total : scalar, optional
             max sum of effect (invest+operation).
         **kwargs : TYPE
             DESCRIPTION.
@@ -581,67 +532,82 @@ class Effect(Element):
         super().__init__(label, **kwargs)
         self.label = label
         self.unit = unit
-        # self.allFlow     = allFlow
         self.description = description
-        self.isStandard = isStandard
-        self.isObjective = isObjective
-        if specificShareToOtherEffects_operation is None:
-            self.specificShareToOtherEffects_operation = {}
-        else:
-            self.specificShareToOtherEffects_operation = specificShareToOtherEffects_operation
-        if specificShareToOtherEffects_invest is None:
-            self.specificShareToOtherEffects_invest = {}
-        else:
-            self.specificShareToOtherEffects_invest = specificShareToOtherEffects_invest
-
-        self.min_operationSum = min_operationSum
-        self.max_operationSum = max_operationSum
-        self.min_per_hour_operation = min_per_hour_operation
-        self.max_per_hour_operation = max_per_hour_operation
-        self.min_investSum = min_investSum
-        self.max_investSum = max_investSum
-        self.min_Sum = min_Sum
-        self.max_Sum = max_Sum
+        self.is_standard = is_standard
+        self.is_objective = is_objective
+        self.specific_share_to_other_effects_operation = specific_share_to_other_effects_operation or {}
+        self.specific_share_to_other_effects_invest = specific_share_to_other_effects_invest or {}
+        self.minimum_operation = minimum_operation
+        self.maximum_operation = maximum_operation
+        self.minimum_operation_per_hour = minimum_operation_per_hour
+        self.maximum_operation_per_hour = maximum_operation_per_hour
+        self.minimum_invest = minimum_invest
+        self.maximum_invest = maximum_invest
+        self.minimum_total = minimum_total
+        self.maximum_total = maximum_total
 
         #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ):
-        for effectType, share in self.specificShareToOtherEffects_operation.items():
-            # value überschreiben durch TS:
-            TS_name = 'specificShareToOtherEffect' + '_' + effectType.label
-            self.specificShareToOtherEffects_operation[effectType] = TimeSeries(TS_name,
-                                                                                specificShareToOtherEffects_operation[
-                                                                                    effectType], self)
+        for effect, share in self.specific_share_to_other_effects_operation.items():
+            name_of_ts = 'specificShareToOtherEffect' + '_' + effect.label
+            self.specific_share_to_other_effects_operation[effect] = TimeSeries(
+                name_of_ts, specific_share_to_other_effects_operation[effect], self)
 
         # ShareSums:
-        self.operation = cFeature_ShareSum(label='operation', owner=self, sharesAreTS=True,
-                                           minOfSum=self.min_operationSum, maxOfSum= self.max_operationSum,
-                                           min_per_hour=self.min_per_hour_operation, max_per_hour=self.max_per_hour_operation)
-        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False, minOfSum=self.min_investSum,
-                                        maxOfSum=self.max_investSum)
-        self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False, minOfSum=self.min_Sum,
-                                     maxOfSum=self.max_Sum)
+        #TODO: Why as attributes, and not only in sub_elements?
+        from flixOpt.flixFeatures import cFeature_ShareSum
+        self.operation = cFeature_ShareSum(
+            label='operation', owner=self, sharesAreTS=True,
+            minOfSum=self.minimum_operation, maxOfSum=self.maximum_operation,
+            min_per_hour=self.minimum_operation_per_hour, max_per_hour=self.maximum_operation_per_hour)
+        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False,
+                                        minOfSum=self.minimum_invest, maxOfSum=self.maximum_invest)
+        self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False,
+                                     minOfSum=self.minimum_total, maxOfSum=self.maximum_total)
 
-    def declareVarsAndEqs(self, system_model) -> None:
-        super().declareVarsAndEqs(system_model)
-        self.operation.declareVarsAndEqs(system_model)
-        self.invest.declareVarsAndEqs(system_model)
-        self.all.declareVarsAndEqs(system_model)
+    def declare_vars_and_eqs(self, system_model) -> None:
+        super().declare_vars_and_eqs(system_model)
+        self.operation.declare_vars_and_eqs(system_model)
+        self.invest.declare_vars_and_eqs(system_model)
+        self.all.declare_vars_and_eqs(system_model)
 
-    def doModeling(self, system_model, timeIndexe) -> None:
+    def do_modeling(self, system_model, time_indices: Union[List[int], range]) -> None:
         print('modeling ' + self.label)
-        super().declareVarsAndEqs(system_model)
-        self.operation.doModeling(system_model, timeIndexe)
-        self.invest.doModeling(system_model, timeIndexe)
+        super().declare_vars_and_eqs(system_model)
+        self.operation.do_modeling(system_model, time_indices)
+        self.invest.do_modeling(system_model, time_indices)
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
         self.all.addVariableShare('operation', self, self.operation.model.var_sum, 1, 1)
         self.all.addVariableShare('invest', self, self.invest.model.var_sum, 1, 1)
-        self.all.doModeling(system_model, timeIndexe)
+        self.all.do_modeling(system_model, time_indices)
+
+    def __str__(self):
+        objective = "Objective" if self.is_objective else ""
+        standart = "Standardeffect" if self.is_standard else ""
+        op_sum = f"OperationSum={self.minimum_operation}-{self.maximum_operation}" \
+            if self.minimum_operation is not None or self.maximum_operation is not None else ""
+        inv_sum = f"InvestSum={self.minimum_invest}-{self.maximum_invest}" \
+            if self.minimum_invest is not None or self.maximum_invest is not None else ""
+        tot_sum = f"TotalSum={self.minimum_total}-{self.maximum_total}" \
+            if self.minimum_total is not None or self.maximum_total is not None else ""
+        label_unit = f"{self.label} [{self.unit}]:"
+        desc = f"({self.description})"
+        shares_op = f"Operation Shares={self.specific_share_to_other_effects_operation}" \
+            if self.specific_share_to_other_effects_operation != {} else ""
+        shares_inv = f"Invest Shares={self.specific_share_to_other_effects_invest}"\
+            if self.specific_share_to_other_effects_invest != {} else ""
+
+        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
+
+        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}> {full_str}"
 
 
 # ModelingElement (Element) Klasse zum Summieren einzelner Shares
 # geht für skalar und TS
-# z.B. invest.costs 
+# z.B. invest.costs
 
 
 # Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
@@ -650,64 +616,64 @@ class EffectCollection(List[Effect]):
     internal effect list for simple handling of effects
     '''
 
-    # return standard effectType:
-    def standardType(self) -> Effect:
+    @property
+    def standard_effect(self) -> Optional[Effect]:
         aEffect: Effect
-        aStandardEffect = None
-        # TODO: eleganter nach attribut suchen:
         for aEffectType in self:
-            if aEffectType.isStandard: aStandardEffect = aEffectType
-        return aStandardEffect
+            if aEffectType.is_standard:
+                return aEffectType
 
-    def objectiveEffect(self) -> Effect:
+    @property
+    def objective_effect(self) -> Effect:
         aEffect: Effect
         aObjectiveEffect = None
         # TODO: eleganter nach attribut suchen:
         for aEffectType in self:
-            if aEffectType.isObjective: aObjectiveEffect = aEffectType
+            if aEffectType.is_objective: aObjectiveEffect = aEffectType
         return aObjectiveEffect
 
 
-from .flixFeatures import *
 EffectTypeDict = Dict[Effect, Numeric_TS]  #Datatype
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class Component(Element):
-    ''' 
+    '''
     basic component class for all components
     '''
     system_model: SystemModel
-    new_init_args = ['label', 'on_valuesBeforeBegin', 'switchOnCosts', 'switchOn_maxNr', 'onHoursSum_min',
-                     'onHoursSum_max', 'costsPerRunningHour', 'exists']
+    new_init_args = ['label', 'on_values_before_begin', 'switch_on_effects', 'switch_on_total_max', 'on_hours_total_min',
+                     'on_hours_total_max', 'running_hour_effects', 'exists']
     not_used_args = ['label']
 
-    def __init__(self, label: str, on_valuesBeforeBegin:Optional[List[Skalar]] = None,
-                 switchOnCosts: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
-                 switchOn_maxNr: Optional[Skalar] = None,
-                 onHoursSum_min: Optional[Skalar] = None,
-                 onHoursSum_max: Optional[Skalar] = None,
-                 costsPerRunningHour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+    def __init__(self,
+                 label: str,
+                 on_values_before_begin:Optional[List[Skalar]] = None,
+                 switch_on_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 switch_on_total_max: Optional[Skalar] = None,
+                 on_hours_total_min: Optional[Skalar] = None,
+                 on_hours_total_max: Optional[Skalar] = None,
+                 running_hour_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  exists: Numeric = 1,
                  **kwargs):
         '''
-        
+
 
         Parameters
         ----------
         label : str
             name.
-        
-        Parameters of on/off-feature 
+
+        Parameters of on/off-feature
         ----------------------------
         (component is off, if all flows are zero!)
 
-        on_valuesBeforeBegin :  array (TODO: why not scalar?)
+        on_values_before_begin :  array (TODO: why not scalar?)
             Ein(1)/Aus(0)-Wert vor Zeitreihe
-        switchOnCosts : look in Flow for description
-        switchOn_maxNr : look in Flow for description
-        onHoursSum_min : look in Flow for description
-        onHoursSum_max : look in Flow for description
-        costsPerRunningHour : look in Flow for description
+        switch_on_effects : look in Flow for description
+        switch_on_total_max : look in Flow for description
+        on_hours_total_min : look in Flow for description
+        on_hours_total_max : look in Flow for description
+        running_hour_effects : look in Flow for description
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
         **kwargs : TYPE
@@ -718,40 +684,28 @@ class Component(Element):
         None.
 
         '''
-        if onHoursSum_min is not None:
-            raise NotImplementedError("'onHoursSum_min' is not implemented yet for Components. Use FLow directly instead")
-        if onHoursSum_max is not None:
-            raise NotImplementedError("'onHoursSum_max' is not implemented yet for Components. Use FLow directly instead")
+        if on_hours_total_min is not None:
+            raise NotImplementedError("'on_hours_total_min' is not implemented yet for Components. Use Flow directly instead")
+        if on_hours_total_max is not None:
+            raise NotImplementedError("'on_hours_total_max' is not implemented yet for Components. Use Flow directly instead")
         label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
-        self.on_valuesBeforeBegin = on_valuesBeforeBegin if on_valuesBeforeBegin else [0, 0]
-        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
-        self.switchOn_maxNr = switchOn_maxNr
-        self.onHoursSum_min = onHoursSum_min
-        self.onHoursSum_max = onHoursSum_max
-        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
+        self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
+        self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
+        self.switch_on_max = switch_on_total_max
+        self.on_hours_total_min = on_hours_total_min
+        self.on_hours_total_max = on_hours_total_max
+        self.running_hour_effects = as_effect_dict_with_ts('running_hour_effects', running_hour_effects, self)
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
-        # % On Werte vorher durch Flow-values bestimmen:    
-        # self.on_valuesBefore = 1 * (self.featureOwner.valuesBeforeBegin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
+        # % On Werte vorher durch Flow-values bestimmen:
+        # self.on_valuesBefore = 1 * (self.featureOwner.values_before_begin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
 
+        #TODO: Dict instead of list?
         self.inputs = []  # list of flows
         self.outputs = []  # list of flows
-        self.isStorage = False
-
-        # self.base = None # Energysystem I Belong to     
-
-        self.subComps = []  # list of subComponents # für mögliche Baumstruktur!
-
-    # # TODO: ist das noch notwendig?:
-    # def addEnergySystemIBelongTo(self,base): 
-    #   if self.base is not None :
-    #     raise Exception('Komponente ' + self.label + ' wird bereits in anderem Energiesystem verwendet!')
-    #   self.base = base
-    #   # falls subComps existieren:
-    #   for aComp in self.subComps :
-    #     aComp.addEnergySystemIBelongTo(base)
+        self.is_storage = False  #TODO: Use isinstance instead?
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -763,7 +717,7 @@ class Component(Element):
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
-               not isinstance(value, Flow) and key in self.getInitArgs() and key != "label"
+               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
         }
 
         remaining_data_keys = sorted(remaining_data.keys())
@@ -786,86 +740,80 @@ class Component(Element):
 
         return str_desc
 
-    def registerMeInFlows(self) -> None:
+    def register_component_in_flows(self) -> None:
         for aFlow in self.inputs + self.outputs:
             aFlow.comp = self
 
-    def registerFlowsInBus(self) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def register_flows_in_bus(self) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         #
         # ############## register in Bus: ##############
         #
         # input ist output von Bus:
         for aFlow in self.inputs:
-            aFlow.bus.registerOutputFlow(aFlow)  # ist das schön programmiert?
+            aFlow.bus.register_output_flow(aFlow)  # ist das schön programmiert?
         # output ist input von Bus:
         for aFlow in self.outputs:
-            aFlow.bus.registerInputFlow(aFlow)
+            aFlow.bus.register_input_flow(aFlow)
 
-    def declareVarsAndEqsOfFlows(self, system_model) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def declare_vars_and_eqs_of_flows(self, system_model: SystemModel) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
-            aFlow.declareVarsAndEqs(system_model)
+            aFlow.declare_vars_and_eqs(system_model)
 
-    def doModelingOfFlows(self, system_model, timeIndexe) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def do_modeling_of_flows(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
-            aFlow.doModeling(system_model, timeIndexe)
+            aFlow.do_modeling(system_model, time_indices)
 
-    def getResults(self) -> Tuple[Dict, Dict]:
+    def get_results(self) -> Tuple[Dict, Dict]:
         # Variablen der Komponente:
-        (results, results_var) = super().getResults()
+        (results, results_var) = super().get_results()
 
         # Variablen der In-/Out-Puts ergänzen:
         for aFlow in self.inputs + self.outputs:
             # z.B. results['Q_th'] = {'val':..., 'on': ..., ...}
             if isinstance(self, Bus):
-                flowLabel = aFlow.label_full  # Kessel_Q_th
+                flow_label = aFlow.label_full  # Kessel_Q_th
             else:
-                flowLabel = aFlow.label  # Q_th
-            (results[flowLabel], results_var[flowLabel]) = aFlow.getResults()
+                flow_label = aFlow.label  # Q_th
+            (results[flow_label], results_var[flow_label]) = aFlow.get_results()
         return results, results_var
 
     def finalize(self) -> None:
         super().finalize()
+        from flixOpt.flixFeatures import cFeatureOn
 
         # feature for: On and SwitchOn Vars
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
-        flowsDefiningOn = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
-        self.featureOn = cFeatureOn(self, flowsDefiningOn, self.on_valuesBeforeBegin, self.switchOnCosts,
-                                    self.costsPerRunningHour, onHoursSum_min=self.onHoursSum_min,
-                                    onHoursSum_max=self.onHoursSum_max, switchOn_maxNr=self.switchOn_maxNr)
+        flows_defining_on = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
+        self.featureOn = cFeatureOn(self, flows_defining_on, self.on_values_before_begin, self.switch_on_effects,
+                                    self.running_hour_effects, onHoursSum_min=self.on_hours_total_min,
+                                    onHoursSum_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
 
-    def declareVarsAndEqs(self, system_model) -> None:
-        super().declareVarsAndEqs(system_model)
+    def declare_vars_and_eqs(self, system_model) -> None:
+        super().declare_vars_and_eqs(system_model)
 
-        self.featureOn.declareVarsAndEqs(system_model)
+        self.featureOn.declare_vars_and_eqs(system_model)
 
         # Binärvariablen holen (wenn vorh., sonst None):
-        #   (hier und nicht erst bei doModeling, da linearSegments die Variable zum Modellieren benötigt!)
+        #   (hier und nicht erst bei do_modeling, da linearSegments die Variable zum Modellieren benötigt!)
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-        # super().declareVarsAndEqs(model)
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
+        log.debug(str(self.label) + 'do_modeling()')
+        self.featureOn.do_modeling(system_model, time_indices)
 
-    def doModeling(self, system_model, timeIndexe) -> None:
-        log.debug(str(self.label) + 'doModeling()')
-        # super().doModeling(model,timeIndexe)
-
-        #
-        # ############## Constraints für Binärvariablen : ##############
-        #
-        self.featureOn.doModeling(system_model, timeIndexe)
-
-    def addShareToGlobalsOfFlows(self, globalComp, system_model) -> None:
+    def add_share_to_globals_of_flows(self, globalComp, system_model) -> None:
         for aFlow in self.inputs + self.outputs:
-            aFlow.addShareToGlobals(globalComp, system_model)
+            aFlow.add_share_to_globals(globalComp, system_model)
 
     # wird von Kindklassen überschrieben:
-    def addShareToGlobals(self, globalComp, system_model) -> None:
+    def add_share_to_globals(self, globalComp, system_model) -> None:
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
-        self.featureOn.addShareToGlobals(globalComp, system_model)
+        self.featureOn.add_share_to_globals(globalComp, system_model)
 
-    def getDescrAsStr(self) -> Dict:
+    def description(self) -> Dict:
 
         descr = {}
         inhalt = {'In-Flows': [], 'Out-Flows': []}
@@ -879,12 +827,12 @@ class Component(Element):
             descrType = 'for comp-list'
 
         for aFlow in self.inputs:
-            inhalt['In-Flows'].append(aFlow.getStrDescr(type=descrType))  # '  -> Flow: '))
+            inhalt['In-Flows'].append(aFlow.description(type=descrType))  # '  -> Flow: '))
         for aFlow in self.outputs:
-            inhalt['Out-Flows'].append(aFlow.getStrDescr(type=descrType))  # '  <- Flow: '))
+            inhalt['Out-Flows'].append(aFlow.description(type=descrType))  # '  <- Flow: '))
 
-        if self.isStorage:
-            inhalt['isStorage'] = self.isStorage
+        if self.is_storage:
+            inhalt['is_storage'] = self.is_storage
         inhalt['class'] = type(self).__name__
 
         if hasattr(self, 'group'):
@@ -897,14 +845,10 @@ class Component(Element):
 
         return descr
 
-    def print(self, shiftChars) -> None:
-        aFlow: Flow
-        print(yaml.dump(self.getDescrAsStr(), allow_unicode=True))
-
 
 # komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
 class Global(Element):
-    ''' 
+    '''
     storing global modeling stuff like effect equations and optimization target
     '''
 
@@ -917,65 +861,89 @@ class Global(Element):
 
     def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
+        from flixOpt.flixFeatures import cFeature_ShareSum
         self.penalty = cFeature_ShareSum('penalty', self, sharesAreTS=True)
 
         # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
-        self.subElements.extend(self.listOfEffectTypes)
+        self.sub_elements.extend(self.listOfEffectTypes)
 
     # Beiträge registrieren:
-    # effectValues kann sein 
-    #   1. {effecttype1 : TS, effectType2: : TS} oder 
-    #   2. TS oder skalar 
-    #     -> Zuweisung zu Standard-EffektType      
+    # effectValues kann sein
+    #   1. {effecttype1 : TS, effectType2: : TS} oder
+    #   2. TS oder skalar
+    #     -> Zuweisung zu Standard-EffektType
 
-    def addShareToOperation(self, nameOfShare, shareHolder, aVariable, effect_values, factor) -> None:
-        if aVariable is None: raise Exception('addShareToOperation() needs variable or use addConstantShare instead')
-        self.__addShare('operation', nameOfShare, shareHolder, effect_values, factor, aVariable)
+    def add_share_to_operation(self,
+                               name_of_share: str,
+                               owner: Element,
+                               variable: Variable,
+                               effect_values: Dict[Optional[Effect], TimeSeries],
+                               factor: Numeric) -> None:
+        if variable is None: raise Exception('add_share_to_operation() needs variable or use addConstantShare instead')
+        self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
 
-    def addConstantShareToOperation(self, nameOfShare, shareHolder, effect_values, factor) -> None:
-        self.__addShare('operation', nameOfShare, shareHolder, effect_values, factor)
+    def add_constant_share_to_operation(self,
+                                        name_of_share: str,
+                                        owner: Element,
+                                        effect_values: Dict[Optional[Effect], TimeSeries],
+                                        factor: Numeric) -> None:
+        self._add_share('operation', name_of_share, owner, effect_values, factor)
 
-    def addShareToInvest(self, nameOfShare, shareHolder, aVariable, effect_values, factor) -> None:
-        if aVariable is None: raise Exception('addShareToInvest() needs variable or use addConstantShare instead')
-        self.__addShare('invest', nameOfShare, shareHolder, effect_values, factor, aVariable)
+    def add_share_to_invest(self,
+                            name_of_share: str,
+                            owner: Element,
+                            variable: Variable,
+                            effect_values: Dict[Optional[Effect], TimeSeries],
+                            factor: Numeric) -> None:
+        if variable is None:
+            raise Exception('add_share_to_invest() needs variable or use addConstantShare instead')
+        self._add_share('invest', name_of_share, owner, effect_values, factor, variable)
 
-    def addConstantShareToInvest(self, nameOfShare, shareHolder, effect_values, factor) -> None:
-        self.__addShare('invest', nameOfShare, shareHolder, effect_values, factor)
+    def add_constant_share_to_invest(self,
+                                     name_of_share: str,
+                                     owner: Element,
+                                     effect_values: Dict[Optional[Effect], TimeSeries],
+                                     factor: Numeric) -> None:
+        self._add_share('invest', name_of_share, owner, effect_values, factor)
 
         # wenn aVariable = None, dann constanter Share
 
-    def __addShare(self, operationOrInvest, nameOfShare, shareHolder, effect_values, factor, aVariable=None) -> None:
-        aEffectSum: cFeature_ShareSum
-
+    def _add_share(self,
+                   operation_or_invest: Literal['operation', 'invest'],
+                   name_of_share: str,
+                   owner: Element,
+                   effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                   factor: Numeric,
+                   variable: Optional[Variable] = None) -> None:
         effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effekttypen, die einen Wert haben, anhängen:
-        for effectType, value in effect_values_dict.items():
+        for effect, value in effect_values_dict.items():
             # Falls None, dann Standard-effekt nutzen:
-            effectType: Effect
-            if effectType is None:
-                effectType = self.listOfEffectTypes.standardType()
-            elif effectType not in self.listOfEffectTypes:
-                raise Exception('Effect \'' + effectType.label + '\' was not added to model (but used in some costs)!')
+            effect: Effect
+            if effect is None:
+                effect = self.listOfEffectTypes.standard_effect
+            elif effect not in self.listOfEffectTypes:
+                raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
 
-            if operationOrInvest == 'operation':
-                effectType.operation.addShare(nameOfShare, shareHolder, aVariable, value,
-                                              factor)  # hier darf aVariable auch None sein!
-            elif operationOrInvest == 'invest':
-                effectType.invest.addShare(nameOfShare, shareHolder, aVariable, value,
-                                           factor)  # hier darf aVariable auch None sein!
+            if operation_or_invest == 'operation':
+                effect.operation.addShare(name_of_share, owner, variable, value,
+                                          factor)  # hier darf aVariable auch None sein!
+            elif operation_or_invest == 'invest':
+                effect.invest.addShare(name_of_share, owner, variable, value,
+                                       factor)  # hier darf aVariable auch None sein!
             else:
-                raise Exception('operationOrInvest=' + str(operationOrInvest) + ' ist kein zulässiger Wert')
+                raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
-    def declareVarsAndEqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model) -> None:
 
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
 
-        super().declareVarsAndEqs(system_model)
+        super().declare_vars_and_eqs(system_model)
 
         for effect in self.listOfEffectTypes:
-            effect.declareVarsAndEqs(system_model)
-        self.penalty.declareVarsAndEqs(system_model)
+            effect.declare_vars_and_eqs(system_model)
+        self.penalty.declare_vars_and_eqs(system_model)
 
         self.objective = Equation('obj', self, system_model, 'objective')
 
@@ -983,34 +951,35 @@ class Global(Element):
 
     #  eq_objective = Equation('objective',self,model,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def doModeling(self, system_model, timeIndexe) -> None:
-        # super().doModeling(model,timeIndexe)
+    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
+        # super().do_modeling(model,time_indices)
 
-        self.penalty.doModeling(system_model, timeIndexe)
+        self.penalty.do_modeling(system_model, time_indices)
         ## Gleichungen bauen für Effekte: ##
-        effect : Effect
+        effect: Effect
         for effect in self.listOfEffectTypes:
-            effect.doModeling(system_model, timeIndexe)
+            effect.do_modeling(system_model, time_indices)
 
         ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
         for effectType in self.listOfEffectTypes:
             # Beitrag/Share ergänzen:
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             # alle specificSharesToOtherEffects durchgehen:
-            nameOfShare = 'specificShareToOtherEffects_operation'  # + effectType.label
-            for effectTypeOfShare, specShare_TS in effectType.specificShareToOtherEffects_operation.items():
+            nameOfShare = 'specific_share_to_other_effects_operation'  # + effectType.label
+            for effectTypeOfShare, specShare_TS in effectType.specific_share_to_other_effects_operation.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_op = effectTypeOfShare.operation
-                shareSum_op: cFeature_ShareSum
+                shareSum_op: flixOpt.flixFeatures.cFeature_ShareSum
                 shareHolder = effectType
                 shareSum_op.addVariableShare(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
                                              specShare_TS, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             # alle specificSharesToOtherEffects durchgehen:
             nameOfShare = 'specificShareToOtherEffects_invest_'  # + effectType.label
-            for effectTypeOfShare, specShare in effectType.specificShareToOtherEffects_invest.items():
+            for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_inv = effectTypeOfShare.invest
+                from flixOpt.flixFeatures import cFeature_ShareSum
                 shareSum_inv: cFeature_ShareSum
                 shareHolder = effectType
                 shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
@@ -1020,7 +989,7 @@ class Global(Element):
         self.objective.add_summand(self.penalty.model.var_sum, 1)
 
         # Definierter Effekt als Zielfunktion:
-        objectiveEffect = self.listOfEffectTypes.objectiveEffect()
+        objectiveEffect = self.listOfEffectTypes.objective_effect
         if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
         self.objective.add_summand(objectiveEffect.operation.model.var_sum, 1)
         self.objective.add_summand(objectiveEffect.invest.model.var_sum, 1)
@@ -1032,33 +1001,37 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
     (penalty flow is excess can be activated)
     '''
 
-    # --> excessCostsPerFlowHour
+    # --> excess_effects_per_flow_hour
     #        none/ 0 -> kein Exzess berücksichtigt
     #        > 0 berücksichtigt
 
-    new_init_args = ['media', 'label', 'excessCostsPerFlowHour']
+    new_init_args = ['media', 'label', 'excess_effects_per_flow_hour']
     not_used_args = ['label']
 
-    def __init__(self, media: str, label: str, excessCostsPerFlowHour: Optional[Numeric_TS] = 1e5, **kwargs):
-        '''
+    def __init__(self,
+                 media: Optional[str],
+                 label: str,
+                 excess_effects_per_flow_hour: Optional[Numeric_TS] = 1e5,
+                 **kwargs):
+        """
         Parameters
         ----------
-        media : None, str or set of str            
-            media or set of allowed media of the coupled flows, 
+        media : None, str or set of str
+            media or set of allowed media of the coupled flows,
             if None, then any flow is allowed
             example 1: media = None -> every media is allowed
             example 1: media = 'gas' -> flows with medium 'gas' are allowed
             example 2: media = {'gas','biogas','H2'} -> flows of these media are allowed
         label : str
             name.
-        excessCostsPerFlowHour : none or scalar, array or TimeSeriesRaw
+        excess_effects_per_flow_hour : none or scalar, array or TimeSeriesRaw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
-            (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calcType = aggregated!)
+            (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
         exists : not implemented yet for Bus!
         **kwargs : TYPE
             DESCRIPTION.
-        '''
+        """
 
         super().__init__(label, **kwargs)
         if media is None:
@@ -1070,76 +1043,63 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         else:
             raise Exception('no valid input for argument media!')
 
-        if (excessCostsPerFlowHour is not None) and (excessCostsPerFlowHour > 0):
-            self.withExcess = True
-            self.excessCostsPerFlowHour = TimeSeries('excessCostsPerFlowHour', excessCostsPerFlowHour, self)
-        else:
-            self.withExcess = False
+        self.excess_effects_per_flow_hour = None
+        if (excess_effects_per_flow_hour is not None) and (excess_effects_per_flow_hour > 0):
+            self.excess_effects_per_flow_hour = TimeSeries('excess_effects_per_flow_hour', excess_effects_per_flow_hour, self)
 
-    def registerInputFlow(self, aFlow) -> None:
-        self.inputs.append(aFlow)
-        self.checkMedium(aFlow)
+    @property
+    def with_excess(self) -> bool:
+        return False if self.excess_effects_per_flow_hour is None else True
 
-    def registerOutputFlow(self, aFlow) -> None:
-        self.outputs.append(aFlow)
-        self.checkMedium(aFlow)
+    def register_input_flow(self, flow) -> None:
+        flow: Flow
+        self.inputs.append(flow)
+        self.check_medium(flow)
 
-    def checkMedium(self, aFlow) -> None:
-        # Wenn noch nicht belegt
-        if aFlow.medium is not None:
-            # set gemeinsamer Medien:
-            # commonMedium = self.media & aFlow.medium
-            # wenn leer, data.h. kein gemeinsamer Eintrag:
-            if (aFlow.medium is not None) and (self.media is not None) and \
-                    (not (aFlow.medium in self.media)):
-                raise Exception('in Bus ' + self.label + ' : registerFlow(): medium \''
-                                + str(aFlow.medium) + '\' of ' + aFlow.label_full +
-                                ' and media ' + str(self.media) + ' of bus ' +
-                                self.label_full + '  have no common medium!' +
-                                ' -> Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! OR generally deactivat media-check by setting media in bus-definition to None'
-                                )
+    def register_output_flow(self, flow) -> None:
+        flow: Flow
+        self.outputs.append(flow)
+        self.check_medium(flow)
 
-    def declareVarsAndEqs(self, system_model) -> None:
-        super().declareVarsAndEqs(system_model)
+    def check_medium(self, flow) -> None:
+        flow: Flow
+        if self.media is not None and flow.medium is not None and flow.medium not in self.media:
+            raise Exception(
+                f"In Bus {self.label}: register_flows_in_bus(): Medium '{flow.medium}' of {flow.label_full} "
+                f"and media {self.media} of bus {self.label_full} have no common medium! "
+                f"Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! "
+                f"OR generally deactivate media-check by setting media in bus-definition to None."
+            )
+
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
+        super().declare_vars_and_eqs(system_model)
         # Fehlerplus/-minus:
-        if self.withExcess:
+        if self.with_excess:
             # Fehlerplus und -minus definieren
-            self.excessIn = VariableTS('excessIn', len(system_model.timeSeries), self, system_model, lower_bound=0)
-            self.excessOut = VariableTS('excessOut', len(system_model.timeSeries), self, system_model, lower_bound=0)
+            self.excess_input = VariableTS('excess_input', len(system_model.time_series), self, system_model, lower_bound=0)
+            self.excess_output = VariableTS('excess_output', len(system_model.time_series), self, system_model, lower_bound=0)
 
-    def doModeling(self, system_model, timeIndexe) -> None:
-        super().doModeling(system_model, timeIndexe)
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
+        super().do_modeling(system_model, time_indices)
 
         # inputs = outputs
-        eq_busbalance = Equation('busBalance', self, system_model)
+        bus_balance = Equation('busBalance', self, system_model)
         for aFlow in self.inputs:
-            eq_busbalance.add_summand(aFlow.model.var_val, 1)
+            bus_balance.add_summand(aFlow.model.var_val, 1)
         for aFlow in self.outputs:
-            eq_busbalance.add_summand(aFlow.model.var_val, -1)
+            bus_balance.add_summand(aFlow.model.var_val, -1)
 
-        # Fehlerplus/-minus:
-        if self.withExcess:
-            # Hinzufügen zur Bilanz:
-            eq_busbalance.add_summand(self.excessOut, -1)
-            eq_busbalance.add_summand(self.excessIn, 1)
+        if self.with_excess:   # Fehlerplus/-minus hinzufügen zur Bilanz:
+            bus_balance.add_summand(self.excess_output, -1)
+            bus_balance.add_summand(self.excess_input, 1)
 
-    def addShareToGlobals(self, globalComp, system_model) -> None:
-        super().addShareToGlobals(globalComp, system_model)
-        # Strafkosten hinzufügen:
-        if self.withExcess:
-            globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessIn,
-                                                self.excessCostsPerFlowHour, system_model.dtInHours)
-            globalComp.penalty.addVariableShare('excessCostsPerFlowHour', self, self.excessOut,
-                                                self.excessCostsPerFlowHour, system_model.dtInHours)
-            # globalComp.penaltyCosts_eq.add_summand(self.excessIn , np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
-            # globalComp.penaltyCosts_eq.add_summand(self.excessOut, np.multiply(self.excessCostsPerFlowHour, model.dtInHours))
-
-    def print(self, shiftChars) -> None:
-        print(shiftChars + str(self.label) + ' - ' + str(len(self.inputs)) + ' In-Flows / ' + str(
-            len(self.outputs)) + ' Out-Flows registered')
-
-        print(shiftChars + '   medium: ' + str(self.medium))
-        super().print(shiftChars)
+    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
+        super().add_share_to_globals(global_comp, system_model)
+        if self.with_excess:   # Strafkosten hinzufügen:
+            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_input,
+                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
+            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_output,
+                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
 
 # Medien definieren:
@@ -1157,7 +1117,7 @@ class MediumCollection:
     def addMedium(attrName, strOfMedium):
         '''
         add new medium to predefined media
-        
+
         Parameters
         ----------
         attrName : str
@@ -1176,79 +1136,71 @@ class MediumCollection:
             return False
 
 
-# input/output-dock (TODO:
 class Connection:
-    pass
+    # input/output-dock (TODO:
     # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
     # input wären wie Flow,aber statt bus : connectsTo -> hier andere Connection oder aber Bus (dort keine Connection, weil nicht notwendig)
 
     def __init__(self):
         raise NotImplementedError()
 
-# todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs  
+# todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs
 # Fluss/Strippe
 class Flow(Element):
     '''
     flows are inputs and outputs of components
     '''
 
+    # static var:
+    _default_size = 1e9  # Großer Gültigkeitsbereich als Standard
+
     @property
     def label_full(self) -> str:
         # Wenn im Erstellungsprozess comp noch nicht bekannt:
-        if self.comp is None:
-            comp_label = 'unknownComp'
-        else:
-            comp_label = self.comp.label
-        separator = '__'  # wichtig, sonst geht results_struct nicht
-        return comp_label + separator + self.label  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
+        comp_label = 'unknownComp' if self.comp is None else self.comp.label
+        return f'{comp_label}__{self.label}'  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
 
     @property  # Richtung
-    def isInputInComp(self) -> bool:
+    def is_input_in_comp(self) -> bool:
         comp: Component
-        if self in self.comp.inputs:
-            return True
-        else:
-            return False
+        return True if self in self.comp.inputs else False
 
     @property
-    def investmentSize_is_fixed(self) -> bool:
-        # Wenn kein InvestParameters existiert:
-        if self.invest_parameters is None:
-            is_fixed = True  # keine variable var_InvestSize
-        else:
-            is_fixed = self.invest_parameters.fixed_size
-        return is_fixed
+    def size_is_fixed(self) -> bool:
+        # Wenn kein InvestParameters existiert --> True; Wenn Investparameter, den Wert davon nehmen
+        return True if self.invest_parameters is None else self.invest_parameters.fixed_size
 
     @property
     def invest_is_optional(self) -> bool:
-        # Wenn kein InvestParameters existiert:
-        if self.invest_parameters is None:
-            is_optional = False  # keine variable var_isInvested
-        else:
-            is_optional = self.invest_parameters.optional
-        return is_optional
+        # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
+        return False if self.invest_parameters is None else self.invest_parameters.optional
 
-    # static var:
-    __nominal_val_default = 1e9  # Großer Gültigkeitsbereich als Standard
+    @property
+    def on_variable_is_forced(self) -> bool:
+        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
+        return self.can_switch_off & np.any(self.min_rel.data > 0)
 
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
-                 min_rel: Numeric_TS = 0,
-                 max_rel: Numeric_TS = 1,
-                 nominal_val: Optional[Skalar] =__nominal_val_default,
-                 loadFactor_min: Optional[Skalar] = None, loadFactor_max: Optional[Skalar] = None,
+                 min_rel: Numeric_TS = 0,   # TODO: Rename?
+                 max_rel: Numeric_TS = 1,   # TODO: Rename?
+                 size: Optional[Skalar] = _default_size,
+                 load_factor_min: Optional[Skalar] = None, load_factor_max: Optional[Skalar] = None,
                  #positive_gradient=None,
-                 costsPerFlowHour: Optional[Union[Numeric_TS, EffectTypeDict]] =None,
-                 iCanSwitchOff: bool = True,
-                 onHoursSum_min: Optional[Skalar] = None, onHoursSum_max: Optional[Skalar] = None,
-                 onHours_min: Optional[Skalar] = None, onHours_max: Optional[Skalar] = None,
-                 offHours_min: Optional[Skalar] = None, offHours_max: Optional[Skalar] = None,
-                 switchOnCosts: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
-                 switchOn_maxNr: Optional[Skalar] = None,
-                 costsPerRunningHour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
-                 sumFlowHours_max: Optional[Skalar] = None, sumFlowHours_min: Optional[Skalar] = None,
-                 valuesBeforeBegin: Optional[List[Skalar]] = None,
-                 val_rel: Optional[Numeric_TS] = None,
+                 effects_per_flow_hour: Optional[Union[Numeric_TS, EffectTypeDict]] =None,
+                 can_switch_off: bool = True,
+                 on_hours_total_min: Optional[Skalar] = None,
+                 on_hours_total_max: Optional[Skalar] = None,
+                 on_hours_min: Optional[Skalar] = None,
+                 on_hours_max: Optional[Skalar] = None,
+                 off_hours_min: Optional[Skalar] = None,
+                 off_hours_max: Optional[Skalar] = None,
+                 switch_on_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
+                 switch_on_total_max: Optional[Skalar] = None,
+                 running_hour_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
+                 flow_hours_total_max: Optional[Skalar] = None, flow_hours_total_min: Optional[Skalar] = None,
+                 values_before_begin: Optional[List[Skalar]] = None,
+                 val_rel: Optional[Numeric_TS] = None,   # TODO: Rename?
                  medium: Optional[str] = None,
                  invest_parameters: Optional[InvestParameters] = None,
                  exists: Numeric_TS = 1,
@@ -1262,69 +1214,69 @@ class Flow(Element):
         bus : Bus, optional
             bus to which flow is linked
         min_rel : scalar, array, TimeSeriesRaw, optional
-            min value is min_rel multiplied by nominal_val
+            min value is min_rel multiplied by size
         max_rel : scalar, array, TimeSeriesRaw, optional
-            max value is max_rel multiplied by nominal_val. If nominal_val = max then max_rel=1
-        nominal_val : scalar. None if is a nominal value is a opt-variable, optional
-            nominal value/ invest size (linked to min_rel, max_rel and others). 
-            i.g. kW, area, volume, pieces, 
-            möglichst immer so stark wie möglich einschränken 
+            max value is max_rel multiplied by size. If size = max then max_rel=1
+        size : scalar. None if is a nominal value is a opt-variable, optional
+            nominal value/ invest size (linked to min_rel, max_rel and others).
+            i.g. kW, area, volume, pieces,
+            möglichst immer so stark wie möglich einschränken
             (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)
-        loadFactor_min : scalar, optional
-            minimal load factor  general: avg Flow per nominalVal/investSize 
-            (e.g. boiler, kW/kWh=h; solarthermal: kW/m²; 
+        load_factor_min : scalar, optional
+            minimal load factor  general: avg Flow per nominalVal/investSize
+            (e.g. boiler, kW/kWh=h; solarthermal: kW/m²;
              def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
-        loadFactor_max : scalar, optional
+        load_factor_max : scalar, optional
             maximal load factor (see minimal load factor)
         positive_gradient : TYPE, optional
            not implemented yet
-        costsPerFlowHour : scalar, array, TimeSeriesRaw, optional
+        effects_per_flow_hour : scalar, array, TimeSeriesRaw, optional
             operational costs, costs per flow-"work"
-        iCanSwitchOff : boolean, optional
-            flow can be "off", i.e. be zero (only relevant if min_rel > 0) 
-            Then a binary var "on" is used. 
-            If any on/off-forcing parameters like "switchOnCosts", "onHours_min" etc. are used, then 
+        can_switch_off : boolean, optional
+            flow can be "off", i.e. be zero (only relevant if min_rel > 0)
+            Then a binary var "on" is used.
+            If any on/off-forcing parameters like "switch_on_effects", "on_hours_min" etc. are used, then
             this is automatically forced.
-        onHoursSum_min : scalar, optional
+        on_hours_total_min : scalar, optional
             min. overall sum of operating hours.
-        onHoursSum_max : scalar, optional
+        on_hours_total_max : scalar, optional
             max. overall sum of operating hours.
-        onHours_min : scalar, optional
+        on_hours_min : scalar, optional
             min sum of operating hours in one piece
             (last on-time period of timeseries is not checked and can be shorter)
-        onHours_max : scalar, optional
+        on_hours_max : scalar, optional
             max sum of operating hours in one piece
-        offHours_min : scalar, optional
+        off_hours_min : scalar, optional
             min sum of non-operating hours in one piece
             (last off-time period of timeseries is not checked and can be shorter)
-        offHours_max : scalar, optional
+        off_hours_max : scalar, optional
             max sum of non-operating hours in one piece
-        switchOnCosts : scalar, array, TimeSeriesRaw, optional
-            cost of one switch from off (var_on=0) to on (var_on=1), 
+        switch_on_effects : scalar, array, TimeSeriesRaw, optional
+            cost of one switch from off (var_on=0) to on (var_on=1),
             unit i.g. in Euro
-        switchOn_maxNr : integer, optional
+        switch_on_total_max : integer, optional
             max nr of switchOn operations
-        costsPerRunningHour : scalar or TS, optional
+        running_hour_effects : scalar or TS, optional
             costs for operating, i.g. in € per hour
-        sumFlowHours_max : TYPE, optional
-            maximum flow-hours ("flow-work") 
-            (if nominal_val is not const, maybe loadFactor_max fits better for you!)
-        sumFlowHours_min : TYPE, optional
-            minimum flow-hours ("flow-work") 
-            (if nominal_val is not const, maybe loadFactor_min fits better for you!)
-        valuesBeforeBegin : list (TODO: why not scalar?), optional
-            Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'), 
+        flow_hours_total_max : TYPE, optional
+            maximum flow-hours ("flow-work")
+            (if size is not const, maybe load_factor_max fits better for you!)
+        flow_hours_total_min : TYPE, optional
+            minimum flow-hours ("flow-work")
+            (if size is not const, maybe load_factor_min fits better for you!)
+        values_before_begin : list (TODO: why not scalar?), optional
+            Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'),
             # TODO: integration of option for 'first is last'
         val_rel : scalar, array, TimeSeriesRaw, optional
-            fixed relative values for flow (if given). 
-            val(t) := val_rel(t) * nominal_val(t)
+            fixed relative values for flow (if given).
+            val(t) := val_rel(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;
             (min_rel u. max_rel are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
             If the load-profile is just an upper limit, use max_rel instead.
         medium: string, None
             medium is relevant, if the linked bus only allows a special defined set of media.
-            If None, any bus can be used.            
+            If None, any bus can be used.
         invest_parameters : None or InvestParameters, optional
             used for investment costs or/and investment-optimization!
         exists : int, array, None
@@ -1337,95 +1289,81 @@ class Flow(Element):
         super().__init__(label, **kwargs)
         # args to attributes:
         self.bus = bus
-        self.nominal_val = nominal_val  # skalar!
+        self.size = size  # skalar!
         self.min_rel = TimeSeries('min_rel', min_rel, self)
         self.max_rel = TimeSeries('max_rel', max_rel, self)
 
-        self.loadFactor_min = loadFactor_min
-        self.loadFactor_max = loadFactor_max
+        self.load_factor_min = load_factor_min
+        self.load_factor_max = load_factor_max
         #self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
-        self.costsPerFlowHour = as_effect_dict_with_ts('costsPerFlowHour', costsPerFlowHour, self)
-        self.iCanSwitchOff = iCanSwitchOff
-        self.onHoursSum_min = onHoursSum_min
-        self.onHoursSum_max = onHoursSum_max
-        self.onHours_min = None if (onHours_min is None) else TimeSeries('onHours_min', onHours_min, self)
-        self.onHours_max = None if (onHours_max is None) else TimeSeries('onHours_max', onHours_max, self)
-        self.offHours_min = None if (offHours_min is None) else TimeSeries('offHours_min', offHours_min, self)
-        self.offHours_max = None if (offHours_max is None) else TimeSeries('offHours_max', offHours_max, self)
-        self.switchOnCosts = as_effect_dict_with_ts('switchOnCosts', switchOnCosts, self)
-        self.switchOn_maxNr = switchOn_maxNr
-        self.costsPerRunningHour = as_effect_dict_with_ts('costsPerRunningHour', costsPerRunningHour, self)
-        self.sumFlowHours_max = sumFlowHours_max
-        self.sumFlowHours_min = sumFlowHours_min
+        self.effects_per_flow_hour = as_effect_dict_with_ts('effects_per_flow_hour', effects_per_flow_hour, self)
+        self.can_switch_off = can_switch_off
+        self.on_hours_total_min = on_hours_total_min
+        self.on_hours_total_max = on_hours_total_max
+        self.on_hours_min = None if (on_hours_min is None) else TimeSeries('on_hours_min', on_hours_min, self)
+        self.on_hours_max = None if (on_hours_max is None) else TimeSeries('on_hours_max', on_hours_max, self)
+        self.off_hours_min = None if (off_hours_min is None) else TimeSeries('off_hours_min', off_hours_min, self)
+        self.off_hours_max = None if (off_hours_max is None) else TimeSeries('off_hours_max', off_hours_max, self)
+        self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
+        self.switch_on_total_max = switch_on_total_max
+        self.running_hour_effects = as_effect_dict_with_ts('running_hour_effects', running_hour_effects, self)
+        self.flow_hours_total_max = flow_hours_total_max
+        self.flow_hours_total_min = flow_hours_total_min
 
         self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
-        self.group = group # TODO: wird überschrieben von Component!
-        self.valuesBeforeBegin = np.array(valuesBeforeBegin) if valuesBeforeBegin else np.array([0, 0])  # list -> np-array
+        self.group = group   # TODO: wird überschrieben von Component!
+        self.values_before_begin = np.array(values_before_begin) if values_before_begin else np.array([0, 0])  # list -> np-array
 
-        if val_rel is None:
-            self.val_rel = None  # damit man noch einfach rauskriegt, ob es belegt wurde
-        else:
-            # Check:
-            # Wenn noch nominal_val noch Default, aber investmentSize nicht optimiert werden soll:
-            if (self.nominal_val == Flow.__nominal_val_default) and \
-                    ((invest_parameters is None) or (invest_parameters.fixed_size == True)):
-                # Fehlermeldung:
+        self.invest_parameters = invest_parameters   # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
+        self.comp = None   # zugehörige Komponente (wird später von Komponente gefüllt)
+
+        self.val_rel = None
+        if val_rel is not None:
+            # Wenn noch size noch Default, aber investmentSize nicht optimiert werden soll:
+            size_is_default = self.size == Flow._default_size
+            if size_is_default and self.size_is_fixed:
                 raise Exception(
-                    'Achtung: Wenn val_ref genutzt wird, muss zugehöriges nominal_val definiert werden, da: value = val_ref * nominal_val!')
-
+                    'Achtung: Wenn val_rel genutzt wird, muss zugehöriges size definiert werden, da: value = val_rel * size!')
             self.val_rel = TimeSeries('val_rel', val_rel, self)
 
-        self.invest_parameters = invest_parameters
-        # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
-
-        # zugehörige Komponente (wird später von Komponente gefüllt)
-        self.comp = None
-        if (medium is not None) and (not isinstance(medium, str)):
+        self.medium = medium
+        if (self.medium is not None) and (not isinstance(self.medium, str)):
             raise Exception('medium must be a string or None')
-        else:
-            self.medium = medium
-        # defaults:
 
-        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        if isinstance(min_rel, (np.ndarray, list)):
-            self.__useOn_fromProps = iCanSwitchOff & (any(min_rel) > 0)
-        else:
-            self.__useOn_fromProps = iCanSwitchOff & (min_rel > 0)
+        # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
+        flowsDefiningOn = [self]
+        # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
+        on_values_before_begin = 1 * (self.values_before_begin >= 0.0001)
+        # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
-        # self.prepared          = False # ob __declareVarsAndEqs() ausgeführt
-
-        # feature for: On and SwitchOn Vars (builds only if necessary)
-        # -> feature bereits hier, da andere Elemente featureOn.activateOnValue() nutzen wollen
-        flowsDefiningOn = [
-            self]  # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
-        on_valuesBeforeBegin = 1 * (
-                    self.valuesBeforeBegin >= 0.0001)  # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
-        # TODO: Wenn iCanSwitchOff = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
-
+        #TODO: Why not in sub_elements?
+        from flixOpt.flixFeatures import cFeatureOn, cFeatureInvest
         self.featureOn = cFeatureOn(self, flowsDefiningOn,
-                                    on_valuesBeforeBegin,
-                                    self.switchOnCosts,
-                                    self.costsPerRunningHour,
-                                    onHoursSum_min=self.onHoursSum_min,
-                                    onHoursSum_max=self.onHoursSum_max,
-                                    onHours_min=self.onHours_min,
-                                    onHours_max=self.onHours_max,
-                                    offHours_min=self.offHours_min,
-                                    offHours_max=self.offHours_max,
-                                    switchOn_maxNr=self.switchOn_maxNr,
-                                    useOn_explicit=self.__useOn_fromProps)
+                                    on_values_before_begin,
+                                    self.switch_on_effects,
+                                    self.running_hour_effects,
+                                    onHoursSum_min=self.on_hours_total_min,
+                                    onHoursSum_max=self.on_hours_total_max,
+                                    onHours_min=self.on_hours_min,
+                                    onHours_max=self.on_hours_max,
+                                    off_hours_min=self.off_hours_min,
+                                    off_hours_max=self.off_hours_max,
+                                    switch_on_total_max=self.switch_on_total_max,
+                                    useOn_explicit=self.on_variable_is_forced)
+
+        self.featureInvest: Optional[cFeatureInvest] = None   # Is defined in finalize()
 
 
     def __str__(self):
         details = [
             f"bus={self.bus.label if self.bus else 'None'}",
-            f"nominal_val={self.nominal_val}",
+            f"size={self.size}",
             f"min/max_rel={self.min_rel}-{self.max_rel}",
             f"medium={self.medium}",
             f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
             f"val_rel={self.val_rel}" if self.val_rel else "",
-            f"costsPerFlowHour={self.costsPerFlowHour}" if self.costsPerFlowHour else "",
-            f"costsPerRunningHour={self.costsPerRunningHour}" if self.costsPerRunningHour else "",
+            f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
+            f"running_hour_effects={self.running_hour_effects}" if self.running_hour_effects else "",
         ]
 
         all_relevant_parts = [part for part in details if part != ""]
@@ -1437,18 +1375,17 @@ class Flow(Element):
 
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
-    def plausiTest(self) -> None:
-        # Plausi-Check min < max:
-        if np.any(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data)):
-            # if np.any(np.asarray(np.asarray(self.min_rel.data) > np.asarray(self.max_rel.data) )):
+    def plausibility_test(self) -> None:
+        # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
+        if np.any(self.min_rel.data > self.max_rel.data):
             raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
-    def activateOnValue(self) -> None:
-        self.featureOn.activateOnValueExplicitly()
+    def force_on_variable(self) -> None:
+        self.featureOn.force_on_variable()
 
     def finalize(self) -> None:
-        self.plausiTest()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
+        self.plausibility_test()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
 
 
         # exist-merge aus Flow.exist und Comp.exist
@@ -1459,65 +1396,54 @@ class Flow(Element):
         self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
 
         # prepare invest Feature:
-        if self.invest_parameters is None:
-            self.featureInvest = None  #
-        else:
-            self.featureInvest = cFeatureInvest('nominal_val', self, self.invest_parameters,
+        if self.invest_parameters is not None:
+            from flixOpt.flixFeatures import cFeatureInvest
+            self.featureInvest = cFeatureInvest('size', self, self.invest_parameters,
                                                 min_rel=self.min_rel_with_exists,
                                                 max_rel=self.max_rel_with_exists,
                                                 val_rel=self.val_rel,
-                                                investmentSize=self.nominal_val,
+                                                investmentSize=self.size,
                                                 featureOn=self.featureOn)
-
-
 
         super().finalize()
 
 
-    def declareVarsAndEqs(self, system_model: SystemModel) -> None:
-        print('declareVarsAndEqs ' + self.label)
-        super().declareVarsAndEqs(system_model)
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
+        print('declare_vars_and_eqs ' + self.label)
+        super().declare_vars_and_eqs(system_model)
 
-        self.featureOn.declareVarsAndEqs(system_model)  # TODO: rekursiv aufrufen für subElements
+        self.featureOn.declare_vars_and_eqs(system_model)  # TODO: rekursiv aufrufen für sub_elements
 
         self.system_model = system_model
 
-        # Skalare zu Vektoren #
-        # -> schöner wäre das bei Init, aber da gibt es noch keine Info über Länge)
-        # -> überprüfen, ob nur für pyomo notwendig!
-
-        # timesteps = model.timesteps  
-        ############################           
-
-        ## min/max Werte:
-        #  min-Wert:
-
-        def getMinMaxOfDefiningVar():
+        def bounds_of_defining_variable() -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
+            """
+            Returns the lower and upper bound and the fixed value of the defining variable.
+            Returns: (lower_bound, upper_bound, fixed_value)
+            """
             # Wenn fixer Lastgang:
             if self.val_rel is not None:
                 # min = max = val !
-                fix_value = self.val_rel.active_data * self.nominal_val
-                lb = None
-                ub = None
+                lower_bound = None
+                upper_bound = None
+                fix_value = self.val_rel.active_data * self.size
             else:
-                if self.featureOn.useOn:
-                    lb = 0
-                else:
-                    lb = self.min_rel_with_exists.active_data * self.nominal_val  # immer an
-                ub = self.max_rel_with_exists.active_data * self.nominal_val
+                lower_bound = 0 if self.featureOn.useOn else self.min_rel_with_exists.active_data * self.size
+                upper_bound = self.max_rel_with_exists.active_data * self.size
                 fix_value = None
-            return (lb, ub, fix_value)
+            return lower_bound, upper_bound, fix_value
 
         # wenn keine Investrechnung:
         if self.featureInvest is None:
-            (lb, ub, fix_value) = getMinMaxOfDefiningVar()
+            (lower_bound, upper_bound, fix_value) = bounds_of_defining_variable()
         else:
-            (lb, ub, fix_value) = self.featureInvest.getMinMaxOfDefiningVar()
+            (lower_bound, upper_bound, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
-        # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?        
-        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model, lower_bound=lb, upper_bound=ub, value=fix_value)
-        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, lower_bound=self.sumFlowHours_min,
-                                               upper_bound=self.sumFlowHours_max)
+        # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?
+        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model,
+                                        lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value)
+        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model, lower_bound=self.flow_hours_total_min,
+                                               upper_bound=self.flow_hours_total_max)
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
@@ -1525,105 +1451,105 @@ class Flow(Element):
         # erst hier, da definingVar vorher nicht belegt!
         if self.featureInvest is not None:
             self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
-            self.featureInvest.declareVarsAndEqs(system_model)
+            self.featureInvest.declare_vars_and_eqs(system_model)
 
-    def doModeling(self, system_model: SystemModel, timeIndexe) -> None:
-        # super().doModeling(model,timeIndexe)
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
+        # super().do_modeling(model,time_indices)
 
         # for aFeature in self.features:
-        #   aFeature.doModeling(model,timeIndexe)
+        #   aFeature.do_modeling(model,time_indices)
 
         #
         # ############## Variablen aktivieren: ##############
         #
 
-        # todo -> für pyomo: fix()        
+        # todo -> für pyomo: fix()
 
 
         #
-        # ############## onHoursSum_max: ##############
+        # ############## on_hours_total_max: ##############
         #
 
-        # ineq: sum(var_on(t)) <= onHoursSum_max
+        # ineq: sum(var_on(t)) <= on_hours_total_max
 
-        if self.onHoursSum_max is not None:
-            eq_onHoursSum_max = Equation('onHoursSum_max', self, system_model, 'ineq')
+        if self.on_hours_total_max is not None:
+            eq_onHoursSum_max = Equation('on_hours_total_max', self, system_model, 'ineq')
             eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
-            eq_onHoursSum_max.add_constant(self.onHoursSum_max / system_model.dtInHours)
+            eq_onHoursSum_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
 
         #
-        # ############## onHoursSum_max: ##############
+        # ############## on_hours_total_max: ##############
         #
 
-        # ineq: sum(var_on(t)) >= onHoursSum_min
+        # ineq: sum(var_on(t)) >= on_hours_total_min
 
-        if self.onHoursSum_min is not None:
-            eq_onHoursSum_min = Equation('onHoursSum_min', self, system_model, 'ineq')
+        if self.on_hours_total_min is not None:
+            eq_onHoursSum_min = Equation('on_hours_total_min', self, system_model, 'ineq')
             eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
-            eq_onHoursSum_min.add_constant(-1 * self.onHoursSum_min / system_model.dtInHours)
+            eq_onHoursSum_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
 
 
         #
         # ############## sumFlowHours: ##############
-        #        
+        #
 
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dtInHours, as_sum=True)
+        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dt_in_hours, as_sum=True)
         eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
 
-        #          
+        #
         # ############## Constraints für Binärvariablen : ##############
         #
 
-        self.featureOn.doModeling(system_model, timeIndexe)  # TODO: rekursiv aufrufen für subElements
+        self.featureOn.do_modeling(system_model, time_indices)  # TODO: rekursiv aufrufen für sub_elements
 
-        #          
+        #
         # ############## Glg. für Investition : ##############
         #
 
         if self.featureInvest is not None:
-            self.featureInvest.doModeling(system_model, timeIndexe)
+            self.featureInvest.do_modeling(system_model, time_indices)
 
         ## ############## full load fraction bzw. load factor ##############
 
         ## max load factor:
-        #  eq: var_sumFlowHours <= nominal_val * dt_tot * load_factor_max
+        #  eq: var_sumFlowHours <= size * dt_tot * load_factor_max
 
-        if self.loadFactor_max is not None:
-            flowHoursPerInvestsize_max = system_model.dtInHours_tot * self.loadFactor_max  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Max = Equation('loadFactor_max', self, system_model, 'ineq')  # general mean
+        if self.load_factor_max is not None:
+            flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.load_factor_max  # = fullLoadHours if investsize in [kW]
+            eq_flowHoursPerInvestsize_Max = Equation('load_factor_max', self, system_model, 'ineq')  # general mean
             eq_flowHoursPerInvestsize_Max.add_summand(self.model.var_sumFlowHours, 1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
                                                           -1 * flowHoursPerInvestsize_max)
             else:
-                eq_flowHoursPerInvestsize_Max.add_constant(self.nominal_val * flowHoursPerInvestsize_max)
+                eq_flowHoursPerInvestsize_Max.add_constant(self.size * flowHoursPerInvestsize_max)
 
                 ## min load factor:
-        #  eq: nominal_val * sum(dt)* load_factor_min <= var_sumFlowHours
+        #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
 
-        if self.loadFactor_min is not None:
-            flowHoursPerInvestsize_min = system_model.dtInHours_tot * self.loadFactor_min  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Min = Equation('loadFactor_min', self, system_model, 'ineq')
+        if self.load_factor_min is not None:
+            flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.load_factor_min  # = fullLoadHours if investsize in [kW]
+            eq_flowHoursPerInvestsize_Min = Equation('load_factor_min', self, system_model, 'ineq')
             eq_flowHoursPerInvestsize_Min.add_summand(self.model.var_sumFlowHours, -1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,
                                                           flowHoursPerInvestsize_min)
             else:
-                eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.nominal_val * flowHoursPerInvestsize_min)
+                eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.size * flowHoursPerInvestsize_min)
 
-        # ############## positiver Gradient ######### 
+        # ############## positiver Gradient #########
 
         '''        
         if self.positive_gradient == None :                    
           if model.modeling_language == 'pyomo':
             def positive_gradient_rule(t):
               if t == 0:
-                return (self.model.var_val[t] - self.val_initial) / model.dtInHours[t] <= self.positive_gradient[t] #             
+                return (self.model.var_val[t] - self.val_initial) / model.dt_in_hours[t] <= self.positive_gradient[t] #             
               else: 
-                return (self.model.var_val[t] - self.model.var_val[t-1])    / model.dtInHours[t] <= self.positive_gradient[t] #
+                return (self.model.var_val[t] - self.model.var_val[t-1])    / model.dt_in_hours[t] <= self.positive_gradient[t] #
   
             # Erster Zeitschritt beachten:          
             if (self.val_initial == None) & (start == 0):
@@ -1641,38 +1567,37 @@ class Flow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def addShareToGlobals(self, globalComp: Global, system_model) -> None:
+    def add_share_to_globals(self, global_comp: Global, system_model) -> None:
 
         # Arbeitskosten:
-        if self.costsPerFlowHour is not None:
-            # globalComp.addEffectsForVariable(aVariable, aEffect, aFactor)
-            # variable_costs          = Summand(self.model.var_val, np.multiply(self.costsPerFlowHour, model.dtInHours))
-            # globalComp.costsOfOperating_eq.add_summand(self.model.var_val, np.multiply(self.costsPerFlowHour.active_data, model.dtInHours)) # np.multiply = elementweise Multiplikation
-            shareHolder = self
-            globalComp.addShareToOperation('costsPerFlowHour', shareHolder, self.model.var_val, self.costsPerFlowHour,
-                                           system_model.dtInHours)
+        if self.effects_per_flow_hour is not None:
+            owner = self
+            global_comp.add_share_to_operation(
+                'effects_per_flow_hour', owner, self.model.var_val,
+                self.effects_per_flow_hour, system_model.dt_in_hours)
 
-        # Anfahrkosten, Betriebskosten, ... etc ergänzen: 
-        self.featureOn.addShareToGlobals(globalComp, system_model)
+        # Anfahrkosten, Betriebskosten, ... etc ergänzen:
+        self.featureOn.add_share_to_globals(global_comp, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.addShareToGlobals(globalComp, system_model)
+            self.featureInvest.add_share_to_globals(global_comp, system_model)
 
-        ''' in oemof gibt es noch 
-             if m.flows[i, o].positive_gradient['ub'][0] is not None:
-                    for t in m.TIMESTEPS:
-                        gradient_costs += (self.positive_gradient[i, o, t] *
-                                           m.flows[i, o].positive_gradient[
-                                               'costs'])
-        
-                if m.flows[i, o].negative_gradient['ub'][0] is not None:
-                    for t in m.TIMESTEPS:
-                        gradient_costs += (self.negative_gradient[i, o, t] *
-                                           m.flows[i, o].negative_gradient[
-                                               'costs'])
-        '''
+        """
+        in oemof gibt es noch 
+            if m.flows[i, o].positive_gradient['ub'][0] is not None:
+                for t in m.TIMESTEPS:
+                    gradient_costs += (self.positive_gradient[i, o, t] *
+                                       m.flows[i, o].positive_gradient[
+                                           'costs'])
+            
+            if m.flows[i, o].negative_gradient['ub'][0] is not None:
+                for t in m.TIMESTEPS:
+                    gradient_costs += (self.negative_gradient[i, o, t] *
+                                       m.flows[i, o].negative_gradient[
+                                           'costs'])
+        """
 
-    def getStrDescr(self, type='full') -> Dict:
+    def description(self, type: str = 'full') -> Dict:
         aDescr = {}
         if type == 'for bus-list':
             # aDescr = str(self.comp.label) + '.'
@@ -1686,7 +1611,7 @@ class Flow(Element):
             aDescr['label'] = self.label
             aDescr['comp'] = self.comp.label
             aDescr['bus'] = self.bus.label
-            aDescr['isInputInComp'] = self.isInputInComp
+            aDescr['is_input_in_comp'] = self.is_input_in_comp
             if hasattr(self, 'group'):
                 if self.group is not None:
                     aDescr["group"] = self.group
@@ -1700,26 +1625,10 @@ class Flow(Element):
 
         return aDescr
 
-    # def printWithBus(self):
-    #   return (str(self.label) + ' @Bus ' + str(self.bus.label))
-    # def printWithComp(self):
-    #   return (str(self.comp.label) + '.' +  str(self.label))
-
     # Preset medium (only if not setted explicitly by user)
-    def setMediumIfNotSet(self, medium) -> None:
-        # nicht überschreiben, nur wenn leer:
-        if self.medium is None: self.medium = medium
-
-# class cBeforeValue :
-
-#   def __init__(self, modelingElement, var, esBeforeValues, is_start_value):
-#     self.esBeforeValues  = esBeforeValues # Standardwerte für Simulationsstart im Energiesystem
-#     self.modelingElement = modelingElement 
-#     self.var             = var
-#     self.is_start_value =is_start_value
-
-#   def getBeforeValue(self):
-#     if
+    def set_medium_if_not_set(self, medium) -> None:
+        if self.medium is None:    # nicht überschreiben, nur wenn leer:
+            self.medium = medium
 
 
 class System:
@@ -1730,155 +1639,123 @@ class System:
     ## Properties:
 
     @property
-    def allElementsOfFirstLayerWithoutFlows(self) -> List[Element]:
-        return (self.listOfComponents + list(self.setOfBuses) + [self.globalComp] + self.listOfEffectTypes +
-                list(self.setOfOtherElements))
+    def elements_of_first_layer_wo_flows(self) -> List[Element]:
+        return (self.components + list(self.buses) + [self.global_comp] + self.effects +
+                list(self.other_elements))
 
     @property
-    def allElementsOfFirstLayer(self) -> List[Element]:
-        return self.allElementsOfFirstLayerWithoutFlows + list(self.setOfFlows)
+    def elements_of_fists_layer(self) -> List[Element]:
+        return self.elements_of_first_layer_wo_flows + list(self.flows)
 
     @property
-    def allInvestFeatures(self) -> List[cFeatureInvest]:
-        allInvestFeatures = []
+    def invest_features(self) -> List['cFeatureInvest']:
+        all_invest_features = []
 
-        def getInvestFeaturesOfElement(element) -> List[cFeatureInvest]:
-            investFeatures = []
-            for aSubComp in element.subElements_all:
+        def get_invest_features_of_element(element: Element) -> List['cFeatureInvest']:
+            invest_features = []
+            from flixOpt.flixFeatures import cFeatureInvest
+            for aSubComp in element.all_sub_elements:
                 if isinstance(aSubComp, cFeatureInvest):
-                    investFeatures.append(aSubComp)
-                investFeatures += getInvestFeaturesOfElement(aSubComp)  # recursive!
-            return investFeatures
+                    invest_features.append(aSubComp)
+                invest_features += get_invest_features_of_element(aSubComp)  # recursive!
+            return invest_features
 
-        for element in self.allElementsOfFirstLayer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
-            allInvestFeatures += getInvestFeaturesOfElement(element)
+        for element in self.elements_of_fists_layer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
+            all_invest_features += get_invest_features_of_element(element)
 
-        return allInvestFeatures
+        return all_invest_features
 
     # Achtung: Funktion wird nicht nur für Getter genutzt.
-    def getFlows(self, listOfComps=None) -> Set[Flow]:
-        setOfFlows = set()
-        # standardmäßig Flows aller Komponenten:
-        if listOfComps is None:
-            listOfComps = self.listOfComponents
-        # alle comps durchgehen:
-        for comp in listOfComps:
-            newFlows = comp.inputs + comp.outputs
-            setOfFlows = setOfFlows | set(newFlows)
-        return setOfFlows
-
-    setOfFlows = property(getFlows)
+    @property
+    def flows(self) -> Set[Flow]:
+        return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
 
     # get all TS in one list:
     @property
-    def all_TS_in_elements(self) -> List[TimeSeries]:
+    def all_time_series_in_elements(self) -> List[TimeSeries]:
         element: Element
         all_TS = []
-        for element in self.allElementsOfFirstLayer:
+        for element in self.elements_of_fists_layer:
             all_TS += element.TS_list
         return all_TS
 
-    # aktuelles Bus-Set ausgeben (generiert sich aus dem setOfFlows):
     @property
-    def setOfBuses(self) -> Set[Bus]:
-        setOfBuses = set()
-        # Flow-Liste durchgehen::
-        for aFlow in self.setOfFlows:
-            setOfBuses.add(aFlow.bus)
-        return setOfBuses
+    def buses(self) -> Set[Bus]:
+        return {flow.bus for flow in self.flows}
 
-        # timeSeries: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
+        # time_series: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
 
-    def __init__(self, timeSeries, dt_last=None):
-        '''
+    def __init__(self,
+                 time_series: np.ndarray[np.datetime64],
+                 last_time_step_hours: Optional[Union[int, float]] = None):
+        """
           Parameters
           ----------
-          timeSeries : np.array of datetime64
+          time_series : np.ndarray of datetime64
               timeseries of the data
-          dt_last : for calc
+          last_time_step_hours : for calc
               The duration of last time step.
               Storages needs this time-duration for calculation of charge state
               after last time step.
-              If None, then last time increment of timeSeries is used.
+              If None, then last time increment of time_series is used.
+        """
+        self.time_series = time_series
+        self.last_time_step_hours = last_time_step_hours
 
-        '''
-        self.timeSeries = timeSeries
-        self.dt_last = dt_last
-
-        self.timeSeriesWithEnd = helpers.getTimeSeriesWithEnd(timeSeries, dt_last)
-        helpers.checkTimeSeries('global esTimeSeries', self.timeSeriesWithEnd)
+        self.time_series_with_end = helpers.getTimeSeriesWithEnd(time_series, last_time_step_hours)
+        helpers.checkTimeSeries('global esTimeSeries', self.time_series_with_end)
 
         # defaults:
-        self.listOfComponents = []
-        self.setOfOtherElements = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
-        self.listOfEffectTypes = EffectCollection()  # Kosten, CO2, Primärenergie, ...
+        self.components: List[Component] = []
+        self.other_elements: Set[Element] = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
+        self.effects: EffectCollection = EffectCollection()  # Kosten, CO2, Primärenergie, ...
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
-        self.standardEffect = None  # Standard-Effekt, zumeist Kosten
-        self.objectiveEffect = None  # Zielfunktions-Effekt, z.B. Kosten oder CO2
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
-        self.globalComp = Global('globalComp')
-        self.__finalized = False  # wenn die Elements alle finalisiert sind, dann True
+        self.global_comp = Global('global_comp')
+        self._finalized = False  # wenn die Elements alle finalisiert sind, dann True
         self.model: Optional[SystemModel] = None  # later activated
-        # # global sollte das erste Element sein, damit alle anderen Componenten darauf zugreifen können:
-        # self.addComponents(self.globalComp)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} with {len(self.listOfComponents)} components and {len(self.listOfEffectTypes)} effects>"
+        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>"
 
     def __str__(self):
         components = '\n'.join(component.__str__() for component in
-                               sorted(self.listOfComponents, key=lambda component: component.label.upper()))
+                               sorted(self.components, key=lambda component: component.label.upper()))
         effects = '\n'.join(effect.__str__() for effect in
-                               sorted(self.listOfEffectTypes, key=lambda effect: effect.label.upper()))
+                               sorted(self.effects, key=lambda effect: effect.label.upper()))
         return f"Energy System with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
-    def addEffects(self, *args: Effect) -> None:
-        newListOfEffects = list(args)
-        for aNewEffect in newListOfEffects:
-            print('Register new effect ' + aNewEffect.label)
-            # check if already exists:
-            self._checkIfUniqueElement(aNewEffect, self.listOfEffectTypes)
-
+    def add_effects(self, *args: Effect) -> None:
+        new_effects = list(args)
+        for new_effect in new_effects:
+            print('Register new effect ' + new_effect.label)
+            self._check_if_element_is_unique(new_effect, self.effects)   # check if already exists
             # Wenn Standard-Effekt, und schon einer vorhanden:
-            if (aNewEffect.isStandard) and (self.listOfEffectTypes.standardType() is not None):
-                raise Exception('standardEffekt ist bereits belegt mit ' + self.standardEffect.label)
+            if new_effect.is_standard and self.effects.standard_effect is not None:
+                raise Exception(f'standardEffekt ist bereits belegt mit {self.effects.standard_effect.label}')
             # Wenn Objective-Effekt, und schon einer vorhanden:
-            if (aNewEffect.isObjective) and (self.listOfEffectTypes.objectiveEffect() is not None):
-                raise Exception('objectiveEffekt ist bereits belegt mit ' + self.objectiveEffect.label)
+            if new_effect.is_objective and self.effects.objective_effect is not None:
+                raise Exception(f'objectiveEffekt ist bereits belegt mit {self.effects.standard_effect.label}')
 
-            # in liste ergänzen:
-            self.listOfEffectTypes.append(aNewEffect)
+            self.effects.append(new_effect)   # in liste ergänzen:
 
-        # an globalComp durchreichen: TODO: doppelte Haltung in system und globalComp ist so nicht schick.
-        self.globalComp.listOfEffectTypes = self.listOfEffectTypes
+        # TODO: doppelte Haltung in system und global_comp ist so nicht schick.
+        self.global_comp.listOfEffectTypes = self.effects   # an global_comp durchreichen
 
-    # Komponenten registrieren:
-    def addComponents(self, *args: Component) -> None:
-
-        newListOfComps = list(args)
-        # für alle neuen Komponenten:
-        for aNewComp in newListOfComps:
-            # Check ob schon vorhanden:
-            print('Register new Component ' + aNewComp.label)
-            # check if already exists:
-            self._checkIfUniqueElement(aNewComp, self.listOfComponents)
-
-            # # base in Komponente registrieren:
-            # aNewComp.addEnergySystemIBelongTo(self)
-
-            # Komponente in Flow registrieren
-            aNewComp.registerMeInFlows()
-
-            # Flows in Bus registrieren:
-            aNewComp.registerFlowsInBus()
-
-        # register components:
-        self.listOfComponents.extend(newListOfComps)
+    def add_components(self, *args: Component) -> None:
+        # Komponenten registrieren:
+        new_components = list(args)
+        for new_component in new_components:
+            print('Register new Component ' + new_component.label)
+            self._check_if_element_is_unique(new_component, self.components)   # check if already exists:
+            new_component.register_component_in_flows()   # Komponente in Flow registrieren
+            new_component.register_flows_in_bus()   # Flows in Bus registrieren:
+        self.components.extend(new_components)   # Add to existing list of components
 
         # Element registrieren ganz allgemein:
 
-    def addElements(self, *args: Element) -> None:
+    def add_elements(self, *args: Element) -> None:
         '''
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
 
@@ -1891,19 +1768,18 @@ class System:
 
         for new_element in list(args):
             if isinstance(new_element, Component):
-                self.addComponents(new_element)
+                self.add_components(new_element)
             elif isinstance(new_element, Effect):
-                self.addEffects(new_element)
+                self.add_effects(new_element)
             elif isinstance(new_element, Element):
                 # check if already exists:
-                self._checkIfUniqueElement(new_element, self.setOfOtherElements)
+                self._check_if_element_is_unique(new_element, self.other_elements)
                 # register Element:
-                self.setOfOtherElements.add(new_element)
-
+                self.other_elements.add(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def addTemporaryElements(self, *args: Element) -> None:
+    def add_temporary_elements(self, *args: Element) -> None:
         '''
         add temporary modeling elements, only valid for one calculation,
         i.g. cAggregationModeling-Element
@@ -1915,22 +1791,22 @@ class System:
 
         '''
 
-        self.addElements(*args)
+        self.add_elements(*args)
         self.temporary_elements += args  # Register temporary Elements
 
-    def deleteTemporaryElements(self):  # function just implemented, still not used
+    def delete_temporary_elements(self):  # function just implemented, still not used
         '''
         deletes all registered temporary Elements
         '''
         for temporary_element in self.temporary_elements:
             # delete them again in the lists:
-            self.listOfComponents.remove(temporary_element)
-            self.setOfBuses.remove(temporary_element)
-            self.setOfOtherElements.remove(temporary_element)
-            self.listOfEffectTypes.remove(temporary_element)
-            self.setOfFlows(temporary_element)
+            self.components.remove(temporary_element)
+            self.buses.remove(temporary_element)
+            self.other_elements.remove(temporary_element)
+            self.effects.remove(temporary_element)
+            self.flows(temporary_element)
 
-    def _checkIfUniqueElement(self, aElement: Element, listOfExistingLists: list) -> None:
+    def _check_if_element_is_unique(self, element: Element, existing_elements: List[Element]) -> None:
         '''
         checks if element or label of element already exists in list
 
@@ -1938,91 +1814,95 @@ class System:
         ----------
         aElement : Element
             new element to check
-        listOfExistingLists : list
+        existing_elements : list
             list of already registered elements
         '''
 
         # check if element is already registered:
-        if aElement in listOfExistingLists:
-            raise Exception('Element \'' + aElement.label + '\' already added to cEnergysystem!')
+        if element in existing_elements:
+            raise Exception('Element \'' + element.label + '\' already added to cEnergysystem!')
 
-            # check if name is already used:
-        if aElement.label in [elem.label for elem in listOfExistingLists]:
-            raise Exception('Elementname \'' + aElement.label + '\' already used in another element!')
+        # check if name is already used:
+        # TODO: Check all elements instead of only a list that is passed?
+        # TODO: An Effect with the same label as another element is not allowed, or is it?
+        if element.label in [elem.label for elem in existing_elements]:
+            raise Exception('Elementname \'' + element.label + '\' already used in another element!')
 
-    def __plausibilityChecks(self) -> None:
+    def _plausibility_checks(self) -> None:
         # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
-        def getErrorStr():
-            return \
-                    '  ' + effect.label + ' -> has share in: ' + shareEffect.label + '\n' \
-                                                                                     '  ' + shareEffect.label + ' -> has share in: ' + effect.label
 
-        for effect in self.listOfEffectTypes:
+        def error_str(effect_label: str, shareEffect_label: str):
+            return (
+                f'  {effect_label} -> has share in: {shareEffect_label}\n'
+                f'  {shareEffect_label} -> has share in: {effect_label}'
+            )
+
+        for effect in self.effects:
             # operation:
-            for shareEffect in effect.specificShareToOtherEffects_operation.keys():
+            for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-                assert (
-                        effect not in shareEffect.specificShareToOtherEffects_operation.keys()), 'Error: circular operation-shares \n' + getErrorStr()
+                assert (effect not in shareEffect.specific_share_to_other_effects_operation.keys(),
+                        f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}')
             # invest:
-            for shareEffect in effect.specificShareToOtherEffects_invest.keys():
-                assert (
-                        effect not in shareEffect.specificShareToOtherEffects_invest.keys()), 'Error: circular invest-shares \n' + getErrorStr()
+            for shareEffect in effect.specific_share_to_other_effects_invest.keys():
+                assert (effect not in shareEffect.specific_share_to_other_effects_invest.keys(),
+                        f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}')
 
-    # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch subElements erzeugt!)
+    # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
     def finalize(self) -> None:
         print('finalize all Elements...')
-        self.__plausibilityChecks()
+        self._plausibility_checks()
         # nur EINMAL ausführen: Finalisieren der Elements:
-        if not self.__finalized:
+        if not self._finalized:
             # finalize Elements for modeling:
-            for element in self.allElementsOfFirstLayer:
-                print(element.label)
-                type(element)
-                element.finalize()  # inklusive subElements!
-            self.__finalized = True
+            for element in self.elements_of_fists_layer:
+                print(element.label)   #TODO: Remove this print??
+                element.finalize()  # inklusive sub_elements!
+            self._finalized = True
 
-    def doModelingOfElements(self) -> SystemModel:
+    def do_modeling_of_elements(self) -> SystemModel:
 
-        if not self.__finalized:
+        if not self._finalized:
             raise Exception('modeling not possible, because Energysystem is not finalized')
 
         # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
 
-        # TODO: Achtung timeIndexe kann auch nur ein Teilbereich von chosenEsTimeIndexe abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
+        # TODO: Achtung time_indices kann auch nur ein Teilbereich von time_indices abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
         # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
-        timeIndexe = range(len(self.model.time_indices))
+        time_indices = range(len(self.model.time_indices))
 
         # globale Modellierung zuerst, damit andere darauf zugreifen können:
-        self.globalComp.declareVarsAndEqs(self.model)  # globale Funktionen erstellen!
-        self.globalComp.doModeling(self.model, timeIndexe)  # globale Funktionen erstellen!
+        self.global_comp.declare_vars_and_eqs(self.model)  # globale Funktionen erstellen!
+        self.global_comp.do_modeling(self.model, time_indices)  # globale Funktionen erstellen!
 
-        # Komponenten-Modellierung (# inklusive subElements!)
-        for aComp in self.listOfComponents:
+        # Komponenten-Modellierung (# inklusive sub_elements!)
+        for aComp in self.components:
             aComp: Component
             log.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
-            aComp.declareVarsAndEqsOfFlows(self.model)
-            aComp.declareVarsAndEqs(self.model)
+            aComp.declare_vars_and_eqs_of_flows(self.model)
+            aComp.declare_vars_and_eqs(self.model)
 
-            aComp.doModelingOfFlows(self.model, timeIndexe)
-            aComp.doModeling(self.model, timeIndexe)
+            aComp.do_modeling_of_flows(self.model, time_indices)
+            aComp.do_modeling(self.model, time_indices)
 
-            aComp.addShareToGlobalsOfFlows(self.globalComp, self.model)
-            aComp.addShareToGlobals(self.globalComp, self.model)
+            aComp.add_share_to_globals_of_flows(self.global_comp, self.model)
+            aComp.add_share_to_globals(self.global_comp, self.model)
 
-        # Bus-Modellierung (# inklusive subElements!)
+        # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
-        for aBus in self.setOfBuses:
+        for aBus in self.buses:
             log.debug('model ' + aBus.label + '...')
-            aBus.declareVarsAndEqs(self.model)
-            aBus.doModeling(self.model, timeIndexe)
-            aBus.addShareToGlobals(self.globalComp, self.model)
+            aBus.declare_vars_and_eqs(self.model)
+            aBus.do_modeling(self.model, time_indices)
+            aBus.add_share_to_globals(self.global_comp, self.model)
 
+        # TODO: Currently there are no "other elements"
         # weitere übergeordnete Modellierungen:
-        for element in self.setOfOtherElements:
-            element.declareVarsAndEqs(self.model)
-            element.doModeling(self.model, timeIndexe)
-            element.addShareToGlobals(self.globalComp, self.model)
+        for element in self.other_elements:
+            element.declare_vars_and_eqs(self.model)
+            element.do_modeling(self.model, time_indices)
+            element.add_share_to_globals(self.global_comp, self.model)
 
             # transform to Math:
         self.model.to_math_model()
@@ -2030,19 +1910,22 @@ class System:
         return self.model
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activate_system_model)
-    def activateInTS(self, chosenTimeIndexe, dictOfTSAndExplicitData=None) -> None:
+    def activate_indices_in_time_series(
+            self, indices: Union[List[int], range],
+            alternative_data_for_time_series: Optional[Dict[TimeSeries, np.ndarray]] = None) -> None:
+        # TODO: Aggreagation functionality to other part of framework?
         aTS: TimeSeries
-        if dictOfTSAndExplicitData is None:
-            dictOfTSAndExplicitData = {}
+        if alternative_data_for_time_series is None:
+            alternative_data_for_time_series = {}
 
-        for aTS in self.all_TS_in_elements:
+        for aTS in self.all_time_series_in_elements:
             # Wenn explicitData vorhanden:
-            if aTS in dictOfTSAndExplicitData.keys():
-                explicitData = dictOfTSAndExplicitData[aTS]
+            if aTS in alternative_data_for_time_series.keys():
+                explicitData = alternative_data_for_time_series[aTS]
             else:
                 explicitData = None
                 # Aktivieren:
-            aTS.activate(chosenTimeIndexe, explicitData)
+            aTS.activate(indices, explicitData)
 
     def activate_model(self, system_model: SystemModel) -> None:
         self.model = system_model
@@ -2050,38 +1933,38 @@ class System:
         element: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
-        self.activateInTS(system_model.time_indices, system_model.TS_explicit)
+        self.activate_indices_in_time_series(system_model.time_indices, system_model.TS_explicit)
 
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
-            for element in self.allElementsOfFirstLayer:
-                # BEACHTE: erst nach finalize(), denn da werden noch subElements erst erzeugt!
-                if not self.__finalized:
+            for element in self.elements_of_fists_layer:
+                # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
+                if not self._finalized:
                     raise Exception('activate_model(): --> Geht nicht, da System noch nicht finalized!')
                 # model bauen und in model registrieren.
-                element.create_new_model_and_activate_system_model(self.model)  # inkl. subElements
+                element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:
             # nur Aktivieren:
-            for element in self.allElementsOfFirstLayer:  # TODO: Is This a BUG?
-                element.activate_system_model(system_model)  # inkl. subElements
+            for element in self.elements_of_fists_layer:  # TODO: Is This a BUG?
+                element.activate_system_model(system_model)  # inkl. sub_elements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
-    def getResultsAfterSolve(self) -> Tuple[Dict, Dict]:
+    def get_results_after_solve(self) -> Tuple[Dict, Dict]:
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
         # für alle Komponenten:
-        for element in self.allElementsOfFirstLayerWithoutFlows:
+        for element in self.elements_of_first_layer_wo_flows:
             # results        füllen:
-            (results[element.label], results_var[element.label]) = element.getResults()  # inklusive subElements!
+            (results[element.label], results_var[element.label]) = element.get_results()  # inklusive sub_elements!
 
         # Zeitdaten ergänzen
         aTime = {}
         results['time'] = aTime
-        aTime['timeSeriesWithEnd'] = self.model.timeSeriesWithEnd
-        aTime['timeSeries'] = self.model.timeSeries
-        aTime['dtInHours'] = self.model.dtInHours
-        aTime['dtInHours_tot'] = self.model.dtInHours_tot
+        aTime['time_series_with_end'] = self.model.time_series_with_end
+        aTime['time_series'] = self.model.time_series
+        aTime['dt_in_hours'] = self.model.dt_in_hours
+        aTime['dt_in_hours_total'] = self.model.dt_in_hours_total
 
         return results, results_var
 
@@ -2093,78 +1976,78 @@ class System:
         print('########## Short String Description of Energysystem ##########')
         print('')
 
-        print(yaml.dump(self.getSystemDescr()))
+        print(yaml.dump(self.description_of_system()))
 
-    def getSystemDescr(self, flowsWithBusInfo=False) -> Dict:
+    def description_of_system(self, flowsWithBusInfo=False) -> Dict:
         modelDescription = {}
 
         # Anmerkung buses und comps als dict, weil Namen eindeutig!
         # Buses:
         modelDescription['buses'] = {}
-        for aBus in self.setOfBuses:
+        for aBus in self.buses:
             aBus: Bus
-            modelDescription['buses'].update(aBus.getDescrAsStr())
+            modelDescription['buses'].update(aBus.description())
         # Comps:
         modelDescription['components'] = {}
         aComp: Component
-        for aComp in self.listOfComponents:
-            modelDescription['components'].update(aComp.getDescrAsStr())
+        for aComp in self.components:
+            modelDescription['components'].update(aComp.description())
 
         # Flows:
         flowList = []
         modelDescription['flows'] = flowList
         aFlow: Flow
-        for aFlow in self.setOfFlows:
-            flowList.append(aFlow.getStrDescr())
+        for aFlow in self.flows:
+            flowList.append(aFlow.description())
 
         return modelDescription
 
-    def getEqsAsStr(self) -> Dict:
+    def description_of_equations(self) -> Dict:
         aDict = {}
 
         # comps:
         aSubDict = {}
         aDict['Components'] = aSubDict
         aComp: Element
-        for aComp in self.listOfComponents:
-            aSubDict[aComp.label] = aComp.getEqsAsStr()
+        for aComp in self.components:
+            aSubDict[aComp.label] = aComp.description_of_equations()
 
         # buses:
         aSubDict = {}
         aDict['buses'] = aSubDict
-        for aBus in self.setOfBuses:
-            aSubDict[aBus.label] = aBus.getEqsAsStr()
+        for aBus in self.buses:
+            aSubDict[aBus.label] = aBus.description_of_equations()
 
         # globals:
-        aDict['globals'] = self.globalComp.getEqsAsStr()
+        aDict['globals'] = self.global_comp.description_of_equations()
 
         # flows:
         aSubDict = {}
         aDict['flows'] = aSubDict
-        for aComp in self.listOfComponents:
+        for aComp in self.components:
             for aFlow in (aComp.inputs + aComp.outputs):
-                aSubDict[aFlow.label_full] = aFlow.getEqsAsStr()
+                aSubDict[aFlow.label_full] = aFlow.description_of_equations()
 
         # others
         aSubDict = {}
         aDict['others'] = aSubDict
-        for element in self.setOfOtherElements:
-            aSubDict[element.label] = element.getEqsAsStr()
+        for element in self.other_elements:
+            aSubDict[element.label] = element.description_of_equations()
 
         return aDict
 
-    def printEquations(self) -> None:
+    def print_equations(self) -> None:
 
         print('')
         print('##############################################################')
         print('################# Equations of Energysystem ##################')
         print('')
 
-        print(yaml.dump(self.getEqsAsStr(),
+        print(yaml.dump(self.description_of_equations(),
                         default_flow_style=False,
                         allow_unicode=True))
 
-    def getVarsAsStr(self, structured=True) -> Union[List, Dict]:
+    def description_of_variables(self, structured=True) -> Union[List, Dict]:
         aVar: Variable
 
         # liste:
@@ -2182,29 +2065,29 @@ class System:
             subDict = {}
             aDict['Comps'] = subDict
             # comps:
-            for aComp in self.listOfComponents:
-                subDict[aComp.label] = aComp.getVarsAsStr()
+            for aComp in self.components:
+                subDict[aComp.label] = aComp.description_of_variables()
                 for aFlow in aComp.inputs + aComp.outputs:
-                    subDict[aComp.label] += aFlow.getVarsAsStr()
+                    subDict[aComp.label] += aFlow.description_of_variables()
 
             # buses:
             subDict = {}
             aDict['buses'] = subDict
-            for bus in self.setOfBuses:
-                subDict[bus.label] = bus.getVarsAsStr()
+            for bus in self.buses:
+                subDict[bus.label] = bus.description_of_variables()
 
             # globals:
-            aDict['globals'] = self.globalComp.getVarsAsStr()
+            aDict['globals'] = self.global_comp.description_of_variables()
 
             # others
             aSubDict = {}
             aDict['others'] = aSubDict
-            for element in self.setOfOtherElements:
-                aSubDict[element.label] = element.getVarsAsStr()
+            for element in self.other_elements:
+                aSubDict[element.label] = element.description_of_variables()
 
             return aDict
 
-    def printVariables(self) -> None:
+    def print_variables(self) -> None:
         print('')
         print('##############################################################')
         print('################# Variables of Energysystem ##################')
@@ -2212,30 +2095,34 @@ class System:
         print('############# a) as list : ################')
         print('')
 
-        yaml.dump(self.getVarsAsStr(structured=False))
+        yaml.dump(self.description_of_variables(structured=False))
 
         print('')
         print('############# b) structured : ################')
         print('')
 
-        yaml.dump(self.getVarsAsStr(structured=True))
+        yaml.dump(self.description_of_variables(structured=True))
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
-    def getTimeDataOfTimeIndexe(self, chosenEsTimeIndexe) -> Tuple:
-        # if chosenEsTimeIndexe is None, dann alle : chosenEsTimeIndexe = range(length(self.timeSeries))
+    def get_time_data_from_indices(self, time_indices: Union[List[int], range]) -> Tuple[
+                                                                                        np.ndarray[np.datetime64],
+                                                                                        np.ndarray[np.datetime64],
+                                                                                        np.ndarray[np.float64],
+                                                                                        np.float64]:
+        # if time_indices is None, dann alle : time_indices = range(length(self.time_series))
         # Zeitreihen:
-        timeSeries = self.timeSeries[chosenEsTimeIndexe]
+        time_series = self.time_series[time_indices]
         # next timestamp as endtime:
-        endTime = self.timeSeriesWithEnd[chosenEsTimeIndexe[-1] + 1]
-        timeSeriesWithEnd = np.append(timeSeries, endTime)
+        endTime = self.time_series_with_end[time_indices[-1] + 1]
+        time_series_with_end = np.append(time_series, endTime)
 
         # Zeitdifferenz:
         #              zweites bis Letztes            - erstes bis Vorletztes
-        dt = timeSeriesWithEnd[1:] - timeSeriesWithEnd[0:-1]
-        dtInHours = dt / np.timedelta64(1, 'h')
-        # dtInHours    = dt.total_seconds() / 3600
-        dtInHours_tot = sum(dtInHours)  # Gesamtzeit
-        return (timeSeries, timeSeriesWithEnd, dtInHours, dtInHours_tot)
+        dt = time_series_with_end[1:] - time_series_with_end[0:-1]
+        dt_in_hours = dt / np.timedelta64(1, 'h')
+        # dt_in_hours    = dt.total_seconds() / 3600
+        dt_in_hours_total = sum(dt_in_hours)  # Gesamtzeit
+        return (time_series, time_series_with_end, dt_in_hours, dt_in_hours_total)
 
 
 # Standardoptimierung segmentiert/nicht segmentiert
@@ -2251,10 +2138,10 @@ class Calculation:
         calcInfos = self._infos
         infos['calculation'] = calcInfos
         calcInfos['name'] = self.label
-        calcInfos['no ChosenIndexe'] = len(self.chosenEsTimeIndexe)
-        calcInfos['calcType'] = self.calcType
+        calcInfos['no ChosenIndexe'] = len(self.time_indices)
+        calcInfos['calculation_type'] = self.calculation_type
         calcInfos['duration'] = self.durations
-        infos['system_description'] = self.system.getSystemDescr()
+        infos['system_description'] = self.system.description_of_system()
         infos['system_models'] = {}
         infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
         infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
@@ -2264,28 +2151,28 @@ class Calculation:
     @property
     def results(self):
         # wenn noch nicht belegt, dann aus system_model holen
-        if self.__results is None:
-            self.__results = self.system_models[0].results
+        if self._results is None:
+            self._results = self.system_models[0].results
 
             # (bei segmented Calc ist das schon explizit belegt.)
-        return self.__results
+        return self._results
 
     @property
     def results_struct(self):
         # Wenn noch nicht ermittelt:
-        if (self.__results_struct is None):
+        if (self._results_struct is None):
             # Neurechnen (nur bei Segments)
-            if (self.calcType == 'segmented'):
-                self.__results_struct = helpers.createStructFromDictInDict(self.results)
+            if (self.calculation_type == 'segmented'):
+                self._results_struct = helpers.createStructFromDictInDict(self.results)
             # nur eine system_model vorhanden ('full','aggregated')
             elif len(self.system_models) == 1:
-                self.__results_struct = self.system_models[0].results_struct
+                self._results_struct = self.system_models[0].results_struct
             else:
-                raise Exception('calcType ' + str(self.calcType) + ' not defined')
-        return self.__results_struct
+                raise Exception('calculation_type ' + str(self.calculation_type) + ' not defined')
+        return self._results_struct
 
-    # chosenEsTimeIndexe: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modType, chosenEsTimeIndexe=None, pathForSaving='results', ):
+    # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
+    def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None, pathForSaving='results'):
         '''
         Parameters
         ----------
@@ -2295,70 +2182,62 @@ class Calculation:
             system which should be calculated
         modType : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
-        chosenEsTimeIndexe : None, list
+        time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
         pathForSaving : str
             Path for result files. The default is 'results'.
 
         '''
         self.label = label
-        self.nameOfCalc = None  # name for storing results
+        self.nameOfCalc = None  # name for storing results   # TODO: Why nameOfClac and label???
         self.system = system
-        self.modType = modType
-        self.chosenEsTimeIndexe = chosenEsTimeIndexe
-        self.pathForSaving = pathForSaving
-        self.calcType = None  # 'full', 'segmented', 'aggregated'
+        self.modeling_language = modeling_language
+        self.time_indices = time_indices
+        self.path_for_saving = pathForSaving
+        self.calculation_type = None  # 'full', 'segmented', 'aggregated'
         self._infos = {}
 
         self.system_models: List[SystemModel] = []  # liste der ModelBoxes (nur bei Segmentweise mehrere!)
-        self.durations = {}  # Dauer der einzelnen Dinge
-        self.durations['modeling'] = 0
-        self.durations['solving'] = 0
-        self.TSlistForAggregation = None  # list of timeseries for aggregation
-        # assert from_index < to_index
-        # assert from_index >= 0
-        # assert to_index <= length(self.system.timeSeries)-1
+        self.durations = {'modeling': 0, 'solving': 0}   # Dauer der einzelnen Dinge
+        self.time_series_for_aggregation = None  # list of timeseries for aggregation
 
-        # Wenn chosenEsTimeIndexe = None, dann alle nehmen
-        if self.chosenEsTimeIndexe is None: self.chosenEsTimeIndexe = range(len(system.timeSeries))
-        (self.timeSeries, self.timeSeriesWithEnd, self.dtInHours, self.dtInHours_tot) = system.getTimeDataOfTimeIndexe(
-            self.chosenEsTimeIndexe)
-        helpers.checkTimeSeries('chosenEsTimeIndexe', self.timeSeries)
+        self.time_indices = time_indices or range(len(system.time_series))  # Wenn time_indices = None, dann alle nehmen
+        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
+            system.get_time_data_from_indices(self.time_indices))
+        helpers.checkTimeSeries('time_indices', self.time_series)
 
-        self.nrOfTimeSteps = len(self.timeSeries)
-
-        self.__results = None
-        self.__results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
-        self.segmentModBoxList = []  # model list
-        self.dataAgg = None  # aggregationStuff (if calcType = 'aggregated')
+        self._results = None
+        self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
+        self.segmented_system_models = []  # model list
+        self.aggregation_data = None  # aggregationStuff (if calculation_type = 'aggregated')
 
     # Variante1:
-    def doModelingAsOneSegment(self):
+    def do_modeling_as_one_segment(self):
         '''
           modeling full problem
 
         '''
-        self.checkIfAlreadyModeled()
-        self.calcType = 'full'
+        self.check_if_already_modeled()
+        self.calculation_type = 'full'
         # System finalisieren:
         self.system.finalize()
 
         t_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen:
-        system_model = SystemModel(self.label, self.modType, self.system,
-                                   self.chosenEsTimeIndexe)  # alle Indexe nehmen!
+        system_model = SystemModel(self.label, self.modeling_language, self.system,
+                                   self.time_indices)  # alle Indexe nehmen!
         # model aktivieren:
         self.system.activate_model(system_model)
         # modellieren:
-        self.system.doModelingOfElements()
+        self.system.do_modeling_of_elements()
 
         self.durations['modeling'] = round(time.time() - t_start, 2)
         self.system_models.append(system_model)
         return system_model
 
     # Variante2:
-    def doSegmentedModelingAndSolving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix='', nameSuffix='',
-                                      aPath='results/'):
+    def do_segmented_modeling_and_solving(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix='', nameSuffix='',
+                                          aPath='results/'):
         '''
           Dividing and Modeling the problem in (overlapped) time-segments.
           Storage values as result of segment n are overtaken
@@ -2392,9 +2271,9 @@ class Calculation:
               path for output. The default is 'results/'.
 
           '''
-        self.checkIfAlreadyModeled()
+        self.check_if_already_modeled()
         self._infos['segmentedProps'] = {'segmentLen': segmentLen, 'nrUsedSteps': nrOfUsedSteps}
-        self.calcType = 'segmented'
+        self.calculation_type = 'segmented'
         print('##############################################################')
         print('#################### segmented Solving #######################')
 
@@ -2403,34 +2282,32 @@ class Calculation:
         # system finalisieren:
         self.system.finalize()
 
-        if len(self.system.allInvestFeatures) > 0:
+        if len(self.system.invest_features) > 0:
             raise Exception('segmented calculation with Invest-Parameters does not make sense!')
 
-        # nrOfTimeSteps = self.to_index - self.from_index +1
-
         assert nrOfUsedSteps <= segmentLen
-        assert segmentLen <= self.nrOfTimeSteps, 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
+        assert segmentLen <= len(self.time_series), 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
 
-        # timeSeriesOfSim = self.system.timeSeries[from_index:to_index+1]
+        # time_seriesOfSim = self.system.time_series[from_index:to_index+1]
 
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
-        nrOfSimSegments = math.ceil((self.nrOfTimeSteps) / nrOfUsedSteps)
+        nrOfSimSegments = math.ceil((len(self.time_series)) / nrOfUsedSteps)
         self._infos['segmentedProps']['nrOfSegments'] = nrOfSimSegments
-        print('indexe        : ' + str(self.chosenEsTimeIndexe[0]) + '...' + str(self.chosenEsTimeIndexe[-1]))
+        print('indexe        : ' + str(self.time_indices[0]) + '...' + str(self.time_indices[-1]))
         print('segmentLen    : ' + str(segmentLen))
         print('usedSteps     : ' + str(nrOfUsedSteps))
         print('-> nr of Sims : ' + str(nrOfSimSegments))
         print('')
 
-        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults=True, nr_of_system_models=nrOfSimSegments)
+        self._define_path_names(namePrefix, nameSuffix, aPath, saveResults=True, nr_of_system_models=nrOfSimSegments)
 
         for i in range(nrOfSimSegments):
             startIndex_calc = i * nrOfUsedSteps
-            endIndex_calc = min(startIndex_calc + segmentLen - 1, len(self.chosenEsTimeIndexe) - 1)
+            endIndex_calc = min(startIndex_calc + segmentLen - 1, len(self.time_indices) - 1)
 
-            startIndex_global = self.chosenEsTimeIndexe[startIndex_calc]
-            endIndex_global = self.chosenEsTimeIndexe[endIndex_calc]  # inklusiv
-            indexe_global = self.chosenEsTimeIndexe[startIndex_calc:endIndex_calc + 1]  # inklusive endIndex
+            startIndex_global = self.time_indices[startIndex_calc]
+            endIndex_global = self.time_indices[endIndex_calc]  # inklusiv
+            indexe_global = self.time_indices[startIndex_calc:endIndex_calc + 1]  # inklusive endIndex
 
             # new realNrOfUsedSteps:
             # if last Segment:
@@ -2444,12 +2321,13 @@ class Calculation:
 
             # Modellierungsbox / TimePeriod-Box bauen:
             label = self.label + '_seg' + str(i)
-            segmentModBox = SystemModel(label, self.modType, self.system, indexe_global)  # alle Indexe nehmen!
+            segmentModBox = SystemModel(label, self.modeling_language, self.system, indexe_global)  # alle Indexe nehmen!
             segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
-                segmentModBoxBefore = self.segmentModBoxList[i - 1]
+                from flixOpt.basicModeling import BeforeValues
+                segmentModBoxBefore = self.segmented_system_models[i - 1]
                 segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
                 print('### before_values: ###')
@@ -2462,10 +2340,10 @@ class Calculation:
 
             # modellieren:
             t_start_modeling = time.time()
-            self.system.doModelingOfElements()
+            self.system.do_modeling_of_elements()
             self.durations['modeling'] += round(time.time() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
-            self.segmentModBoxList.append(segmentModBox)
+            self.segmented_system_models.append(segmentModBox)
             # übergeordnete system_model-Liste:
             self.system_models.append(segmentModBox)
 
@@ -2476,18 +2354,18 @@ class Calculation:
                                 logfile_name=self.paths_Log[i])  # keine SolverOutput-Anzeige, da sonst zu viel
             self.durations['solving'] += round(time.time() - t_start_solving, 2)
             ## results adding:
-            self.__addSegmentResults(segmentModBox, startIndex_calc, realNrOfUsedSteps)
+            self._add_segment_results(segmentModBox, startIndex_calc, realNrOfUsedSteps)
 
         self.durations['model, solve and segmentStuff'] = round(time.time() - t_start, 2)
 
-        self._saveSolveInfos()
+        self._save_solve_infos()
 
-    def doAggregatedModeling(self, periodLengthInHours, noTypicalPeriods,
-                             useExtremePeriods, fixStorageFlows,
-                             fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
-                             costsOfPeriodFreedom=0,
-                             addPeakMax=[],
-                             addPeakMin=[]):
+    def do_aggregated_modeling(self, periodLengthInHours, noTypicalPeriods,
+                               useExtremePeriods, fixStorageFlows,
+                               fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
+                               costsOfPeriodFreedom=0,
+                               addPeakMax=[],
+                               addPeakMin=[]):
         '''
         method of aggregated modeling.
         1. Finds typical periods.
@@ -2536,7 +2414,7 @@ class Calculation:
             DESCRIPTION.
 
         '''
-        self.checkIfAlreadyModeled()
+        self.check_if_already_modeled()
 
         self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
                                           'noTypicalPeriods': noTypicalPeriods,
@@ -2546,27 +2424,28 @@ class Calculation:
                                           'percentageOfPeriodFreedom': percentageOfPeriodFreedom,
                                           'costsOfPeriodFreedom': costsOfPeriodFreedom}
 
-        self.calcType = 'aggregated'
+        self.calculation_type = 'aggregated'
         t_start_agg = time.time()
         # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-        self.system.activateInTS(self.chosenEsTimeIndexe)
+        self.system.activate_indices_in_time_series(self.time_indices)
 
         # Zeitdaten generieren:
-        (chosenTimeSeries, chosenTimeSeriesWithEnd, dtInHours, dtInHours_tot) = self.system.getTimeDataOfTimeIndexe(
-            self.chosenEsTimeIndexe)
+        (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
+            self.system.get_time_data_from_indices(self.time_indices))
 
         # check equidistant timesteps:
-        if max(dtInHours) - min(dtInHours) != 0:
+        if max(dt_in_hours) - min(dt_in_hours) != 0:
             raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(
-                min(dtInHours)) + ' bis ' + str(max(dtInHours)) + ' h')
+                min(dt_in_hours)) + ' bis ' + str(max(dt_in_hours)) + ' h')
 
         print('#########################')
         print('## TS for aggregation ###')
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
-        self.TSlistForAggregation = [item for item in self.system.all_TS_in_elements if item.is_array]
-        self.TScollectionForAgg = TimeSeriesCollection(self.TSlistForAggregation,
+        self.time_series_for_aggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
+        from flixOpt.flixBasics import TimeSeriesCollection
+        self.TScollectionForAgg = TimeSeriesCollection(self.time_series_for_aggregation,
                                                        addPeakMax_TSraw=addPeakMax,
                                                        addPeakMin_TSraw=addPeakMin,
                                                        )
@@ -2574,21 +2453,21 @@ class Calculation:
         self.TScollectionForAgg.print()
 
         import pandas as pd
-        # seriesDict = {i : self.TSlistForAggregation[i].active_data_vector for i in range(length(self.TSlistForAggregation))}
+        # seriesDict = {i : self.time_series_for_aggregation[i].active_data_vector for i in range(length(self.time_series_for_aggregation))}
         df_OriginalData = pd.DataFrame(self.TScollectionForAgg.seriesDict,
                                        index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
 
         # Check, if timesteps fit in Period:
-        stepsPerPeriod = periodLengthInHours / self.dtInHours[0]
+        stepsPerPeriod = periodLengthInHours / self.dt_in_hours[0]
         if not stepsPerPeriod.is_integer():
             raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
 
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
-        from . import flixAggregation as flixAgg
+        from flixOpt import flixAggregation as flixAgg
         dataAgg = flixAgg.flixAggregation('aggregation',
                                           timeseries=df_OriginalData,
-                                          hoursPerTimeStep=self.dtInHours[0],
+                                          hoursPerTimeStep=self.dt_in_hours[0],
                                           hoursPerPeriod=periodLengthInHours,
                                           hasTSA=False,
                                           noTypicalPeriods=noTypicalPeriods,
@@ -2598,14 +2477,14 @@ class Calculation:
                                           addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
 
         dataAgg.cluster()
-        self.dataAgg = dataAgg
+        self.aggregation_data = dataAgg
 
         self._infos['aggregatedProps']['periodsOrder'] = str(list(dataAgg.aggregation.clusterOrder))
 
-        # dataAgg.aggregation.clusterPeriodIdx
-        # dataAgg.aggregation.clusterOrder
-        # dataAgg.aggregation.clusterPeriodNoOccur
-        # dataAgg.aggregation.predictOriginalData()
+        # aggregation_data.aggregation.clusterPeriodIdx
+        # aggregation_data.aggregation.clusterOrder
+        # aggregation_data.aggregation.clusterPeriodNoOccur
+        # aggregation_data.aggregation.predictOriginalData()
         # self.periodsOrder = aggregation.clusterOrder
         # self.periodOccurances = aggregation.clusterPeriodNoOccur
 
@@ -2617,17 +2496,17 @@ class Calculation:
         plt.plot(df_OriginalData.values)
         for label_TS, agg_values in dataAgg.totalTimeseries.items():
             # aLabel = str(i)
-            # aLabel = self.TSlistForAggregation[i].label_full
+            # aLabel = self.time_series_for_aggregation[i].label_full
             plt.plot(agg_values.values, '--', label=label_TS)
-        if len(self.TSlistForAggregation) < 10:  # wenn nicht zu viele
+        if len(self.time_series_for_aggregation) < 10:  # wenn nicht zu viele
             plt.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center')
         plt.show()
 
         # ### Some infos as print ###
 
         print('TS Aggregation:')
-        for i in range(len(self.TSlistForAggregation)):
-            aLabel = self.TSlistForAggregation[i].label_full
+        for i in range(len(self.time_series_for_aggregation)):
+            aLabel = self.time_series_for_aggregation[i].label_full
             print('TS ' + str(aLabel))
             print('  max_agg:' + str(max(dataAgg.totalTimeseries[aLabel])))
             print('  max_orig:' + str(max(df_OriginalData[aLabel])))
@@ -2653,15 +2532,15 @@ class Calculation:
                                                         costsOfPeriodFreedom=costsOfPeriodFreedom)
 
         # temporary Modeling-Element for equalizing indices of aggregation:
-        self.system.addTemporaryElements(aggregationModel)
+        self.system.add_temporary_elements(aggregationModel)
 
         if fixBinaryVarsOnly:
             TS_explicit = None
         else:
             # neue (Explizit)-Werte für TS sammeln::
             TS_explicit = {}
-            for i in range(len(self.TSlistForAggregation)):
-                TS = self.TSlistForAggregation[i]
+            for i in range(len(self.time_series_for_aggregation)):
+                TS = self.time_series_for_aggregation[i]
                 # todo: agg-Wert für TS:
                 TS_explicit[TS] = dataAgg.totalTimeseries[TS.label_full].values  # nur data-array ohne Zeit
 
@@ -2673,30 +2552,30 @@ class Calculation:
 
         t_m_start = time.time()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.label, self.modType, self.system, self.chosenEsTimeIndexe,
+        system_model = SystemModel(self.label, self.modeling_language, self.system, self.time_indices,
                                    TS_explicit)  # alle Indexe nehmen!
         self.system_models.append(system_model)
         # model aktivieren:
         self.system.activate_model(system_model)
         # modellieren:
-        self.system.doModelingOfElements()
+        self.system.do_modeling_of_elements()
 
         self.durations['modeling'] = round(time.time() - t_m_start, 2)
         return system_model
 
     def solve(self, solverProps, namePrefix='', nameSuffix='', aPath='results/', saveResults=True):
 
-        self._definePathNames(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
+        self._define_path_names(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
 
-        if self.calcType not in ['full', 'aggregated']:
-            raise Exception('calcType ' + self.calcType + ' needs no solve()-Command (only for ' + str())
+        if self.calculation_type not in ['full', 'aggregated']:
+            raise Exception('calculation_type ' + self.calculation_type + ' needs no solve()-Command (only for ' + str())
         system_model = self.system_models[0]
         system_model.solve(**solverProps, logfile_name=self.paths_Log[0])
 
         if saveResults:
-            self._saveSolveInfos()
+            self._save_solve_infos()
 
-    def _definePathNames(self, namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1):
+    def _define_path_names(self, namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1):
         import datetime
         import pathlib
 
@@ -2728,17 +2607,18 @@ class Calculation:
             self.path_Data = None
             self.path_Info = None
 
-    def checkIfAlreadyModeled(self):
-
-        if self.calcType is not None:
+    def check_if_already_modeled(self):
+        if self.calculation_type is not None:
             raise Exception(
-                'An other modeling-Method (calctype: ' + self.calcType + ') was already executed with this Calculation-Object. \n Always create a new instance of Calculation for new modeling/solving-command!')
+                f'Another modeling-Method ({self.calculation_type=}) was already executed with this Calculation-Object.\n'
+                f'Always create a new instance of Calculation for new modeling/solving-command!')
 
         if self.system.temporary_elements:  # if some element in this list
             raise Exception(
-                'the Energysystem has some temporary modelingElements from previous calculation (i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
+                f'The Energysystem has some temporary modelingElements from previous calculation '
+                f'(i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
 
-    def _saveSolveInfos(self):
+    def _save_solve_infos(self):
         import yaml
         # Daten:
         # with open(yamlPath_Data, 'w') as f:
@@ -2754,37 +2634,37 @@ class Calculation:
                       allow_unicode=True,
                       sort_keys=False)
 
-        aStr = '# saved calculation ' + self.nameOfCalc + ' #'
+        aStr = f'# saved calculation {self.nameOfCalc} #'
         print('#' * len(aStr))
         print(aStr)
         print('#' * len(aStr))
 
-    def __addSegmentResults(self, segment, startIndex_calc, realNrOfUsedSteps):
+    def _add_segment_results(self, segment, startIndex_calc, realNrOfUsedSteps):
         # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
 
-        if (self.__results is None):
-            self.__results = {}  # leeres Dict als Ausgangszustand
+        if (self._results is None):
+            self._results = {}  # leeres Dict als Ausgangszustand
 
-        def appendNewResultsToDictValues(result, resultToAppend, resultToAppendVar):
+        def append_new_results_to_dict_values(result: Dict, result_to_append: Dict, result_to_append_var: Dict):
             if result == {}:
                 firstFill = True  # jeweils neuer Dict muss erzeugt werden für globales Dict
             else:
                 firstFill = False
 
-            for key, val in resultToAppend.items():
+            for key, val in result_to_append.items():
                 # print(key)
 
                 # Wenn val ein Wert ist:
                 if isinstance(val, np.ndarray) or isinstance(val, np.float64) or np.isscalar(val):
 
                     # Beachte Länge (withEnd z.B. bei Speicherfüllstand)
-                    if key in ['timeSeries', 'dtInHours', 'dtInHours_tot']:
+                    if key in ['time_series', 'dt_in_hours', 'dt_in_hours_total']:
                         withEnd = False
-                    elif key in ['timeSeriesWithEnd']:
+                    elif key in ['time_series_with_end']:
                         withEnd = True
                     else:
                         # Beachte Speicherladezustand und ähnliche Variablen:
-                        aReferedVariable = resultToAppendVar[key]
+                        aReferedVariable = result_to_append_var[key]
                         aReferedVariable: VariableTS
                         withEnd = isinstance(aReferedVariable, VariableTS) \
                                   and aReferedVariable.activated_beforeValues \
@@ -2818,14 +2698,14 @@ class Calculation:
                 else:
                     if firstFill: result[key] = {}
 
-                    if (resultToAppendVar is not None) and key in resultToAppendVar.keys():
-                        resultToAppend_sub = resultToAppendVar[key]
+                    if (result_to_append_var is not None) and key in result_to_append_var.keys():
+                        resultToAppend_sub = result_to_append_var[key]
                     else:  # z.B. bei time (da keine Variablen)
                         resultToAppend_sub = None
-                    appendNewResultsToDictValues(result[key], resultToAppend[key], resultToAppend_sub)  # hier rekursiv!
+                    append_new_results_to_dict_values(result[key], result_to_append[key], resultToAppend_sub)  # hier rekursiv!
 
         # rekursiv:
-        appendNewResultsToDictValues(self.__results, segment.results, segment.results_var)
+        append_new_results_to_dict_values(self._results, segment.results, segment.results_var)
 
         # results füllen:
         # ....

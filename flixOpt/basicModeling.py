@@ -264,7 +264,7 @@ class Variable:
         self.upper_bound = upper_bound
 
         self.indices = range(self.length)
-        self.label_full = owner.label + '.' + label
+        self.label_full = owner.label + '__' + label
         self.fixed = False
         self._result = None  # Ergebnis
 
@@ -425,7 +425,7 @@ class VariableTS(Variable):
         # sonst:
         else:
             index = last_index_of_segment  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
-        time = self.linear_model.timeSeriesWithEnd[index]
+        time = self.linear_model.time_series_with_end[index]
         value = self.result[index]
         return value, time
 
@@ -467,7 +467,7 @@ class BeforeValues:
 
     def print(self):
         for (element, varName) in self.beforeValues.keys():
-            print(element.label + '.' + varName + ' = ' + str(self.beforeValues[(element, varName)]))
+            print(element.label + '__' + varName + ' = ' + str(self.beforeValues[(element, varName)]))
 
 
 # class cInequation(Equation):
@@ -647,7 +647,7 @@ class Equation:
 
             # print i-th equation:
 
-    def as_str(self, equation_nr: int = 0):
+    def description(self, equation_nr: int = 0) -> str:
         equation_nr = min(equation_nr, self.nr_of_single_equations - 1)
 
         aStr = ''

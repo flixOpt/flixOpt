@@ -20,7 +20,7 @@ timelimit = 3600 # seconds until solver abort
 # solver_name = 'glpk' # warning, glpk quickly has numerical problems with binaries (big and epsilon)
 # solver_name = 'gurobi'
 solver_name = 'highs'
-solverProps = {'gapFrac': gapFrac,
+solverProps = {'mip_gap': gapFrac,
                'time_limit_seconds': timelimit,
                'solver': solver_name, 
                'solver_output_to_console' : displaySolverOutput,
@@ -47,11 +47,11 @@ Gas = Bus('fuel', 'Gas') # balancing node/bus of gas
 # ########################
 # ## Effect-Definition: ##
 costs = Effect('costs', '€', 'Kosten',  # name, unit, description
-               isStandard = True,  # standard effect --> shorter input possible (without effect as a key)
-               isObjective = True) # defining costs as objective of optimiziation
+               is_standard= True,  # standard effect --> shorter input possible (without effect as a key)
+               is_objective= True) # defining costs as objective of optimiziation
 
 CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen',  # name, unit, description
-               specificShareToOtherEffects_operation = {costs: 0.2}, max_per_hour_operation = max_emissions_per_hour) # 0.2 €/kg; defining links between effects, here CO2-price
+               specific_share_to_other_effects_operation= {costs: 0.2}, maximum_operation_per_hour= max_emissions_per_hour) # 0.2 €/kg; defining links between effects, here CO2-price
 
 # ###########################
 # ## Component-Definition: ##
@@ -63,7 +63,7 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                  # defining the output-flow = thermal -flow
                  Q_th = Flow(label ='Q_th',  # name of flow
                              bus = Fernwaerme,  # define, where flow is linked to (here: Fernwaerme-Bus)
-                             nominal_val = 50,  # kW; nominal_size of boiler
+                             size=50,  # kW; nominal_size of boiler
                              min_rel = 5/50,  # 10 % minimum load, i.e. 5 kW
                              max_rel = 1,  # 100 % maximum load, i.e. 50 kW
                              ),
@@ -76,7 +76,7 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
 aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency, electric efficiency
             # defining flows:
             P_el = Flow('P_el', bus = Strom,
-                        nominal_val = 60,  # 60 kW_el
+                        size=60,  # 60 kW_el
                         min_rel = 5/60, ),  # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
             Q_th = Flow('Q_th', bus = Fernwaerme),
             Q_fu = Flow('Q_fu', bus = Gas))
@@ -84,8 +84,8 @@ aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency,
 # # 2. storage #
 
 aSpeicher = Storage('Speicher',
-                    inFlow  = Flow('Q_th_load', bus = Fernwaerme, nominal_val = 1e4),  # load-flow, maximum load-power: 1e4 kW
-                    outFlow = Flow('Q_th_unload', bus = Fernwaerme, nominal_val = 1e4),  # unload-flow, maximum load-power: 1e4 kW
+                    inFlow  = Flow('Q_th_load', bus = Fernwaerme, size=1e4),  # load-flow, maximum load-power: 1e4 kW
+                    outFlow = Flow('Q_th_unload', bus = Fernwaerme, size=1e4),  # unload-flow, maximum load-power: 1e4 kW
                     capacity_inFlowHours=30,  # 30 kWh; storage capacity
                     chargeState0_inFlowHours=0,  # empty storage at first time step
                     max_rel_chargeState = 1/100*np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
@@ -104,43 +104,43 @@ aWaermeLast = Sink('Wärmelast',
                    # defining input-flow:
                    sink   = Flow('Q_th_Last',  # name
                                  bus = Fernwaerme,  # linked to bus "Fernwaerme"
-                                 nominal_val = 1,  # nominal_value
+                                 size=1,  # sizeue
                                  val_rel = Q_th_Last)) # fixed profile
                                    # relative fixed values (timeseries) of the flow
-                                   # value = val_rel * nominal_val
+                                   # value = val_rel * size
     
 # source of gas:
 aGasTarif = Source('Gastarif',
                    # defining output-flow:
                    source = Flow('Q_Gas',  # name
                                  bus = Gas,  # linked to bus "Gas"
-                                 nominal_val = 1000,  # nominal size, i.e. 1000 kW maximum
+                                 size=1000,  # nominal size, i.e. 1000 kW maximum
                                  # defining effect-shares.
                                  #    Here not only "costs", but also CO2-emissions:
-                                 costsPerFlowHour= {costs: 0.04, CO2: 0.3})) # 0.04 €/kWh, 0.3 kg_CO2/kWh
+                                 effects_per_flow_hour= {costs: 0.04, CO2: 0.3})) # 0.04 €/kWh, 0.3 kg_CO2/kWh
 
 # sink of electricity feed-in:
 aStromEinspeisung = Sink('Einspeisung',
                          # defining input-flow:
                          sink=Flow('P_el',  # name
                                    bus = Strom,  # linked to bus "Strom"
-                                   costsPerFlowHour = -1*p_el)) # gains (negative costs) per kWh
+                                   effects_per_flow_hour=-1 * p_el)) # gains (negative costs) per kWh
 
 
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-system = System(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
-system.addComponents(aSpeicher) # adding components
-system.addEffects(costs, CO2) # adding defined effects
-system.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
-system.addComponents(aStromEinspeisung) # adding components
-system.addComponents(aKWK) # adding components
+system = System(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
+system.add_components(aSpeicher) # adding components
+system.add_effects(costs, CO2) # adding defined effects
+system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
+system.add_components(aStromEinspeisung) # adding components
+system.add_components(aKWK) # adding components
 
 
 # choose used timeindexe:
-chosenEsTimeIndexe = None # all timeindexe are used
-# chosenEsTimeIndexe = [1,3,5] # only a subset shall be used
+time_indices = None # all timeindexe are used
+# time_indices = [1,3,5] # only a subset shall be used
 
 # ## modeling the system ##
 
@@ -148,15 +148,15 @@ chosenEsTimeIndexe = None # all timeindexe are used
 aCalc = Calculation('Sim1',  # name of calculation
                     system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
-                    chosenEsTimeIndexe) # used time steps
+                    time_indices) # used time steps
 
 # 2. modeling:
-aCalc.doModelingAsOneSegment() # mathematic modeling of system
+aCalc.do_modeling_as_one_segment() # mathematic modeling of system
 
 # 3. (optional) print Model-Characteristics:
 system.printModel() # string-output:network structure of model
-system.printVariables() # string output: variables of model
-system.printEquations() # string-output: equations of model
+system.print_variables() # string output: variables of model
+system.print_equations() # string-output: equations of model
 
 
 # #################

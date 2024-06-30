@@ -30,8 +30,8 @@ Gas = Bus('fuel', 'Gas') # balancing node/bus of gas
 # ########################
 # ## Effect-Definition: ##
 costs = Effect('costs', '€', 'Kosten',  # name, unit, description
-               isStandard = True,  # standard effect --> shorter input possible (without effect as a key)
-               isObjective = True) # defining costs as objective of optimiziation
+               is_standard= True,  # standard effect --> shorter input possible (without effect as a key)
+               is_objective= True) # defining costs as objective of optimiziation
 
 # ###########################
 # ## Component-Definition: ##
@@ -40,7 +40,7 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                  # defining the output-flow = thermal -flow
                  Q_th = Flow(label ='Q_th',  # name of flow
                              bus = Fernwaerme,  # define, where flow is linked to (here: Fernwaerme-Bus)
-                             nominal_val = 50,  # kW; nominal_size of boiler
+                             size=50,  # kW; nominal_size of boiler
                              ),
                  # defining the input-flow = fuel-flow
                  Q_fu = Flow(label ='Q_fu',  # name of flow
@@ -52,31 +52,31 @@ aWaermeLast = Sink('Wärmelast',
                    # defining input-flow:
                    sink   = Flow('Q_th_Last',  # name
                                  bus = Fernwaerme,  # linked to bus "Fernwaerme"
-                                 nominal_val = 1,  # nominal_value
+                                 size=1,  # sizeue
                                  val_rel = Q_th_Last)) # fixed profile
                                    # relative fixed values (timeseries) of the flow
-                                   # value = val_rel * nominal_val
+                                   # value = val_rel * size
     
 # source of gas:
 aGasTarif = Source('Gastarif',
                    # defining output-flow:
                    source = Flow('Q_Gas',  # name
                                  bus = Gas,  # linked to bus "Gas"
-                                 nominal_val = 1000,  # nominal size, i.e. 1000 kW maximum
+                                 size=1000,  # nominal size, i.e. 1000 kW maximum
                                  # defining effect-shares.
                                  #    Here not only "costs", but also CO2-emissions:
-                                 costsPerFlowHour= 0.04)) # 0.04 €/kWh
+                                 effects_per_flow_hour= 0.04)) # 0.04 €/kWh
 
 
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-system = System(aTimeSeries, dt_last=None) # creating system, (duration of last timestep is like the one before)
-system.addEffects(costs) # adding defined effects
-system.addComponents(aBoiler, aWaermeLast, aGasTarif) # adding components
+system = System(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
+system.add_effects(costs) # adding defined effects
+system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
 
 # choose used timeindexe:
-chosenEsTimeIndexe = None # all timeindexe are used
+time_indices = None # all timeindexe are used
 
 # ## modeling the system ##
 
@@ -84,15 +84,15 @@ chosenEsTimeIndexe = None # all timeindexe are used
 aCalc = Calculation('Sim1',  # name of calculation
                     system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
-                    chosenEsTimeIndexe) # used time steps
+                    time_indices) # used time steps
 
 # 2. modeling:
-aCalc.doModelingAsOneSegment() # mathematic modeling of system
+aCalc.do_modeling_as_one_segment() # mathematic modeling of system
 
 # 3. (optional) print Model-Characteristics:
 system.printModel() # string-output:network structure of model
-system.printVariables() # string output: variables of model
-system.printEquations() # string-output: equations of model
+system.print_variables() # string output: variables of model
+system.print_equations() # string-output: equations of model
 
 
 # #################
@@ -106,7 +106,7 @@ timelimit = 3600 # seconds until solver abort
 # solver_name = 'glpk' # warning, glpk quickly has numerical problems with binaries (big and epsilon)
 # solver_name = 'gurobi'
 solver_name = 'cbc'
-solverProps = {'gapFrac': gapFrac,
+solverProps = {'mip_gap': gapFrac,
                'time_limit_seconds': timelimit,
                'solver': solver_name,
                'solver_output_to_console' : displaySolverOutput,
