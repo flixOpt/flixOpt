@@ -900,12 +900,8 @@ class FeatureInvest(Feature):
     # -> min_rel,max_rel     : ist relatives Min,Max der definingVar bzgl. investmentSize
 
     @property
-    def _existOn(self):  # existiert On-variable
-        if self.featureOn is None:
-            existOn = False
-        else:
-            existOn = self.featureOn.use_on
-        return existOn
+    def on_variable_is_used(self):  # existiert On-variable
+        return True if self.featureOn is not None and self.featureOn.use_on else False
 
     def __init__(self, nameOfInvestmentSize, owner, invest_parameters: InvestParameters, min_rel, max_rel, val_rel, investmentSize,
                  featureOn=None):
@@ -1137,10 +1133,10 @@ class FeatureInvest(Feature):
         ## 2. Gleichung: Minimum durch Investmentgröße ##        
 
         # Glg nur, wenn nicht Kombination On und fixed:
-        if not (self._existOn and self.args.fixed_size):
+        if not (self.on_variable_is_used and self.args.fixed_size):
             self.eq_min_via_investmentSize = Equation('min_via_investmentSize', self, system_model, 'ineq')
 
-        if self._existOn:
+        if self.on_variable_is_used:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
             if not self.args.fixed_size:
                 # eq: definingVar(t) >= Big * (On(t)-1) + investmentSize * min_rel(t)
