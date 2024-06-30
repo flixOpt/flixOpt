@@ -7,12 +7,12 @@ developed by Felix Panitz* and Peter Stange*
 ## TODO:
 # featureAvoidFlowsAtOnce:
 # neue Variante (typ="new") austesten
-from typing import Optional, Union, Tuple, Dict, List, Set, TYPE_CHECKING
+from typing import Optional, Union, Tuple, Dict, List, Set, Callable, TYPE_CHECKING
 import logging
 
 import numpy as np
 
-from flixOpt.flixStructure import Element, SystemModel  # Grundstruktur
+from flixOpt.flixStructure import Element, SystemModel, Flow  # Grundstruktur
 from flixOpt.flixBasics import TimeSeries, Numeric, as_effect_dict, Skalar
 from flixOpt.basicModeling import Variable, VariableTS, Equation
 from flixOpt.flixBasicsPublic import InvestParameters
@@ -86,9 +86,8 @@ class FeatureLinearSegmentVars(Feature):
             raise Exception('Nr of Values should be even, because pairs (start,end of every section)')
 
         if vars_for_check is not None:
-            set_of_vars = set(segments_of_variables.keys())
-            extra_vars = set_of_vars - set(vars_for_check)
-            missing_vars = set(vars_for_check) - set_of_vars
+            extra_vars = self.variables - set(vars_for_check)
+            missing_vars = set(vars_for_check) - self.variables
 
             def get_str_of_set(a_set):
                 return ','.join(var.label_full for var in a_set)
@@ -192,34 +191,34 @@ class FeatureLinearSegmentVars(Feature):
 
 class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
     # TODO: beser wäre segments_of_variables, aber schwierig, weil diese hier noch nicht vorhanden sind!
-    def __init__(self, label, owner, segmentsOfFlows_TS, get_var_on=None, checkListOfFlows=None):
+    def __init__(self,
+                 label: str,
+                 owner: Element,
+                 segments_of_flows: Dict[Flow, List[Union[Numeric]]],
+                 get_var_on: Optional[Callable] = None,
+                 flows: Optional[List[Flow]] = None):
         # segementsData - Elemente sind Listen!.
         # segmentsOfFlows = {Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Zeitreihenabbildung über arrays!!!
         #                    P_el: [ 2  , 5,    5, 8 ],
         #                    Q_th: [ 2.5, 4,    4, 12]}
         # -> auch einzelne zulässige Punkte können über Segment ausgedrückt werden, z.B. [5, 5]
 
-        self.segmentsOfFlows_TS = segmentsOfFlows_TS
+        self.segments_of_flows = segments_of_flows
         self.get_var_on = get_var_on
-        self.checkListOfFlows = checkListOfFlows
+        self.flows = flows
         super().__init__(label, owner)
 
     def declare_vars_and_eqs(self, system_model):
-        # 1. Variablen-Segmente definieren:
-        segmentsOfVars = {}
-        for flow in self.segmentsOfFlows_TS:
-            segmentsOfVars[flow.model.var_val] = self.segmentsOfFlows_TS[flow]
 
-        checkListOfVars = []
-        for flow in self.checkListOfFlows:
-            checkListOfVars.append(flow.model.var_val)
+        segments_of_variables = {flow.model.var_val: self.segments_of_flows[flow] for flow in self.segments_of_flows}
+        variables = {flow.model.var_val for flow in self.flows}
 
         # hier erst Variablen vorhanden un damit segments_of_variables definierbar!
-        super().define_segments(segmentsOfVars, var_on=self.get_var_on(),
-                                vars_for_check=checkListOfVars)  # todo: das ist nur hier, damit schon variablen Bekannt
+        super().define_segments(segments_of_variables,
+                                var_on=self.get_var_on(),
+                                vars_for_check=variables)  # todo: das ist nur hier, damit schon variablen Bekannt
 
-        # 2. declare vars:      
-        super().declare_vars_and_eqs(system_model)
+        super().declare_vars_and_eqs(system_model)   # 2. declare vars:
 
 
 # Abschnittsweise linear, 1 Abschnitt:

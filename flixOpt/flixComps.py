@@ -209,7 +209,7 @@ class LinearTransformer(Component):
 
             self.feature_linSegments = FeatureLinearSegmentSet('linearSegments', self, self.segmentsOfFlows_TS,
                                                                get_var_on=get_var_on,
-                                                               checkListOfFlows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
+                                                               flows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
         """
