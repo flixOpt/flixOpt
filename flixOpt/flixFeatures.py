@@ -319,19 +319,22 @@ class FeatureAvoidFlowsAtOnce(Feature):
             raise NotImplementedError(f'FeatureAvoidFlowsAtOnce: "{self.typ=}" not implemented!')
 
 
-## Klasse, die in Komponenten UND Flows benötigt wird: ##
 class FeatureOn(Feature):
-    # def __init__(self, featureOwner, nameOfVariable, useOn, useSwitchOn):  
-    # #   # on definierende Variablen:
-    # #   self.featureOwner = featureOwner
-    # #   self.nameOfVariable = nameOfVariable
-    # #   self.flows  = flows
-    # #   self.model.var_on = None
-    def __init__(self, owner, flowsDefiningOn, on_values_before_begin,
-                 switch_on_effects, running_hour_effects,
-                 onHoursSum_min=None, onHoursSum_max=None,
-                 onHours_min=None, onHours_max=None,
-                 off_hours_min=None, off_hours_max=None,
+    """
+    Klasse, die in Komponenten UND Flows benötigt wird
+    """
+    def __init__(self,
+                 owner: Element,
+                 flowsDefiningOn,
+                 on_values_before_begin,
+                 switch_on_effects,
+                 running_hour_effects,
+                 onHoursSum_min=None,
+                 onHoursSum_max=None,
+                 onHours_min=None,
+                 onHours_max=None,
+                 off_hours_min=None,
+                 off_hours_max=None,
                  switch_on_total_max=None,
                  useOn_explicit=False,
                  useSwitchOn_explicit=False):
