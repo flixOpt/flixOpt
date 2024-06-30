@@ -1860,7 +1860,7 @@ class System:
                 element.finalize()  # inklusive sub_elements!
             self._finalized = True
 
-    def doModelingOfElements(self) -> SystemModel:
+    def do_modeling_of_elements(self) -> SystemModel:
 
         if not self._finalized:
             raise Exception('modeling not possible, because Energysystem is not finalized')
@@ -1897,6 +1897,7 @@ class System:
             aBus.do_modeling(self.model, time_indices)
             aBus.add_share_to_globals(self.global_comp, self.model)
 
+        # TODO: Currently there are no "other elements"
         # weitere übergeordnete Modellierungen:
         for element in self.other_elements:
             element.declare_vars_and_eqs(self.model)
@@ -2232,7 +2233,7 @@ class Calculation:
         # model aktivieren:
         self.system.activate_model(system_model)
         # modellieren:
-        self.system.doModelingOfElements()
+        self.system.do_modeling_of_elements()
 
         self.durations['modeling'] = round(time.time() - t_start, 2)
         self.system_models.append(system_model)
@@ -2345,7 +2346,7 @@ class Calculation:
 
             # modellieren:
             t_start_modeling = time.time()
-            self.system.doModelingOfElements()
+            self.system.do_modeling_of_elements()
             self.durations['modeling'] += round(time.time() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
             self.segmentModBoxList.append(segmentModBox)
@@ -2563,7 +2564,7 @@ class Calculation:
         # model aktivieren:
         self.system.activate_model(system_model)
         # modellieren:
-        self.system.doModelingOfElements()
+        self.system.do_modeling_of_elements()
 
         self.durations['modeling'] = round(time.time() - t_m_start, 2)
         return system_model
