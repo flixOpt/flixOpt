@@ -7,10 +7,20 @@ developed by Felix Panitz* and Peter Stange*
 ## TODO:
 # featureAvoidFlowsAtOnce:
 # neue Variante (typ="new") austesten
+from typing import Optional, Union, Tuple, TYPE_CHECKING
+import logging
 
-from .flixStructure import *  # Grundstruktur
-from .flixBasicsPublic import *
 import numpy as np
+
+from .flixStructure import Element, SystemModel  # Grundstruktur
+from .flixBasics import TimeSeries, Numeric, as_effect_dict
+from .basicModeling import Variable, VariableTS, Equation
+from .flixBasicsPublic import InvestParameters
+import flixOpt.flixOptHelperFcts as helpers
+if TYPE_CHECKING:
+    from .flixStructure import Flow, Effect
+
+log = logging.getLogger(__name__)
 
 
 ##############################################################
@@ -1029,6 +1039,7 @@ class cFeatureInvest(cFeature):
 
     def __create_var_segmentedInvestCost(self, aEffect, system_model):
         # define cost-Variable (=costs through segmented Investsize-costs):
+        from flixOpt.flixStructure import Effect
         if isinstance(aEffect, Effect):
             aStr = aEffect.label
         elif aEffect is None:
