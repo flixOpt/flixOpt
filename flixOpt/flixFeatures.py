@@ -1038,27 +1038,26 @@ class FeatureInvest(Feature):
 
         # Define cost segments if featureLinearSegments is present
         if self.featureLinearSegments is not None:
-            self._defineCostSegments(system_model)
+            self._define_cost_segments(system_model)
             self.featureLinearSegments.declare_vars_and_eqs(system_model)
 
     # definingInvestcosts in Segments:
-    def _defineCostSegments(self, system_model: SystemModel):
-        investSizeSegs = self.invest_parameters.effects_in_segments[0]  # segments of investSize
-        costSegs = self.invest_parameters.effects_in_segments[1]  # effect-dict with segments as entries
-        costSegs = as_effect_dict(costSegs)
+    def _define_cost_segments(self, system_model: SystemModel):
+        invest_size_segments, effect_value_segments = self.invest_parameters.effects_in_segments
+        effect_value_segments = as_effect_dict(effect_value_segments)
 
         ## 1. create segments for investSize and every effect##
         ## 1.a) add investSize-Variablen-Segmente: ##
-        segmentsOfVars = {self.model.var_investmentSize: investSizeSegs}  # i.e. {var_investSize: [0,5, 5,20]}
+        segments_of_variables = {self.model.var_investmentSize: invest_size_segments}  # i.e. {var_investSize: [0,5, 5,20]}
 
         ## 1.b) je Effekt -> new Variable und zugehörige Segmente ##
         self.model.var_list_investCosts_segmented = []
         self.investVar_effect_dict = {}  # benötigt
-        for aEffect, aSegmentCosts in costSegs.items():
-            var_investForEffect = self.__create_var_segmentedInvestCost(aEffect, system_model)
-            aSegment = {var_investForEffect: aSegmentCosts}  # i.e. {var_investCosts_segmented_costs : [0,10, 10,30]}
-            segmentsOfVars |= aSegment  #
-            self.investVar_effect_dict |= {aEffect: var_investForEffect}
+        for aEffect, aSegmentCosts in effect_value_segments.items():
+            variable_for_segmented_invest_effect = self._create_variable_for_segmented_invest_effect(aEffect, system_model)
+            segment = {variable_for_segmented_invest_effect: aSegmentCosts}  # i.e. {var_investCosts_segmented_costs : [0,10, 10,30]}
+            segments_of_variables.update(segment)  #
+            self.investVar_effect_dict.update({aEffect: variable_for_segmented_invest_effect})
 
         ## 2. on_var: ##
         if self.invest_parameters.optional:
@@ -1067,10 +1066,10 @@ class FeatureInvest(Feature):
             var_isInvested = None
 
         ## 3. transfer segments_of_variables to FeatureLinearSegmentVars: ##
-        self.featureLinearSegments.define_segments(segmentsOfVars, var_on=var_isInvested,
-                                                   vars_for_check=list(segmentsOfVars.keys()))
+        self.featureLinearSegments.define_segments(segments_of_variables, var_on=var_isInvested,
+                                                   vars_for_check=list(segments_of_variables.keys()))
 
-    def __create_var_segmentedInvestCost(self, aEffect, system_model):
+    def _create_variable_for_segmented_invest_effect(self, aEffect, system_model):
         # define cost-Variable (=costs through segmented Investsize-costs):
         from flixOpt.flixStructure import Effect
         if isinstance(aEffect, Effect):
