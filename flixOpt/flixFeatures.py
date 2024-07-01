@@ -78,7 +78,8 @@ class FeatureLinearSegmentVars(Feature):
 
         # -> onVariable ist optional
         # -> auch einzelne zulässige Punkte können über Segment ausgedrückt werden, z.B. [5, 5]
-
+        
+        self.segments: List[Segment] = []   # Resetting the segments for new calculation
         self.segments_of_variables = segments_of_variables
         self.var_on = var_on
 
