@@ -1069,7 +1069,7 @@ class FeatureInvest(Feature):
         self.featureLinearSegments.define_segments(segments_of_variables, var_on=var_isInvested,
                                                    vars_for_check=list(segments_of_variables.keys()))
 
-    def _create_variable_for_segmented_invest_effect(self, aEffect, system_model):
+    def _create_variable_for_segmented_invest_effect(self, aEffect, system_model: SystemModel):
         # define cost-Variable (=costs through segmented Investsize-costs):
         from flixOpt.flixStructure import Effect
         if isinstance(aEffect, Effect):
@@ -1083,7 +1083,7 @@ class FeatureInvest(Feature):
         self.model.var_list_investCosts_segmented.append(var_investForEffect)
         return var_investForEffect
 
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         assert self.defining_variable is not None, 'set_defining_variables() still not executed!'
         # wenn var_isInvested existiert:    
         if self.invest_parameters.optional:
@@ -1102,7 +1102,7 @@ class FeatureInvest(Feature):
         if self.featureLinearSegments is not None:
             self.featureLinearSegments.do_modeling(system_model, time_indices)
 
-    def _add_fixEq_of_definingVar_with_var_investmentSize(self, system_model):
+    def _add_fixEq_of_definingVar_with_var_investmentSize(self, system_model: SystemModel):
 
         ## Gleichung zw. DefiningVar und Investgröße:    
         # eq: defining_variable(t) = var_investmentSize * val_rel
@@ -1111,7 +1111,7 @@ class FeatureInvest(Feature):
         self.eq_fix_via_investmentSize.add_summand(self.defining_variable, 1)
         self.eq_fix_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.val_rel.active_data))
 
-    def _add_max_min_of_definingVar_with_var_investmentSize(self, system_model):
+    def _add_max_min_of_definingVar_with_var_investmentSize(self, system_model: SystemModel):
 
         ## 1. Gleichung: Maximum durch Investmentgröße ##     
         # eq: defining_variable(t) <=                var_investmentSize * max_rel(t)
@@ -1156,7 +1156,7 @@ class FeatureInvest(Feature):
 
             #### Defining var_isInvested ####
 
-    def _add_defining_var_isInvested(self, system_model):
+    def _add_defining_var_isInvested(self, system_model: SystemModel):
 
         # wenn fixed, dann const:
         if self.invest_parameters.fixed_size:
@@ -1184,7 +1184,7 @@ class FeatureInvest(Feature):
             self.eq_isInvested_2.add_summand(self.model.var_investmentSize, -1)
             self.eq_isInvested_2.add_summand(self.model.var_isInvested, max(system_model.epsilon, self.invest_parameters.minimum_size))
 
-    def add_share_to_globals(self, globalComp, system_model):
+    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel):
 
         # # fix_effects:
         # wenn fix_effects vorhanden:
@@ -1192,11 +1192,11 @@ class FeatureInvest(Feature):
             if self.invest_parameters.optional:
                 # fix Share to InvestCosts: 
                 # share: + isInvested * fix_effects
-                globalComp.add_share_to_invest('fix_effects', self.owner, self.model.var_isInvested, self.invest_parameters.fix_effects, 1)
+                global_comp.add_share_to_invest('fix_effects', self.owner, self.model.var_isInvested, self.invest_parameters.fix_effects, 1)
             else:
                 # share: + fix_effects
-                globalComp.add_constant_share_to_invest('fix_effects', self.owner, self.invest_parameters.fix_effects,
-                                                        1)  # fester Wert hinufügen
+                global_comp.add_constant_share_to_invest('fix_effects', self.owner, self.invest_parameters.fix_effects,
+                                                         1)  # fester Wert hinufügen
 
         # # divest_effects:
 
@@ -1206,10 +1206,10 @@ class FeatureInvest(Feature):
                 # share: [(1- isInvested) * divest_effects]
                 # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
-                globalComp.add_constant_share_to_invest('divest_effects', self.owner, self.invest_parameters.divest_effects, 1)
+                global_comp.add_constant_share_to_invest('divest_effects', self.owner, self.invest_parameters.divest_effects, 1)
                 # 2. part of share [- isInvested * divest_effects]:
-                globalComp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
-                                               self.invest_parameters.divest_effects, -1)
+                global_comp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
+                                                self.invest_parameters.divest_effects, -1)
                 # TODO : these 2 parts should be one share!
             else:
                 pass  # no divest costs if invest is not optional
@@ -1218,10 +1218,10 @@ class FeatureInvest(Feature):
         # wenn specific_effects vorhanden:
         if not (self.invest_parameters.specific_effects is None):
             # share: + investment_size (=var)   * specific_effects
-            globalComp.add_share_to_invest('specific_effects', self.owner, self.model.var_investmentSize,
-                                           self.invest_parameters.specific_effects, 1)
+            global_comp.add_share_to_invest('specific_effects', self.owner, self.model.var_investmentSize,
+                                            self.invest_parameters.specific_effects, 1)
 
         # # segmentedCosts:                                        
         if self.featureLinearSegments is not None:
             for effect, var_investSegs in self.investVar_effect_dict.items():
-                globalComp.add_share_to_invest('linearSegments', self.owner, var_investSegs, {effect: 1}, 1)
+                global_comp.add_share_to_invest('linearSegments', self.owner, var_investSegs, {effect: 1}, 1)
