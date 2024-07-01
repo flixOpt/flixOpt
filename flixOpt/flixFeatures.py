@@ -1018,34 +1018,26 @@ class FeatureInvest(Feature):
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
 
-        # a) var_investmentSize: (wird immer gebaut, auch wenn fix)           
+        # Determine lower and upper bounds for investment size
+        lower_bound = 0 if self.invest_parameters.optional else (
+            self.investment_size if self.invest_parameters.fixed_size else self.invest_parameters.minimum_size
+        )
+        upper_bound = self.investment_size if self.invest_parameters.fixed_size else self.invest_parameters.maximum_size
 
-        # lower_bound..upper_bound of investSize unterscheiden:
-        # min:
-        if self.invest_parameters.optional:   # Wenn invest nicht optional:
-            lower_bound = 0
-        elif self.invest_parameters.fixed_size:
-            lower_bound = self.investment_size  # einschränken, damit P_inv = P_nom !
+        # Define var_investmentSize
+        if lower_bound == upper_bound:
+            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model,
+                                                     value=lower_bound)
         else:
-            lower_bound = self.invest_parameters.minimum_size  #
-        # max:
-        if self.invest_parameters.fixed_size:   # wenn nicht fixed:
-            upper_bound = self.investment_size
-        else:
-            upper_bound = self.invest_parameters.maximum_size
-            # Definition:
+            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model,
+                                                     lower_bound=lower_bound, upper_bound=upper_bound)
 
-        if lower_bound == upper_bound:    # fix:
-            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model, value=lower_bound)
-        else:   # Bereich:
-            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model, lower_bound=lower_bound, upper_bound=upper_bound)
-
-        # b) var_isInvested:
+        # Define var_isInvested if investment is optional
         if self.invest_parameters.optional:
             self.model.var_isInvested = Variable('isInvested', 1, self, system_model, is_binary=True)
 
-        ## investCosts in Segments: ##
-        if self.featureLinearSegments is not None:   # wenn vorhanden,
+        # Define cost segments if featureLinearSegments is present
+        if self.featureLinearSegments is not None:
             self._defineCostSegments(system_model)
             self.featureLinearSegments.declare_vars_and_eqs(system_model)
 
