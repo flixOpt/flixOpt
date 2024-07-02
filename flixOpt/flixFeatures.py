@@ -1106,7 +1106,6 @@ class FeatureInvest(Feature):
 
         ## Gleichung zw. DefiningVar und Investgröße:    
         # eq: defining_variable(t) = var_investmentSize * val_rel
-
         self.eq_fix_via_investmentSize = Equation('fix_via_InvestmentSize', self, system_model, 'eq')
         self.eq_fix_via_investmentSize.add_summand(self.defining_variable, 1)
         self.eq_fix_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.val_rel.active_data))
@@ -1126,7 +1125,7 @@ class FeatureInvest(Feature):
         ## 2. Gleichung: Minimum durch Investmentgröße ##        
 
         # Glg nur, wenn nicht Kombination On und fixed:
-        if not (self.on_variable_is_used and self.invest_parameters.fixed_size):
+        if not self.on_variable_is_used or not self.invest_parameters.fixed_size:
             self.eq_min_via_investmentSize = Equation('min_via_investmentSize', self, system_model, 'ineq')
 
         if self.on_variable_is_used:
@@ -1154,19 +1153,12 @@ class FeatureInvest(Feature):
             self.eq_min_via_investmentSize.add_summand(self.defining_variable, -1)
             self.eq_min_via_investmentSize.add_summand(self.model.var_investmentSize, self.min_rel.active_data)
 
-            #### Defining var_isInvested ####
-
     def _add_defining_var_isInvested(self, system_model: SystemModel):
-
-        # wenn fixed, dann const:
         if self.invest_parameters.fixed_size:
-
             # eq: investment_size = isInvested * size
             self.eq_isInvested_1 = Equation('isInvested_constraint_1', self, system_model, 'eq')
             self.eq_isInvested_1.add_summand(self.model.var_investmentSize, -1)
             self.eq_isInvested_1.add_summand(self.model.var_isInvested, self.investment_size)
-
-            # wenn nicht fix, dann Bereich:
         else:
             ## 1. Gleichung (skalar):            
             # eq1: P_invest <= isInvested * investSize_max
@@ -1187,8 +1179,7 @@ class FeatureInvest(Feature):
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel):
 
         # # fix_effects:
-        # wenn fix_effects vorhanden:
-        if not (self.invest_parameters.fix_effects is None) and self.invest_parameters.fix_effects != 0:
+        if self.invest_parameters.fix_effects is not None and self.invest_parameters.fix_effects != 0:
             if self.invest_parameters.optional:
                 # fix Share to InvestCosts: 
                 # share: + isInvested * fix_effects
@@ -1199,8 +1190,7 @@ class FeatureInvest(Feature):
                                                          1)  # fester Wert hinufügen
 
         # # divest_effects:
-
-        if not (self.invest_parameters.divest_effects is None) and self.invest_parameters.divestCost != 0:
+        if self.invest_parameters.divest_effects is not None and self.invest_parameters.divestCost != 0:
             if self.invest_parameters.optional:
                 # fix Share to InvestCosts: 
                 # share: [(1- isInvested) * divest_effects]
@@ -1211,12 +1201,9 @@ class FeatureInvest(Feature):
                 global_comp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
                                                 self.invest_parameters.divest_effects, -1)
                 # TODO : these 2 parts should be one share!
-            else:
-                pass  # no divest costs if invest is not optional
 
         # # specific_effects:
-        # wenn specific_effects vorhanden:
-        if not (self.invest_parameters.specific_effects is None):
+        if self.invest_parameters.specific_effects is not None:
             # share: + investment_size (=var)   * specific_effects
             global_comp.add_share_to_invest('specific_effects', self.owner, self.model.var_investmentSize,
                                             self.invest_parameters.specific_effects, 1)
