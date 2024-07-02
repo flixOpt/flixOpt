@@ -1120,6 +1120,7 @@ class FeatureInvest(Feature):
         # TODO: Changed by FB
         # self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.active_data))
         self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.data))
+        # TODO: BUGFIX: Here has to be active_data, but it throws an error for storages (length)
         # TODO: Changed by FB
 
         ## 2. Gleichung: Minimum durch Investmentgröße ##        
