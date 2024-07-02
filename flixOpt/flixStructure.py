@@ -20,7 +20,7 @@ from flixOpt.basicModeling import LinearModel, Variable, VariableTS, Equation  #
 from flixOpt.flixBasics import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
 from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixFeatures import cFeatureInvest
+    from flixFeatures import FeatureInvest
 
 log = logging.getLogger(__name__)
 
@@ -554,15 +554,15 @@ class Effect(Element):
 
         # ShareSums:
         #TODO: Why as attributes, and not only in sub_elements?
-        from flixOpt.flixFeatures import cFeature_ShareSum
-        self.operation = cFeature_ShareSum(
-            label='operation', owner=self, sharesAreTS=True,
-            minOfSum=self.minimum_operation, maxOfSum=self.maximum_operation,
+        from flixOpt.flixFeatures import Feature_ShareSum
+        self.operation = Feature_ShareSum(
+            label='operation', owner=self, shares_are_time_series=True,
+            total_min=self.minimum_operation, total_max=self.maximum_operation,
             min_per_hour=self.minimum_operation_per_hour, max_per_hour=self.maximum_operation_per_hour)
-        self.invest = cFeature_ShareSum(label='invest', owner=self, sharesAreTS=False,
-                                        minOfSum=self.minimum_invest, maxOfSum=self.maximum_invest)
-        self.all = cFeature_ShareSum(label='all', owner=self, sharesAreTS=False,
-                                     minOfSum=self.minimum_total, maxOfSum=self.maximum_total)
+        self.invest = Feature_ShareSum(label='invest', owner=self, shares_are_time_series=False,
+                                       total_min=self.minimum_invest, total_max=self.maximum_invest)
+        self.all = Feature_ShareSum(label='all', owner=self, shares_are_time_series=False,
+                                    total_min=self.minimum_total, total_max=self.maximum_total)
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
@@ -578,8 +578,8 @@ class Effect(Element):
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
-        self.all.addVariableShare('operation', self, self.operation.model.var_sum, 1, 1)
-        self.all.addVariableShare('invest', self, self.invest.model.var_sum, 1, 1)
+        self.all.add_variable_share('operation', self, self.operation.model.var_sum, 1, 1)
+        self.all.add_variable_share('invest', self, self.invest.model.var_sum, 1, 1)
         self.all.do_modeling(system_model, time_indices)
 
     def __str__(self):
@@ -781,14 +781,14 @@ class Component(Element):
 
     def finalize(self) -> None:
         super().finalize()
-        from flixOpt.flixFeatures import cFeatureOn
+        from flixOpt.flixFeatures import FeatureOn
 
         # feature for: On and SwitchOn Vars
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
         flows_defining_on = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
-        self.featureOn = cFeatureOn(self, flows_defining_on, self.on_values_before_begin, self.switch_on_effects,
-                                    self.running_hour_effects, onHoursSum_min=self.on_hours_total_min,
-                                    onHoursSum_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
+        self.featureOn = FeatureOn(self, flows_defining_on, self.on_values_before_begin, self.switch_on_effects,
+                                   self.running_hour_effects, on_hours_total_min=self.on_hours_total_min,
+                                   on_hours_total_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
 
     def declare_vars_and_eqs(self, system_model) -> None:
         super().declare_vars_and_eqs(system_model)
@@ -861,8 +861,8 @@ class Global(Element):
 
     def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
-        from flixOpt.flixFeatures import cFeature_ShareSum
-        self.penalty = cFeature_ShareSum('penalty', self, sharesAreTS=True)
+        from flixOpt.flixFeatures import Feature_ShareSum
+        self.penalty = Feature_ShareSum('penalty', self, shares_are_time_series=True)
 
         # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
         self.sub_elements.extend(self.listOfEffectTypes)
@@ -879,7 +879,7 @@ class Global(Element):
                                variable: Variable,
                                effect_values: Dict[Optional[Effect], TimeSeries],
                                factor: Numeric) -> None:
-        if variable is None: raise Exception('add_share_to_operation() needs variable or use addConstantShare instead')
+        if variable is None: raise Exception('add_share_to_operation() needs variable or use add_constant_share instead')
         self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
 
     def add_constant_share_to_operation(self,
@@ -896,7 +896,7 @@ class Global(Element):
                             effect_values: Dict[Optional[Effect], TimeSeries],
                             factor: Numeric) -> None:
         if variable is None:
-            raise Exception('add_share_to_invest() needs variable or use addConstantShare instead')
+            raise Exception('add_share_to_invest() needs variable or use add_constant_share instead')
         self._add_share('invest', name_of_share, owner, effect_values, factor, variable)
 
     def add_constant_share_to_invest(self,
@@ -927,11 +927,11 @@ class Global(Element):
                 raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
 
             if operation_or_invest == 'operation':
-                effect.operation.addShare(name_of_share, owner, variable, value,
-                                          factor)  # hier darf aVariable auch None sein!
+                effect.operation.add_share(name_of_share, owner, variable, value,
+                                           factor)  # hier darf aVariable auch None sein!
             elif operation_or_invest == 'invest':
-                effect.invest.addShare(name_of_share, owner, variable, value,
-                                       factor)  # hier darf aVariable auch None sein!
+                effect.invest.add_share(name_of_share, owner, variable, value,
+                                        factor)  # hier darf aVariable auch None sein!
             else:
                 raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
@@ -969,20 +969,20 @@ class Global(Element):
             for effectTypeOfShare, specShare_TS in effectType.specific_share_to_other_effects_operation.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_op = effectTypeOfShare.operation
-                shareSum_op: flixOpt.flixFeatures.cFeature_ShareSum
+                shareSum_op: flixOpt.flixFeatures.Feature_ShareSum
                 shareHolder = effectType
-                shareSum_op.addVariableShare(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
-                                             specShare_TS, 1)
+                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
+                                               specShare_TS, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             # alle specificSharesToOtherEffects durchgehen:
             nameOfShare = 'specificShareToOtherEffects_invest_'  # + effectType.label
             for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_inv = effectTypeOfShare.invest
-                from flixOpt.flixFeatures import cFeature_ShareSum
-                shareSum_inv: cFeature_ShareSum
+                from flixOpt.flixFeatures import Feature_ShareSum
+                shareSum_inv: Feature_ShareSum
                 shareHolder = effectType
-                shareSum_inv.addVariableShare(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
+                shareSum_inv.add_variable_share(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
 
         # ####### target function  ###########
         # Strafkosten immer:
@@ -1096,10 +1096,10 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
         super().add_share_to_globals(global_comp, system_model)
         if self.with_excess:   # Strafkosten hinzufügen:
-            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_input,
-                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            global_comp.penalty.addVariableShare('excess_effects_per_flow_hour', self, self.excess_output,
-                                                 self.excess_effects_per_flow_hour, system_model.dt_in_hours)
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_input,
+                                                   self.excess_effects_per_flow_hour, system_model.dt_in_hours)
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_output,
+                                                   self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
 
 # Medien definieren:
@@ -1319,7 +1319,7 @@ class Flow(Element):
 
         self.val_rel = None
         if val_rel is not None:
-            # Wenn noch size noch Default, aber investmentSize nicht optimiert werden soll:
+            # Wenn noch size noch Default, aber investment_size nicht optimiert werden soll:
             size_is_default = self.size == Flow._default_size
             if size_is_default and self.size_is_fixed:
                 raise Exception(
@@ -1331,27 +1331,27 @@ class Flow(Element):
             raise Exception('medium must be a string or None')
 
         # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
-        flowsDefiningOn = [self]
+        flows_defining_on = [self]
         # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
         on_values_before_begin = 1 * (self.values_before_begin >= 0.0001)
         # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
         #TODO: Why not in sub_elements?
-        from flixOpt.flixFeatures import cFeatureOn, cFeatureInvest
-        self.featureOn = cFeatureOn(self, flowsDefiningOn,
-                                    on_values_before_begin,
-                                    self.switch_on_effects,
-                                    self.running_hour_effects,
-                                    onHoursSum_min=self.on_hours_total_min,
-                                    onHoursSum_max=self.on_hours_total_max,
-                                    onHours_min=self.on_hours_min,
-                                    onHours_max=self.on_hours_max,
-                                    off_hours_min=self.off_hours_min,
-                                    off_hours_max=self.off_hours_max,
-                                    switch_on_total_max=self.switch_on_total_max,
-                                    useOn_explicit=self.on_variable_is_forced)
+        from flixOpt.flixFeatures import FeatureOn, FeatureInvest
+        self.featureOn = FeatureOn(self, flows_defining_on,
+                                   on_values_before_begin,
+                                   self.switch_on_effects,
+                                   self.running_hour_effects,
+                                   on_hours_total_min=self.on_hours_total_min,
+                                   on_hours_total_max=self.on_hours_total_max,
+                                   on_hours_min=self.on_hours_min,
+                                   on_hours_max=self.on_hours_max,
+                                   off_hours_min=self.off_hours_min,
+                                   off_hours_max=self.off_hours_max,
+                                   switch_on_total_max=self.switch_on_total_max,
+                                   force_on=self.on_variable_is_forced)
 
-        self.featureInvest: Optional[cFeatureInvest] = None   # Is defined in finalize()
+        self.featureInvest: Optional[FeatureInvest] = None   # Is defined in finalize()
 
 
     def __str__(self):
@@ -1382,7 +1382,7 @@ class Flow(Element):
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
     def force_on_variable(self) -> None:
-        self.featureOn.force_on_variable()
+        self.featureOn.force_on = True
 
     def finalize(self) -> None:
         self.plausibility_test()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
@@ -1397,13 +1397,13 @@ class Flow(Element):
 
         # prepare invest Feature:
         if self.invest_parameters is not None:
-            from flixOpt.flixFeatures import cFeatureInvest
-            self.featureInvest = cFeatureInvest('size', self, self.invest_parameters,
-                                                min_rel=self.min_rel_with_exists,
-                                                max_rel=self.max_rel_with_exists,
-                                                val_rel=self.val_rel,
-                                                investmentSize=self.size,
-                                                featureOn=self.featureOn)
+            from flixOpt.flixFeatures import FeatureInvest
+            self.featureInvest = FeatureInvest('size', self, self.invest_parameters,
+                                               min_rel=self.min_rel_with_exists,
+                                               max_rel=self.max_rel_with_exists,
+                                               val_rel=self.val_rel,
+                                               investment_size=self.size,
+                                               featureOn=self.featureOn)
 
         super().finalize()
 
@@ -1428,7 +1428,7 @@ class Flow(Element):
                 upper_bound = None
                 fix_value = self.val_rel.active_data * self.size
             else:
-                lower_bound = 0 if self.featureOn.useOn else self.min_rel_with_exists.active_data * self.size
+                lower_bound = 0 if self.featureOn.use_on else self.min_rel_with_exists.active_data * self.size
                 upper_bound = self.max_rel_with_exists.active_data * self.size
                 fix_value = None
             return lower_bound, upper_bound, fix_value
@@ -1448,9 +1448,9 @@ class Flow(Element):
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-        # erst hier, da definingVar vorher nicht belegt!
+        # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
-            self.featureInvest.setDefiningVar(self.model.var_val, self.model.var_on)
+            self.featureInvest.set_defining_variables(self.model.var_val, self.model.var_on)
             self.featureInvest.declare_vars_and_eqs(system_model)
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
@@ -1473,9 +1473,9 @@ class Flow(Element):
         # ineq: sum(var_on(t)) <= on_hours_total_max
 
         if self.on_hours_total_max is not None:
-            eq_onHoursSum_max = Equation('on_hours_total_max', self, system_model, 'ineq')
-            eq_onHoursSum_max.add_summand(self.model.var_on, 1, as_sum=True)
-            eq_onHoursSum_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
+            eq_on_hours_total_max = Equation('on_hours_total_max', self, system_model, 'ineq')
+            eq_on_hours_total_max.add_summand(self.model.var_on, 1, as_sum=True)
+            eq_on_hours_total_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
 
         #
         # ############## on_hours_total_max: ##############
@@ -1484,9 +1484,9 @@ class Flow(Element):
         # ineq: sum(var_on(t)) >= on_hours_total_min
 
         if self.on_hours_total_min is not None:
-            eq_onHoursSum_min = Equation('on_hours_total_min', self, system_model, 'ineq')
-            eq_onHoursSum_min.add_summand(self.model.var_on, -1, as_sum=True)
-            eq_onHoursSum_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
+            eq_on_hours_total_min = Equation('on_hours_total_min', self, system_model, 'ineq')
+            eq_on_hours_total_min.add_summand(self.model.var_on, -1, as_sum=True)
+            eq_on_hours_total_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
 
 
         #
@@ -1648,14 +1648,14 @@ class System:
         return self.elements_of_first_layer_wo_flows + list(self.flows)
 
     @property
-    def invest_features(self) -> List['cFeatureInvest']:
+    def invest_features(self) -> List['FeatureInvest']:
         all_invest_features = []
 
-        def get_invest_features_of_element(element: Element) -> List['cFeatureInvest']:
+        def get_invest_features_of_element(element: Element) -> List['FeatureInvest']:
             invest_features = []
-            from flixOpt.flixFeatures import cFeatureInvest
+            from flixOpt.flixFeatures import FeatureInvest
             for aSubComp in element.all_sub_elements:
-                if isinstance(aSubComp, cFeatureInvest):
+                if isinstance(aSubComp, FeatureInvest):
                     invest_features.append(aSubComp)
                 invest_features += get_invest_features_of_element(aSubComp)  # recursive!
             return invest_features
