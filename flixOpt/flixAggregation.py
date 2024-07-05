@@ -116,41 +116,17 @@ class Aggregation:
                                                       addPeakMax=self.addPeakMax,
                                                       addPeakMin=self.addPeakMin
                                                       )
-        # Ausführen der Aggregation/Clustering
-        res_data = self.aggregation.createTypicalPeriods()
-        # res_data.index = pd.MultiIndex.from_arrays([newPeriodIndex, newStepIndex],
-        #                                            names=['Period', 'TimeStep'])        
 
-        # Hochrechnen der aggregierten Daten, um sie später zu speichern
-        predictedPeriods = self.aggregation.predictOriginalData()
+        self.aggregation.createTypicalPeriods()   # Ausführen der Aggregation/Clustering
+        predictedPeriods = self.aggregation.predictOriginalData()   # Hochrechnen der aggregierten Daten, um sie später zu speichern
 
         # ERGEBNISSE:
-        self.totalTimeseries = predictedPeriods
-        self.totalTimeseries_t = self.totalTimeseries.set_index(self.original_timeseries_index,
-                                                                inplace=False)  # neue DF erstellen
-
-        periodsIndexVectorsOfClusters = {}
-
-        ###############
-        # Zuordnung der Indexe erstellen: 
-        # {cluster 0: [index_vector_3, index_vector_7]
-        #  cluster 1: [index_vector_1]
-        #  cluster 2: ...}
+        self.aggregated_timeseries = predictedPeriods
+        self.aggregated_timeseries_t = self.aggregated_timeseries.set_index(self.original_timeseries_index,
+                                                                            inplace=False)  # neue DF erstellen
 
         self.indexVectorsOfClusters = self.getIndexVectorsOfClusters()
-        # print(self.indexVectorsOfClusters)        
         self.printDescriptionOfClusters()
-
-        ##############
-
-        # Überschreiben der Zeitreiheninformationen
-        # self.total_periods = int((self.nr_of_time_steps * self.hours_per_time_step) / self.hours_per_period)
-        # self.typical_periods = aggregation.clusterPeriodIdx
-        # self.periods_order = aggregation.clusterOrder
-        # self.period_occurrences = aggregation.clusterPeriodNoOccur
-
-        # self.time_steps_per_period = list(range(self.nr_of_time_steps_per_period))
-        # self.periods = list(range(int(length(self.total_time_steps) / length(self.time_steps_per_period))))
 
         # Zeit messen:
         tClusterEnd = time.time()
@@ -204,29 +180,6 @@ class Aggregation:
                 del (extremePeriods[key]['profile'])
             print(extremePeriods)
             print('########################')
-
-    def declareTimeSets(self):
-        """ 
-        Deklarieren der timeSets, die alle Zeitschritte als Periode + Timestep enthalten
-        timeSet enthält alle Zeitschritte
-        interTimeStepsSet enthält alle Schritte zwischen den Zeitschritten -> für Speicher
-        """
-
-    def addTimeseriesData(self):
-        """
-        Geclusterte Zeitreihen über die timeSets zugänglich machen
-        """
-        # self.loadTh = dict(zip(model.timeSet, pd.Series(self.timeseries['Q_Netz/MW'])))
-        # self.loadEl = dict(zip(model.timeSet, pd.Series(self.timeseries['P_Netz/MW'])))
-        # self.priceGas = dict(zip(model.timeSet, pd.Series(self.timeseries['Gaspr.HWA€/MWh'])))
-        # self.pricePower = dict(zip(model.timeSet, pd.Series(self.timeseries['Strompr.€/MWh'])))
-        # self.pricePowerIn = dict(zip(model.timeSet, pd.Series(self.timeseries['Strompr.€/MWh'] + 0.5)))
-        # self.pricePowerOut = dict(zip(model.timeSet, pd.Series(self.timeseries['Strompr.€/MWh'] - 0.5)))
-        # self.tradingPrices = dict(zip(model.tradingSet.data(), [self.pricePowerIn, self.pricePowerOut]))
-        # self.priceCoal = dict(zip(model.timeSet, pd.Series(4.6 for x in range(length(self.timeseries.index)))))
-
-        # self.fuelCosts['Kohle'] = self.priceCoal
-        # self.fuelCosts['Gas'] = self.priceGas
 
     def saveResults(self, addTimeStamp=True):
         """
@@ -282,7 +235,7 @@ class Aggregation:
         if addTimeStamp: filename = timestring + '_' + filename
 
         pathAgg = './results/aggTimeseries/'
-        self.totalTimeseries.to_csv(pathAgg + filename)
+        self.aggregated_timeseries.to_csv(pathAgg + filename)
 
 
 from flixOpt import flixStructure

@@ -2494,7 +2494,7 @@ class Calculation:
         plt.figure(figsize=(8, 6))
         plt.title('aggregated series (dashed = aggregated)')
         plt.plot(df_OriginalData.values)
-        for label_TS, agg_values in dataAgg.totalTimeseries.items():
+        for label_TS, agg_values in dataAgg.aggregated_timeseries.items():
             # aLabel = str(i)
             # aLabel = self.time_series_for_aggregation[i].label_full
             plt.plot(agg_values.values, '--', label=label_TS)
@@ -2508,11 +2508,11 @@ class Calculation:
         for i in range(len(self.time_series_for_aggregation)):
             aLabel = self.time_series_for_aggregation[i].label_full
             print('TS ' + str(aLabel))
-            print('  max_agg:' + str(max(dataAgg.totalTimeseries[aLabel])))
+            print('  max_agg:' + str(max(dataAgg.aggregated_timeseries[aLabel])))
             print('  max_orig:' + str(max(df_OriginalData[aLabel])))
-            print('  min_agg:' + str(min(dataAgg.totalTimeseries[aLabel])))
+            print('  min_agg:' + str(min(dataAgg.aggregated_timeseries[aLabel])))
             print('  min_orig:' + str(min(df_OriginalData[aLabel])))
-            print('  sum_agg:' + str(sum(dataAgg.totalTimeseries[aLabel])))
+            print('  sum_agg:' + str(sum(dataAgg.aggregated_timeseries[aLabel])))
             print('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
 
         print('addpeakmax:')
@@ -2542,7 +2542,7 @@ class Calculation:
             for i in range(len(self.time_series_for_aggregation)):
                 TS = self.time_series_for_aggregation[i]
                 # todo: agg-Wert für TS:
-                TS_explicit[TS] = dataAgg.totalTimeseries[TS.label_full].values  # nur data-array ohne Zeit
+                TS_explicit[TS] = dataAgg.aggregated_timeseries[TS.label_full].values  # nur data-array ohne Zeit
 
         # ##########################
         # ## System finalizing: ##
