@@ -10,6 +10,7 @@ import textwrap
 
 from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.modeling import *
+from flixOpt.elements import Component, MediumCollection
 from flixOpt.core import effect_values_to_ts
 from flixOpt.structure import *
 from flixOpt.features import *

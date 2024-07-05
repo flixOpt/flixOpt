@@ -27,6 +27,7 @@ from pyomo.util.infeasible import log_infeasible_constraints
 import yaml
 
 from flixOpt.core import Skalar, TimeSeries
+from flixOpt.elements import Global
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -355,7 +356,7 @@ class AggregationModeling(structure.Element):
             eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
-    def add_share_to_globals(self, globalComp: structure.Global, system_model):
+    def add_share_to_globals(self, globalComp: Global, system_model):
 
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentage_of_period_freedom > 0) & (self.costs_of_period_freedom != 0):
