@@ -192,12 +192,12 @@ from flixOpt.basicModeling import *
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
 class AggregationModeling(flixStructure.Element):
     def __init__(self,
-                 label,
+                 label: str,
                  system,
-                 indexVectorsOfClusters,
-                 fixStorageFlows=True,
-                 fixBinaryVarsOnly=True,
-                 listOfElementsToClusterize=None,
+                 indexVectorsOfClusters: Dict[int, List[np.ndarray]],
+                 fixStorageFlows: bool = True,
+                 fixBinaryVarsOnly: bool = True,
+                 listOfElementsToClusterize=None,  # TODO: List[Element|
                  percentageOfPeriodFreedom=0,
                  costsOfPeriodFreedom=0,
                  **kwargs):
@@ -231,7 +231,7 @@ class AggregationModeling(flixStructure.Element):
         None.
 
         '''
-        es: flixStructure.System
+        system: flixStructure.System
         self.system = system
         self.indexVectorsOfClusters = indexVectorsOfClusters
         self.fixStorageFlows = fixStorageFlows
@@ -276,16 +276,16 @@ class AggregationModeling(flixStructure.Element):
                 # On-Variablen:
                 if element.model.var_on is not None:
                     aVar = element.model.var_on
-                    aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=True)
+                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
                     # SwitchOn-Variablen:
                 if element.model.var_switchOn is not None:
                     aVar = element.model.var_switchOn
                     # --> hier ersten Index weglassen:
-                    aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=False)
+                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
                 if element.model.var_switchOff is not None:
                     aVar = element.model.var_switchOff
                     # --> hier ersten Index weglassen:
-                    aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=False)
+                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
 
                     # todo: nicht schön! Zugriff muss über alle cTSVariablen erfolgen!
                 # Nicht-Binär-Variablen:
@@ -293,9 +293,9 @@ class AggregationModeling(flixStructure.Element):
                     # Value-Variablen:
                     if hasattr(element.model, 'var_val'):
                         aVar = element.model.var_val
-                        aEq = self.getEqForLinkedIndexe(aVar, system_model, fixFirstIndexOfPeriod=True)
+                        aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
 
-    def getEqForLinkedIndexe(self, aVar, system_model, fixFirstIndexOfPeriod):
+    def equate_indices(self, aVar: Variable, system_model, fix_first_index_of_period: bool) -> Equation:
         aVar: Variable
         # todo!: idx_var1/2 wird jedes mal gemacht! nicht schick
 
@@ -310,7 +310,7 @@ class AggregationModeling(flixStructure.Element):
                 # Falls eine Periode nicht ganz voll (eigl. nur bei letzter Periode möglich)
                 v1 = listOfIndexVectors[0]
                 v2 = listOfIndexVectors[i + 1]
-                if not fixFirstIndexOfPeriod:
+                if not fix_first_index_of_period:
                     v1 = v1[1:]  # erstes Element immer weglassen
                     v2 = v2[1:]
                 minLen = min(len(v1), len(v2))
