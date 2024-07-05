@@ -5,8 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-# TODO: 
-# -> getVector() -> int32 Vektoren möglich machen
+# TODO: as_vector() -> int32 Vektoren möglich machen
 
 import numpy as np
 import re
@@ -14,10 +13,10 @@ import math  # für nan
 import matplotlib.pyplot as plt
 
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
-from typing import Union
+from typing import Union, List
 
 
-def getVector(aValue, aLen):
+def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
     '''
     Macht aus Skalar einen Vektor. Vektor bleibt Vektor.
     -> Idee dahinter: Aufruf aus abgespeichertem Vektor schneller, als für jede i-te Gleichung zu Checken ob Vektor oder Skalar)
@@ -242,8 +241,8 @@ def getTimeSeriesWithEnd(time_series, dt_last=None):
 ''' Tests:
 import flixOptHelperFcts as helpers
 
-helpers.getVector(3,10)
-helpers.getVector(np.array([1,2]),3)
+helpers.as_vector(3,10)
+helpers.as_vector(np.array([1,2]),3)
 
 
 '''

@@ -72,7 +72,7 @@ class TimeSeries:
     @property
     def active_data_vector(self) -> np.ndarray:
         # Always returns the active data as a vector.
-        return helpers.getVector(self.active_data, len(self.active_time_indices))
+        return helpers.as_vector(self.active_data, len(self.active_time_indices))
 
     @property
     def active_data(self) -> Numeric:
