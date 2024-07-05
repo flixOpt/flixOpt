@@ -16,7 +16,7 @@ gapFrac        = 0.0005
 solver_name    = 'cbc'
 # solver_name    = 'gurobi'
 # solver_name    = 'glpk'
-solverProps = {'mip_gap': gapFrac, 'solver': solver_name, 'solver_output_to_console' : True, 'threads':16}
+solverProps = {'mip_gap': gapFrac, 'solver_name': solver_name, 'solver_output_to_console' : True, 'threads':16}
 
 nameSuffix = '_' + solver_name # for saving-file
 
@@ -40,8 +40,8 @@ segmentLen = nrOfUsedSteps + 1*96
 ## aggregated Properties: ##
 
 periodLengthInHours = 6
-noTypicalPeriods    = 21
-noTypicalPeriods    = 4
+nr_of_typical_periods    = 21
+nr_of_typical_periods    = 4
 useExtremeValues    = True
 # useExtremeValues    = False
 fixBinaryVarsOnly   = False
@@ -253,7 +253,7 @@ if doSegmentedCalc :
 if doAggregatedCalc :    
     calcAgg = Calculation('aggModel', system, 'pyomo')
     calcAgg.do_aggregated_modeling(periodLengthInHours,
-                                   noTypicalPeriods,
+                                   nr_of_typical_periods,
                                    useExtremeValues,
                                    fixStorageFlows,
                                    fixBinaryVarsOnly,

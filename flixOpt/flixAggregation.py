@@ -12,36 +12,41 @@ Modul zur aggregierten Berechnung eines Energiesystemmodells.
 
 # Paket-Importe
 # from component import Storage, Trading, Converter
+from datetime import datetime
+import copy
+import time
+from typing import Optional
+import warnings
+
 import pandas as pd
 import numpy as np
 import tsam.timeseriesaggregation as tsam
 import pyomo.environ as pyo
 import pyomo.opt as opt
 from pyomo.util.infeasible import log_infeasible_constraints
-import time
-from datetime import datetime
 import yaml
-import warnings
+
+from flixOpt.flixBasics import Skalar, TimeSeries
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-import copy
 
 
-class flixAggregation:
+
+class Aggregation:
     """
     aggregation organizing class
     """
 
     def __init__(self,
-                 name,
-                 timeseries,
-                 hoursPerTimeStep,
-                 hoursPerPeriod,
-                 hasTSA=False,
-                 noTypicalPeriods=8,
-                 useExtremePeriods=True,
-                 weightDict=None,
+                 name: str,
+                 timeseries: pd.DataFrame,
+                 hours_per_time_step: Skalar,
+                 hours_per_period: Skalar,
+                 hasTSA=False,   # TODO: Remove unused parameter
+                 nr_of_typical_periods: int = 8,
+                 useExtremePeriods: bool = True,
+                 weightDict: Optional[dict] = None,
                  addPeakMax=None,
                  addPeakMin=None
                  ):
@@ -57,10 +62,10 @@ class flixAggregation:
         self.weightDict = weightDict
         self.addPeakMax = addPeakMax
         self.addPeakMin = addPeakMin
-        self.hoursPerTimeStep = hoursPerTimeStep
-        self.hoursPerPeriod = hoursPerPeriod
+        self.hours_per_time_step = hours_per_time_step
+        self.hours_per_period = hours_per_period
         self.hasTSA = hasTSA
-        self.noTypicalPeriods = noTypicalPeriods
+        self.nr_of_typical_periods = nr_of_typical_periods
         self.useExtremePeriods = useExtremePeriods
 
         # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
@@ -103,13 +108,13 @@ class flixAggregation:
         tClusterStart = time.time()
 
         # Neu berechnen der numberOfTimeStepsPerPeriod
-        self.numberOfTimeStepsPerPeriod = int(self.hoursPerPeriod / self.hoursPerTimeStep)
+        self.numberOfTimeStepsPerPeriod = int(self.hours_per_period / self.hours_per_time_step)
 
         # Erstellen des aggregation objects
         aggregation = tsam.TimeSeriesAggregation(self.timeseries,
-                                                 noTypicalPeriods=self.noTypicalPeriods,
-                                                 hoursPerPeriod=self.hoursPerPeriod,
-                                                 resolution=self.hoursPerTimeStep,
+                                                 noTypicalPeriods=self.nr_of_typical_periods,
+                                                 hoursPerPeriod=self.hours_per_period,
+                                                 resolution=self.hours_per_time_step,
                                                  clusterMethod='k_means',
                                                  extremePeriodMethod=self.extremePeriodMethod,
                                                  # flixi: 'None'/'new_cluster_center'
@@ -148,7 +153,7 @@ class flixAggregation:
         ##############
 
         # Überschreiben der Zeitreiheninformationen
-        # self.totalPeriods = int((self.numberOfTimeSteps * self.hoursPerTimeStep) / self.hoursPerPeriod)
+        # self.totalPeriods = int((self.numberOfTimeSteps * self.hours_per_time_step) / self.hours_per_period)
         # self.typicalPeriods = aggregation.clusterPeriodIdx
         # self.periodsOrder = aggregation.clusterOrder
         # self.periodOccurances = aggregation.clusterPeriodNoOccur
@@ -244,7 +249,7 @@ class flixAggregation:
         periodsOrderString = ','.join(map(str, self.periodsOrder))
 
         # Anzahl Perioden mit ggfs. Extremperioden
-        noPer = self.noTypicalPeriods
+        noPer = self.nr_of_typical_periods
         if self.useExtremePeriods:
             noPer += 4
 
@@ -253,11 +258,11 @@ class flixAggregation:
             'name': self.name,
             'start': str(self.timeseriesIndex[0]),
             'end': str(self.timeseriesIndex[-1]),
-            'hoursPerTimeStep': self.hoursPerTimeStep,
+            'hours_per_time_step': self.hours_per_time_step,
             'useExtremePeriods': self.useExtremePeriods,
             'hasTSA': self.hasTSA,
-            'hoursPerPeriod': self.hoursPerPeriod,
-            'noTypicalPeriods': noPer,
+            'hours_per_period': self.hours_per_period,
+            'nr_of_typical_periods': noPer,
             'periodsOrder': periodsOrderString,
             #   'periodsOrder_raw': list(self.periodsOrder),
             'cluster time': self.tCluster,

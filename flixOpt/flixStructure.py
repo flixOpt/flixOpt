@@ -2360,7 +2360,7 @@ class Calculation:
 
         self._save_solve_infos()
 
-    def do_aggregated_modeling(self, periodLengthInHours, noTypicalPeriods,
+    def do_aggregated_modeling(self, periodLengthInHours, nr_of_typical_periods,
                                useExtremePeriods, fixStorageFlows,
                                fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
                                costsOfPeriodFreedom=0,
@@ -2375,7 +2375,7 @@ class Calculation:
         ----------
         periodLengthInHours : float
             length of one period.
-        noTypicalPeriods : int
+        nr_of_typical_periods : int
             no of typical periods
         useExtremePeriods : boolean
             True, if periods of extreme values should be explicitly chosen
@@ -2417,7 +2417,7 @@ class Calculation:
         self.check_if_already_modeled()
 
         self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
-                                          'noTypicalPeriods': noTypicalPeriods,
+                                          'nr_of_typical_periods': nr_of_typical_periods,
                                           'useExtremePeriods': useExtremePeriods,
                                           'fixStorageFlows': fixStorageFlows,
                                           'fixBinaryVarsOnly': fixBinaryVarsOnly,
@@ -2465,16 +2465,16 @@ class Calculation:
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
         from flixOpt import flixAggregation as flixAgg
-        dataAgg = flixAgg.flixAggregation('aggregation',
-                                          timeseries=df_OriginalData,
-                                          hoursPerTimeStep=self.dt_in_hours[0],
-                                          hoursPerPeriod=periodLengthInHours,
-                                          hasTSA=False,
-                                          noTypicalPeriods=noTypicalPeriods,
-                                          useExtremePeriods=useExtremePeriods,
-                                          weightDict=self.TScollectionForAgg.weightDict,
-                                          addPeakMax=self.TScollectionForAgg.addPeak_Max_labels,
-                                          addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
+        dataAgg = flixAgg.Aggregation('aggregation',
+                                      timeseries=df_OriginalData,
+                                      hours_per_time_step=self.dt_in_hours[0],
+                                      hours_per_period=periodLengthInHours,
+                                      hasTSA=False,
+                                      nr_of_typical_periods=nr_of_typical_periods,
+                                      useExtremePeriods=useExtremePeriods,
+                                      weightDict=self.TScollectionForAgg.weightDict,
+                                      addPeakMax=self.TScollectionForAgg.addPeak_Max_labels,
+                                      addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
 
         dataAgg.cluster()
         self.aggregation_data = dataAgg
