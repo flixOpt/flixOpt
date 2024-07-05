@@ -1782,7 +1782,7 @@ class System:
     def add_temporary_elements(self, *args: Element) -> None:
         '''
         add temporary modeling elements, only valid for one calculation,
-        i.g. cAggregationModeling-Element
+        i.g. AggregationModeling-Element
 
         Parameters
         ----------
@@ -2360,10 +2360,10 @@ class Calculation:
 
         self._save_solve_infos()
 
-    def do_aggregated_modeling(self, periodLengthInHours, noTypicalPeriods,
-                               useExtremePeriods, fixStorageFlows,
-                               fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
-                               costsOfPeriodFreedom=0,
+    def do_aggregated_modeling(self, periodLengthInHours, nr_of_typical_periods,
+                               use_extreme_periods, fix_storage_flows,
+                               fix_binary_vars_only, percentage_of_period_freedom=0,
+                               costs_of_period_freedom=0,
                                addPeakMax=[],
                                addPeakMin=[]):
         '''
@@ -2375,25 +2375,25 @@ class Calculation:
         ----------
         periodLengthInHours : float
             length of one period.
-        noTypicalPeriods : int
+        nr_of_typical_periods : int
             no of typical periods
-        useExtremePeriods : boolean
+        use_extreme_periods : boolean
             True, if periods of extreme values should be explicitly chosen
             Define recognised timeseries in args addPeakMax, addPeakMin!
-        fixStorageFlows : boolean
+        fix_storage_flows : boolean
             Defines, wether load- and unload-Flow should be also aggregated or not.
             If all other flows are fixed, it is mathematically not necessary
             to fix them.
-        fixBinaryVarsOnly : boolean
+        fix_binary_vars_only : boolean
             True, if only binary var should be aggregated.
             Additionally choose, wether orginal or aggregated timeseries should
             be chosen for the calculation.
-        percentageOfPeriodFreedom : 0...100
+        percentage_of_period_freedom : 0...100
             Normally timesteps of all periods in one period-collection
             are all equalized. Here you can choose, which percentage of values
             can maximally deviate from this and be "free variables". The solver
             chooses the "free variables".
-        costsOfPeriodFreedom : float
+        costs_of_period_freedom : float
             costs per "free variable". The default is 0.
             !! Warning: At the moment these costs are allocated to
             operation costs, not to penalty!!
@@ -2417,12 +2417,12 @@ class Calculation:
         self.check_if_already_modeled()
 
         self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
-                                          'noTypicalPeriods': noTypicalPeriods,
-                                          'useExtremePeriods': useExtremePeriods,
-                                          'fixStorageFlows': fixStorageFlows,
-                                          'fixBinaryVarsOnly': fixBinaryVarsOnly,
-                                          'percentageOfPeriodFreedom': percentageOfPeriodFreedom,
-                                          'costsOfPeriodFreedom': costsOfPeriodFreedom}
+                                          'nr_of_typical_periods': nr_of_typical_periods,
+                                          'use_extreme_periods': use_extreme_periods,
+                                          'fix_storage_flows': fix_storage_flows,
+                                          'fix_binary_vars_only': fix_binary_vars_only,
+                                          'percentage_of_period_freedom': percentage_of_period_freedom,
+                                          'costs_of_period_freedom': costs_of_period_freedom}
 
         self.calculation_type = 'aggregated'
         t_start_agg = time.time()
@@ -2465,28 +2465,28 @@ class Calculation:
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
         from flixOpt import flixAggregation as flixAgg
-        dataAgg = flixAgg.flixAggregation('aggregation',
-                                          timeseries=df_OriginalData,
-                                          hoursPerTimeStep=self.dt_in_hours[0],
-                                          hoursPerPeriod=periodLengthInHours,
-                                          hasTSA=False,
-                                          noTypicalPeriods=noTypicalPeriods,
-                                          useExtremePeriods=useExtremePeriods,
-                                          weightDict=self.TScollectionForAgg.weightDict,
-                                          addPeakMax=self.TScollectionForAgg.addPeak_Max_labels,
-                                          addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
+        dataAgg = flixAgg.Aggregation('aggregation',
+                                      timeseries=df_OriginalData,
+                                      hours_per_time_step=self.dt_in_hours[0],
+                                      hours_per_period=periodLengthInHours,
+                                      hasTSA=False,
+                                      nr_of_typical_periods=nr_of_typical_periods,
+                                      use_extreme_periods=use_extreme_periods,
+                                      weights=self.TScollectionForAgg.weightDict,
+                                      addPeakMax=self.TScollectionForAgg.addPeak_Max_labels,
+                                      addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
 
         dataAgg.cluster()
         self.aggregation_data = dataAgg
 
-        self._infos['aggregatedProps']['periodsOrder'] = str(list(dataAgg.aggregation.clusterOrder))
+        self._infos['aggregatedProps']['periods_order'] = str(list(dataAgg.aggregation.clusterOrder))
 
         # aggregation_data.aggregation.clusterPeriodIdx
         # aggregation_data.aggregation.clusterOrder
         # aggregation_data.aggregation.clusterPeriodNoOccur
         # aggregation_data.aggregation.predictOriginalData()
-        # self.periodsOrder = aggregation.clusterOrder
-        # self.periodOccurances = aggregation.clusterPeriodNoOccur
+        # self.periods_order = aggregation.clusterOrder
+        # self.period_occurrences = aggregation.clusterPeriodNoOccur
 
         # ### Some plot for plausibility check ###
 
@@ -2494,7 +2494,7 @@ class Calculation:
         plt.figure(figsize=(8, 6))
         plt.title('aggregated series (dashed = aggregated)')
         plt.plot(df_OriginalData.values)
-        for label_TS, agg_values in dataAgg.totalTimeseries.items():
+        for label_TS, agg_values in dataAgg.results.items():
             # aLabel = str(i)
             # aLabel = self.time_series_for_aggregation[i].label_full
             plt.plot(agg_values.values, '--', label=label_TS)
@@ -2508,11 +2508,11 @@ class Calculation:
         for i in range(len(self.time_series_for_aggregation)):
             aLabel = self.time_series_for_aggregation[i].label_full
             print('TS ' + str(aLabel))
-            print('  max_agg:' + str(max(dataAgg.totalTimeseries[aLabel])))
+            print('  max_agg:' + str(max(dataAgg.results[aLabel])))
             print('  max_orig:' + str(max(df_OriginalData[aLabel])))
-            print('  min_agg:' + str(min(dataAgg.totalTimeseries[aLabel])))
+            print('  min_agg:' + str(min(dataAgg.results[aLabel])))
             print('  min_orig:' + str(min(df_OriginalData[aLabel])))
-            print('  sum_agg:' + str(sum(dataAgg.totalTimeseries[aLabel])))
+            print('  sum_agg:' + str(sum(dataAgg.results[aLabel])))
             print('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
 
         print('addpeakmax:')
@@ -2523,18 +2523,18 @@ class Calculation:
         # ################
         # ### Modeling ###
 
-        aggregationModel = flixAgg.cAggregationModeling('aggregation', self.system,
-                                                        indexVectorsOfClusters=dataAgg.indexVectorsOfClusters,
-                                                        fixBinaryVarsOnly=fixBinaryVarsOnly,
-                                                        fixStorageFlows=fixStorageFlows,
-                                                        listOfElementsToClusterize=None,
-                                                        percentageOfPeriodFreedom=percentageOfPeriodFreedom,
-                                                        costsOfPeriodFreedom=costsOfPeriodFreedom)
+        aggregationModel = flixAgg.AggregationModeling('aggregation', self.system,
+                                                       index_vectors_of_clusters=dataAgg.index_vectors_of_clusters,
+                                                       fix_binary_vars_only=fix_binary_vars_only,
+                                                       fix_storage_flows=fix_storage_flows,
+                                                       elements_to_clusterize=None,
+                                                       percentage_of_period_freedom=percentage_of_period_freedom,
+                                                       costs_of_period_freedom=costs_of_period_freedom)
 
         # temporary Modeling-Element for equalizing indices of aggregation:
         self.system.add_temporary_elements(aggregationModel)
 
-        if fixBinaryVarsOnly:
+        if fix_binary_vars_only:
             TS_explicit = None
         else:
             # neue (Explizit)-Werte für TS sammeln::
@@ -2542,7 +2542,7 @@ class Calculation:
             for i in range(len(self.time_series_for_aggregation)):
                 TS = self.time_series_for_aggregation[i]
                 # todo: agg-Wert für TS:
-                TS_explicit[TS] = dataAgg.totalTimeseries[TS.label_full].values  # nur data-array ohne Zeit
+                TS_explicit[TS] = dataAgg.results[TS.label_full].values  # nur data-array ohne Zeit
 
         # ##########################
         # ## System finalizing: ##

@@ -54,7 +54,7 @@ class TestExistance(unittest.TestCase):
         calc.do_modeling_as_one_segment()
         calc.solve(solverProps={'mip_gap': 0.05,
                                 'time_limit_seconds': 60,
-                                'solver': 'cbc',
+                                'solver_name': 'cbc',
                                 'solver_output_to_console': True,
                                 })
         # self.assertEqual(exists, kessel.exists.d, msg=f"Kessel exists mismatch: Expected {exists}, got {kessel.exists}")
@@ -85,7 +85,7 @@ class TestExistance(unittest.TestCase):
         calc.do_modeling_as_one_segment()
         calc.solve(solverProps={'mip_gap': 0.05,
                                 'time_limit_seconds': 60,
-                                'solver': 'cbc',
+                                'solver_name': 'cbc',
                                 'solver_output_to_console': True,
                                 })
         # self.assertEqual(exists, kessel.exists.d, msg=f"Kessel exists mismatch: Expected {exists}, got {kessel.exists}")

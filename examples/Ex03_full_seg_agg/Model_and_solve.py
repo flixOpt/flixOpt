@@ -16,7 +16,7 @@ gapFrac        = 0.0005
 solver_name    = 'cbc'
 # solver_name    = 'gurobi'
 # solver_name    = 'glpk'
-solverProps = {'mip_gap': gapFrac, 'solver': solver_name, 'solver_output_to_console' : True, 'threads':16}
+solverProps = {'mip_gap': gapFrac, 'solver_name': solver_name, 'solver_output_to_console' : True, 'threads':16}
 
 nameSuffix = '_' + solver_name # for saving-file
 
@@ -40,16 +40,16 @@ segmentLen = nrOfUsedSteps + 1*96
 ## aggregated Properties: ##
 
 periodLengthInHours = 6
-noTypicalPeriods    = 21
-noTypicalPeriods    = 4
+nr_of_typical_periods    = 21
+nr_of_typical_periods    = 4
 useExtremeValues    = True
 # useExtremeValues    = False
-fixBinaryVarsOnly   = False
-# fixBinaryVarsOnly   = True
-fixStorageFlows     = True
-# fixStorageFlows     = False    
-percentageOfPeriodFreedom = 0
-costsOfPeriodFreedom = 0
+fix_binary_vars_only   = False
+# fix_binary_vars_only   = True
+fix_storage_flows     = True
+# fix_storage_flows     = False    
+percentage_of_period_freedom = 0
+costs_of_period_freedom = 0
 
 import pandas as pd
 import numpy as np
@@ -253,12 +253,12 @@ if doSegmentedCalc :
 if doAggregatedCalc :    
     calcAgg = Calculation('aggModel', system, 'pyomo')
     calcAgg.do_aggregated_modeling(periodLengthInHours,
-                                   noTypicalPeriods,
+                                   nr_of_typical_periods,
                                    useExtremeValues,
-                                   fixStorageFlows,
-                                   fixBinaryVarsOnly,
-                                   percentageOfPeriodFreedom = percentageOfPeriodFreedom,
-                                   costsOfPeriodFreedom = costsOfPeriodFreedom,
+                                   fix_storage_flows,
+                                   fix_binary_vars_only,
+                                   percentage_of_period_freedom = percentage_of_period_freedom,
+                                   costs_of_period_freedom = costs_of_period_freedom,
                                    addPeakMax=[TS_Q_th_Last],  # add timeseries of period with maxPeak explicitly
                                    addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
                                    )
@@ -404,4 +404,4 @@ with open(agg.filename_infos,'rb') as f:
     infos = yaml.safe_load(f)
 
 # periods order of aggregated calculation:
-print('periodsOrder of aggregated calc: ' + str(infos['calculation']['aggregatedProps']['periodsOrder']))
+print('periods_order of aggregated calc: ' + str(infos['calculation']['aggregatedProps']['periods_order']))

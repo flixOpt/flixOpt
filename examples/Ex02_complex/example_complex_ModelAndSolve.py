@@ -225,7 +225,7 @@ system.print_equations()
 
 solverProps = {'mip_gap': gapFrac,
                'time_limit_seconds': timelimit,
-               'solver': solver_name, 
+               'solver_name': solver_name,
                'solver_output_to_console': displaySolverOutput,
                }
 if solver_name == 'gurobi': solverProps['threads'] = nrOfThreads
