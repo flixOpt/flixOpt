@@ -22,7 +22,7 @@ timelimit = 3600 # seconds until solver abort
 solver_name = 'highs'
 solverProps = {'mip_gap': gapFrac,
                'time_limit_seconds': timelimit,
-               'solver': solver_name, 
+               'solver_name': solver_name,
                'solver_output_to_console' : displaySolverOutput,
                }
 
