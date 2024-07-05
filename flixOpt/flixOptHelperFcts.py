@@ -83,7 +83,7 @@ def checkForAttributeNameConformity(aName):
                      (no number first, no special characteres etc.)')
     return newName
 
-def checkExists(exists: Union[int, list, np.ndarray])-> Union[int, list,np.ndarray]:
+def check_exists(exists: Union[int, list, np.ndarray])-> Union[int, list,np.ndarray]:
     # type checking for argument "exist"
     if np.all(np.isin(exists, [0, 1])):
         return exists

@@ -696,7 +696,7 @@ class Component(Element):
         self.on_hours_total_min = on_hours_total_min
         self.on_hours_total_max = on_hours_total_max
         self.running_hour_effects = as_effect_dict_with_ts('running_hour_effects', running_hour_effects, self)
-        self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
+        self.exists = TimeSeries('exists', helpers.check_exists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:
@@ -1310,7 +1310,7 @@ class Flow(Element):
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
 
-        self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
+        self.exists = TimeSeries('exists', helpers.check_exists(exists), self)
         self.group = group   # TODO: wird überschrieben von Component!
         self.values_before_begin = np.array(values_before_begin) if values_before_begin else np.array([0, 0])  # list -> np-array
 
@@ -1390,7 +1390,7 @@ class Flow(Element):
 
         # exist-merge aus Flow.exist und Comp.exist
         exists_global = np.multiply(self.exists.data, self.comp.exists.data) # array of 0 and 1
-        self.exists_with_comp = TimeSeries('exists_with_comp', helpers.checkExists(exists_global), self)
+        self.exists_with_comp = TimeSeries('exists_with_comp', helpers.check_exists(exists_global), self)
         # combine max_rel with and exist from the flow and the comp it belongs to
         self.max_rel_with_exists = TimeSeries('max_rel_with_exists', np.multiply(self.max_rel.data, self.exists_with_comp.data), self)
         self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
