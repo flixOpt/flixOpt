@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.flixBasics import Numeric_TS, Numeric, Skalar
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
@@ -211,19 +211,13 @@ class cDataBox2:
         return astr
 
 
-def getTimeSeriesWithEnd(time_series, dt_last=None):
-    ######################################
+def get_time_series_with_end(time_series: np.ndarray[np.datetime64],
+                             dt_last: Optional[np.timedelta64] = None):
     ## letzten Zeitpunkt hinzufügen:
-    # Wenn nicht gegeben:
     if dt_last is None:
-        # wie vorletztes dt:
         dt_last = time_series[-1] - time_series[-2]
-
-    # Zeitpunkt nach letztem Zeitschritt:
     t_end = time_series[-1] + dt_last
-    time_series_with_end = np.append(time_series, t_end)
-
-    return time_series_with_end
+    return np.append(time_series, t_end)
 
 
 ''' Tests:

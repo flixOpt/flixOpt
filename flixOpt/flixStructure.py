@@ -1702,7 +1702,7 @@ class System:
         self.time_series = time_series
         self.last_time_step_hours = last_time_step_hours
 
-        self.time_series_with_end = helpers.getTimeSeriesWithEnd(time_series, last_time_step_hours)
+        self.time_series_with_end = helpers.get_time_series_with_end(time_series, last_time_step_hours)
         helpers.checkTimeSeries('global esTimeSeries', self.time_series_with_end)
 
         # defaults:
