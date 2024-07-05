@@ -29,18 +29,19 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
     '''
     # dtype = 'float64' # -> muss mit übergeben werden, sonst entstehen evtl. int32 Reihen (dort ist kein +/-inf möglich)
 
-    # Wenn Skalar oder None
-    if (np.isscalar(aValue)) or (aValue is None):
-        aValue = [aValue] * aLen  # Liste erstellen
-    # Wenn Vektor
-    elif len(aValue) == aLen:
-        pass
-    # Wenn Vektor nicht richtige Länge
-    else:
-        raise Exception('error in changing to length = ' + str(aLen) + '; vector has already length = ' + str(len(aValue)))
+    # Wenn Skalar oder None, return directly as array
+    if value is None:
+        return np.array([None] * length)
+    if np.isscalar(value):
+        return np.ones(length) * value
 
-    aVector = np.array(aValue)  # np-array erstellen, wenn es nicht schon einer ist.
-    return aVector
+    if len(value) != length:   # Wenn Vektor nicht richtige Länge
+        raise Exception(f'error in changing to {length=}; vector has already {length=}')
+
+    if isinstance(value, np.ndarray):
+        return value
+    else:
+        return np.array(value)
 
 
 # Nimmt Subset der Indexe, wenn es ein Vektor ist. Skalar bleibt skalar.
