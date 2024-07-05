@@ -2361,7 +2361,7 @@ class Calculation:
         self._save_solve_infos()
 
     def do_aggregated_modeling(self, periodLengthInHours, nr_of_typical_periods,
-                               useExtremePeriods, fixStorageFlows,
+                               use_extreme_periods, fixStorageFlows,
                                fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
                                costsOfPeriodFreedom=0,
                                addPeakMax=[],
@@ -2377,7 +2377,7 @@ class Calculation:
             length of one period.
         nr_of_typical_periods : int
             no of typical periods
-        useExtremePeriods : boolean
+        use_extreme_periods : boolean
             True, if periods of extreme values should be explicitly chosen
             Define recognised timeseries in args addPeakMax, addPeakMin!
         fixStorageFlows : boolean
@@ -2418,7 +2418,7 @@ class Calculation:
 
         self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
                                           'nr_of_typical_periods': nr_of_typical_periods,
-                                          'useExtremePeriods': useExtremePeriods,
+                                          'use_extreme_periods': use_extreme_periods,
                                           'fixStorageFlows': fixStorageFlows,
                                           'fixBinaryVarsOnly': fixBinaryVarsOnly,
                                           'percentageOfPeriodFreedom': percentageOfPeriodFreedom,
@@ -2471,7 +2471,7 @@ class Calculation:
                                       hours_per_period=periodLengthInHours,
                                       hasTSA=False,
                                       nr_of_typical_periods=nr_of_typical_periods,
-                                      useExtremePeriods=useExtremePeriods,
+                                      use_extreme_periods=use_extreme_periods,
                                       weightDict=self.TScollectionForAgg.weightDict,
                                       addPeakMax=self.TScollectionForAgg.addPeak_Max_labels,
                                       addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)

@@ -15,7 +15,7 @@ Modul zur aggregierten Berechnung eines Energiesystemmodells.
 from datetime import datetime
 import copy
 import time
-from typing import Optional
+from typing import Optional, List, Dict
 import warnings
 
 import pandas as pd
@@ -45,10 +45,10 @@ class Aggregation:
                  hours_per_period: Skalar,
                  hasTSA=False,   # TODO: Remove unused parameter
                  nr_of_typical_periods: int = 8,
-                 useExtremePeriods: bool = True,
+                 use_extreme_periods: bool = True,
                  weightDict: Optional[dict] = None,
-                 addPeakMax=None,
-                 addPeakMin=None
+                 addPeakMax: Optional[List[TimeSeries]] =None,
+                 addPeakMin: Optional[List[TimeSeries]] = None
                  ):
 
         """ 
@@ -66,11 +66,11 @@ class Aggregation:
         self.hours_per_period = hours_per_period
         self.hasTSA = hasTSA
         self.nr_of_typical_periods = nr_of_typical_periods
-        self.useExtremePeriods = useExtremePeriods
+        self.use_extreme_periods = use_extreme_periods
 
         # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
         self.extremePeriodMethod = 'None'
-        if self.useExtremePeriods:
+        if self.use_extreme_periods:
             self.extremePeriodMethod = 'new_cluster_center'
             # check:
             if not (self.addPeakMax) and not (self.addPeakMin):
@@ -205,7 +205,7 @@ class Aggregation:
         print(aVisual)
         print('########################')
 
-        if self.useExtremePeriods:
+        if self.use_extreme_periods:
             print('extremePeriods:')
             # Zeitreihe rauslöschen:
             extremePeriods = self.aggregation.extremePeriods.copy()
@@ -250,7 +250,7 @@ class Aggregation:
 
         # Anzahl Perioden mit ggfs. Extremperioden
         noPer = self.nr_of_typical_periods
-        if self.useExtremePeriods:
+        if self.use_extreme_periods:
             noPer += 4
 
         parameterDict = {
@@ -259,7 +259,7 @@ class Aggregation:
             'start': str(self.timeseriesIndex[0]),
             'end': str(self.timeseriesIndex[-1]),
             'hours_per_time_step': self.hours_per_time_step,
-            'useExtremePeriods': self.useExtremePeriods,
+            'use_extreme_periods': self.use_extreme_periods,
             'hasTSA': self.hasTSA,
             'hours_per_period': self.hours_per_period,
             'nr_of_typical_periods': noPer,
