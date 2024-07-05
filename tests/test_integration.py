@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 import os
 import datetime
-from flixOpt.flixStructure import *
-from flixOpt.flixComps import *
+from flixOpt.structure import *
+from flixOpt.components import *
 import flixOpt.flixPostprocessing as flixPost
 
 class BaseTest(unittest.TestCase):

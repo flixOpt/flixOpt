@@ -9,7 +9,7 @@ import numpy as np
 import math  # für nan
 import matplotlib.pyplot as plt
 import pandas as pd
-from flixOpt.flixStructure import *
+from flixOpt.structure import *
 
 
 

@@ -13,7 +13,7 @@ import math  # für nan
 import matplotlib.pyplot as plt
 
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
-from flixOpt.flixBasics import Numeric_TS, Numeric, Skalar
+from flixOpt.core import Numeric_TS, Numeric, Skalar
 from typing import Union, List, Tuple, Optional
 
 

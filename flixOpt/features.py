@@ -12,13 +12,13 @@ import logging
 
 import numpy as np
 
-from flixOpt.flixStructure import Element, SystemModel, Flow, EffectTypeDict, Global  # Grundstruktur
-from flixOpt.flixBasics import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
-from flixOpt.basicModeling import Variable, VariableTS, Equation
+from flixOpt.structure import Element, SystemModel, Flow, EffectTypeDict, Global  # Grundstruktur
+from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from flixOpt.modeling import Variable, VariableTS, Equation
 from flixOpt.flixBasicsPublic import InvestParameters
 import flixOpt.flixOptHelperFcts as helpers
 if TYPE_CHECKING:
-    from flixOpt.flixStructure import Flow, Effect
+    from flixOpt.structure import Flow, Effect
 
 log = logging.getLogger(__name__)
 
@@ -1071,7 +1071,7 @@ class FeatureInvest(Feature):
 
     def _create_variable_for_segmented_invest_effect(self, aEffect, system_model: SystemModel):
         # define cost-Variable (=costs through segmented Investsize-costs):
-        from flixOpt.flixStructure import Effect
+        from flixOpt.structure import Effect
         if isinstance(aEffect, Effect):
             aStr = aEffect.label
         elif aEffect is None:

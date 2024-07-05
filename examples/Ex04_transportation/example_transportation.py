@@ -37,8 +37,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 
-from flixOpt.flixStructure import *
-from flixOpt.flixComps import *
+from flixOpt.structure import *
+from flixOpt.components import *
 
 ####################### kleine Daten zum Test ###############################
 

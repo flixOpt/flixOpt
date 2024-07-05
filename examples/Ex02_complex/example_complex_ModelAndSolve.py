@@ -7,8 +7,8 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import datetime
-from flixOpt.flixStructure import *
-from flixOpt.flixComps import *
+from flixOpt.structure import *
+from flixOpt.components import *
 from flixOpt.flixBasicsPublic import *
 
 # ## Solver-Inputs:##

@@ -26,7 +26,7 @@ import pyomo.opt as opt
 from pyomo.util.infeasible import log_infeasible_constraints
 import yaml
 
-from flixOpt.flixBasics import Skalar, TimeSeries
+from flixOpt.core import Skalar, TimeSeries
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -184,13 +184,13 @@ class Aggregation:
                 f'########################')
 
 
-from flixOpt import flixStructure
-from flixOpt import flixComps
-from flixOpt.basicModeling import *
+from flixOpt import structure
+from flixOpt import components
+from flixOpt.modeling import *
 
 
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
-class AggregationModeling(flixStructure.Element):
+class AggregationModeling(structure.Element):
     def __init__(self,
                  label: str,
                  system,
@@ -231,7 +231,7 @@ class AggregationModeling(flixStructure.Element):
         None.
 
         '''
-        system: flixStructure.System
+        system: structure.System
         self.system = system
         self.index_vectors_of_clusters = index_vectors_of_clusters
         self.fix_storage_flows = fix_storage_flows
@@ -251,10 +251,10 @@ class AggregationModeling(flixStructure.Element):
     def finalize(self):
         super().finalize()
 
-    def declare_vars_and_eqs(self, system_model: flixStructure.SystemModel):
+    def declare_vars_and_eqs(self, system_model: structure.SystemModel):
         super().declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: flixStructure.SystemModel, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: structure.SystemModel, time_indices: Union[list[int], range]):
 
         if self.elements_to_clusterize is None:
             # Alle:
@@ -265,12 +265,12 @@ class AggregationModeling(flixStructure.Element):
             compSet = set(self.elements_to_clusterize)
             flowSet = {flow for flow in self.system.flows if flow.comp in self.elements_to_clusterize}
 
-        flow: flixStructure.Flow
+        flow: structure.Flow
 
         # todo: hier anstelle alle Elemente durchgehen, nicht nur flows und comps:
         for element in flowSet | compSet:
             # Wenn StorageFlows nicht gefixt werden sollen und flow ein storage-Flow ist:
-            if (not self.fix_storage_flows) and hasattr(element, 'comp') and (isinstance(element.comp, flixComps.Storage)):
+            if (not self.fix_storage_flows) and hasattr(element, 'comp') and (isinstance(element.comp, components.Storage)):
                 pass  # flow hier nicht fixen!
             else:
                 # On-Variablen:
@@ -317,7 +317,7 @@ class AggregationModeling(flixStructure.Element):
                 idx_var1 = np.append(idx_var1, v1[:minLen])
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
-        eq = flixStructure.Equation('equalIdx_' + aVar.label_full, self, system_model, eqType='eq')
+        eq = Equation('equalIdx_' + aVar.label_full, self, system_model, eqType='eq')
         eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
         eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
@@ -341,7 +341,7 @@ class AggregationModeling(flixStructure.Element):
 
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
-            eq_lock = flixStructure.Equation('lock_K0andK1' + aVar.label_full, self, system_model, eqType='ineq')
+            eq_lock = Equation('lock_K0andK1' + aVar.label_full, self, system_model, eqType='ineq')
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
             eq_lock.add_constant(1.1)
@@ -349,13 +349,13 @@ class AggregationModeling(flixStructure.Element):
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentage_of_period_freedom / 100 * var_K1.length)
-            eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
+            eq_max = Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
             eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
-    def add_share_to_globals(self, globalComp: flixStructure.Global, system_model):
+    def add_share_to_globals(self, globalComp: structure.Global, system_model):
 
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentage_of_period_freedom > 0) & (self.costs_of_period_freedom != 0):

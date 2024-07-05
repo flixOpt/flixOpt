@@ -122,8 +122,8 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 
 ##########################################################################
 
-from flixOpt.flixStructure import *
-from flixOpt.flixComps    import *
+from flixOpt.structure import *
+from flixOpt.components    import *
 from flixOpt.flixBasicsPublic import *
 
 import pandas as pd

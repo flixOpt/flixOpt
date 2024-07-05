@@ -16,11 +16,11 @@ import numpy as np
 import yaml  # (für json-Schnipsel-print)
 
 from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.basicModeling import LinearModel, Variable, VariableTS, Equation  # Modelliersprache
-from flixOpt.flixBasics import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
+from flixOpt.modeling import LinearModel, Variable, VariableTS, Equation  # Modelliersprache
+from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
 from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixFeatures import FeatureInvest
+    from features import FeatureInvest
 
 log = logging.getLogger(__name__)
 
@@ -554,7 +554,7 @@ class Effect(Element):
 
         # ShareSums:
         #TODO: Why as attributes, and not only in sub_elements?
-        from flixOpt.flixFeatures import Feature_ShareSum
+        from flixOpt.features import Feature_ShareSum
         self.operation = Feature_ShareSum(
             label='operation', owner=self, shares_are_time_series=True,
             total_min=self.minimum_operation, total_max=self.maximum_operation,
@@ -781,7 +781,7 @@ class Component(Element):
 
     def finalize(self) -> None:
         super().finalize()
-        from flixOpt.flixFeatures import FeatureOn
+        from flixOpt.features import FeatureOn
 
         # feature for: On and SwitchOn Vars
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
@@ -861,7 +861,7 @@ class Global(Element):
 
     def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
-        from flixOpt.flixFeatures import Feature_ShareSum
+        from flixOpt.features import Feature_ShareSum
         self.penalty = Feature_ShareSum('penalty', self, shares_are_time_series=True)
 
         # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
@@ -979,7 +979,7 @@ class Global(Element):
             for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
                 # Share anhängen (an jeweiligen Effekt):
                 shareSum_inv = effectTypeOfShare.invest
-                from flixOpt.flixFeatures import Feature_ShareSum
+                from flixOpt.features import Feature_ShareSum
                 shareSum_inv: Feature_ShareSum
                 shareHolder = effectType
                 shareSum_inv.add_variable_share(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
@@ -1337,7 +1337,7 @@ class Flow(Element):
         # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
 
         #TODO: Why not in sub_elements?
-        from flixOpt.flixFeatures import FeatureOn, FeatureInvest
+        from flixOpt.features import FeatureOn, FeatureInvest
         self.featureOn = FeatureOn(self, flows_defining_on,
                                    on_values_before_begin,
                                    self.switch_on_effects,
@@ -1397,7 +1397,7 @@ class Flow(Element):
 
         # prepare invest Feature:
         if self.invest_parameters is not None:
-            from flixOpt.flixFeatures import FeatureInvest
+            from flixOpt.features import FeatureInvest
             self.featureInvest = FeatureInvest('size', self, self.invest_parameters,
                                                min_rel=self.min_rel_with_exists,
                                                max_rel=self.max_rel_with_exists,
@@ -1653,7 +1653,7 @@ class System:
 
         def get_invest_features_of_element(element: Element) -> List['FeatureInvest']:
             invest_features = []
-            from flixOpt.flixFeatures import FeatureInvest
+            from flixOpt.features import FeatureInvest
             for aSubComp in element.all_sub_elements:
                 if isinstance(aSubComp, FeatureInvest):
                     invest_features.append(aSubComp)
@@ -2326,7 +2326,7 @@ class Calculation:
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
-                from flixOpt.basicModeling import BeforeValues
+                from flixOpt.modeling import BeforeValues
                 segmentModBoxBefore = self.segmented_system_models[i - 1]
                 segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
@@ -2444,7 +2444,7 @@ class Calculation:
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
         self.time_series_for_aggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
-        from flixOpt.flixBasics import TimeSeriesCollection
+        from flixOpt.core import TimeSeriesCollection
         self.TScollectionForAgg = TimeSeriesCollection(self.time_series_for_aggregation,
                                                        addPeakMax_TSraw=addPeakMax,
                                                        addPeakMin_TSraw=addPeakMin,

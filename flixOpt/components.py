@@ -9,10 +9,10 @@ import numpy as np
 import textwrap
 
 from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.basicModeling import *
-from flixOpt.flixBasics import effect_values_to_ts
-from flixOpt.flixStructure import *
-from flixOpt.flixFeatures import *
+from flixOpt.modeling import *
+from flixOpt.core import effect_values_to_ts
+from flixOpt.structure import *
+from flixOpt.features import *
 
 
 class LinearTransformer(Component):

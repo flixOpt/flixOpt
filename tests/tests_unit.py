@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 import datetime
 
-from flixOpt.flixComps import Boiler, Storage, Source, Sink, CHP
-from flixOpt.flixStructure import Flow, Bus, System, Calculation, Effect
+from flixOpt.components import Boiler, Storage, Source, Sink, CHP
+from flixOpt.structure import Flow, Bus, System, Calculation, Effect
 from flixOpt.flixPostprocessing import flix_results
 
 
