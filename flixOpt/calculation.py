@@ -198,9 +198,10 @@ class AggregatedCalculation(Calculation):
     class for defined way of solving a energy system optimizatino
     '''
 
-    def __init__(self, label,
+    def __init__(self,
+                 label: str,
                  system: System,
-                 modeling_language,
+                 modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None,
                  pathForSaving='results'):
         '''
@@ -221,7 +222,7 @@ class AggregatedCalculation(Calculation):
         super().__init__(label, system, modeling_language, time_indices, pathForSaving)
         self.time_series_for_aggregation = None
         self.aggregation_data = None
-        self.TScollectionForAgg = None
+        self.time_series_collection: Optional[TimeSeriesCollection] = None
 
     def do_modeling(self,
                                periodLengthInHours,
@@ -313,16 +314,16 @@ class AggregatedCalculation(Calculation):
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
         self.time_series_for_aggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
-        self.TScollectionForAgg = TimeSeriesCollection(self.time_series_for_aggregation,
-                                                       addPeakMax_TSraw=addPeakMax,
-                                                       addPeakMin_TSraw=addPeakMin,
-                                                       )
+        self.time_series_collection = TimeSeriesCollection(self.time_series_for_aggregation,
+                                                           addPeakMax_TSraw=addPeakMax,
+                                                           addPeakMin_TSraw=addPeakMin,
+                                                           )
 
-        self.TScollectionForAgg.print()
+        self.time_series_collection.print()
 
         import pandas as pd
         # seriesDict = {i : self.time_series_for_aggregation[i].active_data_vector for i in range(length(self.time_series_for_aggregation))}
-        df_OriginalData = pd.DataFrame(self.TScollectionForAgg.seriesDict,
+        df_OriginalData = pd.DataFrame(self.time_series_collection.seriesDict,
                                        index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
 
         # Check, if timesteps fit in Period:
@@ -332,7 +333,7 @@ class AggregatedCalculation(Calculation):
 
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
-        from flixOpt import flixAggregation as flixAgg
+        from flixOpt import aggregation as flixAgg
         dataAgg = flixAgg.Aggregation('aggregation',
                                       timeseries=df_OriginalData,
                                       hours_per_time_step=self.dt_in_hours[0],
@@ -340,9 +341,9 @@ class AggregatedCalculation(Calculation):
                                       hasTSA=False,
                                       nr_of_typical_periods=nr_of_typical_periods,
                                       use_extreme_periods=use_extreme_periods,
-                                      weights=self.TScollectionForAgg.weightDict,
-                                      addPeakMax=self.TScollectionForAgg.addPeak_Max_labels,
-                                      addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
+                                      weights=self.time_series_collection.weightDict,
+                                      addPeakMax=self.time_series_collection.addPeak_Max_labels,
+                                      addPeakMin=self.time_series_collection.addPeak_Min_labels)
 
         dataAgg.cluster()
         self.aggregation_data = dataAgg
@@ -384,9 +385,9 @@ class AggregatedCalculation(Calculation):
             print('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
 
         print('addpeakmax:')
-        print(self.TScollectionForAgg.addPeak_Max_labels)
+        print(self.time_series_collection.addPeak_Max_labels)
         print('addpeakmin:')
-        print(self.TScollectionForAgg.addPeak_Min_labels)
+        print(self.time_series_collection.addPeak_Min_labels)
 
         # ################
         # ### Modeling ###
