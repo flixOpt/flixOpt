@@ -623,7 +623,8 @@ class flix_results():
 
             # gestapelt:
             if stacked:
-                helpers.plotStackedSteps(ax, y)  # legende here automatically
+                from flixOpt.flixPlotHelperFcts import plotStackedSteps
+                plotStackedSteps(ax, y)  # legende here automatically
             # normal:
             else:
                 y.plot(drawstyle='steps-post', ax=ax)
