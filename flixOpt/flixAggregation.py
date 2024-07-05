@@ -43,10 +43,10 @@ class Aggregation:
                  timeseries: pd.DataFrame,
                  hours_per_time_step: Skalar,
                  hours_per_period: Skalar,
-                 hasTSA=False,   # TODO: Remove unused parameter
+                 hasTSA=False,  # TODO: Remove unused parameter
                  nr_of_typical_periods: int = 8,
                  use_extreme_periods: bool = True,
-                 weightDict: Optional[dict] = None,
+                 weights: Optional[dict] = None,
                  addPeakMax: Optional[List[TimeSeries]] =None,
                  addPeakMin: Optional[List[TimeSeries]] = None
                  ):
@@ -59,14 +59,14 @@ class Aggregation:
 
         self.name = name
         self.timeseries = copy.deepcopy(timeseries)
-        self.weightDict = weightDict
-        self.addPeakMax = addPeakMax
-        self.addPeakMin = addPeakMin
         self.hours_per_time_step = hours_per_time_step
         self.hours_per_period = hours_per_period
         self.hasTSA = hasTSA
         self.nr_of_typical_periods = nr_of_typical_periods
         self.use_extreme_periods = use_extreme_periods
+        self.weights = weights
+        self.addPeakMax = addPeakMax
+        self.addPeakMin = addPeakMin
 
         # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
         self.extremePeriodMethod = 'None'
@@ -118,7 +118,7 @@ class Aggregation:
                                                  clusterMethod='k_means',
                                                  extremePeriodMethod=self.extremePeriodMethod,
                                                  # flixi: 'None'/'new_cluster_center'
-                                                 weightDict=self.weightDict,
+                                                 weightDict=self.weights,
                                                  addPeakMax=self.addPeakMax,
                                                  # ['P_Netz/MW', 'Q_Netz/MW', 'Strompr.€/MWh'],
                                                  addPeakMin=self.addPeakMin

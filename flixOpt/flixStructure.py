@@ -2472,7 +2472,7 @@ class Calculation:
                                       hasTSA=False,
                                       nr_of_typical_periods=nr_of_typical_periods,
                                       use_extreme_periods=use_extreme_periods,
-                                      weightDict=self.TScollectionForAgg.weightDict,
+                                      weights=self.TScollectionForAgg.weightDict,
                                       addPeakMax=self.TScollectionForAgg.addPeak_Max_labels,
                                       addPeakMin=self.TScollectionForAgg.addPeak_Min_labels)
 
