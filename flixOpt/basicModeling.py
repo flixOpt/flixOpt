@@ -272,7 +272,7 @@ class Variable:
         log.debug('Variable created: ' + self.label)
 
         # Check conformity:
-        self.label = helpers.checkForAttributeNameConformity(label)
+        self.label = helpers.check_name_for_conformity(label)
 
         # Wenn Vorgabewert vorhanden:
         if value is not None:

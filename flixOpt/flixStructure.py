@@ -688,7 +688,7 @@ class Component(Element):
             raise NotImplementedError("'on_hours_total_min' is not implemented yet for Components. Use Flow directly instead")
         if on_hours_total_max is not None:
             raise NotImplementedError("'on_hours_total_max' is not implemented yet for Components. Use Flow directly instead")
-        label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
+        label = helpers.check_name_for_conformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
         self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)

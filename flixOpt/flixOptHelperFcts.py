@@ -66,20 +66,20 @@ def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesRaw],
 
 
 # löscht alle in Attributen ungültigen Zeichen: todo: Vollständiger machen!
-def checkForAttributeNameConformity(aName):
+def check_name_for_conformity(label: str):
     char_map = {ord('ä'): 'ae',
                 ord('ü'): 'ue',
                 ord('ö'): 'oe',
                 ord('ß'): 'ss',
                 ord('-'): '_'}
-    newName = aName.translate(char_map)
-    if newName != aName:
-        print('Name \'' + aName + '\' ist nicht Attributnamen-konform und wird zu \'' + newName + '\' geändert')
+    newName = label.translate(char_map)
+    if newName != label:
+        print('Name \'' + label + '\' ist nicht Attributnamen-konform und wird zu \'' + newName + '\' geändert')
 
     # check, ob jetzt valid variable name: (für Verwendung in results_struct notwendig)
     import re
     if not re.search(r'^[a-zA-Z_]\w*$', newName):
-        raise Exception('label \'' + aName + '\' is not valid for variable name \n .\
+        raise Exception('label \'' + label + '\' is not valid for variable name \n .\
                      (no number first, no special characteres etc.)')
     return newName
 
