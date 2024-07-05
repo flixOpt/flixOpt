@@ -14,7 +14,7 @@ Modul zur aggregierten Berechnung eines Energiesystemmodells.
 # from component import Storage, Trading, Converter
 from datetime import datetime
 import copy
-import time
+import timeit
 from typing import Optional, List, Dict
 import warnings
 
@@ -101,7 +101,7 @@ class Aggregation:
         Durchführung der Zeitreihenaggregation
         """
 
-        start_time = time.time()
+        start_time = timeit.default_timer()
 
         # Neu berechnen der nr_of_time_steps_per_period
         self.nr_of_time_steps_per_period = int(self.hours_per_period / self.hours_per_time_step)
@@ -123,7 +123,7 @@ class Aggregation:
         # ERGEBNISSE:
         self.results = self.aggregation.predictOriginalData()
 
-        self.time_for_clustering = time.time() - start_time   # Zeit messen:
+        self.time_for_clustering = timeit.default_timer() - start_time   # Zeit messen:
         print(self.describe_clusters())
 
     @property
