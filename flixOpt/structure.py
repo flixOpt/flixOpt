@@ -5,23 +5,18 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import math
-import time
 import textwrap
-import pprint
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
 
 import numpy as np
-import yaml  # (für json-Schnipsel-print)
 
 from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.modeling import LinearModel, Variable, VariableTS, Equation  # Modelliersprache
-from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
-from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
+from flixOpt.core import TimeSeries
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from features import FeatureInvest
-    from flixOpt.elements import Flow, Effect
+    from flixOpt.elements import Flow
+    from flixOpt.system import System
 
 log = logging.getLogger(__name__)
 
@@ -297,6 +292,7 @@ class Element:
             key: value for key, value in self.__dict__.items()
             if value and
                not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
+               #TODO: Bugfix, as Flow is not imported in this module...
         }
 
         remaining_data_keys = sorted(remaining_data.keys())

@@ -8,13 +8,11 @@ developed by Felix Panitz* and Peter Stange*
 # TODO: as_vector() -> int32 Vektoren möglich machen
 
 import numpy as np
-import re
 import math  # für nan
-import matplotlib.pyplot as plt
 
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
-from flixOpt.core import Numeric_TS, Numeric, Skalar
-from typing import Union, List, Tuple, Optional
+from flixOpt.core import Numeric
+from typing import Union, List, Optional
 
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:

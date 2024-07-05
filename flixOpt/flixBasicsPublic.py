@@ -5,6 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 from typing import Union, Optional, Dict, List
+
 import numpy as np
 
 

@@ -5,13 +5,8 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import numpy as np
-import math  # für nan
 import matplotlib.pyplot as plt
 import pandas as pd
-from flixOpt.structure import *
-
-
 
 
 def plotStackedSteps(ax, df: pd.DataFrame, showLegend=True, colors=None):  # df = dataframes!
