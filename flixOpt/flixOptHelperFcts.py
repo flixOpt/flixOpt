@@ -55,12 +55,14 @@ def zero_to_nan(vector: np.ndarray) -> np.ndarray:
 
 def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesRaw],
                  label: str,
-                 bounds: Tuple[Numeric],
-                 aObject=None):
+                 lower_bound: Numeric,
+                 upper_bound: Numeric):
     if isinstance(value, TimeSeriesRaw):
         value = value.value
-    if np.any(value < bounds[0]) | np.any(value >= bounds[1]):
-        raise Exception(f'{label} verletzt min/max - Grenzen!')
+    if np.any(value < lower_bound):
+        raise Exception(f'{label} is below its {lower_bound=}!')
+    if np.any(value >= upper_bound):
+        raise Exception(f'{label} is above its {upper_bound=}!')
 
 
 # löscht alle in Attributen ungültigen Zeichen: todo: Vollständiger machen!
