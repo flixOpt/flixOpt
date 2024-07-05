@@ -56,6 +56,7 @@ class Aggregation:
         """
 
         self.results = None
+        self.aggregation: Optional[tsam.TimeSeriesAggregation] = None
 
         self.name = name
         self.timeseries = copy.deepcopy(timeseries)
@@ -105,27 +106,23 @@ class Aggregation:
         self.nr_of_time_steps_per_period = int(self.hours_per_period / self.hours_per_time_step)
 
         # Erstellen des aggregation objects
-        aggregation = tsam.TimeSeriesAggregation(self.timeseries,
-                                                 noTypicalPeriods=self.nr_of_typical_periods,
-                                                 hoursPerPeriod=self.hours_per_period,
-                                                 resolution=self.hours_per_time_step,
-                                                 clusterMethod='k_means',
-                                                 extremePeriodMethod=self.extreme_period_method,
-                                                 # flixi: 'None'/'new_cluster_center'
-                                                 weightDict=self.weights,
-                                                 addPeakMax=self.addPeakMax,
-                                                 # ['P_Netz/MW', 'Q_Netz/MW', 'Strompr.€/MWh'],
-                                                 addPeakMin=self.addPeakMin
-                                                 # addPeakMin=['Strompr.€/MWh']
-                                                 )
-        self.aggregation = aggregation
+        self.aggregation = tsam.TimeSeriesAggregation(self.timeseries,
+                                                      noTypicalPeriods=self.nr_of_typical_periods,
+                                                      hoursPerPeriod=self.hours_per_period,
+                                                      resolution=self.hours_per_time_step,
+                                                      clusterMethod='k_means',
+                                                      extremePeriodMethod=self.extreme_period_method,
+                                                      weightDict=self.weights,
+                                                      addPeakMax=self.addPeakMax,
+                                                      addPeakMin=self.addPeakMin
+                                                      )
         # Ausführen der Aggregation/Clustering
-        res_data = aggregation.createTypicalPeriods()
+        res_data = self.aggregation.createTypicalPeriods()
         # res_data.index = pd.MultiIndex.from_arrays([newPeriodIndex, newStepIndex],
         #                                            names=['Period', 'TimeStep'])        
 
         # Hochrechnen der aggregierten Daten, um sie später zu speichern
-        predictedPeriods = aggregation.predictOriginalData()
+        predictedPeriods = self.aggregation.predictOriginalData()
 
         # ERGEBNISSE:
         self.totalTimeseries = predictedPeriods
