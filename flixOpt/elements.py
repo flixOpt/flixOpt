@@ -5,22 +5,17 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import math
-import time
 import textwrap
-import pprint
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
 
 import numpy as np
 
-from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.modeling import Variable, VariableTS, Equation  # Modelliersprache
+from flixOpt.modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
 from flixOpt.flixBasicsPublic import InvestParameters
 from flixOpt.structure import Element, SystemModel
-if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from features import FeatureInvest
+from flixOpt import flixOptHelperFcts as helpers
 
 log = logging.getLogger(__name__)
 

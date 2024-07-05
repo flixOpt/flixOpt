@@ -4,10 +4,11 @@ Created on Thu Sep 10 13:45:12 2020
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+import numpy as np
 
-from flixOpt.structure import *
-from flixOpt.features import *
+from flixOpt.elements import Bus, Flow
 from flixOpt.components import LinearTransformer, CHP
+from flixOpt.flixBasicsPublic import InvestParameters
 from flixOpt.flixOptHelperFcts import check_exists
 
 

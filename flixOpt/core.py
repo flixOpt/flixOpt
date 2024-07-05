@@ -4,11 +4,12 @@ Created on Wed Mar 31 22:51:38 2021
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+from typing import Union, Optional, List, Dict, Any
 
 import numpy as np
+
 from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
-from typing import Union, Optional, List, Dict, Any
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
