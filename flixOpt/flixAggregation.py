@@ -81,18 +81,17 @@ class Aggregation:
         # Timeseries Index anpassen, damit gesamter Betrachtungszeitraum als eine lange Periode + entsprechender Zeitschrittanzahl interpretiert wird
         self.original_timeseries_index = self.timeseries.index  # ursprünglichen Index in Array speichern für späteres Speichern
         period_index = [0] * self.nr_of_time_steps
-        step_index = list(range(0, self.nr_of_time_steps))
+        step_index = list(range(self.nr_of_time_steps))
         self.timeseries.index = pd.MultiIndex.from_arrays([period_index, step_index],
                                                           names=['Period', 'TimeStep'])
 
         # Setzen der Zeitreihendaten für Modell
         # werden später überschrieben, falls Zeitreihenaggregation
-        self.typicalPeriods = [0]
-        self.periods, self.periodsOrder, self.periodOccurances = [0], [0], [1]
-        self.totalTimeSteps = list(range(self.nr_of_time_steps))  # gesamte Anzahl an Zeitschritten
-        self.timeStepsPerPeriod = list(
-            range(self.nr_of_time_steps))  # Zeitschritte pro Periode, ohne ZRA = gesamte Anzahl
-        self.interPeriodTimeSteps = list(range(int(len(self.totalTimeSteps) / len(self.timeStepsPerPeriod)) + 1))
+        self.typical_periods = [0]
+        self.periods, self.periods_order, self.period_occurrences = [0], [0], [1]
+        self.total_time_steps = list(range(self.nr_of_time_steps))  # gesamte Anzahl an Zeitschritten
+        self.time_steps_per_period = list(range(self.nr_of_time_steps))  # Zeitschritte pro Periode, ohne ZRA = gesamte Anzahl
+        self.inter_period_time_steps = list(range(int(len(self.total_time_steps) / len(self.time_steps_per_period)) + 1))
 
     def cluster(self):
 
@@ -149,12 +148,12 @@ class Aggregation:
 
         # Überschreiben der Zeitreiheninformationen
         # self.total_periods = int((self.nr_of_time_steps * self.hours_per_time_step) / self.hours_per_period)
-        # self.typicalPeriods = aggregation.clusterPeriodIdx
-        # self.periodsOrder = aggregation.clusterOrder
-        # self.periodOccurances = aggregation.clusterPeriodNoOccur
+        # self.typical_periods = aggregation.clusterPeriodIdx
+        # self.periods_order = aggregation.clusterOrder
+        # self.period_occurrences = aggregation.clusterPeriodNoOccur
 
-        # self.timeStepsPerPeriod = list(range(self.nr_of_time_steps_per_period))
-        # self.periods = list(range(int(length(self.totalTimeSteps) / length(self.timeStepsPerPeriod))))
+        # self.time_steps_per_period = list(range(self.nr_of_time_steps_per_period))
+        # self.periods = list(range(int(length(self.total_time_steps) / length(self.time_steps_per_period))))
 
         # Zeit messen:
         tClusterEnd = time.time()
@@ -188,7 +187,7 @@ class Aggregation:
     def printDescriptionOfClusters(self):
         print('#########################')
         print('###### Clustering #######')
-        print('periodsOrder:')
+        print('periods_order:')
         print(self.aggregation.clusterOrder)
         print('clusterPeriodNoOccur:')
         print(self.aggregation.clusterPeriodNoOccur)
@@ -241,7 +240,7 @@ class Aggregation:
         timestring = timestamp.strftime('%Y-%m-%d')
 
         # Rahmenbedingungen und Ergebnisse speichern
-        periodsOrderString = ','.join(map(str, self.periodsOrder))
+        periodsOrderString = ','.join(map(str, self.periods_order))
 
         # Anzahl Perioden mit ggfs. Extremperioden
         noPer = self.nr_of_typical_periods
@@ -258,8 +257,8 @@ class Aggregation:
             'hasTSA': self.hasTSA,
             'hours_per_period': self.hours_per_period,
             'nr_of_typical_periods': noPer,
-            'periodsOrder': periodsOrderString,
-            #   'periodsOrder_raw': list(self.periodsOrder),
+            'periods_order': periodsOrderString,
+            #   'periodsOrder_raw': list(self.periods_order),
             'cluster time': self.tCluster,
 
             # 'best bound': float(str(self.results['Problem']).split('\n')[2].split(' ')[4]),

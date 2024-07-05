@@ -404,4 +404,4 @@ with open(agg.filename_infos,'rb') as f:
     infos = yaml.safe_load(f)
 
 # periods order of aggregated calculation:
-print('periodsOrder of aggregated calc: ' + str(infos['calculation']['aggregatedProps']['periodsOrder']))
+print('periods_order of aggregated calc: ' + str(infos['calculation']['aggregatedProps']['periods_order']))

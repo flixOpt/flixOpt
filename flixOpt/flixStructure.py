@@ -2479,14 +2479,14 @@ class Calculation:
         dataAgg.cluster()
         self.aggregation_data = dataAgg
 
-        self._infos['aggregatedProps']['periodsOrder'] = str(list(dataAgg.aggregation.clusterOrder))
+        self._infos['aggregatedProps']['periods_order'] = str(list(dataAgg.aggregation.clusterOrder))
 
         # aggregation_data.aggregation.clusterPeriodIdx
         # aggregation_data.aggregation.clusterOrder
         # aggregation_data.aggregation.clusterPeriodNoOccur
         # aggregation_data.aggregation.predictOriginalData()
-        # self.periodsOrder = aggregation.clusterOrder
-        # self.periodOccurances = aggregation.clusterPeriodNoOccur
+        # self.periods_order = aggregation.clusterOrder
+        # self.period_occurrences = aggregation.clusterPeriodNoOccur
 
         # ### Some plot for plausibility check ###
 
