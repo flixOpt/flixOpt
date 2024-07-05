@@ -72,16 +72,16 @@ def check_name_for_conformity(label: str):
                 ord('ö'): 'oe',
                 ord('ß'): 'ss',
                 ord('-'): '_'}
-    newName = label.translate(char_map)
-    if newName != label:
-        print('Name \'' + label + '\' ist nicht Attributnamen-konform und wird zu \'' + newName + '\' geändert')
+    new_label = label.translate(char_map)
+    if new_label != label:
+        print(f'{label=} doesnt allign with name restrictions and is changed to {new_label=}')
 
     # check, ob jetzt valid variable name: (für Verwendung in results_struct notwendig)
     import re
-    if not re.search(r'^[a-zA-Z_]\w*$', newName):
+    if not re.search(r'^[a-zA-Z_]\w*$', new_label):
         raise Exception('label \'' + label + '\' is not valid for variable name \n .\
                      (no number first, no special characteres etc.)')
-    return newName
+    return new_label
 
 def check_exists(exists: Union[int, list, np.ndarray])-> Union[int, list,np.ndarray]:
     # type checking for argument "exist"
