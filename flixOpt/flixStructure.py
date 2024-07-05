@@ -2361,9 +2361,9 @@ class Calculation:
         self._save_solve_infos()
 
     def do_aggregated_modeling(self, periodLengthInHours, nr_of_typical_periods,
-                               use_extreme_periods, fixStorageFlows,
-                               fixBinaryVarsOnly, percentageOfPeriodFreedom=0,
-                               costsOfPeriodFreedom=0,
+                               use_extreme_periods, fix_storage_flows,
+                               fix_binary_vars_only, percentage_of_period_freedom=0,
+                               costs_of_period_freedom=0,
                                addPeakMax=[],
                                addPeakMin=[]):
         '''
@@ -2380,20 +2380,20 @@ class Calculation:
         use_extreme_periods : boolean
             True, if periods of extreme values should be explicitly chosen
             Define recognised timeseries in args addPeakMax, addPeakMin!
-        fixStorageFlows : boolean
+        fix_storage_flows : boolean
             Defines, wether load- and unload-Flow should be also aggregated or not.
             If all other flows are fixed, it is mathematically not necessary
             to fix them.
-        fixBinaryVarsOnly : boolean
+        fix_binary_vars_only : boolean
             True, if only binary var should be aggregated.
             Additionally choose, wether orginal or aggregated timeseries should
             be chosen for the calculation.
-        percentageOfPeriodFreedom : 0...100
+        percentage_of_period_freedom : 0...100
             Normally timesteps of all periods in one period-collection
             are all equalized. Here you can choose, which percentage of values
             can maximally deviate from this and be "free variables". The solver
             chooses the "free variables".
-        costsOfPeriodFreedom : float
+        costs_of_period_freedom : float
             costs per "free variable". The default is 0.
             !! Warning: At the moment these costs are allocated to
             operation costs, not to penalty!!
@@ -2419,10 +2419,10 @@ class Calculation:
         self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
                                           'nr_of_typical_periods': nr_of_typical_periods,
                                           'use_extreme_periods': use_extreme_periods,
-                                          'fixStorageFlows': fixStorageFlows,
-                                          'fixBinaryVarsOnly': fixBinaryVarsOnly,
-                                          'percentageOfPeriodFreedom': percentageOfPeriodFreedom,
-                                          'costsOfPeriodFreedom': costsOfPeriodFreedom}
+                                          'fix_storage_flows': fix_storage_flows,
+                                          'fix_binary_vars_only': fix_binary_vars_only,
+                                          'percentage_of_period_freedom': percentage_of_period_freedom,
+                                          'costs_of_period_freedom': costs_of_period_freedom}
 
         self.calculation_type = 'aggregated'
         t_start_agg = time.time()
@@ -2524,17 +2524,17 @@ class Calculation:
         # ### Modeling ###
 
         aggregationModel = flixAgg.AggregationModeling('aggregation', self.system,
-                                                       indexVectorsOfClusters=dataAgg.index_vectors_of_clusters,
-                                                       fixBinaryVarsOnly=fixBinaryVarsOnly,
-                                                       fixStorageFlows=fixStorageFlows,
-                                                       listOfElementsToClusterize=None,
-                                                       percentageOfPeriodFreedom=percentageOfPeriodFreedom,
-                                                       costsOfPeriodFreedom=costsOfPeriodFreedom)
+                                                       index_vectors_of_clusters=dataAgg.index_vectors_of_clusters,
+                                                       fix_binary_vars_only=fix_binary_vars_only,
+                                                       fix_storage_flows=fix_storage_flows,
+                                                       elements_to_clusterize=None,
+                                                       percentage_of_period_freedom=percentage_of_period_freedom,
+                                                       costs_of_period_freedom=costs_of_period_freedom)
 
         # temporary Modeling-Element for equalizing indices of aggregation:
         self.system.add_temporary_elements(aggregationModel)
 
-        if fixBinaryVarsOnly:
+        if fix_binary_vars_only:
             TS_explicit = None
         else:
             # neue (Explizit)-Werte für TS sammeln::

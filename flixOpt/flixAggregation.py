@@ -142,7 +142,7 @@ class Aggregation:
         # Beachte: letzte Periode muss nicht vollgefüllt sein!
         clusterList = self.aggregation.clusterPeriodNoOccur.keys()
         # Leerer Dict:
-        indexVectorsOfClusters = {cluster: [] for cluster in clusterList}
+        index_vectors_of_clusters = {cluster: [] for cluster in clusterList}
         period_len = len(self.aggregation.stepIdx)
         for period in range(len(self.aggregation.clusterOrder)):
             clusterNr = self.aggregation.clusterOrder[period]
@@ -152,9 +152,9 @@ class Aggregation:
                                  len(self.timeseries) - 1)  # Beachtet auch letzte Periode
             indexVector = np.array(range(periodStartIndex, periodEndIndex + 1))
 
-            indexVectorsOfClusters[clusterNr].append(indexVector)
+            index_vectors_of_clusters[clusterNr].append(indexVector)
 
-        return indexVectorsOfClusters
+        return index_vectors_of_clusters
 
     def describe_clusters(self) -> str:
         aVisual = {}
@@ -194,12 +194,12 @@ class AggregationModeling(flixStructure.Element):
     def __init__(self,
                  label: str,
                  system,
-                 indexVectorsOfClusters: Dict[int, List[np.ndarray]],
-                 fixStorageFlows: bool = True,
-                 fixBinaryVarsOnly: bool = True,
-                 listOfElementsToClusterize=None,  # TODO: List[Element|
-                 percentageOfPeriodFreedom=0,
-                 costsOfPeriodFreedom=0,
+                 index_vectors_of_clusters: Dict[int, List[np.ndarray]],
+                 fix_storage_flows: bool = True,
+                 fix_binary_vars_only: bool = True,
+                 elements_to_clusterize: Optional[List] = None,  # TODO: List[Element|
+                 percentage_of_period_freedom=0,
+                 costs_of_period_freedom=0,
                  **kwargs):
         '''
         Modeling-Element for "index-equating"-equations
@@ -211,17 +211,17 @@ class AggregationModeling(flixStructure.Element):
             DESCRIPTION.
         es : TYPE
             DESCRIPTION.
-        indexVectorsOfClusters : TYPE
+        index_vectors_of_clusters : TYPE
             DESCRIPTION.
-        fixStorageFlows : TYPE, optional
+        fix_storage_flows : TYPE, optional
             DESCRIPTION. The default is True.
-        fixBinaryVarsOnly : TYPE, optional
+        fix_binary_vars_only : TYPE, optional
             DESCRIPTION. The default is True.
-        listOfElementsToClusterize : TYPE, optional
+        elements_to_clusterize : TYPE, optional
             DESCRIPTION. The default is None.
-        percentageOfPeriodFreedom : TYPE, optional
+        percentage_of_period_freedom : TYPE, optional
             DESCRIPTION. The default is 0.
-        costsOfPeriodFreedom : TYPE, optional
+        costs_of_period_freedom : TYPE, optional
             DESCRIPTION. The default is 0.
         **kwargs : TYPE
             DESCRIPTION.
@@ -233,13 +233,13 @@ class AggregationModeling(flixStructure.Element):
         '''
         system: flixStructure.System
         self.system = system
-        self.indexVectorsOfClusters = indexVectorsOfClusters
-        self.fixStorageFlows = fixStorageFlows
-        self.fixBinaryVarsOnly = fixBinaryVarsOnly
-        self.listOfElementsToClusterize = listOfElementsToClusterize
+        self.index_vectors_of_clusters = index_vectors_of_clusters
+        self.fix_storage_flows = fix_storage_flows
+        self.fix_binary_vars_only = fix_binary_vars_only
+        self.elements_to_clusterize = elements_to_clusterize
 
-        self.percentageOfPeriodFreedom = percentageOfPeriodFreedom
-        self.costsOfPeriodFreedom = costsOfPeriodFreedom
+        self.percentage_of_period_freedom = percentage_of_period_freedom
+        self.costs_of_period_freedom = costs_of_period_freedom
 
         super().__init__(label, **kwargs)
         # invest_parameters to attributes:
@@ -256,21 +256,21 @@ class AggregationModeling(flixStructure.Element):
 
     def do_modeling(self, system_model: flixStructure.SystemModel, time_indices: Union[list[int], range]):
 
-        if self.listOfElementsToClusterize is None:
+        if self.elements_to_clusterize is None:
             # Alle:
             compSet = set(self.system.components)
             flowSet = self.system.flows
         else:
             # Ausgewählte:
-            compSet = set(self.listOfElementsToClusterize)
-            flowSet = {flow for flow in self.system.flows if flow.comp in self.listOfElementsToClusterize}
+            compSet = set(self.elements_to_clusterize)
+            flowSet = {flow for flow in self.system.flows if flow.comp in self.elements_to_clusterize}
 
         flow: flixStructure.Flow
 
         # todo: hier anstelle alle Elemente durchgehen, nicht nur flows und comps:
         for element in flowSet | compSet:
             # Wenn StorageFlows nicht gefixt werden sollen und flow ein storage-Flow ist:
-            if (not self.fixStorageFlows) and hasattr(element, 'comp') and (isinstance(element.comp, flixComps.Storage)):
+            if (not self.fix_storage_flows) and hasattr(element, 'comp') and (isinstance(element.comp, flixComps.Storage)):
                 pass  # flow hier nicht fixen!
             else:
                 # On-Variablen:
@@ -289,7 +289,7 @@ class AggregationModeling(flixStructure.Element):
 
                     # todo: nicht schön! Zugriff muss über alle cTSVariablen erfolgen!
                 # Nicht-Binär-Variablen:
-                if not self.fixBinaryVarsOnly:
+                if not self.fix_binary_vars_only:
                     # Value-Variablen:
                     if hasattr(element.model, 'var_val'):
                         aVar = element.model.var_val
@@ -303,8 +303,8 @@ class AggregationModeling(flixStructure.Element):
         # eq1: x(p1,t) - x(p3,t) = 0 # wobei p1 und p3 im gleichen Cluster sind und t = 0..N_p
         idx_var1 = np.array([])
         idx_var2 = np.array([])
-        for clusterNr in self.indexVectorsOfClusters.keys():
-            listOfIndexVectors = self.indexVectorsOfClusters[clusterNr]
+        for clusterNr in self.index_vectors_of_clusters.keys():
+            listOfIndexVectors = self.index_vectors_of_clusters[clusterNr]
             # alle Indexvektor-Tupel durchgehen:
             for i in range(len(listOfIndexVectors) - 1):  # ! Nur wenn cluster mehr als eine Periode enthält:
                 # Falls eine Periode nicht ganz voll (eigl. nur bei letzter Periode möglich)
@@ -322,7 +322,7 @@ class AggregationModeling(flixStructure.Element):
         eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
         # Korrektur: (bisher nur für Binärvariablen:)
-        if aVar.is_binary and self.percentageOfPeriodFreedom > 0:
+        if aVar.is_binary and self.percentage_of_period_freedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
             var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, system_model,
                               is_binary=True)
@@ -348,7 +348,7 @@ class AggregationModeling(flixStructure.Element):
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
-            self.noOfCorrections = round(self.percentageOfPeriodFreedom / 100 * var_K1.length)
+            self.noOfCorrections = round(self.percentage_of_period_freedom / 100 * var_K1.length)
             eq_max = flixStructure.Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
@@ -358,7 +358,7 @@ class AggregationModeling(flixStructure.Element):
     def add_share_to_globals(self, globalComp: flixStructure.Global, system_model):
 
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
-        if (self.percentageOfPeriodFreedom > 0) & (self.costsOfPeriodFreedom != 0):
+        if (self.percentage_of_period_freedom > 0) & (self.costs_of_period_freedom != 0):
             for var_K in self.var_K_list:
                 # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!
-                globalComp.objective.add_summand(var_K, self.costsOfPeriodFreedom, as_sum=True)
+                globalComp.objective.add_summand(var_K, self.costs_of_period_freedom, as_sum=True)

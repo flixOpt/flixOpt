@@ -44,12 +44,12 @@ nr_of_typical_periods    = 21
 nr_of_typical_periods    = 4
 useExtremeValues    = True
 # useExtremeValues    = False
-fixBinaryVarsOnly   = False
-# fixBinaryVarsOnly   = True
-fixStorageFlows     = True
-# fixStorageFlows     = False    
-percentageOfPeriodFreedom = 0
-costsOfPeriodFreedom = 0
+fix_binary_vars_only   = False
+# fix_binary_vars_only   = True
+fix_storage_flows     = True
+# fix_storage_flows     = False    
+percentage_of_period_freedom = 0
+costs_of_period_freedom = 0
 
 import pandas as pd
 import numpy as np
@@ -255,10 +255,10 @@ if doAggregatedCalc :
     calcAgg.do_aggregated_modeling(periodLengthInHours,
                                    nr_of_typical_periods,
                                    useExtremeValues,
-                                   fixStorageFlows,
-                                   fixBinaryVarsOnly,
-                                   percentageOfPeriodFreedom = percentageOfPeriodFreedom,
-                                   costsOfPeriodFreedom = costsOfPeriodFreedom,
+                                   fix_storage_flows,
+                                   fix_binary_vars_only,
+                                   percentage_of_period_freedom = percentage_of_period_freedom,
+                                   costs_of_period_freedom = costs_of_period_freedom,
                                    addPeakMax=[TS_Q_th_Last],  # add timeseries of period with maxPeak explicitly
                                    addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
                                    )
