@@ -148,10 +148,10 @@ def plotStackedSteps(ax, df, showLegend=True, colors=None):  # df = dataframes!
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
 
-def is_number(s):
+def is_number(number_alias:str):
     """ Returns True is string is a number. """
     try:
-        float(s)
+        float(number_alias)
         return True
     except ValueError:
         return False
