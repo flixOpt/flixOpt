@@ -1,12 +1,14 @@
 import unittest
-import numpy as np
-import pandas as pd
 import os
 import datetime
+
+import numpy as np
+import pandas as pd
+
 from flixOpt.elements import *
 from flixOpt.components import *
 from flixOpt.system import System
-from flixOpt.calculation import Calculation
+from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 import flixOpt.flixPostprocessing as flixPost
 
 class BaseTest(unittest.TestCase):
@@ -93,8 +95,8 @@ class TestSimple(BaseTest):
 
         time_indices = None
 
-        aCalc = Calculation('Test_Sim', es, 'pyomo', time_indices)
-        aCalc.do_modeling_as_one_segment()
+        aCalc = FullCalculation('Test_Sim', es, 'pyomo', time_indices)
+        aCalc.do_modeling()
 
         es.printModel()
         es.print_variables()
@@ -248,8 +250,8 @@ class TestComplex(BaseTest):
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
-        aCalc = Calculation('Sim1', es, 'pyomo', None)
-        aCalc.do_modeling_as_one_segment()
+        aCalc = FullCalculation('Sim1', es, 'pyomo', None)
+        aCalc.do_modeling()
 
         es.printModel()
         es.print_variables()
@@ -293,8 +295,8 @@ class TestComplex(BaseTest):
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
         es.add_components(aSpeicher)
 
-        aCalc = Calculation('Sim1', es, 'pyomo', None)
-        aCalc.do_modeling_as_one_segment()
+        aCalc = FullCalculation('Sim1', es, 'pyomo', None)
+        aCalc.do_modeling()
 
         es.printModel()
         es.print_variables()
@@ -357,14 +359,14 @@ class TestModelingTypes(BaseTest):
         es.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
 
         if doFullCalc:
-            calc = Calculation('fullModel', es, 'pyomo')
-            calc.do_modeling_as_one_segment()
+            calc = FullCalculation('fullModel', es, 'pyomo')
+            calc.do_modeling()
         if doSegmentedCalc:
-            calc = Calculation('segModel', es, 'pyomo')
-            calc.do_segmented_modeling_and_solving(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
+            calc = SegmentedCalculation('segModel', es, 'pyomo')
+            calc.solve(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
         if doAggregatedCalc:
-            calc = Calculation('aggModel', es, 'pyomo')
-            calc.do_aggregated_modeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
+            calc = AggregatedCalculation('aggModel', es, 'pyomo')
+            calc.do_modeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
 
         es.printModel()
         es.print_variables()
