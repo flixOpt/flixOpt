@@ -1782,7 +1782,7 @@ class System:
     def add_temporary_elements(self, *args: Element) -> None:
         '''
         add temporary modeling elements, only valid for one calculation,
-        i.g. cAggregationModeling-Element
+        i.g. AggregationModeling-Element
 
         Parameters
         ----------
@@ -2523,13 +2523,13 @@ class Calculation:
         # ################
         # ### Modeling ###
 
-        aggregationModel = flixAgg.cAggregationModeling('aggregation', self.system,
-                                                        indexVectorsOfClusters=dataAgg.index_vectors_of_clusters,
-                                                        fixBinaryVarsOnly=fixBinaryVarsOnly,
-                                                        fixStorageFlows=fixStorageFlows,
-                                                        listOfElementsToClusterize=None,
-                                                        percentageOfPeriodFreedom=percentageOfPeriodFreedom,
-                                                        costsOfPeriodFreedom=costsOfPeriodFreedom)
+        aggregationModel = flixAgg.AggregationModeling('aggregation', self.system,
+                                                       indexVectorsOfClusters=dataAgg.index_vectors_of_clusters,
+                                                       fixBinaryVarsOnly=fixBinaryVarsOnly,
+                                                       fixStorageFlows=fixStorageFlows,
+                                                       listOfElementsToClusterize=None,
+                                                       percentageOfPeriodFreedom=percentageOfPeriodFreedom,
+                                                       costsOfPeriodFreedom=costsOfPeriodFreedom)
 
         # temporary Modeling-Element for equalizing indices of aggregation:
         self.system.add_temporary_elements(aggregationModel)

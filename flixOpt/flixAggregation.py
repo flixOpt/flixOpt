@@ -190,9 +190,17 @@ from flixOpt.basicModeling import *
 
 
 # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
-class cAggregationModeling(flixStructure.Element):
-    def __init__(self, label, system, indexVectorsOfClusters, fixStorageFlows=True, fixBinaryVarsOnly=True,
-                 listOfElementsToClusterize=None, percentageOfPeriodFreedom=0, costsOfPeriodFreedom=0, **kwargs):
+class AggregationModeling(flixStructure.Element):
+    def __init__(self,
+                 label,
+                 system,
+                 indexVectorsOfClusters,
+                 fixStorageFlows=True,
+                 fixBinaryVarsOnly=True,
+                 listOfElementsToClusterize=None,
+                 percentageOfPeriodFreedom=0,
+                 costsOfPeriodFreedom=0,
+                 **kwargs):
         '''
         Modeling-Element for "index-equating"-equations
 
