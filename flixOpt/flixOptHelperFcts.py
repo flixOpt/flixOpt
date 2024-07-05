@@ -219,19 +219,9 @@ def get_time_series_with_end(time_series: np.ndarray[np.datetime64],
     t_end = time_series[-1] + dt_last
     return np.append(time_series, t_end)
 
-
-''' Tests:
-import flixOptHelperFcts as helpers
-
-helpers.as_vector(3,10)
-helpers.as_vector(np.array([1,2]),3)
-
-
-'''
-
-
-# check sowohl für globale Zeitreihe, als auch für chosenIndexe:
 def checkTimeSeries(aStr, time_series):
+    # check sowohl für globale Zeitreihe, als auch für chosenIndexe:
+
     # Zeitdifferenz:
     #              zweites bis Letztes            - erstes bis Vorletztes
     dt = time_series[1:] - time_series[0:-1]
@@ -246,10 +236,8 @@ def checkTimeSeries(aStr, time_series):
         raise Exception(aStr + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
 
 
-import yaml
-
-
 def printDictAndList(aDictOrList):
+    import yaml
     print(yaml.dump(aDictOrList,
                     default_flow_style=False,
                     width=1000,  # verhindern von zusätzlichen Zeilenumbrüchen
@@ -276,17 +264,15 @@ def printDictAndList(aDictOrList):
     #     print('' + str(i) + ': ')
     #     printDictAndList(aDictOrList[i], place + '  ')
 
-
-# max from num-lists and skalars
-# arg = list, array, skalar
-# example: max_of_lists_and_scalars([1,2],3) --> 3
 def max_args(*args):
+    # max from num-lists and skalars
+    # arg = list, array, skalar
+    # example: max_of_lists_and_scalars([1,2],3) --> 3
     array = _mergeToArray(args)
     return array.max()
 
-
-# example: min_of_lists_and_scalars([1,2],3) --> 1
 def min_args(*args):
+    # example: min_of_lists_and_scalars([1,2],3) --> 1
     array = _mergeToArray(args)
     return array.min()
 
