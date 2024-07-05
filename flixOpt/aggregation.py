@@ -3,23 +3,26 @@
 Created on Fri Nov 26 10:23:49 2021
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
-"""
-# -*- coding: utf-8 -*-
 
-"""
 Modul zur aggregierten Berechnung eines Energiesystemmodells.
 """
 
 import copy
 import timeit
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 import warnings
 
 import pandas as pd
+import numpy as np
 import tsam.timeseriesaggregation as tsam
 
 from flixOpt.core import Skalar, TimeSeries
-from flixOpt.elements import Global
+from flixOpt.elements import Global, Flow
+from flixOpt.system import System
+from flixOpt.components import Storage
+from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt.structure import Element, SystemModel
+from flixOpt.modeling import Equation, Variable, VariableTS, LinearModel
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -38,7 +41,7 @@ class Aggregation:
                  nr_of_typical_periods: int = 8,
                  use_extreme_periods: bool = True,
                  weights: Optional[dict] = None,
-                 addPeakMax: Optional[List[TimeSeries]] =None,
+                 addPeakMax: Optional[List[TimeSeries]] = None,
                  addPeakMin: Optional[List[TimeSeries]] = None
                  ):
 
@@ -175,16 +178,11 @@ class Aggregation:
                 f'########################')
 
 
-from flixOpt import structure
-from flixOpt import components
-from flixOpt.modeling import *
-
-
-# ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
-class AggregationModeling(structure.Element):
+class AggregationModeling(Element):
+    # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
     def __init__(self,
                  label: str,
-                 system,
+                 system: System,
                  index_vectors_of_clusters: Dict[int, List[np.ndarray]],
                  fix_storage_flows: bool = True,
                  fix_binary_vars_only: bool = True,
@@ -222,7 +220,6 @@ class AggregationModeling(structure.Element):
         None.
 
         '''
-        system: structure.System
         self.system = system
         self.index_vectors_of_clusters = index_vectors_of_clusters
         self.fix_storage_flows = fix_storage_flows
@@ -242,10 +239,10 @@ class AggregationModeling(structure.Element):
     def finalize(self):
         super().finalize()
 
-    def declare_vars_and_eqs(self, system_model: structure.SystemModel):
+    def declare_vars_and_eqs(self, system_model: SystemModel):
         super().declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: structure.SystemModel, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
 
         if self.elements_to_clusterize is None:
             # Alle:
@@ -256,12 +253,13 @@ class AggregationModeling(structure.Element):
             compSet = set(self.elements_to_clusterize)
             flowSet = {flow for flow in self.system.flows if flow.comp in self.elements_to_clusterize}
 
-        flow: structure.Flow
+        flow: Flow
 
         # todo: hier anstelle alle Elemente durchgehen, nicht nur flows und comps:
         for element in flowSet | compSet:
             # Wenn StorageFlows nicht gefixt werden sollen und flow ein storage-Flow ist:
-            if (not self.fix_storage_flows) and hasattr(element, 'comp') and (isinstance(element.comp, components.Storage)):
+            if (not self.fix_storage_flows) and hasattr(element, 'comp') and (
+            isinstance(element.comp, Storage)):
                 pass  # flow hier nicht fixen!
             else:
                 # On-Variablen:
@@ -315,9 +313,11 @@ class AggregationModeling(structure.Element):
         # Korrektur: (bisher nur für Binärvariablen:)
         if aVar.is_binary and self.percentage_of_period_freedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, system_model,
+            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
+                              system_model,
                               is_binary=True)
-            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self, system_model,
+            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
+                              system_model,
                               is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
@@ -353,3 +353,110 @@ class AggregationModeling(structure.Element):
             for var_K in self.var_K_list:
                 # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!
                 globalComp.objective.add_summand(var_K, self.costs_of_period_freedom, as_sum=True)
+
+
+class TimeSeriesCollection:
+    '''
+    calculates weights of TimeSeries for being in that collection (depending on)
+    '''
+
+    @property
+    def addPeak_Max_labels(self):
+        if self._addPeakMax_labels == []:
+            return None
+        else:
+            return self._addPeakMax_labels
+
+    @property
+    def addPeak_Min_labels(self):
+        if self._addPeakMin_labels == []:
+            return None
+        else:
+            return self._addPeakMin_labels
+
+    def __init__(self,
+                 time_series_list: List[TimeSeries],
+                 addPeakMax_TSraw: Optional[List[TimeSeriesRaw]] = None,
+                 addPeakMin_TSraw: Optional[List[TimeSeriesRaw]] = None):
+        self.time_series_list = time_series_list
+        self.addPeakMax_TSraw = addPeakMax_TSraw or []
+        self.addPeakMin_TSraw = addPeakMin_TSraw or []
+        # i.g.: self.agg_type_count = {'solar': 3, 'price_el' = 2}
+        self.agg_type_count = self._get_agg_type_count()
+
+        self._checkPeak_TSraw(addPeakMax_TSraw)
+        self._checkPeak_TSraw(addPeakMin_TSraw)
+
+        # these 4 attributes are now filled:
+        self.seriesDict = {}
+        self.weightDict = {}
+        self._addPeakMax_labels = []
+        self._addPeakMin_labels = []
+        self.calculateParametersForTSAM()
+
+    def calculateParametersForTSAM(self):
+        for i in range(len(self.time_series_list)):
+            aTS: TimeSeries
+            aTS = self.time_series_list[i]
+            # check uniqueness of label:
+            if aTS.label_full in self.seriesDict.keys():
+                raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
+            # add to dict:
+            self.seriesDict[
+                aTS.label_full] = aTS.active_data_vector  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
+            self.weightDict[aTS.label_full] = self._getWeight(aTS)  # Wichtung ermitteln!
+            if (aTS.TSraw is not None):
+                if aTS.TSraw in self.addPeakMax_TSraw:
+                    self._addPeakMax_labels.append(aTS.label_full)
+                if aTS.TSraw in self.addPeakMin_TSraw:
+                    self._addPeakMin_labels.append(aTS.label_full)
+
+    def _get_agg_type_count(self):
+        # count agg_types:
+        from collections import Counter
+
+        TSlistWithAggType = []
+        for TS in self.time_series_list:
+            if self._get_agg_type(TS) is not None:
+                TSlistWithAggType.append(TS)
+        agg_types = (aTS.TSraw.agg_group for aTS in TSlistWithAggType)
+        return Counter(agg_types)
+
+    def _get_agg_type(self, aTS: TimeSeries):
+        if (aTS.TSraw is not None):
+            agg_type = aTS.TSraw.agg_group
+        else:
+            agg_type = None
+        return agg_type
+
+    def _getWeight(self, aTS: TimeSeries):
+        if aTS.TSraw is None:
+            # default:
+            weight = 1
+        elif aTS.TSraw.agg_weight is not None:
+            # explicit:
+            weight = aTS.TSraw.agg_weight
+        elif aTS.TSraw.agg_group is not None:
+            # via agg_group:
+            # i.g. n=3 -> weight=1/3
+            weight = 1 / self.agg_type_count[aTS.TSraw.agg_group]
+        else:
+            weight = 1
+            # raise Exception('TSraw is without weight definition.')
+        return weight
+
+    def _checkPeak_TSraw(self, aTSrawlist):
+        if aTSrawlist is not None:
+            for aTSraw in aTSrawlist:
+                if not isinstance(aTSraw, TimeSeriesRaw):
+                    raise Exception('addPeak_max/min must be list of TimeSeriesRaw-objects!')
+
+    def print(self):
+        print('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
+        for TS in self.time_series_list:
+            aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_group: ' + str(self._get_agg_type(TS)) + ')'
+            print(aStr.format(self._getWeight(TS)))
+        if len(self.agg_type_count.keys()) > 0:
+            print('agg_types: ' + str(list(self.agg_type_count.keys())))
+        else:
+            print('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
