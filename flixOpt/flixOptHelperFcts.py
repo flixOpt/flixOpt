@@ -45,9 +45,8 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
         return np.array(value)
 
 
-# changes zeros to Nans in Vector:
 def zero_to_nan(vector: np.ndarray) -> np.ndarray:
-    # nanVector                 = aVector.copy()
+    # changes zeros to Nans in Vector:
     nan_vector = vector.astype(float)  # Binär ist erstmal int8-Vektor, Nan gibt es da aber nicht
     nan_vector[nan_vector == 0] = math.nan
     return nan_vector
@@ -65,8 +64,8 @@ def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesRaw],
         raise Exception(f'{label} is above its {upper_bound=}!')
 
 
-# löscht alle in Attributen ungültigen Zeichen: todo: Vollständiger machen!
 def check_name_for_conformity(label: str):
+    # löscht alle in Attributen ungültigen Zeichen: todo: Vollständiger machen!
     char_map = {ord('ä'): 'ae',
                 ord('ü'): 'ue',
                 ord('ö'): 'oe',
