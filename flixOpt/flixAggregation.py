@@ -56,6 +56,7 @@ class Aggregation:
         """
 
         self.results = None
+        self.time_for_clustering = None
         self.aggregation: Optional[tsam.TimeSeriesAggregation] = None
 
         self.name = name
@@ -100,7 +101,7 @@ class Aggregation:
         Durchführung der Zeitreihenaggregation
         """
 
-        tClusterStart = time.time()
+        start_time = time.time()
 
         # Neu berechnen der nr_of_time_steps_per_period
         self.nr_of_time_steps_per_period = int(self.hours_per_period / self.hours_per_time_step)
@@ -118,20 +119,20 @@ class Aggregation:
                                                       )
 
         self.aggregation.createTypicalPeriods()   # Ausführen der Aggregation/Clustering
-        predictedPeriods = self.aggregation.predictOriginalData()   # Hochrechnen der aggregierten Daten, um sie später zu speichern
 
         # ERGEBNISSE:
-        self.aggregated_timeseries = predictedPeriods
-        self.aggregated_timeseries_t = self.aggregated_timeseries.set_index(self.original_timeseries_index,
-                                                                            inplace=False)  # neue DF erstellen
+        self.results = self.aggregation.predictOriginalData()
 
-        self.index_vectors_of_clusters = self.get_index_vectors_of_clusters()
+        self.time_for_clustering = time.time() - start_time   # Zeit messen:
         print(self.describe_clusters())
 
-        # Zeit messen:
-        self.time_for_clustering = time.time() - tClusterStart
+    @property
+    def results_original_index(self):
+        return self.results.set_index(self.original_timeseries_index, inplace=False)  # neue DF erstellen
 
-    def get_index_vectors_of_clusters(self):
+    @property
+    def index_vectors_of_clusters(self):
+        # TODO: make more performant? using self._index_vectors_of_clusters maybe?
         ###############
         # Zuordnung der Indexe erstellen: 
         # {cluster 0: [index_vector_3, index_vector_7]
@@ -143,7 +144,6 @@ class Aggregation:
         # Leerer Dict:
         indexVectorsOfClusters = {cluster: [] for cluster in clusterList}
         period_len = len(self.aggregation.stepIdx)
-        stepIdx = np.array(self.aggregation.stepIdx)  # nur Umwandlen in array
         for period in range(len(self.aggregation.clusterOrder)):
             clusterNr = self.aggregation.clusterOrder[period]
 
