@@ -69,34 +69,29 @@ class Aggregation:
         self.addPeakMin = addPeakMin
 
         # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
-        self.extremePeriodMethod = 'None'
-        if self.use_extreme_periods:
-            self.extremePeriodMethod = 'new_cluster_center'
-            # check:
-            if not (self.addPeakMax) and not (self.addPeakMin):
-                raise Exception('addPeakMax or addPeakMin timeseries given if useExtremValues=True!')
+        self.extreme_period_method = 'new_cluster_center' if self.use_extreme_periods else 'None'
+        if self.use_extreme_periods and not (self.addPeakMax or self.addPeakMin):   # Check
+            raise Exception('addPeakMax or addPeakMin timeseries given if useExtremValues=True!')
 
         # Initiales Setzen von Zeitreiheninformationen; werden überschrieben, falls Zeitreihenaggregation
-        self.numberOfTimeSteps = len(self.timeseries.index)
-        self.numberOfTimeStepsPerPeriod = self.numberOfTimeSteps
-        self.totalPeriods = 1
+        self.nr_of_time_steps = len(self.timeseries.index)
+        self.nr_of_time_steps_per_period = self.nr_of_time_steps   # TODO: Remove unused parameter
+        self.total_periods = 1      # TODO: Remove unused parameter
 
         # Timeseries Index anpassen, damit gesamter Betrachtungszeitraum als eine lange Periode + entsprechender Zeitschrittanzahl interpretiert wird
-        self.timeseriesIndex = self.timeseries.index  # ursprünglichen Index in Array speichern für späteres Speichern
-        periodIndex, stepIndex = [], []
-        for ii in range(0, self.numberOfTimeSteps):
-            periodIndex.append(0)
-            stepIndex.append(ii)
-        self.timeseries.index = pd.MultiIndex.from_arrays([periodIndex, stepIndex],
+        self.original_timeseries_index = self.timeseries.index  # ursprünglichen Index in Array speichern für späteres Speichern
+        period_index = [0] * self.nr_of_time_steps
+        step_index = list(range(0, self.nr_of_time_steps))
+        self.timeseries.index = pd.MultiIndex.from_arrays([period_index, step_index],
                                                           names=['Period', 'TimeStep'])
 
         # Setzen der Zeitreihendaten für Modell
         # werden später überschrieben, falls Zeitreihenaggregation
         self.typicalPeriods = [0]
         self.periods, self.periodsOrder, self.periodOccurances = [0], [0], [1]
-        self.totalTimeSteps = list(range(self.numberOfTimeSteps))  # gesamte Anzahl an Zeitschritten
+        self.totalTimeSteps = list(range(self.nr_of_time_steps))  # gesamte Anzahl an Zeitschritten
         self.timeStepsPerPeriod = list(
-            range(self.numberOfTimeSteps))  # Zeitschritte pro Periode, ohne ZRA = gesamte Anzahl
+            range(self.nr_of_time_steps))  # Zeitschritte pro Periode, ohne ZRA = gesamte Anzahl
         self.interPeriodTimeSteps = list(range(int(len(self.totalTimeSteps) / len(self.timeStepsPerPeriod)) + 1))
 
     def cluster(self):
@@ -107,8 +102,8 @@ class Aggregation:
 
         tClusterStart = time.time()
 
-        # Neu berechnen der numberOfTimeStepsPerPeriod
-        self.numberOfTimeStepsPerPeriod = int(self.hours_per_period / self.hours_per_time_step)
+        # Neu berechnen der nr_of_time_steps_per_period
+        self.nr_of_time_steps_per_period = int(self.hours_per_period / self.hours_per_time_step)
 
         # Erstellen des aggregation objects
         aggregation = tsam.TimeSeriesAggregation(self.timeseries,
@@ -116,7 +111,7 @@ class Aggregation:
                                                  hoursPerPeriod=self.hours_per_period,
                                                  resolution=self.hours_per_time_step,
                                                  clusterMethod='k_means',
-                                                 extremePeriodMethod=self.extremePeriodMethod,
+                                                 extremePeriodMethod=self.extreme_period_method,
                                                  # flixi: 'None'/'new_cluster_center'
                                                  weightDict=self.weights,
                                                  addPeakMax=self.addPeakMax,
@@ -135,7 +130,7 @@ class Aggregation:
 
         # ERGEBNISSE:
         self.totalTimeseries = predictedPeriods
-        self.totalTimeseries_t = self.totalTimeseries.set_index(self.timeseriesIndex,
+        self.totalTimeseries_t = self.totalTimeseries.set_index(self.original_timeseries_index,
                                                                 inplace=False)  # neue DF erstellen
 
         periodsIndexVectorsOfClusters = {}
@@ -153,12 +148,12 @@ class Aggregation:
         ##############
 
         # Überschreiben der Zeitreiheninformationen
-        # self.totalPeriods = int((self.numberOfTimeSteps * self.hours_per_time_step) / self.hours_per_period)
+        # self.total_periods = int((self.nr_of_time_steps * self.hours_per_time_step) / self.hours_per_period)
         # self.typicalPeriods = aggregation.clusterPeriodIdx
         # self.periodsOrder = aggregation.clusterOrder
         # self.periodOccurances = aggregation.clusterPeriodNoOccur
 
-        # self.timeStepsPerPeriod = list(range(self.numberOfTimeStepsPerPeriod))
+        # self.timeStepsPerPeriod = list(range(self.nr_of_time_steps_per_period))
         # self.periods = list(range(int(length(self.totalTimeSteps) / length(self.timeStepsPerPeriod))))
 
         # Zeit messen:
@@ -256,8 +251,8 @@ class Aggregation:
         parameterDict = {
             'date': timestring,
             'name': self.name,
-            'start': str(self.timeseriesIndex[0]),
-            'end': str(self.timeseriesIndex[-1]),
+            'start': str(self.original_timeseries_index[0]),
+            'end': str(self.original_timeseries_index[-1]),
             'hours_per_time_step': self.hours_per_time_step,
             'use_extreme_periods': self.use_extreme_periods,
             'hasTSA': self.hasTSA,
