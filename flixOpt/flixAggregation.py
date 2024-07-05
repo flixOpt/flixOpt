@@ -94,7 +94,7 @@ class Aggregation:
         self.time_steps_per_period = list(range(self.nr_of_time_steps))  # Zeitschritte pro Periode, ohne ZRA = gesamte Anzahl
         self.inter_period_time_steps = list(range(int(len(self.total_time_steps) / len(self.time_steps_per_period)) + 1))
 
-    def cluster(self):
+    def cluster(self) -> None:
 
         """
         Durchführung der Zeitreihenaggregation
@@ -125,14 +125,13 @@ class Aggregation:
         self.aggregated_timeseries_t = self.aggregated_timeseries.set_index(self.original_timeseries_index,
                                                                             inplace=False)  # neue DF erstellen
 
-        self.indexVectorsOfClusters = self.getIndexVectorsOfClusters()
-        self.printDescriptionOfClusters()
+        self.index_vectors_of_clusters = self.get_index_vectors_of_clusters()
+        print(self.describe_clusters())
 
         # Zeit messen:
-        tClusterEnd = time.time()
-        self.tCluster = tClusterEnd - tClusterStart
+        self.time_for_clustering = time.time() - tClusterStart
 
-    def getIndexVectorsOfClusters(self):
+    def get_index_vectors_of_clusters(self):
         ###############
         # Zuordnung der Indexe erstellen: 
         # {cluster 0: [index_vector_3, index_vector_7]
@@ -157,29 +156,32 @@ class Aggregation:
 
         return indexVectorsOfClusters
 
-    def printDescriptionOfClusters(self):
-        print('#########################')
-        print('###### Clustering #######')
-        print('periods_order:')
-        print(self.aggregation.clusterOrder)
-        print('clusterPeriodNoOccur:')
-        print(self.aggregation.clusterPeriodNoOccur)
-        print('indexVectorsOfClusters:')
+    def describe_clusters(self) -> str:
         aVisual = {}
-        for cluster in self.indexVectorsOfClusters.keys():
+        for cluster in self.index_vectors_of_clusters.keys():
             aVisual[cluster] = [str(indexVector[0]) + '...' + str(indexVector[-1]) for indexVector in
-                                self.indexVectorsOfClusters[cluster]]
-        print(aVisual)
-        print('########################')
+                                self.index_vectors_of_clusters[cluster]]
 
         if self.use_extreme_periods:
-            print('extremePeriods:')
             # Zeitreihe rauslöschen:
             extremePeriods = self.aggregation.extremePeriods.copy()
             for key, val in extremePeriods.items():
                 del (extremePeriods[key]['profile'])
-            print(extremePeriods)
-            print('########################')
+        else:
+            extremePeriods = {}
+
+        return (f'#########################\n'
+                f'###### Clustering #######\n'
+                f'periods_order:\n'
+                f'{self.aggregation.clusterOrder}\n'
+                f'clusterPeriodNoOccur:\n'
+                f'{self.aggregation.clusterPeriodNoOccur}\n'
+                f'index_vectors_of_clusters:\n'
+                f'{aVisual}\n'
+                f'########################\n'
+                f'extremePeriods:\n'
+                f'{extremePeriods}\n'
+                f'########################')
 
     def saveResults(self, addTimeStamp=True):
         """
@@ -209,7 +211,7 @@ class Aggregation:
             'nr_of_typical_periods': noPer,
             'periods_order': periodsOrderString,
             #   'periodsOrder_raw': list(self.periods_order),
-            'cluster time': self.tCluster,
+            'cluster time': self.time_for_clustering,
 
             # 'best bound': float(str(self.results['Problem']).split('\n')[2].split(' ')[4]),
             # 'best objective': float(str(self.results['Problem']).split('\n')[3].split(' ')[4])

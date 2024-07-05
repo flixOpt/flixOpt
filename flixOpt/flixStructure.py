@@ -2524,7 +2524,7 @@ class Calculation:
         # ### Modeling ###
 
         aggregationModel = flixAgg.cAggregationModeling('aggregation', self.system,
-                                                        indexVectorsOfClusters=dataAgg.indexVectorsOfClusters,
+                                                        indexVectorsOfClusters=dataAgg.index_vectors_of_clusters,
                                                         fixBinaryVarsOnly=fixBinaryVarsOnly,
                                                         fixStorageFlows=fixStorageFlows,
                                                         listOfElementsToClusterize=None,
