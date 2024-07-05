@@ -1703,7 +1703,7 @@ class System:
         self.last_time_step_hours = last_time_step_hours
 
         self.time_series_with_end = helpers.get_time_series_with_end(time_series, last_time_step_hours)
-        helpers.checkTimeSeries('global esTimeSeries', self.time_series_with_end)
+        helpers.check_time_series('global esTimeSeries', self.time_series_with_end)
 
         # defaults:
         self.components: List[Component] = []
@@ -2204,7 +2204,7 @@ class Calculation:
         self.time_indices = time_indices or range(len(system.time_series))  # Wenn time_indices = None, dann alle nehmen
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             system.get_time_data_from_indices(self.time_indices))
-        helpers.checkTimeSeries('time_indices', self.time_series)
+        helpers.check_time_series('time_indices', self.time_series)
 
         self._results = None
         self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!

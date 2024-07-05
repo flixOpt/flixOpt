@@ -82,6 +82,7 @@ def check_name_for_conformity(label: str):
                      (no number first, no special characteres etc.)')
     return new_label
 
+
 def check_exists(exists: Union[int, list, np.ndarray])-> Union[int, list,np.ndarray]:
     # type checking for argument "exist"
     if np.all(np.isin(exists, [0, 1])):
@@ -219,7 +220,9 @@ def get_time_series_with_end(time_series: np.ndarray[np.datetime64],
     t_end = time_series[-1] + dt_last
     return np.append(time_series, t_end)
 
-def checkTimeSeries(aStr, time_series):
+
+def check_time_series(label: str,
+                      time_series: np.ndarray[np.datetime64]):
     # check sowohl für globale Zeitreihe, als auch für chosenIndexe:
 
     # Zeitdifferenz:
@@ -229,11 +232,11 @@ def checkTimeSeries(aStr, time_series):
     dt_in_hours = dt / np.timedelta64(1, 'h')
 
     # unterschiedliche dt:
-    if max(dt_in_hours) - min(dt_in_hours) != 0:
-        print(aStr + ': !! Achtung !! unterschiedliche delta_t von ' + str(min(dt)) + 'h bis ' + str(max(dt)) + ' h')
+    if np.max(dt_in_hours) - np.min(dt_in_hours) != 0:
+        print(label + ': !! Achtung !! unterschiedliche delta_t von ' + str(min(dt)) + 'h bis ' + str(max(dt)) + ' h')
     # negative dt:
-    if min(dt_in_hours) < 0:
-        raise Exception(aStr + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
+    if np.min(dt_in_hours) < 0:
+        raise Exception(label + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
 
 
 def printDictAndList(aDictOrList):
