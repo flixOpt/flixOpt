@@ -375,7 +375,7 @@ class Element:
             if aVar.is_binary and aVar.length > 1:
                 # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
                 #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.result)
+                aData[aVar.label + '_'] = helpers.zero_to_nan(aVar.result)
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben

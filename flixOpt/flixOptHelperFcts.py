@@ -44,7 +44,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
         return np.array(value)
 
 # changes zeros to Nans in Vector:
-def zerosToNans(aVector):
+def zero_to_nan(aVector):
     # nanVector                 = aVector.copy()
     nanVector = aVector.astype(float)  # Binär ist erstmal int8-Vektor, Nan gibt es da aber nicht
     nanVector[nanVector == 0] = math.nan
