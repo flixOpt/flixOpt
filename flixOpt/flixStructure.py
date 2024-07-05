@@ -375,7 +375,7 @@ class Element:
             if aVar.is_binary and aVar.length > 1:
                 # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
                 #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = helpers.zerosToNans(aVar.result)
+                aData[aVar.label + '_'] = helpers.zero_to_nan(aVar.result)
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben
@@ -688,7 +688,7 @@ class Component(Element):
             raise NotImplementedError("'on_hours_total_min' is not implemented yet for Components. Use Flow directly instead")
         if on_hours_total_max is not None:
             raise NotImplementedError("'on_hours_total_max' is not implemented yet for Components. Use Flow directly instead")
-        label = helpers.checkForAttributeNameConformity(label)  # todo: indexierbar / eindeutig machen!
+        label = helpers.check_name_for_conformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
         self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
@@ -696,7 +696,7 @@ class Component(Element):
         self.on_hours_total_min = on_hours_total_min
         self.on_hours_total_max = on_hours_total_max
         self.running_hour_effects = as_effect_dict_with_ts('running_hour_effects', running_hour_effects, self)
-        self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
+        self.exists = TimeSeries('exists', helpers.check_exists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:
@@ -1310,7 +1310,7 @@ class Flow(Element):
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
 
-        self.exists = TimeSeries('exists', helpers.checkExists(exists), self)
+        self.exists = TimeSeries('exists', helpers.check_exists(exists), self)
         self.group = group   # TODO: wird überschrieben von Component!
         self.values_before_begin = np.array(values_before_begin) if values_before_begin else np.array([0, 0])  # list -> np-array
 
@@ -1390,7 +1390,7 @@ class Flow(Element):
 
         # exist-merge aus Flow.exist und Comp.exist
         exists_global = np.multiply(self.exists.data, self.comp.exists.data) # array of 0 and 1
-        self.exists_with_comp = TimeSeries('exists_with_comp', helpers.checkExists(exists_global), self)
+        self.exists_with_comp = TimeSeries('exists_with_comp', helpers.check_exists(exists_global), self)
         # combine max_rel with and exist from the flow and the comp it belongs to
         self.max_rel_with_exists = TimeSeries('max_rel_with_exists', np.multiply(self.max_rel.data, self.exists_with_comp.data), self)
         self.min_rel_with_exists = TimeSeries('min_rel_with_exists', np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
@@ -1702,8 +1702,8 @@ class System:
         self.time_series = time_series
         self.last_time_step_hours = last_time_step_hours
 
-        self.time_series_with_end = helpers.getTimeSeriesWithEnd(time_series, last_time_step_hours)
-        helpers.checkTimeSeries('global esTimeSeries', self.time_series_with_end)
+        self.time_series_with_end = helpers.get_time_series_with_end(time_series, last_time_step_hours)
+        helpers.check_time_series('global esTimeSeries', self.time_series_with_end)
 
         # defaults:
         self.components: List[Component] = []
@@ -2204,7 +2204,7 @@ class Calculation:
         self.time_indices = time_indices or range(len(system.time_series))  # Wenn time_indices = None, dann alle nehmen
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             system.get_time_data_from_indices(self.time_indices))
-        helpers.checkTimeSeries('time_indices', self.time_series)
+        helpers.check_time_series('time_indices', self.time_series)
 
         self._results = None
         self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!

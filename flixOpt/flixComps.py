@@ -345,7 +345,7 @@ class Boiler(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
-        helpers.checkBoundsOfParameter(eta, 'eta', self.eta_bounds, self)
+        helpers.check_bounds(eta, 'eta', self.eta_bounds[0], self.eta_bounds[1])
 
         # # generische property für jeden Koeffizienten
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
@@ -393,7 +393,7 @@ class Power2Heat(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
-        helpers.checkBoundsOfParameter(eta, 'eta', self.eta_bounds, self)
+        helpers.check_bounds(eta, 'eta', self.eta_bounds[0], self.eta_bounds[1])
 
         # # generische property für jeden Koeffizienten
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
@@ -436,7 +436,7 @@ class HeatPump(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
-        helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
+        helpers.check_bounds(COP, 'COP', self.eta_bounds[0], self.eta_bounds[1])
 
 
 class CoolingTower(LinearTransformer):
@@ -478,8 +478,8 @@ class CoolingTower(LinearTransformer):
 
         # Plausibilität eta:
         self.specificElectricityDemand_bounds = [0, 1]  # 0 < eta_th < 1
-        helpers.checkBoundsOfParameter(specificElectricityDemand, 'specificElectricityDemand',
-                                       self.specificElectricityDemand_bounds, self)
+        helpers.check_bounds(specificElectricityDemand, 'specificElectricityDemand',
+                             self.specificElectricityDemand_bounds[0], self.specificElectricityDemand_bounds[1])
 
 
 class CHP(LinearTransformer):
@@ -536,9 +536,11 @@ class CHP(LinearTransformer):
         self.eta_th_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
         self.eta_el_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_el < 1
 
-        helpers.checkBoundsOfParameter(eta_th, 'eta_th', self.eta_th_bounds, self)
-        helpers.checkBoundsOfParameter(eta_el, 'eta_el', self.eta_el_bounds, self)
-        helpers.checkBoundsOfParameter(eta_th + eta_el, 'eta_th+eta_el', [0 + 1e-10, 1 - 1e-10], self)
+        helpers.check_bounds(eta_th, 'eta_th', self.eta_th_bounds[0], self.eta_th_bounds[1])
+        helpers.check_bounds(eta_el, 'eta_el', self.eta_el_bounds[0], self.eta_el_bounds[1])
+        helpers.check_bounds(eta_th + eta_el, 'eta_th+eta_el',
+                             self.eta_th_bounds[0]+self.eta_el_bounds[0],
+                             self.eta_th_bounds[1]+self.eta_el_bounds[1])
 
 
 class HeatPumpWithSource(LinearTransformer):
@@ -588,7 +590,7 @@ class HeatPumpWithSource(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
-        helpers.checkBoundsOfParameter(COP, 'COP', self.eta_bounds, self)
+        helpers.check_bounds(COP, 'COP', self.eta_bounds[0], self.eta_bounds[1])
 
 
 class Storage(Component):

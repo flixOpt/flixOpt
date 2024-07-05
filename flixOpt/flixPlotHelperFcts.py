@@ -12,6 +12,54 @@ import pandas as pd
 from flixOpt.flixStructure import *
 
 
+
+
+def plotStackedSteps(ax, df: pd.DataFrame, showLegend=True, colors=None):  # df = dataframes!
+    # Händische Lösung für stacked steps, da folgendes nicht funktioniert:
+    # -->  plt.plot(y_pos.index, y_pos.values, drawstyle='steps-post', stacked=True) -> error
+    # -->  ax.stackplot(x, y_pos, labels = labels, drawstyle='steps-post') -> error
+
+    # Aufteilen in positiven und negativen Teil:
+    y_pos = df.clip(lower=0)  # postive Werte
+    y_neg = df.clip(upper=0)  # negative Werte
+
+    # Stapelwerte:
+    y_pos_cum = y_pos.cumsum(axis=1)
+    y_neg_cum = y_neg.cumsum(axis=1)
+
+    # plot-funktion
+    def plot_y_cum(ax, y_cum, colors, plotLabels=True):
+        first = True
+        for i in range(len(y_cum.columns)):
+            col = y_cum.columns[i]
+            y1 = y_cum[col]
+            y2 = y_cum[col] * 0 if first else y_cum[y_cum.columns[i - 1]]
+            col = y_cum.columns[i]
+            label = col if plotLabels else None
+            ax.fill_between(x=y_cum.index, y1=y1, y2=y2, label=label, color=colors[i], alpha=1, step='post',
+                            linewidth=0)
+            first = False
+
+            # colorlist -> damit gleiche Farben für pos und neg - Werte!:
+
+    if colors is None:
+        colors = []
+        # ersten 10 Farben:
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+        # weitere Farben:
+        import matplotlib.colors as mpl_col
+        moreColors = mpl_col.cnames.values()
+        # anhängen:
+        colors += moreColors
+
+    # plotting:
+    plot_y_cum(ax, y_pos_cum, colors, plotLabels=True)
+    plot_y_cum(ax, y_neg_cum, colors, plotLabels=False)
+
+    if showLegend:
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
 def plotFlow(calc, aFlow_value, label, withPoints=True):
     # Linie:
     plt.step(calc.time_series, aFlow_value, where='post', label=label)
