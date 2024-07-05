@@ -183,62 +183,6 @@ class Aggregation:
                 f'{extremePeriods}\n'
                 f'########################')
 
-    def saveResults(self, addTimeStamp=True):
-        """
-        Speichern
-        """
-
-        timestamp = datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')
-
-        # Rahmenbedingungen und Ergebnisse speichern
-        periodsOrderString = ','.join(map(str, self.periods_order))
-
-        # Anzahl Perioden mit ggfs. Extremperioden
-        noPer = self.nr_of_typical_periods
-        if self.use_extreme_periods:
-            noPer += 4
-
-        parameterDict = {
-            'date': timestring,
-            'name': self.name,
-            'start': str(self.original_timeseries_index[0]),
-            'end': str(self.original_timeseries_index[-1]),
-            'hours_per_time_step': self.hours_per_time_step,
-            'use_extreme_periods': self.use_extreme_periods,
-            'hasTSA': self.hasTSA,
-            'hours_per_period': self.hours_per_period,
-            'nr_of_typical_periods': noPer,
-            'periods_order': periodsOrderString,
-            #   'periodsOrder_raw': list(self.periods_order),
-            'cluster time': self.time_for_clustering,
-
-            # 'best bound': float(str(self.results['Problem']).split('\n')[2].split(' ')[4]),
-            # 'best objective': float(str(self.results['Problem']).split('\n')[3].split(' ')[4])
-        }
-
-        for key, value in {'a': 1, 'b': 2, 'c': 3}.items():
-            parameterDict[key] = value
-
-        filename = self.name.replace(" ", "") + '_Parameters.yaml'
-        if addTimeStamp: filename = timestring + '_' + filename
-        yamlPath = './results/Parameters/' + filename
-        with open(yamlPath, 'w') as f:
-            yaml.dump(parameterDict, f)
-
-    def saveAgg(self, addTimeStamp=True):
-        """
-        Speichern der aggregierten Zeitreihen.
-        """
-        timestamp = datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%d')
-
-        filename = self.name.replace(" ", "") + '_Timeseries.csv'
-        if addTimeStamp: filename = timestring + '_' + filename
-
-        pathAgg = './results/aggTimeseries/'
-        self.aggregated_timeseries.to_csv(pathAgg + filename)
-
 
 from flixOpt import flixStructure
 from flixOpt import flixComps
