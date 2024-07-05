@@ -43,25 +43,6 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
     else:
         return np.array(value)
 
-
-# Nimmt Subset der Indexe, wenn es ein Vektor ist. Skalar bleibt skalar.
-#   Falls aIndexe = None, dann bleibt es wie es ist.
-def getSubSetIfVector(aValue, aIndexe):
-    # Wenn Skalar oder None:
-    if (np.isscalar(aValue)) or (aValue is None):
-        pass  # do nothing
-    # wenn aIndexe = None:
-    elif aIndexe is None:
-        pass  # do nothing
-    # wenn Vektor:
-    else:
-        if max(aIndexe) > len(aValue) - 1:
-            raise Exception('subSet Indices sind höher als length(Ausgangsvektor)')
-        else:
-            aValue = aValue[aIndexe]
-    return aValue
-
-
 # changes zeros to Nans in Vector:
 def zerosToNans(aVector):
     # nanVector                 = aVector.copy()
