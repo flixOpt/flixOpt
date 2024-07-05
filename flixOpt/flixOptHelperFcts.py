@@ -13,7 +13,8 @@ import math  # für nan
 import matplotlib.pyplot as plt
 
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
-from typing import Union, List
+from flixOpt.flixBasics import Numeric_TS, Numeric, Skalar
+from typing import Union, List, Tuple
 
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
@@ -43,6 +44,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
     else:
         return np.array(value)
 
+
 # changes zeros to Nans in Vector:
 def zero_to_nan(vector: np.ndarray) -> np.ndarray:
     # nanVector                 = aVector.copy()
@@ -51,11 +53,14 @@ def zero_to_nan(vector: np.ndarray) -> np.ndarray:
     return nan_vector
 
 
-def check_bounds(aParam, aParamLabel, aBounds, aObject=None):
-    if isinstance(aParam, TimeSeriesRaw):
-        aParam = aParam.value
-    if np.any(aParam < aBounds[0]) | np.any(aParam >= aBounds[1]):
-        raise Exception(aParamLabel + ' verletzt min/max - Grenzen!')
+def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesRaw],
+                 label: str,
+                 bounds: Tuple[Numeric],
+                 aObject=None):
+    if isinstance(value, TimeSeriesRaw):
+        value = value.value
+    if np.any(value < bounds[0]) | np.any(value >= bounds[1]):
+        raise Exception(f'{label} verletzt min/max - Grenzen!')
 
 
 # löscht alle in Attributen ungültigen Zeichen: todo: Vollständiger machen!
