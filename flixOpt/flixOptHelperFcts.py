@@ -51,7 +51,7 @@ def zero_to_nan(vector: np.ndarray) -> np.ndarray:
     return nan_vector
 
 
-def checkBoundsOfParameter(aParam, aParamLabel, aBounds, aObject=None):
+def check_bounds(aParam, aParamLabel, aBounds, aObject=None):
     if isinstance(aParam, TimeSeriesRaw):
         aParam = aParam.value
     if np.any(aParam < aBounds[0]) | np.any(aParam >= aBounds[1]):
