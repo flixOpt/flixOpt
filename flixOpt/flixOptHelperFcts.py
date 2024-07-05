@@ -243,27 +243,6 @@ def printDictAndList(aDictOrList):
                     width=1000,  # verhindern von zusätzlichen Zeilenumbrüchen
                     allow_unicode=True))
 
-    # # dict:
-    # if isinstance(aDictOrList, dict):
-    #   for key, value in aDictOrList.items():
-
-    #     # wert ist ...
-    #     # 1. dict/liste:
-    #     if isinstance(value,dict) | isinstance(value,list):
-    #       print(place + str(key) + ': ')
-    #       printDictAndList(value, place + '  ')
-    #     # 2. None:
-    #     elif value == [None]:
-    #       print(place + str(key) + ': ' + str(value))
-    #     # 3. wert:
-    #     else:
-    #       print(place + str(key) + ': ' + str(value))
-    # # liste:
-    # else:
-    #   for i in range(length(aDictOrList)):
-    #     print('' + str(i) + ': ')
-    #     printDictAndList(aDictOrList[i], place + '  ')
-
 def max_args(*args):
     # max from num-lists and skalars
     # arg = list, array, skalar
