@@ -7,13 +7,15 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import textwrap
+from typing import Union, Optional, Literal
 
-from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.modeling import *
-from flixOpt.elements import Component, MediumCollection
-from flixOpt.core import effect_values_to_ts
-from flixOpt.structure import *
-from flixOpt.features import *
+from flixOpt.elements import Flow, Component, MediumCollection, Global
+from flixOpt.core import Skalar, Numeric, Numeric_TS, TimeSeries, effect_values_to_ts
+from flixOpt.modeling import VariableTS, Equation
+from flixOpt.structure import SystemModel
+from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
+from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
+import flixOpt.flixOptHelperFcts as helpers
 
 
 class LinearTransformer(Component):

@@ -18,8 +18,6 @@ from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.modeling import Variable, VariableTS, Equation
 from flixOpt.flixBasicsPublic import InvestParameters
 import flixOpt.flixOptHelperFcts as helpers
-if TYPE_CHECKING:
-    from flixOpt.structure import Flow, Effect
 
 log = logging.getLogger(__name__)
 
