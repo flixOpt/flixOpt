@@ -158,11 +158,11 @@ def is_number(number_alias:str):
 
     # Macht aus verschachteltem Dict ein "matlab-struct"-like object
 
-
-# --> als FeldNamen wird key verwendet wenn string, sonst key.label
-
-# --> dict[key1]['key1_1'] -> struct.key1.key1_1
 def createStructFromDictInDict(aDict):
+    # --> als FeldNamen wird key verwendet wenn string, sonst key.label
+
+    # --> dict[key1]['key1_1'] -> struct.key1.key1_1
+
     # z.B.:
     #      {Kessel_object : {'Q_th':{'on':[..], 'val': [..]}
     #                        'Pel' :{'on':[..], 'val': [..]} }
