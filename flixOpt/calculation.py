@@ -5,22 +5,22 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
+import datetime
+import logging
 import math
+import pathlib
 import time
 import timeit
-import datetime
-import pathlib
 from typing import List, Dict, Optional, Literal
-import logging
 
 import numpy as np
 
 from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.aggregation import TimeSeriesCollection
-from flixOpt.modeling import VariableTS
-from flixOpt.system import System
-from flixOpt.structure import SystemModel
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt.modeling import VariableTS
+from flixOpt.structure import SystemModel
+from flixOpt.system import System
 
 log = logging.getLogger(__name__)
 
@@ -51,8 +51,7 @@ class Calculation:
     def results(self):
         # wenn noch nicht belegt, dann aus system_model holen
         if self._results is None:
-            self._results = self.system_models[0].results
-            # (bei segmented Calc ist das schon explizit belegt.)
+            self._results = self.system_models[0].results  # (bei segmented Calc ist das schon explizit belegt.)
         return self._results
 
     @property
@@ -60,10 +59,7 @@ class Calculation:
         raise NotImplementedError()
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self,
-                 label,
-                 system: System,
-                 modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, label, system: System, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
@@ -84,7 +80,7 @@ class Calculation:
         self._infos = {}
 
         self.system_models: List[SystemModel] = []
-        self.durations = {'modeling': 0, 'solving': 0}   # Dauer der einzelnen Dinge
+        self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
 
         self.time_indices = time_indices or range(len(system.time_series))  # Wenn time_indices = None, dann alle nehmen
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
@@ -95,18 +91,19 @@ class Calculation:
         self._results = None
         self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
 
-    def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True, nr_of_system_models: int = 1):
+    def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True,
+                           nr_of_system_models: int = 1):
         """
         Creates the path for saving results and alters the label of the calculation to have a timestamp
         """
         if include_timestamp:
             timestamp = datetime.datetime.now()
             timestring = timestamp.strftime('%Y-%m-%data')
-            self.label = f'{timestring}_{self.label.replace(" ","")}'
+            self.label = f'{timestring}_{self.label.replace(" ", "")}'
 
         if save_results:
-            path = pathlib.Path.cwd() / path   # absoluter Pfad:
-            path.mkdir(parents=True, exist_ok=True)   # Pfad anlegen, fall noch nicht vorhanden:
+            path = pathlib.Path.cwd() / path  # absoluter Pfad:
+            path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
 
             self._paths["log"] = [path / f'{self.label}_solver_{i}.log' for i in range(nr_of_system_models)]
             self._paths["data"] = path / f'{self.label}_data.pickle'
@@ -114,9 +111,8 @@ class Calculation:
 
     def check_if_already_modeled(self):
         if self.system.temporary_elements:  # if some element in this list
-            raise Exception(
-                f'The Energysystem has some temporary modelingElements from previous calculation '
-                f'(i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
+            raise Exception(f'The Energysystem has some temporary modelingElements from previous calculation '
+                            f'(i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
 
     def _save_solve_infos(self):
         import yaml
@@ -129,10 +125,8 @@ class Calculation:
 
         # Infos:'
         with open(self._paths['info'], 'w', encoding='utf-8') as f:
-            yaml.dump(self.infos, f,
-                      width=1000,  # Verhinderung Zeilenumbruch für lange equations
-                      allow_unicode=True,
-                      sort_keys=False)
+            yaml.dump(self.infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
+                      allow_unicode=True, sort_keys=False)
 
         aStr = f'# saved calculation {self.label} #'
         print('#' * len(aStr))
@@ -151,21 +145,18 @@ class FullCalculation(Calculation):
 
         '''
         self.check_if_already_modeled()
-        self.system.finalize()   # System finalisieren:
+        self.system.finalize()  # System finalisieren:
 
         t_start = timeit.default_timer()
         system_model = SystemModel(self.label, self.modeling_language, self.system, self.time_indices)
-        self.system.activate_model(system_model)   # model aktivieren:
-        self.system.do_modeling_of_elements()   # modellieren:
+        self.system.activate_model(system_model)  # model aktivieren:
+        self.system.do_modeling_of_elements()  # modellieren:
 
         self.system_models.append(system_model)
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return system_model
 
-    def solve(self,
-              solverProps: dict,
-              path='results/',
-              save_results=True):
+    def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
         self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
 
@@ -178,10 +169,7 @@ class AggregatedCalculation(Calculation):
     class for defined way of solving a energy system optimizatino
     '''
 
-    def __init__(self,
-                 label: str,
-                 system: System,
-                 modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, label: str, system: System, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
@@ -200,16 +188,9 @@ class AggregatedCalculation(Calculation):
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
-    def do_modeling(self,
-                               periodLengthInHours,
-                               nr_of_typical_periods,
-                               use_extreme_periods,
-                               fix_storage_flows,
-                               fix_binary_vars_only,
-                               percentage_of_period_freedom=0,
-                               costs_of_period_freedom=0,
-                               addPeakMax=None,
-                               addPeakMin=None):
+    def do_modeling(self, periodLengthInHours, nr_of_typical_periods, use_extreme_periods, fix_storage_flows,
+                    fix_binary_vars_only, percentage_of_period_freedom=0, costs_of_period_freedom=0, addPeakMax=None,
+                    addPeakMin=None):
         '''
         method of aggregated modeling.
         1. Finds typical periods.
@@ -291,9 +272,7 @@ class AggregatedCalculation(Calculation):
         # TSlist and TScollection ohne Skalare:
         self.time_series_for_aggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
         self.time_series_collection = TimeSeriesCollection(self.time_series_for_aggregation,
-                                                           addPeakMax_TSraw=addPeakMax,
-                                                           addPeakMin_TSraw=addPeakMin,
-                                                           )
+                                                           addPeakMax_TSraw=addPeakMax, addPeakMin_TSraw=addPeakMin, )
 
         self.time_series_collection.print()
 
@@ -310,12 +289,9 @@ class AggregatedCalculation(Calculation):
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
         from flixOpt import aggregation as flixAgg
-        dataAgg = flixAgg.Aggregation('aggregation',
-                                      timeseries=df_OriginalData,
-                                      hours_per_time_step=self.dt_in_hours[0],
-                                      hours_per_period=periodLengthInHours,
-                                      hasTSA=False,
-                                      nr_of_typical_periods=nr_of_typical_periods,
+        dataAgg = flixAgg.Aggregation('aggregation', timeseries=df_OriginalData,
+                                      hours_per_time_step=self.dt_in_hours[0], hours_per_period=periodLengthInHours,
+                                      hasTSA=False, nr_of_typical_periods=nr_of_typical_periods,
                                       use_extreme_periods=use_extreme_periods,
                                       weights=self.time_series_collection.weightDict,
                                       addPeakMax=self.time_series_collection.addPeak_Max_labels,
@@ -371,8 +347,7 @@ class AggregatedCalculation(Calculation):
         aggregationModel = flixAgg.AggregationModeling('aggregation', self.system,
                                                        index_vectors_of_clusters=dataAgg.index_vectors_of_clusters,
                                                        fix_binary_vars_only=fix_binary_vars_only,
-                                                       fix_storage_flows=fix_storage_flows,
-                                                       elements_to_clusterize=None,
+                                                       fix_storage_flows=fix_storage_flows, elements_to_clusterize=None,
                                                        percentage_of_period_freedom=percentage_of_period_freedom,
                                                        costs_of_period_freedom=costs_of_period_freedom)
 
@@ -408,16 +383,12 @@ class AggregatedCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_m_start, 2)
         return system_model
 
-    def solve(self,
-              solverProps: dict,
-              path='results/',
-              save_results=True):
+    def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
         self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
 
         if save_results:
             self._save_solve_infos()
-
 
 
 class SegmentedCalculation(Calculation):
@@ -450,35 +421,35 @@ class SegmentedCalculation(Calculation):
         self.segmented_system_models = []  # model list
 
     def solve(self, solverProps, segmentLen, nrOfUsedSteps, path='results/'):
-        '''
-          Dividing and Modeling the problem in (overlapped) time-segments.
-          Storage values as result of segment n are overtaken
-          to the next segment n+1 for timestep, which is first in segment n+1
+        """
+        Dividing and Modeling the problem in (overlapped) time-segments.
+        Storage values as result of segment n are overtaken
+        to the next segment n+1 for timestep, which is first in segment n+1
 
-          Afterwards timesteps of segments (without overlap)
-          are put together to the full timeseries
+        Afterwards timesteps of segments (without overlap)
+        are put together to the full timeseries
 
-          Because the result of segment n is used in segment n+1, modeling and
-          solving is both done in this method
+        Because the result of segment n is used in segment n+1, modeling and
+        solving is both done in this method
 
-          Take care:
-          Parameters like invest_parameters, loadfactor etc. does not make sense in
-          segmented modeling, cause they are newly defined in each segment
+        Take care:
+        Parameters like invest_parameters, loadfactor etc. does not make sense in
+        segmented modeling, cause they are newly defined in each segment
 
-          Parameters
-          ----------
-          solverProps : TYPE
-              DESCRIPTION.
-          segmentLen : int
-              nr Of Timesteps of Segment.
-          nrOfUsedSteps : int
-              nr of timesteps used/overtaken in resulting complete timeseries
-              (the timesteps after these are "overlap" and used for better
-              results of chargestate of storages)
-          path : str
-              path for output. The default is 'results/'.
+        Parameters
+        ----------
+        solverProps : TYPE
+            DESCRIPTION.
+        segmentLen : int
+            nr Of Timesteps of Segment.
+        nrOfUsedSteps : int
+            nr of timesteps used/overtaken in resulting complete timeseries
+            (the timesteps after these are "overlap" and used for better
+            results of chargestate of storages)
+        path : str
+            path for output. The default is 'results/'.
 
-          '''
+        """
         self.check_if_already_modeled()
         self._infos['segmentedProps'] = {'segmentLen': segmentLen, 'nrUsedSteps': nrOfUsedSteps}
         self.calculation_type = 'segmented'
@@ -494,7 +465,8 @@ class SegmentedCalculation(Calculation):
             raise Exception('segmented calculation with Invest-Parameters does not make sense!')
 
         assert nrOfUsedSteps <= segmentLen
-        assert segmentLen <= len(self.time_series), 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
+        assert segmentLen <= len(
+            self.time_series), 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
 
         # time_seriesOfSim = self.system.time_series[from_index:to_index+1]
 
@@ -524,12 +496,13 @@ class SegmentedCalculation(Calculation):
             else:
                 realNrOfUsedSteps = nrOfUsedSteps
 
-            print(
-                str(i) + '. Segment ' + ' (system-indexe ' + str(startIndex_global) + '...' + str(endIndex_global) + ') :')
+            print(str(i) + '. Segment ' + ' (system-indexe ' + str(startIndex_global) + '...' + str(
+                endIndex_global) + ') :')
 
             # Modellierungsbox / TimePeriod-Box bauen:
             label = self.label + '_seg' + str(i)
-            segmentModBox = SystemModel(label, self.modeling_language, self.system, indexe_global)  # alle Indexe nehmen!
+            segmentModBox = SystemModel(label, self.modeling_language, self.system,
+                                        indexe_global)  # alle Indexe nehmen!
             segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
 
             # Startwerte übergeben von Vorgänger-system_model:
@@ -539,8 +512,7 @@ class SegmentedCalculation(Calculation):
                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
                 print('### before_values: ###')
                 segmentModBox.before_values.print()
-                print('#######################')
-                # transferStartValues(segment, segmentBefore)
+                print('#######################')  # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
             self.system.activate_model(segmentModBox)
@@ -566,7 +538,6 @@ class SegmentedCalculation(Calculation):
         self.durations['model, solve and segmentStuff'] = round(time.time() - t_start, 2)
 
         self._save_solve_infos()
-
 
     def _add_segment_results(self, segment, startIndex_calc, realNrOfUsedSteps):
         # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
@@ -631,20 +602,18 @@ class SegmentedCalculation(Calculation):
                         resultToAppend_sub = result_to_append_var[key]
                     else:  # z.B. bei time (da keine Variablen)
                         resultToAppend_sub = None
-                    append_new_results_to_dict_values(result[key], result_to_append[key], resultToAppend_sub)  # hier rekursiv!
+                    append_new_results_to_dict_values(result[key], result_to_append[key],
+                                                      resultToAppend_sub)  # hier rekursiv!
 
         # rekursiv:
         append_new_results_to_dict_values(self._results, segment.results, segment.results_var)
 
-        # results füllen:
-        # ....
+        # results füllen:  # ....
 
 
 class BeforeValues:
     # managed die Before-Werte des segments:
-    def __init__(self,
-                 variables_ts: List[VariableTS],
-                 lastUsedIndex: int):
+    def __init__(self, variables_ts: List[VariableTS], lastUsedIndex: int):
         self.beforeValues = {}
         # Sieht dann so aus = {(Element1, aVar1.name): (value, time),
         #                      (Element2, aVar2.name): (value, time),
