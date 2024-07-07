@@ -743,7 +743,7 @@ class SumOfSummand(Summand):
 class SolverLog:
     def __init__(self, solver_name: str, filename: str):
         with open(filename, 'r') as file:
-            self.log = file
+            self.log = file.read()
 
         self.solver_name = solver_name
 
