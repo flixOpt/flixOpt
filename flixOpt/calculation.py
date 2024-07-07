@@ -452,28 +452,27 @@ class SegmentedCalculation(Calculation):
         self._define_path_names(path, save_results=True, nr_of_system_models=nr_of_segments)
 
         for i in range(nr_of_segments):
-            startIndex_calc = i * nr_of_used_steps
-            endIndex_calc = min(startIndex_calc + segment_length - 1, len(self.time_indices) - 1)
+            start_index_of_segment = i * nr_of_used_steps
+            end_index_of_segment = min(start_index_of_segment + segment_length, len(self.time_indices)) - 1
 
-            startIndex_global = self.time_indices[startIndex_calc]
-            endIndex_global = self.time_indices[endIndex_calc]  # inklusiv
-            indexe_global = self.time_indices[startIndex_calc:endIndex_calc + 1]  # inklusive endIndex
+            start_index_global = self.time_indices[start_index_of_segment]
+            end_index_global = self.time_indices[end_index_of_segment]  # inklusiv
+            indices_global = self.time_indices[start_index_of_segment:end_index_of_segment + 1]  # inklusive endIndex
 
-            # new realNrOfUsedSteps:
-            # if last Segment:
-            if i == nr_of_segments - 1:
-                realNrOfUsedSteps = endIndex_calc - startIndex_calc + 1
+            # new real_nr_of_used_steps:
+            if i == max(range(nr_of_segments)):   # if last Segment:
+                real_nr_of_used_steps = end_index_of_segment - start_index_of_segment + 1
             else:
-                realNrOfUsedSteps = nr_of_used_steps
+                real_nr_of_used_steps = nr_of_used_steps
 
-            print(str(i) + '. Segment ' + ' (system-indexe ' + str(startIndex_global) + '...' + str(
-                endIndex_global) + ') :')
+            print(str(i) + '. Segment ' + ' (system-indexe ' + str(start_index_global) + '...' + str(
+                end_index_global) + ') :')
 
             # Modellierungsbox / TimePeriod-Box bauen:
             label = self.label + '_seg' + str(i)
             segmentModBox = SystemModel(label, self.modeling_language, self.system,
-                                        indexe_global)  # alle Indexe nehmen!
-            segmentModBox.realNrOfUsedSteps = realNrOfUsedSteps
+                                        indices_global)  # alle Indexe nehmen!
+            segmentModBox.realNrOfUsedSteps = real_nr_of_used_steps
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
@@ -501,7 +500,7 @@ class SegmentedCalculation(Calculation):
                                 logfile_name=self._paths['log'][i])  # keine SolverOutput-Anzeige, da sonst zu viel
             self.durations['solving'] += round(time.time() - t_start_solving, 2)
             ## results adding:
-            self._add_segment_results(segmentModBox, startIndex_calc, realNrOfUsedSteps)
+            self._add_segment_results(segmentModBox, start_index_of_segment, real_nr_of_used_steps)
 
         self.durations['model, solve and segmentStuff'] = round(time.time() - t_start, 2)
 
