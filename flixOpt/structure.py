@@ -210,6 +210,20 @@ class SystemModel(LinearModel):
         self.main_results_str = _getMainResultsAsStr()
         helpers.printDictAndList(self.main_results_str)
 
+    @property
+    def all_variables(self) -> List[Variable]:
+        all_vars = []
+        for model in self.models_of_elements.values():
+            all_vars += [var for var in model.variables]
+        return all_vars
+
+    @property
+    def all_equations(self) -> List[Equation]:
+        all_eqs = []
+        for model in self.models_of_elements.values():
+            all_eqs += [eq for eq in model.eqs] + [ineq for ineq in model.ineqs]
+        return all_eqs
+
 
 class Element:
     """
@@ -459,3 +473,15 @@ class ElementModel:
         for aVar in self.variables:
             aList.append(aVar.get_str_description())
         return aList
+
+    def get_variable(self, label: str) -> Variable:
+        for var in self.variables:
+            if var.label == label:
+                return var
+        raise Exception(f'Variable "{label}" not found')
+
+    def get_equation(self, label: str) -> Equation:
+        for eq in self.eqs + self.ineqs:
+            if eq.label == label:
+                return eq
+        raise Exception(f'Equation "{label}" not found')
