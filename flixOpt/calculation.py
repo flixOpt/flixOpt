@@ -444,11 +444,10 @@ class SegmentedCalculation(Calculation):
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
         nr_of_segments = math.ceil((len(self.time_series)) / nr_of_used_steps)
         self._infos['segmented_properties']['nr_of_segments'] = nr_of_segments
-        print('indexe        : ' + str(self.time_indices[0]) + '...' + str(self.time_indices[-1]))
-        print('segmentLen    : ' + str(segment_length))
-        print('usedSteps     : ' + str(nr_of_used_steps))
-        print('-> nr of Sims : ' + str(nr_of_segments))
-        print('')
+        print(f'Indices       : {self.time_indices[0]}...{self.time_indices[-1]}')
+        print(f'Segment Length: {segment_length}')
+        print(f'Used Steps    : {nr_of_used_steps}')
+        print(f'Number of Segments: {nr_of_segments}\n')
 
         self._define_path_names(path, save_results=True, nr_of_system_models=nr_of_segments)
 
