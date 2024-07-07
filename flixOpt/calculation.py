@@ -465,8 +465,8 @@ class SegmentedCalculation(Calculation):
             else:
                 real_nr_of_used_steps = nr_of_used_steps
 
-            print(str(i) + '. Segment ' + ' (system-indexe ' + str(start_index_global) + '...' + str(
-                end_index_global) + ') :')
+            print(f'{i}. Segment (system indices {start_index_global}...{end_index_global}):')
+
 
             # Modellierungsbox / TimePeriod-Box bauen:
             label = self.label + '_seg' + str(i)
