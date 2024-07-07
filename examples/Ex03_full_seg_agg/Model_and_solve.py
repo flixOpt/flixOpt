@@ -18,7 +18,6 @@ solver_name    = 'cbc'
 # solver_name    = 'glpk'
 solverProps = {'mip_gap': gapFrac, 'solver_name': solver_name, 'solver_output_to_console' : True, 'threads':16}
 
-label_suffix = '_' + solver_name # for saving-file
 
 ## Auswahl Rechentypen: ##
 
@@ -238,14 +237,14 @@ if doFullCalc:
   system.print_variables()
   system.print_equations()
     
-  calcFull.solve(solverProps, label_suffix=label_suffix)
+  calcFull.solve(solverProps)
   listOfCalcs.append(calcFull)
 
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
    calcSegs = Calculation('segModel', system, 'pyomo', time_indices)
-   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, label_suffix = label_suffix)
+   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
@@ -266,7 +265,7 @@ if doAggregatedCalc :
     system.print_variables()
     system.print_equations()
     
-    calcAgg.solve(solverProps, label_suffix = label_suffix)
+    calcAgg.solve(solverProps)
     listOfCalcs.append(calcAgg)
 
 

@@ -112,8 +112,7 @@ solverProps = {'mip_gap': gapFrac,
                'solver_output_to_console' : displaySolverOutput,
                }
 
-aCalc.solve(solverProps, # some solver options
-            label_suffix = '_' + solver_name) # label_suffix for the results
+aCalc.solve(solverProps)
 #  results are saved under /results/
 
 # ##### loading results from output-files ######

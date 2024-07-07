@@ -100,7 +100,7 @@ class Calculation:
 
     def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True, nr_of_system_models: int = 1):
         """
-        Creates the path for saving reuslts and alters the label of the calculation to have a timestamp
+        Creates the path for saving results and alters the label of the calculation to have a timestamp
         """
         if include_timestamp:
             timestamp = datetime.datetime.now()
@@ -168,8 +168,6 @@ class FullCalculation(Calculation):
 
     def solve(self,
               solverProps: dict,
-              label_prefix='',
-              label_suffix='',
               path='results/',
               save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
@@ -420,8 +418,6 @@ class AggregatedCalculation(Calculation):
 
     def solve(self,
               solverProps: dict,
-              label_prefix='',
-              label_suffix='',
               path='results/',
               save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
@@ -463,8 +459,7 @@ class SegmentedCalculation(Calculation):
         super().__init__(label, system, modeling_language, time_indices)
         self.segmented_system_models = []  # model list
 
-    def solve(self, solverProps, segmentLen, nrOfUsedSteps, label_prefix='', label_suffix='',
-                                          path='results/'):
+    def solve(self, solverProps, segmentLen, nrOfUsedSteps, path='results/'):
         '''
           Dividing and Modeling the problem in (overlapped) time-segments.
           Storage values as result of segment n are overtaken
@@ -490,10 +485,6 @@ class SegmentedCalculation(Calculation):
               nr of timesteps used/overtaken in resulting complete timeseries
               (the timesteps after these are "overlap" and used for better
               results of chargestate of storages)
-          label_prefix : str
-              prefix-String for name of calculation. The default is ''.
-          label_suffix : str
-              suffix-String for name of calculation. The default is ''.
           path : str
               path for output. The default is 'results/'.
 
