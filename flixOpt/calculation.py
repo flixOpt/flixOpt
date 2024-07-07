@@ -467,39 +467,38 @@ class SegmentedCalculation(Calculation):
 
 
             # Modellierungsbox / TimePeriod-Box bauen:
-            label = self.label + '_seg' + str(i)
-            segmentModBox = SystemModel(label, self.modeling_language, self.system,
+            system_model_of_segment = SystemModel(f'{self.label}_seg{i}', self.modeling_language, self.system,
                                         indices_global)  # alle Indexe nehmen!
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
-                segmentModBoxBefore = self.system_models[i - 1]
-                segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
+                system_model_of_prior_segment = self.system_models[i - 1]
+                system_model_of_segment.before_values = BeforeValues(system_model_of_prior_segment.all_ts_variables,
                                                            nr_of_used_steps - 1)
                 print('### before_values: ###')
-                segmentModBox.before_values.print()
+                system_model_of_segment.before_values.print()
                 print('#######################')  # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
-            self.system.activate_model(segmentModBox)
+            self.system.activate_model(system_model_of_segment)
 
             # modellieren:
-            t_start_modeling = time.time()
+            t_start_modeling = timeit.default_timer()
             self.system.do_modeling_of_elements()
-            self.durations['modeling'] += round(time.time() - t_start_modeling, 2)
+            self.durations['modeling'] += round(timeit.default_timer() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
-            self.system_models.append(segmentModBox)
+            self.system_models.append(system_model_of_segment)
 
             # Lösen:
-            t_start_solving = time.time()
+            t_start_solving = timeit.default_timer()
 
-            segmentModBox.solve(**solverProps,
+            system_model_of_segment.solve(**solverProps,
                                 logfile_name=self._paths['log'][i])  # keine SolverOutput-Anzeige, da sonst zu viel
-            self.durations['solving'] += round(time.time() - t_start_solving, 2)
+            self.durations['solving'] += round(timeit.default_timer() - t_start_solving, 2)
             ## results adding:
-            self._add_segment_results(segmentModBox, start_index_of_segment, nr_of_used_steps)
+            self._add_segment_results(system_model_of_segment, start_index_of_segment, nr_of_used_steps)
 
-        self.durations['model, solve and segmentStuff'] = round(time.time() - t_start, 2)
+        self.durations['model, solve and segmentStuff'] = round(timeit.default_timer() - t_start, 2)
 
         self._save_solve_infos()
 
