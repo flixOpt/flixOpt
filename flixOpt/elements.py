@@ -497,7 +497,7 @@ class Global(Element):
             else:
                 raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
-    def declare_vars_and_eqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
 
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
 
@@ -513,7 +513,7 @@ class Global(Element):
 
     #  eq_objective = Equation('objective',self,model,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
         # super().do_modeling(model,time_indices)
 
         self.penalty.do_modeling(system_model, time_indices)
@@ -1130,7 +1130,7 @@ class Flow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def add_share_to_globals(self, global_comp: Global, system_model) -> None:
+    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
 
         # Arbeitskosten:
         if self.effects_per_flow_hour is not None:

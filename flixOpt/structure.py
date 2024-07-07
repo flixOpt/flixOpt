@@ -328,13 +328,13 @@ class Element:
         return str_desc
 
     # activate inkl. sub_elements:
-    def activate_system_model(self, system_model) -> None:
+    def activate_system_model(self, system_model: SystemModel) -> None:
         for element in self.sub_elements:
             element.activate_system_model(system_model)  # inkl. sub_elements
         self.activate_system_model_for_me(system_model)
 
     # activate ohne SubElements!
-    def activate_system_model_for_me(self, system_model) -> None:
+    def activate_system_model_for_me(self, system_model: SystemModel) -> None:
         self.system_model = system_model
         self.model = system_model.models_of_elements[self]
 
@@ -359,7 +359,7 @@ class Element:
         self.activate_system_model_for_me(system_model)  # sub_elements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
-    def declare_vars_and_eqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
         #   #   # Features preparing:
         #   # for aFeature in self.features:
         #   #   aFeature.declare_vars_and_eqs(model)
