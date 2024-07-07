@@ -1222,7 +1222,7 @@ class Transportation(Component):
                 if bothInFlowsHaveFeatureInvest:
                     # eq: in1.nom_value = in2.nom_value
                     self.eq_nom_value = Equation('equalSizeInBothDirections', self, system_model, eqType='eq')
-                    self.eq_nom_value.add_summand(self.in1.featureInvest.mod.var_investmentSize, 1)
+                    self.eq_nom_value.add_summand(self.in1.featureInvest.model.var_investmentSize, 1)
                     self.eq_nom_value.add_summand(self.in2.featureInvest.model.var_investmentSize, -1)
                 else:
                     raise Exception(
