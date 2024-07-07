@@ -32,8 +32,8 @@ doAggregatedCalc = True
 
 ## segmented Properties: ##
 
-nrOfUsedSteps = 96*1    
-segmentLen = nrOfUsedSteps + 1*96
+nr_of_used_steps = 96*1    
+segmentLen = nr_of_used_steps + 1*96
 
 
 ## aggregated Properties: ##
@@ -244,7 +244,7 @@ if doFullCalc:
 if doSegmentedCalc :
 
    calcSegs = Calculation('segModel', system, 'pyomo', time_indices)
-   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps)
+   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nr_of_used_steps=nr_of_used_steps)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:

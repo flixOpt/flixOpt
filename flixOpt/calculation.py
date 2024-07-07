@@ -399,24 +399,7 @@ class SegmentedCalculation(Calculation):
             self._results_struct = helpers.createStructFromDictInDict(self.results)
         return self._results_struct
 
-    # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None):
-        """
-        Parameters
-        ----------
-        label : str
-            name of calculation
-        system : System
-            system which should be calculated
-        modeling_language : 'pyomo','cvxpy' (not implemeted yet)
-            choose optimization modeling language
-        time_indices : None, list
-            list with indexe, which should be used for calculation. If None, then all timesteps are used.
-        """
-        super().__init__(label, system, modeling_language, time_indices)
-        self.segmented_system_models = []  # model list
-
-    def solve(self, solverProps, segmentLen, nrOfUsedSteps, path='results/'):
+    def solve(self, solverProps, segment_length: int, nr_of_used_steps: int, path='results/'):
         """
         Dividing and Modeling the problem in (overlapped) time-segments.
         Storage values as result of segment n are overtaken
@@ -438,7 +421,7 @@ class SegmentedCalculation(Calculation):
             DESCRIPTION.
         segmentLen : int
             nr Of Timesteps of Segment.
-        nrOfUsedSteps : int
+        nr_of_used_steps : int
             nr of timesteps used/overtaken in resulting complete timeseries
             (the timesteps after these are "overlap" and used for better
             results of chargestate of storages)
@@ -447,38 +430,31 @@ class SegmentedCalculation(Calculation):
 
         """
         self.check_if_already_modeled()
-        self._infos['segmentedProps'] = {'segmentLen': segmentLen, 'nrUsedSteps': nrOfUsedSteps}
+        self._infos['segmented_properties'] = {'segment_length': segment_length, 'nr_of_used_steps': nr_of_used_steps}
         print('##############################################################')
         print('#################### segmented Solving #######################')
 
-        t_start = time.time()
+        t_start = timeit.default_timer()
+        self.system.finalize()   # system finalisieren:
 
-        # system finalisieren:
-        self.system.finalize()
-
-        if len(self.system.invest_features) > 0:
-            raise Exception('segmented calculation with Invest-Parameters does not make sense!')
-
-        assert nrOfUsedSteps <= segmentLen
-        assert segmentLen <= len(
-            self.time_series), 'segmentLen must be smaller than (or equal to) the whole nr of timesteps'
-
-        # time_seriesOfSim = self.system.time_series[from_index:to_index+1]
+        assert len(self.system.invest_features) == 0, 'Invest-Parameters not supported in segmented calculation!'
+        assert nr_of_used_steps <= segment_length
+        assert segment_length <= len(self.time_series), f'{segment_length=} cant be greater than {len(self.time_series)=}'
 
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
-        nrOfSimSegments = math.ceil((len(self.time_series)) / nrOfUsedSteps)
-        self._infos['segmentedProps']['nrOfSegments'] = nrOfSimSegments
+        nr_of_segments = math.ceil((len(self.time_series)) / nr_of_used_steps)
+        self._infos['segmented_properties']['nr_of_segments'] = nr_of_segments
         print('indexe        : ' + str(self.time_indices[0]) + '...' + str(self.time_indices[-1]))
-        print('segmentLen    : ' + str(segmentLen))
-        print('usedSteps     : ' + str(nrOfUsedSteps))
-        print('-> nr of Sims : ' + str(nrOfSimSegments))
+        print('segmentLen    : ' + str(segment_length))
+        print('usedSteps     : ' + str(nr_of_used_steps))
+        print('-> nr of Sims : ' + str(nr_of_segments))
         print('')
 
-        self._define_path_names(path, save_results=True, nr_of_system_models=nrOfSimSegments)
+        self._define_path_names(path, save_results=True, nr_of_system_models=nr_of_segments)
 
-        for i in range(nrOfSimSegments):
-            startIndex_calc = i * nrOfUsedSteps
-            endIndex_calc = min(startIndex_calc + segmentLen - 1, len(self.time_indices) - 1)
+        for i in range(nr_of_segments):
+            startIndex_calc = i * nr_of_used_steps
+            endIndex_calc = min(startIndex_calc + segment_length - 1, len(self.time_indices) - 1)
 
             startIndex_global = self.time_indices[startIndex_calc]
             endIndex_global = self.time_indices[endIndex_calc]  # inklusiv
@@ -486,10 +462,10 @@ class SegmentedCalculation(Calculation):
 
             # new realNrOfUsedSteps:
             # if last Segment:
-            if i == nrOfSimSegments - 1:
+            if i == nr_of_segments - 1:
                 realNrOfUsedSteps = endIndex_calc - startIndex_calc + 1
             else:
-                realNrOfUsedSteps = nrOfUsedSteps
+                realNrOfUsedSteps = nr_of_used_steps
 
             print(str(i) + '. Segment ' + ' (system-indexe ' + str(startIndex_global) + '...' + str(
                 endIndex_global) + ') :')
@@ -502,7 +478,7 @@ class SegmentedCalculation(Calculation):
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
-                segmentModBoxBefore = self.segmented_system_models[i - 1]
+                segmentModBoxBefore = self.system_models[i - 1]
                 segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
                                                            segmentModBoxBefore.realNrOfUsedSteps - 1)
                 print('### before_values: ###')
@@ -517,8 +493,6 @@ class SegmentedCalculation(Calculation):
             self.system.do_modeling_of_elements()
             self.durations['modeling'] += round(time.time() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
-            self.segmented_system_models.append(segmentModBox)
-            # übergeordnete system_model-Liste:
             self.system_models.append(segmentModBox)
 
             # Lösen:

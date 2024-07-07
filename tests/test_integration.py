@@ -363,7 +363,7 @@ class TestModelingTypes(BaseTest):
             calc.do_modeling()
         if doSegmentedCalc:
             calc = SegmentedCalculation('segModel', es, 'pyomo')
-            calc.solve(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
+            calc.solve(self.solverProps, segment_length=97, nr_of_used_steps=96)
         if doAggregatedCalc:
             calc = AggregatedCalculation('aggModel', es, 'pyomo')
             calc.do_modeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
