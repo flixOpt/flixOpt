@@ -5,13 +5,13 @@
 from . import example_complex_ModelAndSolve as example_pre
 
 # Name der Rechnung:
-nameOfCalc = example_pre.aCalc.nameOfCalc
+label = example_pre.aCalc.label
 
 if hasattr(example_pre, 'calcSegs'): 
-  nameOfCalcSegs = example_pre.calcSegs.nameOfCalc
+  labelSegs = example_pre.calcSegs.label
 else:
-  nameOfCalcSegs = None
-print(nameOfCalc)
+  labelSegs = None
+print(label)
 
 # ####################
 # # PostProcessing: ##
@@ -23,13 +23,13 @@ import flixOpt.flixPostprocessing as flixPost
 comp_colors = None
 # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
 
-calc1 = flixPost.flix_results(nameOfCalc, comp_colors = comp_colors)
+calc1 = flixPost.flix_results(label, comp_colors = comp_colors)
 
 #explizite Farbänderung
 calc1.postObjOfStr('Waermelast').color = '#000000'
 
-if nameOfCalcSegs is not None:  
-  calcSegs = flixPost.flix_results(nameOfCalcSegs)
+if labelSegs is not None:  
+  calcSegs = flixPost.flix_results(labelSegs)
 else: 
   calcSegs = None
 

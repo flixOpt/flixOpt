@@ -179,10 +179,10 @@ aCalc.solve(solverProps, # some solver options
 # ##### loading results from output-files ######
 import flixOpt.flixPostprocessing as flixPost
 
-nameOfCalc = aCalc.nameOfCalc
-print(nameOfCalc)
+label = aCalc.label
+print(label)
 # loading results, creating postprocessing Object:
-aCalc_post = flixPost.flix_results(nameOfCalc) 
+aCalc_post = flixPost.flix_results(label) 
 
 # ## plotting ##
 # plotting all in- and out-flows of bus "Fernwaerme":

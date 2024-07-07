@@ -334,20 +334,20 @@ import flixOpt.flixPostprocessing as flixPost
 listOfResults = []
 
 if doFullCalc:
-    full = flixPost.flix_results(calcFull.nameOfCalc)
+    full = flixPost.flix_results(calcFull.label)
     listOfResults.append(full)
     # del calcFull
     
     costs = full.results_struct.global_comp.costs.all.sum
 
 if doAggregatedCalc:
-    agg = flixPost.flix_results(calcAgg.nameOfCalc)
+    agg = flixPost.flix_results(calcAgg.label)
     listOfResults.append(agg)
     # del calcAgg
     costs = agg.results_struct.global_comp.costs.all.sum
 
 if doSegmentedCalc:
-    seg = flixPost.flix_results(calcSegs.nameOfCalc)
+    seg = flixPost.flix_results(calcSegs.label)
     listOfResults.append(seg)
     # del calcSegs
     costs = seg.results_struct.global_comp.costs.all.sum

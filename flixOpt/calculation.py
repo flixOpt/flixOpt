@@ -82,7 +82,6 @@ class Calculation:
 
         '''
         self.label = label
-        self.nameOfCalc = None  # name for storing results   # TODO: Why nameOfClac and label???
         self.system = system
         self.modeling_language = modeling_language
         self.time_indices = time_indices
@@ -110,17 +109,17 @@ class Calculation:
 
         timestamp = datetime.datetime.now()
         timestring = timestamp.strftime('%Y-%m-%data')
-        self.nameOfCalc = label_prefix.replace(" ", "") + timestring + '_' + self.label.replace(" ",
+        self.label = label_prefix.replace(" ", "") + timestring + '_' + self.label.replace(" ",
                                                                                               "") + label_suffix.replace(
             " ", "")
 
         if save_results:
-            filename_Data = self.nameOfCalc + '_data.pickle'
-            filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
+            filename_Data = self.label + '_data.pickle'
+            filename_Info = self.label + '_solvingInfos.yaml'
             if nr_of_system_models == 1:
-                filenames_Log = [self.nameOfCalc + '_solver.log']
+                filenames_Log = [self.label + '_solver.log']
             else:
-                filenames_Log = [(self.nameOfCalc + '_solver_' + str(i) + '.log') for i in range(nr_of_system_models)]
+                filenames_Log = [(self.label + '_solver_' + str(i) + '.log') for i in range(nr_of_system_models)]
 
             self.paths_Log = [self.pathForResults / filenames_Log[i] for i in range(nr_of_system_models)]
             self.path_Data = self.pathForResults / filename_Data
@@ -152,7 +151,7 @@ class Calculation:
                       allow_unicode=True,
                       sort_keys=False)
 
-        aStr = f'# saved calculation {self.nameOfCalc} #'
+        aStr = f'# saved calculation {self.label} #'
         print('#' * len(aStr))
         print(aStr)
         print('#' * len(aStr))
