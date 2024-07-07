@@ -392,19 +392,18 @@ class VariableTS(Variable):
         assert length > 1, 'length is one, that seems not right for VariableTS'
         self.activated_beforeValues = False
         super().__init__(label, length, owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
-
-    # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
     def set_before_value(self,
                          default_before_value: Union[int, float],
                          is_start_value: bool) -> None:  # is_start_value heißt ob es Speicherladezustand ist oder Nicht
+        # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
         # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
         self.before_value_is_start_value = is_start_value
         self.default_before_value = default_before_value  # Standardwerte für Simulationsstart im Energiesystem
         self.activated_beforeValues = True
 
-    # hole Startwert/letzten Wert vor diesem Segment:
     @property
     def before_value(self):
+        ## hole Startwert/letzten Wert vor diesem Segment:
         assert self.activated_beforeValues, 'set_before_value() not executed'
         # wenn beforeValue-Datensatz für linear_model gegeben:
         if self.linear_model.before_values is not None:
