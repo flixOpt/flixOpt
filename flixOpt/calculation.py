@@ -461,9 +461,7 @@ class SegmentedCalculation(Calculation):
 
             # new real_nr_of_used_steps:
             if i == max(range(nr_of_segments)):   # if last Segment:
-                real_nr_of_used_steps = end_index_of_segment - start_index_of_segment + 1
-            else:
-                real_nr_of_used_steps = nr_of_used_steps
+                nr_of_used_steps = end_index_of_segment - start_index_of_segment + 1
 
             print(f'{i}. Segment (system indices {start_index_global}...{end_index_global}):')
 
@@ -472,13 +470,12 @@ class SegmentedCalculation(Calculation):
             label = self.label + '_seg' + str(i)
             segmentModBox = SystemModel(label, self.modeling_language, self.system,
                                         indices_global)  # alle Indexe nehmen!
-            segmentModBox.realNrOfUsedSteps = real_nr_of_used_steps
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 segmentModBoxBefore = self.system_models[i - 1]
                 segmentModBox.before_values = BeforeValues(segmentModBoxBefore.all_ts_variables,
-                                                           segmentModBoxBefore.realNrOfUsedSteps - 1)
+                                                           nr_of_used_steps - 1)
                 print('### before_values: ###')
                 segmentModBox.before_values.print()
                 print('#######################')  # transferStartValues(segment, segmentBefore)
@@ -500,7 +497,7 @@ class SegmentedCalculation(Calculation):
                                 logfile_name=self._paths['log'][i])  # keine SolverOutput-Anzeige, da sonst zu viel
             self.durations['solving'] += round(time.time() - t_start_solving, 2)
             ## results adding:
-            self._add_segment_results(segmentModBox, start_index_of_segment, real_nr_of_used_steps)
+            self._add_segment_results(segmentModBox, start_index_of_segment, nr_of_used_steps)
 
         self.durations['model, solve and segmentStuff'] = round(time.time() - t_start, 2)
 
