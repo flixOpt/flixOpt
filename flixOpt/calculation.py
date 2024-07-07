@@ -65,21 +65,18 @@ class Calculation:
                  system: System,
                  modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
-        '''
+        """
         Parameters
         ----------
         label : str
             name of calculation
         system : System
             system which should be calculated
-        modType : 'pyomo','cvxpy' (not implemeted yet)
+        modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
-        path_for_saving : str
-            Path for result files. The default is 'results'.
-
-        '''
+        """
         self.label = label
         self.system = system
         self.modeling_language = modeling_language
@@ -186,21 +183,18 @@ class AggregatedCalculation(Calculation):
                  system: System,
                  modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
-        '''
+        """
         Parameters
         ----------
         label : str
             name of calculation
         system : System
             system which should be calculated
-        modType : 'pyomo','cvxpy' (not implemeted yet)
+        modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
-        path_for_saving : str
-            Path for result files. The default is 'results'.
-
-        '''
+        """
         super().__init__(label, system, modeling_language, time_indices)
         self.time_series_for_aggregation = None
         self.aggregation_data = None
@@ -440,21 +434,18 @@ class SegmentedCalculation(Calculation):
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
     def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None):
-        '''
+        """
         Parameters
         ----------
         label : str
             name of calculation
         system : System
             system which should be calculated
-        modType : 'pyomo','cvxpy' (not implemeted yet)
+        modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
-        path_for_saving : str
-            Path for result files. The default is 'results'.
-
-        '''
+        """
         super().__init__(label, system, modeling_language, time_indices)
         self.segmented_system_models = []  # model list
 
