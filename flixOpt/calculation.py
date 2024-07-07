@@ -64,8 +64,7 @@ class Calculation:
                  label,
                  system: System,
                  modeling_language: Literal["pyomo", "cvxpy"],
-                 time_indices: Optional[list[int]] = None,
-                 path_for_saving='results'):
+                 time_indices: Optional[list[int]] = None):
         '''
         Parameters
         ----------
@@ -85,7 +84,6 @@ class Calculation:
         self.system = system
         self.modeling_language = modeling_language
         self.time_indices = time_indices
-        self.path_for_saving = path_for_saving
         self._infos = {}
 
         self.system_models: List[SystemModel] = []
@@ -96,38 +94,26 @@ class Calculation:
             system.get_time_data_from_indices(self.time_indices))
         helpers.check_time_series('time_indices', self.time_series)
 
+        self._paths = {'log': None, 'data': None, 'info': None}
         self._results = None
         self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
 
-    def _define_path_names(self, label_prefix: str, label_suffix: str, path: str,
-                           save_results: bool, nr_of_system_models: int = 1):
-        # absoluter Pfad:
-        path = pathlib.Path.cwd() / path
-        # Pfad anlegen, fall noch nicht vorhanden:
-        path.mkdir(parents=True, exist_ok=True)
-        self.pathForResults = path
-
-        timestamp = datetime.datetime.now()
-        timestring = timestamp.strftime('%Y-%m-%data')
-        self.label = label_prefix.replace(" ", "") + timestring + '_' + self.label.replace(" ",
-                                                                                              "") + label_suffix.replace(
-            " ", "")
+    def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True, nr_of_system_models: int = 1):
+        """
+        Creates the path for saving reuslts and alters the label of the calculation to have a timestamp
+        """
+        if include_timestamp:
+            timestamp = datetime.datetime.now()
+            timestring = timestamp.strftime('%Y-%m-%data')
+            self.label = f'{timestring}_{self.label.replace(" ","")}'
 
         if save_results:
-            filename_Data = self.label + '_data.pickle'
-            filename_Info = self.label + '_solvingInfos.yaml'
-            if nr_of_system_models == 1:
-                filenames_Log = [self.label + '_solver.log']
-            else:
-                filenames_Log = [(self.label + '_solver_' + str(i) + '.log') for i in range(nr_of_system_models)]
+            path = pathlib.Path.cwd() / path   # absoluter Pfad:
+            path.mkdir(parents=True, exist_ok=True)   # Pfad anlegen, fall noch nicht vorhanden:
 
-            self.paths_Log = [self.pathForResults / filenames_Log[i] for i in range(nr_of_system_models)]
-            self.path_Data = self.pathForResults / filename_Data
-            self.path_Info = self.pathForResults / filename_Info
-        else:
-            self.paths_Log = None
-            self.path_Data = None
-            self.path_Info = None
+            self._paths["log"] = [path / f'{self.label}_solver_{i}.log' for i in range(nr_of_system_models)]
+            self._paths["data"] = path / f'{self.label}_data.pickle'
+            self._paths["info"] = path / f'{self.label}_solvingInfos.yaml'
 
     def check_if_already_modeled(self):
         if self.system.temporary_elements:  # if some element in this list
@@ -141,11 +127,11 @@ class Calculation:
         # with open(yamlPath_Data, 'w') as f:
         #   yaml.dump(self.results, f, sort_keys = False)
         import pickle
-        with open(self.path_Data, 'wb') as f:
+        with open(self._paths['data'], 'wb') as f:
             pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         # Infos:'
-        with open(self.path_Info, 'w', encoding='utf-8') as f:
+        with open(self._paths['info'], 'w', encoding='utf-8') as f:
             yaml.dump(self.infos, f,
                       width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True,
@@ -186,8 +172,8 @@ class FullCalculation(Calculation):
               label_suffix='',
               path='results/',
               save_results=True):
-        self._define_path_names(label_prefix, label_suffix, path, save_results, nr_of_system_models=1)
-        self.system_models[0].solve(**solverProps, logfile_name=self.paths_Log[0])
+        self._define_path_names(path, save_results, nr_of_system_models=1)
+        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
 
         if save_results:
             self._save_solve_infos()
@@ -219,7 +205,7 @@ class AggregatedCalculation(Calculation):
             Path for result files. The default is 'results'.
 
         '''
-        super().__init__(label, system, modeling_language, time_indices, path_for_saving)
+        super().__init__(label, system, modeling_language, time_indices)
         self.time_series_for_aggregation = None
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
@@ -438,8 +424,8 @@ class AggregatedCalculation(Calculation):
               label_suffix='',
               path='results/',
               save_results=True):
-        self._define_path_names(label_prefix, label_suffix, path, save_results, nr_of_system_models=1)
-        self.system_models[0].solve(**solverProps, logfile_name=self.paths_Log[0])
+        self._define_path_names(path, save_results, nr_of_system_models=1)
+        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
 
         if save_results:
             self._save_solve_infos()
@@ -474,7 +460,7 @@ class SegmentedCalculation(Calculation):
             Path for result files. The default is 'results'.
 
         '''
-        super().__init__(label, system, modeling_language, time_indices, path_for_saving)
+        super().__init__(label, system, modeling_language, time_indices)
         self.segmented_system_models = []  # model list
 
     def solve(self, solverProps, segmentLen, nrOfUsedSteps, label_prefix='', label_suffix='',
@@ -540,7 +526,7 @@ class SegmentedCalculation(Calculation):
         print('-> nr of Sims : ' + str(nrOfSimSegments))
         print('')
 
-        self._define_path_names(label_prefix, label_suffix, path, save_results=True, nr_of_system_models=nrOfSimSegments)
+        self._define_path_names(path, save_results=True, nr_of_system_models=nrOfSimSegments)
 
         for i in range(nrOfSimSegments):
             startIndex_calc = i * nrOfUsedSteps
@@ -591,7 +577,7 @@ class SegmentedCalculation(Calculation):
             t_start_solving = time.time()
 
             segmentModBox.solve(**solverProps,
-                                logfile_name=self.paths_Log[i])  # keine SolverOutput-Anzeige, da sonst zu viel
+                                logfile_name=self._paths['log'][i])  # keine SolverOutput-Anzeige, da sonst zu viel
             self.durations['solving'] += round(time.time() - t_start_solving, 2)
             ## results adding:
             self._add_segment_results(segmentModBox, startIndex_calc, realNrOfUsedSteps)
