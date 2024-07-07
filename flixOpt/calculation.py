@@ -26,9 +26,9 @@ log = logging.getLogger(__name__)
 
 
 class Calculation:
-    '''
+    """
     class for defined way of solving a energy system optimizatino
-    '''
+    """
 
     @property
     def infos(self):
@@ -135,15 +135,11 @@ class Calculation:
 
 
 class FullCalculation(Calculation):
-    '''
-    class for defined way of solving a energy system optimizatino
-    '''
+    """
+    class for defined way of solving a energy system optimization
+    """
 
     def do_modeling(self) -> SystemModel:
-        '''
-          modeling full problem
-
-        '''
         self.check_if_already_modeled()
         self.system.finalize()  # System finalisieren:
 
@@ -165,9 +161,9 @@ class FullCalculation(Calculation):
 
 
 class AggregatedCalculation(Calculation):
-    '''
+    """
     class for defined way of solving a energy system optimizatino
-    '''
+    """
 
     def __init__(self, label: str, system: System, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
@@ -191,7 +187,7 @@ class AggregatedCalculation(Calculation):
     def do_modeling(self, periodLengthInHours, nr_of_typical_periods, use_extreme_periods, fix_storage_flows,
                     fix_binary_vars_only, percentage_of_period_freedom=0, costs_of_period_freedom=0, addPeakMax=None,
                     addPeakMin=None):
-        '''
+        """
         method of aggregated modeling.
         1. Finds typical periods.
         2. Equalizes variables of typical periods.
@@ -238,7 +234,7 @@ class AggregatedCalculation(Calculation):
         system_model : TYPE
             DESCRIPTION.
 
-        '''
+        """
 
         addPeakMax = addPeakMax or []
         addPeakMin = addPeakMin or []
@@ -392,9 +388,9 @@ class AggregatedCalculation(Calculation):
 
 
 class SegmentedCalculation(Calculation):
-    '''
+    """
     class for defined way of solving a energy system optimizatino
-    '''
+    """
 
     @property
     def results_struct(self):
@@ -452,7 +448,6 @@ class SegmentedCalculation(Calculation):
         """
         self.check_if_already_modeled()
         self._infos['segmentedProps'] = {'segmentLen': segmentLen, 'nrUsedSteps': nrOfUsedSteps}
-        self.calculation_type = 'segmented'
         print('##############################################################')
         print('#################### segmented Solving #######################')
 
