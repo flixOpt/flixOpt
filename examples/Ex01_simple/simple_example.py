@@ -163,7 +163,7 @@ system.print_equations() # string-output: equations of model
 # ## calculation ##
 
 aCalc.solve(solverProps, # some solver options
-            nameSuffix = '_' + solver_name) # nameSuffix for the results
+            label_suffix = '_' + solver_name) # label_suffix for the results
 # .. results are saved under /results/
 # these files are written:
 # -> json-file with model- and solve-Informations!

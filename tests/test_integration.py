@@ -102,7 +102,7 @@ class TestSimple(BaseTest):
         es.print_variables()
         es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix='_highs')
+        aCalc.solve(self.solverProps, label_suffix='_highs')
 
         nameOfCalc = aCalc.nameOfCalc
         aCalc_post = flixPost.flix_results(nameOfCalc)
@@ -257,7 +257,7 @@ class TestComplex(BaseTest):
         es.print_variables()
         es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
+        aCalc.solve(self.solverProps, label_suffix=f"_{self.solverProps['solver_name']}")
 
         return flixPost.flix_results(aCalc.nameOfCalc).results
 
@@ -302,7 +302,7 @@ class TestComplex(BaseTest):
         es.print_variables()
         es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
+        aCalc.solve(self.solverProps, label_suffix=f"_{self.solverProps['solver_name']}")
 
         return flixPost.flix_results(aCalc.nameOfCalc).results
 

@@ -65,7 +65,7 @@ class Calculation:
                  system: System,
                  modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None,
-                 pathForSaving='results'):
+                 path_for_saving='results'):
         '''
         Parameters
         ----------
@@ -77,7 +77,7 @@ class Calculation:
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
-        pathForSaving : str
+        path_for_saving : str
             Path for result files. The default is 'results'.
 
         '''
@@ -86,7 +86,7 @@ class Calculation:
         self.system = system
         self.modeling_language = modeling_language
         self.time_indices = time_indices
-        self.path_for_saving = pathForSaving
+        self.path_for_saving = path_for_saving
         self._infos = {}
 
         self.system_models: List[SystemModel] = []
@@ -100,20 +100,21 @@ class Calculation:
         self._results = None
         self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
 
-    def _define_path_names(self, namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1):
+    def _define_path_names(self, label_prefix: str, label_suffix: str, path: str,
+                           save_results: bool, nr_of_system_models: int = 1):
         # absoluter Pfad:
-        aPath = pathlib.Path.cwd() / aPath
+        path = pathlib.Path.cwd() / path
         # Pfad anlegen, fall noch nicht vorhanden:
-        aPath.mkdir(parents=True, exist_ok=True)
-        self.pathForResults = aPath
+        path.mkdir(parents=True, exist_ok=True)
+        self.pathForResults = path
 
         timestamp = datetime.datetime.now()
         timestring = timestamp.strftime('%Y-%m-%data')
-        self.nameOfCalc = namePrefix.replace(" ", "") + timestring + '_' + self.label.replace(" ",
-                                                                                              "") + nameSuffix.replace(
+        self.nameOfCalc = label_prefix.replace(" ", "") + timestring + '_' + self.label.replace(" ",
+                                                                                              "") + label_suffix.replace(
             " ", "")
 
-        if saveResults:
+        if save_results:
             filename_Data = self.nameOfCalc + '_data.pickle'
             filename_Info = self.nameOfCalc + '_solvingInfos.yaml'
             if nr_of_system_models == 1:
@@ -182,14 +183,14 @@ class FullCalculation(Calculation):
 
     def solve(self,
               solverProps: dict,
-              namePrefix='',
-              nameSuffix='',
-              aPath='results/',
-              saveResults=True):
-        self._define_path_names(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
+              label_prefix='',
+              label_suffix='',
+              path='results/',
+              save_results=True):
+        self._define_path_names(label_prefix, label_suffix, path, save_results, nr_of_system_models=1)
         self.system_models[0].solve(**solverProps, logfile_name=self.paths_Log[0])
 
-        if saveResults:
+        if save_results:
             self._save_solve_infos()
 
 
@@ -203,7 +204,7 @@ class AggregatedCalculation(Calculation):
                  system: System,
                  modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None,
-                 pathForSaving='results'):
+                 path_for_saving='results'):
         '''
         Parameters
         ----------
@@ -215,11 +216,11 @@ class AggregatedCalculation(Calculation):
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
-        pathForSaving : str
+        path_for_saving : str
             Path for result files. The default is 'results'.
 
         '''
-        super().__init__(label, system, modeling_language, time_indices, pathForSaving)
+        super().__init__(label, system, modeling_language, time_indices, path_for_saving)
         self.time_series_for_aggregation = None
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
@@ -434,14 +435,14 @@ class AggregatedCalculation(Calculation):
 
     def solve(self,
               solverProps: dict,
-              namePrefix='',
-              nameSuffix='',
-              aPath='results/',
-              saveResults=True):
-        self._define_path_names(namePrefix, nameSuffix, aPath, saveResults, nr_of_system_models=1)
+              label_prefix='',
+              label_suffix='',
+              path='results/',
+              save_results=True):
+        self._define_path_names(label_prefix, label_suffix, path, save_results, nr_of_system_models=1)
         self.system_models[0].solve(**solverProps, logfile_name=self.paths_Log[0])
 
-        if saveResults:
+        if save_results:
             self._save_solve_infos()
 
 
@@ -458,7 +459,7 @@ class SegmentedCalculation(Calculation):
         return self._results_struct
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None, pathForSaving='results'):
+    def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None, path_for_saving='results'):
         '''
         Parameters
         ----------
@@ -470,15 +471,15 @@ class SegmentedCalculation(Calculation):
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
-        pathForSaving : str
+        path_for_saving : str
             Path for result files. The default is 'results'.
 
         '''
-        super().__init__(label, system, modeling_language, time_indices, pathForSaving)
+        super().__init__(label, system, modeling_language, time_indices, path_for_saving)
         self.segmented_system_models = []  # model list
 
-    def solve(self, solverProps, segmentLen, nrOfUsedSteps, namePrefix='', nameSuffix='',
-                                          aPath='results/'):
+    def solve(self, solverProps, segmentLen, nrOfUsedSteps, label_prefix='', label_suffix='',
+                                          path='results/'):
         '''
           Dividing and Modeling the problem in (overlapped) time-segments.
           Storage values as result of segment n are overtaken
@@ -504,11 +505,11 @@ class SegmentedCalculation(Calculation):
               nr of timesteps used/overtaken in resulting complete timeseries
               (the timesteps after these are "overlap" and used for better
               results of chargestate of storages)
-          namePrefix : str
+          label_prefix : str
               prefix-String for name of calculation. The default is ''.
-          nameSuffix : str
+          label_suffix : str
               suffix-String for name of calculation. The default is ''.
-          aPath : str
+          path : str
               path for output. The default is 'results/'.
 
           '''
@@ -540,7 +541,7 @@ class SegmentedCalculation(Calculation):
         print('-> nr of Sims : ' + str(nrOfSimSegments))
         print('')
 
-        self._define_path_names(namePrefix, nameSuffix, aPath, saveResults=True, nr_of_system_models=nrOfSimSegments)
+        self._define_path_names(label_prefix, label_suffix, path, save_results=True, nr_of_system_models=nrOfSimSegments)
 
         for i in range(nrOfSimSegments):
             startIndex_calc = i * nrOfUsedSteps
