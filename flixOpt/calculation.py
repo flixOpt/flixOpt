@@ -148,7 +148,6 @@ class FullCalculation(Calculation):
     class for defined way of solving a energy system optimizatino
     '''
 
-    # Variante1:
     def do_modeling(self) -> SystemModel:
         '''
           modeling full problem
@@ -186,8 +185,7 @@ class AggregatedCalculation(Calculation):
                  label: str,
                  system: System,
                  modeling_language: Literal["pyomo", "cvxpy"],
-                 time_indices: Optional[list[int]] = None,
-                 path_for_saving='results'):
+                 time_indices: Optional[list[int]] = None):
         '''
         Parameters
         ----------
@@ -427,6 +425,7 @@ class AggregatedCalculation(Calculation):
             self._save_solve_infos()
 
 
+
 class SegmentedCalculation(Calculation):
     '''
     class for defined way of solving a energy system optimizatino
@@ -440,7 +439,7 @@ class SegmentedCalculation(Calculation):
         return self._results_struct
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None, path_for_saving='results'):
+    def __init__(self, label, system: System, modeling_language, time_indices: Optional[list[int]] = None):
         '''
         Parameters
         ----------
