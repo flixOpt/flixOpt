@@ -419,7 +419,7 @@ class SegmentedCalculation(Calculation):
         ----------
         solverProps : TYPE
             DESCRIPTION.
-        segmentLen : int
+        segment_length : int
             nr Of Timesteps of Segment.
         nr_of_used_steps : int
             nr of timesteps used/overtaken in resulting complete timeseries

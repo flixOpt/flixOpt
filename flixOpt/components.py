@@ -313,7 +313,7 @@ class Boiler(LinearTransformer):
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
     not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
 
-    def __init__(self, label:str, eta:Numeric_TS, Q_fu:Flow, Q_th:Flow, **kwargs):
+    def __init__(self, label: str, eta: Numeric_TS, Q_fu: Flow, Q_th: Flow, **kwargs):
         '''
         constructor for boiler
 
