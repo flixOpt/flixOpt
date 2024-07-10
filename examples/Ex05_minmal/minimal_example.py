@@ -118,5 +118,5 @@ aCalc.solve(solverProps)
 # ##### loading results from output-files ######
 import flixOpt.flixPostprocessing as flixPost
 
-aCalc_post = flixPost.flix_results(aCalc.label)
+aCalc_post = flixPost.flix_results(aCalc.name)
 

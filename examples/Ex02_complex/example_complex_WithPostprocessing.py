@@ -5,7 +5,7 @@
 from . import example_complex_ModelAndSolve as example_pre
 
 # Name der Rechnung:
-label = example_pre.aCalc.label
+label = example_pre.aCalc.name
 
 if hasattr(example_pre, 'calcSegs'): 
   labelSegs = example_pre.calcSegs.label
@@ -93,7 +93,7 @@ import matplotlib.pyplot as plt
 
 def uebersichtsPlot(aCalc):
   fig, ax = plt.subplots(figsize=(10, 5))
-  plt.title(aCalc.label)
+  plt.title(aCalc.name)
     
   plotFlow(aCalc, aCalc.results_struct.BHKW2.P_el.val,  'P_el')
   plotFlow(aCalc, aCalc.results_struct.BHKW2.Q_th.val,  'Q_th_BHKW')

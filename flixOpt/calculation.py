@@ -36,7 +36,7 @@ class Calculation:
 
         calcInfos = self._infos
         infos['calculation'] = calcInfos
-        calcInfos['name'] = self.label
+        calcInfos['name'] = self.name
         calcInfos['no ChosenIndexe'] = len(self.time_indices)
         calcInfos['calculation_type'] = self.__class__.__name__
         calcInfos['duration'] = self.durations
@@ -59,12 +59,12 @@ class Calculation:
         raise NotImplementedError()
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, label, system: System, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name, system: System, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
         ----------
-        label : str
+        name : str
             name of calculation
         system : System
             system which should be calculated
@@ -73,7 +73,7 @@ class Calculation:
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
         """
-        self.label = label
+        self.name = name
         self.system = system
         self.modeling_language = modeling_language
         self.time_indices = time_indices
@@ -94,20 +94,20 @@ class Calculation:
     def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True,
                            nr_of_system_models: int = 1):
         """
-        Creates the path for saving results and alters the label of the calculation to have a timestamp
+        Creates the path for saving results and alters the name of the calculation to have a timestamp
         """
         if include_timestamp:
             timestamp = datetime.datetime.now()
             timestring = timestamp.strftime('%Y-%m-%data')
-            self.label = f'{timestring}_{self.label.replace(" ", "")}'
+            self.name = f'{timestring}_{self.name.replace(" ", "")}'
 
         if save_results:
             path = pathlib.Path.cwd() / path  # absoluter Pfad:
             path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
 
-            self._paths["log"] = [path / f'{self.label}_solver_{i}.log' for i in range(nr_of_system_models)]
-            self._paths["data"] = path / f'{self.label}_data.pickle'
-            self._paths["info"] = path / f'{self.label}_solvingInfos.yaml'
+            self._paths["log"] = [path / f'{self.name}_solver_{i}.log' for i in range(nr_of_system_models)]
+            self._paths["data"] = path / f'{self.name}_data.pickle'
+            self._paths["info"] = path / f'{self.name}_solvingInfos.yaml'
 
     def check_if_already_modeled(self):
         if self.system.temporary_elements:  # if some element in this list
@@ -128,7 +128,7 @@ class Calculation:
             yaml.dump(self.infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
 
-        aStr = f'# saved calculation {self.label} #'
+        aStr = f'# saved calculation {self.name} #'
         print('#' * len(aStr))
         print(aStr)
         print('#' * len(aStr))
@@ -144,7 +144,7 @@ class FullCalculation(Calculation):
         self.system.finalize()  # System finalisieren:
 
         t_start = timeit.default_timer()
-        system_model = SystemModel(self.label, self.modeling_language, self.system, self.time_indices)
+        system_model = SystemModel(self.name, self.modeling_language, self.system, self.time_indices)
         self.system.activate_model(system_model)  # model aktivieren:
         self.system.do_modeling_of_elements()  # modellieren:
 
@@ -165,12 +165,12 @@ class AggregatedCalculation(Calculation):
     class for defined way of solving a energy system optimizatino
     """
 
-    def __init__(self, label: str, system: System, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name: str, system: System, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
         ----------
-        label : str
+        name : str
             name of calculation
         system : System
             system which should be calculated
@@ -179,7 +179,7 @@ class AggregatedCalculation(Calculation):
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
         """
-        super().__init__(label, system, modeling_language, time_indices)
+        super().__init__(name, system, modeling_language, time_indices)
         self.time_series_for_aggregation = None
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
@@ -368,7 +368,7 @@ class AggregatedCalculation(Calculation):
 
         t_m_start = timeit.default_timer()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.label, self.modeling_language, self.system, self.time_indices,
+        system_model = SystemModel(self.name, self.modeling_language, self.system, self.time_indices,
                                    TS_explicit)  # alle Indexe nehmen!
         self.system_models.append(system_model)
         # model aktivieren:
@@ -467,7 +467,7 @@ class SegmentedCalculation(Calculation):
 
 
             # Modellierungsbox / TimePeriod-Box bauen:
-            system_model_of_segment = SystemModel(f'{self.label}_seg{i}', self.modeling_language, self.system,
+            system_model_of_segment = SystemModel(f'{self.name}_seg{i}', self.modeling_language, self.system,
                                         indices_global)  # alle Indexe nehmen!
 
             # Startwerte übergeben von Vorgänger-system_model:

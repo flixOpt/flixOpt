@@ -104,8 +104,7 @@ class TestSimple(BaseTest):
 
         aCalc.solve(self.solverProps)
 
-        label = aCalc.label
-        aCalc_post = flixPost.flix_results(label)
+        aCalc_post = flixPost.flix_results(aCalc.name)
         return aCalc_post.results
 
 
@@ -259,7 +258,7 @@ class TestComplex(BaseTest):
 
         aCalc.solve(self.solverProps)
 
-        return flixPost.flix_results(aCalc.label).results
+        return flixPost.flix_results(aCalc.name).results
 
     def segments_of_flows_model(self):
         # Define the components and energy system
@@ -304,7 +303,7 @@ class TestComplex(BaseTest):
 
         aCalc.solve(self.solverProps)
 
-        return flixPost.flix_results(aCalc.label).results
+        return flixPost.flix_results(aCalc.name).results
 
 
 class TestModelingTypes(BaseTest):
@@ -376,7 +375,7 @@ class TestModelingTypes(BaseTest):
             calc.solve(self.solverProps)
 
         import flixOpt.flixPostprocessing as flixPost
-        return flixPost.flix_results(calc.label).results
+        return flixPost.flix_results(calc.name).results
 
 
 if __name__ == '__main__':

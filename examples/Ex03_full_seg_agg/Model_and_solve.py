@@ -361,7 +361,7 @@ from flixOpt.flixPlotHelperFcts import *
 
 def uebersichtsPlot(aCalc):
   fig, ax = plt.subplots(figsize=(10, 5))
-  plt.title(aCalc.label)
+  plt.title(aCalc.name)
     
   plotFlow(aCalc, aCalc.results_struct.BHKW2.P_el.val,  'P_el')
   plotFlow(aCalc, aCalc.results_struct.BHKW2.Q_th.val,  'Q_th_BHKW')
