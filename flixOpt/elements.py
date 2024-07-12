@@ -662,9 +662,9 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
         super().add_share_to_globals(global_comp, system_model)
         if self.with_excess:  # Strafkosten hinzufügen:
-            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_input,
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour_in', self, self.model.variables['excess_input'],
                                                    self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_output,
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour_out', self, self.model.variables['excess_output'],
                                                    self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
 
