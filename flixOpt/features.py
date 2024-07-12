@@ -1105,10 +1105,10 @@ class FeatureInvest(Feature):
         # eq: defining_variable(t) <=                var_investmentSize * max_rel(t)
         # eq: P(t) <= max_rel(t) * P_inv    
         self.model.add_equation(Equation('max_via_InvestmentSize', self, system_model, 'ineq'))
-        self.model.eqs['fix_via_InvestmentSize'].add_summand(self.defining_variable, 1)
+        self.model.eqs['max_via_InvestmentSize'].add_summand(self.defining_variable, 1)
         # TODO: Changed by FB
         # self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.active_data))
-        self.model.eqs['fix_via_InvestmentSize'].add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.data))
+        self.model.eqs['max_via_InvestmentSize'].add_summand(self.model.variables[self.name_of_investment_size], np.multiply(-1, self.max_rel.data))
         # TODO: BUGFIX: Here has to be active_data, but it throws an error for storages (length)
         # TODO: Changed by FB
 
@@ -1130,18 +1130,18 @@ class FeatureInvest(Feature):
 
                 Big = helpers.max_args(self.min_rel.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
 
-                self.eq_min_via_investmentSize.add_summand(self.defining_variable, -1)
-                self.eq_min_via_investmentSize.add_summand(self.defining_on_variable, Big)  # übergebene On-Variable
-                self.eq_min_via_investmentSize.add_summand(self.model.var_investmentSize, self.min_rel.active_data)
-                self.eq_min_via_investmentSize.add_constant(Big)
+                self.model.eqs['min_via_investmentSize'].add_summand(self.defining_variable, -1)
+                self.model.eqs['min_via_investmentSize'].add_summand(self.defining_on_variable, Big)  # übergebene On-Variable
+                self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.min_rel.active_data)
+                self.model.eqs['min_via_investmentSize'].add_constant(Big)
                 # Anmerkung: Glg bei Spezialfall min_rel = 0 redundant zu FeatureOn-Glg.
             else:
                 pass  # Bereits in FeatureOn mit P>= On(t)*Min ausreichend definiert
         else:
             # eq: defining_variable(t) >= investment_size * min_rel(t)
 
-            self.eq_min_via_investmentSize.add_summand(self.defining_variable, -1)
-            self.eq_min_via_investmentSize.add_summand(self.model.var_investmentSize, self.min_rel.active_data)
+            self.model.eqs['min_via_investmentSize'].add_summand(self.defining_variable, -1)
+            self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.min_rel.active_data)
 
     def _add_defining_var_isInvested(self, system_model: SystemModel):
         if self.invest_parameters.fixed_size:
@@ -1195,7 +1195,7 @@ class FeatureInvest(Feature):
         # # specific_effects:
         if self.invest_parameters.specific_effects is not None:
             # share: + investment_size (=var)   * specific_effects
-            global_comp.add_share_to_invest('specific_effects', self.owner, self.model.var_investmentSize,
+            global_comp.add_share_to_invest('specific_effects', self.owner, self.model.variables[self.name_of_investment_size],
                                             self.invest_parameters.specific_effects, 1)
 
         # # segmentedCosts:                                        

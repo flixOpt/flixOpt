@@ -8,6 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import textwrap
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
+import timeit
 
 import numpy as np
 
@@ -221,8 +222,32 @@ class SystemModel(LinearModel):
     def all_equations(self) -> List[Equation]:
         all_eqs = []
         for model in self.models_of_elements.values():
-            all_eqs += [eq for eq in model.eqs.values()] + [ineq for ineq in model.ineqs.values()]
+            all_eqs += [eq for eq in model.eqs.values()]
         return all_eqs
+
+    @property
+    def all_inequations(self) -> List[Equation]:
+        all_eqs = []
+        for model in self.models_of_elements.values():
+            all_eqs += [ineq for ineq in model.ineqs.values()]
+        return all_eqs
+
+    def to_math_model(self) -> None:
+        t_start = timeit.default_timer()
+        eq: Equation
+        # Variablen erstellen
+        for variable in self.all_variables:
+            variable.to_math_model(self)
+        # Gleichungen erstellen
+        for eq in self.all_equations:
+            eq.to_math_model(self)
+        # Ungleichungen erstellen:
+        for ineq in self.all_inequations:
+            ineq.to_math_model(self)
+        # Zielfunktion erstellen
+        self.objective.to_math_model(self)
+
+        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
 
 class Element:

@@ -419,6 +419,7 @@ class Global(Element):
         self.listOfEffectTypes = []  # wird überschrieben mit spezieller Liste
 
         self.objective = None
+        self.penalty = None
 
     def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
@@ -508,6 +509,7 @@ class Global(Element):
         self.penalty.declare_vars_and_eqs(system_model)
 
         self.objective = Equation('obj', self, system_model, 'objective')
+        self.model.add_equation(self.objective)
         system_model.objective = self.objective
 
         # todo : besser wäre objective separat:
@@ -534,7 +536,7 @@ class Global(Element):
                 shareSum_op = effectTypeOfShare.operation
                 shareSum_op: flixOpt.flixFeatures.Feature_ShareSum
                 shareHolder = effectType
-                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
+                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.variables['sum_TS'],
                                                specShare_TS, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             # alle specificSharesToOtherEffects durchgehen:
