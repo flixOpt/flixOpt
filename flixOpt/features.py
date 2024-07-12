@@ -301,20 +301,13 @@ class FeatureAvoidFlowsAtOnce(Feature):
         # Summanden hinzufügen:
         for aFlow in self.flows:
             # + flow_i.on(t):
-            if aFlow.model.var_on is not None:
-                self.model.eqs['flowLock'].add_summand(aFlow.model.var_on, 1)
-                # + flow_i.val(t)/flow_i.max
-            else:  # nur bei "new"
-                # TODO: Review this .min - Whats meant here?
-                assert aFlow.min >= 0, 'FeatureAvoidFlowsAtOnce(): typ "new" geht nur für Flows mit min >= 0!'
-                self.eq_flowLock.add_summand(aFlow.model.var_val, 1 / aFlow.max)
+            if aFlow.model.variables.get('on') is not None:
+                self.model.eqs['flowLock'].add_summand(aFlow.model.variables['on'], 1)
 
         if self.typ == 'classic':
             # TODO: Decrease the value 1.1?
             self.model.eqs['flowLock'].add_constant(
                 1.1)  # sicherheitshalber etwas mehr, damit auch leicht größer Binärvariablen 1.00001 funktionieren.
-        elif self.typ == 'new':
-            self.eq_flowLock.add_constant(1)  # TODO: hier ggf. Problem bei großen Binärungenauigkeit!!!!
         else:
             raise NotImplementedError(f'FeatureAvoidFlowsAtOnce: "{self.typ=}" not implemented!')
 
@@ -882,10 +875,7 @@ class FeatureShares(Feature):
         -------
         eq_oneShare : Equation
         """
-        try:
-            full_name_of_share = share_holder.label_full + '_' + name_of_share
-        except:
-            pass
+        full_name_of_share = share_holder.label_full + '_' + name_of_share
         self.model.add_variable(Variable(full_name_of_share, 1, self, system_model))  # Skalar
         self.model.add_equation(Equation(full_name_of_share, self, system_model))
         self.model.eqs[full_name_of_share].add_summand(self.model.variables[full_name_of_share], -1)
