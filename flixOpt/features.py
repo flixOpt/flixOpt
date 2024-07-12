@@ -391,11 +391,11 @@ class FeatureOn(Feature):
                 or self.force_switch_on)
 
     # varOwner braucht die Variable auch:
-    def getVar_on(self):
-        return self.model.var_on
+    def getVar_on(self) -> Optional[VariableTS]:
+        return self.model.variables.get('on')
 
-    def getVars_switchOnOff(self):
-        return self.model.var_switchOn, self.model.var_switchOff
+    def getVars_switchOnOff(self) -> Tuple[Optional[VariableTS], Optional[VariableTS]]:
+        return self.model.variables.get('switchOn'), self.model.variables.get('switchOff')
 
     #   # Variable wird erstellt und auch gleich in featureOwner registiert:
     #      
