@@ -214,14 +214,14 @@ class SystemModel(LinearModel):
     def all_variables(self) -> List[Variable]:
         all_vars = []
         for model in self.models_of_elements.values():
-            all_vars += [var for var in model.variables]
+            all_vars += [var for var in model.variables.values()]
         return all_vars
 
     @property
     def all_equations(self) -> List[Equation]:
         all_eqs = []
         for model in self.models_of_elements.values():
-            all_eqs += [eq for eq in model.eqs] + [ineq for ineq in model.ineqs]
+            all_eqs += [eq for eq in model.eqs.values()] + [ineq for ineq in model.ineqs.values()]
         return all_eqs
 
 
