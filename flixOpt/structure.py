@@ -470,12 +470,14 @@ class ElementModel:
     def add_variable(self, variable: Variable) -> None:
         if variable.label not in self.variables.keys():
             self.variables[variable.label] = variable
-        raise Exception(f'Variable "{variable.label}" already exists')
+        else:
+            raise Exception(f'Variable "{variable.label}" already exists')
 
     def add_equation(self, equation: Equation) -> None:
         if equation.label not in self.eqs.keys():
             self.eqs[equation.label] = equation
-        raise Exception(f'Equation "{equation.label}" already exists')
+        else:
+            raise Exception(f'Equation "{equation.label}" already exists')
 
     def description_of_equations(self) -> List:
         # Wenn Glg vorhanden:
