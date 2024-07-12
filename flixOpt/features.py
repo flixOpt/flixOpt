@@ -256,7 +256,7 @@ class FeatureAvoidFlowsAtOnce(Feature):
         assert len(self.flows) >= 2, 'Beachte für Feature AvoidFlowsAtOnce: Mindestens 2 Flows notwendig'
 
     def finalize(self):
-        super().finalize
+        super().finalize()
         # Beachte: Hiervor muss featureOn in den Flows existieren!
         aFlow: Flow
 
