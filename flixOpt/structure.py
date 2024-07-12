@@ -451,9 +451,9 @@ class ElementModel:
     def __init__(self, element: Element):
         self.element = element
         # TODO: Dicts instead of Lists for referencing?
-        self.variables = []
-        self.eqs = []
-        self.ineqs = []
+        self.variables = {}
+        self.eqs = {}
+        self.ineqs = {}
         self.objective = None
 
     # Eqs, Ineqs und Objective als Str-Description:
@@ -462,7 +462,7 @@ class ElementModel:
         eq: Equation
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
-            for eq in (self.eqs + self.ineqs):
+            for eq in (self.eqs.values() + self.ineqs.values()):
                 aList.append(eq.description())
         if not (self.objective is None):
             aList.append(self.objective.description())
@@ -470,18 +470,29 @@ class ElementModel:
 
     def description_of_variables(self) -> List:
         aList = []
-        for aVar in self.variables:
+        for aVar in self.variables.values():
             aList.append(aVar.get_str_description())
         return aList
 
     def get_variable(self, label: str) -> Variable:
-        for var in self.variables:
-            if var.label == label:
-                return var
-        raise Exception(f'Variable "{label}" not found')
+        if label in self.variables.keys():
+            return self.variables[label]
+        raise Exception(f'Variable "{label}" does not exist')
 
     def get_equation(self, label: str) -> Equation:
-        for eq in self.eqs + self.ineqs:
-            if eq.label == label:
-                return eq
-        raise Exception(f'Equation "{label}" not found')
+        if label in self.eqs.keys():
+            return self.eqs[label]
+        if label in self.ineqs.keys():
+            return self.ineqs[label]
+        raise Exception(f'Equation "{label}" does not exist')
+
+    def add_variable(self, variable: Variable) -> None:
+        if variable.label not in self.variables.keys():
+            self.variables[variable.label] = variable
+        raise Exception(f'Variable "{variable.label}" already exists')
+
+    def add_equation(self, equation: Equation) -> None:
+        if equation.label not in self.eqs.keys():
+            self.eqs[equation.label] = equation
+        raise Exception(f'Equation "{equation.label}" already exists')
+
