@@ -1062,8 +1062,8 @@ class Flow(Element):
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
         self.model.add_equation(eq_sumFlowHours)
-        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dt_in_hours, as_sum=True)
-        eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
+        eq_sumFlowHours.add_summand(self.model.variables["val"], system_model.dt_in_hours, as_sum=True)
+        eq_sumFlowHours.add_summand(self.model.variables['sumFlowHours'], -1)
 
         #
         # ############## Constraints für Binärvariablen : ##############

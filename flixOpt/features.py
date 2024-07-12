@@ -488,7 +488,7 @@ class FeatureOn(Feature):
             # eq: Q_th(t) - max(Epsilon, Q_th_min) * On(t) >= 0  (mit Epsilon = sehr kleine Zahl, wird nur im Falle Q_th_min = 0 gebraucht)
             # gleichbedeutend mit eq: -Q_th(t) + max(Epsilon, Q_th_min)* On(t) <= 0 
             aFlow = self.flows_defining_on[0]
-            self.model.eqs['On_Constraint_1'].add_summand(aFlow.model.var_val, -1, time_indices)
+            self.model.eqs['On_Constraint_1'].add_summand(aFlow.model.variables['val'], -1, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
                 min_val = aFlow.invest_parameters.minimum_size * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
@@ -496,7 +496,7 @@ class FeatureOn(Feature):
             else:
                 min_val = aFlow.size * aFlow.min_rel.active_data
 
-            self.model.eqs['On_Constraint_1'].add_summand(self.model.var_on, 1 * np.maximum(system_model.epsilon, min_val),
+            self.model.eqs['On_Constraint_1'].add_summand(self.model.variables['on'], 1 * np.maximum(system_model.epsilon, min_val),
                             time_indices)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
 
         # Bei mehreren Leistungsvariablen:
@@ -523,14 +523,14 @@ class FeatureOn(Feature):
         #  eq: sum( Leistung(t,i) / nr_of_flows ) - sum(Leistung_max(i)) / nr_of_flows * On(t) <= 0
         sumOfFlowMax = 0
         for aFlow in self.flows_defining_on:
-            self.model.eqs['On_Constraint_2'].add_summand(aFlow.model.var_val, 1 / nr_of_flows, time_indices)
+            self.model.eqs['On_Constraint_2'].add_summand(aFlow.model.variables['val'], 1 / nr_of_flows, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
                 sumOfFlowMax += aFlow.max_rel.active_data * aFlow.invest_parameters.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
                 sumOfFlowMax += aFlow.max_rel.active_data * aFlow.size
 
-        self.model.eqs['On_Constraint_2'].add_summand(self.model.var_on, - sumOfFlowMax / nr_of_flows, time_indices)  #
+        self.model.eqs['On_Constraint_2'].add_summand(self.model.variables['on'], - sumOfFlowMax / nr_of_flows, time_indices)  #
 
         if isinstance(sumOfFlowMax, (np.ndarray, list)):
             if max(sumOfFlowMax) / nr_of_flows > 1000: log.warning(
@@ -616,19 +616,19 @@ class FeatureOn(Feature):
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1) 
 
         self.model.add_equation(Equation('SwitchOnOff_andOn', self, system_model))
-        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.var_switchOn, 1, time_indices[1:])  # SwitchOn(t)
-        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.var_switchOff, -1, time_indices[1:])  # SwitchOff(t)
-        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.var_on, -1, time_indices[1:])  # On(t)
-        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.var_on, +1, time_indices[0:-1])  # On(t-1)
+        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.variables['switchOn'], 1, time_indices[1:])  # SwitchOn(t)
+        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.variables['switchOff'], -1, time_indices[1:])  # SwitchOff(t)
+        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.variables['on'], -1, time_indices[1:])  # On(t)
+        self.model.eqs['SwitchOnOff_andOn'].add_summand(self.model.variables['on'], +1, time_indices[0:-1])  # On(t-1)
 
         ## Ersten Wert SwitchOn(t=1) bzw. SwitchOff(t=1) festlegen
         # eq: SwitchOn(t=1)-SwitchOff(t=1) = On(t=1)- ValueBeforeBeginOfTimeSeries;      
 
         self.model.add_equation(Equation('SwitchOnOffAtFirstTime', self, system_model))
         firstIndex = time_indices[0]  # nur erstes Element!
-        self.model.eqs['SwitchOnOffAtFirstTime'].add_summand(self.model.var_switchOn, 1, firstIndex)
-        self.model.eqs['SwitchOnOffAtFirstTime'].add_summand(self.model.var_switchOff, -1, firstIndex)
-        self.model.eqs['SwitchOnOffAtFirstTime'].add_summand(self.model.var_on, -1, firstIndex)
+        self.model.eqs['SwitchOnOffAtFirstTime'].add_summand(self.model.variables['switchOn'], 1, firstIndex)
+        self.model.eqs['SwitchOnOffAtFirstTime'].add_summand(self.model.variables['switchOff'], -1, firstIndex)
+        self.model.eqs['SwitchOnOffAtFirstTime'].add_summand(self.model.variables['on'], -1, firstIndex)
         # eq_SwitchOnOffAtFirstTime.add_constant(-on_valuesBefore[-1]) # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
         self.model.eqs['SwitchOnOffAtFirstTime'].add_constant(
             -self.model.var_on.before_value)  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
