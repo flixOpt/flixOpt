@@ -134,12 +134,12 @@ class SystemModel(LinearModel):
         print('')
         for aEffect in self.system.global_comp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
-            print('  operation: ' + str(aEffect.operation.model.var_sum.result))
-            print('  invest   : ' + str(aEffect.invest.model.var_sum.result))
-            print('  sum      : ' + str(aEffect.all.model.var_sum.result))
+            print('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
+            print('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
+            print('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.global_comp.penalty.model.var_sum.result))
+        print('penaltyCosts     : ' + str(self.system.global_comp.penalty.model.variables['sum'].result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -156,7 +156,7 @@ class SystemModel(LinearModel):
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.global_comp.penalty.model.var_sum.result > 10:
+        if self.system.global_comp.penalty.model.variables['sum'].result > 10:
             print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -173,10 +173,10 @@ class SystemModel(LinearModel):
             for aEffect in self.system.global_comp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
-                aDict['operation'] = str(aEffect.operation.model.var_sum.result)
-                aDict['invest'] = str(aEffect.invest.model.var_sum.result)
-                aDict['sum'] = str(aEffect.all.model.var_sum.result)
-            main_results_str['penaltyCosts'] = str(self.system.global_comp.penalty.model.var_sum.result)
+                aDict['operation'] = str(aEffect.operation.model.variables['sum'].result)
+                aDict['invest'] = str(aEffect.invest.model.variables['sum'].result)
+                aDict['sum'] = str(aEffect.all.model.variables['sum'].result)
+            main_results_str['penaltyCosts'] = str(self.system.global_comp.penalty.model.variables['sum'].result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -195,7 +195,7 @@ class SystemModel(LinearModel):
                      }
             main_results_str['Invest-Decisions'] = aDict
             for aInvestFeature in self.system.invest_features:
-                investValue = aInvestFeature.model.var_investmentSize.result
+                investValue = aInvestFeature.model.variables[aInvestFeature.name_of_investment_size].result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
                 if isinstance(investValue, np.ndarray):
@@ -404,7 +404,7 @@ class Element:
 
         # 2. Variablenwerte ablegen:
         aVar: Variable
-        for aVar in self.model.variables:
+        for aVar in self.model.variables.values():
             # print(aVar.label)
             aData[aVar.label] = aVar.result
             aVars[aVar.label] = aVar  # link zur Variable
@@ -509,7 +509,7 @@ class ElementModel:
         eq: Equation
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
-            for eq in (self.eqs.values() + self.ineqs.values()):
+            for eq in (list(self.eqs.values()) + list(self.ineqs.values())):
                 aList.append(eq.description())
         if not (self.objective is None):
             aList.append(self.objective.description())
