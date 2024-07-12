@@ -651,9 +651,9 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         bus_balance = Equation('busBalance', self, system_model)
         self.model.add_equation(bus_balance)
         for aFlow in self.inputs:
-            bus_balance.add_summand(aFlow.model.var_val, 1)
+            bus_balance.add_summand(aFlow.model.variables['val'], 1)
         for aFlow in self.outputs:
-            bus_balance.add_summand(aFlow.model.var_val, -1)
+            bus_balance.add_summand(aFlow.model.variables['val'], -1)
 
         if self.with_excess:  # Fehlerplus/-minus hinzufügen zur Bilanz:
             bus_balance.add_summand(self.model.variables['excess_output'], -1)
@@ -1141,7 +1141,7 @@ class Flow(Element):
         if self.effects_per_flow_hour is not None:
             owner = self
             global_comp.add_share_to_operation(
-                'effects_per_flow_hour', owner, self.model.var_val,
+                'effects_per_flow_hour', owner, self.model.variables['val'],
                 self.effects_per_flow_hour, system_model.dt_in_hours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:

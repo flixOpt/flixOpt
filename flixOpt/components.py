@@ -840,13 +840,13 @@ class Storage(Component):
         elif helpers.is_number(self.chargeState0_inFlowHours):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
             self.model.add_equation(Equation('charge_state_start', self, system_model, eqType='eq'))
-            self.model.eqs['charge_state_start'].add_constant(self.model.var_charge_state.before_value)  # chargeState_0 !
-            self.model.eqs['charge_state_start'].add_summand(self.model.var_charge_state, 1, time_indices[0])
+            self.model.eqs['charge_state_start'].add_constant(self.model.variables['charge_state'].before_value)  # chargeState_0 !
+            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1, time_indices[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
             self.model.add_equation(Equation('charge_state_start', self, system_model, eqType='eq'))
-            self.model.eqs['charge_state_start'].add_summand(self.model.var_charge_state, 1, time_indices[0])
-            self.model.eqs['charge_state_start'].add_summand(self.model.var_charge_state, -1, time_indices[-1])
+            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1, time_indices[0])
+            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], -1, time_indices[-1])
         else:
             raise Exception('chargeState0_inFlowHours has undefined value = ' + str(self.chargeState0_inFlowHours))
 
@@ -857,13 +857,13 @@ class Storage(Component):
         # charge_state hat ein Index mehr:
         time_indicesChargeState = range(time_indices.start, time_indices.stop + 1)
         self.model.add_equation(Equation('charge_state', self, system_model, eqType='eq'))
-        self.model.eqs['charge_state'].add_summand(self.model.var_charge_state,
+        self.model.eqs['charge_state'].add_summand(self.model.variables['charge_state'],
                                          -1 * (1 - self.fracLossPerHour.active_data * system_model.dt_in_hours),
                                         time_indicesChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
-        self.model.eqs['charge_state'].add_summand(self.model.var_charge_state, 1, time_indicesChargeState[1:])  # 1:end
-        self.model.eqs['charge_state'].add_summand(self.inFlow.model.var_val, -1 * self.eta_load.active_data * system_model.dt_in_hours)
-        self.model.eqs['charge_state'].add_summand(self.outFlow.model.var_val,
+        self.model.eqs['charge_state'].add_summand(self.model.variables['charge_state'], 1, time_indicesChargeState[1:])  # 1:end
+        self.model.eqs['charge_state'].add_summand(self.inFlow.model.variables['val'], -1 * self.eta_load.active_data * system_model.dt_in_hours)
+        self.model.eqs['charge_state'].add_summand(self.outFlow.model.variables['val'],
                                          1 / self.eta_unload.active_data * system_model.dt_in_hours)  # Achtung hier 1/eta!
 
         # Speicherladezustand am Ende
@@ -871,21 +871,21 @@ class Storage(Component):
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.charge_state_end_max is not None:
             self.model.add_equation(Equation('eq_charge_state_end_max', self, system_model, eqType='ineq'))
-            self.model.eqs['eq_charge_state_end_max'].add_summand(self.model.var_charge_state, 1, time_indicesChargeState[-1])
+            self.model.eqs['eq_charge_state_end_max'].add_summand(self.model.variables['charge_state'], 1, time_indicesChargeState[-1])
             self.model.eqs['eq_charge_state_end_max'].add_constant(self.charge_state_end_max)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.charge_state_end_min is not None:
             self.model.add_equation(Equation('eq_charge_state_end_min', self, system_model, eqType='ineq'))
-            self.model.eqs['eq_charge_state_end_min'].add_summand(self.model.var_charge_state, -1, time_indicesChargeState[-1])
+            self.model.eqs['eq_charge_state_end_min'].add_summand(self.model.variables['charge_state'], -1, time_indicesChargeState[-1])
             self.model.eqs['eq_charge_state_end_min'].add_constant(- self.charge_state_end_min)
 
         # nettoflow:
         # eq: nettoFlow(t) - outFlow(t) + inFlow(t) = 0
         self.model.add_equation(Equation('nettoFlow', self, system_model, eqType='eq'))
-        self.model.eqs['nettoFlow'].add_summand(self.model.var_nettoFlow, 1)
-        self.model.eqs['nettoFlow'].add_summand(self.inFlow.model.var_val, 1)
-        self.model.eqs['nettoFlow'].add_summand(self.outFlow.model.var_val, -1)
+        self.model.eqs['nettoFlow'].add_summand(self.model.variables['nettoFlow'], 1)
+        self.model.eqs['nettoFlow'].add_summand(self.inFlow.model.variables['val'], 1)
+        self.model.eqs['nettoFlow'].add_summand(self.outFlow.model.variables['val'], -1)
 
         if self.featureInvest is not None:
             self.featureInvest.do_modeling(system_model, time_indices)

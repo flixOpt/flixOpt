@@ -311,7 +311,7 @@ class FeatureAvoidFlowsAtOnce(Feature):
 
         if self.typ == 'classic':
             # TODO: Decrease the value 1.1?
-            self.eq_flowLock.add_constant(
+            self.model.eqs['flowLock'].add_constant(
                 1.1)  # sicherheitshalber etwas mehr, damit auch leicht größer Binärvariablen 1.00001 funktionieren.
         elif self.typ == 'new':
             self.eq_flowLock.add_constant(1)  # TODO: hier ggf. Problem bei großen Binärungenauigkeit!!!!
@@ -505,8 +505,8 @@ class FeatureOn(Feature):
             ## 1) sum(alle Leistung)=0 -> On = 0 | On=1 -> sum(alle Leistungen) > 0
             # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
             for aFlow in self.flows_defining_on:
-                self.model.eqs['On_Constraint_1'].add_summand(aFlow.model.var_val, -1, time_indices)
-            self.model.eqs['On_Constraint_1'].add_summand(self.model.var_on, 1 * system_model.epsilon,
+                self.model.eqs['On_Constraint_1'].add_summand(aFlow.model.variables['val'], -1, time_indices)
+            self.model.eqs['On_Constraint_1'].add_summand(self.model.variables['on'], 1 * system_model.epsilon,
                             time_indices)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
 
         #### Bedingung 2) ####
@@ -824,12 +824,12 @@ class Feature_ShareSum(Feature):
             ## Share zu TS-equation hinzufügen:
             # if constant share:      
             if variable is None:
-                self.model.eqs['sum_TS'].add_constant(-1 * factorOfSummand)  # share in global
+                self.model.eqs['bilanz'].add_constant(-1 * factorOfSummand)  # share in global
                 if name_of_share is not None:
                     eq_oneShare.add_constant(-1 * sum(factorOfSummand))  # share itself
             # if variable share:
             else:
-                self.model.eqs['sum_TS'].add_summand(variable, factorOfSummand)  # share in global
+                self.model.eqs['bilanz'].add_summand(variable, factorOfSummand)  # share in global
                 if name_of_share is not None:
                     eq_oneShare.add_summand(variable, factorOfSummand, as_sum=True)  # share itself
 
