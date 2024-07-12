@@ -301,8 +301,8 @@ class FeatureAvoidFlowsAtOnce(Feature):
         # Summanden hinzufügen:
         for aFlow in self.flows:
             # + flow_i.on(t):
-            if aFlow.model.variables.get('on') is not None:
-                self.model.eqs['flowLock'].add_summand(aFlow.model.variables['on'], 1)
+            if aFlow.featureOn.model.variables.get('on') is not None:
+                self.model.eqs['flowLock'].add_summand(aFlow.featureOn.model.variables['on'], 1)
 
         if self.typ == 'classic':
             # TODO: Decrease the value 1.1?
