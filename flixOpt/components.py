@@ -261,10 +261,10 @@ class LinearTransformer(Component):
                 self.model.add_equation(eq_linearFlowRelation_i)
                 for inFlow in leftSideFlows:
                     aFactor = aFactorVec_Dict[inFlow].active_data
-                    eq_linearFlowRelation_i.add_summand(inFlow.model.var_val, aFactor)  # input1.val[t]      * factor[t]
+                    eq_linearFlowRelation_i.add_summand(inFlow.model.variables['val'], aFactor)  # input1.val[t]      * factor[t]
                 for outFlow in rightSideFlows:
                     aFactor = aFactorVec_Dict[outFlow].active_data
-                    eq_linearFlowRelation_i.add_summand(outFlow.model.var_val, -aFactor)  # output.val[t] * -1 * factor[t]
+                    eq_linearFlowRelation_i.add_summand(outFlow.model.variables['val'], -aFactor)  # output.val[t] * -1 * factor[t]
 
                 eq_linearFlowRelation_i.add_constant(0)  # nur zur Komplettisierung der Gleichung
 

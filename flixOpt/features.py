@@ -631,32 +631,32 @@ class FeatureOn(Feature):
         self.model.eqs['SwitchOnOffAtFirstTime'].add_summand(self.model.variables['on'], -1, firstIndex)
         # eq_SwitchOnOffAtFirstTime.add_constant(-on_valuesBefore[-1]) # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
         self.model.eqs['SwitchOnOffAtFirstTime'].add_constant(
-            -self.model.var_on.before_value)  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
+            -self.model.variables['on'].before_value)  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
 
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1 
 
         self.model.add_equation(Equation('SwitchOnOrSwitchOff', self, system_model, eqType='ineq'))
-        self.model.eqs['SwitchOnOrSwitchOff'].add_summand(self.model.var_switchOn, 1)
-        self.model.eqs['SwitchOnOrSwitchOff'].add_summand(self.model.var_switchOff, 1)
+        self.model.eqs['SwitchOnOrSwitchOff'].add_summand(self.model.variables['switchOn'], 1)
+        self.model.eqs['SwitchOnOrSwitchOff'].add_summand(self.model.variables['switchOff'], 1)
         self.model.eqs['SwitchOnOrSwitchOff'].add_constant(1)
 
         ## Anzahl Starts:
         # eq: nrSwitchOn = sum(SwitchOn(t))  
 
         self.model.add_equation(Equation('NrSwitchOn', self, system_model))
-        self.model.eqs['NrSwitchOn'].add_summand(self.model.var_nrSwitchOn, 1)
-        self.model.eqs['NrSwitchOn'].add_summand(self.model.var_switchOn, -1, as_sum=True)
+        self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], 1)
+        self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], -1, as_sum=True)
 
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel):
 
         shareHolder = self.owner
         # Anfahrkosten:
         if self.switch_on_effects is not None:  # and any(self.switch_on_effects.active_data != 0):
-            global_comp.add_share_to_operation('switch_on_effects', shareHolder, self.model.var_switchOn, self.switch_on_effects, 1)
+            global_comp.add_share_to_operation('switch_on_effects', shareHolder, self.model.variables['switchOn'], self.switch_on_effects, 1)
         # Betriebskosten:
         if self.running_hour_effects is not None:  # and any(self.running_hour_effects):
-            global_comp.add_share_to_operation('running_hour_effects', shareHolder, self.model.var_on,
+            global_comp.add_share_to_operation('running_hour_effects', shareHolder, self.model.variables['on'],
                                                self.running_hour_effects, system_model.dt_in_hours)
             # global_comp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
