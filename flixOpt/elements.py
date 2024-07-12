@@ -508,6 +508,7 @@ class Global(Element):
         self.penalty.declare_vars_and_eqs(system_model)
 
         self.objective = Equation('obj', self, system_model, 'objective')
+        system_model.objective = self.objective
 
         # todo : besser wäre objective separat:
 
