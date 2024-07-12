@@ -232,6 +232,6 @@ if solver_name == 'gurobi': solverProps['threads'] = nrOfThreads
 
 # ## solving calculation ##
 
-aCalc.solve(solverProps, nameSuffix = '_' + solver_name)
+aCalc.solve(solverProps)
 
 # -> for analysis of results, see separate postprocessing-script!

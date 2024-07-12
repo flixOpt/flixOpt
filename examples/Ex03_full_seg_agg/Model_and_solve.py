@@ -18,7 +18,6 @@ solver_name    = 'cbc'
 # solver_name    = 'glpk'
 solverProps = {'mip_gap': gapFrac, 'solver_name': solver_name, 'solver_output_to_console' : True, 'threads':16}
 
-nameSuffix = '_' + solver_name # for saving-file
 
 ## Auswahl Rechentypen: ##
 
@@ -33,8 +32,8 @@ doAggregatedCalc = True
 
 ## segmented Properties: ##
 
-nrOfUsedSteps = 96*1    
-segmentLen = nrOfUsedSteps + 1*96
+nr_of_used_steps = 96*1    
+segmentLen = nr_of_used_steps + 1*96
 
 
 ## aggregated Properties: ##
@@ -238,14 +237,14 @@ if doFullCalc:
   system.print_variables()
   system.print_equations()
     
-  calcFull.solve(solverProps, nameSuffix=nameSuffix)
+  calcFull.solve(solverProps)
   listOfCalcs.append(calcFull)
 
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
    calcSegs = Calculation('segModel', system, 'pyomo', time_indices)
-   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nrOfUsedSteps=nrOfUsedSteps, nameSuffix = nameSuffix)
+   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nr_of_used_steps=nr_of_used_steps)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
@@ -266,7 +265,7 @@ if doAggregatedCalc :
     system.print_variables()
     system.print_equations()
     
-    calcAgg.solve(solverProps, nameSuffix = nameSuffix)
+    calcAgg.solve(solverProps)
     listOfCalcs.append(calcAgg)
 
 
@@ -334,20 +333,20 @@ import flixOpt.flixPostprocessing as flixPost
 listOfResults = []
 
 if doFullCalc:
-    full = flixPost.flix_results(calcFull.nameOfCalc)
+    full = flixPost.flix_results(calcFull.label)
     listOfResults.append(full)
     # del calcFull
     
     costs = full.results_struct.global_comp.costs.all.sum
 
 if doAggregatedCalc:
-    agg = flixPost.flix_results(calcAgg.nameOfCalc)
+    agg = flixPost.flix_results(calcAgg.label)
     listOfResults.append(agg)
     # del calcAgg
     costs = agg.results_struct.global_comp.costs.all.sum
 
 if doSegmentedCalc:
-    seg = flixPost.flix_results(calcSegs.nameOfCalc)
+    seg = flixPost.flix_results(calcSegs.label)
     listOfResults.append(seg)
     # del calcSegs
     costs = seg.results_struct.global_comp.costs.all.sum
@@ -362,7 +361,7 @@ from flixOpt.flixPlotHelperFcts import *
 
 def uebersichtsPlot(aCalc):
   fig, ax = plt.subplots(figsize=(10, 5))
-  plt.title(aCalc.label)
+  plt.title(aCalc.name)
     
   plotFlow(aCalc, aCalc.results_struct.BHKW2.P_el.val,  'P_el')
   plotFlow(aCalc, aCalc.results_struct.BHKW2.Q_th.val,  'Q_th_BHKW')

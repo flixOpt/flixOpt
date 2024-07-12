@@ -63,7 +63,7 @@ class TestExistance(unittest.TestCase):
         self.assertTrue(np.array_equal(exists, boiler_exists.inputs[0].max_rel_with_exists.active_data))
         self.assertTrue(np.array_equal(exists, boiler_exists.outputs[0].max_rel_with_exists.active_data))
 
-        results = flix_results(calc.nameOfCalc).results
+        results = flix_results(calc.label).results
         self.assertTrue(np.all(results["Boiler_ex"]["Q_th"]["val"] <= exists * size))
 
     def test_storage(self):
@@ -95,7 +95,7 @@ class TestExistance(unittest.TestCase):
         self.assertTrue(np.array_equal(exists, storage_exists.outputs[0].max_rel_with_exists.active_data))
         self.assertTrue(np.array_equal(exists, storage_exists.max_rel_chargeState.active_data))
 
-        results = flix_results(calc.nameOfCalc).results
+        results = flix_results(calc.label).results
         self.assertTrue(np.all(results["Storage_ex"]["in"]["val"] <= exists * size))
         self.assertTrue(np.all(results["Storage_ex"]["out"]["val"] <= exists * size))
         self.assertTrue(np.all(results["Storage_ex"]["charge_state"] <= np.append(exists * capacity, exists[-1] * capacity)))

@@ -133,7 +133,7 @@ if solver_name == 'gurobi': solverProps['threads'] = nrOfThreads
 
 ## calculation "full":
 
-aCalc.solve(solverProps, nameSuffix = '_' + solver_name)
+aCalc.solve(solverProps)
 
 aCalc.results_struct
 

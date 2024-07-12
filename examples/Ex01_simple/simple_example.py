@@ -162,8 +162,7 @@ system.print_equations() # string-output: equations of model
 # #################
 # ## calculation ##
 
-aCalc.solve(solverProps, # some solver options
-            nameSuffix = '_' + solver_name) # nameSuffix for the results
+aCalc.solve(solverProps)
 # .. results are saved under /results/
 # these files are written:
 # -> json-file with model- and solve-Informations!
@@ -179,10 +178,10 @@ aCalc.solve(solverProps, # some solver options
 # ##### loading results from output-files ######
 import flixOpt.flixPostprocessing as flixPost
 
-nameOfCalc = aCalc.nameOfCalc
-print(nameOfCalc)
+label = aCalc.name
+print(label)
 # loading results, creating postprocessing Object:
-aCalc_post = flixPost.flix_results(nameOfCalc) 
+aCalc_post = flixPost.flix_results(label) 
 
 # ## plotting ##
 # plotting all in- and out-flows of bus "Fernwaerme":

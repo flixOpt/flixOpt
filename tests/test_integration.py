@@ -102,10 +102,9 @@ class TestSimple(BaseTest):
         es.print_variables()
         es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix='_highs')
+        aCalc.solve(self.solverProps)
 
-        nameOfCalc = aCalc.nameOfCalc
-        aCalc_post = flixPost.flix_results(nameOfCalc)
+        aCalc_post = flixPost.flix_results(aCalc.name)
         return aCalc_post.results
 
 
@@ -257,9 +256,9 @@ class TestComplex(BaseTest):
         es.print_variables()
         es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
+        aCalc.solve(self.solverProps)
 
-        return flixPost.flix_results(aCalc.nameOfCalc).results
+        return flixPost.flix_results(aCalc.name).results
 
     def segments_of_flows_model(self):
         # Define the components and energy system
@@ -302,9 +301,9 @@ class TestComplex(BaseTest):
         es.print_variables()
         es.print_equations()
 
-        aCalc.solve(self.solverProps, nameSuffix=f"_{self.solverProps['solver_name']}")
+        aCalc.solve(self.solverProps)
 
-        return flixPost.flix_results(aCalc.nameOfCalc).results
+        return flixPost.flix_results(aCalc.name).results
 
 
 class TestModelingTypes(BaseTest):
@@ -363,7 +362,7 @@ class TestModelingTypes(BaseTest):
             calc.do_modeling()
         if doSegmentedCalc:
             calc = SegmentedCalculation('segModel', es, 'pyomo')
-            calc.solve(self.solverProps, segmentLen=97, nrOfUsedSteps=96)
+            calc.solve(self.solverProps, segment_length=97, nr_of_used_steps=96)
         if doAggregatedCalc:
             calc = AggregatedCalculation('aggModel', es, 'pyomo')
             calc.do_modeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
@@ -376,7 +375,7 @@ class TestModelingTypes(BaseTest):
             calc.solve(self.solverProps)
 
         import flixOpt.flixPostprocessing as flixPost
-        return flixPost.flix_results(calc.nameOfCalc).results
+        return flixPost.flix_results(calc.name).results
 
 
 if __name__ == '__main__':

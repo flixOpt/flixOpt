@@ -112,12 +112,11 @@ solverProps = {'mip_gap': gapFrac,
                'solver_output_to_console' : displaySolverOutput,
                }
 
-aCalc.solve(solverProps, # some solver options
-            nameSuffix = '_' + solver_name) # nameSuffix for the results
+aCalc.solve(solverProps)
 #  results are saved under /results/
 
 # ##### loading results from output-files ######
 import flixOpt.flixPostprocessing as flixPost
 
-aCalc_post = flixPost.flix_results(aCalc.nameOfCalc)
+aCalc_post = flixPost.flix_results(aCalc.name)
 
