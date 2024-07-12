@@ -888,9 +888,9 @@ class FeatureShares(Feature):
             pass
         self.model.add_variable(Variable(full_name_of_share, 1, self, system_model))  # Skalar
         self.model.add_equation(Equation(full_name_of_share, self, system_model))
-        self.model.eqs['full_name_of_share'].add_summand(self.model[full_name_of_share], -1)
+        self.model.eqs[full_name_of_share].add_summand(self.model.variables[full_name_of_share], -1)
 
-        return self.model.eqs['full_name_of_share']
+        return self.model.eqs[full_name_of_share]
 
 
 class FeatureInvest(Feature):
