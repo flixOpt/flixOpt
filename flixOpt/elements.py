@@ -649,14 +649,15 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
 
         # inputs = outputs
         bus_balance = Equation('busBalance', self, system_model)
+        self.model.add_equation(bus_balance)
         for aFlow in self.inputs:
             bus_balance.add_summand(aFlow.model.var_val, 1)
         for aFlow in self.outputs:
             bus_balance.add_summand(aFlow.model.var_val, -1)
 
         if self.with_excess:  # Fehlerplus/-minus hinzufügen zur Bilanz:
-            bus_balance.add_summand(self.excess_output, -1)
-            bus_balance.add_summand(self.excess_input, 1)
+            bus_balance.add_summand(self.model.variables['excess_output'], -1)
+            bus_balance.add_summand(self.model.variables['excess_input'], 1)
 
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
         super().add_share_to_globals(global_comp, system_model)
@@ -1037,6 +1038,7 @@ class Flow(Element):
 
         if self.on_hours_total_max is not None:
             eq_on_hours_total_max = Equation('on_hours_total_max', self, system_model, 'ineq')
+            self.model.add_equation(eq_on_hours_total_max)
             eq_on_hours_total_max.add_summand(self.model.var_on, 1, as_sum=True)
             eq_on_hours_total_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
 
@@ -1048,6 +1050,7 @@ class Flow(Element):
 
         if self.on_hours_total_min is not None:
             eq_on_hours_total_min = Equation('on_hours_total_min', self, system_model, 'ineq')
+            self.model.add_equation(eq_on_hours_total_min)
             eq_on_hours_total_min.add_summand(self.model.var_on, -1, as_sum=True)
             eq_on_hours_total_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
 
@@ -1058,6 +1061,7 @@ class Flow(Element):
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
+        self.model.add_equation(eq_sumFlowHours)
         eq_sumFlowHours.add_summand(self.model.var_val, system_model.dt_in_hours, as_sum=True)
         eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
 
@@ -1082,6 +1086,7 @@ class Flow(Element):
         if self.load_factor_max is not None:
             flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.load_factor_max  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Max = Equation('load_factor_max', self, system_model, 'ineq')  # general mean
+            self.model.add_equation(eq_flowHoursPerInvestsize_Max)
             eq_flowHoursPerInvestsize_Max.add_summand(self.model.var_sumFlowHours, 1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
@@ -1095,6 +1100,7 @@ class Flow(Element):
         if self.load_factor_min is not None:
             flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.load_factor_min  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Min = Equation('load_factor_min', self, system_model, 'ineq')
+            self.model.add_equation(eq_flowHoursPerInvestsize_Min)
             eq_flowHoursPerInvestsize_Min.add_summand(self.model.var_sumFlowHours, -1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,

@@ -307,6 +307,7 @@ class AggregationModeling(Element):
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
         eq = Equation('equalIdx_' + aVar.label_full, self, system_model, eqType='eq')
+        self.model.add_equation(eq)
         eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
         eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
@@ -335,6 +336,7 @@ class AggregationModeling(Element):
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
             eq_lock = Equation('lock_K0andK1' + aVar.label_full, self, system_model, eqType='ineq')
+            self.model.add_equation(eq_lock)
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
             eq_lock.add_constant(1.1)
@@ -343,6 +345,7 @@ class AggregationModeling(Element):
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentage_of_period_freedom / 100 * var_K1.length)
             eq_max = Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
+            self.model.add_equation(eq_max)
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
             eq_max.add_constant(self.noOfCorrections)  # Maximum

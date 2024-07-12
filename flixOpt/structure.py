@@ -455,12 +455,12 @@ class ElementModel:
         self.ineqs = {}
         self.objective = None
 
-    def get_variable(self, label: str) -> Variable:
+    def get_var(self, label: str) -> Variable:
         if label in self.variables.keys():
             return self.variables[label]
         raise Exception(f'Variable "{label}" does not exist')
 
-    def get_equation(self, label: str) -> Equation:
+    def get_eq(self, label: str) -> Equation:
         if label in self.eqs.keys():
             return self.eqs[label]
         if label in self.ineqs.keys():
