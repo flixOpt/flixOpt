@@ -452,32 +452,6 @@ class Equation:
 
         log.debug('equation created: ' + str(label))
 
-        ## Register Element:
-        # Equation:
-        if eqType == 'ineq':  # lhs <= rhs
-            # owner .ineqs.append(self) # Komponentenliste
-            baseModel.ineqs.append(self)  # linear_model-Liste mit allen ineqs
-            owner.model.ineqs.append(self)
-        # Inequation:
-        elif eqType == 'eq':
-            # owner .eqs.append(self) # Komponentenliste
-            baseModel.eqs.append(self)  # linear_model-Liste mit allen eqs
-            owner.model.eqs.append(self)
-        # Objective:
-        elif eqType == 'objective':
-            if baseModel.objective == None:
-                baseModel.objective = self
-                owner.model.objective = self
-            else:
-                raise Exception('linear_model.objective ist bereits belegt!')
-        # Undefined:
-        else:
-            raise Exception('Equation.eqType ' + str(self.eqType) + ' nicht definiert!')
-
-        # in Matlab noch:
-        # B; % B of this object (related to x)!
-        # B_visual; % mit Spaltenüberschriften!
-        # maxElementsOfVisualCell = 1e4; % über 10000 Spalten wählt Matlab komische Darstellung
 
     def add_summand(self,
                     variable: Variable,
