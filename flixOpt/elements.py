@@ -548,13 +548,13 @@ class Global(Element):
 
         # ####### target function  ###########
         # Strafkosten immer:
-        self.objective.add_summand(self.penalty.model.var_sum, 1)
+        self.objective.add_summand(self.penalty.model.variables['sum'], 1)
 
         # Definierter Effekt als Zielfunktion:
         objectiveEffect = self.listOfEffectTypes.objective_effect
         if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
-        self.objective.add_summand(objectiveEffect.operation.model.var_sum, 1)
-        self.objective.add_summand(objectiveEffect.invest.model.var_sum, 1)
+        self.objective.add_summand(objectiveEffect.operation.model.variables['sum'], 1)
+        self.objective.add_summand(objectiveEffect.invest.model.variables['sum'], 1)
 
 
 class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???

@@ -824,12 +824,12 @@ class Feature_ShareSum(Feature):
             ## Share zu TS-equation hinzufügen:
             # if constant share:      
             if variable is None:
-                self.eq_sum_TS.add_constant(-1 * factorOfSummand)  # share in global
+                self.model.eqs['sum_TS'].add_constant(-1 * factorOfSummand)  # share in global
                 if name_of_share is not None:
                     eq_oneShare.add_constant(-1 * sum(factorOfSummand))  # share itself
             # if variable share:
             else:
-                self.eq_sum_TS.add_summand(variable, factorOfSummand)  # share in global
+                self.model.eqs['sum_TS'].add_summand(variable, factorOfSummand)  # share in global
                 if name_of_share is not None:
                     eq_oneShare.add_summand(variable, factorOfSummand, as_sum=True)  # share itself
 
@@ -841,12 +841,12 @@ class Feature_ShareSum(Feature):
             ## Share zu skalar-equation hinzufügen:
             # if constant share:
             if variable is None:
-                self.eq_sum.add_constant(-1 * factorOfSummand)  # share in global
+                self.model.eqs['sum'].add_constant(-1 * factorOfSummand)  # share in global
                 if name_of_share is not None:
                     eq_oneShare.add_constant(-1 * factorOfSummand)  # share itself
             # if variable share:
             else:
-                self.eq_sum.add_summand(variable, factorOfSummand)  # share in global
+                self.model.eqs['sum'].add_summand(variable, factorOfSummand)  # share in global
                 if name_of_share is not None:
                     eq_oneShare.add_summand(variable, factorOfSummand)  # share itself
 
