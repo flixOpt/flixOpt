@@ -133,8 +133,8 @@ class Effect(Element):
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
-        self.all.add_variable_share('operation', self, self.operation.model.var_sum, 1, 1)
-        self.all.add_variable_share('invest', self, self.invest.model.var_sum, 1, 1)
+        self.all.add_variable_share('operation', self, self.operation.model.variables['sum'], 1, 1)
+        self.all.add_variable_share('invest', self, self.invest.model.variables['sum'], 1, 1)
         self.all.do_modeling(system_model, time_indices)
 
     def __str__(self):

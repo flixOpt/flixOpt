@@ -744,13 +744,13 @@ class Feature_ShareSum(Feature):
         self.shares.do_modeling(system_model, time_indices)
         if self.shares_are_time_series:
             # eq: sum_TS = sum(share_TS_i) # TS
-            self.eq_sum_TS.add_summand(self.model.var_sum_TS, -1)
+            self.model.eqs['bilanz'].add_summand(self.model.variables['sum_TS'], -1)
             # eq: sum = sum(sum_TS(t)) # skalar
-            self.eq_sum.add_summand(self.model.var_sum_TS, 1, as_sum=True)
-            self.eq_sum.add_summand(self.model.var_sum, -1)
+            self.model.eqs['sum'].add_summand(self.model.variables['sum_TS'], 1, as_sum=True)
+            self.model.eqs['sum'].add_summand(self.model.variables['sum'], -1)
         else:
             # eq: sum = sum(share_i) # skalar
-            self.eq_sum.add_summand(self.model.var_sum, -1)
+            self.model.eqs['sum'].add_summand(self.model.variables['sum'], -1)
 
     def add_constant_share(self,
                            name_of_share: Optional[str],
