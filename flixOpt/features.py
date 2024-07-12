@@ -238,12 +238,12 @@ class Segment(Feature):
 
     def declare_vars_and_eqs(self, system_model):
         length = system_model.nrOfTimeSteps
-        self.model.var_onSeg = VariableTS(f'onSeg_{self.index}', length, self, system_model,
-                                          is_binary=True)  # Binär-Variable
-        self.model.var_lambda1 = VariableTS(f'lambda1_{self.index}', length, self, system_model, lower_bound=0,
-                                            upper_bound=1)  # Wertebereich 0..1
-        self.model.var_lambda2 = VariableTS(f'lambda2_{self.index}', length, self, system_model, lower_bound=0,
-                                            upper_bound=1)  # Wertebereich 0..1
+        self.model.add_variable(VariableTS(f'onSeg_{self.index}', length, self, system_model,
+                                          is_binary=True))  # Binär-Variable
+        self.model.add_variable(VariableTS(f'lambda1_{self.index}', length, self, system_model, lower_bound=0,
+                                            upper_bound=1))  # Wertebereich 0..1
+        self.model.add_variable(VariableTS(f'lambda2_{self.index}', length, self, system_model, lower_bound=0,
+                                            upper_bound=1))  # Wertebereich 0..1
 
 
 # Verhindern gleichzeitig mehrere Flows > 0 
@@ -412,11 +412,11 @@ class FeatureOn(Feature):
         # Var On:
         if self.use_on:
             # Before-Variable:
-            self.model.var_on = VariableTS('on', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
-            self.model.var_on.set_before_value(default_before_value=self.on_values_before_begin[0],
+            self.model.add_variable(VariableTS('on', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True))
+            self.model.variables['on'].set_before_value(default_before_value=self.on_values_before_begin[0],
                                                is_start_value=False)
-            self.model.var_onHoursSum = Variable('onHoursSum', 1, self.owner, system_model, lower_bound=self.on_hours_total_min,
-                                                 upper_bound=self.on_hours_total_max)  # wenn max/min = None, dann bleibt das frei
+            self.model.add_variable(Variable('onHoursSum', 1, self.owner, system_model, lower_bound=self.on_hours_total_min,
+                                                 upper_bound=self.on_hours_total_max))  # wenn max/min = None, dann bleibt das frei
 
         else:
             self.model.var_on = None
@@ -424,7 +424,7 @@ class FeatureOn(Feature):
 
         if self.use_off:
             # off-Var is needed:
-            self.model.var_off = VariableTS('off', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
+            self.model.add_variable(VariableTS('off', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True))
 
         # onHours:
         #   i.g. 
@@ -432,20 +432,20 @@ class FeatureOn(Feature):
         #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
         if self.use_on_hours:
             aMax = None if (self.on_hours_max is None) else self.on_hours_max.active_data
-            self.model.var_onHours = VariableTS('onHours', system_model.nrOfTimeSteps, self.owner, system_model,
-                                                lower_bound=0, upper_bound=aMax)  # min separat
+            self.model.add_variable(VariableTS('onHours', system_model.nrOfTimeSteps, self.owner, system_model,
+                                                lower_bound=0, upper_bound=aMax))  # min separat
         # offHours:
         if self.use_off_hours:
             aMax = None if (self.off_hours_max is None) else self.off_hours_max.active_data
-            self.model.var_offHours = VariableTS('offHours', system_model.nrOfTimeSteps, self.owner, system_model,
-                                                 lower_bound=0, upper_bound=aMax)  # min separat
+            self.model.add_variable(VariableTS('offHours', system_model.nrOfTimeSteps, self.owner, system_model,
+                                                 lower_bound=0, upper_bound=aMax))  # min separat
 
         # Var SwitchOn
         if self.use_switch_on:
-            self.model.var_switchOn = VariableTS('switchOn', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
-            self.model.var_switchOff = VariableTS('switchOff', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True)
-            self.model.var_nrSwitchOn = Variable('nrSwitchOn', 1, self.owner, system_model,
-                                                 upper_bound=self.switch_on_total_max)  # wenn max/min = None, dann bleibt das frei
+            self.model.add_variable(VariableTS('switchOn', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True))
+            self.model.add_variable(VariableTS('switchOff', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True))
+            self.model.add_variable(Variable('nrSwitchOn', 1, self.owner, system_model,
+                                                 upper_bound=self.switch_on_total_max))  # wenn max/min = None, dann bleibt das frei
         else:
             self.model.var_switchOn = None
             self.model.var_switchOff = None
@@ -730,10 +730,10 @@ class Feature_ShareSum(Feature):
         if self.shares_are_time_series:
             lb_TS = None if (self.min_per_hour is None) else np.multiply(self.min_per_hour.active_data, system_model.dt_in_hours)
             ub_TS = None if (self.max_per_hour is None) else np.multiply(self.max_per_hour.active_data, system_model.dt_in_hours)
-            self.model.var_sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self, system_model, lower_bound= lb_TS, upper_bound= ub_TS)  # TS
+            self.model.add_variable(VariableTS('sum_TS', system_model.nrOfTimeSteps, self, system_model, lower_bound= lb_TS, upper_bound= ub_TS))  # TS
 
         # Variable für Summe (Skalar-Summe):
-        self.model.var_sum = Variable('sum', 1, self, system_model, lower_bound=self.total_min, upper_bound=self.total_max)  # Skalar
+        self.model.add_variable(Variable('sum', 1, self, system_model, lower_bound=self.total_min, upper_bound=self.total_max))  # Skalar
 
         # Gleichungen schon hier definiert, damit andere Elemente beim modeling Beiträge eintragen können:
         if self.shares_are_time_series:
@@ -886,9 +886,9 @@ class FeatureShares(Feature):
             full_name_of_share = share_holder.label_full + '_' + name_of_share
         except:
             pass
-        var_oneShare = Variable(full_name_of_share, 1, self, system_model)  # Skalar
+        self.model.add_variable(Variable(full_name_of_share, 1, self, system_model))  # Skalar
         eq_oneShare = Equation(full_name_of_share, self, system_model)
-        eq_oneShare.add_summand(var_oneShare, -1)
+        eq_oneShare.add_summand(self.model[full_name_of_share], -1)
 
         return eq_oneShare
 
@@ -1025,15 +1025,15 @@ class FeatureInvest(Feature):
 
         # Define var_investmentSize
         if lower_bound == upper_bound:
-            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model,
-                                                     value=lower_bound)
+            self.model.add_variable(Variable(self.name_of_investment_size, 1, self, system_model,
+                                                     value=lower_bound))
         else:
-            self.model.var_investmentSize = Variable(self.name_of_investment_size, 1, self, system_model,
-                                                     lower_bound=lower_bound, upper_bound=upper_bound)
+            self.model.add_variable(Variable(self.name_of_investment_size, 1, self, system_model,
+                                                     lower_bound=lower_bound, upper_bound=upper_bound))
 
         # Define var_isInvested if investment is optional
         if self.invest_parameters.optional:
-            self.model.var_isInvested = Variable('isInvested', 1, self, system_model, is_binary=True)
+            self.model.add_variable(Variable('isInvested', 1, self, system_model, is_binary=True))
 
         # Define cost segments if featureLinearSegments is present
         if self.featureLinearSegments is not None:
@@ -1079,7 +1079,7 @@ class FeatureInvest(Feature):
             raise Exception('Given effect (' + str(aEffect) + ') is not an effect!')
         # new variable, i.e for costs, CO2,... :
         var_investForEffect = Variable('investCosts_segmented_' + aStr, 1, self, system_model, lower_bound=0)
-        self.model.var_list_investCosts_segmented.append(var_investForEffect)
+        self.model.add_variable(Variable('investCosts_segmented_' + aStr, 1, self, system_model, lower_bound=0))
         return var_investForEffect
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):

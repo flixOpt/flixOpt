@@ -290,7 +290,7 @@ class Variable:
         # Register Element:
         # owner .variables.append(self) # Komponentenliste
         linear_model.variables.append(self)  # linear_model-Liste mit allen vars
-        owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
+        #owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
     def to_math_model(self, baseModel: LinearModel):
         self.linear_model = baseModel

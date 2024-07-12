@@ -316,9 +316,11 @@ class AggregationModeling(Element):
             var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
                               system_model,
                               is_binary=True)
+            self.model.add_variable(var_K1)
             var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
                               system_model,
                               is_binary=True)
+            self.model.add_variable(var_K0)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0

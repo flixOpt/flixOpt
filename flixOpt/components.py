@@ -780,15 +780,16 @@ class Storage(Component):
             else:
                 ub = np.append(ub, ub[-1])  # charge_state_end_max)
 
-        self.model.var_charge_state = VariableTS('charge_state', system_model.nrOfTimeSteps + 1, self, system_model, lower_bound=lb, upper_bound=ub,
-                                                 value=fix_value)  # Eins mehr am Ende!
-        self.model.var_charge_state.set_before_value(self.chargeState0_inFlowHours, True)
-        self.model.var_nettoFlow = VariableTS('nettoFlow', system_model.nrOfTimeSteps, self, system_model,
-                                              lower_bound=-np.inf)  # negative Werte zulässig!
+        self.model.add_variable(
+            VariableTS('charge_state', system_model.nrOfTimeSteps + 1, self,
+                       system_model, lower_bound=lb, upper_bound=ub, value=fix_value))  # Eins mehr am Ende!
+        self.model.variables['charge_state'].set_before_value(self.chargeState0_inFlowHours, True)
+        self.model.add_variable(VariableTS('nettoFlow', system_model.nrOfTimeSteps, self, system_model,
+                                              lower_bound=-np.inf))  # negative Werte zulässig!
 
         # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
-            self.featureInvest.set_defining_variables(self.model.var_charge_state, None)  # None, da kein On-Wert
+            self.featureInvest.set_defining_variables(self.model.variables['charge_state'], None)  # None, da kein On-Wert
             self.featureInvest.declare_vars_and_eqs(system_model)
 
         # obj.vars.Q_Ladezustand   .setBoundaries(0, obj.inputData.Q_Ladezustand_Max);

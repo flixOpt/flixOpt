@@ -639,10 +639,10 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Fehlerplus/-minus:
         if self.with_excess:
             # Fehlerplus und -minus definieren
-            self.excess_input = VariableTS('excess_input', len(system_model.time_series), self, system_model,
-                                           lower_bound=0)
-            self.excess_output = VariableTS('excess_output', len(system_model.time_series), self, system_model,
-                                            lower_bound=0)
+            self.model.add_variable(VariableTS('excess_input', len(system_model.time_series), self, system_model,
+                                           lower_bound=0))
+            self.model.add_variable(VariableTS('excess_output', len(system_model.time_series), self, system_model,
+                                            lower_bound=0))
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
         super().do_modeling(system_model, time_indices)
@@ -1004,11 +1004,10 @@ class Flow(Element):
             (lower_bound, upper_bound, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?
-        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model,
-                                        lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value)
-        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model,
-                                               lower_bound=self.flow_hours_total_min,
-                                               upper_bound=self.flow_hours_total_max)
+        self.model.add_variable(VariableTS('val', system_model.nrOfTimeSteps, self, system_model,
+                                           lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value))
+        self.model.add_variable(Variable('sumFlowHours', 1, self, system_model,
+                                         lower_bound=self.flow_hours_total_min, upper_bound=self.flow_hours_total_max))
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
