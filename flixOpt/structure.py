@@ -450,29 +450,10 @@ class ElementModel:
 
     def __init__(self, element: Element):
         self.element = element
-        # TODO: Dicts instead of Lists for referencing?
         self.variables = {}
         self.eqs = {}
         self.ineqs = {}
         self.objective = None
-
-    # Eqs, Ineqs und Objective als Str-Description:
-    def description_of_equations(self) -> List:
-        # Wenn Glg vorhanden:
-        eq: Equation
-        aList = []
-        if (len(self.eqs) + len(self.ineqs)) > 0:
-            for eq in (self.eqs.values() + self.ineqs.values()):
-                aList.append(eq.description())
-        if not (self.objective is None):
-            aList.append(self.objective.description())
-        return aList
-
-    def description_of_variables(self) -> List:
-        aList = []
-        for aVar in self.variables.values():
-            aList.append(aVar.get_str_description())
-        return aList
 
     def get_variable(self, label: str) -> Variable:
         if label in self.variables.keys():
@@ -496,3 +477,19 @@ class ElementModel:
             self.eqs[equation.label] = equation
         raise Exception(f'Equation "{equation.label}" already exists')
 
+    def description_of_equations(self) -> List:
+        # Wenn Glg vorhanden:
+        eq: Equation
+        aList = []
+        if (len(self.eqs) + len(self.ineqs)) > 0:
+            for eq in (self.eqs.values() + self.ineqs.values()):
+                aList.append(eq.description())
+        if not (self.objective is None):
+            aList.append(self.objective.description())
+        return aList
+
+    def description_of_variables(self) -> List:
+        aList = []
+        for aVar in self.variables.values():
+            aList.append(aVar.get_str_description())
+        return aList
