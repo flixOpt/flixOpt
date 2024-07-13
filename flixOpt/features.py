@@ -127,7 +127,7 @@ class FeatureLinearSegmentVars(Feature):
         self.model.add_equation(Equation('ICanOnlyBeInOneSegment', self, system_model))
 
         # a) zusätzlich zu Aufenthalt in Segmenten kann alles auch Null sein:
-        if (self.model.variables['on'] is not None) and (self.model.variables['on'] is not None):
+        if self.var_on is not None:
             # TODO: # Eigentlich wird die On-Variable durch linearSegment-equations bereits vollständig definiert.
             self.model.eqs['ICanOnlyBeInOneSegment'].add_summand(self.var_on, -1)
         else:
