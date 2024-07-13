@@ -44,6 +44,30 @@ class Feature(Element):
         super().finalize()
 
 
+class Segment(Feature):
+    """
+    Für Abschnittsweise Linearisierung ist das ein Abschnitt
+    """
+    def __init__(self,
+                 label: str,
+                 owner: Element,
+                 sample_points: Dict[Variable, Tuple[Numeric, Numeric]],
+                 index):
+        super().__init__(label, owner)
+        self.label = label
+        self.sample_points = sample_points
+        self.index = index
+
+    def declare_vars_and_eqs(self, system_model):
+        length = system_model.nrOfTimeSteps
+        self.model.add_variable(VariableTS(f'onSeg_{self.index}', length, self, system_model,
+                                          is_binary=True))  # Binär-Variable
+        self.model.add_variable(VariableTS(f'lambda1_{self.index}', length, self, system_model, lower_bound=0,
+                                            upper_bound=1))  # Wertebereich 0..1
+        self.model.add_variable(VariableTS(f'lambda2_{self.index}', length, self, system_model, lower_bound=0,
+                                            upper_bound=1))  # Wertebereich 0..1
+
+
 # Abschnittsweise linear:
 class FeatureLinearSegmentVars(Feature):
     # TODO: beser wäre hier schon Übergabe segments_of_variables, aber schwierig, weil diese hier noch nicht vorhanden sind!
@@ -221,30 +245,6 @@ class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
                                 vars_for_check=variables)  # todo: das ist nur hier, damit schon variablen Bekannt
 
         super().declare_vars_and_eqs(system_model)   # 2. declare vars:
-
-
-class Segment(Feature):
-    """
-    Für Abschnittsweise Linearisierung ist das ein Abschnitt
-    """
-    def __init__(self,
-                 label: str,
-                 owner: Element,
-                 sample_points: Dict[Variable, Tuple[Numeric, Numeric]],
-                 index):
-        super().__init__(label, owner)
-        self.label = label
-        self.sample_points = sample_points
-        self.index = index
-
-    def declare_vars_and_eqs(self, system_model):
-        length = system_model.nrOfTimeSteps
-        self.model.add_variable(VariableTS(f'onSeg_{self.index}', length, self, system_model,
-                                          is_binary=True))  # Binär-Variable
-        self.model.add_variable(VariableTS(f'lambda1_{self.index}', length, self, system_model, lower_bound=0,
-                                            upper_bound=1))  # Wertebereich 0..1
-        self.model.add_variable(VariableTS(f'lambda2_{self.index}', length, self, system_model, lower_bound=0,
-                                            upper_bound=1))  # Wertebereich 0..1
 
 
 # Verhindern gleichzeitig mehrere Flows > 0 
