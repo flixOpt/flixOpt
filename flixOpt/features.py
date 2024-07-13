@@ -134,7 +134,7 @@ class FeatureLinearSegmentVars(Feature):
             self.model.eqs['ICanOnlyBeInOneSegment'].add_constant(1)   # b) Aufenthalt nur in Segmenten erlaubt:
 
         for aSegment in self.segments:
-            self.model.eqs['ICanOnlyBeInOneSegment'].add_summand(aSegment.model.var_onSeg, 1)
+            self.model.eqs['ICanOnlyBeInOneSegment'].add_summand(aSegment.model.variables['on_seg'], 1)
 
             #################################
         ## 2. Gleichungen der Segmente ##
@@ -143,9 +143,9 @@ class FeatureLinearSegmentVars(Feature):
             name_of_equation = f'Lambda_onSeg_{aSegment.index}'
 
             self.model.add_equation(Equation(name_of_equation, self, system_model))
-            self.model.eqs[name_of_equation].add_summand(aSegment.model.var_onSeg, -1)
-            self.model.eqs[name_of_equation].add_summand(aSegment.model.var_lambda1, 1)
-            self.model.eqs[name_of_equation].add_summand(aSegment.model.var_lambda2, 1)
+            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables['on_seg'], -1)
+            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables['lambda1'], 1)
+            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables['lambda2'], 1)
 
             ##################################################
         ## 3. Gleichungen für die Variablen mit lambda: ##
@@ -156,8 +156,9 @@ class FeatureLinearSegmentVars(Feature):
 
         for aVar in self.variables:
             # aVar = aFlow.model.var_val
-            self.model.add_equation(Equation(aVar.label + '_lambda', self, system_model))  # z.B. Q_th(t)
-            self.model.eqs[aVar.label + '_lambda'].add_summand(aVar, -1)
+            lambda_eq = Equation(aVar.label + '_lambda', self, system_model)  # z.B. Q_th(t)
+            self.model.add_equation(lambda_eq)
+            lambda_eq.add_summand(aVar, -1)
             for aSegment in self.segments:
                 #  Stützstellen einfügen:
                 stuetz1 = aSegment.sample_points[aVar][0]
@@ -171,9 +172,9 @@ class FeatureLinearSegmentVars(Feature):
                     samplePoint1 = stuetz1
                     samplePoint2 = stuetz2
 
-                eqLambda.add_summand(aSegment.model.var_lambda1,
+                lambda_eq.add_summand(aSegment.model.variables['lambda1'],
                                      samplePoint1)  # Spalte 1 (Faktor kann hier Skalar sein oder Vektor)
-                eqLambda.add_summand(aSegment.model.var_lambda2,
+                lambda_eq.add_summand(aSegment.model.variables['lambda2'],
                                      samplePoint2)  # Spalte 2 (Faktor kann hier Skalar sein oder Vektor)
 
     # extract the 2 TS_vectors for the segment:
@@ -211,8 +212,8 @@ class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
 
     def declare_vars_and_eqs(self, system_model):
 
-        segments_of_variables = {flow.model.var_val: self.segments_of_flows[flow] for flow in self.segments_of_flows}
-        variables = {flow.model.var_val for flow in self.flows}
+        segments_of_variables = {flow.model.variables['val']: self.segments_of_flows[flow] for flow in self.segments_of_flows}
+        variables = {flow.model.variables['val'] for flow in self.flows}
 
         # hier erst Variablen vorhanden un damit segments_of_variables definierbar!
         super().define_segments(segments_of_variables,
@@ -453,11 +454,11 @@ class FeatureOn(Feature):
             self.add_switch_constraints(system_model, time_indices)
         if self.use_on_hours:
             FeatureOn._add_duration_constraints(
-                self.model.var_onHours, self.model.var_on, self.on_hours_min,
+                self.model.variables['onHours'], self.model.variables['on'], self.on_hours_min,
                 self, system_model, time_indices)
         if self.use_off_hours:
             FeatureOn._add_duration_constraints(
-                self.model.var_offHours, self.model.var_off, self.off_hours_min,
+                self.model.variables['offHours'], self.model.variables['off'], self.off_hours_min,
                 self, system_model, time_indices)
 
     def _add_on_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
@@ -538,8 +539,8 @@ class FeatureOn(Feature):
         # Definition var_off:
         # eq: var_off(t) = 1-var_on(t)
         self.model.add_equation(Equation('var_off', self, system_model, eqType='eq'))
-        self.model.eqs['var_off'].add_summand(self.model.var_off, 1)
-        self.model.eqs['var_off'].add_summand(self.model.var_on, 1)
+        self.model.eqs['var_off'].add_summand(self.model.variables['off'], 1)
+        self.model.eqs['var_off'].add_summand(self.model.variables['on'], 1)
         self.model.eqs['var_off'].add_constant(1)
 
     @staticmethod  # to be sure not using any self-Variables
@@ -1037,10 +1038,10 @@ class FeatureInvest(Feature):
 
         ## 1. create segments for investSize and every effect##
         ## 1.a) add investSize-Variablen-Segmente: ##
-        segments_of_variables = {self.model.var_investmentSize: invest_size_segments}  # i.e. {var_investSize: [0,5, 5,20]}
+        segments_of_variables = {self.model.variables[self.name_of_investment_size]: invest_size_segments}  # i.e. {var_investSize: [0,5, 5,20]}
 
         ## 1.b) je Effekt -> new Variable und zugehörige Segmente ##
-        self.model.var_list_investCosts_segmented = []
+        self.model.var_list_investCoqsts_segmented = []
         self.investVar_effect_dict = {}  # benötigt
         for aEffect, aSegmentCosts in effect_value_segments.items():
             variable_for_segmented_invest_effect = self._create_variable_for_segmented_invest_effect(aEffect, system_model)
@@ -1050,7 +1051,7 @@ class FeatureInvest(Feature):
 
         ## 2. on_var: ##
         if self.invest_parameters.optional:
-            var_isInvested = self.model.var_isInvested
+            var_isInvested = self.model.variables['isInvested']
         else:
             var_isInvested = None
 
@@ -1097,7 +1098,7 @@ class FeatureInvest(Feature):
         # eq: defining_variable(t) = var_investmentSize * val_rel
         self.model.add_equation(Equation('fix_via_InvestmentSize', self, system_model, 'eq'))
         self.model.eqs['fix_via_InvestmentSize'].add_summand(self.defining_variable, 1)
-        self.model.eqs['fix_via_InvestmentSize'].add_summand(self.model.var_investmentSize, np.multiply(-1, self.val_rel.active_data))
+        self.model.eqs['fix_via_InvestmentSize'].add_summand(self.model.variables[self.name_of_investment_size], np.multiply(-1, self.val_rel.active_data))
 
     def _add_max_min_of_definingVar_with_var_investmentSize(self, system_model: SystemModel):
 
@@ -1147,24 +1148,24 @@ class FeatureInvest(Feature):
         if self.invest_parameters.fixed_size:
             # eq: investment_size = isInvested * size
             self.model.add_equation(Equation('isInvested_constraint_1', self, system_model, 'eq'))
-            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.var_investmentSize, -1)
-            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.var_isInvested, self.investment_size)
+            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.variables[self.name_of_investment_size], -1)
+            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.variables['isInvested'], self.investment_size)
         else:
             ## 1. Gleichung (skalar):            
             # eq1: P_invest <= isInvested * investSize_max
             # (isInvested = 0 -> P_invest=0  |  P_invest>0 -> isInvested = 1 ->  P_invest < investSize_max )   
 
             self.model.add_equation(Equation('isInvested_constraint_1', self, system_model, 'ineq'))
-            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.var_investmentSize, 1)
-            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.var_isInvested,
+            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.variables[self.name_of_investment_size], 1)
+            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.variables['isInvested'],
                                              np.multiply(-1, self.invest_parameters.maximum_size))  # Variable ist Skalar!
 
             ## 2. Gleichung (skalar):                  
             # eq2: P_invest  >= isInvested * max(epsilon, investSize_min)
             # (isInvested = 1 -> P_invest>0  |  P_invest=0 -> isInvested = 0)
             self.model.add_equation(Equation('isInvested_constraint_2', self, system_model, 'ineq'))
-            self.model.eqs['isInvested_constraint_2'].add_summand(self.model.var_investmentSize, -1)
-            self.model.eqs['isInvested_constraint_2'].add_summand(self.model.var_isInvested, max(system_model.epsilon, self.invest_parameters.minimum_size))
+            self.model.eqs['isInvested_constraint_2'].add_summand(self.model.variables[self.name_of_investment_size], -1)
+            self.model.eqs['isInvested_constraint_2'].add_summand(self.model.variables['isInvested'], max(system_model.epsilon, self.invest_parameters.minimum_size))
 
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel):
 
@@ -1188,7 +1189,7 @@ class FeatureInvest(Feature):
                 # 1. part of share [+ divest_effects]:
                 global_comp.add_constant_share_to_invest('divest_effects', self.owner, self.invest_parameters.divest_effects, 1)
                 # 2. part of share [- isInvested * divest_effects]:
-                global_comp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.var_isInvested,
+                global_comp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.variables['isInvested],'],
                                                 self.invest_parameters.divest_effects, -1)
                 # TODO : these 2 parts should be one share!
 

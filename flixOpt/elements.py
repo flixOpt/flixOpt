@@ -1018,7 +1018,7 @@ class Flow(Element):
 
         # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
-            self.featureInvest.set_defining_variables(self.model.var_val, self.model.var_on)
+            self.featureInvest.set_defining_variables(self.model.variables['val'], self.model.variables.get('on'))
             self.featureInvest.declare_vars_and_eqs(system_model)
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
@@ -1090,9 +1090,9 @@ class Flow(Element):
             flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.load_factor_max  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Max = Equation('load_factor_max', self, system_model, 'ineq')  # general mean
             self.model.add_equation(eq_flowHoursPerInvestsize_Max)
-            eq_flowHoursPerInvestsize_Max.add_summand(self.model.var_sumFlowHours, 1)
+            eq_flowHoursPerInvestsize_Max.add_summand(self.model.variables["sumFlowHours"], 1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
+                eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
                                                           -1 * flowHoursPerInvestsize_max)
             else:
                 eq_flowHoursPerInvestsize_Max.add_constant(self.size * flowHoursPerInvestsize_max)
@@ -1104,9 +1104,9 @@ class Flow(Element):
             flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.load_factor_min  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Min = Equation('load_factor_min', self, system_model, 'ineq')
             self.model.add_equation(eq_flowHoursPerInvestsize_Min)
-            eq_flowHoursPerInvestsize_Min.add_summand(self.model.var_sumFlowHours, -1)
+            eq_flowHoursPerInvestsize_Min.add_summand(self.model.variables["sumFlowHours"], -1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,
+                eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
                                                           flowHoursPerInvestsize_min)
             else:
                 eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.size * flowHoursPerInvestsize_min)
