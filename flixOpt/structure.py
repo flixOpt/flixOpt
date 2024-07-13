@@ -496,7 +496,10 @@ class ElementModel:
         if variable.label not in self.variables.keys():
             self.variables[variable.label] = variable
         else:
-            raise Exception(f'Variable "{variable.label}" already exists')
+            if variable in self.variables.values():
+                raise Exception(f'Variable "{variable.label}" already exists')
+            else:
+                raise Exception(f'A Variable with the label "{variable.label}" already exists')
 
     def add_equation(self, equation: Equation) -> None:
         if equation.label not in self.eqs.keys():
