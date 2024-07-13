@@ -11,7 +11,7 @@ import math
 import pathlib
 import time
 import timeit
-from typing import List, Dict, Optional, Literal
+from typing import List, Dict, Optional, Literal, Tuple, Union
 
 import numpy as np
 
@@ -599,13 +599,13 @@ class BeforeValues:
             self.beforeValues.update({aKey: (aValue, aTime)})
 
     # return (value, time)
-    def getBeforeValues(self, aVar):
+    def getBeforeValues(self, aVar) -> Optional[Tuple[Union[int, float], np.datetime64]]:
         element = aVar.owner
         aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
         if aKey in self.beforeValues.keys():
             return self.beforeValues[aKey]  # returns (value, time)
         else:
-            return None
+            return None, None
 
     def print(self):
         for (element, varName) in self.beforeValues.keys():
