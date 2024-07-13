@@ -343,7 +343,7 @@ class System:
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:
             # nur Aktivieren:
-            for element in self.elements_of_fists_layer:  # TODO: Is This a BUG?
+            for element in self.elements_of_fists_layer:
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)

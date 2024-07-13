@@ -134,7 +134,7 @@ class FeatureLinearSegmentVars(Feature):
             self.model.eqs['ICanOnlyBeInOneSegment'].add_constant(1)   # b) Aufenthalt nur in Segmenten erlaubt:
 
         for aSegment in self.segments:
-            self.model.eqs['ICanOnlyBeInOneSegment'].add_summand(aSegment.model.variables['on_seg'], 1)
+            self.model.eqs['ICanOnlyBeInOneSegment'].add_summand(aSegment.model.variables[f'onSeg_{aSegment.index}'], 1)
 
             #################################
         ## 2. Gleichungen der Segmente ##
@@ -143,9 +143,9 @@ class FeatureLinearSegmentVars(Feature):
             name_of_equation = f'Lambda_onSeg_{aSegment.index}'
 
             self.model.add_equation(Equation(name_of_equation, self, system_model))
-            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables['on_seg'], -1)
-            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables['lambda1'], 1)
-            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables['lambda2'], 1)
+            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables[f'onSeg_{aSegment.index}'], -1)
+            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables[f'lambda1_{aSegment.index}'], 1)
+            self.model.eqs[name_of_equation].add_summand(aSegment.model.variables[f'lambda2_{aSegment.index}'], 1)
 
             ##################################################
         ## 3. Gleichungen für die Variablen mit lambda: ##
@@ -172,9 +172,9 @@ class FeatureLinearSegmentVars(Feature):
                     samplePoint1 = stuetz1
                     samplePoint2 = stuetz2
 
-                lambda_eq.add_summand(aSegment.model.variables['lambda1'],
+                lambda_eq.add_summand(aSegment.model.variables[f'lambda1_{aSegment.index}'],
                                      samplePoint1)  # Spalte 1 (Faktor kann hier Skalar sein oder Vektor)
-                lambda_eq.add_summand(aSegment.model.variables['lambda2'],
+                lambda_eq.add_summand(aSegment.model.variables[f'lambda2_{aSegment.index}'],
                                      samplePoint2)  # Spalte 2 (Faktor kann hier Skalar sein oder Vektor)
 
     # extract the 2 TS_vectors for the segment:
