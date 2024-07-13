@@ -412,10 +412,6 @@ class FeatureOn(Feature):
             self.model.add_variable(Variable('onHoursSum', 1, self.owner, system_model, lower_bound=self.on_hours_total_min,
                                                  upper_bound=self.on_hours_total_max))  # wenn max/min = None, dann bleibt das frei
 
-        else:
-            self.model.var_on = None
-            self.model.var_onHoursSum = None
-
         if self.use_off:
             # off-Var is needed:
             self.model.add_variable(VariableTS('off', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True))
@@ -440,10 +436,6 @@ class FeatureOn(Feature):
             self.model.add_variable(VariableTS('switchOff', system_model.nrOfTimeSteps, self.owner, system_model, is_binary=True))
             self.model.add_variable(Variable('nrSwitchOn', 1, self.owner, system_model,
                                                  upper_bound=self.switch_on_total_max))  # wenn max/min = None, dann bleibt das frei
-        else:
-            self.model.var_switchOn = None
-            self.model.var_switchOff = None
-            self.model.var_nrSwitchOn = None
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         if self.use_on:
