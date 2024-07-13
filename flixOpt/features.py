@@ -75,8 +75,11 @@ class FeatureLinearSegmentVars(Feature):
         super().__init__(label, owner)
         self.eq_canOnlyBeInOneSegment: Equation = None
         self.segments_of_variables: Dict[Variable, List[Skalar]] = None
-        self.segments: List[Segment] = []
         self.binary_variable: Optional[Variable] = None
+
+    @property
+    def segments(self) -> List[Segment]:
+        return self.sub_elements
 
     @property
     def nr_of_segments(self) -> Skalar:
@@ -102,7 +105,7 @@ class FeatureLinearSegmentVars(Feature):
         # -> onVariable ist optional
         # -> auch einzelne zulässige Punkte können über Segment ausgedrückt werden, z.B. [5, 5]
         
-        self.segments: List[Segment] = []   # Resetting the segments for new calculation
+        self.sub_elements: List[Segment] = []   # Resetting the segments for new calculation
         self.segments_of_variables = segments_of_variables
         self.binary_variable = binary_variable
 
@@ -134,7 +137,6 @@ class FeatureLinearSegmentVars(Feature):
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
             # todo: alle Elemente sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
             new_segment.create_new_model_and_activate_system_model(self.system_model)
-            self.segments.append(new_segment)
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
         for aSegment in self.segments:
