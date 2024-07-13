@@ -52,7 +52,7 @@ class FeatureLinearSegmentVars(Feature):
         self.eq_canOnlyBeInOneSegment: Equation = None
         self.segments_of_variables: Dict[Variable, List[Skalar]] = None
         self.segments: List[Segment] = []
-        self.var_on: Optional[Variable] = None
+        self.binary_variable: Optional[Variable] = None
 
     @property
     def nr_of_segments(self) -> Skalar:
@@ -68,7 +68,7 @@ class FeatureLinearSegmentVars(Feature):
     # todo: wenn Variable-Dummys existieren, dann kann das alles in __init__
     def define_segments(self,
                         segments_of_variables: Dict[Variable, List[Skalar]],
-                        var_on: Optional[Variable],
+                        binary_variable: Optional[Variable],
                         vars_for_check: List[Variable]):
         # segementsData - Elemente sind Listen!.
         # segments_of_variables = {var_Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Indexspezfika (z.B. für Zeitreihenabbildung) über arrays oder TS!!
@@ -80,7 +80,7 @@ class FeatureLinearSegmentVars(Feature):
         
         self.segments: List[Segment] = []   # Resetting the segments for new calculation
         self.segments_of_variables = segments_of_variables
-        self.var_on = var_on
+        self.binary_variable = binary_variable
 
         if not self.nr_of_segments.is_integer():   # Check ob gerade Anzahl an Werten:
             raise Exception('Nr of Values should be even, because pairs (start,end of every section)')
@@ -127,9 +127,9 @@ class FeatureLinearSegmentVars(Feature):
         self.model.add_equation(Equation('ICanOnlyBeInOneSegment', self, system_model))
 
         # a) zusätzlich zu Aufenthalt in Segmenten kann alles auch Null sein:
-        if self.var_on is not None:
+        if self.binary_variable is not None:
             # TODO: # Eigentlich wird die On-Variable durch linearSegment-equations bereits vollständig definiert.
-            self.model.eqs['ICanOnlyBeInOneSegment'].add_summand(self.var_on, -1)
+            self.model.eqs['ICanOnlyBeInOneSegment'].add_summand(self.binary_variable, -1)
         else:
             self.model.eqs['ICanOnlyBeInOneSegment'].add_constant(1)   # b) Aufenthalt nur in Segmenten erlaubt:
 
@@ -217,7 +217,7 @@ class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
 
         # hier erst Variablen vorhanden un damit segments_of_variables definierbar!
         super().define_segments(segments_of_variables,
-                                var_on=self.get_var_on(),
+                                binary_variable=self.get_var_on(),
                                 vars_for_check=variables)  # todo: das ist nur hier, damit schon variablen Bekannt
 
         super().declare_vars_and_eqs(system_model)   # 2. declare vars:
@@ -1048,7 +1048,7 @@ class FeatureInvest(Feature):
             var_isInvested = None
 
         ## 3. transfer segments_of_variables to FeatureLinearSegmentVars: ##
-        self.featureLinearSegments.define_segments(segments_of_variables, var_on=var_isInvested,
+        self.featureLinearSegments.define_segments(segments_of_variables, binary_variable=var_isInvested,
                                                    vars_for_check=list(segments_of_variables.keys()))
 
     def _create_variable_for_segmented_invest_effect(self, aEffect, system_model: SystemModel):
