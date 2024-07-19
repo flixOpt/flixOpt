@@ -182,7 +182,7 @@ class FeatureLinearSegmentVars(Feature):
 
         for aVar in self.variables:
             # aVar = aFlow.model.var_val
-            lambda_eq = Equation(aVar.label + '_lambda', self, system_model)  # z.B. Q_th(t)
+            lambda_eq = Equation(aVar.label_full + '_lambda', self, system_model)  # z.B. Q_th(t)
             self.model.add_equation(lambda_eq)
             lambda_eq.add_summand(aVar, -1)
             for aSegment in self.segments:
