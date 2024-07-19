@@ -17,6 +17,7 @@ import numpy as np
 
 from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.aggregation import TimeSeriesCollection
+from flixOpt.core import Skalar
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.modeling import VariableTS
 from flixOpt.structure import SystemModel
@@ -588,25 +589,19 @@ class BeforeValues:
                 (aValue, aTime) = aVar.get_before_value_for_next_segment(lastUsedIndex)
                 self.addBeforeValues(aVar, aValue, aTime)
 
-    def addBeforeValues(self, aVar, aValue, aTime):
-        element = aVar.owner
-        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
-        # before_values = aVar.result(aValue) # letzten zwei Werte
-
-        if aKey in self.beforeValues.keys():
+    def addBeforeValues(self, aVar:VariableTS, aValue: Skalar, aTime: np.datetime64):
+        if aVar.label_full in self.beforeValues.keys():
             raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')
         else:
-            self.beforeValues.update({aKey: (aValue, aTime)})
+            self.beforeValues.update({aVar.label_full: (aValue, aTime)})
 
     # return (value, time)
-    def getBeforeValues(self, aVar) -> Optional[Tuple[Union[int, float], np.datetime64]]:
-        element = aVar.owner
-        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
-        if aKey in self.beforeValues.keys():
-            return self.beforeValues[aKey]  # returns (value, time)
+    def getBeforeValues(self, aVar:VariableTS) -> Optional[Tuple[Union[int, float], np.datetime64]]:
+        if aVar.label_full in self.beforeValues.keys():
+            return self.beforeValues[aVar.label_full]  # returns (value, time)
         else:
             return None, None
 
     def print(self):
-        for (element, varName) in self.beforeValues.keys():
-            print(element.label + '__' + varName + ' = ' + str(self.beforeValues[(element, varName)]))
+        for varName in self.beforeValues.keys():
+            print(varName + ' = ' + str(self.beforeValues[varName]))
