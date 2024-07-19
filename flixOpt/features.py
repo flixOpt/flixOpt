@@ -1064,7 +1064,7 @@ class FeatureInvest(Feature):
             raise Exception('Given effect (' + str(aEffect) + ') is not an effect!')
         # new variable, i.e for costs, CO2,... :
         var_investForEffect = Variable('investCosts_segmented_' + aStr, 1, self, system_model, lower_bound=0)
-        self.model.add_variable(Variable('investCosts_segmented_' + aStr, 1, self, system_model, lower_bound=0))
+        self.model.add_variable(var_investForEffect)
         return var_investForEffect
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
