@@ -944,6 +944,7 @@ class FeatureInvest(Feature):
         self.featureLinearSegments = None   # segmented investcosts:
         if self.invest_parameters.effects_in_segments is not None:
             self.featureLinearSegments = FeatureLinearSegmentVars('segmentedInvestcosts', self)
+            self.sub_elements.append(self.featureLinearSegments)
 
     def check_plausibility(self):
         # Check investment_size:
