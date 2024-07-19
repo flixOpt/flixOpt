@@ -782,10 +782,10 @@ class Storage(Component):
                 ub = np.append(ub, ub[-1])  # charge_state_end_max)
 
         self.model.add_variable(
-            VariableTS('charge_state', system_model.nrOfTimeSteps + 1, self,
+            VariableTS('charge_state', system_model.nrOfTimeSteps + 1, self.label_full,
                        system_model, lower_bound=lb, upper_bound=ub, value=fix_value))  # Eins mehr am Ende!
         self.model.variables['charge_state'].set_before_value(self.chargeState0_inFlowHours, True)
-        self.model.add_variable(VariableTS('nettoFlow', system_model.nrOfTimeSteps, self, system_model,
+        self.model.add_variable(VariableTS('nettoFlow', system_model.nrOfTimeSteps, self.label_full, system_model,
                                               lower_bound=-np.inf))  # negative Werte zulässig!
 
         # erst hier, da defining_variable vorher nicht belegt!

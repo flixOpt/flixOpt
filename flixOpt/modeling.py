@@ -247,7 +247,7 @@ class Variable:
     def __init__(self,
                  label: str,
                  length: int,
-                 owner,
+                 label_of_owner: str,
                  linear_model: LinearModel,
                  is_binary: bool = False,
                  value: Optional[Union[int, float]] = None,
@@ -255,7 +255,6 @@ class Variable:
                  upper_bound: Optional[Union[int, float]] = None):
         self.label = label
         self.length = length
-        self.owner: flixOpt.flixStructure.Element = owner
         self.linear_model = linear_model
         self.is_binary = is_binary
         self.value = value
@@ -263,7 +262,7 @@ class Variable:
         self.upper_bound = upper_bound
 
         self.indices = range(self.length)
-        self.label_full = owner.label_full + '__' + label
+        self.label_full = label_of_owner + '__' + label
         self.fixed = False
         self._result = None  # Ergebnis
 
@@ -304,7 +303,7 @@ class Variable:
                 self.var = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
 
             # Register in pyomo-model:
-            aNameSuffixInPyomo = 'var_' + self.owner.label + '_' + self.label  # z.B. KWK1_On
+            aNameSuffixInPyomo = 'var__' + self.label_full
             baseModel.registerPyComp(self.var, aNameSuffixInPyomo)
 
             lower_bound_vector = helpers.as_vector(self.lower_bound, self.length)
@@ -383,7 +382,7 @@ class VariableTS(Variable):
     def __init__(self,
                  label: str,
                  length: int,
-                 owner,
+                 label_of_owner: str,
                  linear_model: LinearModel,
                  is_binary: bool = False,
                  value: Optional[Union[int, float, np.ndarray]] = None,
@@ -391,7 +390,7 @@ class VariableTS(Variable):
                  upper_bound: Optional[Union[int, float, np.ndarray]] = None):
         assert length > 1, 'length is one, that seems not right for VariableTS'
         self.activated_beforeValues = False
-        super().__init__(label, length, owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
+        super().__init__(label, length, label_of_owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
 
     @property
     def before_value(self):

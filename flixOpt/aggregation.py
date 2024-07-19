@@ -314,11 +314,11 @@ class AggregationModeling(Element):
         # Korrektur: (bisher nur für Binärvariablen:)
         if aVar.is_binary and self.percentage_of_period_freedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
+            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
                               system_model,
                               is_binary=True)
             self.model.add_variable(var_K1)
-            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
+            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
                               system_model,
                               is_binary=True)
             self.model.add_variable(var_K0)
