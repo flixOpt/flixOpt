@@ -587,20 +587,20 @@ class BeforeValues:
             if aVar.activated_beforeValues:
                 # Before-Value holen:
                 (aValue, aTime) = aVar.get_before_value_for_next_segment(lastUsedIndex)
-                self.addBeforeValues(aVar, aValue, aTime)
+                self.add_before_values(aVar, aValue, aTime)
 
-    def addBeforeValues(self, aVar:VariableTS, aValue: Skalar, aTime: np.datetime64):
-        if aVar.label_full in self.beforeValues.keys():
+    def add_before_values(self, variable: VariableTS, value: Skalar, time_stamp: np.datetime64):
+        if variable.label_full in self.beforeValues.keys():
             raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')
         else:
-            self.beforeValues.update({aVar.label_full: (aValue, aTime)})
+            self.beforeValues.update({variable.label_full: (value, time_stamp)})
 
     # return (value, time)
-    def getBeforeValues(self, aVar:VariableTS) -> Optional[Tuple[Union[int, float], np.datetime64]]:
-        if aVar.label_full in self.beforeValues.keys():
-            return self.beforeValues[aVar.label_full]  # returns (value, time)
+    def get_before_values(self, variable: VariableTS) -> Optional[Tuple[Union[int, float], np.datetime64]]:
+        if variable.label_full in self.beforeValues.keys():
+            return self.beforeValues[variable.label_full]  # returns (value, time)
         else:
-            raise Exception(f'getBeforeValues(): Keine Before-Werte für Variablen "{aVar.label_full}"')
+            raise Exception(f'get_before_values(): Keine Before-Werte für Variablen "{variable.label_full}"')
 
     def print(self):
         for varName in self.beforeValues.keys():

@@ -399,7 +399,7 @@ class VariableTS(Variable):
         # wenn beforeValue-Datensatz für linear_model gegeben:
         if self.linear_model.before_values is not None:
             # für Variable rausziehen:
-            (value, time) = self.linear_model.before_values.getBeforeValues(self)
+            (value, time_stamp) = self.linear_model.before_values.get_before_values(self)
             return value
         # sonst Standard-BeforeValues von Energiesystem verwenden:
         else:
