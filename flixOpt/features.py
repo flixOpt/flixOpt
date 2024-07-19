@@ -38,7 +38,7 @@ class Feature(Element):
 
     @property
     def label_full(self):
-        return self.owner.label_full + '_' + self.label
+        return self.owner.label_full + '__' + self.label
 
     def finalize(self):  # TODO: evtl. besser bei Element aufgehoben
         super().finalize()

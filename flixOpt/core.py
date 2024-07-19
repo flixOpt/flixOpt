@@ -97,7 +97,7 @@ class TimeSeries:
 
     @property
     def label_full(self) -> str:
-        return self.owner.label_full + '_' + self.label
+        return self.owner.label_full + '__' + self.label
 
     @property
     def aggregation_weight(self):
