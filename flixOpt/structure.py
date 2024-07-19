@@ -219,6 +219,10 @@ class SystemModel(LinearModel):
         return all_vars
 
     @property
+    def all_ts_variables(self) -> List[VariableTS]:
+        return [var for var in self.all_variables if isinstance(var, VariableTS)]
+
+    @property
     def all_equations(self) -> List[Equation]:
         all_eqs = []
         for model in self.models_of_elements.values():
