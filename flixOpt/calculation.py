@@ -600,7 +600,7 @@ class BeforeValues:
         if aVar.label_full in self.beforeValues.keys():
             return self.beforeValues[aVar.label_full]  # returns (value, time)
         else:
-            return None, None
+            raise Exception(f'getBeforeValues(): Keine Before-Werte für Variablen "{aVar.label_full}"')
 
     def print(self):
         for varName in self.beforeValues.keys():
