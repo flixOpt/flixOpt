@@ -207,7 +207,7 @@ aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, size
 aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
 # Zusammenführung:
-system = System(aTimeSeries, last_time_step_hours=None)
+system = FlowSystem(aTimeSeries, last_time_step_hours=None)
 # system.add_components(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 system.add_effects(costs)
 system.add_effects(CO2, PE)

@@ -21,7 +21,7 @@ from flixOpt.core import Skalar, Numeric
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
-from flixOpt.system import System
+from flixOpt.flow_system import FlowSystem
 
 log = logging.getLogger(__name__)
 
@@ -60,14 +60,14 @@ class Calculation:
         raise NotImplementedError()
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, name, system: System, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name, system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
         ----------
         name : str
             name of calculation
-        system : System
+        system : FlowSystem
             system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
@@ -142,7 +142,7 @@ class FullCalculation(Calculation):
 
     def do_modeling(self) -> SystemModel:
         self.check_if_already_modeled()
-        self.system.finalize()  # System finalisieren:
+        self.system.finalize()  # FlowSystem finalisieren:
 
         t_start = timeit.default_timer()
         system_model = SystemModel(self.name, self.modeling_language, self.system, self.time_indices)
@@ -167,14 +167,14 @@ class AggregatedCalculation(Calculation):
     class for defined way of solving a energy system optimizatino
     """
 
-    def __init__(self, name: str, system: System, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name: str, system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
         ----------
         name : str
             name of calculation
-        system : System
+        system : FlowSystem
             system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
@@ -364,7 +364,7 @@ class AggregatedCalculation(Calculation):
                 TS_explicit[TS] = dataAgg.results[TS.label_full].values  # nur data-array ohne Zeit
 
         # ##########################
-        # ## System finalizing: ##
+        # ## FlowSystem finalizing: ##
         self.system.finalize()
 
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)

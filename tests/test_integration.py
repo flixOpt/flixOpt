@@ -7,7 +7,7 @@ import pandas as pd
 
 from flixOpt.elements import *
 from flixOpt.components import *
-from flixOpt.system import System
+from flixOpt.flow_system import FlowSystem
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 import flixOpt.flixPostprocessing as flixPost
 
@@ -86,7 +86,7 @@ class TestSimple(BaseTest):
                            source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * self.p_el))
 
-        es = System(self.aTimeSeries, last_time_step_hours=None)
+        es = FlowSystem(self.aTimeSeries, last_time_step_hours=None)
         es.add_components(aSpeicher)
         es.add_effects(costs, CO2)
         es.add_components(aBoiler, aWaermeLast, aGasTarif)
@@ -245,7 +245,7 @@ class TestComplex(BaseTest):
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
-        es = System(self.aTimeSeries, last_time_step_hours=None)
+        es = FlowSystem(self.aTimeSeries, last_time_step_hours=None)
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
@@ -289,7 +289,7 @@ class TestComplex(BaseTest):
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
-        es = System(self.aTimeSeries, last_time_step_hours=None)
+        es = FlowSystem(self.aTimeSeries, last_time_step_hours=None)
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
         es.add_components(aSpeicher)
@@ -353,7 +353,7 @@ class TestModelingTypes(BaseTest):
         aStromEinspeisung.sink.effects_per_flow_hour[None].aggregation_weight = .5
         aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
-        es = System(aTimeSeries, last_time_step_hours=None)
+        es = FlowSystem(aTimeSeries, last_time_step_hours=None)
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
 

@@ -18,7 +18,7 @@ import tsam.timeseriesaggregation as tsam
 
 from flixOpt.core import Skalar, TimeSeries
 from flixOpt.elements import Global, Flow
-from flixOpt.system import System
+from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Storage
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.structure import Element, SystemModel
@@ -182,7 +182,7 @@ class AggregationModeling(Element):
     # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
     def __init__(self,
                  label: str,
-                 system: System,
+                 system: FlowSystem,
                  index_vectors_of_clusters: Dict[int, List[np.ndarray]],
                  fix_storage_flows: bool = True,
                  fix_binary_vars_only: bool = True,

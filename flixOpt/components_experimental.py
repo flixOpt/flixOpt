@@ -53,7 +53,7 @@ def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Returns
     -------
     list(LinearTransformer, CHP, CHP)
-            a list of Components that need to be added to the System
+            a list of Components that need to be added to the FlowSystem
     '''
 
     # filtering,because eta can not be 0
@@ -147,7 +147,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Returns
     -------
     list(LinearTransformer, LinearTransformer, LinearTransformer)
-        a list of Components that need to be added to the System
+        a list of Components that need to be added to the FlowSystem
 
     Raises
     ------

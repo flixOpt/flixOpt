@@ -17,7 +17,7 @@ from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # M
 from flixOpt.core import TimeSeries
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.elements import Flow
-    from flixOpt.system import System
+    from flixOpt.flow_system import FlowSystem
 
 log = logging.getLogger(__name__)
 
@@ -43,11 +43,11 @@ class SystemModel(MathModel):
                  time_indices: Union[List[int], range],
                  TS_explicit=None):
         super().__init__(label, modeling_language)
-        self.system: System = system  # energysystem (wäre Attribut von cTimePeriodModel)
+        self.system: FlowSystem = system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-        self.models_of_elements: Dict[Element, ElementModel] = {}  # dict with all ElementModel's of Elements in System
+        self.models_of_elements: Dict[Element, ElementModel] = {}  # dict with all ElementModel's of Elements in FlowSystem
 
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (

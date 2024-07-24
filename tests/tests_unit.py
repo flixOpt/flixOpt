@@ -4,14 +4,14 @@ import numpy as np
 import datetime
 
 from flixOpt.components import Boiler, Storage, Source, Sink, CHP
-from flixOpt.structure import Flow, Bus, System, Calculation, Effect
+from flixOpt.structure import Flow, Bus, FlowSystem, Calculation, Effect
 from flixOpt.flixPostprocessing import flix_results
 
 
 class TestExistance(unittest.TestCase):
     def setUp(self):
         aTimeSeries = datetime.datetime(2020, 1, 1) + np.arange(5) * datetime.timedelta(hours=1)
-        self.es = System(aTimeSeries.astype('datetime64'))
+        self.es = FlowSystem(aTimeSeries.astype('datetime64'))
         self.effects = {
             "costs": Effect(label="costs", unit="€", is_standard=True, is_objective=True, description="")
         }

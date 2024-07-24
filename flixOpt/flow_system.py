@@ -28,9 +28,9 @@ log = logging.getLogger(__name__)
 
 
 
-class System:
+class FlowSystem:
     '''
-    A System holds Elements (Components, Buses, Flows, Effects,...).
+    A FlowSystem holds Elements (Components, Buses, Flows, Effects,...).
     '''
 
     ## Properties:
@@ -120,7 +120,7 @@ class System:
                                sorted(self.components, key=lambda component: component.label.upper()))
         effects = '\n'.join(effect.__str__() for effect in
                                sorted(self.effects, key=lambda effect: effect.label.upper()))
-        return f"Energy System with components:\n{components}\nand effects:\n{effects}"
+        return f"Energy FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
     def add_effects(self, *args: Effect) -> None:
@@ -338,7 +338,7 @@ class System:
             for element in self.elements_of_fists_layer:
                 # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
                 if not self._finalized:
-                    raise Exception('activate_model(): --> Geht nicht, da System noch nicht finalized!')
+                    raise Exception('activate_model(): --> Geht nicht, da FlowSystem noch nicht finalized!')
                 # model bauen und in model registrieren.
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:

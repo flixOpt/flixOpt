@@ -11,7 +11,7 @@ import datetime
 
 from flixOpt.calculation import FullCalculation
 from flixOpt.flixBasicsPublic import InvestParameters
-from flixOpt.system import System
+from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Boiler, Sink, Source, Storage, CHP
 from flixOpt.elements import Bus, Effect, Flow
 
@@ -134,7 +134,7 @@ aStromEinspeisung = Sink('Einspeisung',
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-system = System(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
+system = FlowSystem(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
 system.add_components(aSpeicher) # adding components
 system.add_effects(costs, CO2) # adding defined effects
 system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components

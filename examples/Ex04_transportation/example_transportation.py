@@ -105,7 +105,7 @@ aTransporter = Transportation('Rohr',
                               )
 
 # Built energysystem:
-system = System(aTimeSeries, last_time_step_hours=None)
+system = FlowSystem(aTimeSeries, last_time_step_hours=None)
 # system.add_components(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
 system.add_effects(costs)
 system.add_components(aSink2, aSource1, aSource2)
