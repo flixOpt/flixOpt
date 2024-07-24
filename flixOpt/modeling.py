@@ -14,7 +14,7 @@ import numpy as np
 from pyomo.contrib import appsi
 
 from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.core import Skalar
+from flixOpt.core import Skalar, Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
@@ -54,6 +54,7 @@ class LinearModel:
         self.objective_result = None  # Ergebnis
         self.duration = {}  # Laufzeiten
         self.solver_log = None  # logging und parsen des solver-outputs
+        self.before_values: Dict[str, Numeric] = {}  # before_values, which overwrite inital before values defined in the Elements.
 
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
@@ -391,7 +392,8 @@ class VariableTS(Variable):
 
     @property
     def before_value(self) -> Optional[Union[int, float, np.ndarray, List[Union[int, float]]]]:
-        return self._before_value
+        # Return value if found in before_values, else return stored value
+        return self.linear_model.before_values.get(self.label_full) or self._before_value
 
     @before_value.setter
     def before_value(self, value: Union[int, float, np.ndarray, List[Union[int, float]]]):

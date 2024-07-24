@@ -475,14 +475,11 @@ class SegmentedCalculation(Calculation):
             # Startwerte übergeben von Vorgänger-system_model:
             new_before_values = None
             if i > 0:
-                system_model_of_prior_segment = self.system_models[i - 1]
-                new_before_values = {
-                    variable.label_full: variable.get_before_value_for_next_segment(nr_of_used_steps - 1)
-                    for variable in system_model_of_prior_segment.all_ts_variables if variable.before_value is not None
-                }
+                new_before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
 
-                old_before_values = BeforeValues(system_model_of_prior_segment.all_ts_variables,
+                old_before_values = BeforeValues(self.system_models[-1].all_ts_variables,
                                                            nr_of_used_steps - 1)
+                system_model_of_segment.before_values = new_before_values
                 assert new_before_values == old_before_values.beforeValues
                 print('### before_values: ###')
                 print(f'{new_before_values}')
@@ -494,10 +491,6 @@ class SegmentedCalculation(Calculation):
             # modellieren:
             t_start_modeling = timeit.default_timer()
             self.system.do_modeling_of_elements()
-            if i > 0:
-                self._insert_before_values(system_model_of_segment, new_before_values)   # Insert new start_values by label
-                from pprint import pp
-                pp({var.label_full: var.before_value for var in system_model_of_segment.all_ts_variables if var.before_value is not None})
             self.system.transform_to_math_model()
             self.durations['modeling'] += round(timeit.default_timer() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
@@ -587,14 +580,16 @@ class SegmentedCalculation(Calculation):
 
         # results füllen:  # ....
 
-    def _insert_before_values(self, system_model: SystemModel, before_values: Dict[str, Numeric]):
-        not_assigned_before_values = list(before_values.keys())
-        for variable in system_model.all_ts_variables:
-            if variable.label_full in before_values:
-                variable.before_value = before_values[variable.label_full]
-                not_assigned_before_values.remove(variable.label_full)
-        if not_assigned_before_values:
-            raise Exception(f'Not all before_values where assigned')
+    def get_before_values_for_next_segment(self, last_index_of_segment: int) -> Dict[str, Numeric]:
+        # hole Startwert/letzten Wert für nächstes Segment:
+        new_before_values = {}
+
+        for variable in self.system_models[-1].all_ts_variables:
+            if variable.before_value is not None:
+                index = last_index_of_segment + 1 if variable.before_value_is_start_value else last_index_of_segment
+                assert variable.label_full not in new_before_values.keys(), f' before_value is already set for {variable.label_full}'
+                new_before_values.update({variable.label_full: variable.result[index]})
+        return new_before_values
 
 
 
