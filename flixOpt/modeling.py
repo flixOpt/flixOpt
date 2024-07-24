@@ -245,9 +245,9 @@ class Variable:
                  label_of_owner: str,
                  linear_model: LinearModel,
                  is_binary: bool = False,
-                 value: Optional[Union[int, float]] = None,
-                 lower_bound: Optional[Union[int, float]] = None,
-                 upper_bound: Optional[Union[int, float]] = None):
+                 value: Optional[Skalar] = None,
+                 lower_bound: Optional[Skalar] = None,
+                 upper_bound: Optional[Skalar] = None):
         self.label = label
         self.length = length
         self.linear_model = linear_model
@@ -324,7 +324,7 @@ class Variable:
         self._result = None
 
     @property
-    def result(self) -> Union[int, float, np.ndarray]:
+    def result(self) -> Numeric:
         # wenn noch nicht abgefragt: (so wird verhindert, dass für jede Abfrage jedesMal neuer Speicher bereitgestellt wird.)
         if self._result is None:
             if self.linear_model.modeling_language == 'pyomo':
@@ -379,10 +379,10 @@ class VariableTS(Variable):
                  label_of_owner: str,
                  linear_model: LinearModel,
                  is_binary: bool = False,
-                 value: Optional[Union[int, float, np.ndarray]] = None,
-                 lower_bound: Optional[Union[int, float, np.ndarray]] = None,
-                 upper_bound: Optional[Union[int, float, np.ndarray]] = None,
-                 before_value: Optional[Union[int, float, np.ndarray, List[Union[int, float]]]] = None,
+                 value: Optional[Numeric] = None,
+                 lower_bound: Optional[Numeric] = None,
+                 upper_bound: Optional[Numeric] = None,
+                 before_value: Optional[Numeric] = None,
                  before_value_is_start_value: bool = False):
         assert length > 1, 'length is one, that seems not right for VariableTS'
         super().__init__(label, length, label_of_owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
@@ -390,12 +390,12 @@ class VariableTS(Variable):
         self.before_value_is_start_value = before_value_is_start_value
 
     @property
-    def before_value(self) -> Optional[Union[int, float, np.ndarray, List[Union[int, float]]]]:
+    def before_value(self) -> Optional[Numeric]:
         # Return value if found in before_values, else return stored value
         return self.linear_model.before_values.get(self.label_full) or self._before_value
 
     @before_value.setter
-    def before_value(self, value: Union[int, float, np.ndarray, List[Union[int, float]]]):
+    def before_value(self, value: Numeric):
         self._before_value = value
 
 
@@ -425,7 +425,7 @@ class Equation:
 
     def add_summand(self,
                     variable: Variable,
-                    factor: Union[int, float, np.ndarray],
+                    factor: Numeric,
                     indices_of_variable: Optional[Union[int, np.ndarray, range, List[int]]] = None,
                     as_sum: bool = False) -> None:
         """
@@ -438,9 +438,9 @@ class Equation:
         -----------
         variable : Variable
             The variable to be used in the summand.
-        factor : Union[int, float, np.ndarray]
+        factor : Numeric
             The factor by which the variable is multiplied.
-        indices_of_variable : Optional[Union[int, float, np.ndarray]], optional
+        indices_of_variable : Optional[Numeric], optional
             Specific indices of the variable to be used. If not provided, all indices are used.
         as_sum : bool, optional
             If True, the summand is treated as a sum over all indices of the variable.
@@ -471,7 +471,7 @@ class Equation:
         # zu Liste hinzufügen:
         self.listOfSummands.append(summand)
 
-    def add_constant(self, value: Union[int, float, np.ndarray]) -> None:
+    def add_constant(self, value: Numeric) -> None:
         """
           constant value of the right side,
           if method is executed several times, than values are summed up.
@@ -613,7 +613,7 @@ class Equation:
 class Summand:
     def __init__(self,
                  variable: Variable,
-                 factor: Union[int, float, np.ndarray],
+                 factor: Numeric,
                  indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
         self.variable = variable
         self.factor = factor
@@ -669,7 +669,7 @@ class Summand:
 class SumOfSummand(Summand):
     def __init__(self,
                  variable: Variable,
-                 factor: Union[int, float, np.ndarray],
+                 factor: Numeric,
                  indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
         super().__init__(variable, factor, indices)
 
