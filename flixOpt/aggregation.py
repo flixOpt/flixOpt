@@ -259,26 +259,23 @@ class AggregationModeling(Element):
             isinstance(element.comp, Storage)):
                 pass  # flow hier nicht fixen!
             else:
-                # On-Variablen:
-                if element.model.var_on is not None:
-                    aVar = element.model.var_on
-                    self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
-                    # SwitchOn-Variablen:
-                if element.model.var_switchOn is not None:
-                    aVar = element.model.var_switchOn
-                    # --> hier ersten Index weglassen:
-                    self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
-                if element.model.var_switchOff is not None:
-                    aVar = element.model.var_switchOff
-                    # --> hier ersten Index weglassen:
-                    self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
+                all_vars_of_element = element.model.variables
+                for sub_element in element.all_sub_elements:
+                    all_vars_of_sub_element = sub_element.model.variables
+                    duplicate_var_names = set(all_vars_of_element.keys()) & set(all_vars_of_sub_element.keys())
+                    if duplicate_var_names:
+                        raise Exception(f'Variables {duplicate_var_names} already exists in system model')
+                    all_vars_of_element.update(all_vars_of_sub_element)
 
-                    # todo: nicht schön! Zugriff muss über alle cTSVariablen erfolgen!
-                # Nicht-Binär-Variablen:
-                if not self.fix_binary_vars_only:
-                    # Value-Variablen:
-                    if 'val' in element.model.variables:
-                        self.equate_indices(element.model.variables['val'], system_model, fix_first_index_of_period=True)
+                if 'on' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['on'], system_model, fix_first_index_of_period=True)
+                if 'switchOn' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['switchOn'], system_model, fix_first_index_of_period=True)
+                if 'switchOff' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['switchOff'], system_model, fix_first_index_of_period=True)
+
+                if not self.fix_binary_vars_only and 'val' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['val'], system_model, fix_first_index_of_period=True)
 
     def equate_indices(self, aVar: Variable, system_model, fix_first_index_of_period: bool) -> Equation:
         aVar: Variable
