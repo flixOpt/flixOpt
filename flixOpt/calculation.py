@@ -11,6 +11,7 @@ import math
 import pathlib
 import timeit
 from typing import List, Dict, Optional, Literal, Tuple, Union
+from pprint import pp
 
 import numpy as np
 
@@ -477,7 +478,7 @@ class SegmentedCalculation(Calculation):
             if i > 0:
                 system_model_of_segment.before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
                 print('### before_values: ###')
-                print(f'{system_model_of_segment.before_values}')
+                pp(system_model_of_segment.before_values)
                 print('#######################')  # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
