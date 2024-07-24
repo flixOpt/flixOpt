@@ -315,7 +315,6 @@ class Variable:
                     self.var[i].setlb(lower_bound_vector[i])  # min
                     self.var[i].setub(upper_bound_vector[i])  # max
 
-
         elif baseModel.modeling_language == 'vcxpy':
             raise Exception('not defined for modtype ' + baseModel.modeling_language)
         else:
@@ -398,14 +397,6 @@ class VariableTS(Variable):
     @before_value.setter
     def before_value(self, value: Union[int, float, np.ndarray, List[Union[int, float]]]):
         self._before_value = value
-
-    def get_before_value_for_next_segment(self, last_index_of_segment: int) -> Skalar:
-        # hole Startwert/letzten Wert für nächstes Segment:
-        if self.before_value_is_start_value:   # Wenn Speicherladezustand o.ä.
-            index = last_index_of_segment + 1  # = Ladezustand zum Startzeitpunkt des nächsten Segments
-        else:
-            index = last_index_of_segment  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
-        return self.result[index]
 
 
 # class cInequation(Equation):
@@ -673,6 +664,7 @@ class Summand:
         if len(self.indices) == 1:
             return self.variable.var[self.indices[0]] * self.factor_vec[at_index]
         return self.variable.var[self.indices[at_index]] * self.factor_vec[at_index]
+
 
 class SumOfSummand(Summand):
     def __init__(self,

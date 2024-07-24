@@ -475,12 +475,7 @@ class SegmentedCalculation(Calculation):
             # Startwerte übergeben von Vorgänger-system_model:
             new_before_values = None
             if i > 0:
-                new_before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
-
-                old_before_values = BeforeValues(self.system_models[-1].all_ts_variables,
-                                                           nr_of_used_steps - 1)
-                system_model_of_segment.before_values = new_before_values
-                assert new_before_values == old_before_values.beforeValues
+                system_model_of_segment.before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
                 print('### before_values: ###')
                 print(f'{new_before_values}')
                 print('#######################')  # transferStartValues(segment, segmentBefore)
@@ -590,37 +585,3 @@ class SegmentedCalculation(Calculation):
                 assert variable.label_full not in new_before_values.keys(), f' before_value is already set for {variable.label_full}'
                 new_before_values.update({variable.label_full: variable.result[index]})
         return new_before_values
-
-
-
-class BeforeValues:
-    # managed die Before-Werte des segments:
-    def __init__(self,
-                 variables_ts: List[VariableTS],
-                 from_index: int):
-        self.beforeValues = {}
-        # Sieht dann so aus = {(Element1, aVar1.name): (value, time),
-        #                      (Element2, aVar2.name): (value, time),
-        #                       ...                       }
-        for variable in variables_ts:
-            if variable.before_value is not None:
-                # Before-Value holen:
-                value = variable.get_before_value_for_next_segment(from_index)
-                self.add_before_values(variable, value)
-
-    def add_before_values(self, variable: VariableTS, value: Skalar):
-        if variable.label_full in self.beforeValues.keys():
-            raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')
-        else:
-            self.beforeValues.update({variable.label_full: value})
-
-    # return (value, time)
-    def get_before_values(self, variable: VariableTS) -> Optional[Tuple[Union[int, float], np.datetime64]]:
-        if variable.label_full in self.beforeValues.keys():
-            return self.beforeValues[variable.label_full]  # returns (value, time)
-        else:
-            return None  # returns None if variable has no before_value
-
-    def print(self):
-        for varName in self.beforeValues.keys():
-            print(varName + ' = ' + str(self.beforeValues[varName]))
