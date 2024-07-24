@@ -236,9 +236,6 @@ class AggregationModeling(Element):
 
         # self.sub_elements.append(self.featureOn)
 
-    def finalize(self):
-        super().finalize()
-
     def declare_vars_and_eqs(self, system_model: SystemModel):
         super().declare_vars_and_eqs(system_model)
 
@@ -262,27 +259,16 @@ class AggregationModeling(Element):
             isinstance(element.comp, Storage)):
                 pass  # flow hier nicht fixen!
             else:
-                # On-Variablen:
-                if element.model.var_on is not None:
-                    aVar = element.model.var_on
-                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
-                    # SwitchOn-Variablen:
-                if element.model.var_switchOn is not None:
-                    aVar = element.model.var_switchOn
-                    # --> hier ersten Index weglassen:
-                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
-                if element.model.var_switchOff is not None:
-                    aVar = element.model.var_switchOff
-                    # --> hier ersten Index weglassen:
-                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
+                all_vars_of_element = element.all_variables_with_sub_elements
+                if 'on' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['on'], system_model, fix_first_index_of_period=True)
+                if 'switchOn' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['switchOn'], system_model, fix_first_index_of_period=True)
+                if 'switchOff' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['switchOff'], system_model, fix_first_index_of_period=True)
 
-                    # todo: nicht schön! Zugriff muss über alle cTSVariablen erfolgen!
-                # Nicht-Binär-Variablen:
-                if not self.fix_binary_vars_only:
-                    # Value-Variablen:
-                    if hasattr(element.model, 'var_val'):
-                        aVar = element.model.var_val
-                        aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
+                if not self.fix_binary_vars_only and 'val' in all_vars_of_element:
+                    self.equate_indices(all_vars_of_element['val'], system_model, fix_first_index_of_period=True)
 
     def equate_indices(self, aVar: Variable, system_model, fix_first_index_of_period: bool) -> Equation:
         aVar: Variable
@@ -307,18 +293,21 @@ class AggregationModeling(Element):
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
         eq = Equation('equalIdx_' + aVar.label_full, self, system_model, eqType='eq')
+        self.model.add_equation(eq)
         eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
         eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
         # Korrektur: (bisher nur für Binärvariablen:)
         if aVar.is_binary and self.percentage_of_period_freedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
+            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
                               system_model,
                               is_binary=True)
-            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self,
+            self.model.add_variable(var_K1)
+            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
                               system_model,
                               is_binary=True)
+            self.model.add_variable(var_K0)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
@@ -333,6 +322,7 @@ class AggregationModeling(Element):
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
             eq_lock = Equation('lock_K0andK1' + aVar.label_full, self, system_model, eqType='ineq')
+            self.model.add_equation(eq_lock)
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
             eq_lock.add_constant(1.1)
@@ -341,6 +331,7 @@ class AggregationModeling(Element):
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentage_of_period_freedom / 100 * var_K1.length)
             eq_max = Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
+            self.model.add_equation(eq_max)
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
             eq_max.add_constant(self.noOfCorrections)  # Maximum

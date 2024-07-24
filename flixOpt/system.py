@@ -301,10 +301,10 @@ class System:
             element.do_modeling(self.model, time_indices)
             element.add_share_to_globals(self.global_comp, self.model)
 
-            # transform to Math:
-        self.model.to_math_model()
-
         return self.model
+
+    def transform_to_math_model(self):
+        self.model.to_math_model()
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activate_system_model)
     def activate_indices_in_time_series(
@@ -343,7 +343,7 @@ class System:
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:
             # nur Aktivieren:
-            for element in self.elements_of_fists_layer:  # TODO: Is This a BUG?
+            for element in self.elements_of_fists_layer:
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)

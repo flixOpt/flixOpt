@@ -9,14 +9,15 @@ import datetime
 import logging
 import math
 import pathlib
-import time
 import timeit
-from typing import List, Dict, Optional, Literal
+from typing import List, Dict, Optional, Literal, Tuple, Union
+from pprint import pp
 
 import numpy as np
 
 from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.aggregation import TimeSeriesCollection
+from flixOpt.core import Skalar, Numeric
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.modeling import VariableTS
 from flixOpt.structure import SystemModel
@@ -147,6 +148,7 @@ class FullCalculation(Calculation):
         system_model = SystemModel(self.name, self.modeling_language, self.system, self.time_indices)
         self.system.activate_model(system_model)  # model aktivieren:
         self.system.do_modeling_of_elements()  # modellieren:
+        self.system.transform_to_math_model()
 
         self.system_models.append(system_model)
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
@@ -317,6 +319,7 @@ class AggregatedCalculation(Calculation):
             plt.plot(agg_values.values, '--', label=label_TS)
         if len(self.time_series_for_aggregation) < 10:  # wenn nicht zu viele
             plt.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center')
+        plt.tight_layout()
         plt.show()
 
         # ### Some infos as print ###
@@ -375,6 +378,7 @@ class AggregatedCalculation(Calculation):
         self.system.activate_model(system_model)
         # modellieren:
         self.system.do_modeling_of_elements()
+        self.system.transform_to_math_model()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_m_start, 2)
         return system_model
@@ -472,11 +476,9 @@ class SegmentedCalculation(Calculation):
 
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
-                system_model_of_prior_segment = self.system_models[i - 1]
-                system_model_of_segment.before_values = BeforeValues(system_model_of_prior_segment.all_ts_variables,
-                                                           nr_of_used_steps - 1)
+                system_model_of_segment.before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
                 print('### before_values: ###')
-                system_model_of_segment.before_values.print()
+                pp(system_model_of_segment.before_values)
                 print('#######################')  # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
@@ -485,6 +487,7 @@ class SegmentedCalculation(Calculation):
             # modellieren:
             t_start_modeling = timeit.default_timer()
             self.system.do_modeling_of_elements()
+            self.system.transform_to_math_model()
             self.durations['modeling'] += round(timeit.default_timer() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
             self.system_models.append(system_model_of_segment)
@@ -530,7 +533,7 @@ class SegmentedCalculation(Calculation):
                         aReferedVariable = result_to_append_var[key]
                         aReferedVariable: VariableTS
                         withEnd = isinstance(aReferedVariable, VariableTS) \
-                                  and aReferedVariable.activated_beforeValues \
+                                  and (aReferedVariable.before_value is not None) \
                                   and aReferedVariable.before_value_is_start_value
 
                         # nested:
@@ -573,40 +576,13 @@ class SegmentedCalculation(Calculation):
 
         # results füllen:  # ....
 
+    def get_before_values_for_next_segment(self, last_index_of_segment: int) -> Dict[str, Numeric]:
+        # hole Startwert/letzten Wert für nächstes Segment:
+        new_before_values = {}
 
-class BeforeValues:
-    # managed die Before-Werte des segments:
-    def __init__(self, variables_ts: List[VariableTS], lastUsedIndex: int):
-        self.beforeValues = {}
-        # Sieht dann so aus = {(Element1, aVar1.name): (value, time),
-        #                      (Element2, aVar2.name): (value, time),
-        #                       ...                       }
-        for aVar in variables_ts:
-            aVar: VariableTS
-            if aVar.activated_beforeValues:
-                # Before-Value holen:
-                (aValue, aTime) = aVar.get_before_value_for_next_segment(lastUsedIndex)
-                self.addBeforeValues(aVar, aValue, aTime)
-
-    def addBeforeValues(self, aVar, aValue, aTime):
-        element = aVar.owner
-        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
-        # before_values = aVar.result(aValue) # letzten zwei Werte
-
-        if aKey in self.beforeValues.keys():
-            raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')
-        else:
-            self.beforeValues.update({aKey: (aValue, aTime)})
-
-    # return (value, time)
-    def getBeforeValues(self, aVar):
-        element = aVar.owner
-        aKey = (element, aVar.label)  # hier muss label genommen werden, da aVar sich ja ändert je linear_model!
-        if aKey in self.beforeValues.keys():
-            return self.beforeValues[aKey]  # returns (value, time)
-        else:
-            return None
-
-    def print(self):
-        for (element, varName) in self.beforeValues.keys():
-            print(element.label + '__' + varName + ' = ' + str(self.beforeValues[(element, varName)]))
+        for variable in self.system_models[-1].all_ts_variables:
+            if variable.before_value is not None:
+                index = last_index_of_segment + 1 if variable.before_value_is_start_value else last_index_of_segment
+                assert variable.label_full not in new_before_values.keys(), f' before_value is already set for {variable.label_full}'
+                new_before_values.update({variable.label_full: variable.result[index]})
+        return new_before_values

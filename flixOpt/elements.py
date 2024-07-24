@@ -133,8 +133,8 @@ class Effect(Element):
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
-        self.all.add_variable_share('operation', self, self.operation.model.var_sum, 1, 1)
-        self.all.add_variable_share('invest', self, self.invest.model.var_sum, 1, 1)
+        self.all.add_variable_share('operation', self, self.operation.model.variables['sum'], 1, 1)
+        self.all.add_variable_share('invest', self, self.invest.model.variables['sum'], 1, 1)
         self.all.do_modeling(system_model, time_indices)
 
     def __str__(self):
@@ -419,6 +419,7 @@ class Global(Element):
         self.listOfEffectTypes = []  # wird überschrieben mit spezieller Liste
 
         self.objective = None
+        self.penalty = None
 
     def finalize(self) -> None:
         super().finalize()  # TODO: super-Finalize eher danach?
@@ -497,7 +498,7 @@ class Global(Element):
             else:
                 raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
-    def declare_vars_and_eqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
 
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
 
@@ -508,12 +509,14 @@ class Global(Element):
         self.penalty.declare_vars_and_eqs(system_model)
 
         self.objective = Equation('obj', self, system_model, 'objective')
+        self.model.add_equation(self.objective)
+        system_model.objective = self.objective
 
         # todo : besser wäre objective separat:
 
     #  eq_objective = Equation('objective',self,model,'objective')
     # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
         # super().do_modeling(model,time_indices)
 
         self.penalty.do_modeling(system_model, time_indices)
@@ -533,7 +536,7 @@ class Global(Element):
                 shareSum_op = effectTypeOfShare.operation
                 shareSum_op: flixOpt.flixFeatures.Feature_ShareSum
                 shareHolder = effectType
-                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.var_sum_TS,
+                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.variables['sum_TS'],
                                                specShare_TS, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             # alle specificSharesToOtherEffects durchgehen:
@@ -548,13 +551,13 @@ class Global(Element):
 
         # ####### target function  ###########
         # Strafkosten immer:
-        self.objective.add_summand(self.penalty.model.var_sum, 1)
+        self.objective.add_summand(self.penalty.model.variables['sum'], 1)
 
         # Definierter Effekt als Zielfunktion:
         objectiveEffect = self.listOfEffectTypes.objective_effect
         if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
-        self.objective.add_summand(objectiveEffect.operation.model.var_sum, 1)
-        self.objective.add_summand(objectiveEffect.invest.model.var_sum, 1)
+        self.objective.add_summand(objectiveEffect.operation.model.variables['sum'], 1)
+        self.objective.add_summand(objectiveEffect.invest.model.variables['sum'], 1)
 
 
 class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
@@ -639,31 +642,32 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Fehlerplus/-minus:
         if self.with_excess:
             # Fehlerplus und -minus definieren
-            self.excess_input = VariableTS('excess_input', len(system_model.time_series), self, system_model,
-                                           lower_bound=0)
-            self.excess_output = VariableTS('excess_output', len(system_model.time_series), self, system_model,
-                                            lower_bound=0)
+            self.model.add_variable(VariableTS('excess_input', len(system_model.time_series), self.label_full, system_model,
+                                           lower_bound=0))
+            self.model.add_variable(VariableTS('excess_output', len(system_model.time_series), self.label_full, system_model,
+                                            lower_bound=0))
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
         super().do_modeling(system_model, time_indices)
 
         # inputs = outputs
         bus_balance = Equation('busBalance', self, system_model)
+        self.model.add_equation(bus_balance)
         for aFlow in self.inputs:
-            bus_balance.add_summand(aFlow.model.var_val, 1)
+            bus_balance.add_summand(aFlow.model.variables['val'], 1)
         for aFlow in self.outputs:
-            bus_balance.add_summand(aFlow.model.var_val, -1)
+            bus_balance.add_summand(aFlow.model.variables['val'], -1)
 
         if self.with_excess:  # Fehlerplus/-minus hinzufügen zur Bilanz:
-            bus_balance.add_summand(self.excess_output, -1)
-            bus_balance.add_summand(self.excess_input, 1)
+            bus_balance.add_summand(self.model.variables['excess_output'], -1)
+            bus_balance.add_summand(self.model.variables['excess_input'], 1)
 
     def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
         super().add_share_to_globals(global_comp, system_model)
         if self.with_excess:  # Strafkosten hinzufügen:
-            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_input,
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour_in', self, self.model.variables['excess_input'],
                                                    self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour', self, self.excess_output,
+            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour_out', self, self.model.variables['excess_output'],
                                                    self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
 
@@ -1004,18 +1008,17 @@ class Flow(Element):
             (lower_bound, upper_bound, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?
-        self.model.var_val = VariableTS('val', system_model.nrOfTimeSteps, self, system_model,
-                                        lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value)
-        self.model.var_sumFlowHours = Variable('sumFlowHours', 1, self, system_model,
-                                               lower_bound=self.flow_hours_total_min,
-                                               upper_bound=self.flow_hours_total_max)
+        self.model.add_variable(VariableTS('val', system_model.nrOfTimeSteps, self.label_full, system_model,
+                                           lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value))
+        self.model.add_variable(Variable('sumFlowHours', 1, self.label_full, system_model,
+                                         lower_bound=self.flow_hours_total_min, upper_bound=self.flow_hours_total_max))
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
         # erst hier, da defining_variable vorher nicht belegt!
         if self.featureInvest is not None:
-            self.featureInvest.set_defining_variables(self.model.var_val, self.model.var_on)
+            self.featureInvest.set_defining_variables(self.model.variables['val'], self.model.variables.get('on'))
             self.featureInvest.declare_vars_and_eqs(system_model)
 
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
@@ -1038,6 +1041,7 @@ class Flow(Element):
 
         if self.on_hours_total_max is not None:
             eq_on_hours_total_max = Equation('on_hours_total_max', self, system_model, 'ineq')
+            self.model.add_equation(eq_on_hours_total_max)
             eq_on_hours_total_max.add_summand(self.model.var_on, 1, as_sum=True)
             eq_on_hours_total_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
 
@@ -1049,6 +1053,7 @@ class Flow(Element):
 
         if self.on_hours_total_min is not None:
             eq_on_hours_total_min = Equation('on_hours_total_min', self, system_model, 'ineq')
+            self.model.add_equation(eq_on_hours_total_min)
             eq_on_hours_total_min.add_summand(self.model.var_on, -1, as_sum=True)
             eq_on_hours_total_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
 
@@ -1059,8 +1064,9 @@ class Flow(Element):
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        eq_sumFlowHours.add_summand(self.model.var_val, system_model.dt_in_hours, as_sum=True)
-        eq_sumFlowHours.add_summand(self.model.var_sumFlowHours, -1)
+        self.model.add_equation(eq_sumFlowHours)
+        eq_sumFlowHours.add_summand(self.model.variables["val"], system_model.dt_in_hours, as_sum=True)
+        eq_sumFlowHours.add_summand(self.model.variables['sumFlowHours'], -1)
 
         #
         # ############## Constraints für Binärvariablen : ##############
@@ -1083,9 +1089,10 @@ class Flow(Element):
         if self.load_factor_max is not None:
             flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.load_factor_max  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Max = Equation('load_factor_max', self, system_model, 'ineq')  # general mean
-            eq_flowHoursPerInvestsize_Max.add_summand(self.model.var_sumFlowHours, 1)
+            self.model.add_equation(eq_flowHoursPerInvestsize_Max)
+            eq_flowHoursPerInvestsize_Max.add_summand(self.model.variables["sumFlowHours"], 1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.var_investmentSize,
+                eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
                                                           -1 * flowHoursPerInvestsize_max)
             else:
                 eq_flowHoursPerInvestsize_Max.add_constant(self.size * flowHoursPerInvestsize_max)
@@ -1096,9 +1103,10 @@ class Flow(Element):
         if self.load_factor_min is not None:
             flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.load_factor_min  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Min = Equation('load_factor_min', self, system_model, 'ineq')
-            eq_flowHoursPerInvestsize_Min.add_summand(self.model.var_sumFlowHours, -1)
+            self.model.add_equation(eq_flowHoursPerInvestsize_Min)
+            eq_flowHoursPerInvestsize_Min.add_summand(self.model.variables["sumFlowHours"], -1)
             if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.var_investmentSize,
+                eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
                                                           flowHoursPerInvestsize_min)
             else:
                 eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.size * flowHoursPerInvestsize_min)
@@ -1130,13 +1138,13 @@ class Flow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def add_share_to_globals(self, global_comp: Global, system_model) -> None:
+    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
 
         # Arbeitskosten:
         if self.effects_per_flow_hour is not None:
             owner = self
             global_comp.add_share_to_operation(
-                'effects_per_flow_hour', owner, self.model.var_val,
+                'effects_per_flow_hour', owner, self.model.variables['val'],
                 self.effects_per_flow_hour, system_model.dt_in_hours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:

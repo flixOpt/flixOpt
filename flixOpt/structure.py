@@ -8,6 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import textwrap
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
+import timeit
 
 import numpy as np
 
@@ -46,9 +47,8 @@ class SystemModel(LinearModel):
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-        self.models_of_elements: Dict = {}  # dict with all ElementModel's od Elements in System
+        self.models_of_elements: Dict[Element, ElementModel] = {}  # dict with all ElementModel's of Elements in System
 
-        self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             system.get_time_data_from_indices(time_indices))
@@ -133,12 +133,12 @@ class SystemModel(LinearModel):
         print('')
         for aEffect in self.system.global_comp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
-            print('  operation: ' + str(aEffect.operation.model.var_sum.result))
-            print('  invest   : ' + str(aEffect.invest.model.var_sum.result))
-            print('  sum      : ' + str(aEffect.all.model.var_sum.result))
+            print('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
+            print('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
+            print('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.global_comp.penalty.model.var_sum.result))
+        print('penaltyCosts     : ' + str(self.system.global_comp.penalty.model.variables['sum'].result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -155,7 +155,7 @@ class SystemModel(LinearModel):
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.global_comp.penalty.model.var_sum.result > 10:
+        if self.system.global_comp.penalty.model.variables['sum'].result > 10:
             print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -172,10 +172,10 @@ class SystemModel(LinearModel):
             for aEffect in self.system.global_comp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
-                aDict['operation'] = str(aEffect.operation.model.var_sum.result)
-                aDict['invest'] = str(aEffect.invest.model.var_sum.result)
-                aDict['sum'] = str(aEffect.all.model.var_sum.result)
-            main_results_str['penaltyCosts'] = str(self.system.global_comp.penalty.model.var_sum.result)
+                aDict['operation'] = str(aEffect.operation.model.variables['sum'].result)
+                aDict['invest'] = str(aEffect.invest.model.variables['sum'].result)
+                aDict['sum'] = str(aEffect.all.model.variables['sum'].result)
+            main_results_str['penaltyCosts'] = str(self.system.global_comp.penalty.model.variables['sum'].result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -194,7 +194,7 @@ class SystemModel(LinearModel):
                      }
             main_results_str['Invest-Decisions'] = aDict
             for aInvestFeature in self.system.invest_features:
-                investValue = aInvestFeature.model.var_investmentSize.result
+                investValue = aInvestFeature.model.variables[aInvestFeature.name_of_investment_size].result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:
                 if isinstance(investValue, np.ndarray):
@@ -209,6 +209,42 @@ class SystemModel(LinearModel):
 
         self.main_results_str = _getMainResultsAsStr()
         helpers.printDictAndList(self.main_results_str)
+
+    @property
+    def all_variables(self) -> List[Variable]:
+        all_vars = []
+        for model in self.models_of_elements.values():
+            all_vars += [var for var in model.variables.values()]
+        return all_vars
+
+    @property
+    def all_ts_variables(self) -> List[VariableTS]:
+        return [var for var in self.all_variables if isinstance(var, VariableTS)]
+
+    @property
+    def all_equations(self) -> List[Equation]:
+        all_eqs = []
+        for model in self.models_of_elements.values():
+            all_eqs += [eq for eq in model.eqs.values()]
+        return all_eqs
+
+    @property
+    def all_inequations(self) -> List[Equation]:
+        all_eqs = []
+        for model in self.models_of_elements.values():
+            all_eqs += [ineq for ineq in model.ineqs.values()]
+        return all_eqs
+
+    def to_math_model(self) -> None:
+        t_start = timeit.default_timer()
+        for variable in self.all_variables:   # Variablen erstellen
+            variable.to_math_model(self)
+        for eq in self.all_equations:   # Gleichungen erstellen
+            eq.to_math_model(self)
+        for ineq in self.all_inequations:   # Ungleichungen erstellen:
+            ineq.to_math_model(self)
+
+        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
 
 class Element:
@@ -271,6 +307,19 @@ class Element:
             all_sub_elements += subElem.all_sub_elements
         return all_sub_elements
 
+    @property
+    def all_variables_with_sub_elements(self) -> Dict[str, Variable]:
+        all_vars = self.model.variables
+        for sub_element in self.all_sub_elements:
+            all_vars_of_sub_element = sub_element.model.variables
+            duplicate_var_names = set(all_vars.keys()) & set(all_vars_of_sub_element.keys())
+            if duplicate_var_names:
+                raise Exception(f'Variables {duplicate_var_names} of Subelement "{sub_element.label_full}" '
+                                f'already exists in Element "{self.label_full}". labels must be unique.')
+            all_vars.update(all_vars_of_sub_element)
+
+        return all_vars
+
     # TODO: besser occupied_args
     def __init__(self, label: str, **kwargs):
         self.label = label
@@ -314,13 +363,13 @@ class Element:
         return str_desc
 
     # activate inkl. sub_elements:
-    def activate_system_model(self, system_model) -> None:
+    def activate_system_model(self, system_model: SystemModel) -> None:
         for element in self.sub_elements:
             element.activate_system_model(system_model)  # inkl. sub_elements
         self.activate_system_model_for_me(system_model)
 
     # activate ohne SubElements!
-    def activate_system_model_for_me(self, system_model) -> None:
+    def activate_system_model_for_me(self, system_model: SystemModel) -> None:
         self.system_model = system_model
         self.model = system_model.models_of_elements[self]
 
@@ -345,7 +394,7 @@ class Element:
         self.activate_system_model_for_me(system_model)  # sub_elements werden bereits aktiviert über aElement.createNewMod...()
 
     # 3.
-    def declare_vars_and_eqs(self, system_model) -> None:
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
         #   #   # Features preparing:
         #   # for aFeature in self.features:
         #   #   aFeature.declare_vars_and_eqs(model)
@@ -365,7 +414,7 @@ class Element:
 
         # 2. Variablenwerte ablegen:
         aVar: Variable
-        for aVar in self.model.variables:
+        for aVar in self.model.variables.values():
             # print(aVar.label)
             aData[aVar.label] = aVar.result
             aVars[aVar.label] = aVar  # link zur Variable
@@ -436,19 +485,44 @@ class ElementModel:
 
     def __init__(self, element: Element):
         self.element = element
-        # TODO: Dicts instead of Lists for referencing?
-        self.variables = []
-        self.eqs = []
-        self.ineqs = []
+        self.variables = {}
+        self.eqs = {}
+        self.ineqs = {}
         self.objective = None
 
-    # Eqs, Ineqs und Objective als Str-Description:
+    def get_var(self, label: str) -> Variable:
+        if label in self.variables.keys():
+            return self.variables[label]
+        raise Exception(f'Variable "{label}" does not exist')
+
+    def get_eq(self, label: str) -> Equation:
+        if label in self.eqs.keys():
+            return self.eqs[label]
+        if label in self.ineqs.keys():
+            return self.ineqs[label]
+        raise Exception(f'Equation "{label}" does not exist')
+
+    def add_variable(self, variable: Variable) -> None:
+        if variable.label not in self.variables.keys():
+            self.variables[variable.label] = variable
+        else:
+            if variable in self.variables.values():
+                raise Exception(f'Variable "{variable.label}" already exists')
+            else:
+                raise Exception(f'A Variable with the label "{variable.label}" already exists')
+
+    def add_equation(self, equation: Equation) -> None:
+        if equation.label not in self.eqs.keys():
+            self.eqs[equation.label] = equation
+        else:
+            raise Exception(f'Equation "{equation.label}" already exists')
+
     def description_of_equations(self) -> List:
         # Wenn Glg vorhanden:
         eq: Equation
         aList = []
         if (len(self.eqs) + len(self.ineqs)) > 0:
-            for eq in (self.eqs + self.ineqs):
+            for eq in (list(self.eqs.values()) + list(self.ineqs.values())):
                 aList.append(eq.description())
         if not (self.objective is None):
             aList.append(self.objective.description())
@@ -456,6 +530,6 @@ class ElementModel:
 
     def description_of_variables(self) -> List:
         aList = []
-        for aVar in self.variables:
+        for aVar in self.variables.values():
             aList.append(aVar.get_str_description())
         return aList

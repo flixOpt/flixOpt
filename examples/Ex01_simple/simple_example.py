@@ -8,8 +8,12 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import datetime
-from flixOpt.structure import *
-from flixOpt.components    import *
+
+from flixOpt.calculation import FullCalculation
+from flixOpt.flixBasicsPublic import InvestParameters
+from flixOpt.system import System
+from flixOpt.components import Boiler, Sink, Source, Storage, CHP
+from flixOpt.elements import Bus, Effect, Flow
 
 ### some Solver-Inputs: ###
 displaySolverOutput = False # ausführlicher Solver-Output.
@@ -145,13 +149,13 @@ time_indices = None # all timeindexe are used
 # ## modeling the system ##
 
 # 1. create a Calculation 
-aCalc = Calculation('Sim1',  # name of calculation
+aCalc = FullCalculation('Sim1',  # name of calculation
                     system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
                     time_indices) # used time steps
 
 # 2. modeling:
-aCalc.do_modeling_as_one_segment() # mathematic modeling of system
+aCalc.do_modeling() # mathematic modeling of system
 
 # 3. (optional) print Model-Characteristics:
 system.printModel() # string-output:network structure of model
@@ -205,9 +209,7 @@ print('# direct access:')
 print('way 1:')
 print(aCalc.results['Boiler']['Q_th']['val']) # access through dict
 print('way 2:')
-print(aCalc.results_struct.Boiler.Q_th.val) # access matlab-struct like
-print('way 3:')
-print(aBoiler.Q_th.model.var_val.result) # access directly through component/flow-variables
+print(aBoiler.Q_th.model.variables["val"].result) # access directly through component/flow-variables
 #    (warning: there are only temporarily the results of the last executed solve-command of the energy-system)
 
 # 2. post-processing access:
@@ -215,8 +217,6 @@ print('# access to timeseries:#')
 print('way 1:')
 print(aCalc_post.results['Boiler']['Q_th']['val']) # access through dict
 print('way 2:')
-print(aCalc_post.results_struct.Boiler.Q_th.val) # access matlab-struct like
-print('way 3:')
 # find flow:
 aFlow_post = aCalc_post.getFlowsOf('Fernwaerme','Boiler')[0][0] # getting flow
 print(aFlow_post.results['val']) # access through cFlow_post object
