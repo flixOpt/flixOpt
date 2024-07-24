@@ -277,9 +277,8 @@ class AggregationModeling(Element):
                 # Nicht-Binär-Variablen:
                 if not self.fix_binary_vars_only:
                     # Value-Variablen:
-                    if hasattr(element.model, 'var_val'):
-                        aVar = element.model.var_val
-                        aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
+                    if 'val' in element.model.variables:
+                        self.equate_indices(element.model.variables['val'], system_model, fix_first_index_of_period=True)
 
     def equate_indices(self, aVar: Variable, system_model, fix_first_index_of_period: bool) -> Equation:
         aVar: Variable
