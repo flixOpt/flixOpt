@@ -238,18 +238,12 @@ class SystemModel(LinearModel):
 
     def to_math_model(self) -> None:
         t_start = timeit.default_timer()
-        eq: Equation
-        # Variablen erstellen
-        for variable in self.all_variables:
+        for variable in self.all_variables:   # Variablen erstellen
             variable.to_math_model(self)
-        # Gleichungen erstellen
-        for eq in self.all_equations:
+        for eq in self.all_equations:   # Gleichungen erstellen
             eq.to_math_model(self)
-        # Ungleichungen erstellen:
-        for ineq in self.all_inequations:
+        for ineq in self.all_inequations:   # Ungleichungen erstellen:
             ineq.to_math_model(self)
-        # Zielfunktion erstellen
-        self.objective.to_math_model(self)
 
         self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 

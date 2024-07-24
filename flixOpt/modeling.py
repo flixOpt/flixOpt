@@ -69,18 +69,12 @@ class LinearModel:
 
     def to_math_model(self) -> None:
         t_start = timeit.default_timer()
-        eq: Equation
-        # Variablen erstellen
-        for variable in self.variables:
+        for variable in self.variables:   # Variablen erstellen
             variable.to_math_model(self)
-        # Gleichungen erstellen
-        for eq in self.eqs:
+        for eq in self.eqs:   # Gleichungen erstellen
             eq.to_math_model(self)
-        # Ungleichungen erstellen:
-        for ineq in self.ineqs:
+        for ineq in self.ineqs:   # Ungleichungen erstellen:
             ineq.to_math_model(self)
-        # Zielfunktion erstellen
-        self.objective.to_math_model(self)
 
         self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
