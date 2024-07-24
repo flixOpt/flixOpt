@@ -307,6 +307,19 @@ class Element:
             all_sub_elements += subElem.all_sub_elements
         return all_sub_elements
 
+    @property
+    def all_variables_with_sub_elements(self) -> Dict[str, Variable]:
+        all_vars = self.model.variables
+        for sub_element in self.all_sub_elements:
+            all_vars_of_sub_element = sub_element.model.variables
+            duplicate_var_names = set(all_vars.keys()) & set(all_vars_of_sub_element.keys())
+            if duplicate_var_names:
+                raise Exception(f'Variables {duplicate_var_names} of Subelement "{sub_element.label_full}" '
+                                f'already exists in Element "{self.label_full}". labels must be unique.')
+            all_vars.update(all_vars_of_sub_element)
+
+        return all_vars
+
     # TODO: besser occupied_args
     def __init__(self, label: str, **kwargs):
         self.label = label

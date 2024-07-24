@@ -259,14 +259,7 @@ class AggregationModeling(Element):
             isinstance(element.comp, Storage)):
                 pass  # flow hier nicht fixen!
             else:
-                all_vars_of_element = element.model.variables
-                for sub_element in element.all_sub_elements:
-                    all_vars_of_sub_element = sub_element.model.variables
-                    duplicate_var_names = set(all_vars_of_element.keys()) & set(all_vars_of_sub_element.keys())
-                    if duplicate_var_names:
-                        raise Exception(f'Variables {duplicate_var_names} already exists in system model')
-                    all_vars_of_element.update(all_vars_of_sub_element)
-
+                all_vars_of_element = element.all_variables_with_sub_elements
                 if 'on' in all_vars_of_element:
                     self.equate_indices(all_vars_of_element['on'], system_model, fix_first_index_of_period=True)
                 if 'switchOn' in all_vars_of_element:
