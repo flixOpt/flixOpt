@@ -49,7 +49,6 @@ class SystemModel(LinearModel):
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
         self.models_of_elements: Dict[Element, ElementModel] = {}  # dict with all ElementModel's of Elements in System
 
-        self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             system.get_time_data_from_indices(time_indices))
@@ -238,18 +237,12 @@ class SystemModel(LinearModel):
 
     def to_math_model(self) -> None:
         t_start = timeit.default_timer()
-        eq: Equation
-        # Variablen erstellen
-        for variable in self.all_variables:
+        for variable in self.all_variables:   # Variablen erstellen
             variable.to_math_model(self)
-        # Gleichungen erstellen
-        for eq in self.all_equations:
+        for eq in self.all_equations:   # Gleichungen erstellen
             eq.to_math_model(self)
-        # Ungleichungen erstellen:
-        for ineq in self.all_inequations:
+        for ineq in self.all_inequations:   # Ungleichungen erstellen:
             ineq.to_math_model(self)
-        # Zielfunktion erstellen
-        self.objective.to_math_model(self)
 
         self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
@@ -313,6 +306,19 @@ class Element:
             # all sub_elements of subElement hinzufügen:
             all_sub_elements += subElem.all_sub_elements
         return all_sub_elements
+
+    @property
+    def all_variables_with_sub_elements(self) -> Dict[str, Variable]:
+        all_vars = self.model.variables
+        for sub_element in self.all_sub_elements:
+            all_vars_of_sub_element = sub_element.model.variables
+            duplicate_var_names = set(all_vars.keys()) & set(all_vars_of_sub_element.keys())
+            if duplicate_var_names:
+                raise Exception(f'Variables {duplicate_var_names} of Subelement "{sub_element.label_full}" '
+                                f'already exists in Element "{self.label_full}". labels must be unique.')
+            all_vars.update(all_vars_of_sub_element)
+
+        return all_vars
 
     # TODO: besser occupied_args
     def __init__(self, label: str, **kwargs):

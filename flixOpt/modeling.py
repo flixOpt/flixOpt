@@ -6,14 +6,15 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import logging
-import time
 import re
-from typing import List, Dict, Optional, Union, Tuple, Literal
+import timeit
+from typing import List, Dict, Optional, Union, Literal
 
 import numpy as np
 from pyomo.contrib import appsi
 
 from flixOpt import flixOptHelperFcts as helpers
+from flixOpt.core import Skalar, Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
@@ -53,7 +54,7 @@ class LinearModel:
         self.objective_result = None  # Ergebnis
         self.duration = {}  # Laufzeiten
         self.solver_log = None  # logging und parsen des solver-outputs
-        self.before_values: Optional[BeforeValues] = None  # Handling Values before first timestep
+        self.before_values: Dict[str, Numeric] = {}  # before_values, which overwrite inital before values defined in the Elements.
 
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
@@ -67,21 +68,15 @@ class LinearModel:
             raise Exception('not defined for modeling_language' + str(self.modeling_language))
 
     def to_math_model(self) -> None:
-        t_start = time.time()
-        eq: Equation
-        # Variablen erstellen
-        for variable in self.variables:
+        t_start = timeit.default_timer()
+        for variable in self.variables:   # Variablen erstellen
             variable.to_math_model(self)
-        # Gleichungen erstellen
-        for eq in self.eqs:
+        for eq in self.eqs:   # Gleichungen erstellen
             eq.to_math_model(self)
-        # Ungleichungen erstellen:
-        for ineq in self.ineqs:
+        for ineq in self.ineqs:   # Ungleichungen erstellen:
             ineq.to_math_model(self)
-        # Zielfunktion erstellen
-        self.objective.to_math_model(self)
 
-        self.duration['to_math_model'] = round(time.time() - t_start, 2)
+        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
     @property
     def nr_of_equations(self) -> int:
@@ -116,7 +111,7 @@ class LinearModel:
               logfile_name: str,
               **solver_opt) -> None:
         self.solver_name = solver_name
-        t_start = time.time()
+        t_start = timeit.default_timer()
         for variable in self.variables:
             variable.reset_result()  # altes Ergebnis löschen (falls vorhanden)
         if self.modeling_language == 'pyomo':
@@ -166,7 +161,7 @@ class LinearModel:
         else:
             raise Exception('not defined for modtype ' + self.modeling_language)
 
-        self.duration['solve'] = round(time.time() - t_start, 2)
+        self.duration['solve'] = round(timeit.default_timer() - t_start, 2)
 
     @property
     def infos(self) -> Dict:
@@ -250,9 +245,9 @@ class Variable:
                  label_of_owner: str,
                  linear_model: LinearModel,
                  is_binary: bool = False,
-                 value: Optional[Union[int, float]] = None,
-                 lower_bound: Optional[Union[int, float]] = None,
-                 upper_bound: Optional[Union[int, float]] = None):
+                 value: Optional[Skalar] = None,
+                 lower_bound: Optional[Skalar] = None,
+                 upper_bound: Optional[Skalar] = None):
         self.label = label
         self.length = length
         self.linear_model = linear_model
@@ -320,7 +315,6 @@ class Variable:
                     self.var[i].setlb(lower_bound_vector[i])  # min
                     self.var[i].setub(upper_bound_vector[i])  # max
 
-
         elif baseModel.modeling_language == 'vcxpy':
             raise Exception('not defined for modtype ' + baseModel.modeling_language)
         else:
@@ -330,7 +324,7 @@ class Variable:
         self._result = None
 
     @property
-    def result(self) -> Union[int, float, np.ndarray]:
+    def result(self) -> Numeric:
         # wenn noch nicht abgefragt: (so wird verhindert, dass für jede Abfrage jedesMal neuer Speicher bereitgestellt wird.)
         if self._result is None:
             if self.linear_model.modeling_language == 'pyomo':
@@ -385,47 +379,24 @@ class VariableTS(Variable):
                  label_of_owner: str,
                  linear_model: LinearModel,
                  is_binary: bool = False,
-                 value: Optional[Union[int, float, np.ndarray]] = None,
-                 lower_bound: Optional[Union[int, float, np.ndarray]] = None,
-                 upper_bound: Optional[Union[int, float, np.ndarray]] = None):
+                 value: Optional[Numeric] = None,
+                 lower_bound: Optional[Numeric] = None,
+                 upper_bound: Optional[Numeric] = None,
+                 before_value: Optional[Numeric] = None,
+                 before_value_is_start_value: bool = False):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        self.activated_beforeValues = False
         super().__init__(label, length, label_of_owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
+        self._before_value = before_value
+        self.before_value_is_start_value = before_value_is_start_value
 
     @property
-    def before_value(self):
-        ## hole Startwert/letzten Wert vor diesem Segment:
-        assert self.activated_beforeValues, 'set_before_value() not executed'
-        # wenn beforeValue-Datensatz für linear_model gegeben:
-        if self.linear_model.before_values is not None:
-            # für Variable rausziehen:
-            (value, time_stamp) = self.linear_model.before_values.get_before_values(self)
-            return value
-        # sonst Standard-BeforeValues von Energiesystem verwenden:
-        else:
-            return self.default_before_value
+    def before_value(self) -> Optional[Numeric]:
+        # Return value if found in before_values, else return stored value
+        return self.linear_model.before_values.get(self.label_full) or self._before_value
 
-    def set_before_value(self,
-                         default_before_value: Union[int, float],
-                         is_start_value: bool) -> None:  # is_start_value heißt ob es Speicherladezustand ist oder Nicht
-        # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
-        # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
-        self.before_value_is_start_value = is_start_value
-        self.default_before_value = default_before_value  # Standardwerte für Simulationsstart im Energiesystem
-        self.activated_beforeValues = True
-
-    def get_before_value_for_next_segment(self, last_index_of_segment: int) -> Tuple:
-        # hole Startwert/letzten Wert für nächstes Segment:
-        assert self.activated_beforeValues, 'set_before_value() not executed'
-        # Wenn Speicherladezustand o.ä.
-        if self.before_value_is_start_value:
-            index = last_index_of_segment + 1  # = Ladezustand zum Startzeitpunkt des nächsten Segments
-        # sonst:
-        else:
-            index = last_index_of_segment  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
-        time = self.linear_model.time_series_with_end[index]
-        value = self.result[index]
-        return value, time
+    @before_value.setter
+    def before_value(self, value: Numeric):
+        self._before_value = value
 
 
 # class cInequation(Equation):
@@ -454,7 +425,7 @@ class Equation:
 
     def add_summand(self,
                     variable: Variable,
-                    factor: Union[int, float, np.ndarray],
+                    factor: Numeric,
                     indices_of_variable: Optional[Union[int, np.ndarray, range, List[int]]] = None,
                     as_sum: bool = False) -> None:
         """
@@ -467,9 +438,9 @@ class Equation:
         -----------
         variable : Variable
             The variable to be used in the summand.
-        factor : Union[int, float, np.ndarray]
+        factor : Numeric
             The factor by which the variable is multiplied.
-        indices_of_variable : Optional[Union[int, float, np.ndarray]], optional
+        indices_of_variable : Optional[Numeric], optional
             Specific indices of the variable to be used. If not provided, all indices are used.
         as_sum : bool, optional
             If True, the summand is treated as a sum over all indices of the variable.
@@ -500,7 +471,7 @@ class Equation:
         # zu Liste hinzufügen:
         self.listOfSummands.append(summand)
 
-    def add_constant(self, value: Union[int, float, np.ndarray]) -> None:
+    def add_constant(self, value: Numeric) -> None:
         """
           constant value of the right side,
           if method is executed several times, than values are summed up.
@@ -642,7 +613,7 @@ class Equation:
 class Summand:
     def __init__(self,
                  variable: Variable,
-                 factor: Union[int, float, np.ndarray],
+                 factor: Numeric,
                  indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
         self.variable = variable
         self.factor = factor
@@ -694,10 +665,11 @@ class Summand:
             return self.variable.var[self.indices[0]] * self.factor_vec[at_index]
         return self.variable.var[self.indices[at_index]] * self.factor_vec[at_index]
 
+
 class SumOfSummand(Summand):
     def __init__(self,
                  variable: Variable,
-                 factor: Union[int, float, np.ndarray],
+                 factor: Numeric,
                  indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
         super().__init__(variable, factor, indices)
 
