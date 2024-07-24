@@ -8,6 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import logging
 import time
 import re
+import timeit
 from typing import List, Dict, Optional, Union, Tuple, Literal
 
 import numpy as np
@@ -67,7 +68,7 @@ class LinearModel:
             raise Exception('not defined for modeling_language' + str(self.modeling_language))
 
     def to_math_model(self) -> None:
-        t_start = time.time()
+        t_start = timeit.default_timer()
         eq: Equation
         # Variablen erstellen
         for variable in self.variables:
@@ -81,7 +82,7 @@ class LinearModel:
         # Zielfunktion erstellen
         self.objective.to_math_model(self)
 
-        self.duration['to_math_model'] = round(time.time() - t_start, 2)
+        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
     @property
     def nr_of_equations(self) -> int:
@@ -116,7 +117,7 @@ class LinearModel:
               logfile_name: str,
               **solver_opt) -> None:
         self.solver_name = solver_name
-        t_start = time.time()
+        t_start = timeit.default_timer()
         for variable in self.variables:
             variable.reset_result()  # altes Ergebnis löschen (falls vorhanden)
         if self.modeling_language == 'pyomo':
@@ -166,7 +167,7 @@ class LinearModel:
         else:
             raise Exception('not defined for modtype ' + self.modeling_language)
 
-        self.duration['solve'] = round(time.time() - t_start, 2)
+        self.duration['solve'] = round(timeit.default_timer() - t_start, 2)
 
     @property
     def infos(self) -> Dict:
