@@ -9,7 +9,6 @@ import datetime
 import logging
 import math
 import pathlib
-import time
 import timeit
 from typing import List, Dict, Optional, Literal, Tuple, Union
 
@@ -531,7 +530,7 @@ class SegmentedCalculation(Calculation):
                         aReferedVariable = result_to_append_var[key]
                         aReferedVariable: VariableTS
                         withEnd = isinstance(aReferedVariable, VariableTS) \
-                                  and aReferedVariable.activated_beforeValues \
+                                  and (aReferedVariable.before_value is not None) \
                                   and aReferedVariable.before_value_is_start_value
 
                         # nested:
@@ -577,30 +576,31 @@ class SegmentedCalculation(Calculation):
 
 class BeforeValues:
     # managed die Before-Werte des segments:
-    def __init__(self, variables_ts: List[VariableTS], lastUsedIndex: int):
+    def __init__(self,
+                 variables_ts: List[VariableTS],
+                 from_index: int):
         self.beforeValues = {}
         # Sieht dann so aus = {(Element1, aVar1.name): (value, time),
         #                      (Element2, aVar2.name): (value, time),
         #                       ...                       }
-        for aVar in variables_ts:
-            aVar: VariableTS
-            if aVar.activated_beforeValues:
+        for variable in variables_ts:
+            if variable.before_value is not None:
                 # Before-Value holen:
-                (aValue, aTime) = aVar.get_before_value_for_next_segment(lastUsedIndex)
-                self.add_before_values(aVar, aValue, aTime)
+                value = variable.get_before_value_for_next_segment(from_index)
+                self.add_before_values(variable, value)
 
-    def add_before_values(self, variable: VariableTS, value: Skalar, time_stamp: np.datetime64):
+    def add_before_values(self, variable: VariableTS, value: Skalar):
         if variable.label_full in self.beforeValues.keys():
             raise Exception('setBeforeValues(): Achtung Wert würde überschrieben, Wert ist schon belegt!')
         else:
-            self.beforeValues.update({variable.label_full: (value, time_stamp)})
+            self.beforeValues.update({variable.label_full: value})
 
     # return (value, time)
     def get_before_values(self, variable: VariableTS) -> Optional[Tuple[Union[int, float], np.datetime64]]:
         if variable.label_full in self.beforeValues.keys():
             return self.beforeValues[variable.label_full]  # returns (value, time)
         else:
-            raise Exception(f'get_before_values(): Keine Before-Werte für Variablen "{variable.label_full}"')
+            return None  # returns None if variable has no before_value
 
     def print(self):
         for varName in self.beforeValues.keys():
