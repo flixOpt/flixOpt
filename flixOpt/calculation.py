@@ -318,6 +318,7 @@ class AggregatedCalculation(Calculation):
             plt.plot(agg_values.values, '--', label=label_TS)
         if len(self.time_series_for_aggregation) < 10:  # wenn nicht zu viele
             plt.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center')
+        plt.tight_layout()
         plt.show()
 
         # ### Some infos as print ###
