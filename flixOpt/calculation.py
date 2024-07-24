@@ -474,11 +474,10 @@ class SegmentedCalculation(Calculation):
                                         indices_global)  # alle Indexe nehmen!
 
             # Startwerte übergeben von Vorgänger-system_model:
-            new_before_values = None
             if i > 0:
                 system_model_of_segment.before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
                 print('### before_values: ###')
-                print(f'{new_before_values}')
+                print(f'{system_model_of_segment.before_values}')
                 print('#######################')  # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
