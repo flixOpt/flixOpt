@@ -16,7 +16,7 @@ import numpy as np
 
 from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.aggregation import TimeSeriesCollection
-from flixOpt.core import Skalar
+from flixOpt.core import Skalar, Numeric
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.modeling import VariableTS
 from flixOpt.structure import SystemModel
@@ -147,6 +147,7 @@ class FullCalculation(Calculation):
         system_model = SystemModel(self.name, self.modeling_language, self.system, self.time_indices)
         self.system.activate_model(system_model)  # model aktivieren:
         self.system.do_modeling_of_elements()  # modellieren:
+        self.system.transform_to_math_model()
 
         self.system_models.append(system_model)
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
@@ -375,6 +376,7 @@ class AggregatedCalculation(Calculation):
         self.system.activate_model(system_model)
         # modellieren:
         self.system.do_modeling_of_elements()
+        self.system.transform_to_math_model()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_m_start, 2)
         return system_model
