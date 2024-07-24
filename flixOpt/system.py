@@ -16,7 +16,7 @@ import numpy as np
 import yaml  # (für json-Schnipsel-print)
 
 from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.modeling import Variable
+from flixOpt.math_modeling import Variable
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Global

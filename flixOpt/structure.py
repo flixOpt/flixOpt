@@ -13,7 +13,7 @@ import timeit
 import numpy as np
 
 from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.modeling import LinearModel, Variable, VariableTS, Equation  # Modelliersprache
+from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # Modelliersprache
 from flixOpt.core import TimeSeries
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.elements import Flow
@@ -22,7 +22,7 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 log = logging.getLogger(__name__)
 
 
-class SystemModel(LinearModel):
+class SystemModel(MathModel):
     '''
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     '''

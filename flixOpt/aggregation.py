@@ -22,7 +22,7 @@ from flixOpt.system import System
 from flixOpt.components import Storage
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.structure import Element, SystemModel
-from flixOpt.modeling import Equation, Variable, VariableTS, LinearModel
+from flixOpt.math_modeling import Equation, Variable, VariableTS, MathModel
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 

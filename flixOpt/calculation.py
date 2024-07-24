@@ -19,7 +19,7 @@ from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.aggregation import TimeSeriesCollection
 from flixOpt.core import Skalar, Numeric
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
-from flixOpt.modeling import VariableTS
+from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
 from flixOpt.system import System
 

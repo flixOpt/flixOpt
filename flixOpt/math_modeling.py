@@ -21,7 +21,7 @@ pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 log = logging.getLogger(__name__)
 
 
-class LinearModel:
+class MathModel:
     '''
     Class for equations of the form a_1*x_1 + a_2*x_2 = y
     x_1 and a_1 can be vectors or scalars.
@@ -243,14 +243,14 @@ class Variable:
                  label: str,
                  length: int,
                  label_of_owner: str,
-                 linear_model: LinearModel,
+                 math_model: MathModel,
                  is_binary: bool = False,
                  value: Optional[Skalar] = None,
                  lower_bound: Optional[Skalar] = None,
                  upper_bound: Optional[Skalar] = None):
         self.label = label
         self.length = length
-        self.linear_model = linear_model
+        self.math_model = math_model
         self.is_binary = is_binary
         self.value = value
         self.lower_bound = lower_bound
@@ -283,23 +283,23 @@ class Variable:
 
         # Register Element:
         # owner .variables.append(self) # Komponentenliste
-        #linear_model.variables.append(self)  # linear_model-Liste mit allen vars
+        #math_model.variables.append(self)  # math_model-Liste mit allen vars
         #owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
-    def to_math_model(self, baseModel: LinearModel):
-        self.linear_model = baseModel
+    def to_math_model(self, math_model: MathModel):
+        self.math_model = math_model
 
-        # TODO: self.var ist hier einziges Attribut, das linear_model-spezifisch ist: --> umbetten in linear_model!
-        if baseModel.modeling_language == 'pyomo':
+        # TODO: self.var ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
+        if math_model.modeling_language == 'pyomo':
             if self.is_binary:
                 self.var = pyomoEnv.Var(self.indices, domain=pyomoEnv.Binary)
-                # self.var = Var(linear_model.timesteps,domain=Binary)
+                # self.var = Var(math_model.timesteps,domain=Binary)
             else:
                 self.var = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
 
             # Register in pyomo-model:
             aNameSuffixInPyomo = 'var__' + self.label_full
-            baseModel.registerPyComp(self.var, aNameSuffixInPyomo)
+            math_model.registerPyComp(self.var, aNameSuffixInPyomo)
 
             lower_bound_vector = helpers.as_vector(self.lower_bound, self.length)
             upper_bound_vector = helpers.as_vector(self.upper_bound, self.length)
@@ -315,10 +315,10 @@ class Variable:
                     self.var[i].setlb(lower_bound_vector[i])  # min
                     self.var[i].setub(upper_bound_vector[i])  # max
 
-        elif baseModel.modeling_language == 'vcxpy':
-            raise Exception('not defined for modtype ' + baseModel.modeling_language)
+        elif math_model.modeling_language == 'vcxpy':
+            raise Exception('not defined for modtype ' + math_model.modeling_language)
         else:
-            raise Exception('not defined for modtype ' + baseModel.modeling_language)
+            raise Exception('not defined for modtype ' + math_model.modeling_language)
 
     def reset_result(self):
         self._result = None
@@ -327,7 +327,7 @@ class Variable:
     def result(self) -> Numeric:
         # wenn noch nicht abgefragt: (so wird verhindert, dass für jede Abfrage jedesMal neuer Speicher bereitgestellt wird.)
         if self._result is None:
-            if self.linear_model.modeling_language == 'pyomo':
+            if self.math_model.modeling_language == 'pyomo':
                 # get Data:
                 values = self.var.get_values().values()  # .values() of dict, because {0:0.1, 1:0.3,...}
                 # choose dataType:
@@ -341,10 +341,10 @@ class Variable:
                 if len(self._result) == 1:
                     self._result = self._result[0]
 
-            elif self.linear_model.modeling_language == 'vcxpy':
-                raise Exception('not defined for modtype ' + self.linear_model.modeling_language)
+            elif self.math_model.modeling_language == 'vcxpy':
+                raise Exception('not defined for modtype ' + self.math_model.modeling_language)
             else:
-                raise Exception('not defined for modtype ' + self.linear_model.modeling_language)
+                raise Exception('not defined for modtype ' + self.math_model.modeling_language)
 
         return self._result
 
@@ -377,7 +377,7 @@ class VariableTS(Variable):
                  label: str,
                  length: int,
                  label_of_owner: str,
-                 linear_model: LinearModel,
+                 math_model: MathModel,
                  is_binary: bool = False,
                  value: Optional[Numeric] = None,
                  lower_bound: Optional[Numeric] = None,
@@ -385,14 +385,14 @@ class VariableTS(Variable):
                  before_value: Optional[Numeric] = None,
                  before_value_is_start_value: bool = False):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        super().__init__(label, length, label_of_owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
+        super().__init__(label, length, label_of_owner, math_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
         self._before_value = before_value
         self.before_value_is_start_value = before_value_is_start_value
 
     @property
     def before_value(self) -> Optional[Numeric]:
         # Return value if found in before_values, else return stored value
-        return self.linear_model.before_values.get(self.label_full) or self._before_value
+        return self.math_model.before_values.get(self.label_full) or self._before_value
 
     @before_value.setter
     def before_value(self, value: Numeric):
@@ -400,14 +400,14 @@ class VariableTS(Variable):
 
 
 # class cInequation(Equation):
-#   def __init__(self, label, owner, linear_model):
-#     super().__init__(label, owner, linear_model, eqType='ineq')
+#   def __init__(self, label, owner, math_model):
+#     super().__init__(label, owner, math_model, eqType='ineq')
 
 class Equation:
     def __init__(self,
                  label: str,
                  owner,
-                 baseModel: LinearModel,
+                 math_model: MathModel,
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
@@ -493,13 +493,13 @@ class Equation:
         self._update_nr_of_single_equations(length, 'constant')   # Update
         self.constant_vector = helpers.as_vector(self.constant, self.nr_of_single_equations)  # Update
 
-    def to_math_model(self, baseModel: LinearModel) -> None:
+    def to_math_model(self, math_model: MathModel) -> None:
         log.debug('eq ' + self.label + '.to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         self.constant_vector = helpers.as_vector(self.constant, self.nr_of_single_equations)
 
-        if baseModel.modeling_language == 'pyomo':
+        if math_model.modeling_language == 'pyomo':
             # 1. Constraints:
             if self.eqType in ['eq', 'ineq']:
 
@@ -516,11 +516,11 @@ class Equation:
                     elif self.eqType == 'ineq':
                         return lhs <= rhs
 
-                # TODO: self.eq ist hier einziges Attribut, das linear_model-spezifisch ist: --> umbetten in linear_model!
+                # TODO: self.eq ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
                 self.eq = pyomoEnv.Constraint(range(self.nr_of_single_equations),
                                               rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
-                baseModel.registerPyComp(self.eq,
+                math_model.registerPyComp(self.eq,
                                          'eq_' + self.myMom.label + '_' + self.label)  # in pyomo-Modell mit eindeutigem Namen registrieren
 
             # 2. Zielfunktion:
@@ -533,20 +533,20 @@ class Equation:
                 def linearSumRule_Skalar(model):
                     skalar = 0
                     for aSummand in self.listOfSummands:
-                        skalar += aSummand.math_expression(baseModel.modeling_language)  # kein i übergeben, da skalar
+                        skalar += aSummand.math_expression(math_model.modeling_language)  # kein i übergeben, da skalar
                     return skalar
 
                 self.eq = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
                 # Register im Pyomo:
-                baseModel.model.objective = self.eq
+                math_model.model.objective = self.eq
 
                 # 3. Undefined:
             else:
                 raise Exception('equation.eqType= ' + str(self.eqType) + ' nicht definiert')
-        elif baseModel.modeling_language == 'vcxpy':
-            raise Exception('not defined for modtype ' + baseModel.modeling_language)
+        elif math_model.modeling_language == 'vcxpy':
+            raise Exception('not defined for modtype ' + math_model.modeling_language)
         else:
-            raise Exception('not defined for modtype ' + baseModel.modeling_language)
+            raise Exception('not defined for modtype ' + math_model.modeling_language)
 
             # print i-th equation:
 
