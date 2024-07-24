@@ -49,7 +49,6 @@ class SystemModel(LinearModel):
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
         self.models_of_elements: Dict[Element, ElementModel] = {}  # dict with all ElementModel's of Elements in System
 
-        self.before_values = None  # hier kommen, wenn vorhanden gegebene Before-Values rein (dominant ggü. before-Werte des energysystems)
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             system.get_time_data_from_indices(time_indices))

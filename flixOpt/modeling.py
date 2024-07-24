@@ -54,7 +54,6 @@ class LinearModel:
         self.objective_result = None  # Ergebnis
         self.duration = {}  # Laufzeiten
         self.solver_log = None  # logging und parsen des solver-outputs
-        self.before_values: Optional[BeforeValues] = None  # Handling Values before first timestep
 
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
@@ -392,16 +391,11 @@ class VariableTS(Variable):
 
     @property
     def before_value(self) -> Optional[Union[int, float, np.ndarray, List[Union[int, float]]]]:
-        # wenn beforeValue-Datensatz für linear_model gegeben:
-        if self.linear_model.before_values is not None:
-            value = self.linear_model.before_values.get_before_values(self)   # für Variable rausziehen:
-            if value is not None:
-                return value
-        return self._before_value   # sonst Standard-BeforeValues verwenden:
+        return self._before_value
 
     @before_value.setter
     def before_value(self, value: Union[int, float, np.ndarray, List[Union[int, float]]]):
-        self._before_value = value  # Standardwerte für Simulationsstart im Energiesystem
+        self._before_value = value
 
     def get_before_value_for_next_segment(self, last_index_of_segment: int) -> Skalar:
         # hole Startwert/letzten Wert für nächstes Segment:
