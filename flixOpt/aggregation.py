@@ -236,9 +236,6 @@ class AggregationModeling(Element):
 
         # self.sub_elements.append(self.featureOn)
 
-    def finalize(self):
-        super().finalize()
-
     def declare_vars_and_eqs(self, system_model: SystemModel):
         super().declare_vars_and_eqs(system_model)
 

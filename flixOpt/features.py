@@ -40,9 +40,6 @@ class Feature(Element):
     def label_full(self):
         return self.owner.label_full + '__' + self.label
 
-    def finalize(self):  # TODO: evtl. besser bei Element aufgehoben
-        super().finalize()
-
 
 class Segment(Feature):
     """
