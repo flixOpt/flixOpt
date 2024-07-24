@@ -6,15 +6,15 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import logging
-import time
 import re
 import timeit
-from typing import List, Dict, Optional, Union, Tuple, Literal
+from typing import List, Dict, Optional, Union, Literal
 
 import numpy as np
 from pyomo.contrib import appsi
 
 from flixOpt import flixOptHelperFcts as helpers
+from flixOpt.core import Skalar
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
@@ -388,45 +388,34 @@ class VariableTS(Variable):
                  is_binary: bool = False,
                  value: Optional[Union[int, float, np.ndarray]] = None,
                  lower_bound: Optional[Union[int, float, np.ndarray]] = None,
-                 upper_bound: Optional[Union[int, float, np.ndarray]] = None):
+                 upper_bound: Optional[Union[int, float, np.ndarray]] = None,
+                 before_value: Optional[Union[int, float, np.ndarray, List[Union[int, float]]]] = None,
+                 before_value_is_start_value: bool = False):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        self.activated_beforeValues = False
         super().__init__(label, length, label_of_owner, linear_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
+        self._before_value = before_value
+        self.before_value_is_start_value = before_value_is_start_value
 
     @property
-    def before_value(self):
-        ## hole Startwert/letzten Wert vor diesem Segment:
-        assert self.activated_beforeValues, 'set_before_value() not executed'
+    def before_value(self) -> Optional[Union[int, float, np.ndarray, List[Union[int, float]]]]:
         # wenn beforeValue-Datensatz für linear_model gegeben:
         if self.linear_model.before_values is not None:
-            # für Variable rausziehen:
-            (value, time_stamp) = self.linear_model.before_values.get_before_values(self)
-            return value
-        # sonst Standard-BeforeValues von Energiesystem verwenden:
-        else:
-            return self.default_before_value
+            value = self.linear_model.before_values.get_before_values(self)   # für Variable rausziehen:
+            if value is not None:
+                return value
+        return self._before_value   # sonst Standard-BeforeValues verwenden:
 
-    def set_before_value(self,
-                         default_before_value: Union[int, float],
-                         is_start_value: bool) -> None:  # is_start_value heißt ob es Speicherladezustand ist oder Nicht
-        # aktiviere Before-Werte. ZWINGENDER BEFEHL bei before-Werten
-        # TODO: Achtung: private Variablen wären besser, aber irgendwie nimmt er die nicht. Ich vermute, das liegt am fehlenden init
-        self.before_value_is_start_value = is_start_value
-        self.default_before_value = default_before_value  # Standardwerte für Simulationsstart im Energiesystem
-        self.activated_beforeValues = True
+    @before_value.setter
+    def before_value(self, value: Union[int, float, np.ndarray, List[Union[int, float]]]):
+        self._before_value = value  # Standardwerte für Simulationsstart im Energiesystem
 
-    def get_before_value_for_next_segment(self, last_index_of_segment: int) -> Tuple:
+    def get_before_value_for_next_segment(self, last_index_of_segment: int) -> Skalar:
         # hole Startwert/letzten Wert für nächstes Segment:
-        assert self.activated_beforeValues, 'set_before_value() not executed'
-        # Wenn Speicherladezustand o.ä.
-        if self.before_value_is_start_value:
+        if self.before_value_is_start_value:   # Wenn Speicherladezustand o.ä.
             index = last_index_of_segment + 1  # = Ladezustand zum Startzeitpunkt des nächsten Segments
-        # sonst:
         else:
             index = last_index_of_segment  # Leistungswert beim Zeitpunkt VOR Startzeitpunkt vom nächsten Segment
-        time = self.linear_model.time_series_with_end[index]
-        value = self.result[index]
-        return value, time
+        return self.result[index]
 
 
 # class cInequation(Equation):

@@ -783,8 +783,8 @@ class Storage(Component):
 
         self.model.add_variable(
             VariableTS('charge_state', system_model.nrOfTimeSteps + 1, self.label_full,
-                       system_model, lower_bound=lb, upper_bound=ub, value=fix_value))  # Eins mehr am Ende!
-        self.model.variables['charge_state'].set_before_value(self.chargeState0_inFlowHours, True)
+                       system_model, lower_bound=lb, upper_bound=ub, value=fix_value,
+                       before_value=self.chargeState0_inFlowHours, before_value_is_start_value=True))  # Eins mehr am Ende!
         self.model.add_variable(VariableTS('nettoFlow', system_model.nrOfTimeSteps, self.label_full, system_model,
                                               lower_bound=-np.inf))  # negative Werte zulässig!
 
