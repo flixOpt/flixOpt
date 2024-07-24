@@ -262,16 +262,16 @@ class AggregationModeling(Element):
                 # On-Variablen:
                 if element.model.var_on is not None:
                     aVar = element.model.var_on
-                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
+                    self.equate_indices(aVar, system_model, fix_first_index_of_period=True)
                     # SwitchOn-Variablen:
                 if element.model.var_switchOn is not None:
                     aVar = element.model.var_switchOn
                     # --> hier ersten Index weglassen:
-                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
+                    self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
                 if element.model.var_switchOff is not None:
                     aVar = element.model.var_switchOff
                     # --> hier ersten Index weglassen:
-                    aEq = self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
+                    self.equate_indices(aVar, system_model, fix_first_index_of_period=False)
 
                     # todo: nicht schön! Zugriff muss über alle cTSVariablen erfolgen!
                 # Nicht-Binär-Variablen:
