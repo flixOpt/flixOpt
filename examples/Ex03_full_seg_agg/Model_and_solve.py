@@ -207,17 +207,17 @@ aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, size
 aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
 # Zusammenführung:
-system = FlowSystem(aTimeSeries, last_time_step_hours=None)
-# system.add_components(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
-system.add_effects(costs)
-system.add_effects(CO2, PE)
-system.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif)
-system.add_components(aStromEinspeisung, aStromTarif)
-system.add_components(aKWK)
+flow_system = FlowSystem(aTimeSeries, last_time_step_hours=None)
+# flow_system.add_components(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
+flow_system.add_effects(costs)
+flow_system.add_effects(CO2, PE)
+flow_system.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif)
+flow_system.add_components(aStromEinspeisung, aStromTarif)
+flow_system.add_components(aKWK)
 
-system.add_components(aSpeicher)
+flow_system.add_components(aSpeicher)
 
-# system.mainSystem.extractSubSystem([0,1,2])
+# flow_system.mainSystem.extractSubSystem([0,1,2])
 
 
 time_indices = None
@@ -230,12 +230,12 @@ listOfCalcs = []
 
 # Roh-Rechnung:
 if doFullCalc:
-  calcFull = Calculation('fullModel', system, 'pyomo', time_indices)
+  calcFull = Calculation('fullModel', flow_system, 'pyomo', time_indices)
   calcFull.do_modeling_as_one_segment()
   
-  system.printModel()
-  system.print_variables()
-  system.print_equations()
+  flow_system.printModel()
+  flow_system.print_variables()
+  flow_system.print_equations()
     
   calcFull.solve(solverProps)
   listOfCalcs.append(calcFull)
@@ -243,14 +243,14 @@ if doFullCalc:
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
-   calcSegs = Calculation('segModel', system, 'pyomo', time_indices)
+   calcSegs = Calculation('segModel', flow_system, 'pyomo', time_indices)
    calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nr_of_used_steps=nr_of_used_steps)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
 
 if doAggregatedCalc :    
-    calcAgg = Calculation('aggModel', system, 'pyomo')
+    calcAgg = Calculation('aggModel', flow_system, 'pyomo')
     calcAgg.do_aggregated_modeling(periodLengthInHours,
                                    nr_of_typical_periods,
                                    useExtremeValues,
@@ -262,8 +262,8 @@ if doAggregatedCalc :
                                    addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
                                    )
     
-    system.print_variables()
-    system.print_equations()
+    flow_system.print_variables()
+    flow_system.print_equations()
     
     calcAgg.solve(solverProps)
     listOfCalcs.append(calcAgg)
@@ -307,7 +307,7 @@ if (not calcSegs is None) and (not calcFull is None):
 # Ergebnisse Korrektur-Variablen (nur wenn genutzt):
 print('######### sum Korr_... (wenn vorhanden) #########')
 if calcAgg is not None:
-  aggretation_element=list(calcAgg.system.other_elements)[0]
+  aggretation_element=list(calcAgg.flow_system.other_elements)[0]
   for var in aggretation_element.model.variables:
     print(var.label_full + ':' + str(sum(var.result())))
 

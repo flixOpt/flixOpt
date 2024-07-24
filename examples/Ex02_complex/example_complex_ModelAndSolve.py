@@ -194,18 +194,18 @@ aStromEinspeisung = Sink('Einspeisung',
 # ## Build energysystem ##
 ##########################
 
-system = FlowSystem(aTimeSeries, last_time_step_hours=None) # creating FlowSystem
+flow_system = FlowSystem(aTimeSeries, last_time_step_hours=None) # creating FlowSystem
 
-system.add_effects(costs, CO2, PE) # adding effects
-system.add_components(aGaskessel, aWaermeLast, aGasTarif) # adding components
-system.add_components(aStromEinspeisung) # adding components
+flow_system.add_effects(costs, CO2, PE) # adding effects
+flow_system.add_components(aGaskessel, aWaermeLast, aGasTarif) # adding components
+flow_system.add_components(aStromEinspeisung) # adding components
 
 if useCHPwithLinearSegments:
-    system.add_components(aKWK2) # adding components
+    flow_system.add_components(aKWK2) # adding components
 else:
-    system.add_components(aKWK) # adding components
+    flow_system.add_components(aKWK) # adding components
     
-system.add_components(aSpeicher) # adding components
+flow_system.add_components(aSpeicher) # adding components
 
 ################################
 # ## modeling and calculation ##
@@ -215,13 +215,13 @@ time_indices = None
 # time_indices = [1,3,5]
 
 # ## modeling "full" calculation:
-aCalc = Calculation('Sim1', system, 'pyomo', time_indices)
+aCalc = Calculation('Sim1', flow_system, 'pyomo', time_indices)
 aCalc.do_modeling_as_one_segment()
 
 # print Model-Charactaricstics:
-system.printModel()
-system.print_variables()
-system.print_equations()
+flow_system.printModel()
+flow_system.print_variables()
+flow_system.print_equations()
 
 solverProps = {'mip_gap': gapFrac,
                'time_limit_seconds': timelimit,

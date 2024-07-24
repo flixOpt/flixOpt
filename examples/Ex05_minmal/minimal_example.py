@@ -71,28 +71,28 @@ aGasTarif = Source('Gastarif',
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-system = FlowSystem(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
-system.add_effects(costs) # adding defined effects
-system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
+flow_system = FlowSystem(aTimeSeries, last_time_step_hours=None) # creating flow_system, (duration of last timestep is like the one before)
+flow_system.add_effects(costs) # adding defined effects
+flow_system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
 
 # choose used timeindexe:
 time_indices = None # all timeindexe are used
 
-# ## modeling the system ##
+# ## modeling the flow_system ##
 
 # 1. create a Calculation 
 aCalc = Calculation('Sim1',  # name of calculation
-                    system,  # energysystem to calculate
+                    flow_system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
                     time_indices) # used time steps
 
 # 2. modeling:
-aCalc.do_modeling_as_one_segment() # mathematic modeling of system
+aCalc.do_modeling_as_one_segment() # mathematic modeling of flow_system
 
 # 3. (optional) print Model-Characteristics:
-system.printModel() # string-output:network structure of model
-system.print_variables() # string output: variables of model
-system.print_equations() # string-output: equations of model
+flow_system.printModel() # string-output:network structure of model
+flow_system.print_variables() # string output: variables of model
+flow_system.print_equations() # string-output: equations of model
 
 
 # #################

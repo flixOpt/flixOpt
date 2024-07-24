@@ -134,33 +134,33 @@ aStromEinspeisung = Sink('Einspeisung',
 # ######################################################
 # ## Build energysystem - Registering of all elements ##
 
-system = FlowSystem(aTimeSeries, last_time_step_hours=None) # creating system, (duration of last timestep is like the one before)
-system.add_components(aSpeicher) # adding components
-system.add_effects(costs, CO2) # adding defined effects
-system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
-system.add_components(aStromEinspeisung) # adding components
-system.add_components(aKWK) # adding components
+flow_system = FlowSystem(aTimeSeries, last_time_step_hours=None) # creating flow_system, (duration of last timestep is like the one before)
+flow_system.add_components(aSpeicher) # adding components
+flow_system.add_effects(costs, CO2) # adding defined effects
+flow_system.add_components(aBoiler, aWaermeLast, aGasTarif) # adding components
+flow_system.add_components(aStromEinspeisung) # adding components
+flow_system.add_components(aKWK) # adding components
 
 
 # choose used timeindexe:
 time_indices = None # all timeindexe are used
 # time_indices = [1,3,5] # only a subset shall be used
 
-# ## modeling the system ##
+# ## modeling the flow_system ##
 
 # 1. create a Calculation 
 aCalc = FullCalculation('Sim1',  # name of calculation
-                    system,  # energysystem to calculate
+                    flow_system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
                     time_indices) # used time steps
 
 # 2. modeling:
-aCalc.do_modeling() # mathematic modeling of system
+aCalc.do_modeling() # mathematic modeling of flow_system
 
 # 3. (optional) print Model-Characteristics:
-system.printModel() # string-output:network structure of model
-system.print_variables() # string output: variables of model
-system.print_equations() # string-output: equations of model
+flow_system.printModel() # string-output:network structure of model
+flow_system.print_variables() # string output: variables of model
+flow_system.print_equations() # string-output: equations of model
 
 
 # #################
@@ -210,7 +210,7 @@ print('way 1:')
 print(aCalc.results['Boiler']['Q_th']['val']) # access through dict
 print('way 2:')
 print(aBoiler.Q_th.model.variables["val"].result) # access directly through component/flow-variables
-#    (warning: there are only temporarily the results of the last executed solve-command of the energy-system)
+#    (warning: there are only temporarily the results of the last executed solve-command of the flow_system)
 
 # 2. post-processing access:
 print('# access to timeseries:#')

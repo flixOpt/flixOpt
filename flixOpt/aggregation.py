@@ -182,7 +182,7 @@ class AggregationModeling(Element):
     # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
     def __init__(self,
                  label: str,
-                 system: FlowSystem,
+                 flow_system: FlowSystem,
                  index_vectors_of_clusters: Dict[int, List[np.ndarray]],
                  fix_storage_flows: bool = True,
                  fix_binary_vars_only: bool = True,
@@ -220,7 +220,7 @@ class AggregationModeling(Element):
         None.
 
         '''
-        self.system = system
+        self.flow_system = flow_system
         self.index_vectors_of_clusters = index_vectors_of_clusters
         self.fix_storage_flows = fix_storage_flows
         self.fix_binary_vars_only = fix_binary_vars_only
@@ -243,12 +243,12 @@ class AggregationModeling(Element):
 
         if self.elements_to_clusterize is None:
             # Alle:
-            compSet = set(self.system.components)
-            flowSet = self.system.flows
+            compSet = set(self.flow_system.components)
+            flowSet = self.flow_system.flows
         else:
             # Ausgewählte:
             compSet = set(self.elements_to_clusterize)
-            flowSet = {flow for flow in self.system.flows if flow.comp in self.elements_to_clusterize}
+            flowSet = {flow for flow in self.flow_system.flows if flow.comp in self.elements_to_clusterize}
 
         flow: Flow
 

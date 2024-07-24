@@ -60,7 +60,7 @@ class TestSimple(BaseTest):
                                   "Q_th doesnt match expected value")
 
     def model(self):
-        # Define the components and energy system
+        # Define the components and flow_system
         Strom = Bus('el', 'Strom')
         Fernwaerme = Bus('heat', 'Fernwärme')
         Gas = Bus('fuel', 'Gas')
@@ -218,7 +218,7 @@ class TestComplex(BaseTest):
                                   "Speicher investCosts_segmented_costs doesnt match expected value")
 
     def basic_model(self):
-        # Define the components and energy system
+        # Define the components and flow_system
         Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=self.excessCosts)
         Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=self.excessCosts)
         Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=self.excessCosts)
@@ -261,7 +261,7 @@ class TestComplex(BaseTest):
         return flixPost.flix_results(aCalc.name).results
 
     def segments_of_flows_model(self):
-        # Define the components and energy system
+        # Define the components and flow_system
         Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=self.excessCosts)
         Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=self.excessCosts)
         Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=self.excessCosts)

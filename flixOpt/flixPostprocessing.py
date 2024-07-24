@@ -591,7 +591,7 @@ class flix_results():
             # # Speicher finden:
             # setOfStorages = set()
             # # for aFlow in self.inputs + self.outputs:
-            # for acomp in self.model.system.elements_of_first_layer_wo_flows:
+            # for acomp in self.model.flow_system.elements_of_first_layer_wo_flows:
             #   if acomp.__class__.__name__ == 'Storage': # nicht schön, da Storage hier noch nicht bekannt
             #     setOfStorages.add(acomp)      
             # for aStorage in setOfStorages:

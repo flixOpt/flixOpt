@@ -137,7 +137,7 @@ class FlowSystem:
 
             self.effects.append(new_effect)   # in liste ergänzen:
 
-        # TODO: doppelte Haltung in system und global_comp ist so nicht schick.
+        # TODO: doppelte Haltung in flow_system und global_comp ist so nicht schick.
         self.global_comp.listOfEffectTypes = self.effects   # an global_comp durchreichen
 
     def add_components(self, *args: Component) -> None:

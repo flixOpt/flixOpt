@@ -39,11 +39,11 @@ class SystemModel(MathModel):
     def __init__(self,
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
-                 system,
+                 flow_system,
                  time_indices: Union[List[int], range],
                  TS_explicit=None):
         super().__init__(label, modeling_language)
-        self.system: FlowSystem = system  # energysystem (wäre Attribut von cTimePeriodModel)
+        self.flow_system: FlowSystem = flow_system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
@@ -51,7 +51,7 @@ class SystemModel(MathModel):
 
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
-            system.get_time_data_from_indices(time_indices))
+            flow_system.get_time_data_from_indices(time_indices))
 
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
@@ -61,9 +61,9 @@ class SystemModel(MathModel):
     # override:
     def characterize_math_problem(self):  # overriding same method in motherclass!
         # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
-        # self.system.activate_model()
-        self._infos['str_Eqs'] = self.system.description_of_equations()
-        self._infos['str_Vars'] = self.system.description_of_variables()
+        # self.flow_system.activate_model()
+        self._infos['str_Eqs'] = self.flow_system.description_of_equations()
+        self._infos['str_Vars'] = self.flow_system.description_of_variables()
 
     # 'gurobi'
     def solve(self,
@@ -124,21 +124,21 @@ class SystemModel(MathModel):
         print('')
         # Variablen-Ergebnisse abspeichern:
         # 1. dict:
-        (self.results, self.results_var) = self.system.get_results_after_solve()
+        (self.results, self.results_var) = self.flow_system.get_results_after_solve()
         # 2. struct:
         self.results_struct = helpers.createStructFromDictInDict(self.results)
 
         print('##############################################################')
         print('################### finished #################################')
         print('')
-        for aEffect in self.system.global_comp.listOfEffectTypes:
+        for aEffect in self.flow_system.global_comp.listOfEffectTypes:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
             print('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
             print('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
             print('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.system.global_comp.penalty.model.variables['sum'].result))
+        print('penaltyCosts     : ' + str(self.flow_system.global_comp.penalty.model.variables['sum'].result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -146,7 +146,7 @@ class SystemModel(MathModel):
         except:
             print
         print('')
-        for aBus in self.system.buses:
+        for aBus in self.flow_system.buses:
             if aBus.with_excess:
                 if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
                         self.results[aBus.label]['excess_output'] > 1e-6):
@@ -155,7 +155,7 @@ class SystemModel(MathModel):
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.system.global_comp.penalty.model.variables['sum'].result > 10:
+        if self.flow_system.global_comp.penalty.model.variables['sum'].result > 10:
             print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -169,13 +169,13 @@ class SystemModel(MathModel):
 
             aEffectDict = {}
             main_results_str['Effects'] = aEffectDict
-            for aEffect in self.system.global_comp.listOfEffectTypes:
+            for aEffect in self.flow_system.global_comp.listOfEffectTypes:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
                 aDict['operation'] = str(aEffect.operation.model.variables['sum'].result)
                 aDict['invest'] = str(aEffect.invest.model.variables['sum'].result)
                 aDict['sum'] = str(aEffect.all.model.variables['sum'].result)
-            main_results_str['penaltyCosts'] = str(self.system.global_comp.penalty.model.variables['sum'].result)
+            main_results_str['penaltyCosts'] = str(self.flow_system.global_comp.penalty.model.variables['sum'].result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -183,7 +183,7 @@ class SystemModel(MathModel):
                 main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
             main_results_str['busesWithExcess'] = busesWithExcess
-            for aBus in self.system.buses:
+            for aBus in self.flow_system.buses:
                 if aBus.with_excess:
                     if sum(self.results[aBus.label]['excess_input']) > excess_threshold or sum(
                             self.results[aBus.label]['excess_output']) > excess_threshold:
@@ -193,7 +193,7 @@ class SystemModel(MathModel):
                      'not invested': {}
                      }
             main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.system.invest_features:
+            for aInvestFeature in self.flow_system.invest_features:
                 investValue = aInvestFeature.model.variables[aInvestFeature.name_of_investment_size].result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:

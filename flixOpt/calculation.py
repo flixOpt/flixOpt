@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 class Calculation:
     """
-    class for defined way of solving a energy system optimizatino
+    class for defined way of solving a flow_system optimizatino
     """
 
     @property
@@ -41,7 +41,7 @@ class Calculation:
         calcInfos['no ChosenIndexe'] = len(self.time_indices)
         calcInfos['calculation_type'] = self.__class__.__name__
         calcInfos['duration'] = self.durations
-        infos['system_description'] = self.system.description_of_system()
+        infos['system_description'] = self.flow_system.description_of_system()
         infos['system_models'] = {}
         infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
         infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
@@ -60,22 +60,22 @@ class Calculation:
         raise NotImplementedError()
 
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, name, system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
         ----------
         name : str
             name of calculation
-        system : FlowSystem
-            system which should be calculated
+        flow_system : FlowSystem
+            flow_system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
         """
         self.name = name
-        self.system = system
+        self.flow_system = flow_system
         self.modeling_language = modeling_language
         self.time_indices = time_indices
         self._infos = {}
@@ -83,9 +83,9 @@ class Calculation:
         self.system_models: List[SystemModel] = []
         self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
 
-        self.time_indices = time_indices or range(len(system.time_series))  # Wenn time_indices = None, dann alle nehmen
+        self.time_indices = time_indices or range(len(flow_system.time_series))  # Wenn time_indices = None, dann alle nehmen
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
-            system.get_time_data_from_indices(self.time_indices))
+            flow_system.get_time_data_from_indices(self.time_indices))
         helpers.check_time_series('time_indices', self.time_series)
 
         self._paths = {'log': None, 'data': None, 'info': None}
@@ -111,7 +111,7 @@ class Calculation:
             self._paths["info"] = path / f'{self.name}_solvingInfos.yaml'
 
     def check_if_already_modeled(self):
-        if self.system.temporary_elements:  # if some element in this list
+        if self.flow_system.temporary_elements:  # if some element in this list
             raise Exception(f'The Energysystem has some temporary modelingElements from previous calculation '
                             f'(i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
 
@@ -137,18 +137,18 @@ class Calculation:
 
 class FullCalculation(Calculation):
     """
-    class for defined way of solving a energy system optimization
+    class for defined way of solving a flow_system optimization
     """
 
     def do_modeling(self) -> SystemModel:
         self.check_if_already_modeled()
-        self.system.finalize()  # FlowSystem finalisieren:
+        self.flow_system.finalize()  # FlowSystem finalisieren:
 
         t_start = timeit.default_timer()
-        system_model = SystemModel(self.name, self.modeling_language, self.system, self.time_indices)
-        self.system.activate_model(system_model)  # model aktivieren:
-        self.system.do_modeling_of_elements()  # modellieren:
-        self.system.transform_to_math_model()
+        system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
+        self.flow_system.activate_model(system_model)  # model aktivieren:
+        self.flow_system.do_modeling_of_elements()  # modellieren:
+        self.flow_system.transform_to_math_model()
 
         self.system_models.append(system_model)
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
@@ -164,24 +164,24 @@ class FullCalculation(Calculation):
 
 class AggregatedCalculation(Calculation):
     """
-    class for defined way of solving a energy system optimizatino
+    class for defined way of solving a flow_system optimizatino
     """
 
-    def __init__(self, name: str, system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name: str, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
         ----------
         name : str
             name of calculation
-        system : FlowSystem
-            system which should be calculated
+        flow_system : FlowSystem
+            flow_system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
         time_indices : None, list
             list with indexe, which should be used for calculation. If None, then all timesteps are used.
         """
-        super().__init__(name, system, modeling_language, time_indices)
+        super().__init__(name, flow_system, modeling_language, time_indices)
         self.time_series_for_aggregation = None
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
@@ -252,11 +252,11 @@ class AggregatedCalculation(Calculation):
 
         t_start_agg = timeit.default_timer()
         # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-        self.system.activate_indices_in_time_series(self.time_indices)
+        self.flow_system.activate_indices_in_time_series(self.time_indices)
 
         # Zeitdaten generieren:
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
-            self.system.get_time_data_from_indices(self.time_indices))
+            self.flow_system.get_time_data_from_indices(self.time_indices))
 
         # check equidistant timesteps:
         if max(dt_in_hours) - min(dt_in_hours) != 0:
@@ -268,7 +268,7 @@ class AggregatedCalculation(Calculation):
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
-        self.time_series_for_aggregation = [item for item in self.system.all_time_series_in_elements if item.is_array]
+        self.time_series_for_aggregation = [item for item in self.flow_system.all_time_series_in_elements if item.is_array]
         self.time_series_collection = TimeSeriesCollection(self.time_series_for_aggregation,
                                                            addPeakMax_TSraw=addPeakMax, addPeakMin_TSraw=addPeakMin, )
 
@@ -343,7 +343,7 @@ class AggregatedCalculation(Calculation):
         # ################
         # ### Modeling ###
 
-        aggregationModel = flixAgg.AggregationModeling('aggregation', self.system,
+        aggregationModel = flixAgg.AggregationModeling('aggregation', self.flow_system,
                                                        index_vectors_of_clusters=dataAgg.index_vectors_of_clusters,
                                                        fix_binary_vars_only=fix_binary_vars_only,
                                                        fix_storage_flows=fix_storage_flows, elements_to_clusterize=None,
@@ -351,7 +351,7 @@ class AggregatedCalculation(Calculation):
                                                        costs_of_period_freedom=costs_of_period_freedom)
 
         # temporary Modeling-Element for equalizing indices of aggregation:
-        self.system.add_temporary_elements(aggregationModel)
+        self.flow_system.add_temporary_elements(aggregationModel)
 
         if fix_binary_vars_only:
             TS_explicit = None
@@ -365,20 +365,20 @@ class AggregatedCalculation(Calculation):
 
         # ##########################
         # ## FlowSystem finalizing: ##
-        self.system.finalize()
+        self.flow_system.finalize()
 
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
         t_m_start = timeit.default_timer()
         # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.name, self.modeling_language, self.system, self.time_indices,
+        system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices,
                                    TS_explicit)  # alle Indexe nehmen!
         self.system_models.append(system_model)
         # model aktivieren:
-        self.system.activate_model(system_model)
+        self.flow_system.activate_model(system_model)
         # modellieren:
-        self.system.do_modeling_of_elements()
-        self.system.transform_to_math_model()
+        self.flow_system.do_modeling_of_elements()
+        self.flow_system.transform_to_math_model()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_m_start, 2)
         return system_model
@@ -393,7 +393,7 @@ class AggregatedCalculation(Calculation):
 
 class SegmentedCalculation(Calculation):
     """
-    class for defined way of solving a energy system optimizatino
+    class for defined way of solving a flow_system optimizatino
     """
 
     @property
@@ -439,9 +439,9 @@ class SegmentedCalculation(Calculation):
         print('#################### segmented Solving #######################')
 
         t_start = timeit.default_timer()
-        self.system.finalize()   # system finalisieren:
+        self.flow_system.finalize()   # flow_system finalisieren:
 
-        assert len(self.system.invest_features) == 0, 'Invest-Parameters not supported in segmented calculation!'
+        assert len(self.flow_system.invest_features) == 0, 'Invest-Parameters not supported in segmented calculation!'
         assert nr_of_used_steps <= segment_length
         assert segment_length <= len(self.time_series), f'{segment_length=} cant be greater than {len(self.time_series)=}'
 
@@ -467,11 +467,11 @@ class SegmentedCalculation(Calculation):
             if i == max(range(nr_of_segments)):   # if last Segment:
                 nr_of_used_steps = end_index_of_segment - start_index_of_segment + 1
 
-            print(f'{i}. Segment (system indices {start_index_global}...{end_index_global}):')
+            print(f'{i}. Segment (flow_system indices {start_index_global}...{end_index_global}):')
 
 
             # Modellierungsbox / TimePeriod-Box bauen:
-            system_model_of_segment = SystemModel(f'{self.name}_seg{i}', self.modeling_language, self.system,
+            system_model_of_segment = SystemModel(f'{self.name}_seg{i}', self.modeling_language, self.flow_system,
                                         indices_global)  # alle Indexe nehmen!
 
             # Startwerte übergeben von Vorgänger-system_model:
@@ -482,12 +482,12 @@ class SegmentedCalculation(Calculation):
                 print('#######################')  # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
-            self.system.activate_model(system_model_of_segment)
+            self.flow_system.activate_model(system_model_of_segment)
 
             # modellieren:
             t_start_modeling = timeit.default_timer()
-            self.system.do_modeling_of_elements()
-            self.system.transform_to_math_model()
+            self.flow_system.do_modeling_of_elements()
+            self.flow_system.transform_to_math_model()
             self.durations['modeling'] += round(timeit.default_timer() - t_start_modeling, 2)
             # system_model in Liste hinzufügen:
             self.system_models.append(system_model_of_segment)
