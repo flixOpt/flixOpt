@@ -70,9 +70,9 @@ class TestSimple(BaseTest):
                      maximum_operation_per_hour=self.max_emissions_per_hour)
 
         aBoiler = Boiler('Boiler', eta=0.5,
-                         Q_th=Flow('Q_th', bus=Fernwaerme, size=50, min_rel=5 / 50, relative_maximum=1),
+                         Q_th=Flow('Q_th', bus=Fernwaerme, size=50, relative_minimum=5 / 50, relative_maximum=1),
                          Q_fu=Flow('Q_fu', bus=Gas))
-        aKWK = CHP('CHP_unit', eta_th=0.5, eta_el=0.4, P_el=Flow('P_el', bus=Strom, size=60, min_rel=5 / 60),
+        aKWK = CHP('CHP_unit', eta_th=0.5, eta_el=0.4, P_el=Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60),
                    Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Gas))
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4),
                             outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=30,
@@ -229,11 +229,11 @@ class TestComplex(BaseTest):
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, effects_per_running_hour={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, relative_maximum=1, on_hours_total_min=0, on_hours_total_max=1000, consecutive_on_hours_max=10, consecutive_off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
-                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, relative_maximum=1))
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, relative_minimum=5 / 50, relative_maximum=1, on_hours_total_min=0, on_hours_total_max=1000, consecutive_on_hours_max=10, consecutive_off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_fu=Flow('Q_fu', bus=Gas, size=200, relative_minimum=0, relative_maximum=1))
 
         aKWK = CHP('KWK', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01, on_values_before_begin=[1],
-                   P_el=Flow('P_el', bus=Strom, size=60, min_rel=5 / 60),
+                   P_el=Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60),
                    Q_th=Flow('Q_th', bus=Fernwaerme, size=1e3),
                    Q_fu=Flow('Q_fu', bus=Gas, size=1e3))
 
@@ -241,7 +241,7 @@ class TestComplex(BaseTest):
         invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, fixed_relative_value=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, relative_minimum=0, fixed_relative_value=self.Q_th_Last))
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
@@ -272,8 +272,8 @@ class TestComplex(BaseTest):
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, effects_per_running_hour={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, relative_maximum=1, on_hours_total_min=0, on_hours_total_max=1000, consecutive_on_hours_max=10, consecutive_off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
-                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, relative_maximum=1))
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, relative_minimum=5 / 50, relative_maximum=1, on_hours_total_min=0, on_hours_total_max=1000, consecutive_on_hours_max=10, consecutive_off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_fu=Flow('Q_fu', bus=Gas, size=200, relative_minimum=0, relative_maximum=1))
 
         P_el = Flow('P_el', bus=Strom, size=60, relative_maximum=55)
         Q_th = Flow('Q_th', bus=Fernwaerme)
@@ -285,7 +285,7 @@ class TestComplex(BaseTest):
         invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, fixed_relative_value=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, relative_minimum=0, fixed_relative_value=self.Q_th_Last))
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
@@ -340,8 +340,8 @@ class TestModelingTypes(BaseTest):
         Strom, Fernwaerme, Gas, Kohle = Bus('el', 'Strom'), Bus('heat', 'Fernwärme'), Bus('fuel', 'Gas'), Bus('fuel', 'Kohle')
         costs, CO2, PE = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True), Effect('CO2', 'kg', 'CO2_e-Emissionen'), Effect('PE', 'kWh_PE', 'Primärenergie')
 
-        aGaskessel = Boiler('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, size=95, min_rel=12 / 95, can_switch_off=True, switch_on_effects=1000, values_before_begin=[0]))
-        aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switch_on_effects=24000, P_el=Flow('P_el', bus=Strom), Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Kohle, size=288, min_rel=87 / 288), on_values_before_begin=[0])
+        aGaskessel = Boiler('Kessel', eta=0.85, Q_th=Flow(label='Q_th', bus=Fernwaerme), Q_fu=Flow(label='Q_fu', bus=Gas, size=95, relative_minimum=12 / 95, can_switch_off=True, switch_on_effects=1000, values_before_begin=[0]))
+        aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switch_on_effects=24000, P_el=Flow('P_el', bus=Strom), Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Kohle, size=288, relative_minimum=87 / 288), on_values_before_begin=[0])
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', size=137, bus=Fernwaerme), outFlow=Flow('Q_th_unload', size=158, bus=Fernwaerme), capacity_inFlowHours=684, chargeState0_inFlowHours=137, charge_state_end_min=137, charge_state_end_max=158, eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
 
         TS_Q_th_Last, TS_P_el_Last = TimeSeriesRaw(Q_th_Last), TimeSeriesRaw(P_el_Last, agg_weight=0.7)

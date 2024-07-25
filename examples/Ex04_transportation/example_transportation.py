@@ -96,11 +96,11 @@ invest2 = InvestParameters(fix_effects=0,
                            )
 
 aTransporter = Transportation('Rohr',
-                              in1  = Flow('in1', bus=heat1, invest_parameters=invest1, size=None, min_rel = 0.1),
+                              in1  = Flow('in1', bus=heat1, invest_parameters=invest1, size=None, relative_minimum = 0.1),
                               out1 = Flow('out1', bus=heat2),
                               loss_abs = loss_abs,
                               loss_rel = loss_rel,
-                              in2  = Flow('in2', bus=heat2, invest_parameters=invest2, size=None, min_rel = 0.1),
+                              in2  = Flow('in2', bus=heat2, invest_parameters=invest2, size=None, relative_minimum = 0.1),
                               out2 = Flow('out2', bus=heat1),
                               )
 

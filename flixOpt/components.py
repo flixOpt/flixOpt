@@ -681,7 +681,7 @@ class Storage(Component):
         **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
             DESCRIPTION.
         '''
-        # TODO: neben minimum_relative_chargeState, maximum_relative_chargeState ggf. noch "fixed_relative_value_chargeState" implementieren damit konsistent zu flow (relative_maximum, min_rel, val_re)
+        # TODO: neben minimum_relative_chargeState, maximum_relative_chargeState ggf. noch "fixed_relative_value_chargeState" implementieren damit konsistent zu flow (relative_maximum, relative_minimum, val_re)
 
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
         super().__init__(label, **kwargs)
@@ -730,7 +730,7 @@ class Storage(Component):
 
         if self.invest_parameters is not None:
             self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.invest_parameters,
-                                               min_rel=self.minimum_relative_chargeState,
+                                               relative_minimum=self.minimum_relative_chargeState,
                                                relative_maximum=self.maximum_relative_chargeState,
                                                fixed_relative_value=None,  # kein vorgegebenes Profil
                                                investment_size=self.capacity_inFlowHours,
@@ -1194,7 +1194,7 @@ class Transportation(Component):
         self.model.eqs['transport_dir1'].add_summand(self.in1.model.var_val, (1 - self.loss_rel.active_data))
         self.model.eqs['transport_dir1'].add_summand(self.out1.model.var_val, -1)
         if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
-            assert self.in1.model.variables['on'] is not None, 'Var on wird benötigt für in1! Set min_rel!'
+            assert self.in1.model.variables['on'] is not None, 'Var on wird benötigt für in1! Set relative_minimum!'
             self.model.eqs['transport_dir1'].add_summand(self.in1.model.var_on, -1 * self.loss_abs.active_data)
 
         # second direction:        
@@ -1204,7 +1204,7 @@ class Transportation(Component):
             self.model.eqs['transport_dir2'].add_summand(self.in2.model.var_val, 1 - self.loss_rel.active_data)
             self.model.eqs['transport_dir2'].add_summand(self.out2.model.var_val, -1)
             if (self.loss_abs.active_data is not None) and np.any(self.loss_abs.active_data != 0):
-                assert self.in2.model.variables['on'] is not None, 'Var on wird benötigt für in2! Set min_rel!'
+                assert self.in2.model.variables['on'] is not None, 'Var on wird benötigt für in2! Set relative_minimum!'
                 self.model.eqs['transport_dir2'].add_summand(self.in2.model.var_on, -1 * self.loss_abs.active_data)
 
         # always On (in at least one direction)

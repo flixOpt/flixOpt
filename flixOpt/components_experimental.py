@@ -19,7 +19,7 @@ def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
 
     Creates a KWK with a variable rate between electricity and heat production.
     Properties:
-        Modulation of Total Power (Fuel) [min_rel, relative_maximum, nominal value]
+        Modulation of Total Power (Fuel) [relative_minimum, relative_maximum, nominal value]
         linear interpolation between efficiencies A and B
 
         Not working: InvestParameters with variable Size
@@ -72,7 +72,7 @@ def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     HelperBus = Bus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
 
     # Transformer 1
-    Qin = Flow(label="Qfu", bus=BusFuel, size=size, min_rel=1, **kwargs)
+    Qin = Flow(label="Qfu", bus=BusFuel, size=size, relative_minimum=1, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
                               inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
@@ -179,12 +179,12 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
 
     HelperBus = Bus(label='Helper' + label + 'In', media=None,
                     excess_effects_per_flow_hour=None)  # balancing node/bus of electricity
-    # Handling min_rel and relative_maximum
+    # Handling relative_minimum and relative_maximum
     relative_maximum = kwargs.pop("relative_maximum", 1)
     check_exists(relative_maximum)
 
     # Transformer 1
-    Qin = Flow(label="Qfu", bus=BusFuel, size=size_Qfu, min_rel=relative_maximum, relative_maximum=relative_maximum,
+    Qin = Flow(label="Qfu", bus=BusFuel, size=size_Qfu, relative_minimum=relative_maximum, relative_maximum=relative_maximum,
                effects_per_flow_hour=costsPerFlowHour_fuel, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,

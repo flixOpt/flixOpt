@@ -85,7 +85,7 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                               size=50,  # 50 kW_th nominal size
                               load_factor_max=1.0,  # maximal mean power 50 kW
                               load_factor_min=0.1,  # minimal mean power 5 kW
-                              min_rel=5 / 50,  # 10 % part load
+                              relative_minimum=5 / 50,  # 10 % part load
                               relative_maximum=1,  # 50 kW
                               on_hours_total_min=0,  # minimum of working hours
                               on_hours_total_max=1000,  # maximum of working hours
@@ -102,12 +102,12 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                     Q_fu=Flow(label='Q_fu',  # name
                               bus=Gas,  # linked bus
                               size=200,  # kW
-                              min_rel=0,
+                              relative_minimum=0,
                               relative_maximum=1))
 
 # 2. defining of CHP-unit:
 aKWK = CHP('BHKW2', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01,
-           P_el=Flow('P_el', bus=Strom, size=60, min_rel=5 / 60),
+           P_el=Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60),
            Q_th=Flow('Q_th', bus=Fernwaerme, size=1e3),
            Q_fu=Flow('Q_fu', bus=Gas, size=1e3), on_values_before_begin=[1])
 
@@ -167,7 +167,7 @@ aSpeicher = Storage('Speicher', # defining flows:
 # 5.a) heat load profile:    
 aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last',  # name
                                           bus=Fernwaerme,  # linked bus
-                                          size=1, min_rel=0, fixed_relative_value=Q_th_Last))  # fixed values fixed_relative_value * size
+                                          size=1, relative_minimum=0, fixed_relative_value=Q_th_Last))  # fixed values fixed_relative_value * size
 # 5.b) gas tarif:
 aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas,  # linked bus
                                            size=1000,  # defining nominal size

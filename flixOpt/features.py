@@ -475,10 +475,10 @@ class FeatureOn(Feature):
             self.model.eqs['On_Constraint_1'].add_summand(aFlow.model.variables['val'], -1, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
-                min_val = aFlow.invest_parameters.minimum_size * aFlow.min_rel.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
+                min_val = aFlow.invest_parameters.minimum_size * aFlow.relative_minimum.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
             # wenn fixer Nennwert
             else:
-                min_val = aFlow.size * aFlow.min_rel.active_data
+                min_val = aFlow.size * aFlow.relative_minimum.active_data
 
             self.model.eqs['On_Constraint_1'].add_summand(self.model.variables['on'], 1 * np.maximum(system_model.epsilon, min_val),
                             time_indices)  # % aLeistungsVariableMin kann hier Skalar oder Zeitreihe sein!
@@ -877,7 +877,7 @@ class FeatureInvest(Feature):
     # -> var_name            : z.B. "size", "capacity_inFlowHours"
     # -> investment_size : size, capacity_inFlowHours, ...
     # -> defining_variable         : z.B. flow.model.var_val
-    # -> min_rel,relative_maximum     : ist relatives Min,Max der defining_variable bzgl. investment_size
+    # -> relative_minimum,relative_maximum     : ist relatives Min,Max der defining_variable bzgl. investment_size
 
     @property
     def on_variable_is_used(self):  # existiert On-variable
@@ -887,7 +887,7 @@ class FeatureInvest(Feature):
                  name_of_investment_size: str,
                  owner: Element,
                  invest_parameters: InvestParameters,
-                 min_rel: TimeSeries,
+                 relative_minimum: TimeSeries,
                  relative_maximum: TimeSeries,
                  fixed_relative_value: Optional[TimeSeries],
                  investment_size: Optional[Skalar],
@@ -901,9 +901,9 @@ class FeatureInvest(Feature):
             owner of this Element
         invest_parameters : InvestParameters
             arguments for modeling
-        min_rel : scalar or TS
-            given min_rel of defining_variable
-            (min = min_rel * investmentSize)
+        relative_minimum : scalar or TS
+            given relative_minimum of defining_variable
+            (min = relative_minimum * investmentSize)
         relative_maximum : scalar or TS        
             given relative_maximum of defining_variable
             (max = relative_maximum * investmentSize)
@@ -927,7 +927,7 @@ class FeatureInvest(Feature):
         self.owner = owner
         self.invest_parameters = invest_parameters
         self.relative_maximum = relative_maximum
-        self.min_rel = min_rel
+        self.relative_minimum = relative_minimum
         self.fixed_relative_value = fixed_relative_value
         self.investment_size = investment_size  # nominalValue
         self.featureOn = featureOn
@@ -955,11 +955,11 @@ class FeatureInvest(Feature):
     def bounds_of_defining_variable(self) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
 
         if self.fixed_relative_value is not None:   # Wenn fixer relativer Lastgang:
-            # relative_maximum = min_rel = fixed_relative_value !
-            min_rel = self.fixed_relative_value.active_data
+            # relative_maximum = relative_minimum = fixed_relative_value !
+            relative_minimum = self.fixed_relative_value.active_data
             relative_maximum = self.fixed_relative_value.active_data
         else:
-            min_rel = self.min_rel.active_data
+            relative_minimum = self.relative_minimum.active_data
             relative_maximum = self.relative_maximum.active_data
 
         on_is_used = self.featureOn is not None and self.featureOn.use_on
@@ -970,9 +970,9 @@ class FeatureInvest(Feature):
             lower_bound = 0  # can be zero (if no invest) or can switch off
         else:
             if self.invest_parameters.fixed_size:
-                lower_bound = min_rel * self.investment_size  # immer an
+                lower_bound = relative_minimum * self.investment_size  # immer an
             else:
-                lower_bound = min_rel * self.invest_parameters.minimum_size  # investSize is variabel
+                lower_bound = relative_minimum * self.invest_parameters.minimum_size  # investSize is variabel
 
         #  max-Wert:
         if self.invest_parameters.fixed_size:
@@ -1112,27 +1112,27 @@ class FeatureInvest(Feature):
         if self.on_variable_is_used:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
             if not self.invest_parameters.fixed_size:
-                # eq: defining_variable(t) >= Big * (On(t)-1) + investment_size * min_rel(t)
-                #     ... mit Big = max(min_rel*P_inv_max, epsilon)
-                # (P < min_rel*P_inv -> On=0 | On=1 -> P >= min_rel*P_inv)
+                # eq: defining_variable(t) >= Big * (On(t)-1) + investment_size * relative_minimum(t)
+                #     ... mit Big = max(relative_minimum*P_inv_max, epsilon)
+                # (P < relative_minimum*P_inv -> On=0 | On=1 -> P >= relative_minimum*P_inv)
 
                 # äquivalent zu:.
-                # eq: - defining_variable(t) + Big * On(t) + min_rel(t) * investment_size <= Big
+                # eq: - defining_variable(t) + Big * On(t) + relative_minimum(t) * investment_size <= Big
 
-                Big = helpers.max_args(self.min_rel.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
+                Big = helpers.max_args(self.relative_minimum.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
 
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_variable, -1)
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_on_variable, Big)  # übergebene On-Variable
-                self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.min_rel.active_data)
+                self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.relative_minimum.active_data)
                 self.model.eqs['min_via_investmentSize'].add_constant(Big)
-                # Anmerkung: Glg bei Spezialfall min_rel = 0 redundant zu FeatureOn-Glg.
+                # Anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu FeatureOn-Glg.
             else:
                 pass  # Bereits in FeatureOn mit P>= On(t)*Min ausreichend definiert
         else:
-            # eq: defining_variable(t) >= investment_size * min_rel(t)
+            # eq: defining_variable(t) >= investment_size * relative_minimum(t)
 
             self.model.eqs['min_via_investmentSize'].add_summand(self.defining_variable, -1)
-            self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.min_rel.active_data)
+            self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.relative_minimum.active_data)
 
     def _add_defining_var_isInvested(self, system_model: SystemModel):
         if self.invest_parameters.fixed_size:

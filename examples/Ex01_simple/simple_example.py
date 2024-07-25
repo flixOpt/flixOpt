@@ -68,7 +68,7 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                  Q_th = Flow(label ='Q_th',  # name of flow
                              bus = Fernwaerme,  # define, where flow is linked to (here: Fernwaerme-Bus)
                              size=50,  # kW; nominal_size of boiler
-                             min_rel = 5/50,  # 10 % minimum load, i.e. 5 kW
+                             relative_minimum = 5/50,  # 10 % minimum load, i.e. 5 kW
                              relative_maximum = 1,  # 100 % maximum load, i.e. 50 kW
                              ),
                  # defining the input-flow = fuel-flow
@@ -81,7 +81,7 @@ aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency,
             # defining flows:
             P_el = Flow('P_el', bus = Strom,
                         size=60,  # 60 kW_el
-                        min_rel = 5/60, ),  # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
+                        relative_minimum = 5/60, ),  # 5 kW_el, min- and max-load (100%) are here defined through this electric flow
             Q_th = Flow('Q_th', bus = Fernwaerme),
             Q_fu = Flow('Q_fu', bus = Gas))
 

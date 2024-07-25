@@ -743,12 +743,12 @@ class Flow(Element):
     @property
     def on_variable_is_forced(self) -> bool:
         # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        return self.can_switch_off & np.any(self.min_rel.data > 0)
+        return self.can_switch_off & np.any(self.relative_minimum.data > 0)
 
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
-                 min_rel: Numeric_TS = 0,  # TODO: Rename?
-                 relative_maximum: Numeric_TS = 1,  # TODO: Rename?
+                 relative_minimum: Numeric_TS = 0,
+                 relative_maximum: Numeric_TS = 1,
                  size: Optional[Skalar] = _default_size,
                  load_factor_min: Optional[Skalar] = None, load_factor_max: Optional[Skalar] = None,
                  # positive_gradient=None,
@@ -778,12 +778,12 @@ class Flow(Element):
             name of flow
         bus : Bus, optional
             bus to which flow is linked
-        min_rel : scalar, array, TimeSeriesRaw, optional
-            min value is min_rel multiplied by size
+        relative_minimum : scalar, array, TimeSeriesRaw, optional
+            min value is relative_minimum multiplied by size
         relative_maximum : scalar, array, TimeSeriesRaw, optional
             max value is relative_maximum multiplied by size. If size = max then relative_maximum=1
         size : scalar. None if is a nominal value is a opt-variable, optional
-            nominal value/ invest size (linked to min_rel, relative_maximum and others).
+            nominal value/ invest size (linked to relative_minimum, relative_maximum and others).
             i.g. kW, area, volume, pieces,
             möglichst immer so stark wie möglich einschränken
             (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)
@@ -798,7 +798,7 @@ class Flow(Element):
         effects_per_flow_hour : scalar, array, TimeSeriesRaw, optional
             operational costs, costs per flow-"work"
         can_switch_off : boolean, optional
-            flow can be "off", i.e. be zero (only relevant if min_rel > 0)
+            flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
             Then a binary var "on" is used.
             If any on/off-forcing parameters like "switch_on_effects", "consecutive_on_hours_min" etc. are used, then
             this is automatically forced.
@@ -836,7 +836,7 @@ class Flow(Element):
             fixed relative values for flow (if given).
             val(t) := fixed_relative_value(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;
-            (min_rel u. relative_maximum are making sense anymore)
+            (relative_minimum u. relative_maximum are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
             If the load-profile is just an upper limit, use relative_maximum instead.
         medium: string, None
@@ -855,7 +855,7 @@ class Flow(Element):
         # args to attributes:
         self.bus = bus
         self.size = size  # skalar!
-        self.min_rel = TimeSeries('min_rel', min_rel, self)
+        self.relative_minimum = TimeSeries('relative_minimum', relative_minimum, self)
         self.relative_maximum = TimeSeries('relative_maximum', relative_maximum, self)
 
         self.load_factor_min = load_factor_min
@@ -923,7 +923,7 @@ class Flow(Element):
         details = [
             f"bus={self.bus.label if self.bus else 'None'}",
             f"size={self.size}",
-            f"min/relative_maximum={self.min_rel}-{self.relative_maximum}",
+            f"min/relative_maximum={self.relative_minimum}-{self.relative_maximum}",
             f"medium={self.medium}",
             f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
             f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
@@ -940,8 +940,8 @@ class Flow(Element):
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausibility_test(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
-        if np.any(self.min_rel.data > self.relative_maximum.data):
-            raise Exception(self.label_full + ': Take care, that min_rel <= relative_maximum!')
+        if np.any(self.relative_minimum.data > self.relative_maximum.data):
+            raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
     def force_on_variable(self) -> None:
@@ -956,14 +956,14 @@ class Flow(Element):
         # combine relative_maximum with and exist from the flow and the comp it belongs to
         self.max_rel_with_exists = TimeSeries('max_rel_with_exists',
                                               np.multiply(self.relative_maximum.data, self.exists_with_comp.data), self)
-        self.min_rel_with_exists = TimeSeries('min_rel_with_exists',
-                                              np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
+        self.relative_minimum_with_exists = TimeSeries('relative_minimum_with_exists',
+                                              np.multiply(self.relative_minimum.data, self.exists_with_comp.data), self)
 
         # prepare invest Feature:
         if self.invest_parameters is not None:
             from flixOpt.features import FeatureInvest
             self.featureInvest = FeatureInvest('size', self, self.invest_parameters,
-                                               min_rel=self.min_rel_with_exists,
+                                               relative_minimum=self.relative_minimum_with_exists,
                                                relative_maximum=self.max_rel_with_exists,
                                                fixed_relative_value=self.fixed_relative_value,
                                                investment_size=self.size,
@@ -991,7 +991,7 @@ class Flow(Element):
                 upper_bound = None
                 fix_value = self.fixed_relative_value.active_data * self.size
             else:
-                lower_bound = 0 if self.featureOn.use_on else self.min_rel_with_exists.active_data * self.size
+                lower_bound = 0 if self.featureOn.use_on else self.relative_minimum_with_exists.active_data * self.size
                 upper_bound = self.max_rel_with_exists.active_data * self.size
                 fix_value = None
             return lower_bound, upper_bound, fix_value
