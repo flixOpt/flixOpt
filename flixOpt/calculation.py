@@ -99,8 +99,7 @@ class Calculation:
         """
         if include_timestamp:
             timestamp = datetime.datetime.now()
-            timestring = timestamp.strftime('%Y-%m-%data')
-            self.name = f'{timestring}_{self.name.replace(" ", "")}'
+            self.name = f'{timestamp.strftime("%Y-%m-%d")}_{self.name.replace(" ", "")}'
 
         if save_results:
             path = pathlib.Path.cwd() / path  # absoluter Pfad:
