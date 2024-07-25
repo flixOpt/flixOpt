@@ -1137,7 +1137,7 @@ class Transportation(Component):
             absolut loss. is active until on=0 for in-flows
             example: loss_abs=2 -> 2 kW fix loss on transportation
         ... featureOnVars for Active Transportation:
-        switch_on_effects : 
+        effects_per_switch_on : 
             #costs of switch rohr on
         exists : Warning! Functionality not implemented!
 

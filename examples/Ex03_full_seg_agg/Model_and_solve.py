@@ -154,12 +154,12 @@ PE = Effect('PE', 'kWh_PE', 'Primärenergie')
 
 # Komponentendefinition:
 
-aGaskessel = Boiler('Kessel', eta=0.85,  # , effects_per_running_hour = {costs:0,CO2:1000},#, switch_on_effects = 0
+aGaskessel = Boiler('Kessel', eta=0.85,  # , effects_per_running_hour = {costs:0,CO2:1000},#, effects_per_switch_on = 0
                     Q_th=Flow(label='Q_th', bus=Fernwaerme),  # maxGradient = 5),
                     Q_fu=Flow(label='Q_fu', bus=Gas, size=95, relative_minimum=12 / 95, can_switch_off=True,
-                              switch_on_effects=1000, values_before_begin=[0]))
+                              effects_per_switch_on=1000, values_before_begin=[0]))
 
-aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switch_on_effects=24000,
+aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, effects_per_switch_on=24000,
            P_el=Flow('P_el', bus=Strom),
            Q_th=Flow('Q_th', bus=Fernwaerme),
            Q_fu=Flow('Q_fu', bus=Kohle, size=288, relative_minimum=87 / 288),

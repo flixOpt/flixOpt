@@ -339,11 +339,11 @@ class Objective(Element):
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class Component(Element):
-    '''
+    """
     basic component class for all components
-    '''
+    """
     system_model: SystemModel
-    new_init_args = ['label', 'on_values_before_begin', 'switch_on_effects', 'switch_on_total_max',
+    new_init_args = ['label', 'on_values_before_begin', 'effects_per_switch_on', 'switch_on_total_max',
                      'on_hours_total_min',
                      'on_hours_total_max', 'effects_per_running_hour', 'exists']
     not_used_args = ['label']
@@ -351,7 +351,7 @@ class Component(Element):
     def __init__(self,
                  label: str,
                  on_values_before_begin: Optional[List[Skalar]] = None,
-                 switch_on_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 effects_per_switch_on: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
                  on_hours_total_min: Optional[Skalar] = None,
                  on_hours_total_max: Optional[Skalar] = None,
@@ -372,7 +372,7 @@ class Component(Element):
 
         on_values_before_begin :  array (TODO: why not scalar?)
             Ein(1)/Aus(0)-Wert vor Zeitreihe
-        switch_on_effects : look in Flow for description
+        effects_per_switch_on : look in Flow for description
         switch_on_total_max : look in Flow for description
         on_hours_total_min : look in Flow for description
         on_hours_total_max : look in Flow for description
@@ -396,7 +396,7 @@ class Component(Element):
         label = helpers.check_name_for_conformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
-        self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
+        self.effects_per_switch_on = as_effect_dict_with_ts('effects_per_switch_on', effects_per_switch_on, self)
         self.switch_on_max = switch_on_total_max
         self.on_hours_total_min = on_hours_total_min
         self.on_hours_total_max = on_hours_total_max
@@ -493,7 +493,7 @@ class Component(Element):
         # feature for: On and SwitchOn Vars
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
         flows_defining_on = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
-        self.featureOn = FeatureOn(self, flows_defining_on, self.on_values_before_begin, self.switch_on_effects,
+        self.featureOn = FeatureOn(self, flows_defining_on, self.on_values_before_begin, self.effects_per_switch_on,
                                    self.effects_per_running_hour, on_hours_total_min=self.on_hours_total_min,
                                    on_hours_total_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
 
@@ -765,7 +765,7 @@ class Flow(Element):
                  consecutive_on_hours_max: Optional[Skalar] = None,
                  consecutive_off_hours_min: Optional[Skalar] = None,
                  consecutive_off_hours_max: Optional[Skalar] = None,
-                 switch_on_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
+                 effects_per_switch_on: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
                  invest_parameters: Optional[InvestParameters] = None,
                  medium: Optional[str] = None,
@@ -802,7 +802,7 @@ class Flow(Element):
         can_switch_off : boolean, optional
             flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
             Then a binary var "on" is used.
-            If any on/off-forcing parameters like "switch_on_effects", "consecutive_on_hours_min" etc. are used, then
+            If any on/off-forcing parameters like "effects_per_switch_on", "consecutive_on_hours_min" etc. are used, then
             this is automatically forced.
         on_hours_total_min : scalar, optional
             min. overall sum of operating hours.
@@ -818,7 +818,7 @@ class Flow(Element):
             (last off-time period of timeseries is not checked and can be shorter)
         consecutive_off_hours_max : scalar, optional
             max sum of non-operating hours in one piece
-        switch_on_effects : scalar, array, TimeSeriesRaw, optional
+        effects_per_switch_on : scalar, array, TimeSeriesRaw, optional
             cost of one switch from off (var_on=0) to on (var_on=1),
             unit i.g. in Euro
         switch_on_total_max : integer, optional
@@ -871,7 +871,7 @@ class Flow(Element):
         self.consecutive_on_hours_max = None if (consecutive_on_hours_max is None) else TimeSeries('consecutive_on_hours_max', consecutive_on_hours_max, self)
         self.consecutive_off_hours_min = None if (consecutive_off_hours_min is None) else TimeSeries('consecutive_off_hours_min', consecutive_off_hours_min, self)
         self.consecutive_off_hours_max = None if (consecutive_off_hours_max is None) else TimeSeries('consecutive_off_hours_max', consecutive_off_hours_max, self)
-        self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
+        self.effects_per_switch_on = as_effect_dict_with_ts('effects_per_switch_on', effects_per_switch_on, self)
         self.switch_on_total_max = switch_on_total_max
         self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', effects_per_running_hour, self)
         self.flow_hours_total_max = flow_hours_total_max
@@ -908,7 +908,7 @@ class Flow(Element):
         from flixOpt.features import FeatureOn, FeatureInvest
         self.featureOn = FeatureOn(self, flows_defining_on,
                                    on_values_before_begin,
-                                   self.switch_on_effects,
+                                   self.effects_per_switch_on,
                                    self.effects_per_running_hour,
                                    on_hours_total_min=self.on_hours_total_min,
                                    on_hours_total_max=self.on_hours_total_max,

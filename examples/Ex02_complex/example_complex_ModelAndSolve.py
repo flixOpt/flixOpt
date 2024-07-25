@@ -93,7 +93,7 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                               consecutive_off_hours_max=10,  # maximum of off hours in one step
                               # consecutive_on_hours_min = 2, # minimum on hours in one step
                               # consecutive_off_hours_min = 4, # minimum off hours in one step
-                              switch_on_effects=0.01,  # € per start
+                              effects_per_switch_on=0.01,  # € per start
                               switch_on_total_max=1000,  # max nr of starts
                               values_before_begin=[50],  # 50 kW is value before start
                               invest_parameters=invest_Gaskessel,  # see above
@@ -106,7 +106,7 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                               relative_maximum=1))
 
 # 2. defining of CHP-unit:
-aKWK = CHP('BHKW2', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01,
+aKWK = CHP('BHKW2', eta_th=0.5, eta_el=0.4, effects_per_switch_on=0.01,
            P_el=Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60),
            Q_th=Flow('Q_th', bus=Fernwaerme, size=1e3),
            Q_fu=Flow('Q_fu', bus=Gas, size=1e3), on_values_before_begin=[1])
@@ -124,7 +124,7 @@ segmentsOfFlows = ({P_el: [5, 30, 40, 60],  # elements an be list (timeseries)
                     Q_fu: [12, 70, 90, 200]})
 
 aKWK2 = LinearTransformer('BHKW2', inputs=[Q_fu], outputs=[P_el, Q_th], segmentsOfFlows=segmentsOfFlows,
-                          switch_on_effects=0.01, on_values_before_begin=[1])
+                          effects_per_switch_on=0.01, on_values_before_begin=[1])
 
 # 4. definition of storage:
 # 4.a) investment options:

@@ -319,7 +319,7 @@ class FeatureOn(Feature):
         def __init__(self,
                  label: str,
                  on_values_before_begin:Optional[List[Skalar]] = None,
-                 switch_on_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 effects_per_switch_on: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
                  on_hours_total_min: Optional[Skalar] = None,
                  on_hours_total_max: Optional[Skalar] = None,
@@ -330,7 +330,7 @@ class FeatureOn(Feature):
                  owner: Element,
                  flows_defining_on: List[Flow],
                  on_values_before_begin: List[int],
-                 switch_on_effects: Optional[EffectTypeDict] = None,
+                 effects_per_switch_on: Optional[EffectTypeDict] = None,
                  effects_per_running_hour: Optional[EffectTypeDict] = None,
                  on_hours_total_min: Optional[int] = None,
                  on_hours_total_max: Optional[int] = None,
@@ -344,7 +344,7 @@ class FeatureOn(Feature):
         super().__init__('featureOn', owner)
         self.flows_defining_on = flows_defining_on
         self.on_values_before_begin = on_values_before_begin
-        self.switch_on_effects = switch_on_effects
+        self.effects_per_switch_on = effects_per_switch_on
         self.effects_per_running_hour = effects_per_running_hour
         self.on_hours_total_min = on_hours_total_min  # scalar
         self.on_hours_total_max = on_hours_total_max  # scalar
@@ -377,7 +377,7 @@ class FeatureOn(Feature):
 
     @property
     def use_switch_on(self) -> bool:
-        return (any(param is not None for param in [self.switch_on_effects,
+        return (any(param is not None for param in [self.effects_per_switch_on,
                                                    self.switch_on_total_max,
                                                    self.on_hours_total_min,
                                                    self.on_hours_total_max])
@@ -635,8 +635,8 @@ class FeatureOn(Feature):
     def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel):
         shareHolder = self.owner
         # Anfahrkosten:
-        if self.switch_on_effects is not None:  # and any(self.switch_on_effects.active_data != 0):
-            effect_collection.add_share_to_operation('switch_on_effects', shareHolder, self.model.variables['switchOn'], self.switch_on_effects, 1)
+        if self.effects_per_switch_on is not None:  # and any(self.effects_per_switch_on.active_data != 0):
+            effect_collection.add_share_to_operation('effects_per_switch_on', shareHolder, self.model.variables['switchOn'], self.effects_per_switch_on, 1)
         # Betriebskosten:
         if self.effects_per_running_hour is not None:  # and any(self.effects_per_running_hour):
             effect_collection.add_share_to_operation('effects_per_running_hour', shareHolder, self.model.variables['on'],
