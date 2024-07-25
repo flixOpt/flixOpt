@@ -889,7 +889,7 @@ class FeatureInvest(Feature):
                  invest_parameters: InvestParameters,
                  min_rel: TimeSeries,
                  max_rel: TimeSeries,
-                 val_rel: Optional[TimeSeries],
+                 fixed_relative_value: Optional[TimeSeries],
                  investment_size: Optional[Skalar],
                  featureOn: Optional[FeatureOn] = None):
         """
@@ -907,9 +907,9 @@ class FeatureInvest(Feature):
         max_rel : scalar or TS        
             given max_rel of defining_variable
             (max = max_rel * investmentSize)
-        val_rel : scalar or TS
-            given val_rel of defining_variable
-            (val = val_rel * investmentSize)
+        fixed_relative_value : scalar or TS
+            given fixed_relative_value of defining_variable
+            (val = fixed_relative_value * investmentSize)
         investment_size : scalar or None
             value of fixed investmentSize (None if no fixed investmentSize)
             Flow: investmentSize=size
@@ -928,7 +928,7 @@ class FeatureInvest(Feature):
         self.invest_parameters = invest_parameters
         self.max_rel = max_rel
         self.min_rel = min_rel
-        self.val_rel = val_rel
+        self.fixed_relative_value = fixed_relative_value
         self.investment_size = investment_size  # nominalValue
         self.featureOn = featureOn
         self.check_plausibility()
@@ -954,16 +954,16 @@ class FeatureInvest(Feature):
 
     def bounds_of_defining_variable(self) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
 
-        if self.val_rel is not None:   # Wenn fixer relativer Lastgang:
-            # max_rel = min_rel = val_rel !
-            min_rel = self.val_rel.active_data
-            max_rel = self.val_rel.active_data
+        if self.fixed_relative_value is not None:   # Wenn fixer relativer Lastgang:
+            # max_rel = min_rel = fixed_relative_value !
+            min_rel = self.fixed_relative_value.active_data
+            max_rel = self.fixed_relative_value.active_data
         else:
             min_rel = self.min_rel.active_data
             max_rel = self.max_rel.active_data
 
         on_is_used = self.featureOn is not None and self.featureOn.use_on
-        on_is_used_and_val_is_not_fix = (self.val_rel is None) and on_is_used
+        on_is_used_and_val_is_not_fix = (self.fixed_relative_value is None) and on_is_used
 
         # min-Wert:
         if self.invest_parameters.optional or on_is_used_and_val_is_not_fix:
@@ -1072,7 +1072,7 @@ class FeatureInvest(Feature):
         # Bereich von defining_variable in Abh. von var_investmentSize:
 
         # Wenn fixer relativer Lastgang:
-        if self.val_rel is not None:
+        if self.fixed_relative_value is not None:
             self._add_fixEq_of_definingVar_with_var_investmentSize(system_model)
         # Wenn nicht fix:
         else:
@@ -1085,10 +1085,10 @@ class FeatureInvest(Feature):
     def _add_fixEq_of_definingVar_with_var_investmentSize(self, system_model: SystemModel):
 
         ## Gleichung zw. DefiningVar und Investgröße:    
-        # eq: defining_variable(t) = var_investmentSize * val_rel
+        # eq: defining_variable(t) = var_investmentSize * fixed_relative_value
         self.model.add_equation(Equation('fix_via_InvestmentSize', self, system_model, 'eq'))
         self.model.eqs['fix_via_InvestmentSize'].add_summand(self.defining_variable, 1)
-        self.model.eqs['fix_via_InvestmentSize'].add_summand(self.model.variables[self.name_of_investment_size], np.multiply(-1, self.val_rel.active_data))
+        self.model.eqs['fix_via_InvestmentSize'].add_summand(self.model.variables[self.name_of_investment_size], np.multiply(-1, self.fixed_relative_value.active_data))
 
     def _add_max_min_of_definingVar_with_var_investmentSize(self, system_model: SystemModel):
 

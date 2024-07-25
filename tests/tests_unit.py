@@ -25,7 +25,7 @@ class TestExistance(unittest.TestCase):
                                                                effects_per_flow_hour=np.array([20, 15, 13, 25, 26]))),
             "HeatSink": Sink(label="HeatSink", sink=Flow(label="Heating_Network",
                                                          size=1,
-                                                         val_rel= np.linspace(0, 100, len(self.es.time_series)),
+                                                         fixed_relative_value= np.linspace(0, 100, len(self.es.time_series)),
                                                          bus=self.busses["Heat"])),
             "PowerSource": Source(label="PowerSource", source=Flow(label="Power_Grid", bus=self.busses["Power"],
                                                                    effects_per_flow_hour=np.array([100, 20, 60, 40, 5])))

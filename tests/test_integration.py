@@ -81,7 +81,7 @@ class TestSimple(BaseTest):
                             eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True,
                             invest_parameters=InvestParameters(fix_effects=20, fixed_size=True,
                                                                optional=False))
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, val_rel=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=self.Q_th_Last))
         aGasTarif = Source('Gastarif',
                            source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * self.p_el))
@@ -241,7 +241,7 @@ class TestComplex(BaseTest):
         invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, val_rel=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, fixed_relative_value=self.Q_th_Last))
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
@@ -285,7 +285,7 @@ class TestComplex(BaseTest):
         invest_Speicher = InvestParameters(fix_effects=0, fixed_size=False, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4), outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=None, chargeState0_inFlowHours=0, charge_state_end_max=10, eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True, invest_parameters=invest_Speicher)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, val_rel=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, min_rel=0, fixed_relative_value=self.Q_th_Last))
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
@@ -345,7 +345,7 @@ class TestModelingTypes(BaseTest):
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', size=137, bus=Fernwaerme), outFlow=Flow('Q_th_unload', size=158, bus=Fernwaerme), capacity_inFlowHours=684, chargeState0_inFlowHours=137, charge_state_end_min=137, charge_state_end_max=158, eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
 
         TS_Q_th_Last, TS_P_el_Last = TimeSeriesRaw(Q_th_Last), TimeSeriesRaw(P_el_Last, agg_weight=0.7)
-        aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, val_rel=TS_Q_th_Last)), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, val_rel=TS_P_el_Last))
+        aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=TS_Q_th_Last)), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, fixed_relative_value=TS_P_el_Last))
         aKohleTarif, aGasTarif = Source('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3})), Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: gP, CO2: 0.3}))
 
         p_feed_in, p_sell = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el'), TimeSeriesRaw(p_el + 0.5, agg_group='p_el')

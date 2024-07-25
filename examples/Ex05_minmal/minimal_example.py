@@ -56,9 +56,9 @@ aWaermeLast = Sink('Wärmelast',  # defining input-flow:
                    sink=Flow('Q_th_Last',  # name
                              bus=Fernwaerme,  # linked to bus "Fernwaerme"
                              size=1,  # size
-                             val_rel=Q_th_Last))  # fixed profile
+                             fixed_relative_value=Q_th_Last))  # fixed profile
 # relative fixed values (timeseries) of the flow
-# value = val_rel * size
+# value = fixed_relative_value * size
 
 # source of gas:
 aGasTarif = Source('Gastarif',  # defining output-flow:

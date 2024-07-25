@@ -21,9 +21,9 @@ class TimeSeriesRaw:
             EXAMPLE solar:
             you have several solar timeseries. These should not be overweighted
             compared to the remaining timeseries (i.g. heat load, price)!
-            val_rel_solar1 = TimeSeriesRaw(sol_array_1, type = 'solar')
-            val_rel_solar2 = TimeSeriesRaw(sol_array_2, type = 'solar')
-            val_rel_solar3 = TimeSeriesRaw(sol_array_3, type = 'solar')
+            fixed_relative_value_solar1 = TimeSeriesRaw(sol_array_1, type = 'solar')
+            fixed_relative_value_solar2 = TimeSeriesRaw(sol_array_2, type = 'solar')
+            fixed_relative_value_solar3 = TimeSeriesRaw(sol_array_3, type = 'solar')
             --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3
             (instead of standard weight = 1)
 

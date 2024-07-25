@@ -765,7 +765,7 @@ class Flow(Element):
                  effects_per_running_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  flow_hours_total_max: Optional[Skalar] = None, flow_hours_total_min: Optional[Skalar] = None,
                  values_before_begin: Optional[List[Skalar]] = None,
-                 val_rel: Optional[Numeric_TS] = None,  # TODO: Rename?
+                 fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
                  medium: Optional[str] = None,
                  invest_parameters: Optional[InvestParameters] = None,
                  exists: Numeric_TS = 1,
@@ -832,9 +832,9 @@ class Flow(Element):
         values_before_begin : list (TODO: why not scalar?), optional
             Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'),
             # TODO: integration of option for 'first is last'
-        val_rel : scalar, array, TimeSeriesRaw, optional
+        fixed_relative_value : scalar, array, TimeSeriesRaw, optional
             fixed relative values for flow (if given).
-            val(t) := val_rel(t) * size(t)
+            val(t) := fixed_relative_value(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;
             (min_rel u. max_rel are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
@@ -883,14 +883,14 @@ class Flow(Element):
         self.invest_parameters = invest_parameters  # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
         self.comp = None  # zugehörige Komponente (wird später von Komponente gefüllt)
 
-        self.val_rel = None
-        if val_rel is not None:
+        self.fixed_relative_value = None
+        if fixed_relative_value is not None:
             # Wenn noch size noch Default, aber investment_size nicht optimiert werden soll:
             size_is_default = self.size == Flow._default_size
             if size_is_default and self.size_is_fixed:
                 raise Exception(
-                    'Achtung: Wenn val_rel genutzt wird, muss zugehöriges size definiert werden, da: value = val_rel * size!')
-            self.val_rel = TimeSeries('val_rel', val_rel, self)
+                    'Achtung: Wenn fixed_relative_value genutzt wird, muss zugehöriges size definiert werden, da: value = fixed_relative_value * size!')
+            self.fixed_relative_value = TimeSeries('fixed_relative_value', fixed_relative_value, self)
 
         self.medium = medium
         if (self.medium is not None) and (not isinstance(self.medium, str)):
@@ -926,7 +926,7 @@ class Flow(Element):
             f"min/max_rel={self.min_rel}-{self.max_rel}",
             f"medium={self.medium}",
             f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
-            f"val_rel={self.val_rel}" if self.val_rel else "",
+            f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
             f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
             f"effects_per_running_hour={self.effects_per_running_hour}" if self.effects_per_running_hour else "",
         ]
@@ -965,7 +965,7 @@ class Flow(Element):
             self.featureInvest = FeatureInvest('size', self, self.invest_parameters,
                                                min_rel=self.min_rel_with_exists,
                                                max_rel=self.max_rel_with_exists,
-                                               val_rel=self.val_rel,
+                                               fixed_relative_value=self.fixed_relative_value,
                                                investment_size=self.size,
                                                featureOn=self.featureOn)
 
@@ -985,11 +985,11 @@ class Flow(Element):
             Returns: (lower_bound, upper_bound, fixed_value)
             """
             # Wenn fixer Lastgang:
-            if self.val_rel is not None:
+            if self.fixed_relative_value is not None:
                 # min = max = val !
                 lower_bound = None
                 upper_bound = None
-                fix_value = self.val_rel.active_data * self.size
+                fix_value = self.fixed_relative_value.active_data * self.size
             else:
                 lower_bound = 0 if self.featureOn.use_on else self.min_rel_with_exists.active_data * self.size
                 upper_bound = self.max_rel_with_exists.active_data * self.size

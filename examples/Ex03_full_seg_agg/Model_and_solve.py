@@ -173,11 +173,11 @@ aSpeicher = Storage('Speicher',
                     eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
 
 TS_Q_th_Last = TimeSeriesRaw(Q_th_Last)
-aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, val_rel=TS_Q_th_Last))
+aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=TS_Q_th_Last))
 
 # TS with explicit defined weight
 TS_P_el_Last = TimeSeriesRaw(P_el_Last, agg_weight=0.7)  # explicit defined weight
-aStromLast = Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, val_rel=TS_P_el_Last))
+aStromLast = Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, fixed_relative_value=TS_P_el_Last))
 
 aKohleTarif = Source('Kohletarif',
                      source=Flow('Q_Kohle', bus=Kohle, size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3}))

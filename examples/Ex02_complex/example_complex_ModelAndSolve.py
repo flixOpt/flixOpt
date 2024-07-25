@@ -167,7 +167,7 @@ aSpeicher = Storage('Speicher', # defining flows:
 # 5.a) heat load profile:    
 aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last',  # name
                                           bus=Fernwaerme,  # linked bus
-                                          size=1, min_rel=0, val_rel=Q_th_Last))  # fixed values val_rel * size
+                                          size=1, min_rel=0, fixed_relative_value=Q_th_Last))  # fixed values fixed_relative_value * size
 # 5.b) gas tarif:
 aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas,  # linked bus
                                            size=1000,  # defining nominal size
