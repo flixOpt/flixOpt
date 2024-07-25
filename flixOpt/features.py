@@ -334,10 +334,10 @@ class FeatureOn(Feature):
                  effects_per_running_hour: Optional[EffectTypeDict] = None,
                  on_hours_total_min: Optional[int] = None,
                  on_hours_total_max: Optional[int] = None,
-                 on_hours_min: Optional[Numeric] = None,
-                 on_hours_max: Optional[Numeric] = None,
-                 off_hours_min: Optional[Numeric] = None,
-                 off_hours_max: Optional[Numeric] = None,
+                 consecutive_on_hours_min: Optional[Numeric] = None,
+                 consecutive_on_hours_max: Optional[Numeric] = None,
+                 consecutive_off_hours_min: Optional[Numeric] = None,
+                 consecutive_off_hours_max: Optional[Numeric] = None,
                  switch_on_total_max: Optional[int] = None,
                  force_on: bool = False,
                  force_switch_on: bool = False):
@@ -348,10 +348,10 @@ class FeatureOn(Feature):
         self.effects_per_running_hour = effects_per_running_hour
         self.on_hours_total_min = on_hours_total_min  # scalar
         self.on_hours_total_max = on_hours_total_max  # scalar
-        self.on_hours_min = on_hours_min  # TimeSeries
-        self.on_hours_max = on_hours_max  # TimeSeries
-        self.off_hours_min = off_hours_min  # TimeSeries
-        self.off_hours_max = off_hours_max  # TimeSeries
+        self.consecutive_on_hours_min = consecutive_on_hours_min  # TimeSeries
+        self.consecutive_on_hours_max = consecutive_on_hours_max  # TimeSeries
+        self.consecutive_off_hours_min = consecutive_off_hours_min  # TimeSeries
+        self.consecutive_off_hours_max = consecutive_off_hours_max  # TimeSeries
         self.switch_on_total_max = switch_on_total_max
         self.force_on = force_on   # Can be set to True if needed, even after creation
         self.force_switch_on = force_switch_on
@@ -369,11 +369,11 @@ class FeatureOn(Feature):
 
     @property
     def use_on_hours(self) -> bool:
-        return any(param is not None for param in [self.on_hours_min, self.on_hours_max])
+        return any(param is not None for param in [self.consecutive_on_hours_min, self.consecutive_on_hours_max])
 
     @property
     def use_off_hours(self) -> bool:
-        return any(param is not None for param in [self.off_hours_min, self.off_hours_max])
+        return any(param is not None for param in [self.consecutive_off_hours_min, self.consecutive_off_hours_max])
 
     @property
     def use_switch_on(self) -> bool:
@@ -419,12 +419,12 @@ class FeatureOn(Feature):
         #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
         #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
         if self.use_on_hours:
-            aMax = None if (self.on_hours_max is None) else self.on_hours_max.active_data
+            aMax = None if (self.consecutive_on_hours_max is None) else self.consecutive_on_hours_max.active_data
             self.model.add_variable(VariableTS('onHours', system_model.nrOfTimeSteps, self.label_full, system_model,
                                                 lower_bound=0, upper_bound=aMax))  # min separat
         # offHours:
         if self.use_off_hours:
-            aMax = None if (self.off_hours_max is None) else self.off_hours_max.active_data
+            aMax = None if (self.consecutive_off_hours_max is None) else self.consecutive_off_hours_max.active_data
             self.model.add_variable(VariableTS('offHours', system_model.nrOfTimeSteps, self.label_full, system_model,
                                                  lower_bound=0, upper_bound=aMax))  # min separat
 
@@ -444,11 +444,11 @@ class FeatureOn(Feature):
             self.add_switch_constraints(system_model, time_indices)
         if self.use_on_hours:
             FeatureOn._add_duration_constraints(
-                self.model.variables['onHours'], self.model.variables['on'], self.on_hours_min,
+                self.model.variables['onHours'], self.model.variables['on'], self.consecutive_on_hours_min,
                 self, system_model, time_indices)
         if self.use_off_hours:
             FeatureOn._add_duration_constraints(
-                self.model.variables['offHours'], self.model.variables['off'], self.off_hours_min,
+                self.model.variables['offHours'], self.model.variables['off'], self.consecutive_off_hours_min,
                 self, system_model, time_indices)
 
     def _add_on_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):

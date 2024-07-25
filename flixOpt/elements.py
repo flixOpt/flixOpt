@@ -756,10 +756,10 @@ class Flow(Element):
                  can_switch_off: bool = True,
                  on_hours_total_min: Optional[Skalar] = None,
                  on_hours_total_max: Optional[Skalar] = None,
-                 on_hours_min: Optional[Skalar] = None,
-                 on_hours_max: Optional[Skalar] = None,
-                 off_hours_min: Optional[Skalar] = None,
-                 off_hours_max: Optional[Skalar] = None,
+                 consecutive_on_hours_min: Optional[Skalar] = None,
+                 consecutive_on_hours_max: Optional[Skalar] = None,
+                 consecutive_off_hours_min: Optional[Skalar] = None,
+                 consecutive_off_hours_max: Optional[Skalar] = None,
                  switch_on_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
                  effects_per_running_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
@@ -800,21 +800,21 @@ class Flow(Element):
         can_switch_off : boolean, optional
             flow can be "off", i.e. be zero (only relevant if min_rel > 0)
             Then a binary var "on" is used.
-            If any on/off-forcing parameters like "switch_on_effects", "on_hours_min" etc. are used, then
+            If any on/off-forcing parameters like "switch_on_effects", "consecutive_on_hours_min" etc. are used, then
             this is automatically forced.
         on_hours_total_min : scalar, optional
             min. overall sum of operating hours.
         on_hours_total_max : scalar, optional
             max. overall sum of operating hours.
-        on_hours_min : scalar, optional
+        consecutive_on_hours_min : scalar, optional
             min sum of operating hours in one piece
             (last on-time period of timeseries is not checked and can be shorter)
-        on_hours_max : scalar, optional
+        consecutive_on_hours_max : scalar, optional
             max sum of operating hours in one piece
-        off_hours_min : scalar, optional
+        consecutive_off_hours_min : scalar, optional
             min sum of non-operating hours in one piece
             (last off-time period of timeseries is not checked and can be shorter)
-        off_hours_max : scalar, optional
+        consecutive_off_hours_max : scalar, optional
             max sum of non-operating hours in one piece
         switch_on_effects : scalar, array, TimeSeriesRaw, optional
             cost of one switch from off (var_on=0) to on (var_on=1),
@@ -865,10 +865,10 @@ class Flow(Element):
         self.can_switch_off = can_switch_off
         self.on_hours_total_min = on_hours_total_min
         self.on_hours_total_max = on_hours_total_max
-        self.on_hours_min = None if (on_hours_min is None) else TimeSeries('on_hours_min', on_hours_min, self)
-        self.on_hours_max = None if (on_hours_max is None) else TimeSeries('on_hours_max', on_hours_max, self)
-        self.off_hours_min = None if (off_hours_min is None) else TimeSeries('off_hours_min', off_hours_min, self)
-        self.off_hours_max = None if (off_hours_max is None) else TimeSeries('off_hours_max', off_hours_max, self)
+        self.consecutive_on_hours_min = None if (consecutive_on_hours_min is None) else TimeSeries('consecutive_on_hours_min', consecutive_on_hours_min, self)
+        self.consecutive_on_hours_max = None if (consecutive_on_hours_max is None) else TimeSeries('consecutive_on_hours_max', consecutive_on_hours_max, self)
+        self.consecutive_off_hours_min = None if (consecutive_off_hours_min is None) else TimeSeries('consecutive_off_hours_min', consecutive_off_hours_min, self)
+        self.consecutive_off_hours_max = None if (consecutive_off_hours_max is None) else TimeSeries('consecutive_off_hours_max', consecutive_off_hours_max, self)
         self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
         self.switch_on_total_max = switch_on_total_max
         self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', effects_per_running_hour, self)
@@ -910,10 +910,10 @@ class Flow(Element):
                                    self.effects_per_running_hour,
                                    on_hours_total_min=self.on_hours_total_min,
                                    on_hours_total_max=self.on_hours_total_max,
-                                   on_hours_min=self.on_hours_min,
-                                   on_hours_max=self.on_hours_max,
-                                   off_hours_min=self.off_hours_min,
-                                   off_hours_max=self.off_hours_max,
+                                   consecutive_on_hours_min=self.consecutive_on_hours_min,
+                                   consecutive_on_hours_max=self.consecutive_on_hours_max,
+                                   consecutive_off_hours_min=self.consecutive_off_hours_min,
+                                   consecutive_off_hours_max=self.consecutive_off_hours_max,
                                    switch_on_total_max=self.switch_on_total_max,
                                    force_on=self.on_variable_is_forced)
 

@@ -89,10 +89,10 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                               relative_maximum=1,  # 50 kW
                               on_hours_total_min=0,  # minimum of working hours
                               on_hours_total_max=1000,  # maximum of working hours
-                              on_hours_max=10,  # maximum of working hours in one step
-                              off_hours_max=10,  # maximum of off hours in one step
-                              # on_hours_min = 2, # minimum on hours in one step
-                              # off_hours_min = 4, # minimum off hours in one step
+                              consecutive_on_hours_max=10,  # maximum of working hours in one step
+                              consecutive_off_hours_max=10,  # maximum of off hours in one step
+                              # consecutive_on_hours_min = 2, # minimum on hours in one step
+                              # consecutive_off_hours_min = 4, # minimum off hours in one step
                               switch_on_effects=0.01,  # € per start
                               switch_on_total_max=1000,  # max nr of starts
                               values_before_begin=[50],  # 50 kW is value before start
