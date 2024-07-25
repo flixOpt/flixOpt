@@ -27,13 +27,10 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 log = logging.getLogger(__name__)
 
 
-
 class FlowSystem:
-    '''
+    """
     A FlowSystem holds Elements (Components, Buses, Flows, Effects,...).
-    '''
-
-    ## Properties:
+    """
 
     @property
     def elements_of_first_layer_wo_flows(self) -> List[Element]:
@@ -80,8 +77,6 @@ class FlowSystem:
     def buses(self) -> Set[Bus]:
         return {flow.bus for flow in self.flows}
 
-        # time_series: möglichst format ohne pandas-Nutzung bzw.: Ist DatetimeIndex hier das passende Format?
-
     def __init__(self,
                  time_series: np.ndarray[np.datetime64],
                  last_time_step_hours: Optional[Union[int, float]] = None):
@@ -120,7 +115,7 @@ class FlowSystem:
                                sorted(self.components, key=lambda component: component.label.upper()))
         effects = '\n'.join(effect.__str__() for effect in
                                sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
-        return f"Energy FlowSystem with components:\n{components}\nand effects:\n{effects}"
+        return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
     def add_effects(self, *args: Effect) -> None:
