@@ -123,7 +123,7 @@ class FlowSystem:
         new_components = list(args)
         for new_component in new_components:
             print('Register new Component ' + new_component.label)
-            self._check_if_element_is_unique(new_component, self.components)   # check if already exists:
+            self._check_if_element_is_unique(new_component)   # check if already exists:
             new_component.register_component_in_flows()   # Komponente in Flow registrieren
             new_component.register_flows_in_bus()   # Flows in Bus registrieren:
         self.components.extend(new_components)   # Add to existing list of components
@@ -146,7 +146,7 @@ class FlowSystem:
                 self.add_effects(new_element)
             elif isinstance(new_element, Element):
                 # check if already exists:
-                self._check_if_element_is_unique(new_element, self.other_elements)
+                self._check_if_element_is_unique(new_element)
                 # register Element:
                 self.other_elements.add(new_element)
             else:
@@ -177,27 +177,21 @@ class FlowSystem:
             self.other_elements.remove(temporary_element)
             self.effect_collection.effects.remove(temporary_element)
 
-    def _check_if_element_is_unique(self, element: Element, existing_elements: List[Element]) -> None:
-        '''
+    def _check_if_element_is_unique(self, element: Element) -> None:
+        """
         checks if element or label of element already exists in list
 
         Parameters
         ----------
-        aElement : Element
+        element : Element
             new element to check
-        existing_elements : list
-            list of already registered elements
-        '''
-
+        """
         # check if element is already registered:
-        if element in existing_elements:
-            raise Exception('Element \'' + element.label + '\' already added to cEnergysystem!')
-
+        if element in self.all_first_level_elements:
+            raise Exception(f'Element {element.label} already added to FlowSystem!')
         # check if name is already used:
-        # TODO: Check all elements instead of only a list that is passed?
-        # TODO: An Effect with the same label as another element is not allowed, or is it?
-        if element.label in [elem.label for elem in existing_elements]:
-            raise Exception('Elementname \'' + element.label + '\' already used in another element!')
+        if element.label in [elem.label for elem in self.all_first_level_elements]:
+            raise Exception(f'Label of Element {element.label} already used in another element!')
 
     def _plausibility_checks(self) -> None:
         # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
