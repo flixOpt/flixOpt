@@ -1,14 +1,16 @@
 import unittest
 import os
 import datetime
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 
-from flixOpt.elements import *
-from flixOpt.components import *
+from flixOpt.elements import Bus, Flow, Effect
+from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearTransformer
 from flixOpt.flow_system import FlowSystem
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
+from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
 import flixOpt.flixPostprocessing as flixPost
 
 class BaseTest(unittest.TestCase):
