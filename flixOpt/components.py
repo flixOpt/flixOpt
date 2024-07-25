@@ -9,7 +9,7 @@ import numpy as np
 import textwrap
 from typing import Union, Optional, Literal
 
-from flixOpt.elements import Flow, Component, MediumCollection, Global
+from flixOpt.elements import Flow, Component, MediumCollection, EffectCollection, Objective
 from flixOpt.core import Skalar, Numeric, Numeric_TS, TimeSeries, effect_values_to_ts
 from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.structure import SystemModel
@@ -915,17 +915,16 @@ class Storage(Component):
         # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchEntladeMich,1);
         # obj.ineqs.EntwederLadenOderEntladen.add_constant(1);
 
-    def add_share_to_globals(self, globalComp: Global, system_model):
+    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel):
         """
-
-        :param globalComp:
+        :param effect_collection:
         :param system_model:
         :return:
         """
-        super().add_share_to_globals(globalComp, system_model)
+        super().add_share_to_globals(effect_collection, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.add_share_to_globals(globalComp, system_model)
+            self.featureInvest.add_share_to_globals(effect_collection, system_model)
 
 
 class SourceAndSink(Component):

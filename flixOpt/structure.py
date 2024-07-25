@@ -131,14 +131,14 @@ class SystemModel(MathModel):
         print('##############################################################')
         print('################### finished #################################')
         print('')
-        for aEffect in self.flow_system.global_comp.listOfEffectTypes:
+        for aEffect in self.flow_system.effect_collection.effects:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
             print('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
             print('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
             print('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.flow_system.global_comp.penalty.model.variables['sum'].result))
+        print('penaltyCosts     : ' + str(self.flow_system.effect_collection.penalty.model.variables['sum'].result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -155,7 +155,7 @@ class SystemModel(MathModel):
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.flow_system.global_comp.penalty.model.variables['sum'].result > 10:
+        if self.flow_system.effect_collection.penalty.model.variables['sum'].result > 10:
             print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -169,13 +169,13 @@ class SystemModel(MathModel):
 
             aEffectDict = {}
             main_results_str['Effects'] = aEffectDict
-            for aEffect in self.flow_system.global_comp.listOfEffectTypes:
+            for aEffect in self.flow_system.effect_collection.effects:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
                 aDict['operation'] = str(aEffect.operation.model.variables['sum'].result)
                 aDict['invest'] = str(aEffect.invest.model.variables['sum'].result)
                 aDict['sum'] = str(aEffect.all.model.variables['sum'].result)
-            main_results_str['penaltyCosts'] = str(self.flow_system.global_comp.penalty.model.variables['sum'].result)
+            main_results_str['penaltyCosts'] = str(self.flow_system.effect_collection.penalty.model.variables['sum'].result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound

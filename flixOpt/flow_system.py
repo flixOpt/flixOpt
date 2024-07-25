@@ -37,7 +37,7 @@ class FlowSystem:
 
     @property
     def elements_of_first_layer_wo_flows(self) -> List[Element]:
-        return (self.components + list(self.buses) + [self.objective] + self.effects_collection.effects +
+        return (self.components + list(self.buses) + [self.objective, self.effect_collection] +
                 list(self.other_elements))
 
     @property
@@ -105,28 +105,28 @@ class FlowSystem:
         # defaults:
         self.components: List[Component] = []
         self.other_elements: Set[Element] = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
-        self.effects_collection: EffectCollection = EffectCollection('EffectCollection')  # Kosten, CO2, Primärenergie, ...
+        self.effect_collection: EffectCollection = EffectCollection('Effects')  # Kosten, CO2, Primärenergie, ...
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
-        self.objective = Objective('objective')
+        self.objective = Objective('Objective')
         self._finalized = False  # wenn die Elements alle finalisiert sind, dann True
         self.model: Optional[SystemModel] = None  # later activated
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects_collection.effects)} effects>"
+        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
 
     def __str__(self):
         components = '\n'.join(component.__str__() for component in
                                sorted(self.components, key=lambda component: component.label.upper()))
         effects = '\n'.join(effect.__str__() for effect in
-                               sorted(self.effects_collection.effects, key=lambda effect: effect.label.upper()))
+                               sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
         return f"Energy FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
             print('Register new effect ' + new_effect.label)
-            self.effects_collection.add_effect(new_effect)
+            self.effect_collection.add_effect(new_effect)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
@@ -222,7 +222,7 @@ class FlowSystem:
                 f'  {shareEffect_label} -> has share in: {effect_label}'
             )
 
-        for effect in self.effects_collection.effects:
+        for effect in self.effect_collection.effects:
             # operation:
             for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
@@ -256,11 +256,10 @@ class FlowSystem:
         # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
         time_indices = range(len(self.model.time_indices))
 
-        self.effects_collection.declare_vars_and_eqs(self.model)
-        self.effects_collection.do_modeling(self.model, time_indices)
+        self.effect_collection.declare_vars_and_eqs(self.model)
+        self.effect_collection.do_modeling(self.model, time_indices)
         self.objective.declare_vars_and_eqs(self.model)
-        self.objective.do_modeling(self.model, time_indices)
-        self.objective.add_objective_effect(self.effects_collection.objective_effect)
+        self.objective.add_objective_effect_and_penalty(self.effect_collection)
 
         # Komponenten-Modellierung (# inklusive sub_elements!)
         for aComp in self.components:
@@ -273,8 +272,8 @@ class FlowSystem:
             aComp.do_modeling_of_flows(self.model, time_indices)
             aComp.do_modeling(self.model, time_indices)
 
-            aComp.add_share_to_globals_of_flows(self.global_comp, self.model)
-            aComp.add_share_to_globals(self.global_comp, self.model)
+            aComp.add_share_to_globals_of_flows(self.effect_collection, self.model)
+            aComp.add_share_to_globals(self.effect_collection, self.model)
 
         # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
@@ -282,14 +281,14 @@ class FlowSystem:
             log.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
             aBus.do_modeling(self.model, time_indices)
-            aBus.add_share_to_globals(self.global_comp, self.model)
+            aBus.add_share_to_globals(self.effect_collection, self.model)
 
         # TODO: Currently there are no "other elements"
         # weitere übergeordnete Modellierungen:
         for element in self.other_elements:
             element.declare_vars_and_eqs(self.model)
             element.do_modeling(self.model, time_indices)
-            element.add_share_to_globals(self.global_comp, self.model)
+            element.add_share_to_globals(self.effect_collection, self.model)
 
         return self.model
 
@@ -405,8 +404,11 @@ class FlowSystem:
         for aBus in self.buses:
             aSubDict[aBus.label] = aBus.description_of_equations()
 
-        # globals:
-        aDict['globals'] = self.global_comp.description_of_equations()
+        # Objective:
+        aDict['objective'] = self.objective.description_of_equations()
+
+        # Effects:
+        aDict['effects'] = self.effect_collection.description_of_equations()
 
         # flows:
         aSubDict = {}
@@ -463,8 +465,11 @@ class FlowSystem:
             for bus in self.buses:
                 subDict[bus.label] = bus.description_of_variables()
 
-            # globals:
-            aDict['globals'] = self.global_comp.description_of_variables()
+            # Objective:
+            aDict['objective'] = self.objective.description_of_variables()
+
+            # Effects:
+            aDict['effects'] = self.effect_collection.description_of_variables()
 
             # others
             aSubDict = {}
