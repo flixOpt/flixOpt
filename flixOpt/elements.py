@@ -351,11 +351,11 @@ class Component(Element):
     def __init__(self,
                  label: str,
                  on_values_before_begin: Optional[List[Skalar]] = None,
+                 effects_per_running_hour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  effects_per_switch_on: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
                  on_hours_total_min: Optional[Skalar] = None,
                  on_hours_total_max: Optional[Skalar] = None,
-                 effects_per_running_hour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  exists: Numeric = 1,
                  **kwargs):
         '''
