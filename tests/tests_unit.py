@@ -93,7 +93,7 @@ class TestExistance(unittest.TestCase):
         self.assertTrue(np.array_equal(exists, storage_exists.outputs[0].exists_with_comp.active_data))
         self.assertTrue(np.array_equal(exists, storage_exists.inputs[0].max_rel_with_exists.active_data))
         self.assertTrue(np.array_equal(exists, storage_exists.outputs[0].max_rel_with_exists.active_data))
-        self.assertTrue(np.array_equal(exists, storage_exists.max_rel_chargeState.active_data))
+        self.assertTrue(np.array_equal(exists, storage_exists.maximum_relative_chargeState.active_data))
 
         results = flix_results(calc.label).results
         self.assertTrue(np.all(results["Storage_ex"]["in"]["val"] <= exists * size))

@@ -77,7 +77,7 @@ class TestSimple(BaseTest):
         aSpeicher = Storage('Speicher', inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4),
                             outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=30,
                             chargeState0_inFlowHours=0,
-                            max_rel_chargeState=1 / 100 * np.array([80., 70., 80., 80, 80, 80, 80, 80, 80, 80]),
+                            maximum_relative_chargeState=1 / 100 * np.array([80., 70., 80., 80, 80, 80, 80, 80, 80, 80]),
                             eta_load=0.9, eta_unload=1, fracLossPerHour=0.08, avoidInAndOutAtOnce=True,
                             invest_parameters=InvestParameters(fix_effects=20, fixed_size=True,
                                                                optional=False))
