@@ -611,7 +611,7 @@ class Storage(Component):
     # costs_default = property(get_costs())
     # param_defalt  = property(get_params())
 
-    new_init_args = ['label', 'exists', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'min_rel_chargeState', 'max_rel_chargeState',
+    new_init_args = ['label', 'exists', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'minimum_relative_chargeState', 'max_rel_chargeState',
                      'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
                      'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce', 'invest_parameters']
 
@@ -624,7 +624,7 @@ class Storage(Component):
                  outFlow: Flow,
                  capacity_inFlowHours: Optional[Union[Skalar, Literal['lastValueOfSim']]],
                  group: Optional[str] = None,
-                 min_rel_chargeState: Numeric_TS = 0,
+                 minimum_relative_chargeState: Numeric_TS = 0,
                  max_rel_chargeState: Numeric_TS = 1,
                  chargeState0_inFlowHours: Skalar = 0,
                  charge_state_end_min: Optional[Skalar] = None,
@@ -654,7 +654,7 @@ class Storage(Component):
             nominal capacity of the storage 
             float: capacity in FlowHours
             None:  if invest_parameters.fixed_size = False
-        min_rel_chargeState : float or TS, optional
+        minimum_relative_chargeState : float or TS, optional
             minimum relative charge state. The default is 0.
         max_rel_chargeState : float or TS, optional
             maximum relative charge state. The default is 1.
@@ -681,7 +681,7 @@ class Storage(Component):
         **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
             DESCRIPTION.
         '''
-        # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch "fixed_relative_value_chargeState" implementieren damit konsistent zu flow (relative_maximum, min_rel, val_re)
+        # TODO: neben minimum_relative_chargeState, max_rel_chargeState ggf. noch "fixed_relative_value_chargeState" implementieren damit konsistent zu flow (relative_maximum, min_rel, val_re)
 
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
         super().__init__(label, **kwargs)
@@ -693,7 +693,7 @@ class Storage(Component):
         self.outFlow = outFlow
         self.capacity_inFlowHours = capacity_inFlowHours
         self.max_rel_chargeState = TimeSeries('max_rel_chargeState', max_rel_chargeState, self)
-        self.min_rel_chargeState = TimeSeries('min_rel_chargeState', min_rel_chargeState, self)
+        self.minimum_relative_chargeState = TimeSeries('minimum_relative_chargeState', minimum_relative_chargeState, self)
 
         self.group = group
 
@@ -701,8 +701,8 @@ class Storage(Component):
         existsWithEndTimestep = self.exists.active_data if np.isscalar(self.exists.active_data) else np.append(self.exists.active_data, self.exists.active_data[-1])
         self.max_rel_chargeState = TimeSeries('max_rel_chargeState',
                                               self.max_rel_chargeState.active_data * existsWithEndTimestep, self)
-        self.min_rel_chargeState = TimeSeries('min_rel_chargeState',
-                                              self.min_rel_chargeState.active_data * existsWithEndTimestep, self)
+        self.minimum_relative_chargeState = TimeSeries('minimum_relative_chargeState',
+                                              self.minimum_relative_chargeState.active_data * existsWithEndTimestep, self)
 
         # copy information of "group" to in-flows and out-flows
         for flow in self.inputs + self.outputs:
@@ -730,7 +730,7 @@ class Storage(Component):
 
         if self.invest_parameters is not None:
             self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.invest_parameters,
-                                               min_rel=self.min_rel_chargeState,
+                                               min_rel=self.minimum_relative_chargeState,
                                                relative_maximum=self.max_rel_chargeState,
                                                fixed_relative_value=None,  # kein vorgegebenes Profil
                                                investment_size=self.capacity_inFlowHours,
@@ -756,7 +756,7 @@ class Storage(Component):
         # Variablen:
 
         if self.featureInvest is None:
-            lb = self.min_rel_chargeState.active_data * self.capacity_inFlowHours
+            lb = self.minimum_relative_chargeState.active_data * self.capacity_inFlowHours
             ub = self.max_rel_chargeState.active_data * self.capacity_inFlowHours
             fix_value = None
 
