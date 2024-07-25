@@ -48,9 +48,9 @@ class TestSimple(BaseTest):
         results = self.model()
 
         # Compare expected values with actual values
-        self.assertAlmostEqualNumeric(results['costs']['all']['sum'], 81.88394666666667,
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['all']['sum'], 81.88394666666667,
                                "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['CO2']['all']['sum'], 255.09184,
+        self.assertAlmostEqualNumeric(results['Effects']['CO2']['all']['sum'], 255.09184,
                                "CO2 doesnt match expected value")
         self.assertAlmostEqualNumeric(results['Boiler']['Q_th']['val'],
                                       [0, 0, 0, 28.4864, 35, 0, 0, 0, 0],
@@ -123,38 +123,38 @@ class TestComplex(BaseTest):
         results = self.basic_model()
 
         # Compare expected values with actual values
-        self.assertAlmostEqualNumeric(results['costs']['all']['sum'], -11597.873624489237,
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['all']['sum'], -11597.873624489237,
                                "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['sum_TS'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['operation']['sum_TS'],
                                       [-2.38500000e+03, -2.21681333e+03, -2.38500000e+03, -2.17599000e+03,
                                        -2.35107029e+03, -2.38500000e+03, 0.00000000e+00, -1.68897826e-10,
                                        -2.16914486e-12], "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['CO2_specific_share_to_other_effects_operation'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['operation']['shares']['CO2_specific_share_to_other_effects_operation'],
                                       258.63729669618675, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel__Q_th_switch_on_effects'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['operation']['shares']['Kessel__Q_th_switch_on_effects'],
                                       0.01, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Kessel_running_hour_effects'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['operation']['shares']['Kessel_running_hour_effects'],
                                       -0.0, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Gastarif__Q_Gas_effects_per_flow_hour'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['operation']['shares']['Gastarif__Q_Gas_effects_per_flow_hour'],
                                       39.09153113079115, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['Einspeisung__P_el_effects_per_flow_hour'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['operation']['shares']['Einspeisung__P_el_effects_per_flow_hour'],
                                       -14196.61245231646, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['operation']['shares']['KWK_switch_on_effects'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['operation']['shares']['KWK_switch_on_effects'],
                                       0.0, "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_fix_effects'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['invest']['shares']['Kessel__Q_th_fix_effects'],
                                       1000, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Kessel__Q_th_specific_effects'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['invest']['shares']['Kessel__Q_th_specific_effects'],
                                       500, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Speicher_specific_effects'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['invest']['shares']['Speicher_specific_effects'],
                                       1, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['costs']['invest']['shares']['Speicher_linearSegments'],
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['invest']['shares']['Speicher_linearSegments'],
                                       800, "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(results['CO2']['all']['shares']['CO2_operation'], 1293.1864834809337,
+        self.assertAlmostEqualNumeric(results['Effects']['CO2']['all']['shares']['CO2_operation'], 1293.1864834809337,
                                "CO2 doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['CO2']['all']['shares']['CO2_invest'], 0.9999999999999994,
+        self.assertAlmostEqualNumeric(results['Effects']['CO2']['all']['shares']['CO2_invest'], 0.9999999999999994,
                                       "CO2 doesnt match expected value")
         self.assertAlmostEqualNumeric(results['Kessel']['Q_th']['val'],
                                       [0, 0, 0, 45, 0, 0, 0, 0, 0],
@@ -191,9 +191,9 @@ class TestComplex(BaseTest):
         results = self.segments_of_flows_model()
 
         # Compare expected values with actual values
-        self.assertAlmostEqualNumeric(results['costs']['all']['sum'], -10710.997365760755,
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['all']['sum'], -10710.997365760755,
                                "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(results['CO2']['all']['sum'], 1278.7939026086956,
+        self.assertAlmostEqualNumeric(results['Effects']['CO2']['all']['sum'], 1278.7939026086956,
                                "CO2 doesnt match expected value")
         self.assertAlmostEqualNumeric(results['Kessel']['Q_th']['val'],
                                       [0, 0, 0, 45, 0, 0, 0, 0, 0],
@@ -317,15 +317,15 @@ class TestModelingTypes(BaseTest):
 
     def test_full(self):
         results = self.calculate("full")
-        self.assertAlmostEqualNumeric(results['costs']['all']['sum'], 343613, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['all']['sum'], 343613, "costs doesnt match expected value")
 
     def test_aggregated(self):
         results = self.calculate("aggregated")
-        self.assertAlmostEqualNumeric(results['costs']['all']['sum'], 342967.0, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results['Effects']['costs']['all']['sum'], 342967.0, "costs doesnt match expected value")
 
     def test_segmented(self):
         results = self.calculate("segmented")
-        self.assertAlmostEqualNumeric(sum(results['costs']['operation']['sum_TS']), 343613, "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(sum(results['Effects']['costs']['operation']['sum_TS']), 343613, "costs doesnt match expected value")
 
     def calculate(self, modeling_type: Literal["full", "segmented", "aggregated"]):
         doFullCalc, doSegmentedCalc, doAggregatedCalc = modeling_type == "full", modeling_type == "segmented", modeling_type == "aggregated"
