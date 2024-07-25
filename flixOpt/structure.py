@@ -74,15 +74,15 @@ class SystemModel(MathModel):
               excess_threshold: Union[int, float] = 0.1,
               logfile_name: str = 'solver_log.log',
               **kwargs):
-        '''
+        """
         Parameters
         ----------
         mip_gap : TYPE, optional
             DESCRIPTION. The default is 0.02.
         time_limit_seconds : TYPE, optional
             DESCRIPTION. The default is 3600.
-        solver : TYPE, optional
-            DESCRIPTION. The default is 'cbc'.
+        solver_name : TYPE, optional
+            DESCRIPTION. The default is 'highs'.
         solver_output_to_console : TYPE, optional
             DESCRIPTION. The default is True.
         excess_threshold : float, positive!
@@ -94,8 +94,7 @@ class SystemModel(MathModel):
         -------
         main_results_str : TYPE
             DESCRIPTION.
-
-        '''
+        """
 
         # check valid solver options:
         if len(kwargs) > 0:
