@@ -70,7 +70,7 @@ class TestSimple(BaseTest):
                      maximum_operation_per_hour=self.max_emissions_per_hour)
 
         aBoiler = Boiler('Boiler', eta=0.5,
-                         Q_th=Flow('Q_th', bus=Fernwaerme, size=50, min_rel=5 / 50, max_rel=1),
+                         Q_th=Flow('Q_th', bus=Fernwaerme, size=50, min_rel=5 / 50, relative_maximum=1),
                          Q_fu=Flow('Q_fu', bus=Gas))
         aKWK = CHP('CHP_unit', eta_th=0.5, eta_el=0.4, P_el=Flow('P_el', bus=Strom, size=60, min_rel=5 / 60),
                    Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Gas))
@@ -229,8 +229,8 @@ class TestComplex(BaseTest):
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, effects_per_running_hour={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
-                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, max_rel=1))
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, relative_maximum=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, relative_maximum=1))
 
         aKWK = CHP('KWK', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01, on_values_before_begin=[1],
                    P_el=Flow('P_el', bus=Strom, size=60, min_rel=5 / 60),
@@ -272,10 +272,10 @@ class TestComplex(BaseTest):
 
         invest_Gaskessel = InvestParameters(fix_effects=1000, fixed_size=True, optional=False, specific_effects={costs: 10, PE: 2})
         aGaskessel = Boiler('Kessel', eta=0.5, effects_per_running_hour={costs: 0, CO2: 1000},
-                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, max_rel=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
-                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, max_rel=1))
+                            Q_th=Flow('Q_th', bus=Fernwaerme, size=50, load_factor_max=1.0, load_factor_min=0.1, min_rel=5 / 50, relative_maximum=1, on_hours_total_min=0, on_hours_total_max=1000, on_hours_max=10, off_hours_max=10, switch_on_effects=0.01, switch_on_total_max=1000, values_before_begin=[50], invest_parameters=invest_Gaskessel, flow_hours_total_max=1e6),
+                            Q_fu=Flow('Q_fu', bus=Gas, size=200, min_rel=0, relative_maximum=1))
 
-        P_el = Flow('P_el', bus=Strom, size=60, max_rel=55)
+        P_el = Flow('P_el', bus=Strom, size=60, relative_maximum=55)
         Q_th = Flow('Q_th', bus=Fernwaerme)
         Q_fu = Flow('Q_fu', bus=Gas)
         segmentsOfFlows = {P_el: [5, 30, 40, 60], Q_th: [6, 35, 45, 100], Q_fu: [12, 70, 90, 200]}

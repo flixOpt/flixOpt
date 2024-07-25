@@ -86,7 +86,7 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                               load_factor_max=1.0,  # maximal mean power 50 kW
                               load_factor_min=0.1,  # minimal mean power 5 kW
                               min_rel=5 / 50,  # 10 % part load
-                              max_rel=1,  # 50 kW
+                              relative_maximum=1,  # 50 kW
                               on_hours_total_min=0,  # minimum of working hours
                               on_hours_total_max=1000,  # maximum of working hours
                               on_hours_max=10,  # maximum of working hours in one step
@@ -103,7 +103,7 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                               bus=Gas,  # linked bus
                               size=200,  # kW
                               min_rel=0,
-                              max_rel=1))
+                              relative_maximum=1))
 
 # 2. defining of CHP-unit:
 aKWK = CHP('BHKW2', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01,
@@ -115,7 +115,7 @@ aKWK = CHP('BHKW2', eta_th=0.5, eta_el=0.4, switch_on_effects=0.01,
 # defining flows:
 #   (explicitly outside, because variables 'P_el', 'Q_th', 'Q_fu' must be picked 
 #    in segment definition)
-P_el = Flow('P_el', bus=Strom, size=60, max_rel=55)
+P_el = Flow('P_el', bus=Strom, size=60, relative_maximum=55)
 Q_th = Flow('Q_th', bus=Fernwaerme)
 Q_fu = Flow('Q_fu', bus=Gas)
 # linear segments (eta-definitions than become useless!):

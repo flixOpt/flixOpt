@@ -510,9 +510,9 @@ class FeatureOn(Feature):
             self.model.eqs['On_Constraint_2'].add_summand(aFlow.model.variables['val'], 1 / nr_of_flows, time_indices)
             # wenn variabler Nennwert:
             if aFlow.size is None:
-                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.invest_parameters.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
+                sumOfFlowMax += aFlow.relative_maximum.active_data * aFlow.invest_parameters.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
-                sumOfFlowMax += aFlow.max_rel.active_data * aFlow.size
+                sumOfFlowMax += aFlow.relative_maximum.active_data * aFlow.size
 
         self.model.eqs['On_Constraint_2'].add_summand(self.model.variables['on'], - sumOfFlowMax / nr_of_flows, time_indices)  #
 
@@ -877,7 +877,7 @@ class FeatureInvest(Feature):
     # -> var_name            : z.B. "size", "capacity_inFlowHours"
     # -> investment_size : size, capacity_inFlowHours, ...
     # -> defining_variable         : z.B. flow.model.var_val
-    # -> min_rel,max_rel     : ist relatives Min,Max der defining_variable bzgl. investment_size
+    # -> min_rel,relative_maximum     : ist relatives Min,Max der defining_variable bzgl. investment_size
 
     @property
     def on_variable_is_used(self):  # existiert On-variable
@@ -888,7 +888,7 @@ class FeatureInvest(Feature):
                  owner: Element,
                  invest_parameters: InvestParameters,
                  min_rel: TimeSeries,
-                 max_rel: TimeSeries,
+                 relative_maximum: TimeSeries,
                  fixed_relative_value: Optional[TimeSeries],
                  investment_size: Optional[Skalar],
                  featureOn: Optional[FeatureOn] = None):
@@ -904,9 +904,9 @@ class FeatureInvest(Feature):
         min_rel : scalar or TS
             given min_rel of defining_variable
             (min = min_rel * investmentSize)
-        max_rel : scalar or TS        
-            given max_rel of defining_variable
-            (max = max_rel * investmentSize)
+        relative_maximum : scalar or TS        
+            given relative_maximum of defining_variable
+            (max = relative_maximum * investmentSize)
         fixed_relative_value : scalar or TS
             given fixed_relative_value of defining_variable
             (val = fixed_relative_value * investmentSize)
@@ -926,7 +926,7 @@ class FeatureInvest(Feature):
         self.name_of_investment_size = name_of_investment_size
         self.owner = owner
         self.invest_parameters = invest_parameters
-        self.max_rel = max_rel
+        self.relative_maximum = relative_maximum
         self.min_rel = min_rel
         self.fixed_relative_value = fixed_relative_value
         self.investment_size = investment_size  # nominalValue
@@ -955,12 +955,12 @@ class FeatureInvest(Feature):
     def bounds_of_defining_variable(self) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
 
         if self.fixed_relative_value is not None:   # Wenn fixer relativer Lastgang:
-            # max_rel = min_rel = fixed_relative_value !
+            # relative_maximum = min_rel = fixed_relative_value !
             min_rel = self.fixed_relative_value.active_data
-            max_rel = self.fixed_relative_value.active_data
+            relative_maximum = self.fixed_relative_value.active_data
         else:
             min_rel = self.min_rel.active_data
-            max_rel = self.max_rel.active_data
+            relative_maximum = self.relative_maximum.active_data
 
         on_is_used = self.featureOn is not None and self.featureOn.use_on
         on_is_used_and_val_is_not_fix = (self.fixed_relative_value is None) and on_is_used
@@ -976,9 +976,9 @@ class FeatureInvest(Feature):
 
         #  max-Wert:
         if self.invest_parameters.fixed_size:
-            upper_bound = max_rel * self.investment_size
+            upper_bound = relative_maximum * self.investment_size
         else:
-            upper_bound = max_rel * self.invest_parameters.maximum_size  # investSize is variabel
+            upper_bound = relative_maximum * self.invest_parameters.maximum_size  # investSize is variabel
 
         # upper_bound und lower_bound gleich, dann fix:
         if np.all(upper_bound == lower_bound):  # np.all -> kann listen oder werte vergleichen
@@ -1093,13 +1093,13 @@ class FeatureInvest(Feature):
     def _add_max_min_of_definingVar_with_var_investmentSize(self, system_model: SystemModel):
 
         ## 1. Gleichung: Maximum durch Investmentgröße ##     
-        # eq: defining_variable(t) <=                var_investmentSize * max_rel(t)
-        # eq: P(t) <= max_rel(t) * P_inv    
+        # eq: defining_variable(t) <=                var_investmentSize * relative_maximum(t)
+        # eq: P(t) <= relative_maximum(t) * P_inv    
         self.model.add_equation(Equation('max_via_InvestmentSize', self, system_model, 'ineq'))
         self.model.eqs['max_via_InvestmentSize'].add_summand(self.defining_variable, 1)
         # TODO: Changed by FB
-        # self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.max_rel.active_data))
-        self.model.eqs['max_via_InvestmentSize'].add_summand(self.model.variables[self.name_of_investment_size], np.multiply(-1, self.max_rel.data))
+        # self.eq_max_via_investmentSize.add_summand(self.model.var_investmentSize, np.multiply(-1, self.relative_maximum.active_data))
+        self.model.eqs['max_via_InvestmentSize'].add_summand(self.model.variables[self.name_of_investment_size], np.multiply(-1, self.relative_maximum.data))
         # TODO: BUGFIX: Here has to be active_data, but it throws an error for storages (length)
         # TODO: Changed by FB
 

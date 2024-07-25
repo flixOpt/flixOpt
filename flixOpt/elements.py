@@ -748,7 +748,7 @@ class Flow(Element):
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
                  min_rel: Numeric_TS = 0,  # TODO: Rename?
-                 max_rel: Numeric_TS = 1,  # TODO: Rename?
+                 relative_maximum: Numeric_TS = 1,  # TODO: Rename?
                  size: Optional[Skalar] = _default_size,
                  load_factor_min: Optional[Skalar] = None, load_factor_max: Optional[Skalar] = None,
                  # positive_gradient=None,
@@ -780,10 +780,10 @@ class Flow(Element):
             bus to which flow is linked
         min_rel : scalar, array, TimeSeriesRaw, optional
             min value is min_rel multiplied by size
-        max_rel : scalar, array, TimeSeriesRaw, optional
-            max value is max_rel multiplied by size. If size = max then max_rel=1
+        relative_maximum : scalar, array, TimeSeriesRaw, optional
+            max value is relative_maximum multiplied by size. If size = max then relative_maximum=1
         size : scalar. None if is a nominal value is a opt-variable, optional
-            nominal value/ invest size (linked to min_rel, max_rel and others).
+            nominal value/ invest size (linked to min_rel, relative_maximum and others).
             i.g. kW, area, volume, pieces,
             möglichst immer so stark wie möglich einschränken
             (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)
@@ -836,9 +836,9 @@ class Flow(Element):
             fixed relative values for flow (if given).
             val(t) := fixed_relative_value(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;
-            (min_rel u. max_rel are making sense anymore)
+            (min_rel u. relative_maximum are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
-            If the load-profile is just an upper limit, use max_rel instead.
+            If the load-profile is just an upper limit, use relative_maximum instead.
         medium: string, None
             medium is relevant, if the linked bus only allows a special defined set of media.
             If None, any bus can be used.
@@ -846,7 +846,7 @@ class Flow(Element):
             used for investment costs or/and investment-optimization!
         exists : int, array, None
             indicates when a flow is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            max_rel is multiplied with this value before the solve
+            relative_maximum is multiplied with this value before the solve
         group: str, None
             group name to assign flows to groups. Used for later analysis of the results
         '''
@@ -856,7 +856,7 @@ class Flow(Element):
         self.bus = bus
         self.size = size  # skalar!
         self.min_rel = TimeSeries('min_rel', min_rel, self)
-        self.max_rel = TimeSeries('max_rel', max_rel, self)
+        self.relative_maximum = TimeSeries('relative_maximum', relative_maximum, self)
 
         self.load_factor_min = load_factor_min
         self.load_factor_max = load_factor_max
@@ -923,7 +923,7 @@ class Flow(Element):
         details = [
             f"bus={self.bus.label if self.bus else 'None'}",
             f"size={self.size}",
-            f"min/max_rel={self.min_rel}-{self.max_rel}",
+            f"min/relative_maximum={self.min_rel}-{self.relative_maximum}",
             f"medium={self.medium}",
             f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
             f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
@@ -940,8 +940,8 @@ class Flow(Element):
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausibility_test(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
-        if np.any(self.min_rel.data > self.max_rel.data):
-            raise Exception(self.label_full + ': Take care, that min_rel <= max_rel!')
+        if np.any(self.min_rel.data > self.relative_maximum.data):
+            raise Exception(self.label_full + ': Take care, that min_rel <= relative_maximum!')
 
     # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
     def force_on_variable(self) -> None:
@@ -953,9 +953,9 @@ class Flow(Element):
         # exist-merge aus Flow.exist und Comp.exist
         exists_global = np.multiply(self.exists.data, self.comp.exists.data)  # array of 0 and 1
         self.exists_with_comp = TimeSeries('exists_with_comp', helpers.check_exists(exists_global), self)
-        # combine max_rel with and exist from the flow and the comp it belongs to
+        # combine relative_maximum with and exist from the flow and the comp it belongs to
         self.max_rel_with_exists = TimeSeries('max_rel_with_exists',
-                                              np.multiply(self.max_rel.data, self.exists_with_comp.data), self)
+                                              np.multiply(self.relative_maximum.data, self.exists_with_comp.data), self)
         self.min_rel_with_exists = TimeSeries('min_rel_with_exists',
                                               np.multiply(self.min_rel.data, self.exists_with_comp.data), self)
 
@@ -964,7 +964,7 @@ class Flow(Element):
             from flixOpt.features import FeatureInvest
             self.featureInvest = FeatureInvest('size', self, self.invest_parameters,
                                                min_rel=self.min_rel_with_exists,
-                                               max_rel=self.max_rel_with_exists,
+                                               relative_maximum=self.max_rel_with_exists,
                                                fixed_relative_value=self.fixed_relative_value,
                                                investment_size=self.size,
                                                featureOn=self.featureOn)

@@ -69,7 +69,7 @@ aBoiler = Boiler('Boiler', eta = 0.5,  # name, efficiency factor
                              bus = Fernwaerme,  # define, where flow is linked to (here: Fernwaerme-Bus)
                              size=50,  # kW; nominal_size of boiler
                              min_rel = 5/50,  # 10 % minimum load, i.e. 5 kW
-                             max_rel = 1,  # 100 % maximum load, i.e. 50 kW
+                             relative_maximum = 1,  # 100 % maximum load, i.e. 50 kW
                              ),
                  # defining the input-flow = fuel-flow
                  Q_fu = Flow(label ='Q_fu',  # name of flow

@@ -681,7 +681,7 @@ class Storage(Component):
         **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
             DESCRIPTION.
         '''
-        # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch "fixed_relative_value_chargeState" implementieren damit konsistent zu flow (max_rel, min_rel, val_re)
+        # TODO: neben min_rel_chargeState, max_rel_chargeState ggf. noch "fixed_relative_value_chargeState" implementieren damit konsistent zu flow (relative_maximum, min_rel, val_re)
 
         # charge_state_end_min (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
         super().__init__(label, **kwargs)
@@ -731,7 +731,7 @@ class Storage(Component):
         if self.invest_parameters is not None:
             self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.invest_parameters,
                                                min_rel=self.min_rel_chargeState,
-                                               max_rel=self.max_rel_chargeState,
+                                               relative_maximum=self.max_rel_chargeState,
                                                fixed_relative_value=None,  # kein vorgegebenes Profil
                                                investment_size=self.capacity_inFlowHours,
                                                featureOn=None)  # hier gibt es kein On-Wert
