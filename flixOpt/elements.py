@@ -345,7 +345,7 @@ class Component(Element):
     system_model: SystemModel
     new_init_args = ['label', 'on_values_before_begin', 'switch_on_effects', 'switch_on_total_max',
                      'on_hours_total_min',
-                     'on_hours_total_max', 'running_hour_effects', 'exists']
+                     'on_hours_total_max', 'effects_per_running_hour', 'exists']
     not_used_args = ['label']
 
     def __init__(self,
@@ -355,7 +355,7 @@ class Component(Element):
                  switch_on_total_max: Optional[Skalar] = None,
                  on_hours_total_min: Optional[Skalar] = None,
                  on_hours_total_max: Optional[Skalar] = None,
-                 running_hour_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 effects_per_running_hour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
                  exists: Numeric = 1,
                  **kwargs):
         '''
@@ -376,7 +376,7 @@ class Component(Element):
         switch_on_total_max : look in Flow for description
         on_hours_total_min : look in Flow for description
         on_hours_total_max : look in Flow for description
-        running_hour_effects : look in Flow for description
+        effects_per_running_hour : look in Flow for description
         exists : array, int, None
             indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
         **kwargs : TYPE
@@ -400,7 +400,7 @@ class Component(Element):
         self.switch_on_max = switch_on_total_max
         self.on_hours_total_min = on_hours_total_min
         self.on_hours_total_max = on_hours_total_max
-        self.running_hour_effects = as_effect_dict_with_ts('running_hour_effects', running_hour_effects, self)
+        self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', effects_per_running_hour, self)
         self.exists = TimeSeries('exists', helpers.check_exists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
@@ -494,7 +494,7 @@ class Component(Element):
         # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
         flows_defining_on = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
         self.featureOn = FeatureOn(self, flows_defining_on, self.on_values_before_begin, self.switch_on_effects,
-                                   self.running_hour_effects, on_hours_total_min=self.on_hours_total_min,
+                                   self.effects_per_running_hour, on_hours_total_min=self.on_hours_total_min,
                                    on_hours_total_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
 
     def declare_vars_and_eqs(self, system_model) -> None:
@@ -762,7 +762,7 @@ class Flow(Element):
                  off_hours_max: Optional[Skalar] = None,
                  switch_on_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
-                 running_hour_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
+                 effects_per_running_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  flow_hours_total_max: Optional[Skalar] = None, flow_hours_total_min: Optional[Skalar] = None,
                  values_before_begin: Optional[List[Skalar]] = None,
                  val_rel: Optional[Numeric_TS] = None,  # TODO: Rename?
@@ -821,7 +821,7 @@ class Flow(Element):
             unit i.g. in Euro
         switch_on_total_max : integer, optional
             max nr of switchOn operations
-        running_hour_effects : scalar or TS, optional
+        effects_per_running_hour : scalar or TS, optional
             costs for operating, i.g. in € per hour
         flow_hours_total_max : TYPE, optional
             maximum flow-hours ("flow-work")
@@ -871,7 +871,7 @@ class Flow(Element):
         self.off_hours_max = None if (off_hours_max is None) else TimeSeries('off_hours_max', off_hours_max, self)
         self.switch_on_effects = as_effect_dict_with_ts('switch_on_effects', switch_on_effects, self)
         self.switch_on_total_max = switch_on_total_max
-        self.running_hour_effects = as_effect_dict_with_ts('running_hour_effects', running_hour_effects, self)
+        self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', effects_per_running_hour, self)
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
 
@@ -907,7 +907,7 @@ class Flow(Element):
         self.featureOn = FeatureOn(self, flows_defining_on,
                                    on_values_before_begin,
                                    self.switch_on_effects,
-                                   self.running_hour_effects,
+                                   self.effects_per_running_hour,
                                    on_hours_total_min=self.on_hours_total_min,
                                    on_hours_total_max=self.on_hours_total_max,
                                    on_hours_min=self.on_hours_min,
@@ -928,7 +928,7 @@ class Flow(Element):
             f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
             f"val_rel={self.val_rel}" if self.val_rel else "",
             f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
-            f"running_hour_effects={self.running_hour_effects}" if self.running_hour_effects else "",
+            f"effects_per_running_hour={self.effects_per_running_hour}" if self.effects_per_running_hour else "",
         ]
 
         all_relevant_parts = [part for part in details if part != ""]

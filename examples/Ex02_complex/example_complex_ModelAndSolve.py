@@ -78,7 +78,7 @@ invest_Gaskessel = InvestParameters(fix_effects=1000,  # 1000 € investment cos
 # invest_Gaskessel = None #
 # 1. b) boiler itself:
 aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
-                    running_hour_effects={costs: 0, CO2: 1000},  # 1000 kg_CO2/h (just for testing)
+                    effects_per_running_hour={costs: 0, CO2: 1000},  # 1000 kg_CO2/h (just for testing)
                     # defining flows:
                     Q_th=Flow(label='Q_th',  # name
                               bus=Fernwaerme,  # linked bus

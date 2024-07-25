@@ -323,7 +323,7 @@ class FeatureOn(Feature):
                  switch_on_total_max: Optional[Skalar] = None,
                  on_hours_total_min: Optional[Skalar] = None,
                  on_hours_total_max: Optional[Skalar] = None,
-                 running_hour_effects: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
+                 effects_per_running_hour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
     
     """
     def __init__(self,
@@ -331,7 +331,7 @@ class FeatureOn(Feature):
                  flows_defining_on: List[Flow],
                  on_values_before_begin: List[int],
                  switch_on_effects: Optional[EffectTypeDict] = None,
-                 running_hour_effects: Optional[EffectTypeDict] = None,
+                 effects_per_running_hour: Optional[EffectTypeDict] = None,
                  on_hours_total_min: Optional[int] = None,
                  on_hours_total_max: Optional[int] = None,
                  on_hours_min: Optional[Numeric] = None,
@@ -345,7 +345,7 @@ class FeatureOn(Feature):
         self.flows_defining_on = flows_defining_on
         self.on_values_before_begin = on_values_before_begin
         self.switch_on_effects = switch_on_effects
-        self.running_hour_effects = running_hour_effects
+        self.effects_per_running_hour = effects_per_running_hour
         self.on_hours_total_min = on_hours_total_min  # scalar
         self.on_hours_total_max = on_hours_total_max  # scalar
         self.on_hours_min = on_hours_min  # TimeSeries
@@ -358,7 +358,7 @@ class FeatureOn(Feature):
 
     @property
     def use_on(self) -> bool:
-        return (any(param is not None for param in [self.running_hour_effects,
+        return (any(param is not None for param in [self.effects_per_running_hour,
                                                     self.on_hours_total_min,
                                                     self.on_hours_total_max])
                 or self.force_on or self.use_switch_on or self.use_on_hours or self.use_off_hours or self.use_off)
@@ -638,10 +638,10 @@ class FeatureOn(Feature):
         if self.switch_on_effects is not None:  # and any(self.switch_on_effects.active_data != 0):
             effect_collection.add_share_to_operation('switch_on_effects', shareHolder, self.model.variables['switchOn'], self.switch_on_effects, 1)
         # Betriebskosten:
-        if self.running_hour_effects is not None:  # and any(self.running_hour_effects):
-            effect_collection.add_share_to_operation('running_hour_effects', shareHolder, self.model.variables['on'],
-                                               self.running_hour_effects, system_model.dt_in_hours)
-            # effect_collection.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
+        if self.effects_per_running_hour is not None:  # and any(self.effects_per_running_hour):
+            effect_collection.add_share_to_operation('effects_per_running_hour', shareHolder, self.model.variables['on'],
+                                               self.effects_per_running_hour, system_model.dt_in_hours)
+            # effect_collection.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.effects_per_running_hour.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als Feature_TSShareSum
