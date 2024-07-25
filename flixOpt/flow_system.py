@@ -177,10 +177,8 @@ class FlowSystem:
         for temporary_element in self.temporary_elements:
             # delete them again in the lists:
             self.components.remove(temporary_element)
-            self.all_buses.remove(temporary_element)
             self.other_elements.remove(temporary_element)
-            self.effects.remove(temporary_element)
-            self.all_flows(temporary_element)
+            self.effect_collection.effects.remove(temporary_element)
 
     def _check_if_element_is_unique(self, element: Element, existing_elements: List[Element]) -> None:
         '''
