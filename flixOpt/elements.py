@@ -166,29 +166,175 @@ class Effect(Element):
 
 
 # Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
-class EffectCollection(List[Effect]):
-    '''
-    internal effect list for simple handling of effects
-    '''
+
+EffectTypeDict = Dict[Effect, Numeric_TS]  # Datatype
+
+
+class EffectCollection(Element):
+    """
+    Handling Effects and penalties
+    """
+
+    def __init__(self, label: str, **kwargs):
+        super().__init__(label, **kwargs)
+        self.effects = []
+        self.penalty = None
+
+    def add_effect(self, effect: Effect) -> None:
+        if effect.is_standard and self.standard_effect is not None:
+            raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
+        if effect.is_objective and self.objective_effect is not None:
+            raise Exception(f'A objective-effect already exists! ({self.objective_effect.label=})')
+        if effect in self.effects:
+            raise Exception(f'Effect already added! ({effect.label=})')
+        if effect.label in [existing_effect.label for existing_effect in self.effects]:
+            raise Exception(f'Effect with label "{effect.label=}" already added!')
+        self.effects.append(effect)
+        self.sub_elements.append(effect)
 
     @property
     def standard_effect(self) -> Optional[Effect]:
-        aEffect: Effect
-        for aEffectType in self:
-            if aEffectType.is_standard:
-                return aEffectType
+        for effect in self.effects:
+            if effect.is_standard:
+                return effect
 
     @property
-    def objective_effect(self) -> Effect:
-        aEffect: Effect
-        aObjectiveEffect = None
-        # TODO: eleganter nach attribut suchen:
-        for aEffectType in self:
-            if aEffectType.is_objective: aObjectiveEffect = aEffectType
-        return aObjectiveEffect
+    def objective_effect(self) -> Optional[Effect]:
+        for effect in self.effects:
+            if effect.is_objective:
+                return effect
+
+    def finalize(self) -> None:
+        for effect in self.effects:
+            effect.finalize()
+        from flixOpt.features import Feature_ShareSum
+        self.penalty = Feature_ShareSum('penalty', self, shares_are_time_series=True)
+
+    # Beiträge registrieren:
+    # effectValues kann sein
+    #   1. {effecttype1 : TS, effectType2: : TS} oder
+    #   2. TS oder skalar
+    #     -> Zuweisung zu Standard-EffektType
+
+    def add_share_to_operation(self,
+                               name_of_share: str,
+                               owner: Element,
+                               variable: Variable,
+                               effect_values: Dict[Optional[Effect], TimeSeries],
+                               factor: Numeric) -> None:
+        if variable is None: raise Exception(
+            'add_share_to_operation() needs variable or use add_constant_share instead')
+        self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
+
+    def add_constant_share_to_operation(self,
+                                        name_of_share: str,
+                                        owner: Element,
+                                        effect_values: Dict[Optional[Effect], TimeSeries],
+                                        factor: Numeric) -> None:
+        self._add_share('operation', name_of_share, owner, effect_values, factor)
+
+    def add_share_to_invest(self,
+                            name_of_share: str,
+                            owner: Element,
+                            variable: Variable,
+                            effect_values: Dict[Optional[Effect], TimeSeries],
+                            factor: Numeric) -> None:
+        if variable is None:
+            raise Exception('add_share_to_invest() needs variable or use add_constant_share instead')
+        self._add_share('invest', name_of_share, owner, effect_values, factor, variable)
+
+    def add_constant_share_to_invest(self,
+                                     name_of_share: str,
+                                     owner: Element,
+                                     effect_values: Dict[Optional[Effect], TimeSeries],
+                                     factor: Numeric) -> None:
+        self._add_share('invest', name_of_share, owner, effect_values, factor)
+
+        # wenn aVariable = None, dann constanter Share
+
+    def _add_share(self,
+                   operation_or_invest: Literal['operation', 'invest'],
+                   name_of_share: str,
+                   owner: Element,
+                   effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                   factor: Numeric,
+                   variable: Optional[Variable] = None) -> None:
+        effect_values_dict = as_effect_dict(effect_values)
+
+        # an alle Effekttypen, die einen Wert haben, anhängen:
+        for effect, value in effect_values_dict.items():
+            # Falls None, dann Standard-effekt nutzen:
+            if effect is None:
+                effect = self.standard_effect
+            elif effect not in self.effects:
+                raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
+
+            if operation_or_invest == 'operation':
+                effect.operation.add_share(name_of_share, owner, variable, value,
+                                           factor)  # hier darf aVariable auch None sein!
+            elif operation_or_invest == 'invest':
+                effect.invest.add_share(name_of_share, owner, variable, value,
+                                        factor)  # hier darf aVariable auch None sein!
+            else:
+                raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
+
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
+        self.penalty.declare_vars_and_eqs(system_model)
+        # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
+        for effect in self.effects:
+            effect.declare_vars_and_eqs(system_model)
+
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
+        self.penalty.do_modeling(system_model, time_indices)
+        for effect in self.effects:
+            effect.do_modeling(system_model, time_indices)
+
+        ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
+        for effectType in self.effects:
+            # Beitrag/Share ergänzen:
+            # 1. operation: -> hier sind es Zeitreihen (share_TS)
+            # alle specificSharesToOtherEffects durchgehen:
+            nameOfShare = 'specific_share_to_other_effects_operation'  # + effectType.label
+            for effectTypeOfShare, specShare_TS in effectType.specific_share_to_other_effects_operation.items():
+                # Share anhängen (an jeweiligen Effekt):
+                shareSum_op = effectTypeOfShare.operation
+                shareSum_op: flixOpt.flixFeatures.Feature_ShareSum
+                shareHolder = effectType
+                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.variables['sum_TS'],
+                                               specShare_TS, 1)
+            # 2. invest:    -> hier ist es Skalar (share)
+            # alle specificSharesToOtherEffects durchgehen:
+            nameOfShare = 'specificShareToOtherEffects_invest_'  # + effectType.label
+            for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
+                # Share anhängen (an jeweiligen Effekt):
+                shareSum_inv = effectTypeOfShare.invest
+                from flixOpt.features import Feature_ShareSum
+                shareSum_inv: Feature_ShareSum
+                shareHolder = effectType
+                shareSum_inv.add_variable_share(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
 
 
-EffectTypeDict = Dict[Effect, Numeric_TS]  # Datatype
+class Objective(Element):
+    """
+    Storing the Objective
+    """
+
+    def __init__(self, label: str, **kwargs):
+        super().__init__(label, **kwargs)
+        self.objective = None
+
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
+        # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
+        self.objective = Equation('objective', self, system_model, 'objective')
+        self.model.add_equation(self.objective)
+        system_model.objective = self.objective
+
+    def add_objective_effect_and_penalty(self, effect_collection: EffectCollection) -> None:
+        if effect_collection.objective_effect is None:
+            raise Exception('Kein Effekt als Zielfunktion gewählt!')
+        self.objective.add_summand(effect_collection.objective_effect.operation.model.variables['sum'], 1)
+        self.objective.add_summand(effect_collection.objective_effect.invest.model.variables['sum'], 1)
+        self.objective.add_summand(effect_collection.penalty.model.variables['sum'], 1)
 
 
 # Beliebige Komponente (:= Element mit Ein- und Ausgängen)
@@ -365,14 +511,16 @@ class Component(Element):
         log.debug(str(self.label) + 'do_modeling()')
         self.featureOn.do_modeling(system_model, time_indices)
 
-    def add_share_to_globals_of_flows(self, globalComp, system_model) -> None:
+    def add_share_to_globals_of_flows(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
         for aFlow in self.inputs + self.outputs:
-            aFlow.add_share_to_globals(globalComp, system_model)
+            aFlow.add_share_to_globals(effect_collection, system_model)
 
     # wird von Kindklassen überschrieben:
-    def add_share_to_globals(self, globalComp, system_model) -> None:
+    def add_share_to_globals(self,
+                             effect_collection: EffectCollection,
+                             system_model: SystemModel) -> None:
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
-        self.featureOn.add_share_to_globals(globalComp, system_model)
+        self.featureOn.add_share_to_globals(effect_collection, system_model)
 
     def description(self) -> Dict:
 
@@ -405,159 +553,6 @@ class Component(Element):
                 inhalt['color'] = str(self.color)
 
         return descr
-
-
-# komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
-class Global(Element):
-    '''
-    storing global modeling stuff like effect equations and optimization target
-    '''
-
-    def __init__(self, label: str, **kwargs):
-        super().__init__(label, **kwargs)
-
-        self.listOfEffectTypes = []  # wird überschrieben mit spezieller Liste
-
-        self.objective = None
-        self.penalty = None
-
-    def finalize(self) -> None:
-        super().finalize()  # TODO: super-Finalize eher danach?
-        from flixOpt.features import Feature_ShareSum
-        self.penalty = Feature_ShareSum('penalty', self, shares_are_time_series=True)
-
-        # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
-        self.sub_elements.extend(self.listOfEffectTypes)
-
-    # Beiträge registrieren:
-    # effectValues kann sein
-    #   1. {effecttype1 : TS, effectType2: : TS} oder
-    #   2. TS oder skalar
-    #     -> Zuweisung zu Standard-EffektType
-
-    def add_share_to_operation(self,
-                               name_of_share: str,
-                               owner: Element,
-                               variable: Variable,
-                               effect_values: Dict[Optional[Effect], TimeSeries],
-                               factor: Numeric) -> None:
-        if variable is None: raise Exception(
-            'add_share_to_operation() needs variable or use add_constant_share instead')
-        self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
-
-    def add_constant_share_to_operation(self,
-                                        name_of_share: str,
-                                        owner: Element,
-                                        effect_values: Dict[Optional[Effect], TimeSeries],
-                                        factor: Numeric) -> None:
-        self._add_share('operation', name_of_share, owner, effect_values, factor)
-
-    def add_share_to_invest(self,
-                            name_of_share: str,
-                            owner: Element,
-                            variable: Variable,
-                            effect_values: Dict[Optional[Effect], TimeSeries],
-                            factor: Numeric) -> None:
-        if variable is None:
-            raise Exception('add_share_to_invest() needs variable or use add_constant_share instead')
-        self._add_share('invest', name_of_share, owner, effect_values, factor, variable)
-
-    def add_constant_share_to_invest(self,
-                                     name_of_share: str,
-                                     owner: Element,
-                                     effect_values: Dict[Optional[Effect], TimeSeries],
-                                     factor: Numeric) -> None:
-        self._add_share('invest', name_of_share, owner, effect_values, factor)
-
-        # wenn aVariable = None, dann constanter Share
-
-    def _add_share(self,
-                   operation_or_invest: Literal['operation', 'invest'],
-                   name_of_share: str,
-                   owner: Element,
-                   effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
-                   factor: Numeric,
-                   variable: Optional[Variable] = None) -> None:
-        effect_values_dict = as_effect_dict(effect_values)
-
-        # an alle Effekttypen, die einen Wert haben, anhängen:
-        for effect, value in effect_values_dict.items():
-            # Falls None, dann Standard-effekt nutzen:
-            effect: Effect
-            if effect is None:
-                effect = self.listOfEffectTypes.standard_effect
-            elif effect not in self.listOfEffectTypes:
-                raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
-
-            if operation_or_invest == 'operation':
-                effect.operation.add_share(name_of_share, owner, variable, value,
-                                           factor)  # hier darf aVariable auch None sein!
-            elif operation_or_invest == 'invest':
-                effect.invest.add_share(name_of_share, owner, variable, value,
-                                        factor)  # hier darf aVariable auch None sein!
-            else:
-                raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
-
-    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-
-        # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
-
-        super().declare_vars_and_eqs(system_model)
-
-        for effect in self.listOfEffectTypes:
-            effect.declare_vars_and_eqs(system_model)
-        self.penalty.declare_vars_and_eqs(system_model)
-
-        self.objective = Equation('obj', self, system_model, 'objective')
-        self.model.add_equation(self.objective)
-        system_model.objective = self.objective
-
-        # todo : besser wäre objective separat:
-
-    #  eq_objective = Equation('objective',self,model,'objective')
-    # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
-        # super().do_modeling(model,time_indices)
-
-        self.penalty.do_modeling(system_model, time_indices)
-        ## Gleichungen bauen für Effekte: ##
-        effect: Effect
-        for effect in self.listOfEffectTypes:
-            effect.do_modeling(system_model, time_indices)
-
-        ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
-        for effectType in self.listOfEffectTypes:
-            # Beitrag/Share ergänzen:
-            # 1. operation: -> hier sind es Zeitreihen (share_TS)
-            # alle specificSharesToOtherEffects durchgehen:
-            nameOfShare = 'specific_share_to_other_effects_operation'  # + effectType.label
-            for effectTypeOfShare, specShare_TS in effectType.specific_share_to_other_effects_operation.items():
-                # Share anhängen (an jeweiligen Effekt):
-                shareSum_op = effectTypeOfShare.operation
-                shareSum_op: flixOpt.flixFeatures.Feature_ShareSum
-                shareHolder = effectType
-                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.variables['sum_TS'],
-                                               specShare_TS, 1)
-            # 2. invest:    -> hier ist es Skalar (share)
-            # alle specificSharesToOtherEffects durchgehen:
-            nameOfShare = 'specificShareToOtherEffects_invest_'  # + effectType.label
-            for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
-                # Share anhängen (an jeweiligen Effekt):
-                shareSum_inv = effectTypeOfShare.invest
-                from flixOpt.features import Feature_ShareSum
-                shareSum_inv: Feature_ShareSum
-                shareHolder = effectType
-                shareSum_inv.add_variable_share(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
-
-        # ####### target function  ###########
-        # Strafkosten immer:
-        self.objective.add_summand(self.penalty.model.variables['sum'], 1)
-
-        # Definierter Effekt als Zielfunktion:
-        objectiveEffect = self.listOfEffectTypes.objective_effect
-        if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
-        self.objective.add_summand(objectiveEffect.operation.model.variables['sum'], 1)
-        self.objective.add_summand(objectiveEffect.invest.model.variables['sum'], 1)
 
 
 class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
@@ -662,12 +657,12 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             bus_balance.add_summand(self.model.variables['excess_output'], -1)
             bus_balance.add_summand(self.model.variables['excess_input'], 1)
 
-    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
-        super().add_share_to_globals(global_comp, system_model)
+    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
+        super().add_share_to_globals(effect_collection, system_model)
         if self.with_excess:  # Strafkosten hinzufügen:
-            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour_in', self, self.model.variables['excess_input'],
+            effect_collection.penalty.add_variable_share('excess_effects_per_flow_hour_in', self, self.model.variables['excess_input'],
                                                    self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            global_comp.penalty.add_variable_share('excess_effects_per_flow_hour_out', self, self.model.variables['excess_output'],
+            effect_collection.penalty.add_variable_share('excess_effects_per_flow_hour_out', self, self.model.variables['excess_output'],
                                                    self.excess_effects_per_flow_hour, system_model.dt_in_hours)
 
 
@@ -1138,20 +1133,20 @@ class Flow(Element):
 
         # z.B. max_PEF, max_CO2, ...
 
-    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel) -> None:
+    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
 
         # Arbeitskosten:
         if self.effects_per_flow_hour is not None:
             owner = self
-            global_comp.add_share_to_operation(
+            effect_collection.add_share_to_operation(
                 'effects_per_flow_hour', owner, self.model.variables['val'],
                 self.effects_per_flow_hour, system_model.dt_in_hours)
 
         # Anfahrkosten, Betriebskosten, ... etc ergänzen:
-        self.featureOn.add_share_to_globals(global_comp, system_model)
+        self.featureOn.add_share_to_globals(effect_collection, system_model)
 
         if self.featureInvest is not None:
-            self.featureInvest.add_share_to_globals(global_comp, system_model)
+            self.featureInvest.add_share_to_globals(effect_collection, system_model)
 
         """
         in oemof gibt es noch 

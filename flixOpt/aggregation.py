@@ -17,7 +17,7 @@ import numpy as np
 import tsam.timeseriesaggregation as tsam
 
 from flixOpt.core import Skalar, TimeSeries
-from flixOpt.elements import Global, Flow
+from flixOpt.elements import EffectCollection, Flow
 from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Storage
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
@@ -244,11 +244,11 @@ class AggregationModeling(Element):
         if self.elements_to_clusterize is None:
             # Alle:
             compSet = set(self.flow_system.components)
-            flowSet = self.flow_system.flows
+            flowSet = self.flow_system.all_flows
         else:
             # Ausgewählte:
             compSet = set(self.elements_to_clusterize)
-            flowSet = {flow for flow in self.flow_system.flows if flow.comp in self.elements_to_clusterize}
+            flowSet = {flow for flow in self.flow_system.all_flows if flow.comp in self.elements_to_clusterize}
 
         flow: Flow
 
@@ -337,13 +337,13 @@ class AggregationModeling(Element):
             eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
-    def add_share_to_globals(self, globalComp: Global, system_model):
+    def add_share_to_globals(self, effect_collection: EffectCollection, system_model):
 
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentage_of_period_freedom > 0) & (self.costs_of_period_freedom != 0):
             for var_K in self.var_K_list:
                 # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!
-                globalComp.objective.add_summand(var_K, self.costs_of_period_freedom, as_sum=True)
+                effect_collection.objective.add_summand(var_K, self.costs_of_period_freedom, as_sum=True)
 
 
 class TimeSeriesCollection:

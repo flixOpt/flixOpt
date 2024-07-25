@@ -7,13 +7,13 @@ developed by Felix Panitz* and Peter Stange*
 ## TODO:
 # featureAvoidFlowsAtOnce:
 # neue Variante (typ="new") austesten
-from typing import Optional, Union, Tuple, Dict, List, Set, Callable, Literal, TYPE_CHECKING
+from typing import Optional, Union, Tuple, Dict, List, Set, Callable, Literal
 import logging
 
 import numpy as np
 
 from flixOpt.structure import Element, SystemModel
-from flixOpt.elements import Flow, EffectTypeDict, Global
+from flixOpt.elements import Flow, EffectTypeDict, EffectCollection
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.flixBasicsPublic import InvestParameters
@@ -632,17 +632,16 @@ class FeatureOn(Feature):
         self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], 1)
         self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], -1, as_sum=True)
 
-    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel):
-
+    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel):
         shareHolder = self.owner
         # Anfahrkosten:
         if self.switch_on_effects is not None:  # and any(self.switch_on_effects.active_data != 0):
-            global_comp.add_share_to_operation('switch_on_effects', shareHolder, self.model.variables['switchOn'], self.switch_on_effects, 1)
+            effect_collection.add_share_to_operation('switch_on_effects', shareHolder, self.model.variables['switchOn'], self.switch_on_effects, 1)
         # Betriebskosten:
         if self.running_hour_effects is not None:  # and any(self.running_hour_effects):
-            global_comp.add_share_to_operation('running_hour_effects', shareHolder, self.model.variables['on'],
+            effect_collection.add_share_to_operation('running_hour_effects', shareHolder, self.model.variables['on'],
                                                self.running_hour_effects, system_model.dt_in_hours)
-            # global_comp.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
+            # effect_collection.costsOfOperating_eq.add_summand(self.model.var_on, np.multiply(self.running_hour_effects.active_data, model.dt_in_hours))# np.multiply = elementweise Multiplikation
 
 
 # TODO: als Feature_TSShareSum
@@ -1158,17 +1157,17 @@ class FeatureInvest(Feature):
             self.model.eqs['isInvested_constraint_2'].add_summand(self.model.variables[self.name_of_investment_size], -1)
             self.model.eqs['isInvested_constraint_2'].add_summand(self.model.variables['isInvested'], max(system_model.epsilon, self.invest_parameters.minimum_size))
 
-    def add_share_to_globals(self, global_comp: Global, system_model: SystemModel):
+    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel):
 
         # # fix_effects:
         if self.invest_parameters.fix_effects is not None and self.invest_parameters.fix_effects != 0:
             if self.invest_parameters.optional:
                 # fix Share to InvestCosts: 
                 # share: + isInvested * fix_effects
-                global_comp.add_share_to_invest('fix_effects', self.owner, self.model.var_isInvested, self.invest_parameters.fix_effects, 1)
+                effect_collection.add_share_to_invest('fix_effects', self.owner, self.model.var_isInvested, self.invest_parameters.fix_effects, 1)
             else:
                 # share: + fix_effects
-                global_comp.add_constant_share_to_invest('fix_effects', self.owner, self.invest_parameters.fix_effects,
+                effect_collection.add_constant_share_to_invest('fix_effects', self.owner, self.invest_parameters.fix_effects,
                                                          1)  # fester Wert hinufügen
 
         # # divest_effects:
@@ -1178,19 +1177,19 @@ class FeatureInvest(Feature):
                 # share: [(1- isInvested) * divest_effects]
                 # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
-                global_comp.add_constant_share_to_invest('divest_effects', self.owner, self.invest_parameters.divest_effects, 1)
+                effect_collection.add_constant_share_to_invest('divest_effects', self.owner, self.invest_parameters.divest_effects, 1)
                 # 2. part of share [- isInvested * divest_effects]:
-                global_comp.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.variables['isInvested],'],
+                effect_collection.add_share_to_invest('divestCosts_cancellation', self.owner, self.model.variables['isInvested],'],
                                                 self.invest_parameters.divest_effects, -1)
                 # TODO : these 2 parts should be one share!
 
         # # specific_effects:
         if self.invest_parameters.specific_effects is not None:
             # share: + investment_size (=var)   * specific_effects
-            global_comp.add_share_to_invest('specific_effects', self.owner, self.model.variables[self.name_of_investment_size],
+            effect_collection.add_share_to_invest('specific_effects', self.owner, self.model.variables[self.name_of_investment_size],
                                             self.invest_parameters.specific_effects, 1)
 
         # # segmentedCosts:                                        
         if self.featureLinearSegments is not None:
             for effect, var_investSegs in self.investVar_effect_dict.items():
-                global_comp.add_share_to_invest('linearSegments', self.owner, var_investSegs, {effect: 1}, 1)
+                effect_collection.add_share_to_invest('linearSegments', self.owner, var_investSegs, {effect: 1}, 1)

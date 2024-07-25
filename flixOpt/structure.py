@@ -74,15 +74,15 @@ class SystemModel(MathModel):
               excess_threshold: Union[int, float] = 0.1,
               logfile_name: str = 'solver_log.log',
               **kwargs):
-        '''
+        """
         Parameters
         ----------
         mip_gap : TYPE, optional
             DESCRIPTION. The default is 0.02.
         time_limit_seconds : TYPE, optional
             DESCRIPTION. The default is 3600.
-        solver : TYPE, optional
-            DESCRIPTION. The default is 'cbc'.
+        solver_name : TYPE, optional
+            DESCRIPTION. The default is 'highs'.
         solver_output_to_console : TYPE, optional
             DESCRIPTION. The default is True.
         excess_threshold : float, positive!
@@ -94,8 +94,7 @@ class SystemModel(MathModel):
         -------
         main_results_str : TYPE
             DESCRIPTION.
-
-        '''
+        """
 
         # check valid solver options:
         if len(kwargs) > 0:
@@ -131,14 +130,14 @@ class SystemModel(MathModel):
         print('##############################################################')
         print('################### finished #################################')
         print('')
-        for aEffect in self.flow_system.global_comp.listOfEffectTypes:
+        for aEffect in self.flow_system.effect_collection.effects:
             print(aEffect.label + ' in ' + aEffect.unit + ':')
             print('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
             print('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
             print('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
 
         print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.flow_system.global_comp.penalty.model.variables['sum'].result))
+        print('penaltyCosts     : ' + str(self.flow_system.effect_collection.penalty.model.variables['sum'].result))
         print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
         print('Result of Obj : ' + str(self.objective_result))
         try:
@@ -146,7 +145,7 @@ class SystemModel(MathModel):
         except:
             print
         print('')
-        for aBus in self.flow_system.buses:
+        for aBus in self.flow_system.all_buses:
             if aBus.with_excess:
                 if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
                         self.results[aBus.label]['excess_output'] > 1e-6):
@@ -155,7 +154,7 @@ class SystemModel(MathModel):
                     print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
-        if self.flow_system.global_comp.penalty.model.variables['sum'].result > 10:
+        if self.flow_system.effect_collection.penalty.model.variables['sum'].result > 10:
             print('Take care: -> high penalty makes the used mip_gap quite high')
             print('           -> real costs are not optimized to mip_gap')
 
@@ -169,13 +168,13 @@ class SystemModel(MathModel):
 
             aEffectDict = {}
             main_results_str['Effects'] = aEffectDict
-            for aEffect in self.flow_system.global_comp.listOfEffectTypes:
+            for aEffect in self.flow_system.effect_collection.effects:
                 aDict = {}
                 aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
                 aDict['operation'] = str(aEffect.operation.model.variables['sum'].result)
                 aDict['invest'] = str(aEffect.invest.model.variables['sum'].result)
                 aDict['sum'] = str(aEffect.all.model.variables['sum'].result)
-            main_results_str['penaltyCosts'] = str(self.flow_system.global_comp.penalty.model.variables['sum'].result)
+            main_results_str['penaltyCosts'] = str(self.flow_system.effect_collection.penalty.model.variables['sum'].result)
             main_results_str['Result of Obj'] = self.objective_result
             if self.solver_name =='highs':
                 main_results_str['lower bound'] = self.solver_results.best_objective_bound
@@ -183,7 +182,7 @@ class SystemModel(MathModel):
                 main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
             main_results_str['busesWithExcess'] = busesWithExcess
-            for aBus in self.flow_system.buses:
+            for aBus in self.flow_system.all_buses:
                 if aBus.with_excess:
                     if sum(self.results[aBus.label]['excess_input']) > excess_threshold or sum(
                             self.results[aBus.label]['excess_output']) > excess_threshold:
@@ -193,7 +192,7 @@ class SystemModel(MathModel):
                      'not invested': {}
                      }
             main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.flow_system.invest_features:
+            for aInvestFeature in self.flow_system.all_investments:
                 investValue = aInvestFeature.model.variables[aInvestFeature.name_of_investment_size].result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:

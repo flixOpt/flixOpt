@@ -441,7 +441,7 @@ class SegmentedCalculation(Calculation):
         t_start = timeit.default_timer()
         self.flow_system.finalize()   # flow_system finalisieren:
 
-        assert len(self.flow_system.invest_features) == 0, 'Invest-Parameters not supported in segmented calculation!'
+        assert len(self.flow_system.all_investments) == 0, 'Invest-Parameters not supported in segmented calculation!'
         assert nr_of_used_steps <= segment_length
         assert segment_length <= len(self.time_series), f'{segment_length=} cant be greater than {len(self.time_series)=}'
 
