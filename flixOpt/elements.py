@@ -747,12 +747,17 @@ class Flow(Element):
 
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
+                 size: Optional[Skalar] = _default_size,
                  relative_minimum: Numeric_TS = 0,
                  relative_maximum: Numeric_TS = 1,
-                 size: Optional[Skalar] = _default_size,
-                 load_factor_min: Optional[Skalar] = None, load_factor_max: Optional[Skalar] = None,
-                 # positive_gradient=None,
+                 fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
+                 flow_hours_total_max: Optional[Skalar] = None,
+                 flow_hours_total_min: Optional[Skalar] = None,
+                 load_factor_min: Optional[Skalar] = None,
+                 load_factor_max: Optional[Skalar] = None,
+                 values_before_begin: Optional[List[Skalar]] = None,
                  effects_per_flow_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
+                 effects_per_running_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  can_switch_off: bool = True,
                  on_hours_total_min: Optional[Skalar] = None,
                  on_hours_total_max: Optional[Skalar] = None,
@@ -762,14 +767,11 @@ class Flow(Element):
                  consecutive_off_hours_max: Optional[Skalar] = None,
                  switch_on_effects: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
-                 effects_per_running_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
-                 flow_hours_total_max: Optional[Skalar] = None, flow_hours_total_min: Optional[Skalar] = None,
-                 values_before_begin: Optional[List[Skalar]] = None,
-                 fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
-                 medium: Optional[str] = None,
                  invest_parameters: Optional[InvestParameters] = None,
+                 medium: Optional[str] = None,
                  exists: Numeric_TS = 1,
                  group: Optional[str] = None,
+                 # positive_gradient=None,
                  **kwargs):
         '''
         Parameters
