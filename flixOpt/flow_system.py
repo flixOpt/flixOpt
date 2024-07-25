@@ -113,7 +113,6 @@ class FlowSystem:
                                sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
         return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
-    # Effekte registrieren:
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
             print('Register new effect ' + new_effect.label)
@@ -128,8 +127,6 @@ class FlowSystem:
             new_component.register_component_in_flows()   # Komponente in Flow registrieren
             new_component.register_flows_in_bus()   # Flows in Bus registrieren:
         self.components.extend(new_components)   # Add to existing list of components
-
-        # Element registrieren ganz allgemein:
 
     def add_elements(self, *args: Element) -> None:
         '''
