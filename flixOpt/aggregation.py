@@ -244,11 +244,11 @@ class AggregationModeling(Element):
         if self.elements_to_clusterize is None:
             # Alle:
             compSet = set(self.flow_system.components)
-            flowSet = self.flow_system.flows
+            flowSet = self.flow_system.all_flows
         else:
             # Ausgewählte:
             compSet = set(self.elements_to_clusterize)
-            flowSet = {flow for flow in self.flow_system.flows if flow.comp in self.elements_to_clusterize}
+            flowSet = {flow for flow in self.flow_system.all_flows if flow.comp in self.elements_to_clusterize}
 
         flow: Flow
 

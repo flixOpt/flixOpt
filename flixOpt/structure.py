@@ -146,7 +146,7 @@ class SystemModel(MathModel):
         except:
             print
         print('')
-        for aBus in self.flow_system.buses:
+        for aBus in self.flow_system.all_buses:
             if aBus.with_excess:
                 if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
                         self.results[aBus.label]['excess_output'] > 1e-6):
@@ -183,7 +183,7 @@ class SystemModel(MathModel):
                 main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
             main_results_str['busesWithExcess'] = busesWithExcess
-            for aBus in self.flow_system.buses:
+            for aBus in self.flow_system.all_buses:
                 if aBus.with_excess:
                     if sum(self.results[aBus.label]['excess_input']) > excess_threshold or sum(
                             self.results[aBus.label]['excess_output']) > excess_threshold:
@@ -193,7 +193,7 @@ class SystemModel(MathModel):
                      'not invested': {}
                      }
             main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.flow_system.invest_features:
+            for aInvestFeature in self.flow_system.all_investments:
                 investValue = aInvestFeature.model.variables[aInvestFeature.name_of_investment_size].result
                 investValue = float(investValue)  # bei np.floats Probleme bei Speichern
                 # umwandeln von numpy:

@@ -20,9 +20,7 @@ from flixOpt.math_modeling import Variable
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Objective
-if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from features import FeatureInvest
-    from flixOpt.elements import Flow, Effect
+from flixOpt.features import FeatureInvest
 
 log = logging.getLogger(__name__)
 
@@ -33,49 +31,47 @@ class FlowSystem:
     """
 
     @property
-    def elements_of_first_layer_wo_flows(self) -> List[Element]:
-        return (self.components + list(self.buses) + [self.objective, self.effect_collection] +
+    def all_first_level_elements(self) -> List[Element]:
+        return (self.components + list(self.all_buses) + [self.objective, self.effect_collection] +
                 list(self.other_elements))
 
     @property
-    def elements_of_fists_layer(self) -> List[Element]:
-        return self.elements_of_first_layer_wo_flows + list(self.flows)
+    def all_first_level_elements_with_flows(self) -> List[Element]:
+        return self.all_first_level_elements + list(self.all_flows)
 
     @property
-    def invest_features(self) -> List['FeatureInvest']:
-        all_invest_features = []
+    def all_investments(self) -> List[FeatureInvest]:
+        all_investments = []
 
-        def get_invest_features_of_element(element: Element) -> List['FeatureInvest']:
+        def get_invest_features_of_element(element: Element) -> List[FeatureInvest]:
             invest_features = []
-            from flixOpt.features import FeatureInvest
             for aSubComp in element.all_sub_elements:
                 if isinstance(aSubComp, FeatureInvest):
                     invest_features.append(aSubComp)
                 invest_features += get_invest_features_of_element(aSubComp)  # recursive!
             return invest_features
 
-        for element in self.elements_of_fists_layer:  # kann in Komponente (z.B. Speicher) oder Flow stecken
-            all_invest_features += get_invest_features_of_element(element)
+        for element in self.all_first_level_elements_with_flows:  # kann in Komponente (z.B. Speicher) oder Flow stecken
+            all_investments += get_invest_features_of_element(element)
 
-        return all_invest_features
+        return all_investments
 
     # Achtung: Funktion wird nicht nur für Getter genutzt.
     @property
-    def flows(self) -> Set[Flow]:
+    def all_flows(self) -> Set[Flow]:
         return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
 
-    # get all TS in one list:
     @property
     def all_time_series_in_elements(self) -> List[TimeSeries]:
         element: Element
         all_TS = []
-        for element in self.elements_of_fists_layer:
+        for element in self.all_first_level_elements_with_flows:
             all_TS += element.TS_list
         return all_TS
 
     @property
-    def buses(self) -> Set[Bus]:
-        return {flow.bus for flow in self.flows}
+    def all_buses(self) -> Set[Bus]:
+        return {flow.bus for flow in self.all_flows}
 
     def __init__(self,
                  time_series: np.ndarray[np.datetime64],
@@ -181,10 +177,10 @@ class FlowSystem:
         for temporary_element in self.temporary_elements:
             # delete them again in the lists:
             self.components.remove(temporary_element)
-            self.buses.remove(temporary_element)
+            self.all_buses.remove(temporary_element)
             self.other_elements.remove(temporary_element)
             self.effects.remove(temporary_element)
-            self.flows(temporary_element)
+            self.all_flows(temporary_element)
 
     def _check_if_element_is_unique(self, element: Element, existing_elements: List[Element]) -> None:
         '''
@@ -235,7 +231,7 @@ class FlowSystem:
         # nur EINMAL ausführen: Finalisieren der Elements:
         if not self._finalized:
             # finalize Elements for modeling:
-            for element in self.elements_of_fists_layer:
+            for element in self.all_first_level_elements_with_flows:
                 print(element.label)   #TODO: Remove this print??
                 element.finalize()  # inklusive sub_elements!
             self._finalized = True
@@ -272,7 +268,7 @@ class FlowSystem:
 
         # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
-        for aBus in self.buses:
+        for aBus in self.all_buses:
             log.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
             aBus.do_modeling(self.model, time_indices)
@@ -319,7 +315,7 @@ class FlowSystem:
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
             log.debug('create model-Vars for Elements of EnergySystem')
-            for element in self.elements_of_fists_layer:
+            for element in self.all_first_level_elements_with_flows:
                 # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
                 if not self._finalized:
                     raise Exception('activate_model(): --> Geht nicht, da FlowSystem noch nicht finalized!')
@@ -327,7 +323,7 @@ class FlowSystem:
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:
             # nur Aktivieren:
-            for element in self.elements_of_fists_layer:
+            for element in self.all_first_level_elements_with_flows:
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
     # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
@@ -335,7 +331,7 @@ class FlowSystem:
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
         # für alle Komponenten:
-        for element in self.elements_of_first_layer_wo_flows:
+        for element in self.all_first_level_elements:
             # results        füllen:
             (results[element.label], results_var[element.label]) = element.get_results()  # inklusive sub_elements!
 
@@ -365,7 +361,7 @@ class FlowSystem:
         # Anmerkung buses und comps als dict, weil Namen eindeutig!
         # Buses:
         modelDescription['buses'] = {}
-        for aBus in self.buses:
+        for aBus in self.all_buses:
             aBus: Bus
             modelDescription['buses'].update(aBus.description())
         # Comps:
@@ -378,7 +374,7 @@ class FlowSystem:
         flowList = []
         modelDescription['flows'] = flowList
         aFlow: Flow
-        for aFlow in self.flows:
+        for aFlow in self.all_flows:
             flowList.append(aFlow.description())
 
         return modelDescription
@@ -396,7 +392,7 @@ class FlowSystem:
         # buses:
         aSubDict = {}
         aDict['buses'] = aSubDict
-        for aBus in self.buses:
+        for aBus in self.all_buses:
             aSubDict[aBus.label] = aBus.description_of_equations()
 
         # Objective:
@@ -457,7 +453,7 @@ class FlowSystem:
             # buses:
             subDict = {}
             aDict['buses'] = subDict
-            for bus in self.buses:
+            for bus in self.all_buses:
                 subDict[bus.label] = bus.description_of_variables()
 
             # Objective:
