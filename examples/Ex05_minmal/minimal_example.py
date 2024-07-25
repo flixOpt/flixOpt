@@ -8,8 +8,11 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import datetime
-from flixOpt.structure import *
-from flixOpt.components    import *
+
+from flixOpt.calculation import FullCalculation
+from flixOpt.elements import Effect, Bus, Flow
+from flixOpt.components import Boiler, Source, Sink
+from flixOpt.flow_system import FlowSystem
 
 #####################
 ## some timeseries ##
@@ -81,13 +84,13 @@ time_indices = None # all timeindexe are used
 # ## modeling the flow_system ##
 
 # 1. create a Calculation 
-aCalc = Calculation('Sim1',  # name of calculation
+aCalc = FullCalculation('Sim1',  # name of calculation
                     flow_system,  # energysystem to calculate
                      'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
                     time_indices) # used time steps
 
 # 2. modeling:
-aCalc.do_modeling_as_one_segment() # mathematic modeling of flow_system
+aCalc.do_modeling() # mathematic modeling of flow_system
 
 # 3. (optional) print Model-Characteristics:
 flow_system.printModel() # string-output:network structure of model

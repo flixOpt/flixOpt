@@ -121,15 +121,17 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 
 ##########################################################################
 
-from flixOpt.structure import *
-from flixOpt.components    import *
-from flixOpt.flixBasicsPublic import *
+from flixOpt.elements import Bus, Flow, Effect
+from flixOpt.components import Boiler, CHP, Storage, LinearTransformer, Sink, Source
+from flixOpt.flow_system import FlowSystem
+from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 
 import pandas as pd
 import logging as log
 import os # für logging
 
-root = logging.getLogger()
+root = log.getLogger()
 root.setLevel(os.environ.get("LOGLEVEL", "DEBUG"))
 root.setLevel(os.environ.get("LOGLEVEL", "INFO"))
 
@@ -230,8 +232,8 @@ listOfCalcs = []
 
 # Roh-Rechnung:
 if doFullCalc:
-  calcFull = Calculation('fullModel', flow_system, 'pyomo', time_indices)
-  calcFull.do_modeling_as_one_segment()
+  calcFull = FullCalculation('fullModel', flow_system, 'pyomo', time_indices)
+  calcFull.do_modeling()
   
   flow_system.printModel()
   flow_system.print_variables()
@@ -243,15 +245,15 @@ if doFullCalc:
 # segmentierte Rechnung:
 if doSegmentedCalc :
 
-   calcSegs = Calculation('segModel', flow_system, 'pyomo', time_indices)
-   calcSegs.do_segmented_modeling_and_solving(solverProps, segmentLen=segmentLen, nr_of_used_steps=nr_of_used_steps)
+   calcSegs = SegmentedCalculation('segModel', flow_system, 'pyomo', time_indices)
+   calcSegs.solve(solverProps, segment_length=segmentLen, nr_of_used_steps=nr_of_used_steps)
    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
 
 if doAggregatedCalc :    
-    calcAgg = Calculation('aggModel', flow_system, 'pyomo')
-    calcAgg.do_aggregated_modeling(periodLengthInHours,
+    calcAgg = AggregatedCalculation('aggModel', flow_system, 'pyomo')
+    calcAgg.do_modeling(periodLengthInHours,
                                    nr_of_typical_periods,
                                    useExtremeValues,
                                    fix_storage_flows,
@@ -280,24 +282,24 @@ if doAggregatedCalc :
 if (not calcSegs is None) and (not calcFull is None):
     fig, ax = plt.subplots(figsize=(10, 5))
     plt.plot(calcSegs.time_series_with_end, calcSegs.results_struct.Speicher.charge_state, '-', label='chargeState (complete)') 
-    for aModBox in calcSegs.segmented_system_models:
-      plt.plot(aModBox.time_series_with_end, aModBox.results_struct.Speicher.charge_state, ':', label='chargeState') 
+    for system_model in calcSegs.system_models:
+      plt.plot(system_model.time_series_with_end, system_model.results_struct.Speicher.charge_state, ':', label='chargeState')
 
     # plt.plot(calcFull.time_series_with_end, calcFull.results_struct.Speicher.charge_state, '-.', label='chargeState (full)') 
     plt.legend()
     plt.grid()
     plt.show()
 
-    for aModBox in calcSegs.segmented_system_models:
-      plt.plot(aModBox.time_series, aModBox.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
+    for system_model in calcSegs.system_models:
+      plt.plot(system_model.time_series, system_model.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
     plt.plot(calcFull.time_series       , calcFull.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
     plt.legend()
     plt.grid()
     plt.show()
 
 
-    for aModBox in calcSegs.segmented_system_models:
-      plt.plot(aModBox.time_series, aModBox.results_struct.global_comp.costs.operation.sum_TS, label='costs')
+    for system_model in calcSegs.system_models:
+      plt.plot(system_model.time_series, system_model.results_struct.global_comp.costs.operation.sum_TS, label='costs')
     plt.plot(calcFull.time_series, calcFull.results_struct.global_comp.costs.operation.sum_TS, ':', label='costs (full)')
     plt.legend()
     plt.grid()

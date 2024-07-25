@@ -7,9 +7,11 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import datetime
-from flixOpt.structure import *
-from flixOpt.components import *
-from flixOpt.flixBasicsPublic import *
+from flixOpt.components import Boiler, CHP, Storage, Sink, Source, LinearTransformer
+from flixOpt.elements import Bus, Flow, Effect
+from flixOpt.calculation import FullCalculation
+from flixOpt.flixBasicsPublic import InvestParameters
+from flixOpt.flow_system import FlowSystem
 
 # ## Solver-Inputs:##
 displaySolverOutput = False # ausführlicher Solver-Output.
@@ -215,8 +217,8 @@ time_indices = None
 # time_indices = [1,3,5]
 
 # ## modeling "full" calculation:
-aCalc = Calculation('Sim1', flow_system, 'pyomo', time_indices)
-aCalc.do_modeling_as_one_segment()
+aCalc = FullCalculation('Sim1', flow_system, 'pyomo', time_indices)
+aCalc.do_modeling()
 
 # print Model-Charactaricstics:
 flow_system.printModel()
