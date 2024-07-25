@@ -19,7 +19,7 @@ from flixOpt import flixOptHelperFcts as helpers
 from flixOpt.math_modeling import Variable
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel
-from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Global
+from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Objective
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from features import FeatureInvest
     from flixOpt.elements import Flow, Effect
@@ -37,7 +37,7 @@ class FlowSystem:
 
     @property
     def elements_of_first_layer_wo_flows(self) -> List[Element]:
-        return (self.components + list(self.buses) + [self.global_comp] + self.effects +
+        return (self.components + list(self.buses) + [self.objective] + self.effects_collection.effects +
                 list(self.other_elements))
 
     @property
@@ -105,40 +105,28 @@ class FlowSystem:
         # defaults:
         self.components: List[Component] = []
         self.other_elements: Set[Element] = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
-        self.effects: EffectCollection = EffectCollection()  # Kosten, CO2, Primärenergie, ...
+        self.effects_collection: EffectCollection = EffectCollection('EffectCollection')  # Kosten, CO2, Primärenergie, ...
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
-        self.global_comp = Global('global_comp')
+        self.objective = Objective('objective')
         self._finalized = False  # wenn die Elements alle finalisiert sind, dann True
         self.model: Optional[SystemModel] = None  # later activated
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>"
+        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects_collection.effects)} effects>"
 
     def __str__(self):
         components = '\n'.join(component.__str__() for component in
                                sorted(self.components, key=lambda component: component.label.upper()))
         effects = '\n'.join(effect.__str__() for effect in
-                               sorted(self.effects, key=lambda effect: effect.label.upper()))
+                               sorted(self.effects_collection.effects, key=lambda effect: effect.label.upper()))
         return f"Energy FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
     # Effekte registrieren:
     def add_effects(self, *args: Effect) -> None:
-        new_effects = list(args)
-        for new_effect in new_effects:
+        for new_effect in list(args):
             print('Register new effect ' + new_effect.label)
-            self._check_if_element_is_unique(new_effect, self.effects)   # check if already exists
-            # Wenn Standard-Effekt, und schon einer vorhanden:
-            if new_effect.is_standard and self.effects.standard_effect is not None:
-                raise Exception(f'standardEffekt ist bereits belegt mit {self.effects.standard_effect.label}')
-            # Wenn Objective-Effekt, und schon einer vorhanden:
-            if new_effect.is_objective and self.effects.objective_effect is not None:
-                raise Exception(f'objectiveEffekt ist bereits belegt mit {self.effects.standard_effect.label}')
-
-            self.effects.append(new_effect)   # in liste ergänzen:
-
-        # TODO: doppelte Haltung in flow_system und global_comp ist so nicht schick.
-        self.global_comp.listOfEffectTypes = self.effects   # an global_comp durchreichen
+            self.effects_collection.add_effect(new_effect)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
@@ -234,7 +222,7 @@ class FlowSystem:
                 f'  {shareEffect_label} -> has share in: {effect_label}'
             )
 
-        for effect in self.effects:
+        for effect in self.effects_collection.effects:
             # operation:
             for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
@@ -268,9 +256,11 @@ class FlowSystem:
         # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
         time_indices = range(len(self.model.time_indices))
 
-        # globale Modellierung zuerst, damit andere darauf zugreifen können:
-        self.global_comp.declare_vars_and_eqs(self.model)  # globale Funktionen erstellen!
-        self.global_comp.do_modeling(self.model, time_indices)  # globale Funktionen erstellen!
+        self.effects_collection.declare_vars_and_eqs(self.model)
+        self.effects_collection.do_modeling(self.model, time_indices)
+        self.objective.declare_vars_and_eqs(self.model)
+        self.objective.do_modeling(self.model, time_indices)
+        self.objective.add_objective_effect(self.effects_collection.objective_effect)
 
         # Komponenten-Modellierung (# inklusive sub_elements!)
         for aComp in self.components:

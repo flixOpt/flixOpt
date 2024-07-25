@@ -166,27 +166,6 @@ class Effect(Element):
 
 
 # Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
-class EffectCollection(List[Effect]):
-    '''
-    internal effect list for simple handling of effects
-    '''
-
-    @property
-    def standard_effect(self) -> Optional[Effect]:
-        aEffect: Effect
-        for aEffectType in self:
-            if aEffectType.is_standard:
-                return aEffectType
-
-    @property
-    def objective_effect(self) -> Effect:
-        aEffect: Effect
-        aObjectiveEffect = None
-        # TODO: eleganter nach attribut suchen:
-        for aEffectType in self:
-            if aEffectType.is_objective: aObjectiveEffect = aEffectType
-        return aObjectiveEffect
-
 
 EffectTypeDict = Dict[Effect, Numeric_TS]  # Datatype
 
@@ -407,17 +386,13 @@ class Component(Element):
         return descr
 
 
-# komponenten übergreifende Gleichungen/Variablen/Zielfunktion!
-class Global(Element):
-    '''
-    storing global modeling stuff like effect equations and optimization target
-    '''
+class Objective(Element):
+    """
+    Storing information about the objective and penalty costs
+    """
 
     def __init__(self, label: str, **kwargs):
         super().__init__(label, **kwargs)
-
-        self.listOfEffectTypes = []  # wird überschrieben mit spezieller Liste
-
         self.objective = None
         self.penalty = None
 
@@ -426,8 +401,60 @@ class Global(Element):
         from flixOpt.features import Feature_ShareSum
         self.penalty = Feature_ShareSum('penalty', self, shares_are_time_series=True)
 
-        # Effekte als Subelemente hinzufügen ( erst hier ist effectTypeList vollständig)
-        self.sub_elements.extend(self.listOfEffectTypes)
+    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
+        # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
+        self.penalty.declare_vars_and_eqs(system_model)
+        self.objective = Equation('objective', self, system_model, 'objective')
+        self.model.add_equation(self.objective)
+        system_model.objective = self.objective
+
+    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
+
+        self.penalty.do_modeling(system_model, time_indices)
+        self.objective.add_summand(self.penalty.model.variables['sum'], 1)
+
+    def add_objective_effect(self, objective_effect: Effect) -> None:
+        if objective_effect is None:
+            raise Exception('Kein Effekt als Zielfunktion gewählt!')
+        self.objective.add_summand(objective_effect.operation.model.variables['sum'], 1)
+        self.objective.add_summand(objective_effect.invest.model.variables['sum'], 1)
+
+
+class EffectCollection(Element):
+    '''
+    storing global modeling stuff like effect equations and optimization target
+    '''
+
+    def __init__(self, label: str, **kwargs):
+        super().__init__(label, **kwargs)
+        self.effects = []
+
+    def add_effect(self, effect: Effect) -> None:
+        if effect.is_standard and self.standard_effect is not None:
+            raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
+        if effect.is_objective and self.objective_effect is not None:
+            raise Exception(f'A objective-effect already exists! ({self.objective_effect.label=})')
+        if effect in self.effects:
+            raise Exception(f'Effect already added! ({effect.label=})')
+        if effect.label in [existing_effect.label for existing_effect in self.effects]:
+            raise Exception(f'Effect with label "{effect.label=}" already added!')
+        self.effects.append(effect)
+
+    @property
+    def standard_effect(self) -> Optional[Effect]:   #TODO: Is this Optional?
+        for effect in self.effects:
+            if effect.is_standard:
+                return effect
+
+    @property
+    def objective_effect(self) -> Optional[Effect]:   #TODO: IS this Optional?
+        for effect in self.effects:
+            if effect.is_objective:
+                return effect
+
+    def finalize(self) -> None:
+        for effect in self.effects:
+            effect.finalize()
 
     # Beiträge registrieren:
     # effectValues kann sein
@@ -483,10 +510,9 @@ class Global(Element):
         # an alle Effekttypen, die einen Wert haben, anhängen:
         for effect, value in effect_values_dict.items():
             # Falls None, dann Standard-effekt nutzen:
-            effect: Effect
             if effect is None:
-                effect = self.listOfEffectTypes.standard_effect
-            elif effect not in self.listOfEffectTypes:
+                effect = self.standard_effect
+            elif effect not in self.effects:
                 raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
 
             if operation_or_invest == 'operation':
@@ -499,34 +525,16 @@ class Global(Element):
                 raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
 
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
-
-        super().declare_vars_and_eqs(system_model)
-
-        for effect in self.listOfEffectTypes:
+        for effect in self.effects:
             effect.declare_vars_and_eqs(system_model)
-        self.penalty.declare_vars_and_eqs(system_model)
 
-        self.objective = Equation('obj', self, system_model, 'objective')
-        self.model.add_equation(self.objective)
-        system_model.objective = self.objective
-
-        # todo : besser wäre objective separat:
-
-    #  eq_objective = Equation('objective',self,model,'objective')
-    # todo: hier vielleicht gleich noch eine Kostenvariable ergänzen. Wäre cool!
     def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
-        # super().do_modeling(model,time_indices)
-
-        self.penalty.do_modeling(system_model, time_indices)
-        ## Gleichungen bauen für Effekte: ##
-        effect: Effect
-        for effect in self.listOfEffectTypes:
+        for effect in self.effects:
             effect.do_modeling(system_model, time_indices)
 
         ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
-        for effectType in self.listOfEffectTypes:
+        for effectType in self.effects:
             # Beitrag/Share ergänzen:
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             # alle specificSharesToOtherEffects durchgehen:
@@ -548,16 +556,6 @@ class Global(Element):
                 shareSum_inv: Feature_ShareSum
                 shareHolder = effectType
                 shareSum_inv.add_variable_share(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
-
-        # ####### target function  ###########
-        # Strafkosten immer:
-        self.objective.add_summand(self.penalty.model.variables['sum'], 1)
-
-        # Definierter Effekt als Zielfunktion:
-        objectiveEffect = self.listOfEffectTypes.objective_effect
-        if objectiveEffect is None: raise Exception('Kein Effekt als Zielfunktion gewählt!')
-        self.objective.add_summand(objectiveEffect.operation.model.variables['sum'], 1)
-        self.objective.add_summand(objectiveEffect.invest.model.variables['sum'], 1)
 
 
 class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
