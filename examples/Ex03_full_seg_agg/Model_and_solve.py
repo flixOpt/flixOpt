@@ -6,18 +6,17 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 # mögliche Testszenarien für testing-tool:
-   # abschnittsweise linear testen
-   # Komponenten mit offenen Flows 
-   # Binärvariablen ohne max-Wert-Vorgabe des Flows (Binärungenauigkeitsproblem)
-   # Medien-zulässigkeit 
+# abschnittsweise linear testen
+# Komponenten mit offenen Flows
+# Binärvariablen ohne max-Wert-Vorgabe des Flows (Binärungenauigkeitsproblem)
+# Medien-zulässigkeit
 
 # solver:
-gapFrac        = 0.0005
-solver_name    = 'cbc'
+gapFrac = 0.0005
+solver_name = 'cbc'
 # solver_name    = 'gurobi'
 # solver_name    = 'glpk'
-solverProps = {'mip_gap': gapFrac, 'solver_name': solver_name, 'solver_output_to_console' : True, 'threads':16}
-
+solverProps = {'mip_gap': gapFrac, 'solver_name': solver_name, 'solver_output_to_console': True, 'threads': 16}
 
 ## Auswahl Rechentypen: ##
 
@@ -32,34 +31,34 @@ doAggregatedCalc = True
 
 ## segmented Properties: ##
 
-nr_of_used_steps = 96*1    
-segmentLen = nr_of_used_steps + 1*96
-
+nr_of_used_steps = 96 * 1
+segmentLen = nr_of_used_steps + 1 * 96
 
 ## aggregated Properties: ##
 
 periodLengthInHours = 6
-nr_of_typical_periods    = 21
-nr_of_typical_periods    = 4
-useExtremeValues    = True
+nr_of_typical_periods = 21
+nr_of_typical_periods = 4
+useExtremeValues = True
 # useExtremeValues    = False
-fix_binary_vars_only   = False
+fix_binary_vars_only = False
 # fix_binary_vars_only   = True
-fix_storage_flows     = True
+fix_storage_flows = True
 # fix_storage_flows     = False    
 percentage_of_period_freedom = 0
 costs_of_period_freedom = 0
 
-import pandas as pd
-import numpy as np
 import datetime
 import os
-import matplotlib.pyplot as plt
 import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 calcFull = None
 calcSegs = None
-calcAgg  = None
+calcAgg = None
 
 # #########################################################################
 # ######################  Data Import  ####################################
@@ -69,39 +68,36 @@ filename = os.path.join(os.path.dirname(__file__), "Zeitreihen2020.csv")
 ts_raw = pd.read_csv(filename, index_col=0)
 ts_raw = ts_raw.sort_index()
 
-#ts = ts_raw['2020-01-01 00:00:00':'2020-12-31 23:45:00']  # EDITIEREN FÜR ZEITRAUM
+# ts = ts_raw['2020-01-01 00:00:00':'2020-12-31 23:45:00']  # EDITIEREN FÜR ZEITRAUM
 ts = ts_raw['2020-01-01 00:00:00':'2020-12-31 23:45:00']
 # ts['Kohlepr.€/MWh'] = 4.6
-ts.set_index(pd.to_datetime(ts.index), inplace = True)   # str to datetime
+ts.set_index(pd.to_datetime(ts.index), inplace=True)  # str to datetime
 data = ts
-
-
 
 time_zero = time.time()
 
 # ENTWEDER...
 # Zeitaussschnitt definieren
-zeitraumInTagen = 366 # angeben!!!
-nrOfZeitschritte = zeitraumInTagen*4*24
+zeitraumInTagen = 366  # angeben!!!
+nrOfZeitschritte = zeitraumInTagen * 4 * 24
 data_sub = data[0:nrOfZeitschritte]
 
 # ODER....
 # data_sub = data['2020-01-01':'2020-01-07 23:45:00']
 data_sub = data['2020-01-01':'2020-01-01 23:45:00']
 data_sub = data['2020-07-01':'2020-07-07 23:45:00']
-#halbes Jahr:
+# halbes Jahr:
 data_sub = data['2020-01-01':'2020-06-30 23:45:00']
 data_sub = data
 data_sub = data['2020-01-01':'2020-01-15 23:45:00']
 data_sub = data['2020-01-01':'2020-01-03 23:45:00']
 
-
 # Zeit-Index:
 aTimeIndex = data_sub.index
-aTimeIndex = aTimeIndex.to_pydatetime() # datetime-Format
+aTimeIndex = aTimeIndex.to_pydatetime()  # datetime-Format
 
 ################ Bemerkungen: #################
-#jetzt hast du ein Dataframe
+# jetzt hast du ein Dataframe
 # So kannst du ein Vektor aufrufen:
 P_el_Last = data_sub['P_Netz/MW']
 Q_th_Last = data_sub['Q_Netz/MW']
@@ -116,96 +112,88 @@ gP = data_sub['Gaspr.€/MWh']
 #############################################################################
 nrOfPeriods = len(P_el_Last)
 # aTimeSeries = pd.date_range('1/1/2020',periods=nrOfPeriods,freq='15min')
-aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(nrOfPeriods) * datetime.timedelta(hours=0.25)
+aTimeSeries = datetime.datetime(2020, 1, 1) + np.arange(nrOfPeriods) * datetime.timedelta(hours=0.25)
 aTimeSeries = aTimeSeries.astype('datetime64')
 
 ##########################################################################
 
 from flixOpt.elements import Bus, Flow, Effect
-from flixOpt.components import Boiler, CHP, Storage, LinearTransformer, Sink, Source
+from flixOpt.components import Boiler, CHP, Storage, Sink, Source
 from flixOpt.flow_system import FlowSystem
 from flixOpt.flixBasicsPublic import TimeSeriesRaw
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 
-import pandas as pd
 import logging as log
-import os # für logging
+import os  # für logging
 
 root = log.getLogger()
 root.setLevel(os.environ.get("LOGLEVEL", "DEBUG"))
 root.setLevel(os.environ.get("LOGLEVEL", "INFO"))
 
 log.warning('test warning')
-log.info   ('test info')
-log.debug  ('test debung')
-
+log.info('test info')
+log.debug('test debung')
 
 print('#######################################################################')
 print('################### start of modeling #################################')
-
 
 # Bus-Definition:
 #                 Typ         Name              
 excessCosts = 1e5
 excessCosts = None
-Strom      = Bus('el', 'Strom', excess_effects_per_flow_hour= excessCosts);
-Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour= excessCosts);
-Gas        = Bus('fuel', 'Gas', excess_effects_per_flow_hour= excessCosts);
-Kohle      = Bus('fuel', 'Kohle', excess_effects_per_flow_hour= excessCosts);
+Strom = Bus('el', 'Strom', excess_effects_per_flow_hour=excessCosts);
+Fernwaerme = Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=excessCosts);
+Gas = Bus('fuel', 'Gas', excess_effects_per_flow_hour=excessCosts);
+Kohle = Bus('fuel', 'Kohle', excess_effects_per_flow_hour=excessCosts);
 
 # Effects
 
-costs = Effect('costs', '€', 'Kosten', is_standard= True, is_objective= True)
-CO2   = Effect('CO2', 'kg', 'CO2_e-Emissionen') # effectsPerFlowHour = {'costs' : 180} ))
-PE    = Effect('PE', 'kWh_PE', 'Primärenergie')
+costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
+CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen')  # effectsPerFlowHour = {'costs' : 180} ))
+PE = Effect('PE', 'kWh_PE', 'Primärenergie')
 
 # Komponentendefinition:
 
-aGaskessel = Boiler('Kessel', eta  = 0.85,  # , running_hour_effects = {costs:0,CO2:1000},#, switch_on_effects = 0
-                    Q_th = Flow(label   ='Q_th', bus = Fernwaerme),  # maxGradient = 5),
-                    Q_fu = Flow(label   ='Q_fu', bus = Gas, size=95, min_rel =12 / 95, can_switch_off= True, switch_on_effects=1000, values_before_begin=[0]))
+aGaskessel = Boiler('Kessel', eta=0.85,  # , running_hour_effects = {costs:0,CO2:1000},#, switch_on_effects = 0
+                    Q_th=Flow(label='Q_th', bus=Fernwaerme),  # maxGradient = 5),
+                    Q_fu=Flow(label='Q_fu', bus=Gas, size=95, min_rel=12 / 95, can_switch_off=True,
+                              switch_on_effects=1000, values_before_begin=[0]))
 
-
-aKWK  = CHP('BHKW2', eta_th = 0.58, eta_el=0.22, switch_on_effects =  24000,
-            P_el = Flow('P_el', bus = Strom),
-            Q_th = Flow('Q_th', bus = Fernwaerme),
-            Q_fu = Flow('Q_fu', bus = Kohle, size=288, min_rel =87 / 288), on_values_before_begin = [0])
-
-
+aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, switch_on_effects=24000,
+           P_el=Flow('P_el', bus=Strom),
+           Q_th=Flow('Q_th', bus=Fernwaerme),
+           Q_fu=Flow('Q_fu', bus=Kohle, size=288, min_rel=87 / 288),
+           on_values_before_begin=[0])
 
 aSpeicher = Storage('Speicher',
-                    inFlow  = Flow('Q_th_load', size=137, bus = Fernwaerme),
-                    outFlow = Flow('Q_th_unload', size=158, bus = Fernwaerme),
-                    capacity_inFlowHours = 684,
-                    chargeState0_inFlowHours = 137,
-                    charge_state_end_min = 137,
-                    charge_state_end_max = 158,
-                    eta_load = 1, eta_unload = 1,
-                    fracLossPerHour = 0.001,
-                    avoidInAndOutAtOnce = True)
- 
+                    inFlow=Flow('Q_th_load', size=137, bus=Fernwaerme),
+                    outFlow=Flow('Q_th_unload', size=158, bus=Fernwaerme),
+                    capacity_inFlowHours=684, chargeState0_inFlowHours=137,
+                    charge_state_end_min=137, charge_state_end_max=158,
+                    eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
 
 TS_Q_th_Last = TimeSeriesRaw(Q_th_Last)
-aWaermeLast = Sink  ('Wärmelast', sink   = Flow('Q_th_Last', bus = Fernwaerme, size=1, val_rel = TS_Q_th_Last))
+aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, val_rel=TS_Q_th_Last))
 
 # TS with explicit defined weight
-TS_P_el_Last = TimeSeriesRaw(P_el_Last, agg_weight = 0.7) # explicit defined weight
-aStromLast = Sink('Stromlast', sink = Flow('P_el_Last', bus = Strom, size=1, val_rel = TS_P_el_Last))
+TS_P_el_Last = TimeSeriesRaw(P_el_Last, agg_weight=0.7)  # explicit defined weight
+aStromLast = Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, val_rel=TS_P_el_Last))
 
-aKohleTarif = Source('Kohletarif', source = Flow('Q_Kohle', bus = Kohle, size=1000, effects_per_flow_hour= {costs: 4.6, CO2: 0.3}))
+aKohleTarif = Source('Kohletarif',
+                     source=Flow('Q_Kohle', bus=Kohle, size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3}))
 
-aGasTarif = Source('Gastarif', source = Flow('Q_Gas', bus = Gas, size=1000, effects_per_flow_hour= {costs: gP, CO2: 0.3}))
-
+aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: gP, CO2: 0.3}))
 
 # 2 TS with same aggType (--> implicit defined weigth = 0.5)
-p_feed_in = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el') # weight shared in group p_el
-p_sell    = TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
+p_feed_in = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el')  # weight shared in group p_el
+p_sell = TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
-aStromEinspeisung = Sink  ('Einspeisung', sink   = Flow('P_el', bus = Strom, size=1000, effects_per_flow_hour= p_feed_in))
+aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour=p_feed_in))
 aStromEinspeisung.sink.effects_per_flow_hour[None].aggregation_weight = .5
 
-aStromTarif       = Source('Stromtarif', source = Flow('P_el', bus = Strom, size=1000, effects_per_flow_hour= {costs: p_sell, CO2: 0.3}))
+aStromTarif = Source('Stromtarif',
+                     source=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour={costs: p_sell, CO2: 0.3}))
 aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
 # Zusammenführung:
@@ -229,48 +217,43 @@ time_indices = None
 ######## Lösung ########
 listOfCalcs = []
 
-
 # Roh-Rechnung:
 if doFullCalc:
-  calcFull = FullCalculation('fullModel', flow_system, 'pyomo', time_indices)
-  calcFull.do_modeling()
-  
-  flow_system.printModel()
-  flow_system.print_variables()
-  flow_system.print_equations()
-    
-  calcFull.solve(solverProps)
-  listOfCalcs.append(calcFull)
+    calcFull = FullCalculation('fullModel', flow_system, 'pyomo', time_indices)
+    calcFull.do_modeling()
+
+    flow_system.printModel()
+    flow_system.print_variables()
+    flow_system.print_equations()
+
+    calcFull.solve(solverProps)
+    listOfCalcs.append(calcFull)
 
 # segmentierte Rechnung:
-if doSegmentedCalc :
-
-   calcSegs = SegmentedCalculation('segModel', flow_system, 'pyomo', time_indices)
-   calcSegs.solve(solverProps, segment_length=segmentLen, nr_of_used_steps=nr_of_used_steps)
-   listOfCalcs.append(calcSegs)
+if doSegmentedCalc:
+    calcSegs = SegmentedCalculation('segModel', flow_system, 'pyomo', time_indices)
+    calcSegs.solve(solverProps, segment_length=segmentLen, nr_of_used_steps=nr_of_used_steps)
+    listOfCalcs.append(calcSegs)
 
 # aggregierte Berechnung:
 
-if doAggregatedCalc :    
+if doAggregatedCalc:
     calcAgg = AggregatedCalculation('aggModel', flow_system, 'pyomo')
     calcAgg.do_modeling(periodLengthInHours,
-                                   nr_of_typical_periods,
-                                   useExtremeValues,
-                                   fix_storage_flows,
-                                   fix_binary_vars_only,
-                                   percentage_of_period_freedom = percentage_of_period_freedom,
-                                   costs_of_period_freedom = costs_of_period_freedom,
-                                   addPeakMax=[TS_Q_th_Last],  # add timeseries of period with maxPeak explicitly
-                                   addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
-                                   )
-    
+                        nr_of_typical_periods,
+                        useExtremeValues,
+                        fix_storage_flows,
+                        fix_binary_vars_only,
+                        percentage_of_period_freedom = percentage_of_period_freedom,
+                        costs_of_period_freedom = costs_of_period_freedom,
+                        addPeakMax=[TS_Q_th_Last],  # add timeseries of period with maxPeak explicitly
+                        addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
+
     flow_system.print_variables()
     flow_system.print_equations()
-    
+
     calcAgg.solve(solverProps)
     listOfCalcs.append(calcAgg)
-
-
 
 #########################
 ## some plots directly ##
@@ -281,9 +264,11 @@ if doAggregatedCalc :
 
 if (not calcSegs is None) and (not calcFull is None):
     fig, ax = plt.subplots(figsize=(10, 5))
-    plt.plot(calcSegs.time_series_with_end, calcSegs.results_struct.Speicher.charge_state, '-', label='chargeState (complete)') 
+    plt.plot(calcSegs.time_series_with_end, calcSegs.results_struct.Speicher.charge_state, '-',
+             label='chargeState (complete)')
     for system_model in calcSegs.system_models:
-      plt.plot(system_model.time_series_with_end, system_model.results_struct.Speicher.charge_state, ':', label='chargeState')
+        plt.plot(system_model.time_series_with_end, system_model.results_struct.Speicher.charge_state, ':',
+                 label='chargeState')
 
     # plt.plot(calcFull.time_series_with_end, calcFull.results_struct.Speicher.charge_state, '-.', label='chargeState (full)') 
     plt.legend()
@@ -291,38 +276,38 @@ if (not calcSegs is None) and (not calcFull is None):
     plt.show()
 
     for system_model in calcSegs.system_models:
-      plt.plot(system_model.time_series, system_model.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
-    plt.plot(calcFull.time_series       , calcFull.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW') 
+        plt.plot(system_model.time_series, system_model.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
+    plt.plot(calcFull.time_series, calcFull.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
     plt.legend()
     plt.grid()
     plt.show()
-
 
     for system_model in calcSegs.system_models:
-      plt.plot(system_model.time_series, system_model.results_struct.global_comp.costs.operation.sum_TS, label='costs')
-    plt.plot(calcFull.time_series, calcFull.results_struct.global_comp.costs.operation.sum_TS, ':', label='costs (full)')
+        plt.plot(system_model.time_series, system_model.results_struct.global_comp.costs.operation.sum_TS,
+                 label='costs')
+    plt.plot(calcFull.time_series, calcFull.results_struct.global_comp.costs.operation.sum_TS, ':',
+             label='costs (full)')
     plt.legend()
     plt.grid()
     plt.show()
-
 
 # Ergebnisse Korrektur-Variablen (nur wenn genutzt):
 print('######### sum Korr_... (wenn vorhanden) #########')
 if calcAgg is not None:
-  aggretation_element=list(calcAgg.flow_system.other_elements)[0]
-  for var in aggretation_element.model.variables:
-    print(var.label_full + ':' + str(sum(var.result())))
+    aggretation_element = list(calcAgg.flow_system.other_elements)[0]
+    for var in aggretation_element.model.variables:
+        print(var.label_full + ':' + str(sum(var.result())))
 
 print('')
 
 print('############ time durations #####################')
 
 for aResult in listOfCalcs:
-  print(aResult.label + ':')
-  aResult.listOfModbox[0].printNoEqsAndVars()
-  # print(aResult.infos)
-  # print(aResult.duration)
-  print('costs: ' + str(aResult.results_struct.global_comp.costs.all.sum))
+    print(aResult.label + ':')
+    aResult.listOfModbox[0].printNoEqsAndVars()
+    # print(aResult.infos)
+    # print(aResult.duration)
+    print('costs: ' + str(aResult.results_struct.global_comp.costs.all.sum))
 
 #######################
 ### post processing ###
@@ -338,7 +323,7 @@ if doFullCalc:
     full = flixPost.flix_results(calcFull.label)
     listOfResults.append(full)
     # del calcFull
-    
+
     costs = full.results_struct.global_comp.costs.all.sum
 
 if doAggregatedCalc:
@@ -353,55 +338,55 @@ if doSegmentedCalc:
     # del calcSegs
     costs = seg.results_struct.global_comp.costs.all.sum
 
-
 ###### plotting #######
 
-import matplotlib.pyplot as plt
 from flixOpt.flixPlotHelperFcts import *
+
 
 # Übersichtsplot:
 
 def uebersichtsPlot(aCalc):
-  fig, ax = plt.subplots(figsize=(10, 5))
-  plt.title(aCalc.name)
-    
-  plotFlow(aCalc, aCalc.results_struct.BHKW2.P_el.val,  'P_el')
-  plotFlow(aCalc, aCalc.results_struct.BHKW2.Q_th.val,  'Q_th_BHKW')
-  plotFlow(aCalc, aCalc.results_struct.Kessel.Q_th.val, 'Q_th_Kessel')
-  
-  plotOn(aCalc, aCalc.results_struct.Kessel.Q_th, 'Q_th_Kessel', -5)
-  plotOn(aCalc, aCalc.results_struct.Kessel,      'Kessel'     , -10)
-  plotOn(aCalc, aCalc.results_struct.BHKW2,       'BHKW '      , -15)
-  
-  plotFlow(aCalc, aCalc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
-  
-  plt.plot(aCalc.time_series, aCalc.results_struct.global_comp.costs.operation.sum_TS, '--', label='costs (operating)')
-  
-  if hasattr(aCalc.results_struct,'Speicher'):
-    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_unload.val, where ='post', label='Speicher_unload')
-    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_load.val, where ='post', label='Speicher_load')
-    plt.plot(aCalc.time_series_with_end, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
-  # plt.step(aCalc.time_series, aCalc.results_struct.Speicher., label='Speicher_load')
-  plt.grid(axis='y')
-  plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
-  plt.show()
+    fig, ax = plt.subplots(figsize=(10, 5))
+    plt.title(aCalc.name)
+
+    plotFlow(aCalc, aCalc.results_struct.BHKW2.P_el.val, 'P_el')
+    plotFlow(aCalc, aCalc.results_struct.BHKW2.Q_th.val, 'Q_th_BHKW')
+    plotFlow(aCalc, aCalc.results_struct.Kessel.Q_th.val, 'Q_th_Kessel')
+
+    plotOn(aCalc, aCalc.results_struct.Kessel.Q_th, 'Q_th_Kessel', -5)
+    plotOn(aCalc, aCalc.results_struct.Kessel, 'Kessel', -10)
+    plotOn(aCalc, aCalc.results_struct.BHKW2, 'BHKW ', -15)
+
+    plotFlow(aCalc, aCalc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
+
+    plt.plot(aCalc.time_series, aCalc.results_struct.global_comp.costs.operation.sum_TS, '--',
+             label='costs (operating)')
+
+    if hasattr(aCalc.results_struct, 'Speicher'):
+        plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_unload.val, where='post',
+                 label='Speicher_unload')
+        plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_load.val, where='post', label='Speicher_load')
+        plt.plot(aCalc.time_series_with_end, aCalc.results_struct.Speicher.charge_state, label='charge_state')
+    # plt.step(aCalc.time_series, aCalc.results_struct.Speicher., label='Speicher_load')
+    plt.grid(axis='y')
+    plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
+    plt.show()
 
 
 for aResult in listOfResults:
-  uebersichtsPlot(aResult)
+    uebersichtsPlot(aResult)
 
-for aResult in listOfResults:  
-  # Komponenten-Plots:
-  aResult: flixPost.flix_results
-  aResult.plotInAndOuts('Fernwaerme', stacked = True)
+for aResult in listOfResults:
+    # Komponenten-Plots:
+    aResult: flixPost.flix_results
+    aResult.plotInAndOuts('Fernwaerme', stacked=True)
 
 print('## penalty: ##')
 for aResult in listOfResults:
-  print('Kosten penalty Sim1: ', sum(aResult.results_struct.global_comp.penalty.sum_TS))
-
+    print('Kosten penalty Sim1: ', sum(aResult.results_struct.global_comp.penalty.sum_TS))
 
 # loading yaml-datei:
-with open(agg.filename_infos,'rb') as f:
+with open(agg.filename_infos, 'rb') as f:
     infos = yaml.safe_load(f)
 
 # periods order of aggregated calculation:
