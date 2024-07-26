@@ -340,7 +340,7 @@ if doSegmentedCalc:
 
 ###### plotting #######
 
-from flixOpt.flixPlotHelperFcts import *
+from flixOpt.plotting import *
 
 
 # Übersichtsplot:

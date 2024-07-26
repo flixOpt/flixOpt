@@ -625,7 +625,7 @@ class flix_results():
 
             # gestapelt:
             if stacked:
-                from flixOpt.flixPlotHelperFcts import plotStackedSteps
+                from flixOpt.plotting import plotStackedSteps
                 plotStackedSteps(ax, y)  # legende here automatically
             # normal:
             else:

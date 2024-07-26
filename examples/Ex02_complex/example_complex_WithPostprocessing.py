@@ -59,7 +59,7 @@ fig = calc1.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True
 fig.show()
 
 import matplotlib.pyplot as plt
-from flixOpt.flixPlotHelperFcts import *
+from flixOpt.plotting import *
 
 # Zeitreihe greifen:
 print('Variante 1:')
