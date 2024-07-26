@@ -142,7 +142,7 @@ class SystemModel(MathModel):
         try:
             logger.info('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
         except:
-            logger.info
+            pass
         logger.info('')
         for aBus in self.flow_system.all_buses:
             if aBus.with_excess:
