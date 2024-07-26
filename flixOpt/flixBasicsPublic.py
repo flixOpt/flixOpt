@@ -62,15 +62,14 @@ class InvestParameters:
     '''
 
     def __init__(self,
-                 fix_effects: Optional[Union[Dict, int, float]] = None,
-                 divest_effects: Optional[Union[Dict, int, float]] = None,
                  fixed_size: Optional[Union[int, float]] = None,
-                 optional: bool = True,  # Investition ist weglassbar
-                 specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
-                 effects_in_segments: Optional[Union[Dict, List]] = None,
                  minimum_size: Union[int, float] = 0,  # nur wenn size_is_fixed = False
                  maximum_size: Union[int, float] = 1e9,  # nur wenn size_is_fixed = False
-                 **kwargs):
+                 optional: bool = True,  # Investition ist weglassbar
+                 fix_effects: Optional[Union[Dict, int, float]] = None,
+                 specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
+                 effects_in_segments: Optional[Union[Dict, List]] = None,
+                 divest_effects: Optional[Union[Dict, int, float]] = None):
         """
         Parameters
         ----------
@@ -115,8 +114,6 @@ class InvestParameters:
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
         self._maximum_size = maximum_size
-
-        super().__init__(**kwargs)
 
     @property
     def minimum_size(self):
