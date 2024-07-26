@@ -270,18 +270,6 @@ class LinearTransformer(Component):
         else:
             self.feature_linSegments.do_modeling(system_model, time_indices)
 
-    def print(self, shiftChars):
-        """
-        Ausgabe von irgendwas?
-
-        :param shiftChars:
-        :return:
-        """
-        super().print(shiftChars)
-        # attribut hat es nur bei factor_sets:
-        if hasattr(self, 'degreesOfFreedom'):
-            print(shiftChars + '  ' + 'Degr. of Freedom: ' + str(self.degreesOfFreedom))
-
     # todo: checkbounds!
     # def initializeParameter(self,aStr,aBounds):
     # private Variable:
@@ -290,19 +278,6 @@ class LinearTransformer(Component):
     # property dazu:
     #    self.eta            = property(lambda s: s.__get_param('eta'), lambda s,v: s.__set_param(v,'eta')')
     # exec('self.'   + aStr + ' = property(lambda s: s.__get_param(aStr) , lambda s,v: s.__set_param(v,aStr ))')
-
-    def setLinearSegments(self, segmentsOfFlows):
-        """
-        alternative input of segments -> advantage: flows are already integrated
-        
-        segmentsOfFlow: dict
-            description see in arguments of flow
-        :return:
-        """
-        print('#################')
-        print('warning: function setLinearSegments() will be replaced! Use init argument segmentsOfFlows instead!')
-        self.segmentsOfFlows = segmentsOfFlows  # attribute of mother-class
-
 
 class Boiler(LinearTransformer):
     """
