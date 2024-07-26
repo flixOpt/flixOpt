@@ -15,7 +15,7 @@ from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.structure import SystemModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
 from flixOpt.interface import InvestParameters, TimeSeriesRaw
-import flixOpt.utils as utils
+from flixOpt import utils
 
 
 class LinearTransformer(Component):

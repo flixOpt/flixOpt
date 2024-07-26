@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt  # für Plots im Postprocessing
 import matplotlib.dates as mdates
 
-from flixOpt import utils as utils
+from flixOpt import utils
 
 
 class cFlow_post():

@@ -8,7 +8,7 @@ from typing import Union, Optional, List, Dict, Any
 
 import numpy as np
 
-from flixOpt import utils as utils
+from flixOpt import utils
 from flixOpt.interface import TimeSeriesRaw
 
 Skalar = Union[int, float]  # Datatype

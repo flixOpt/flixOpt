@@ -15,7 +15,7 @@ from pprint import pp
 
 import numpy as np
 
-from flixOpt import utils as utils
+from flixOpt import utils
 from flixOpt.aggregation import TimeSeriesCollection
 from flixOpt.core import Skalar, Numeric
 from flixOpt.interface import TimeSeriesRaw

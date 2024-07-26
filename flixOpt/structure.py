@@ -12,7 +12,7 @@ import timeit
 
 import numpy as np
 
-from flixOpt import utils as utils
+from flixOpt import utils
 from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # Modelliersprache
 from flixOpt.core import TimeSeries
 if TYPE_CHECKING:  # for type checking and preventing circular imports

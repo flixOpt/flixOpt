@@ -15,7 +15,7 @@ import logging
 import numpy as np
 import yaml  # (für json-Schnipsel-print)
 
-from flixOpt import utils as utils
+from flixOpt import utils
 from flixOpt.math_modeling import Variable
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel

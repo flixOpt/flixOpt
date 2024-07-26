@@ -17,7 +17,7 @@ from flixOpt.elements import Flow, EffectTypeDict, EffectCollection
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.interface import InvestParameters
-import flixOpt.utils as utils
+from flixOpt import utils
 
 log = logging.getLogger(__name__)
 

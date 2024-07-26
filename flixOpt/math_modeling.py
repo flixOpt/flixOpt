@@ -13,7 +13,7 @@ from typing import List, Dict, Optional, Union, Literal
 import numpy as np
 from pyomo.contrib import appsi
 
-from flixOpt import utils as utils
+from flixOpt import utils
 from flixOpt.core import Skalar, Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
