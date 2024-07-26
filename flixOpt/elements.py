@@ -15,7 +15,7 @@ from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
 from flixOpt.interface import InvestParameters
 from flixOpt.structure import Element, SystemModel
-from flixOpt import flixOptHelperFcts as helpers
+from flixOpt import utils as utils
 
 log = logging.getLogger(__name__)
 
@@ -393,7 +393,7 @@ class Component(Element):
         if on_hours_total_max is not None:
             raise NotImplementedError(
                 "'on_hours_total_max' is not implemented yet for Components. Use Flow directly instead")
-        label = helpers.check_name_for_conformity(label)  # todo: indexierbar / eindeutig machen!
+        label = utils.check_name_for_conformity(label)  # todo: indexierbar / eindeutig machen!
         super().__init__(label, **kwargs)
         self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
         self.effects_per_switch_on = as_effect_dict_with_ts('effects_per_switch_on', effects_per_switch_on, self)
@@ -401,7 +401,7 @@ class Component(Element):
         self.on_hours_total_min = on_hours_total_min
         self.on_hours_total_max = on_hours_total_max
         self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', effects_per_running_hour, self)
-        self.exists = TimeSeries('exists', helpers.check_exists(exists), self)
+        self.exists = TimeSeries('exists', utils.check_exists(exists), self)
 
         ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
         # % On Werte vorher durch Flow-values bestimmen:
@@ -691,7 +691,7 @@ class MediumCollection:
 
     # checkifFits(medium1,medium2,...)
     def checkIfFits(*args):
-        aCommonMedium = helpers.InfiniteFullSet()
+        aCommonMedium = utils.InfiniteFullSet()
         for aMedium in args:
             if aMedium is not None: aCommonMedium = aCommonMedium & aMedium
         if aCommonMedium:
@@ -876,7 +876,7 @@ class Flow(Element):
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
 
-        self.exists = TimeSeries('exists', helpers.check_exists(exists), self)
+        self.exists = TimeSeries('exists', utils.check_exists(exists), self)
         self.group = group  # TODO: wird überschrieben von Component!
         self.values_before_begin = np.array(values_before_begin) if values_before_begin else np.array(
             [0, 0])  # list -> np-array
@@ -951,7 +951,7 @@ class Flow(Element):
 
         # exist-merge aus Flow.exist und Comp.exist
         exists_global = np.multiply(self.exists.data, self.comp.exists.data)  # array of 0 and 1
-        self.exists_with_comp = TimeSeries('exists_with_comp', helpers.check_exists(exists_global), self)
+        self.exists_with_comp = TimeSeries('exists_with_comp', utils.check_exists(exists_global), self)
         # combine relative_maximum with and exist from the flow and the comp it belongs to
         self.max_rel_with_exists = TimeSeries('max_rel_with_exists',
                                               np.multiply(self.relative_maximum.data, self.exists_with_comp.data), self)

@@ -15,7 +15,7 @@ import logging
 import numpy as np
 import yaml  # (für json-Schnipsel-print)
 
-from flixOpt import flixOptHelperFcts as helpers
+from flixOpt import utils as utils
 from flixOpt.math_modeling import Variable
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel
@@ -90,8 +90,8 @@ class FlowSystem:
         self.time_series = time_series
         self.last_time_step_hours = last_time_step_hours
 
-        self.time_series_with_end = helpers.get_time_series_with_end(time_series, last_time_step_hours)
-        helpers.check_time_series('global esTimeSeries', self.time_series_with_end)
+        self.time_series_with_end = utils.get_time_series_with_end(time_series, last_time_step_hours)
+        utils.check_time_series('global esTimeSeries', self.time_series_with_end)
 
         # defaults:
         self.components: List[Component] = []

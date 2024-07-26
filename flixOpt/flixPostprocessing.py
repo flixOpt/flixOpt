@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt  # für Plots im Postprocessing
 import matplotlib.dates as mdates
 
-from flixOpt import flixOptHelperFcts as helpers
+from flixOpt import utils as utils
 
 
 class cFlow_post():
@@ -46,7 +46,7 @@ class cFlow_post():
 
     def extractResults(self, allResults):
         self.results = allResults[self.comp][self.label]
-        self.results_struct = helpers.createStructFromDictInDict(self.results)
+        self.results_struct = utils.createStructFromDictInDict(self.results)
 
     def getFlowHours(self):
         flowHours = sum(self.results['val'] * self.flixResults.dt_in_hours)
@@ -120,7 +120,7 @@ class flix_results():
 
         with open(self.filename_data, 'rb') as f:
             self.results = pickle.load(f)
-        self.results_struct = helpers.createStructFromDictInDict(self.results)
+        self.results_struct = utils.createStructFromDictInDict(self.results)
 
         # list of str:
         self.buses = self.__getBuses()

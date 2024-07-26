@@ -13,7 +13,7 @@ from typing import List, Dict, Optional, Union, Literal
 import numpy as np
 from pyomo.contrib import appsi
 
-from flixOpt import flixOptHelperFcts as helpers
+from flixOpt import utils as utils
 from flixOpt.core import Skalar, Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
@@ -265,7 +265,7 @@ class Variable:
         log.debug('Variable created: ' + self.label)
 
         # Check conformity:
-        self.label = helpers.check_name_for_conformity(label)
+        self.label = utils.check_name_for_conformity(label)
 
         # Wenn Vorgabewert vorhanden:
         if value is not None:
@@ -279,7 +279,7 @@ class Variable:
 
             # Werte in Variable festsetzen:
             self.fixed = True
-            self.value = helpers.as_vector(value, length)
+            self.value = utils.as_vector(value, length)
 
         # Register Element:
         # owner .variables.append(self) # Komponentenliste
@@ -301,9 +301,9 @@ class Variable:
             aNameSuffixInPyomo = 'var__' + self.label_full
             math_model.registerPyComp(self.var, aNameSuffixInPyomo)
 
-            lower_bound_vector = helpers.as_vector(self.lower_bound, self.length)
-            upper_bound_vector = helpers.as_vector(self.upper_bound, self.length)
-            value_vector = helpers.as_vector(self.value, self.length)
+            lower_bound_vector = utils.as_vector(self.lower_bound, self.length)
+            upper_bound_vector = utils.as_vector(self.upper_bound, self.length)
+            value_vector = utils.as_vector(self.value, self.length)
             for i in self.indices:
                 # Wenn Vorgabe-Wert vorhanden:
                 if self.fixed and (value_vector[i] != None):
@@ -491,13 +491,13 @@ class Equation:
 
         length = 1 if np.isscalar(self.constant) else len(self.constant)
         self._update_nr_of_single_equations(length, 'constant')   # Update
-        self.constant_vector = helpers.as_vector(self.constant, self.nr_of_single_equations)  # Update
+        self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
 
     def to_math_model(self, math_model: MathModel) -> None:
         log.debug('eq ' + self.label + '.to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
-        self.constant_vector = helpers.as_vector(self.constant, self.nr_of_single_equations)
+        self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)
 
         if math_model.modeling_language == 'pyomo':
             # 1. Constraints:
@@ -604,7 +604,7 @@ class Equation:
         """Checks if the new Summand is compatible with the existing Summands"""
         if self.nr_of_single_equations == 1:
             self.nr_of_single_equations = length_of_summand  # first Summand defines length of equation
-            self.constant_vector = helpers.as_vector(self.constant, self.nr_of_single_equations)  # Update
+            self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
         elif (length_of_summand != 1) & (length_of_summand != self.nr_of_single_equations):
             raise Exception(f'Variable {label_of_summand} hat eine nicht passende Länge für Gleichung {self.label}')
 
@@ -627,7 +627,7 @@ class Summand:
         self.length = self._check_length()
 
         # Faktor als Vektor:
-        self.factor_vec = helpers.as_vector(factor, self.length)
+        self.factor_vec = utils.as_vector(factor, self.length)
 
     def _check_length(self):
         """

@@ -12,7 +12,7 @@ import timeit
 
 import numpy as np
 
-from flixOpt import flixOptHelperFcts as helpers
+from flixOpt import utils as utils
 from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # Modelliersprache
 from flixOpt.core import TimeSeries
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -125,7 +125,7 @@ class SystemModel(MathModel):
         # 1. dict:
         (self.results, self.results_var) = self.flow_system.get_results_after_solve()
         # 2. struct:
-        self.results_struct = helpers.createStructFromDictInDict(self.results)
+        self.results_struct = utils.createStructFromDictInDict(self.results)
 
         print('##############################################################')
         print('################### finished #################################')
@@ -207,7 +207,7 @@ class SystemModel(MathModel):
             return main_results_str
 
         self.main_results_str = _getMainResultsAsStr()
-        helpers.printDictAndList(self.main_results_str)
+        utils.printDictAndList(self.main_results_str)
 
     @property
     def all_variables(self) -> List[Variable]:
@@ -420,7 +420,7 @@ class Element:
             if aVar.is_binary and aVar.length > 1:
                 # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
                 #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = helpers.zero_to_nan(aVar.result)
+                aData[aVar.label + '_'] = utils.zero_to_nan(aVar.result)
                 aVars[aVar.label + '_'] = aVar  # link zur Variable
 
         # 3. Alle TS übergeben
