@@ -115,14 +115,14 @@ class FlowSystem:
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
-            print('Register new effect ' + new_effect.label)
+            logger.info('Register new effect ' + new_effect.label)
             self.effect_collection.add_effect(new_effect)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
         new_components = list(args)
         for new_component in new_components:
-            print('Register new Component ' + new_component.label)
+            logger.info('Register new Component ' + new_component.label)
             self._check_if_element_is_unique(new_component)   # check if already exists:
             new_component.register_component_in_flows()   # Komponente in Flow registrieren
             new_component.register_flows_in_bus()   # Flows in Bus registrieren:
@@ -215,13 +215,12 @@ class FlowSystem:
 
     # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
     def finalize(self) -> None:
-        print('finalize all Elements...')
+        logger.debug('finalize all Elements...')
         self._plausibility_checks()
         # nur EINMAL ausführen: Finalisieren der Elements:
         if not self._finalized:
             # finalize Elements for modeling:
             for element in self.all_first_level_elements_with_flows:
-                print(element.label)   #TODO: Remove this print??
                 element.finalize()  # inklusive sub_elements!
             self._finalized = True
 

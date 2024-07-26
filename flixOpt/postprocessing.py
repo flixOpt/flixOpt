@@ -234,7 +234,6 @@ class flix_results():
     def isGreaterMinFlowHours(aFlowValues, dt_in_hours, minFlowHours):
         # absolute Summe, damit auch negative Werte gezählt werden:
         absFlowHours = sum(abs(aFlowValues * dt_in_hours))
-        # print(absFlowHours)
         return absFlowHours > minFlowHours
 
     def getLoadFactorOfComp(self, aComp):

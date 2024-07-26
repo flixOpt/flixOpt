@@ -74,7 +74,7 @@ def check_name_for_conformity(label: str):
                 ord('-'): '_'}
     new_label = label.translate(char_map)
     if new_label != label:
-        print(f'{label=} doesnt allign with name restrictions and is changed to {new_label=}')
+        logger.warning(f'{label=} doesnt allign with name restrictions and is changed to {new_label=}')
 
     # check, ob jetzt valid variable name: (für Verwendung in results_struct notwendig)
     import re
@@ -187,18 +187,18 @@ def check_time_series(label: str,
 
     # unterschiedliche dt:
     if np.max(dt_in_hours) - np.min(dt_in_hours) != 0:
-        print(label + ': !! Achtung !! unterschiedliche delta_t von ' + str(min(dt)) + 'h bis ' + str(max(dt)) + ' h')
+        logger.warning(f'{label}: !! Achtung !! unterschiedliche delta_t von {min(dt)} h bis  {max(dt)} h')
     # negative dt:
     if np.min(dt_in_hours) < 0:
         raise Exception(label + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
 
 
-def printDictAndList(aDictOrList):
+def printDictAndList(aDictOrList) -> str:
     import yaml
-    print(yaml.dump(aDictOrList,
+    return yaml.dump(aDictOrList,
                     default_flow_style=False,
                     width=1000,  # verhindern von zusätzlichen Zeilenumbrüchen
-                    allow_unicode=True))
+                    allow_unicode=True)
 
 def max_args(*args):
     # max from num-lists and skalars

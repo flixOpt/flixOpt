@@ -126,7 +126,7 @@ class Effect(Element):
         self.all.declare_vars_and_eqs(system_model)
 
     def do_modeling(self, system_model, time_indices: Union[List[int], range]) -> None:
-        print('modeling ' + self.label)
+        logger.debug('modeling ' + self.label)
         super().declare_vars_and_eqs(system_model)
         self.operation.do_modeling(system_model, time_indices)
         self.invest.do_modeling(system_model, time_indices)
@@ -970,7 +970,7 @@ class Flow(Element):
         super().finalize()
 
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        print('declare_vars_and_eqs ' + self.label)
+        logger.debug('declare_vars_and_eqs ' + self.label)
         super().declare_vars_and_eqs(system_model)
 
         self.featureOn.declare_vars_and_eqs(system_model)  # TODO: rekursiv aufrufen für sub_elements

@@ -103,12 +103,11 @@ class SystemModel(MathModel):
                     raise Exception(
                         'no allowed arguments for kwargs: ' + str(key) + '(all arguments:' + str(kwargs) + ')')
 
-        print('')
-        print('##############################################################')
-        print('##################### solving ################################')
-        print('')
-
-        self.printNoEqsAndVars()
+        logger.info('')
+        logger.info('##############################################################')
+        logger.info('##################### solving ################################')
+        logger.info('')
+        logger.info(self.describe())
 
         super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
 
@@ -118,48 +117,48 @@ class SystemModel(MathModel):
             termination_message = self.solver_results['Solver'][0]['Status']
         else:
             termination_message = f'not implemented for solver "{solver_name}" yet'
-        print(f'Termination message: "{termination_message}"')
+        logger.info(f'Termination message: "{termination_message}"')
 
-        print('')
+        logger.info('')
         # Variablen-Ergebnisse abspeichern:
         # 1. dict:
         (self.results, self.results_var) = self.flow_system.get_results_after_solve()
         # 2. struct:
         self.results_struct = utils.createStructFromDictInDict(self.results)
 
-        print('##############################################################')
-        print('################### finished #################################')
-        print('')
+        logger.info('##############################################################')
+        logger.info('################### finished #################################')
+        logger.info('')
         for aEffect in self.flow_system.effect_collection.effects:
-            print(aEffect.label + ' in ' + aEffect.unit + ':')
-            print('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
-            print('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
-            print('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
+            logger.info(aEffect.label + ' in ' + aEffect.unit + ':')
+            logger.info('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
+            logger.info('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
+            logger.info('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
 
-        print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.flow_system.effect_collection.penalty.model.variables['sum'].result))
-        print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
-        print('Result of Obj : ' + str(self.objective_result))
+        logger.info('SUM              : ' + '...todo...')
+        logger.info('penaltyCosts     : ' + str(self.flow_system.effect_collection.penalty.model.variables['sum'].result))
+        logger.info('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
+        logger.info('Result of Obj : ' + str(self.objective_result))
         try:
-            print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
+            logger.info('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
         except:
-            print
-        print('')
+            logger.info
+        logger.info('')
         for aBus in self.flow_system.all_buses:
             if aBus.with_excess:
                 if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
                         self.results[aBus.label]['excess_output'] > 1e-6):
                     # if any(aBus.excess_input.result > 0) or any(aBus.excess_output.result > 0):
-                    print('!!!!! Attention !!!!!')
-                    print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
+                    logger.warning('!!!!! Attention !!!!!')
+                    logger.warning('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
 
                     # if penalties exist
         if self.flow_system.effect_collection.penalty.model.variables['sum'].result > 10:
-            print('Take care: -> high penalty makes the used mip_gap quite high')
-            print('           -> real costs are not optimized to mip_gap')
+            logger.warning('Take care: -> high penalty makes the used mip_gap quite high')
+            logger.warning('           -> real costs are not optimized to mip_gap')
 
-        print('')
-        print('##############################################################')
+        logger.info('')
+        logger.info('##############################################################')
 
         # str description of results:
         # nested fct:
@@ -207,7 +206,7 @@ class SystemModel(MathModel):
             return main_results_str
 
         self.main_results_str = _getMainResultsAsStr()
-        utils.printDictAndList(self.main_results_str)
+        logger.info(utils.printDictAndList(self.main_results_str))
 
     @property
     def all_variables(self) -> List[Variable]:
@@ -379,7 +378,7 @@ class Element:
 
     # 2.
     def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
-        # print('new model for ' + self.label)
+        logger.debug('new model for ' + self.label)
         # subElemente ebenso:
         element: Element
         for element in self.sub_elements:
@@ -414,7 +413,6 @@ class Element:
         # 2. Variablenwerte ablegen:
         aVar: Variable
         for aVar in self.model.variables.values():
-            # print(aVar.label)
             aData[aVar.label] = aVar.result
             aVars[aVar.label] = aVar  # link zur Variable
             if aVar.is_binary and aVar.length > 1:
@@ -426,7 +424,6 @@ class Element:
         # 3. Alle TS übergeben
         aTS: TimeSeries
         for aTS in self.TS_list:
-            # print(aVar.label)
             aData[aTS.label] = aTS.data
             aVars[aTS.label] = aTS  # link zur Variable
 

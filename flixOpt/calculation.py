@@ -128,10 +128,10 @@ class Calculation:
             yaml.dump(self.infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
 
-        aStr = f'# saved calculation {self.name} #'
-        print('#' * len(aStr))
-        print(aStr)
-        print('#' * len(aStr))
+        message = f'#   Saved Calculation {self.name}   #'
+        logger.info(len(message)*'#')
+        logger.info(message)
+        logger.info(len(message)*'#')
 
 
 class FullCalculation(Calculation):
@@ -262,8 +262,8 @@ class AggregatedCalculation(Calculation):
             raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(
                 min(dt_in_hours)) + ' bis ' + str(max(dt_in_hours)) + ' h')
 
-        print('#########################')
-        print('## TS for aggregation ###')
+        logger.info('#########################')
+        logger.info('## TS for aggregation ###')
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
@@ -323,21 +323,21 @@ class AggregatedCalculation(Calculation):
 
         # ### Some infos as print ###
 
-        print('TS Aggregation:')
+        logger.info('TS Aggregation:')
         for i in range(len(self.time_series_for_aggregation)):
             aLabel = self.time_series_for_aggregation[i].label_full
-            print('TS ' + str(aLabel))
-            print('  max_agg:' + str(max(dataAgg.results[aLabel])))
-            print('  max_orig:' + str(max(df_OriginalData[aLabel])))
-            print('  min_agg:' + str(min(dataAgg.results[aLabel])))
-            print('  min_orig:' + str(min(df_OriginalData[aLabel])))
-            print('  sum_agg:' + str(sum(dataAgg.results[aLabel])))
-            print('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
+            logger.info('TS ' + str(aLabel))
+            logger.info('  max_agg:' + str(max(dataAgg.results[aLabel])))
+            logger.info('  max_orig:' + str(max(df_OriginalData[aLabel])))
+            logger.info('  min_agg:' + str(min(dataAgg.results[aLabel])))
+            logger.info('  min_orig:' + str(min(df_OriginalData[aLabel])))
+            logger.info('  sum_agg:' + str(sum(dataAgg.results[aLabel])))
+            logger.info('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
 
-        print('addpeakmax:')
-        print(self.time_series_collection.addPeak_Max_labels)
-        print('addpeakmin:')
-        print(self.time_series_collection.addPeak_Min_labels)
+        logger.info('addpeakmax:')
+        logger.info(self.time_series_collection.addPeak_Max_labels)
+        logger.info('addpeakmin:')
+        logger.info(self.time_series_collection.addPeak_Min_labels)
 
         # ################
         # ### Modeling ###
@@ -434,8 +434,8 @@ class SegmentedCalculation(Calculation):
         """
         self.check_if_already_modeled()
         self._infos['segmented_properties'] = {'segment_length': segment_length, 'nr_of_used_steps': nr_of_used_steps}
-        print('##############################################################')
-        print('#################### segmented Solving #######################')
+        logger.info('##############################################################')
+        logger.info('#################### segmented Solving #######################')
 
         t_start = timeit.default_timer()
         self.flow_system.finalize()   # flow_system finalisieren:
@@ -447,10 +447,10 @@ class SegmentedCalculation(Calculation):
         # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
         nr_of_segments = math.ceil((len(self.time_series)) / nr_of_used_steps)
         self._infos['segmented_properties']['nr_of_segments'] = nr_of_segments
-        print(f'Indices       : {self.time_indices[0]}...{self.time_indices[-1]}')
-        print(f'Segment Length: {segment_length}')
-        print(f'Used Steps    : {nr_of_used_steps}')
-        print(f'Number of Segments: {nr_of_segments}\n')
+        logger.info(f'Indices       : {self.time_indices[0]}...{self.time_indices[-1]}')
+        logger.info(f'Segment Length: {segment_length}')
+        logger.info(f'Used Steps    : {nr_of_used_steps}')
+        logger.info(f'Number of Segments: {nr_of_segments}\n')
 
         self._define_path_names(path, save_results=True, nr_of_system_models=nr_of_segments)
 
@@ -466,7 +466,7 @@ class SegmentedCalculation(Calculation):
             if i == max(range(nr_of_segments)):   # if last Segment:
                 nr_of_used_steps = end_index_of_segment - start_index_of_segment + 1
 
-            print(f'{i}. Segment (flow_system indices {start_index_global}...{end_index_global}):')
+            logger.info(f'{i}. Segment (flow_system indices {start_index_global}...{end_index_global}):')
 
 
             # Modellierungsbox / TimePeriod-Box bauen:
@@ -476,9 +476,9 @@ class SegmentedCalculation(Calculation):
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 system_model_of_segment.before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
-                print('### before_values: ###')
-                pp(system_model_of_segment.before_values)
-                print('#######################')  # transferStartValues(segment, segmentBefore)
+                logger.info('### before_values: ###')
+                logger.info(f'{system_model_of_segment.before_values}')
+                logger.info('#######################')  # transferStartValues(segment, segmentBefore)
 
             # model in Energiesystem aktivieren:
             self.flow_system.activate_model(system_model_of_segment)
@@ -517,8 +517,6 @@ class SegmentedCalculation(Calculation):
                 firstFill = False
 
             for key, val in result_to_append.items():
-                # print(key)
-
                 # Wenn val ein Wert ist:
                 if isinstance(val, np.ndarray) or isinstance(val, np.float64) or np.isscalar(val):
 

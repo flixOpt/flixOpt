@@ -119,7 +119,7 @@ class Aggregation:
         self.results = self.aggregation.predictOriginalData()
 
         self.time_for_clustering = timeit.default_timer() - start_time   # Zeit messen:
-        print(self.describe_clusters())
+        logger.info(self.describe_clusters())
 
     @property
     def results_original_index(self):
@@ -444,11 +444,11 @@ class TimeSeriesCollection:
                     raise Exception('addPeak_max/min must be list of TimeSeriesRaw-objects!')
 
     def print(self):
-        print('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
+        logger.info('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
         for TS in self.time_series_list:
             aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_group: ' + str(self._get_agg_type(TS)) + ')'
-            print(aStr.format(self._getWeight(TS)))
+            logger.info(aStr.format(self._getWeight(TS)))
         if len(self.agg_type_count.keys()) > 0:
-            print('agg_types: ' + str(list(self.agg_type_count.keys())))
+            logger.info('agg_types: ' + str(list(self.agg_type_count.keys())))
         else:
-            print('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
+            logger.warning('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')

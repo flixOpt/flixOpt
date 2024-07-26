@@ -762,7 +762,7 @@ class SolverLog:
                 self.presolved_continuous = self.presolved_cols - self.presolved_integer
 
         elif self.solver_name == 'glpk':
-            print('######################################################')
-            print('### No solver-log parsing implemented for glpk yet! ###')
+            logger.warning('######################################################')
+            logger.warning('### No solver-log parsing implemented for glpk yet! ###')
         else:
             raise Exception('SolverLog.parse_infos() is not defined for solver ' + self.solver_name)
