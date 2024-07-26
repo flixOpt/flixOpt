@@ -266,4 +266,7 @@ def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'E
 
 def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
     logger = logging.getLogger('flixOpt')
-    logger.setLevel(get_logging_level_by_name(level_name))
+    logging_level = get_logging_level_by_name(level_name)
+    logger.setLevel(logging_level)
+    for handler in logger.handlers:
+        handler.setLevel(logging_level)
