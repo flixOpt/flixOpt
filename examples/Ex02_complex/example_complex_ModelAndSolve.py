@@ -9,11 +9,8 @@ import datetime
 
 import numpy as np
 
-from flixOpt.calculation import FullCalculation
+from flixOpt import *
 from flixOpt.components import Boiler, CHP, Storage, Sink, Source, LinearTransformer
-from flixOpt.elements import Bus, Flow, Effect
-from flixOpt.interface import InvestParameters
-from flixOpt.flow_system import FlowSystem
 
 # ## Solver-Inputs:##
 displaySolverOutput = False  # ausführlicher Solver-Output.

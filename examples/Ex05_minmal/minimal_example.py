@@ -10,10 +10,8 @@ import datetime
 
 import numpy as np
 
-from flixOpt.calculation import FullCalculation
+from flixOpt import *
 from flixOpt.components import Boiler, Source, Sink
-from flixOpt.elements import Effect, Bus, Flow
-from flixOpt.flow_system import FlowSystem
 
 #####################
 ## some timeseries ##
@@ -114,6 +112,4 @@ aCalc.solve(solverProps)
 #  results are saved under /results/
 
 # ##### loading results from output-files ######
-import flixOpt.postprocessing as flixPost
-
-aCalc_post = flixPost.flix_results(aCalc.name)
+aCalc_post = flix_results(aCalc.name)
