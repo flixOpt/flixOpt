@@ -231,3 +231,23 @@ def as_effect_dict_with_ts(name_of_param: str,
     effect_dict = as_effect_dict(effect_values)
     effect_ts_dict = effect_values_to_ts(name_of_param, effect_dict, owner)
     return effect_ts_dict
+
+
+def setup_logging(level=logging.WARNING):
+    """Setup logging configuration"""
+    logger = logging.getLogger(__name__)  # Logger is created or retrieved here
+    logger.setLevel(level)
+
+    # Add handlers to the logger if not present
+    if not logger.handlers:  # Prevent adding multiple handlers if setup_logging is called multiple times
+        # Create handlers
+        c_handler = logging.StreamHandler()
+        c_handler.setLevel(level)
+
+        # Create formatters and add them to handlers
+        c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        c_handler.setFormatter(c_format)
+        logger.addHandler(c_handler)
+
+    return logger
+
