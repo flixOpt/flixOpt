@@ -187,10 +187,10 @@ class MathModel:
     def all_ts_variables(self) -> List:
         return [variable for variable in self.variables if isinstance(variable, VariableTS)]
 
-    def printNoEqsAndVars(self) -> None:
-        print('no of Eqs   (single):' + str(self.nr_of_equations) + ' (' + str(self.nr_of_single_equations) + ')')
-        print('no of InEqs (single):' + str(self.nr_of_inequations) + ' (' + str(self.nr_of_single_inequations) + ')')
-        print('no of Vars  (single):' + str(self.nr_of_variables) + ' (' + str(self.nr_of_single_variables) + ')')
+    def describe(self) -> str:
+        return (f'no of Eqs   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
+                f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
+                f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
 
     ##############################################################################################
     ################ pyomo-Spezifisch
