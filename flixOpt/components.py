@@ -9,13 +9,13 @@ import numpy as np
 import textwrap
 from typing import Union, Optional, Literal
 
+from flixOpt import utils
 from flixOpt.elements import Flow, Component, MediumCollection, EffectCollection, Objective
 from flixOpt.core import Skalar, Numeric, Numeric_TS, TimeSeries, effect_values_to_ts
 from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.structure import SystemModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
-from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
-import flixOpt.flixOptHelperFcts as helpers
+from flixOpt.interface import InvestParameters, TimeSeriesRaw
 
 
 class LinearTransformer(Component):
@@ -344,7 +344,7 @@ class Boiler(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
-        helpers.check_bounds(eta, 'eta', self.eta_bounds[0], self.eta_bounds[1])
+        utils.check_bounds(eta, 'eta', self.eta_bounds[0], self.eta_bounds[1])
 
         # # generische property für jeden Koeffizienten
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
@@ -392,7 +392,7 @@ class Power2Heat(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
-        helpers.check_bounds(eta, 'eta', self.eta_bounds[0], self.eta_bounds[1])
+        utils.check_bounds(eta, 'eta', self.eta_bounds[0], self.eta_bounds[1])
 
         # # generische property für jeden Koeffizienten
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
@@ -435,7 +435,7 @@ class HeatPump(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
-        helpers.check_bounds(COP, 'COP', self.eta_bounds[0], self.eta_bounds[1])
+        utils.check_bounds(COP, 'COP', self.eta_bounds[0], self.eta_bounds[1])
 
 
 class CoolingTower(LinearTransformer):
@@ -477,7 +477,7 @@ class CoolingTower(LinearTransformer):
 
         # Plausibilität eta:
         self.specificElectricityDemand_bounds = [0, 1]  # 0 < eta_th < 1
-        helpers.check_bounds(specificElectricityDemand, 'specificElectricityDemand',
+        utils.check_bounds(specificElectricityDemand, 'specificElectricityDemand',
                              self.specificElectricityDemand_bounds[0], self.specificElectricityDemand_bounds[1])
 
 
@@ -535,9 +535,9 @@ class CHP(LinearTransformer):
         self.eta_th_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_th < 1
         self.eta_el_bounds = [0 + 1e-10, 1 - 1e-10]  # 0 < eta_el < 1
 
-        helpers.check_bounds(eta_th, 'eta_th', self.eta_th_bounds[0], self.eta_th_bounds[1])
-        helpers.check_bounds(eta_el, 'eta_el', self.eta_el_bounds[0], self.eta_el_bounds[1])
-        helpers.check_bounds(eta_th + eta_el, 'eta_th+eta_el',
+        utils.check_bounds(eta_th, 'eta_th', self.eta_th_bounds[0], self.eta_th_bounds[1])
+        utils.check_bounds(eta_el, 'eta_el', self.eta_el_bounds[0], self.eta_el_bounds[1])
+        utils.check_bounds(eta_th + eta_el, 'eta_th+eta_el',
                              self.eta_th_bounds[0]+self.eta_el_bounds[0],
                              self.eta_th_bounds[1]+self.eta_el_bounds[1])
 
@@ -589,7 +589,7 @@ class HeatPumpWithSource(LinearTransformer):
 
         # Plausibilität eta:
         self.eta_bounds = [0 + 1e-10, 20 - 1e-10]  # 0 < COP < 1
-        helpers.check_bounds(COP, 'COP', self.eta_bounds[0], self.eta_bounds[1])
+        utils.check_bounds(COP, 'COP', self.eta_bounds[0], self.eta_bounds[1])
 
 
 class Storage(Component):
@@ -826,7 +826,7 @@ class Storage(Component):
         if self.chargeState0_inFlowHours is None:
             # Startzustand bleibt Freiheitsgrad
             pass
-        elif helpers.is_number(self.chargeState0_inFlowHours):
+        elif utils.is_number(self.chargeState0_inFlowHours):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
             self.model.add_equation(Equation('charge_state_start', self, system_model, eqType='eq'))
             self.model.eqs['charge_state_start'].add_constant(self.model.variables['charge_state'].before_value)  # chargeState_0 !

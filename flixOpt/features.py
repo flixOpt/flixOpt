@@ -12,12 +12,12 @@ import logging
 
 import numpy as np
 
+from flixOpt import utils
 from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Flow, EffectTypeDict, EffectCollection
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.math_modeling import Variable, VariableTS, Equation
-from flixOpt.flixBasicsPublic import InvestParameters
-import flixOpt.flixOptHelperFcts as helpers
+from flixOpt.interface import InvestParameters
 
 log = logging.getLogger(__name__)
 
@@ -1091,7 +1091,7 @@ class FeatureInvest(Feature):
                 # äquivalent zu:.
                 # eq: - defining_variable(t) + Big * On(t) + relative_minimum(t) * investment_size <= Big
 
-                Big = helpers.max_args(self.relative_minimum.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
+                Big = utils.max_args(self.relative_minimum.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
 
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_variable, -1)
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_on_variable, Big)  # übergebene On-Variable

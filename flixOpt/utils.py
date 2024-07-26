@@ -10,7 +10,7 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 import math  # für nan
 
-from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt.interface import TimeSeriesRaw
 from flixOpt.core import Numeric
 from typing import Union, List, Optional
 

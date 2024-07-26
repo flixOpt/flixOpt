@@ -20,7 +20,7 @@ from flixOpt.core import Skalar, TimeSeries
 from flixOpt.elements import EffectCollection, Flow
 from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Storage
-from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt.interface import TimeSeriesRaw
 from flixOpt.structure import Element, SystemModel
 from flixOpt.math_modeling import Equation, Variable, VariableTS, MathModel
 

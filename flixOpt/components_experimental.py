@@ -8,8 +8,8 @@ import numpy as np
 
 from flixOpt.elements import Bus, Flow
 from flixOpt.components import LinearTransformer, CHP
-from flixOpt.flixBasicsPublic import InvestParameters
-from flixOpt.flixOptHelperFcts import check_exists
+from flixOpt.interface import InvestParameters
+from flixOpt.utils import check_exists
 
 
 def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,

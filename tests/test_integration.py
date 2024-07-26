@@ -6,12 +6,9 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-from flixOpt.elements import Bus, Flow, Effect
+from flixOpt import *
 from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearTransformer
-from flixOpt.flow_system import FlowSystem
-from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
-from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
-import flixOpt.flixPostprocessing as flixPost
+
 
 class BaseTest(unittest.TestCase):
     def setUp(self):
@@ -105,7 +102,7 @@ class TestSimple(BaseTest):
 
         aCalc.solve(self.solverProps)
 
-        aCalc_post = flixPost.flix_results(aCalc.name)
+        aCalc_post = flix_results(aCalc.name)
         return aCalc_post.results
 
 
@@ -258,7 +255,7 @@ class TestComplex(BaseTest):
 
         aCalc.solve(self.solverProps)
 
-        return flixPost.flix_results(aCalc.name).results
+        return flix_results(aCalc.name).results
 
     def segments_of_flows_model(self):
         # Define the components and flow_system
@@ -302,7 +299,7 @@ class TestComplex(BaseTest):
 
         aCalc.solve(self.solverProps)
 
-        return flixPost.flix_results(aCalc.name).results
+        return flix_results(aCalc.name).results
 
 
 class TestModelingTypes(BaseTest):
@@ -373,8 +370,7 @@ class TestModelingTypes(BaseTest):
         if not doSegmentedCalc:
             calc.solve(self.solverProps)
 
-        import flixOpt.flixPostprocessing as flixPost
-        return flixPost.flix_results(calc.name).results
+        return flix_results(calc.name).results
 
 
 if __name__ == '__main__':

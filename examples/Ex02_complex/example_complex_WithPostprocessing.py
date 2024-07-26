@@ -18,7 +18,7 @@ print(label)
 # ####################
 
 # ##### loading ######
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 # comp_colors = px.colors.qualitative.Plotly + px.colors.qualitative.Bold
 comp_colors = None
 # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
@@ -59,7 +59,7 @@ fig = calc1.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True
 fig.show()
 
 import matplotlib.pyplot as plt
-from flixOpt.flixPlotHelperFcts import *
+from flixOpt.plotting import *
 
 # Zeitreihe greifen:
 print('Variante 1:')

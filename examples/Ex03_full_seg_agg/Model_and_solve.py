@@ -117,11 +117,8 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 
 ##########################################################################
 
-from flixOpt.elements import Bus, Flow, Effect
+from flixOpt import *
 from flixOpt.components import Boiler, CHP, Storage, Sink, Source
-from flixOpt.flow_system import FlowSystem
-from flixOpt.flixBasicsPublic import TimeSeriesRaw
-from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 
 import logging as log
 import os  # für logging
@@ -315,7 +312,7 @@ for aResult in listOfCalcs:
 
 ####### loading #######
 
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 
 listOfResults = []
 
@@ -340,7 +337,7 @@ if doSegmentedCalc:
 
 ###### plotting #######
 
-from flixOpt.flixPlotHelperFcts import *
+from flixOpt.plotting import *
 
 
 # Übersichtsplot:

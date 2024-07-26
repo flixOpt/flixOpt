@@ -5,7 +5,7 @@ import datetime
 
 from flixOpt.components import Boiler, Storage, Source, Sink, CHP
 from flixOpt.structure import Flow, Bus, FlowSystem, Calculation, Effect
-from flixOpt.flixPostprocessing import flix_results
+from flixOpt.postprocessing import flix_results
 
 
 class TestExistance(unittest.TestCase):

@@ -9,11 +9,8 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 import datetime
 
-from flixOpt.calculation import FullCalculation
-from flixOpt.flixBasicsPublic import InvestParameters
-from flixOpt.flow_system import FlowSystem
+from flixOpt import *
 from flixOpt.components import Boiler, Sink, Source, Storage, CHP
-from flixOpt.elements import Bus, Effect, Flow
 
 ### some Solver-Inputs: ###
 displaySolverOutput = False # ausführlicher Solver-Output.
@@ -177,7 +174,7 @@ aCalc.solve(solverProps)
 
 
 # ##### loading results from output-files ######
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 
 label = aCalc.name
 print(label)

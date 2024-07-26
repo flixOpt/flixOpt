@@ -8,8 +8,8 @@ from typing import Union, Optional, List, Dict, Any
 
 import numpy as np
 
-from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt import utils
+from flixOpt.interface import TimeSeriesRaw
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -73,7 +73,7 @@ class TimeSeries:
     @property
     def active_data_vector(self) -> np.ndarray:
         # Always returns the active data as a vector.
-        return helpers.as_vector(self.active_data, len(self.active_time_indices))
+        return utils.as_vector(self.active_data, len(self.active_time_indices))
 
     @property
     def active_data(self) -> Numeric:
