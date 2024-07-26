@@ -277,7 +277,7 @@ def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRIT
     c_handler.setLevel(logging_level)
 
     # Create a clean and aligned formatter
-    log_format = '%(asctime)s - %(levelname)-8s - %(message)s'
+    log_format = '%(asctime)s - %(levelname)-8s : %(message)s'
     date_format = '%Y-%m-%d %H:%M:%S'
     c_format = CustomFormatter(log_format, datefmt=date_format)
     c_handler.setFormatter(c_format)
