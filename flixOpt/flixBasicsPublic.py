@@ -118,6 +118,14 @@ class InvestParameters:
 
         super().__init__(**kwargs)
 
+    @property
+    def minimum_size(self):
+        return self.fixed_size or self._minimum_size
+
+    @property
+    def maximum_size(self):
+        return self.fixed_size or self._maximum_size
+
     def __repr__(self):
         return f"<{self.__class__.__name__}>: {self.__dict__}"
 
@@ -138,10 +146,3 @@ class InvestParameters:
 
         return f"<{self.__class__.__name__}>: {full_str}"
 
-    @property
-    def minimum_size(self):
-        return self.fixed_size or self._minimum_size
-
-    @property
-    def maximum_size(self):
-        return self.fixed_size or self._maximum_size

@@ -475,10 +475,7 @@ class FeatureOn(Feature):
             self.model.eqs['On_Constraint_1'].add_summand(aFlow.model.variables['val'], -1, time_indices)
             # wenn variabler Nennwert:
             if isinstance(aFlow.size, InvestParameters):
-                if not aFlow.size.fixed_size:
-                    min_val = aFlow.size.minimum_size * aFlow.relative_minimum.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
-                else:   # wenn fixer Nennwert
-                    min_val = aFlow.size.fixed_size * aFlow.relative_minimum.active_data
+                min_val = aFlow.size.minimum_size * aFlow.relative_minimum.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
             else:   # wenn fixer Nennwert
                 min_val = aFlow.size * aFlow.relative_minimum.active_data
 
@@ -953,16 +950,9 @@ class FeatureInvest(Feature):
         if self.invest_parameters.optional or on_is_used_and_val_is_not_fix:
             lower_bound = 0  # can be zero (if no invest) or can switch off
         else:
-            if self.invest_parameters.fixed_size:
-                lower_bound = relative_minimum * self.invest_parameters.fixed_size  # immer an
-            else:
-                lower_bound = relative_minimum * self.invest_parameters.minimum_size  # investSize is variabel
+            lower_bound = relative_minimum * self.invest_parameters.minimum_size   # Use minimum of Investment
 
-        #  max-Wert:
-        if self.invest_parameters.fixed_size:
-            upper_bound = relative_maximum * self.invest_parameters.fixed_size
-        else:
-            upper_bound = relative_maximum * self.invest_parameters.maximum_size  # investSize is variabel
+        upper_bound = relative_maximum * self.invest_parameters.maximum_size  # Use maximum of Investment
 
         # upper_bound und lower_bound gleich, dann fix:
         if np.all(upper_bound == lower_bound):  # np.all -> kann listen oder werte vergleichen
@@ -983,10 +973,8 @@ class FeatureInvest(Feature):
     def declare_vars_and_eqs(self, system_model: SystemModel):
 
         # Determine lower and upper bounds for investment size
-        lower_bound = 0 if self.invest_parameters.optional else (
-            self.invest_parameters.fixed_size if self.invest_parameters.fixed_size else self.invest_parameters.minimum_size
-        )
-        upper_bound = self.invest_parameters.fixed_size if self.invest_parameters.fixed_size else self.invest_parameters.maximum_size
+        lower_bound = 0 if self.invest_parameters.optional else self.invest_parameters.minimum_size
+        upper_bound = self.invest_parameters.maximum_size
 
         # Define var_investmentSize
         if lower_bound == upper_bound:
