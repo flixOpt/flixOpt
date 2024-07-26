@@ -114,6 +114,6 @@ aCalc.solve(solverProps)
 #  results are saved under /results/
 
 # ##### loading results from output-files ######
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 
 aCalc_post = flixPost.flix_results(aCalc.name)

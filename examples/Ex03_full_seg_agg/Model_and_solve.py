@@ -315,7 +315,7 @@ for aResult in listOfCalcs:
 
 ####### loading #######
 
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 
 listOfResults = []
 

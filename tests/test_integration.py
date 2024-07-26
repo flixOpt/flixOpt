@@ -11,7 +11,7 @@ from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearTransfo
 from flixOpt.flow_system import FlowSystem
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 from flixOpt.interface import InvestParameters, TimeSeriesRaw
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 
 class BaseTest(unittest.TestCase):
     def setUp(self):
@@ -373,7 +373,7 @@ class TestModelingTypes(BaseTest):
         if not doSegmentedCalc:
             calc.solve(self.solverProps)
 
-        import flixOpt.flixPostprocessing as flixPost
+        import flixOpt.postprocessing as flixPost
         return flixPost.flix_results(calc.name).results
 
 

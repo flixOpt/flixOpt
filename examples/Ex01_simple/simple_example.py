@@ -177,7 +177,7 @@ aCalc.solve(solverProps)
 
 
 # ##### loading results from output-files ######
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 
 label = aCalc.name
 print(label)
