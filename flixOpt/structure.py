@@ -134,19 +134,15 @@ class SystemModel(MathModel):
             f'––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n'
             f'{"Result of Obj":<17}: {self.objective_result:>10.2f}')
 
-        try:
-            logger.info(f'{"lower bound":<17}: {self.solver_results["Problem"][0]["Lower bound"]:>10.2f}')
+        try: logger.info(f'{"lower bound":<17}: {self.solver_results["Problem"][0]["Lower bound"]:>10.2f}')
+        except: pass
 
-        except:
-            pass
-        logger.info('')
-        for aBus in self.flow_system.all_buses:
-            if aBus.with_excess:
-                if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
-                        self.results[aBus.label]['excess_output'] > 1e-6):
-                    # if any(aBus.excess_input.result > 0) or any(aBus.excess_output.result > 0):
-                    logger.warning('!!!!! Attention !!!!!')
-                    logger.warning('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
+        for bus in self.flow_system.all_buses:
+            if bus.with_excess and (
+                    np.any(self.results[bus.label]['excess_input'] > 1e-6) or
+                    np.any(self.results[bus.label]['excess_output'] > 1e-6)
+            ):
+                logger.warning(f'Excess Value in Bus {bus.label}!')
 
                     # if penalties exist
         if self.flow_system.effect_collection.penalty.model.variables['sum'].result > 10:
