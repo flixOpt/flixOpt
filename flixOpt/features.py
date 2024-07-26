@@ -911,10 +911,6 @@ class FeatureInvest(Feature):
         fixed_relative_value : scalar or TS
             given fixed_relative_value of defining_variable
             (val = fixed_relative_value * investmentSize)
-        investment_size : scalar or None
-            value of fixed investmentSize (None if no fixed investmentSize)
-            Flow: investmentSize=size
-            Storage: investmentSize =
         featureOn : FeatureOn
             FeatureOn of the defining_variable (if it has a cFeatureOn)
 
@@ -1127,7 +1123,7 @@ class FeatureInvest(Feature):
             # eq: investment_size = isInvested * size
             self.model.add_equation(Equation('isInvested_constraint_1', self, system_model, 'eq'))
             self.model.eqs['isInvested_constraint_1'].add_summand(self.model.variables[self.name_of_investment_size], -1)
-            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.variables['isInvested'], self.investment_size)
+            self.model.eqs['isInvested_constraint_1'].add_summand(self.model.variables['isInvested'], self.invest_parameters.fixed_size)
         else:
             ## 1. Gleichung (skalar):            
             # eq1: P_invest <= isInvested * investSize_max
