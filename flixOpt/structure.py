@@ -144,10 +144,9 @@ class SystemModel(MathModel):
             ):
                 logger.warning(f'Excess Value in Bus {bus.label}!')
 
-                    # if penalties exist
-        if self.flow_system.effect_collection.penalty.model.variables['sum'].result > 10:
-            logger.warning('Take care: -> high penalty makes the used mip_gap quite high')
-            logger.warning('           -> real costs are not optimized to mip_gap')
+        total_penalty = self.flow_system.effect_collection.penalty.model.variables['sum'].result
+        if total_penalty > 10:
+            logger.warning(f'A total penalty of {total_penalty} occurred. This might distort the results')
 
         logger.info('')
         logger.info('##############################################################')
