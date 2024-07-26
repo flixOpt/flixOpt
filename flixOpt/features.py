@@ -12,12 +12,12 @@ import logging
 
 import numpy as np
 
+from flixOpt import utils
 from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Flow, EffectTypeDict, EffectCollection
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.interface import InvestParameters
-from flixOpt import utils
 
 log = logging.getLogger(__name__)
 

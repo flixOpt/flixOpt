@@ -9,13 +9,13 @@ import numpy as np
 import textwrap
 from typing import Union, Optional, Literal
 
+from flixOpt import utils
 from flixOpt.elements import Flow, Component, MediumCollection, EffectCollection, Objective
 from flixOpt.core import Skalar, Numeric, Numeric_TS, TimeSeries, effect_values_to_ts
 from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.structure import SystemModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
 from flixOpt.interface import InvestParameters, TimeSeriesRaw
-from flixOpt import utils
 
 
 class LinearTransformer(Component):

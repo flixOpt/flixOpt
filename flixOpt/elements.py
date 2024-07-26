@@ -11,11 +11,11 @@ import logging
 
 import numpy as np
 
+from flixOpt import utils
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
 from flixOpt.interface import InvestParameters
 from flixOpt.structure import Element, SystemModel
-from flixOpt import utils
 
 log = logging.getLogger(__name__)
 
