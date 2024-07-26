@@ -246,8 +246,21 @@ class CustomFormatter(logging.Formatter):
 
     def format(self, record):
         log_color = self.COLORS.get(record.levelname, self.RESET)
-        message = super().format(record)
-        return f"{log_color}{message}{self.RESET}"
+        original_message = record.getMessage()
+        message_lines = original_message.split('\n')
+
+        # Create a formatted message for each line separately
+        formatted_lines = []
+        for line in message_lines:
+            temp_record = logging.LogRecord(
+                record.name, record.levelno, record.pathname, record.lineno,
+                line, record.args, record.exc_info, record.funcName, record.stack_info
+            )
+            formatted_line = super().format(temp_record)
+            formatted_lines.append(f"{log_color}{formatted_line}{self.RESET}")
+
+        formatted_message = '\n'.join(formatted_lines)
+        return formatted_message
 
 def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
     """Setup logging configuration"""
