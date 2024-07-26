@@ -113,8 +113,8 @@ class InvestParameters:
         self.optional = optional
         self.specific_effects = specific_effects
         self.effects_in_segments = effects_in_segments
-        self.minimum_size = minimum_size
-        self.maximum_size = maximum_size
+        self._minimum_size = minimum_size
+        self._maximum_size = maximum_size
 
         super().__init__(**kwargs)
 
@@ -137,3 +137,11 @@ class InvestParameters:
         full_str =f"{', '.join(all_relevant_parts)}"
 
         return f"<{self.__class__.__name__}>: {full_str}"
+
+    @property
+    def minimum_size(self):
+        return self.fixed_size or self._minimum_size
+
+    @property
+    def maximum_size(self):
+        return self.fixed_size or self._maximum_size
