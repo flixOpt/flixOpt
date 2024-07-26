@@ -239,11 +239,13 @@ def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRIT
     logging_level = get_logging_level_by_name(level_name)
     logger.setLevel(logging_level)
 
-    # Add handlers to the logger if not present
-    if not logger.handlers:  # Prevent adding multiple handlers if setup_logging is called multiple times
-        # Create handlers
-        c_handler = logging.StreamHandler()
-        c_handler.setLevel(logging_level)
+    # Clear existing handlers
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # Create handlers
+    c_handler = logging.StreamHandler()
+    c_handler.setLevel(logging_level)
 
         # Create formatters and add them to handlers
         c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

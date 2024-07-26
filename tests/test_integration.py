@@ -12,6 +12,7 @@ from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearTransfo
 
 class BaseTest(unittest.TestCase):
     def setUp(self):
+        setup_logging("DEBUG")
         self.solverProps = {
             'mip_gap': 0.0001,
             'time_limit_seconds': 3600,
