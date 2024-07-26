@@ -7,7 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 # TODO: as_vector() -> int32 Vektoren möglich machen
 import logging
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict, Literal
 
 import numpy as np
 import math  # für nan
@@ -223,3 +223,19 @@ def _mergeToArray(args):
             arg = args[i]
         array = np.append(array, arg)
     return array
+
+
+def apply_formating(data_dict: Dict[str, Union[int, float]],
+                    key_format: str = "<17",
+                    value_format: str = ">10.2f",
+                    indent: int = 0,
+                    sort_by: Optional[Literal['key', 'value']] = None) -> str:
+    if sort_by == 'key':
+        sorted_keys = sorted(data_dict.keys(), key=str.lower)
+    elif sort_by == 'value':
+        sorted_keys = sorted(data_dict, key=lambda k: data_dict[k], reverse=True)
+    else:
+        sorted_keys = data_dict.keys()
+
+    lines = [f'{indent*" "}{key:{key_format}}: {data_dict[key]:{value_format}}' for key in sorted_keys]
+    return '\n'.join(lines)
