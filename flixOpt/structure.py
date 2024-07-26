@@ -53,6 +53,33 @@ class SystemModel(MathModel):
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             flow_system.get_time_data_from_indices(time_indices))
+        self._variables = []
+        self._eqs = []
+        self._ineqs = []
+
+    @property
+    def nr_of_equations(self) -> int:
+        return len(self.all_equations)
+
+    @property
+    def nr_of_single_equations(self) -> int:
+        return sum([eq.nr_of_single_equations for eq in self.all_equations])
+
+    @property
+    def nr_of_inequations(self) -> int:
+        return len(self.all_inequations)
+
+    @property
+    def nr_of_single_inequations(self) -> int:
+        return sum([eq.nr_of_single_equations for eq in self.all_inequations])
+
+    @property
+    def nr_of_variables(self) -> int:
+        return len(self.all_variables)
+
+    @property
+    def nr_of_single_variables(self) -> int:
+        return sum([var.length for var in self.all_variables])
 
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
