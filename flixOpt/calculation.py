@@ -262,8 +262,8 @@ class AggregatedCalculation(Calculation):
             raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(
                 min(dt_in_hours)) + ' bis ' + str(max(dt_in_hours)) + ' h')
 
-        logger.info('#########################')
-        logger.info('## TS for aggregation ###')
+        logger.info(f'{"":#^80}')
+        logger.info(f'{" TimeSeries for aggregation ":#^80}')
 
         ## Daten für Aggregation vorbereiten:
         # TSlist and TScollection ohne Skalare:
@@ -434,8 +434,8 @@ class SegmentedCalculation(Calculation):
         """
         self.check_if_already_modeled()
         self._infos['segmented_properties'] = {'segment_length': segment_length, 'nr_of_used_steps': nr_of_used_steps}
-        logger.info('##############################################################')
-        logger.info('#################### segmented Solving #######################')
+        logger.info(f'{"":#^80}')
+        logger.info(f'{" segmented Solving ":#^80}')
 
         t_start = timeit.default_timer()
         self.flow_system.finalize()   # flow_system finalisieren:
@@ -476,9 +476,9 @@ class SegmentedCalculation(Calculation):
             # Startwerte übergeben von Vorgänger-system_model:
             if i > 0:
                 system_model_of_segment.before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
-                logger.info('### before_values: ###')
+                logger.info(f'{" before_values ":#^80}')
                 logger.info(f'{system_model_of_segment.before_values}')
-                logger.info('#######################')  # transferStartValues(segment, segmentBefore)
+                logger.info(f'{"":#^80}')
 
             # model in Energiesystem aktivieren:
             self.flow_system.activate_model(system_model_of_segment)

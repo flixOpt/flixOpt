@@ -165,18 +165,18 @@ class Aggregation:
         else:
             extremePeriods = {}
 
-        return (f'#########################\n'
-                f'###### Clustering #######\n'
+        return (f'{"":#^80}\n'
+                f'{" Clustering ":#^80}\n'
                 f'periods_order:\n'
                 f'{self.aggregation.clusterOrder}\n'
                 f'clusterPeriodNoOccur:\n'
                 f'{self.aggregation.clusterPeriodNoOccur}\n'
                 f'index_vectors_of_clusters:\n'
                 f'{aVisual}\n'
-                f'########################\n'
+                f'{"":#^80}\n'
                 f'extremePeriods:\n'
                 f'{extremePeriods}\n'
-                f'########################')
+                f'{"":#^80}')
 
 
 class AggregationModeling(Element):

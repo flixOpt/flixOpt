@@ -103,7 +103,8 @@ class SystemModel(MathModel):
                     raise Exception(
                         'no allowed arguments for kwargs: ' + str(key) + '(all arguments:' + str(kwargs) + ')')
 
-        logger.info(f'##################### solving ################################\n{self.describe()}')
+        logger.info(f'{" starting solving ":#^80}')
+        logger.info(f'{self.describe()}')
 
         super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
 
@@ -121,7 +122,7 @@ class SystemModel(MathModel):
         # 2. struct:
         self.results_struct = utils.createStructFromDictInDict(self.results)
 
-        logger.info('################### finished #################################')
+        logger.info(f'{" finished solving ":#^80}')
         for aEffect in self.flow_system.effect_collection.effects:
             logger.info(f'{aEffect.label} in {aEffect.unit}:\n'
                         f'  {"operation":<15}: {aEffect.operation.model.variables["sum"].result:>10.2f}\n'
@@ -131,7 +132,7 @@ class SystemModel(MathModel):
         logger.info(
             # f'{"SUM":<15}: ...todo...\n'
             f'{"penalty":<17}: {self.flow_system.effect_collection.penalty.model.variables["sum"].result:>10.2f}\n'
-            f'––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n'
+            f'{"":-^80}\n'
             f'{"Result of Obj":<17}: {self.objective_result:>10.2f}')
 
         try: logger.info(f'{"lower bound":<17}: {self.solver_results["Problem"][0]["Lower bound"]:>10.2f}')
@@ -148,8 +149,7 @@ class SystemModel(MathModel):
         if total_penalty > 10:
             logger.warning(f'A total penalty of {total_penalty} occurred. This might distort the results')
 
-        logger.info('')
-        logger.info('##############################################################')
+        logger.info(f'{" End of Results ":#^80}')
 
         # str description of results:
         # nested fct:

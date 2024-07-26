@@ -335,8 +335,8 @@ class FlowSystem:
 
     def printModel(self) -> str:
         return (f'\n'
-                f'##############################################################'
-                f'########## Short String Description of Energysystem ##########\n\n'
+                f'{"":#^80}\n'
+                f'{" Short String Description of FlowSystem ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_system())}')
 
     def description_of_system(self, flowsWithBusInfo=False) -> Dict:
@@ -402,8 +402,8 @@ class FlowSystem:
 
     def print_equations(self) -> str:
         return (f'\n'
-                f'##############################################################\n'
-                f'################# Equations of Energysystem ##################\n'
+                f'{"":#^80}\n'
+                f'{" Equations of FlowSystem ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_equations(), default_flow_style=False, allow_unicode=True)}')
 
     def description_of_variables(self, structured=True) -> Union[List, Dict]:
@@ -451,11 +451,11 @@ class FlowSystem:
 
     def print_variables(self) -> str:
         return (f'\n'
-                f'##############################################################\n'
-                f'################# Variables of Energysystem ##################\n\n'
-                f'############# a) as list : ################\n\n'
+                f'{"":#^80}\n'
+                f'{" Variables of FlowSystem ":#^80}\n\n'
+                f'{" a) as list ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_variables(structured=False))}\n\n'
-                f'############# b) structured : ################\n\n'
+                f'{" b) structured ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_variables(structured=True))}')
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
