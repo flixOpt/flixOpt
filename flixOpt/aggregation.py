@@ -443,12 +443,12 @@ class TimeSeriesCollection:
                 if not isinstance(aTSraw, TimeSeriesRaw):
                     raise Exception('addPeak_max/min must be list of TimeSeriesRaw-objects!')
 
-    def print(self):
-        logger.info('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
+    def __str__(self) -> str:
+        result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'
         for TS in self.time_series_list:
-            aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_group: ' + str(self._get_agg_type(TS)) + ')'
-            logger.info(aStr.format(self._getWeight(TS)))
+            result += f' -> {TS.label_full} (weight: {self._getWeight(TS):.4f}; agg_group: {self._get_agg_type(TS)})\n'
         if len(self.agg_type_count.keys()) > 0:
-            logger.info('agg_types: ' + str(list(self.agg_type_count.keys())))
+            result += f'agg_types: {list(self.agg_type_count.keys())}\n'
         else:
-            logger.warning('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
+            result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
+        return result

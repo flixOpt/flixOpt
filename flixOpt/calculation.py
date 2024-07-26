@@ -271,7 +271,7 @@ class AggregatedCalculation(Calculation):
         self.time_series_collection = TimeSeriesCollection(self.time_series_for_aggregation,
                                                            addPeakMax_TSraw=addPeakMax, addPeakMin_TSraw=addPeakMin, )
 
-        self.time_series_collection.print()
+        logger.info(f'{self.time_series_collection}')
 
         import pandas as pd
         # seriesDict = {i : self.time_series_for_aggregation[i].active_data_vector for i in range(length(self.time_series_for_aggregation))}
