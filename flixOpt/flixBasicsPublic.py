@@ -128,18 +128,14 @@ class InvestParameters:
 
     def __str__(self):
         details = [
-            f"fix_effects={self.fix_effects}" if self.fix_effects else ""
+            f"size={self.fixed_size}" if self.fixed_size else f"size='{self.minimum_size}-{self.maximum_size}'",
+            f"optional" if self.optional else "",
+            f"fix_effects={self.fix_effects}" if self.fix_effects else "",
+            f"specific_effects={self.specific_effects}" if self.specific_effects else "",
+            f"effects_in_segments={self.effects_in_segments}, " if self.effects_in_segments else "",
             f"divest_effects={self.divest_effects}" if self.divest_effects else ""
-            f"specific_effects={self.specific_effects}" if self.specific_effects else ""
-            f"Fixed Size" if self.fixed_size else ""
-            f"Optional" if self.optional else ""
-            f"min/max_Size=[{self.minimum_size}-{self.maximum_size}]"
-            f"effects_in_segments={self.effects_in_segments}, " if self.effects_in_segments else ""
         ]
-
         all_relevant_parts = [part for part in details if part != ""]
-
-        full_str =f"{', '.join(all_relevant_parts)}"
-
+        full_str = f"{', '.join(all_relevant_parts)}"
         return f"<{self.__class__.__name__}>: {full_str}"
 
