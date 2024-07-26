@@ -45,14 +45,10 @@ class TimeSeriesRaw:
         self.agg_group = agg_group
         self.agg_weight = agg_weight
         if (agg_group is not None) and (agg_weight is not None):
-            raise Exception('Either <agg_group> or explicit <agg_weigth> can be set. Not both!')
+            raise Exception('Either <agg_group> or explicit <agg_weigth> can be used. Not both!')
 
     def __repr__(self):
-        return f"<cTSraw agg_group={self.agg_group!r}, agg_weight={self.agg_weight!r}>"
-
-    def __str__(self):
-        agg_info = f"agg_group={self.agg_group}, agg_weight={self.agg_weight}" if self.agg_group or self.agg_weight else "no aggregation info"
-        return f"Timeseries: {agg_info}"
+        return f"TimeSeriesRaw(value={self.value}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
 
 
 # Sammlung von Props für Investitionskosten (für FeatureInvest)
