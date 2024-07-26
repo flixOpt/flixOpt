@@ -82,7 +82,10 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                     # defining flows:
                     Q_th=Flow(label='Q_th',  # name
                               bus=Fernwaerme,  # linked bus
-                              size=50,  # 50 kW_th nominal size
+                              size=InvestParameters(fix_effects=1000,  # 1000 € investment costs
+                                    fixed_size=50,  # fixed size
+                                    optional=False,  # forced investment
+                                    specific_effects={costs: 10, PE: 2}),  # specific costs: 10 €/kW; 2 kWh_PE/kW
                               load_factor_max=1.0,  # maximal mean power 50 kW
                               load_factor_min=0.1,  # minimal mean power 5 kW
                               relative_minimum=5 / 50,  # 10 % part load
@@ -96,7 +99,6 @@ aGaskessel = Boiler('Kessel', eta=0.5,  # efficiency ratio
                               effects_per_switch_on=0.01,  # € per start
                               switch_on_total_max=1000,  # max nr of starts
                               values_before_begin=[50],  # 50 kW is value before start
-                              invest_parameters=invest_Gaskessel,  # see above
                               flow_hours_total_max=1e6,  # kWh, overall maximum "flow-work"
                               ),
                     Q_fu=Flow(label='Q_fu',  # name
@@ -153,15 +155,20 @@ invest_Speicher = InvestParameters(fix_effects=0,  # no fix costs
 # 4.b) storage itself:
 aSpeicher = Storage('Speicher', # defining flows:
                     inFlow=Flow('Q_th_load', bus=Fernwaerme, size=1e4),
-                    outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_inFlowHours=None,
-                    # None, because invest-size is variable
+                    outFlow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4),
+                    capacity_inFlowHours=InvestParameters(
+                        fix_effects=0,  # no fix costs
+                        fixed_size=None,  # variable size
+                        effects_in_segments=costsInvestsizeSegments,  # see above
+                        optional=False,  # forced invest
+                        specific_effects={costs: 0.01, CO2: 0.01},  # €/kWh; kg_CO2/kWh
+                        minimum_size=0, maximum_size=1000),  # optimizing between 0...1000 kWh
                     chargeState0_inFlowHours=0,  # empty storage at beginning
                     # charge_state_end_min = 3, # min charge state and end
                     charge_state_end_max=10,  # max charge state and end
                     eta_load=0.9, eta_unload=1,  # efficiency of (un)-loading
                     fracLossPerHour=0.08,  # loss of storage per time
-                    avoidInAndOutAtOnce=True,  # no parallel loading and unloading
-                    invest_parameters=invest_Speicher)  # see above
+                    avoidInAndOutAtOnce=True)  # no parallel loading and unloading
 
 # 5. definition of sinks and sources:
 # 5.a) heat load profile:    
