@@ -17,7 +17,7 @@ from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict
 from flixOpt.interface import InvestParameters
 from flixOpt.structure import Element, SystemModel
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 class Effect(Element):
     '''
@@ -508,7 +508,7 @@ class Component(Element):
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
-        log.debug(str(self.label) + 'do_modeling()')
+        logger.debug(str(self.label) + 'do_modeling()')
         self.featureOn.do_modeling(system_model, time_indices)
 
     def add_share_to_globals_of_flows(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:

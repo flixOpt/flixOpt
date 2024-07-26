@@ -5,11 +5,14 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 from typing import Union, Optional, List, Dict, Any
+import logging
 
 import numpy as np
 
 from flixOpt import utils
 from flixOpt.interface import TimeSeriesRaw
+
+logger = logging.getLogger(__name__)
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype

@@ -22,7 +22,7 @@ from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Objective
 from flixOpt.features import FeatureInvest
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class FlowSystem:
@@ -244,7 +244,7 @@ class FlowSystem:
         # Komponenten-Modellierung (# inklusive sub_elements!)
         for aComp in self.components:
             aComp: Component
-            log.debug('model ' + aComp.label + '...')
+            logger.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
             aComp.declare_vars_and_eqs_of_flows(self.model)
             aComp.declare_vars_and_eqs(self.model)
@@ -258,7 +258,7 @@ class FlowSystem:
         # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
         for aBus in self.all_buses:
-            log.debug('model ' + aBus.label + '...')
+            logger.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
             aBus.do_modeling(self.model, time_indices)
             aBus.add_share_to_globals(self.effect_collection, self.model)
@@ -303,7 +303,7 @@ class FlowSystem:
 
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
-            log.debug('create model-Vars for Elements of EnergySystem')
+            logger.debug('create model-Vars for Elements of EnergySystem')
             for element in self.all_first_level_elements_with_flows:
                 # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
                 if not self._finalized:

@@ -11,6 +11,7 @@ import copy
 import timeit
 from typing import Optional, List, Dict, Union
 import warnings
+import logging
 
 import pandas as pd
 import numpy as np
@@ -25,7 +26,7 @@ from flixOpt.structure import Element, SystemModel
 from flixOpt.math_modeling import Equation, Variable, VariableTS, MathModel
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-
+logger = logging.getLogger(__name__)
 
 class Aggregation:
     """

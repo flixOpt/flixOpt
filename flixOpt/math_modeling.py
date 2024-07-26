@@ -18,7 +18,7 @@ from flixOpt.core import Skalar, Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class MathModel:
@@ -59,7 +59,7 @@ class MathModel:
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
             import pyomo.environ as pyomoEnv
-            log.info('Loaded pyomo modules')
+            logger.info('Loaded pyomo modules')
             # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchlaufe immer wieder genutzt wird.
             self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
         elif self.modeling_language == 'cvxpy':
@@ -262,7 +262,7 @@ class Variable:
         self._result = None  # Ergebnis
 
         self._result = None  # Ergebnis-Speicher
-        log.debug('Variable created: ' + self.label)
+        logger.debug('Variable created: ' + self.label)
 
         # Check conformity:
         self.label = utils.check_name_for_conformity(label)
@@ -420,7 +420,7 @@ class Equation:
         self.myMom = owner
         self.eq = None  # z.B. für pyomo : pyomoComponente
 
-        log.debug('equation created: ' + str(label))
+        logger.debug('equation created: ' + str(label))
 
 
     def add_summand(self,
@@ -494,7 +494,7 @@ class Equation:
         self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
 
     def to_math_model(self, math_model: MathModel) -> None:
-        log.debug('eq ' + self.label + '.to_math_model()')
+        logger.debug('eq ' + self.label + '.to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)

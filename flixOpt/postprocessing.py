@@ -6,6 +6,7 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import pickle
+import logging
 
 import yaml
 import numpy as np
@@ -14,6 +15,8 @@ import matplotlib.pyplot as plt  # für Plots im Postprocessing
 import matplotlib.dates as mdates
 
 from flixOpt import utils
+
+logger = logging.getLogger(__name__)
 
 
 class cFlow_post():

@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.elements import Flow
     from flixOpt.flow_system import FlowSystem
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class SystemModel(MathModel):

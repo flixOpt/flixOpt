@@ -23,7 +23,7 @@ from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Calculation:

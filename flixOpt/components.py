@@ -7,6 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 import numpy as np
 import textwrap
+import logging
 from typing import Union, Optional, Literal
 
 from flixOpt import utils
@@ -17,6 +18,7 @@ from flixOpt.structure import SystemModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
 from flixOpt.interface import InvestParameters, TimeSeriesRaw
 
+logger = logging.getLogger(__name__)
 
 class LinearTransformer(Component):
     """

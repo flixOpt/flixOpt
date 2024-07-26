@@ -19,7 +19,7 @@ from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.interface import InvestParameters
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 ##############################################################
@@ -516,11 +516,11 @@ class FeatureOn(Feature):
         self.model.eqs['On_Constraint_2'].add_summand(self.model.variables['on'], - sumOfFlowMax / nr_of_flows, time_indices)  #
 
         if isinstance(sumOfFlowMax, (np.ndarray, list)):
-            if max(sumOfFlowMax) / nr_of_flows > 1000: log.warning(
+            if max(sumOfFlowMax) / nr_of_flows > 1000: logger.warning(
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
                     int(max(sumOfFlowMax) / nr_of_flows)) + '). Ggf. falsche Ergebnisse !!!')
         else:
-            if sumOfFlowMax / nr_of_flows > 1000: log.warning(
+            if sumOfFlowMax / nr_of_flows > 1000: logger.warning(
                 '!!! ACHTUNG in ' + self.owner.label_full + ' : Binärdefinition mit großem Max-Wert (' + str(
                     int(sumOfFlowMax / nr_of_flows)) + '). Ggf. falsche Ergebnisse !!!')
 

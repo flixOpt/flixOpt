@@ -6,13 +6,16 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 # TODO: as_vector() -> int32 Vektoren möglich machen
+import logging
+from typing import Union, List, Optional
 
 import numpy as np
 import math  # für nan
 
 from flixOpt.interface import TimeSeriesRaw
 from flixOpt.core import Numeric
-from typing import Union, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
