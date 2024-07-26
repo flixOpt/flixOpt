@@ -4,7 +4,7 @@ Created on Wed Mar 31 22:51:38 2021
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-from typing import Union, Optional, List, Dict, Any
+from typing import Union, Optional, List, Dict, Any, Literal
 import logging
 
 import numpy as np
@@ -251,3 +251,14 @@ def setup_logging(level=logging.WARNING):
 
     return logger
 
+
+def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
+    possible_logging_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    logger = logging.getLogger(__name__)
+    if level_name.upper() in possible_logging_levels:
+        logging_level = getattr(logging, level_name.upper(), logging.WARNING)
+        logger.setLevel(logging_level)
+        for handler in logger.handlers:
+            handler.setLevel(logging_level)
+    else:
+        print(f"Invalid logging level: {level_name}. {possible_logging_levels=}")
