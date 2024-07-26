@@ -206,12 +206,12 @@ class FlowSystem:
             # operation:
             for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-                assert (effect not in shareEffect.specific_share_to_other_effects_operation.keys(),
-                        f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}')
+                assert effect not in shareEffect.specific_share_to_other_effects_operation.keys(), \
+                    f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}'
             # invest:
             for shareEffect in effect.specific_share_to_other_effects_invest.keys():
-                assert (effect not in shareEffect.specific_share_to_other_effects_invest.keys(),
-                        f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}')
+                assert effect not in shareEffect.specific_share_to_other_effects_invest.keys(),\
+                    f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}'
 
     # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
     def finalize(self) -> None:
