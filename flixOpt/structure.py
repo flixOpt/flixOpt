@@ -493,7 +493,6 @@ class ElementModel:
         self.element = element
         self.variables = {}
         self.eqs = {}
-        self.ineqs = {}
         self.objective = None
 
     def get_var(self, label: str) -> Variable:
@@ -504,8 +503,6 @@ class ElementModel:
     def get_eq(self, label: str) -> Equation:
         if label in self.eqs.keys():
             return self.eqs[label]
-        if label in self.ineqs.keys():
-            return self.ineqs[label]
         raise Exception(f'Equation "{label}" does not exist')
 
     def add_variable(self, variable: Variable) -> None:
@@ -527,8 +524,8 @@ class ElementModel:
         # Wenn Glg vorhanden:
         eq: Equation
         aList = []
-        if (len(self.eqs) + len(self.ineqs)) > 0:
-            for eq in (list(self.eqs.values()) + list(self.ineqs.values())):
+        if len(self.eqs) > 0:
+            for eq in list(self.eqs.values()):
                 aList.append(eq.description())
         if not (self.objective is None):
             aList.append(self.objective.description())
