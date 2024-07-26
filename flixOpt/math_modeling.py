@@ -59,7 +59,7 @@ class MathModel:
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
             import pyomo.environ as pyomoEnv
-            logger.info('Loaded pyomo modules')
+            logger.debug('Loaded pyomo modules')
             # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchlaufe immer wieder genutzt wird.
             self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
         elif self.modeling_language == 'cvxpy':
