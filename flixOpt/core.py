@@ -233,6 +233,22 @@ def as_effect_dict_with_ts(name_of_param: str,
     return effect_ts_dict
 
 
+class CustomFormatter(logging.Formatter):
+    # ANSI escape codes for colors
+    COLORS = {
+        'DEBUG': '\033[96m',    # Cyan
+        'INFO': '\033[92m',     # Green
+        'WARNING': '\033[93m',  # Yellow
+        'ERROR': '\033[91m',    # Red
+        'CRITICAL': '\033[91m\033[1m',  # Bold Red
+    }
+    RESET = '\033[0m'
+
+    def format(self, record):
+        log_color = self.COLORS.get(record.levelname, self.RESET)
+        message = super().format(record)
+        return f"{log_color}{message}{self.RESET}"
+
 def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
     """Setup logging configuration"""
     logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
@@ -250,7 +266,7 @@ def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRIT
     # Create a clean and aligned formatter
     log_format = '%(asctime)s - %(levelname)-8s - %(message)s'
     date_format = '%Y-%m-%d %H:%M:%S'
-    c_format = logging.Formatter(log_format, datefmt=date_format)
+    c_format = CustomFormatter(log_format, datefmt=date_format)
     c_handler.setFormatter(c_format)
     logger.addHandler(c_handler)
 
