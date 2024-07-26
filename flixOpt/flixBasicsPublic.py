@@ -62,9 +62,9 @@ class InvestParameters:
     '''
 
     def __init__(self,
-                 fix_effects: Optional[Union[Dict,int, float]] = None,
-                 divest_effects: Optional[Union[Dict,int, float]] = None,
-                 fixed_size: bool = True,
+                 fix_effects: Optional[Union[Dict, int, float]] = None,
+                 divest_effects: Optional[Union[Dict, int, float]] = None,
+                 fixed_size: Optional[Union[int, float]] = None,
                  optional: bool = True,  # Investition ist weglassbar
                  specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
                  effects_in_segments: Optional[Union[Dict, List]] = None,
@@ -79,8 +79,8 @@ class InvestParameters:
             (Attention: Annualize costs to chosen period!)
         divest_effects : None or scalar, optional
             Fixed divestment costs (if not invested, e.g., demolition costs or contractual penalty).
-        fixed_size : bool, optional
-            Determines if the investment size is fixed. If its not fixed, uses naminal_val as an optimization variable.
+        fixed_size : int, float, optional
+            Determines if the investment size is fixed.
         optional : bool, optional
             If True, investment is not forced.
         specific_effects : scalar or Dict[Effect: Union[int, float, np.ndarray], optional

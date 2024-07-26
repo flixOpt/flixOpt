@@ -474,10 +474,12 @@ class FeatureOn(Feature):
             aFlow = self.flows_defining_on[0]
             self.model.eqs['On_Constraint_1'].add_summand(aFlow.model.variables['val'], -1, time_indices)
             # wenn variabler Nennwert:
-            if aFlow.size is None:
-                min_val = aFlow.invest_parameters.minimum_size * aFlow.relative_minimum.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
-            # wenn fixer Nennwert
-            else:
+            if isinstance(aFlow.size, InvestParameters):
+                if not aFlow.size.fixed_size:
+                    min_val = aFlow.size.minimum_size * aFlow.relative_minimum.active_data  # kleinst-Möglichen Wert nutzen. (Immer noch math. günstiger als Epsilon)
+                else:   # wenn fixer Nennwert
+                    min_val = aFlow.size.fixed_size * aFlow.relative_minimum.active_data
+            else:   # wenn fixer Nennwert
                 min_val = aFlow.size * aFlow.relative_minimum.active_data
 
             self.model.eqs['On_Constraint_1'].add_summand(self.model.variables['on'], 1 * np.maximum(system_model.epsilon, min_val),
@@ -509,8 +511,8 @@ class FeatureOn(Feature):
         for aFlow in self.flows_defining_on:
             self.model.eqs['On_Constraint_2'].add_summand(aFlow.model.variables['val'], 1 / nr_of_flows, time_indices)
             # wenn variabler Nennwert:
-            if aFlow.size is None:
-                sumOfFlowMax += aFlow.relative_maximum.active_data * aFlow.invest_parameters.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
+            if isinstance(aFlow.size, InvestParameters):
+                sumOfFlowMax += aFlow.relative_maximum.active_data * aFlow.size.maximum_size  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
             else:
                 sumOfFlowMax += aFlow.relative_maximum.active_data * aFlow.size
 
@@ -890,7 +892,6 @@ class FeatureInvest(Feature):
                  relative_minimum: TimeSeries,
                  relative_maximum: TimeSeries,
                  fixed_relative_value: Optional[TimeSeries],
-                 investment_size: Optional[Skalar],
                  featureOn: Optional[FeatureOn] = None):
         """
         Parameters
@@ -929,9 +930,7 @@ class FeatureInvest(Feature):
         self.relative_maximum = relative_maximum
         self.relative_minimum = relative_minimum
         self.fixed_relative_value = fixed_relative_value
-        self.investment_size = investment_size  # nominalValue
         self.featureOn = featureOn
-        self.check_plausibility()
 
         self.defining_variable = None
         self.defining_on_variable = None
@@ -940,17 +939,6 @@ class FeatureInvest(Feature):
         if self.invest_parameters.effects_in_segments is not None:
             self.featureLinearSegments = FeatureLinearSegmentVars('segmentedInvestcosts', self)
             self.sub_elements.append(self.featureLinearSegments)
-
-    def check_plausibility(self):
-        # Check investment_size:
-        # todo: vielleicht ist es aber auch ok, wenn der size belegt ist und einfach nicht genutzt wird....
-        if self.invest_parameters.fixed_size:
-            if self.investment_size in (None, 0):
-                raise ValueError(f'In {self.name_of_investment_size=} in {self.owner.label=}: '
-                                 f'investment_size must be > 0 if an Investment with a fixed size is made')
-        elif self.investment_size is not None:
-            raise Exception(f'!{self.name_of_investment_size=} of {self.owner.label_full=} '
-                            f'must be None if investment_size is variable')
 
     def bounds_of_defining_variable(self) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
 
@@ -970,13 +958,13 @@ class FeatureInvest(Feature):
             lower_bound = 0  # can be zero (if no invest) or can switch off
         else:
             if self.invest_parameters.fixed_size:
-                lower_bound = relative_minimum * self.investment_size  # immer an
+                lower_bound = relative_minimum * self.invest_parameters.fixed_size  # immer an
             else:
                 lower_bound = relative_minimum * self.invest_parameters.minimum_size  # investSize is variabel
 
         #  max-Wert:
         if self.invest_parameters.fixed_size:
-            upper_bound = relative_maximum * self.investment_size
+            upper_bound = relative_maximum * self.invest_parameters.fixed_size
         else:
             upper_bound = relative_maximum * self.invest_parameters.maximum_size  # investSize is variabel
 
@@ -1000,9 +988,9 @@ class FeatureInvest(Feature):
 
         # Determine lower and upper bounds for investment size
         lower_bound = 0 if self.invest_parameters.optional else (
-            self.investment_size if self.invest_parameters.fixed_size else self.invest_parameters.minimum_size
+            self.invest_parameters.fixed_size if self.invest_parameters.fixed_size else self.invest_parameters.minimum_size
         )
-        upper_bound = self.investment_size if self.invest_parameters.fixed_size else self.invest_parameters.maximum_size
+        upper_bound = self.invest_parameters.fixed_size if self.invest_parameters.fixed_size else self.invest_parameters.maximum_size
 
         # Define var_investmentSize
         if lower_bound == upper_bound:
