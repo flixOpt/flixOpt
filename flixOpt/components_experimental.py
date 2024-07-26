@@ -8,7 +8,7 @@ import numpy as np
 
 from flixOpt.elements import Bus, Flow
 from flixOpt.components import LinearTransformer, CHP
-from flixOpt.flixBasicsPublic import InvestParameters
+from flixOpt.interface import InvestParameters
 from flixOpt.flixOptHelperFcts import check_exists
 
 

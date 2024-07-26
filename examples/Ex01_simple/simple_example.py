@@ -10,7 +10,7 @@ import numpy as np
 import datetime
 
 from flixOpt.calculation import FullCalculation
-from flixOpt.flixBasicsPublic import InvestParameters
+from flixOpt.interface import InvestParameters
 from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Boiler, Sink, Source, Storage, CHP
 from flixOpt.elements import Bus, Effect, Flow

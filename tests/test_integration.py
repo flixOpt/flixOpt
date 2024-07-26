@@ -10,7 +10,7 @@ from flixOpt.elements import Bus, Flow, Effect
 from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearTransformer
 from flixOpt.flow_system import FlowSystem
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
-from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
+from flixOpt.interface import InvestParameters, TimeSeriesRaw
 import flixOpt.flixPostprocessing as flixPost
 
 class BaseTest(unittest.TestCase):

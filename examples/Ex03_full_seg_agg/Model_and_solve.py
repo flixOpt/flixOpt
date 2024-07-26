@@ -120,7 +120,7 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 from flixOpt.elements import Bus, Flow, Effect
 from flixOpt.components import Boiler, CHP, Storage, Sink, Source
 from flixOpt.flow_system import FlowSystem
-from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt.interface import TimeSeriesRaw
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 
 import logging as log

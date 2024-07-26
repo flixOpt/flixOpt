@@ -14,7 +14,7 @@ from flixOpt.core import Skalar, Numeric, Numeric_TS, TimeSeries, effect_values_
 from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.structure import SystemModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
-from flixOpt.flixBasicsPublic import InvestParameters, TimeSeriesRaw
+from flixOpt.interface import InvestParameters, TimeSeriesRaw
 import flixOpt.flixOptHelperFcts as helpers
 
 

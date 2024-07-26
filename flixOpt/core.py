@@ -9,7 +9,7 @@ from typing import Union, Optional, List, Dict, Any
 import numpy as np
 
 from flixOpt import flixOptHelperFcts as helpers
-from flixOpt.flixBasicsPublic import TimeSeriesRaw
+from flixOpt.interface import TimeSeriesRaw
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
