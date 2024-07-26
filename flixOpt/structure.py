@@ -43,6 +43,9 @@ class SystemModel(MathModel):
                  flow_system,
                  time_indices: Union[List[int], range],
                  TS_explicit=None):
+        self._variables = []
+        self._eqs = []
+        self._ineqs = []
         super().__init__(label, modeling_language)
         self.flow_system: FlowSystem = flow_system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
@@ -53,33 +56,6 @@ class SystemModel(MathModel):
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             flow_system.get_time_data_from_indices(time_indices))
-        self._variables = []
-        self._eqs = []
-        self._ineqs = []
-
-    @property
-    def nr_of_equations(self) -> int:
-        return len(self.all_equations)
-
-    @property
-    def nr_of_single_equations(self) -> int:
-        return sum([eq.nr_of_single_equations for eq in self.all_equations])
-
-    @property
-    def nr_of_inequations(self) -> int:
-        return len(self.all_inequations)
-
-    @property
-    def nr_of_single_inequations(self) -> int:
-        return sum([eq.nr_of_single_equations for eq in self.all_inequations])
-
-    @property
-    def nr_of_variables(self) -> int:
-        return len(self.all_variables)
-
-    @property
-    def nr_of_single_variables(self) -> int:
-        return sum([var.length for var in self.all_variables])
 
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
@@ -219,15 +195,55 @@ class SystemModel(MathModel):
         logger.info(f'{" End of Main Results ":#^80}')
 
     @property
-    def all_variables(self) -> List[Variable]:
-        all_vars = []
+    def variables(self) -> List[Variable]:
+        all_vars = list(self._variables)
         for model in self.models_of_elements.values():
             all_vars += [var for var in model.variables.values()]
         return all_vars
 
+    @variables.setter
+    def variables(self, *new_vars: Variable):
+        if len(new_vars) == 1 and isinstance(new_vars[0], list): # Check if the first element is a list, then unpack it
+            new_vars = new_vars[0]
+        for var in new_vars:
+            if not isinstance(var, Variable):
+                raise TypeError("All elements must be instances of Variable")
+        self._variables.extend(new_vars)
+
+    @property
+    def eqs(self) -> List[Equation]:
+        all_eqs = list(self._eqs)
+        for model in self.models_of_elements.values():
+            all_eqs += [var for var in model.eqs.values()]
+        return all_eqs
+
+    @eqs.setter
+    def eqs(self, *new_eqs: Equation):
+        if len(new_eqs) == 1 and isinstance(new_eqs[0], list):   # Check if the first element is a list, then unpack it
+            new_eqs = new_eqs[0]
+        for eq in new_eqs:
+            if not isinstance(eq, Equation):
+                raise TypeError("All elements must be instances of Equation")
+        self._eqs.extend(new_eqs)
+
+    @property
+    def ineqs(self) -> List[Equation]:
+        return [eq for eq in self.eqs if eq.eqType == 'ineq']
+
+    @ineqs.setter
+    def ineqs(self, *new_ineq: Equation):
+        if len(new_ineq) == 1 and isinstance(new_ineq[0], list):   # Check if the first element is a list, then unpack it
+            new_ineq = new_ineq[0]
+        for ineq in new_ineq:
+            if not isinstance(ineq, Equation) or not ineq.eqType == 'ineq':
+                raise TypeError("All elements must be instances of Equation and of tyoe 'ineq'")
+        self._ineqs.extend(new_ineq)  # Add new variables to the internal list
+
+
+
     @property
     def all_ts_variables(self) -> List[VariableTS]:
-        return [var for var in self.all_variables if isinstance(var, VariableTS)]
+        return [var for var in self.variables if isinstance(var, VariableTS)]
 
     @property
     def all_equations(self) -> List[Equation]:
@@ -238,18 +254,15 @@ class SystemModel(MathModel):
 
     @property
     def all_inequations(self) -> List[Equation]:
-        all_eqs = []
-        for model in self.models_of_elements.values():
-            all_eqs += [ineq for ineq in model.ineqs.values()]
-        return all_eqs
+        return [eq for eq in self.all_equations if eq.eqType == 'ineq']
 
     def to_math_model(self) -> None:
         t_start = timeit.default_timer()
-        for variable in self.all_variables:   # Variablen erstellen
+        for variable in self.variables:   # Variablen erstellen
             variable.to_math_model(self)
-        for eq in self.all_equations:   # Gleichungen erstellen
+        for eq in self.eqs:   # Gleichungen erstellen
             eq.to_math_model(self)
-        for ineq in self.all_inequations:   # Ungleichungen erstellen:
+        for ineq in self.ineqs:   # Ungleichungen erstellen:
             ineq.to_math_model(self)
 
         self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
