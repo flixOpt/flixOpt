@@ -103,11 +103,7 @@ class SystemModel(MathModel):
                     raise Exception(
                         'no allowed arguments for kwargs: ' + str(key) + '(all arguments:' + str(kwargs) + ')')
 
-        logger.info('')
-        logger.info('##############################################################')
-        logger.info('##################### solving ################################')
-        logger.info('')
-        logger.info(self.describe())
+        logger.info(f'##################### solving ################################\n{self.describe()}')
 
         super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
 
@@ -119,28 +115,28 @@ class SystemModel(MathModel):
             termination_message = f'not implemented for solver "{solver_name}" yet'
         logger.info(f'Termination message: "{termination_message}"')
 
-        logger.info('')
         # Variablen-Ergebnisse abspeichern:
         # 1. dict:
         (self.results, self.results_var) = self.flow_system.get_results_after_solve()
         # 2. struct:
         self.results_struct = utils.createStructFromDictInDict(self.results)
 
-        logger.info('##############################################################')
         logger.info('################### finished #################################')
-        logger.info('')
         for aEffect in self.flow_system.effect_collection.effects:
-            logger.info(aEffect.label + ' in ' + aEffect.unit + ':')
-            logger.info('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
-            logger.info('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
-            logger.info('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
+            logger.info(f'{aEffect.label} in {aEffect.unit}:\n'
+                        f'  {"operation":<15}: {aEffect.operation.model.variables["sum"].result:>10.2f}\n'
+                        f'  {"invest":<15}: {aEffect.invest.model.variables["sum"].result:>10.2f}\n'
+                        f'  {"sum":<15}: {aEffect.all.model.variables["sum"].result:>10.2f}')
 
-        logger.info('SUM              : ' + '...todo...')
-        logger.info('penaltyCosts     : ' + str(self.flow_system.effect_collection.penalty.model.variables['sum'].result))
-        logger.info('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
-        logger.info('Result of Obj : ' + str(self.objective_result))
+        logger.info(
+            # f'{"SUM":<15}: ...todo...\n'
+            f'{"penalty":<17}: {self.flow_system.effect_collection.penalty.model.variables["sum"].result:>10.2f}\n'
+            f'––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\n'
+            f'{"Result of Obj":<17}: {self.objective_result:>10.2f}')
+
         try:
-            logger.info('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
+            logger.info(f'{"lower bound":<17}: {self.solver_results["Problem"][0]["Lower bound"]:>10.2f}')
+
         except:
             pass
         logger.info('')
