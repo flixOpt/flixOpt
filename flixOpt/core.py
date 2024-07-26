@@ -233,16 +233,17 @@ def as_effect_dict_with_ts(name_of_param: str,
     return effect_ts_dict
 
 
-def setup_logging(level=logging.WARNING):
+def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
     """Setup logging configuration"""
     logger = logging.getLogger(__name__)  # Logger is created or retrieved here
-    logger.setLevel(level)
+    logging_level = get_logging_level_by_name(level_name)
+    logger.setLevel(logging_level)
 
     # Add handlers to the logger if not present
     if not logger.handlers:  # Prevent adding multiple handlers if setup_logging is called multiple times
         # Create handlers
         c_handler = logging.StreamHandler()
-        c_handler.setLevel(level)
+        c_handler.setLevel(logging_level)
 
         # Create formatters and add them to handlers
         c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -252,13 +253,15 @@ def setup_logging(level=logging.WARNING):
     return logger
 
 
-def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
+def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) -> int:
     possible_logging_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    logger = logging.getLogger(__name__)
-    if level_name.upper() in possible_logging_levels:
-        logging_level = getattr(logging, level_name.upper(), logging.WARNING)
-        logger.setLevel(logging_level)
-        for handler in logger.handlers:
-            handler.setLevel(logging_level)
+    if level_name.upper() not in possible_logging_levels:
+        raise ValueError(f'Invalid logging level {level_name}')
     else:
-        print(f"Invalid logging level: {level_name}. {possible_logging_levels=}")
+        logging_level = getattr(logging, level_name.upper(), logging.WARNING)
+        return logging_level
+
+
+def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(get_logging_level_by_name(level_name))
