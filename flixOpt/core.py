@@ -243,12 +243,14 @@ def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRIT
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # Create handlers
+    # Create console handler
     c_handler = logging.StreamHandler()
     c_handler.setLevel(logging_level)
 
-    # Create formatters and add them to handlers
-    c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Create a clean and aligned formatter
+    log_format = '%(asctime)s - %(levelname)-8s - %(message)s'
+    date_format = '%Y-%m-%d %H:%M:%S'
+    c_format = logging.Formatter(log_format, datefmt=date_format)
     c_handler.setFormatter(c_format)
     logger.addHandler(c_handler)
 
