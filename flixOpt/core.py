@@ -262,7 +262,8 @@ class CustomFormatter(logging.Formatter):
         formatted_message = '\n'.join(formatted_lines)
         return formatted_message
 
-def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
+
+def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
     """Setup logging configuration"""
     logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
     logging_level = get_logging_level_by_name(level_name)
@@ -295,7 +296,7 @@ def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'E
         return logging_level
 
 
-def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
+def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
     logger = logging.getLogger('flixOpt')
     logging_level = get_logging_level_by_name(level_name)
     logger.setLevel(logging_level)
