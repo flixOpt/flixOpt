@@ -334,15 +334,11 @@ class FlowSystem:
 
         return results, results_var
 
-    def printModel(self) -> None:
-        aBus: Bus
-        aComp: Component
-        print('')
-        print('##############################################################')
-        print('########## Short String Description of Energysystem ##########')
-        print('')
-
-        print(yaml.dump(self.description_of_system()))
+    def printModel(self) -> str:
+        return (f'\n'
+                f'##############################################################'
+                f'########## Short String Description of Energysystem ##########\n\n'
+                f'{yaml.dump(self.description_of_system())}')
 
     def description_of_system(self, flowsWithBusInfo=False) -> Dict:
         modelDescription = {}
@@ -405,16 +401,11 @@ class FlowSystem:
 
         return aDict
 
-    def print_equations(self) -> None:
-
-        print('')
-        print('##############################################################')
-        print('################# Equations of Energysystem ##################')
-        print('')
-
-        print(yaml.dump(self.description_of_equations(),
-                        default_flow_style=False,
-                        allow_unicode=True))
+    def print_equations(self) -> str:
+        return (f'\n'
+                f'##############################################################\n'
+                f'################# Equations of Energysystem ##################\n'
+                f'{yaml.dump(self.description_of_equations(), default_flow_style=False, allow_unicode=True)}')
 
     def description_of_variables(self, structured=True) -> Union[List, Dict]:
         aVar: Variable
@@ -459,21 +450,14 @@ class FlowSystem:
 
             return aDict
 
-    def print_variables(self) -> None:
-        print('')
-        print('##############################################################')
-        print('################# Variables of Energysystem ##################')
-        print('')
-        print('############# a) as list : ################')
-        print('')
-
-        yaml.dump(self.description_of_variables(structured=False))
-
-        print('')
-        print('############# b) structured : ################')
-        print('')
-
-        yaml.dump(self.description_of_variables(structured=True))
+    def print_variables(self) -> str:
+        return (f'\n'
+                f'##############################################################\n'
+                f'################# Variables of Energysystem ##################\n\n'
+                f'############# a) as list : ################\n\n'
+                f'{yaml.dump(self.description_of_variables(structured=False))}\n\n'
+                f'############# b) structured : ################\n\n'
+                f'{yaml.dump(self.description_of_variables(structured=True))}')
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def get_time_data_from_indices(self, time_indices: Union[List[int], range]) -> Tuple[
