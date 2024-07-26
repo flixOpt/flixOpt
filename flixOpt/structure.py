@@ -123,37 +123,6 @@ class SystemModel(MathModel):
         # 2. struct:
         self.results_struct = utils.createStructFromDictInDict(self.results)
 
-        logger.info(f'{" finished solving ":#^80}')
-        for aEffect in self.flow_system.effect_collection.effects:
-            logger.info(f'{aEffect.label} in {aEffect.unit}:\n'
-                        f'  {"operation":<15}: {aEffect.operation.model.variables["sum"].result:>10.2f}\n'
-                        f'  {"invest":<15}: {aEffect.invest.model.variables["sum"].result:>10.2f}\n'
-                        f'  {"sum":<15}: {aEffect.all.model.variables["sum"].result:>10.2f}')
-
-        logger.info(
-            # f'{"SUM":<15}: ...todo...\n'
-            f'{"penalty":<17}: {self.flow_system.effect_collection.penalty.model.variables["sum"].result:>10.2f}\n'
-            f'{"":-^80}\n'
-            f'{"Result of Obj":<17}: {self.objective_result:>10.2f}')
-
-        try: logger.info(f'{"lower bound":<17}: {self.solver_results["Problem"][0]["Lower bound"]:>10.2f}')
-        except: pass
-
-        for bus in self.flow_system.all_buses:
-            if bus.with_excess and (
-                    np.any(self.results[bus.label]['excess_input'] > 1e-6) or
-                    np.any(self.results[bus.label]['excess_output'] > 1e-6)
-            ):
-                logger.warning(f'Excess Value in Bus {bus.label}!')
-
-        total_penalty = self.flow_system.effect_collection.penalty.model.variables['sum'].result
-        if total_penalty > 10:
-            logger.warning(f'A total penalty of {total_penalty} occurred. This might distort the results')
-
-        logger.info(f'{" End of Results ":#^80}')
-
-        # str description of results:
-        # nested fct:
         def extract_main_results() -> Dict[str, Union[Skalar, Dict]]:
             main_results = {}
             effect_results = {}
@@ -191,6 +160,35 @@ class SystemModel(MathModel):
                     invest_decisions['not invested'][label] = invested_size
 
             return main_results
+
+        logger.info(f'{" finished solving ":#^80}')
+        for aEffect in self.flow_system.effect_collection.effects:
+            logger.info(f'{aEffect.label} in {aEffect.unit}:\n'
+                        f'  {"operation":<15}: {aEffect.operation.model.variables["sum"].result:>10.2f}\n'
+                        f'  {"invest":<15}: {aEffect.invest.model.variables["sum"].result:>10.2f}\n'
+                        f'  {"sum":<15}: {aEffect.all.model.variables["sum"].result:>10.2f}')
+
+        logger.info(
+            # f'{"SUM":<15}: ...todo...\n'
+            f'{"penalty":<17}: {self.flow_system.effect_collection.penalty.model.variables["sum"].result:>10.2f}\n'
+            f'{"":-^80}\n'
+            f'{"Result of Obj":<17}: {self.objective_result:>10.2f}')
+
+        try: logger.info(f'{"lower bound":<17}: {self.solver_results["Problem"][0]["Lower bound"]:>10.2f}')
+        except: pass
+
+        for bus in self.flow_system.all_buses:
+            if bus.with_excess and (
+                    np.any(self.results[bus.label]['excess_input'] > 1e-6) or
+                    np.any(self.results[bus.label]['excess_output'] > 1e-6)
+            ):
+                logger.warning(f'Excess Value in Bus {bus.label}!')
+
+        total_penalty = self.flow_system.effect_collection.penalty.model.variables['sum'].result
+        if total_penalty > 10:
+            logger.warning(f'A total penalty of {total_penalty} occurred. This might distort the results')
+
+        logger.info(f'{" End of Results ":#^80}')
 
         self.main_results_str = extract_main_results()
         logger.info(utils.printDictAndList(self.main_results_str))
