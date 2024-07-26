@@ -161,37 +161,35 @@ class SystemModel(MathModel):
 
             return main_results
 
+        self.main_results_str = extract_main_results()
+
         logger.info(f'{" finished solving ":#^80}')
-        for aEffect in self.flow_system.effect_collection.effects:
-            logger.info(f'{aEffect.label} in {aEffect.unit}:\n'
-                        f'  {"operation":<15}: {aEffect.operation.model.variables["sum"].result:>10.2f}\n'
-                        f'  {"invest":<15}: {aEffect.invest.model.variables["sum"].result:>10.2f}\n'
-                        f'  {"sum":<15}: {aEffect.all.model.variables["sum"].result:>10.2f}')
+        logger.info(f'{" Main Results ":#^80}')
+        for effect_name, effect_results in self.main_results_str['Effects'].items():
+            logger.info(f'{effect_name}:\n'
+                        f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
+                        f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
+                        f'  {"sum":<15}: {effect_results["sum"]:>10.2f}')
 
         logger.info(
             # f'{"SUM":<15}: ...todo...\n'
-            f'{"penalty":<17}: {self.flow_system.effect_collection.penalty.model.variables["sum"].result:>10.2f}\n'
+            f'{"penalty":<17}: {self.main_results_str["penalty"]:>10.2f}\n'
             f'{"":-^80}\n'
-            f'{"Result of Obj":<17}: {self.objective_result:>10.2f}')
+            f'{"Objective":<17}: {self.main_results_str["Result of objective"]:>10.2f}\n'
+            f'{"":-^80}')
 
-        try: logger.info(f'{"lower bound":<17}: {self.solver_results["Problem"][0]["Lower bound"]:>10.2f}')
-        except: pass
+        logger.info(f'Investment Decisions:')
+        logger.info(utils.apply_formating(data_dict={**self.main_results_str["Invest-Decisions"]["invested"],
+                                                     **self.main_results_str["Invest-Decisions"]["not invested"]},
+                                          key_format="<30", indent=2, sort_by='value'))
 
-        for bus in self.flow_system.all_buses:
-            if bus.with_excess and (
-                    np.any(self.results[bus.label]['excess_input'] > 1e-6) or
-                    np.any(self.results[bus.label]['excess_output'] > 1e-6)
-            ):
-                logger.warning(f'Excess Value in Bus {bus.label}!')
+        for bus in self.main_results_str['buses with excess']:
+            logger.warning(f'Excess Value in Bus {bus.label}!')
 
-        total_penalty = self.flow_system.effect_collection.penalty.model.variables['sum'].result
-        if total_penalty > 10:
-            logger.warning(f'A total penalty of {total_penalty} occurred. This might distort the results')
-
-        logger.info(f'{" End of Results ":#^80}')
-
-        self.main_results_str = extract_main_results()
-        logger.info(utils.printDictAndList(self.main_results_str))
+        if self.main_results_str["penalty"] > 10:
+            logger.warning(f'A total penalty of {self.main_results_str["penalty"]} occurred.'
+                           f'This might distort the results')
+        logger.info(f'{" End of Main Results ":#^80}')
 
     @property
     def all_variables(self) -> List[Variable]:
