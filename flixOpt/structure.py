@@ -14,7 +14,8 @@ import numpy as np
 
 from flixOpt import utils
 from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # Modelliersprache
-from flixOpt.core import TimeSeries
+from flixOpt.core import TimeSeries, Skalar
+
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.elements import Flow
     from flixOpt.flow_system import FlowSystem
@@ -153,50 +154,45 @@ class SystemModel(MathModel):
 
         # str description of results:
         # nested fct:
-        def _getMainResultsAsStr():
-            main_results_str = {}
-
-            aEffectDict = {}
-            main_results_str['Effects'] = aEffectDict
-            for aEffect in self.flow_system.effect_collection.effects:
-                aDict = {}
-                aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
-                aDict['operation'] = str(aEffect.operation.model.variables['sum'].result)
-                aDict['invest'] = str(aEffect.invest.model.variables['sum'].result)
-                aDict['sum'] = str(aEffect.all.model.variables['sum'].result)
-            main_results_str['penaltyCosts'] = str(self.flow_system.effect_collection.penalty.model.variables['sum'].result)
-            main_results_str['Result of Obj'] = self.objective_result
-            if self.solver_name =='highs':
-                main_results_str['lower bound'] = self.solver_results.best_objective_bound
+        def extract_main_results() -> Dict[str, Union[Skalar, Dict]]:
+            main_results = {}
+            effect_results = {}
+            main_results['Effects'] = effect_results
+            for effect in self.flow_system.effect_collection.effects:
+                effect_results[f'{effect.label} [{effect.unit}]'] = {
+                    'operation': float(effect.operation.model.variables['sum'].result),
+                    'invest': float(effect.invest.model.variables['sum'].result),
+                    'sum': float(effect.all.model.variables['sum'].result)}
+            main_results['penalty'] = float(self.flow_system.effect_collection.penalty.model.variables['sum'].result)
+            main_results['Result of objective'] = self.objective_result
+            if self.solver_name == 'highs':
+                main_results['lower bound'] = self.solver_results.best_objective_bound
             else:
-                main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
+                main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
-            main_results_str['busesWithExcess'] = busesWithExcess
+            main_results['buses with excess'] = busesWithExcess
             for aBus in self.flow_system.all_buses:
                 if aBus.with_excess:
-                    if sum(self.results[aBus.label]['excess_input']) > excess_threshold or sum(
-                            self.results[aBus.label]['excess_output']) > excess_threshold:
+                    if (
+                            np.sum(self.results[aBus.label]['excess_input']) > excess_threshold or
+                            np.sum(self.results[aBus.label]['excess_output']) > excess_threshold
+                    ):
                         busesWithExcess.append(aBus.label)
 
-            aDict = {'invested': {},
-                     'not invested': {}
-                     }
-            main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.flow_system.all_investments:
-                investValue = aInvestFeature.model.variables[aInvestFeature.name_of_investment_size].result
-                investValue = float(investValue)  # bei np.floats Probleme bei Speichern
-                # umwandeln von numpy:
-                if isinstance(investValue, np.ndarray):
-                    investValue = investValue.tolist()
-                label = aInvestFeature.owner.label_full
-                if investValue > 1e-3:
-                    aDict['invested'][label] = investValue
+            invest_decisions = {'invested': {}, 'not invested': {}}
+            main_results['Invest-Decisions'] = invest_decisions
+            for invest_feature in self.flow_system.all_investments:
+                invested_size = invest_feature.model.variables[invest_feature.name_of_investment_size].result
+                invested_size = float(invested_size)  # bei np.floats Probleme bei Speichern
+                label = invest_feature.owner.label_full
+                if invested_size > 1e-3:
+                    invest_decisions['invested'][label] = invested_size
                 else:
-                    aDict['not invested'][label] = investValue
+                    invest_decisions['not invested'][label] = invested_size
 
-            return main_results_str
+            return main_results
 
-        self.main_results_str = _getMainResultsAsStr()
+        self.main_results_str = extract_main_results()
         logger.info(utils.printDictAndList(self.main_results_str))
 
     @property
