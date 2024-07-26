@@ -240,34 +240,6 @@ class SystemModel(MathModel):
         self._ineqs.extend(new_ineq)  # Add new variables to the internal list
 
 
-
-    @property
-    def all_ts_variables(self) -> List[VariableTS]:
-        return [var for var in self.variables if isinstance(var, VariableTS)]
-
-    @property
-    def all_equations(self) -> List[Equation]:
-        all_eqs = []
-        for model in self.models_of_elements.values():
-            all_eqs += [eq for eq in model.eqs.values()]
-        return all_eqs
-
-    @property
-    def all_inequations(self) -> List[Equation]:
-        return [eq for eq in self.all_equations if eq.eqType == 'ineq']
-
-    def to_math_model(self) -> None:
-        t_start = timeit.default_timer()
-        for variable in self.variables:   # Variablen erstellen
-            variable.to_math_model(self)
-        for eq in self.eqs:   # Gleichungen erstellen
-            eq.to_math_model(self)
-        for ineq in self.ineqs:   # Ungleichungen erstellen:
-            ineq.to_math_model(self)
-
-        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
-
-
 class Element:
     """
     Element mit Variablen und Gleichungen
