@@ -187,17 +187,12 @@ class LinearTransformer(Component):
 
         # linear segments:
         else:
-
             # check if investsize is variable for any flow:            
             for flow in (self.inputs + self.outputs):
-                if (flow.invest_parameters is not None) and \
-                        not (flow.invest_parameters.fixed_size):
-                    raise Exception('linearSegmentsOfFlows (in ' +
-                                    self.label_full +
-                                    ') and variable sizeue' +
-                                    '(invest_size) (in flow ' +
-                                    flow.label_full +
-                                    ') , does not make sense together!')
+                if isinstance(flow.size, InvestParameters) and flow.size.fixed_size is None:
+                    raise Exception(
+                        f"Linear segments of flows (in {self.label_full}) and variable size "
+                        f"(invest_size) (in flow {flow.label_full}) do not make sense together!")
 
             # Flow als Keys rauspicken und alle Stützstellen als TimeSeries:
             self.segmentsOfFlows_TS = self.segmentsOfFlows
@@ -613,7 +608,7 @@ class Storage(Component):
 
     new_init_args = ['label', 'exists', 'inFlow', 'outFlow', 'capacity_inFlowHours', 'minimum_relative_chargeState', 'maximum_relative_chargeState',
                      'chargeState0_inFlowHours', 'charge_state_end_min', 'charge_state_end_max', 'eta_load',
-                     'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce', 'invest_parameters']
+                     'eta_unload', 'fracLossPerHour', 'avoidInAndOutAtOnce']
 
     not_used_args = ['label', 'exists']
 
@@ -622,17 +617,16 @@ class Storage(Component):
                  label: str,
                  inFlow: Flow,
                  outFlow: Flow,
-                 capacity_inFlowHours: Optional[Union[Skalar, Literal['lastValueOfSim']]],
+                 capacity_inFlowHours: Union[Skalar, InvestParameters],
                  group: Optional[str] = None,
                  minimum_relative_chargeState: Numeric_TS = 0,
                  maximum_relative_chargeState: Numeric_TS = 1,
-                 chargeState0_inFlowHours: Skalar = 0,
+                 chargeState0_inFlowHours: Optional[Union[Skalar, Literal['lastValueOfSim']]] = 0,
                  charge_state_end_min: Optional[Skalar] = None,
                  charge_state_end_max: Optional[Skalar] = None,
                  eta_load: Numeric_TS = 1, eta_unload: Numeric_TS = 1,
                  fracLossPerHour: Numeric_TS = 0,
                  avoidInAndOutAtOnce: bool = True,
-                 invest_parameters: Optional[InvestParameters] = None,
                  **kwargs):
         '''
         constructor of storage
@@ -650,10 +644,8 @@ class Storage(Component):
         exists: Numeric_TS
             Limits the availlable capacity, and the in and out flow. DOes not affect other parameters yet
             (like frac_loss_per_hour, starting value, ...)
-        capacity_inFlowHours : float or None
-            nominal capacity of the storage 
-            float: capacity in FlowHours
-            None:  if invest_parameters.fixed_size = False
+        capacity_inFlowHours : Skalar or InvestParameter
+            nominal capacity of the storage
         minimum_relative_chargeState : float or TS, optional
             minimum relative charge state. The default is 0.
         maximum_relative_chargeState : float or TS, optional
@@ -675,8 +667,6 @@ class Storage(Component):
             loss per chargeState-Unit per hour. The default is 0.
         avoidInAndOutAtOnce : boolean, optional
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
-        invest_parameters : InvestParameters, optional
-            invest arguments. The default is None.
         
         **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
             DESCRIPTION.
@@ -710,30 +700,29 @@ class Storage(Component):
 
         self.chargeState0_inFlowHours = chargeState0_inFlowHours
         self.charge_state_end_min = charge_state_end_min
-
-        if charge_state_end_max is None:
-            # Verwende Lösungen bis zum vollen Speicher
-            self.charge_state_end_max = self.capacity_inFlowHours
-        else:
+        if charge_state_end_max:
             self.charge_state_end_max = charge_state_end_max
+        elif isinstance(self.capacity_inFlowHours, InvestParameters):
+            self.charge_state_end_max = self.capacity_inFlowHours.fixed_size
+        else:
+            self.charge_state_end_max = charge_state_end_min
+
         self.eta_load = TimeSeries('eta_load', eta_load, self)
         self.eta_unload = TimeSeries('eta_unload', eta_unload, self)
         self.fracLossPerHour = TimeSeries('fracLossPerHour', fracLossPerHour, self)
         self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
 
-        self.invest_parameters = invest_parameters
         self.featureInvest = None
 
         if self.avoidInAndOutAtOnce:
             self.featureAvoidInAndOut = FeatureAvoidFlowsAtOnce('feature_avoidInAndOutAtOnce', self,
                                                                 [self.inFlow, self.outFlow])
 
-        if self.invest_parameters is not None:
-            self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.invest_parameters,
+        if isinstance(self.capacity_inFlowHours, InvestParameters):
+            self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.capacity_inFlowHours,
                                                relative_minimum=self.minimum_relative_chargeState,
                                                relative_maximum=self.maximum_relative_chargeState,
                                                fixed_relative_value=None,  # kein vorgegebenes Profil
-                                               investment_size=self.capacity_inFlowHours,
                                                featureOn=None)  # hier gibt es kein On-Wert
 
         # Medium-Check:

@@ -733,12 +733,12 @@ class Flow(Element):
     @property
     def size_is_fixed(self) -> bool:
         # Wenn kein InvestParameters existiert --> True; Wenn Investparameter, den Wert davon nehmen
-        return True if self.invest_parameters is None else self.invest_parameters.fixed_size
+        return False if (isinstance(self.size, InvestParameters) and self.size.fixed_size is None) else True
 
     @property
     def invest_is_optional(self) -> bool:
         # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
-        return False if self.invest_parameters is None else self.invest_parameters.optional
+        return False if (isinstance(self.size, InvestParameters) and not self.size.optional) else True
 
     @property
     def on_variable_is_forced(self) -> bool:
@@ -747,7 +747,7 @@ class Flow(Element):
 
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
-                 size: Optional[Skalar] = _default_size,
+                 size: Union[Skalar, InvestParameters] = _default_size,
                  relative_minimum: Numeric_TS = 0,
                  relative_maximum: Numeric_TS = 1,
                  fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
@@ -767,7 +767,6 @@ class Flow(Element):
                  consecutive_off_hours_max: Optional[Skalar] = None,
                  effects_per_switch_on: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
                  switch_on_total_max: Optional[Skalar] = None,
-                 invest_parameters: Optional[InvestParameters] = None,
                  medium: Optional[str] = None,
                  exists: Numeric_TS = 1,
                  group: Optional[str] = None,
@@ -856,7 +855,7 @@ class Flow(Element):
         super().__init__(label, **kwargs)
         # args to attributes:
         self.bus = bus
-        self.size = size  # skalar!
+        self.size = size
         self.relative_minimum = TimeSeries('relative_minimum', relative_minimum, self)
         self.relative_maximum = TimeSeries('relative_maximum', relative_maximum, self)
 
@@ -882,7 +881,6 @@ class Flow(Element):
         self.values_before_begin = np.array(values_before_begin) if values_before_begin else np.array(
             [0, 0])  # list -> np-array
 
-        self.invest_parameters = invest_parameters  # Info: Plausi-Checks erst, wenn Flow self.comp kennt.
         self.comp = None  # zugehörige Komponente (wird später von Komponente gefüllt)
 
         self.fixed_relative_value = None
@@ -924,10 +922,9 @@ class Flow(Element):
     def __str__(self):
         details = [
             f"bus={self.bus.label if self.bus else 'None'}",
-            f"size={self.size}",
+            f"size={self.size.__str__() if isinstance(self.size, InvestParameters) else self.size}",
             f"min/relative_maximum={self.relative_minimum}-{self.relative_maximum}",
             f"medium={self.medium}",
-            f"invest_parameters={self.invest_parameters.__str__()}" if self.invest_parameters else "",
             f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
             f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
             f"effects_per_running_hour={self.effects_per_running_hour}" if self.effects_per_running_hour else "",
@@ -962,13 +959,12 @@ class Flow(Element):
                                               np.multiply(self.relative_minimum.data, self.exists_with_comp.data), self)
 
         # prepare invest Feature:
-        if self.invest_parameters is not None:
+        if isinstance(self.size, InvestParameters):
             from flixOpt.features import FeatureInvest
-            self.featureInvest = FeatureInvest('size', self, self.invest_parameters,
+            self.featureInvest = FeatureInvest('size', self, self.size,
                                                relative_minimum=self.relative_minimum_with_exists,
                                                relative_maximum=self.max_rel_with_exists,
                                                fixed_relative_value=self.fixed_relative_value,
-                                               investment_size=self.size,
                                                featureOn=self.featureOn)
 
         super().finalize()

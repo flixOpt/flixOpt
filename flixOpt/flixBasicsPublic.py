@@ -45,14 +45,10 @@ class TimeSeriesRaw:
         self.agg_group = agg_group
         self.agg_weight = agg_weight
         if (agg_group is not None) and (agg_weight is not None):
-            raise Exception('Either <agg_group> or explicit <agg_weigth> can be set. Not both!')
+            raise Exception('Either <agg_group> or explicit <agg_weigth> can be used. Not both!')
 
     def __repr__(self):
-        return f"<cTSraw agg_group={self.agg_group!r}, agg_weight={self.agg_weight!r}>"
-
-    def __str__(self):
-        agg_info = f"agg_group={self.agg_group}, agg_weight={self.agg_weight}" if self.agg_group or self.agg_weight else "no aggregation info"
-        return f"Timeseries: {agg_info}"
+        return f"TimeSeriesRaw(value={self.value}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
 
 
 # Sammlung von Props für Investitionskosten (für FeatureInvest)
@@ -62,15 +58,14 @@ class InvestParameters:
     '''
 
     def __init__(self,
-                 fix_effects: Optional[Union[Dict,int, float]] = None,
-                 divest_effects: Optional[Union[Dict,int, float]] = None,
-                 fixed_size: bool = True,
-                 optional: bool = True,  # Investition ist weglassbar
-                 specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
-                 effects_in_segments: Optional[Union[Dict, List]] = None,
+                 fixed_size: Optional[Union[int, float]] = None,
                  minimum_size: Union[int, float] = 0,  # nur wenn size_is_fixed = False
                  maximum_size: Union[int, float] = 1e9,  # nur wenn size_is_fixed = False
-                 **kwargs):
+                 optional: bool = True,  # Investition ist weglassbar
+                 fix_effects: Optional[Union[Dict, int, float]] = None,
+                 specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
+                 effects_in_segments: Optional[Union[Dict, List]] = None,
+                 divest_effects: Optional[Union[Dict, int, float]] = None):
         """
         Parameters
         ----------
@@ -79,8 +74,8 @@ class InvestParameters:
             (Attention: Annualize costs to chosen period!)
         divest_effects : None or scalar, optional
             Fixed divestment costs (if not invested, e.g., demolition costs or contractual penalty).
-        fixed_size : bool, optional
-            Determines if the investment size is fixed. If its not fixed, uses naminal_val as an optimization variable.
+        fixed_size : int, float, optional
+            Determines if the investment size is fixed.
         optional : bool, optional
             If True, investment is not forced.
         specific_effects : scalar or Dict[Effect: Union[int, float, np.ndarray], optional
@@ -113,27 +108,30 @@ class InvestParameters:
         self.optional = optional
         self.specific_effects = specific_effects
         self.effects_in_segments = effects_in_segments
-        self.minimum_size = minimum_size
-        self.maximum_size = maximum_size
+        self._minimum_size = minimum_size
+        self._maximum_size = maximum_size
 
-        super().__init__(**kwargs)
+    @property
+    def minimum_size(self):
+        return self.fixed_size or self._minimum_size
+
+    @property
+    def maximum_size(self):
+        return self.fixed_size or self._maximum_size
 
     def __repr__(self):
         return f"<{self.__class__.__name__}>: {self.__dict__}"
 
     def __str__(self):
         details = [
-            f"fix_effects={self.fix_effects}" if self.fix_effects else ""
+            f"size={self.fixed_size}" if self.fixed_size else f"size='{self.minimum_size}-{self.maximum_size}'",
+            f"optional" if self.optional else "",
+            f"fix_effects={self.fix_effects}" if self.fix_effects else "",
+            f"specific_effects={self.specific_effects}" if self.specific_effects else "",
+            f"effects_in_segments={self.effects_in_segments}, " if self.effects_in_segments else "",
             f"divest_effects={self.divest_effects}" if self.divest_effects else ""
-            f"specific_effects={self.specific_effects}" if self.specific_effects else ""
-            f"Fixed Size" if self.fixed_size else ""
-            f"Optional" if self.optional else ""
-            f"min/max_Size=[{self.minimum_size}-{self.maximum_size}]"
-            f"effects_in_segments={self.effects_in_segments}, " if self.effects_in_segments else ""
         ]
-
         all_relevant_parts = [part for part in details if part != ""]
-
-        full_str =f"{', '.join(all_relevant_parts)}"
-
+        full_str = f"{', '.join(all_relevant_parts)}"
         return f"<{self.__class__.__name__}>: {full_str}"
+
