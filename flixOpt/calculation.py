@@ -127,11 +127,10 @@ class Calculation:
         with open(self._paths['info'], 'w', encoding='utf-8') as f:
             yaml.dump(self.infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
-
-        message = f'#   Saved Calculation {self.name}   #'
-        logger.info(len(message)*'#')
-        logger.info(message)
-        logger.info(len(message)*'#')
+        message = f' Saved Calculation: {self.name} '
+        logger.info(f'{"":#^80}\n'
+                    f'{message:#^80}\n'
+                    f'{"":#^80}')
 
 
 class FullCalculation(Calculation):
