@@ -22,7 +22,7 @@ from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Objective
 from flixOpt.features import FeatureInvest
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 class FlowSystem:

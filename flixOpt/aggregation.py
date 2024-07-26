@@ -26,7 +26,7 @@ from flixOpt.structure import Element, SystemModel
 from flixOpt.math_modeling import Equation, Variable, VariableTS, MathModel
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 class Aggregation:
     """

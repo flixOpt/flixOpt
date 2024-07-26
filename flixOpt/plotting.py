@@ -9,7 +9,7 @@ import logging
 import matplotlib.pyplot as plt
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 def plotStackedSteps(ax, df: pd.DataFrame, showLegend=True, colors=None):  # df = dataframes!
     # Händische Lösung für stacked steps, da folgendes nicht funktioniert:

@@ -12,7 +12,7 @@ from flixOpt.components import LinearTransformer, CHP
 from flixOpt.interface import InvestParameters
 from flixOpt.utils import check_exists
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,

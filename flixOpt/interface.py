@@ -9,7 +9,7 @@ from typing import Union, Optional, Dict, List
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 # Anmerkung: TimeSeriesRaw separat von TimeSeries wg. Einfachheit für Anwender
 class TimeSeriesRaw:

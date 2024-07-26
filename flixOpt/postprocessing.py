@@ -16,7 +16,7 @@ import matplotlib.dates as mdates
 
 from flixOpt import utils
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 class cFlow_post():

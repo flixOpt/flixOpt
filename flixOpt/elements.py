@@ -17,7 +17,7 @@ from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict
 from flixOpt.interface import InvestParameters
 from flixOpt.structure import Element, SystemModel
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 class Effect(Element):
     '''

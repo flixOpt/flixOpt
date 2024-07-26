@@ -12,7 +12,7 @@ import numpy as np
 from flixOpt import utils
 from flixOpt.interface import TimeSeriesRaw
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -235,7 +235,7 @@ def as_effect_dict_with_ts(name_of_param: str,
 
 def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
     """Setup logging configuration"""
-    logger = logging.getLogger(__name__)  # Logger is created or retrieved here
+    logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
     logging_level = get_logging_level_by_name(level_name)
     logger.setLevel(logging_level)
 
@@ -263,5 +263,5 @@ def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'E
 
 
 def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'WARNING'):
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger('flixOpt')
     logger.setLevel(get_logging_level_by_name(level_name))

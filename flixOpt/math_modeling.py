@@ -18,7 +18,7 @@ from flixOpt.core import Skalar, Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 class MathModel:

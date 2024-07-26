@@ -18,7 +18,7 @@ from flixOpt.structure import SystemModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
 from flixOpt.interface import InvestParameters, TimeSeriesRaw
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 class LinearTransformer(Component):
     """

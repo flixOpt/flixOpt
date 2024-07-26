@@ -15,7 +15,7 @@ import math  # für nan
 from flixOpt.interface import TimeSeriesRaw
 from flixOpt.core import Numeric
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
