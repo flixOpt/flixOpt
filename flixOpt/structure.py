@@ -338,11 +338,17 @@ class Element:
 
     # 1.
     def finalize(self) -> None:
+        """
+        Finalizing the creation of all sub_elements in the Elements
+        """
         for element in self.sub_elements:
             element.finalize()
 
     # 2.
     def create_model(self) -> None:
+        """
+        Create the empty model for each Element and its sub_elements
+        """
         for element in self.sub_elements:
             element.create_model()  # rekursiv!
         logger.debug(f'New Model for {self.label_full}')
@@ -350,9 +356,15 @@ class Element:
 
     # 3.
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
+        """
+        Declare variables and equations for all sub elements.
+        """
         pass
 
     def get_results(self) -> Tuple[Dict, Dict]:
+        """
+        Get results after the solve
+        """
         # Ergebnisse als dict ausgeben:
         data, variables = {}, {}
 
