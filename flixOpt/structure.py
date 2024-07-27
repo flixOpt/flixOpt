@@ -34,9 +34,6 @@ class SystemModel(MathModel):
                  flow_system,
                  time_indices: Union[List[int], range],
                  TS_explicit=None):
-        self._variables = []
-        self._eqs = []
-        self._ineqs = []
         super().__init__(label, modeling_language)
         self.flow_system: FlowSystem = flow_system  # energysystem (wäre Attribut von cTimePeriodModel)
         self.time_indices = time_indices
