@@ -133,7 +133,7 @@ class FeatureLinearSegmentVars(Feature):
             new_segment = Segment(f'seg_{section_index}', self, sample_points_of_segment, section_index)
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
             # todo: alle Elemente sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
-            new_segment.create_new_model_and_activate_system_model(self.system_model)
+            new_segment.create_model(self.system_model)
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
         for aSegment in self.segments:

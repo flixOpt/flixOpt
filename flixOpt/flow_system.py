@@ -68,6 +68,13 @@ class FlowSystem:
     def all_buses(self) -> Set[Bus]:
         return {flow.bus for flow in self.all_flows}
 
+    @property
+    def all_elements(self) -> List[Element]:
+        first_level_elements = self.all_first_level_elements_with_flows
+        all_sub_elements = [sub_element for element in first_level_elements
+                        for sub_element in element.all_sub_elements]
+        return first_level_elements + all_sub_elements
+
     def __init__(self,
                  time_series: np.ndarray[np.datetime64],
                  last_time_step_hours: Optional[Union[int, float]] = None):
@@ -296,16 +303,11 @@ class FlowSystem:
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
         self.activate_indices_in_time_series(system_model.time_indices, system_model.TS_explicit)
 
-        # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
-        if system_model.models_of_elements == {}:
-            if not self._finalized:
-                raise Exception(f'activate_model() cant be called before all elements are finalized')
-            logger.debug(f'Creating ElementModels for Elements in FlowSystem')
-            for element in self.all_first_level_elements_with_flows:
-                element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
-        else:
-            for element in self.all_first_level_elements_with_flows:  # nur Aktivieren:
-                element.activate_system_model(system_model)  # inkl. sub_elements
+        if not self._finalized:
+            raise Exception(f'activate_model() cant be called before all elements are finalized')
+        logger.debug(f'Creating ElementModels for Elements in FlowSystem')
+        for element in self.all_first_level_elements_with_flows:
+            element.create_model(self.model)  # inkl. sub_elements
 
     def get_results_after_solve(self) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
         # Ensure this is only called after solving, as references might change after activating the model again

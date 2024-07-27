@@ -39,7 +39,6 @@ class SystemModel(MathModel):
         self.time_indices = time_indices
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-        self.models_of_elements: Dict[Element, ElementModel] = {}  # dict with all ElementModel's of Elements in FlowSystem
 
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
@@ -54,12 +53,6 @@ class SystemModel(MathModel):
         infos.update(self._infos)
         return infos
 
-    # register ModelingElements and belonging Mod:
-    def register_element_with_model(self, aModelingElement, aMod):
-        # allocation Element -> model
-        self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
-
-    # 'gurobi'
     def solve(self,
               mip_gap: float = 0.02,
               time_limit_seconds: int = 3600,
@@ -202,6 +195,10 @@ class SystemModel(MathModel):
     def ineqs(self) -> List[Equation]:
         return [eq for eq in self.eqs if eq.eqType == 'ineq']
 
+    @property
+    def models_of_elements(self) -> Dict['Element', 'ElementModel']:
+        return {element: element.model for element in self.flow_system.all_elements}
+
 
 class Element:
     """
@@ -318,29 +315,17 @@ class Element:
 
         return str_desc
 
-    # activate inkl. sub_elements:
-    def activate_system_model(self, system_model: SystemModel) -> None:
-        for element in self.sub_elements:
-            element.activate_system_model(system_model)  # inkl. sub_elements
-        self.system_model = system_model
-        self.model = system_model.models_of_elements[self]
-
     # 1.
     def finalize(self) -> None:
         for element in self.sub_elements:
             element.finalize()
 
     # 2.
-    def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
-        logger.debug(f'New Model for {self.label_full}')
+    def create_model(self, system_model: SystemModel) -> None:
         for element in self.sub_elements:
-            element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
-
-        # create model:
+            element.create_model(system_model)  # rekursiv!
+        logger.debug(f'New Model for {self.label_full}')
         self.model = ElementModel(self)
-        self.system_model = system_model
-        # register model:
-        system_model.register_element_with_model(self, self.model)
 
     # 3.
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
