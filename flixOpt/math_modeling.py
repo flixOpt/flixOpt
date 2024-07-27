@@ -495,9 +495,9 @@ class MathModel:
 
         self.solver_name: Optional[str] = None
         self.model = None  # Übergabe später, zumindest für Pyomo notwendig
-        self.variables: List[Variable] = []  # Liste aller Variablen
-        self.eqs: List[Equation] = []  # Liste aller Gleichungen
-        self.ineqs: List[Equation] = []  # Liste aller Ungleichungen
+        self._variables = []
+        self._eqs = []
+        self._ineqs = []
         self.objective = None  # objective-Function
         self.objective_result = None  # Ergebnis
         self.duration = {}  # Laufzeiten
@@ -625,14 +625,14 @@ class MathModel:
         info_flixModel['no inEqs single'] = self.nr_of_single_inequations
         info_flixModel['no vars'] = self.nr_of_variables
         info_flixModel['no vars single'] = self.nr_of_single_variables
-        info_flixModel['no vars TS'] = len(self.all_ts_variables)
+        info_flixModel['no vars TS'] = len(self.ts_variables)
 
         if self.solver_log is not None:
             infos['solver_log'] = self.solver_log.infos
         return infos
 
     @property
-    def all_ts_variables(self) -> List:
+    def ts_variables(self) -> List[VariableTS]:
         return [variable for variable in self.variables if isinstance(variable, VariableTS)]
 
     def describe(self) -> str:

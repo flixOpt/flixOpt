@@ -576,7 +576,7 @@ class SegmentedCalculation(Calculation):
         # hole Startwert/letzten Wert für nächstes Segment:
         new_before_values = {}
 
-        for variable in self.system_models[-1].all_ts_variables:
+        for variable in self.system_models[-1].ts_variables:
             if variable.before_value is not None:
                 index = last_index_of_segment + 1 if variable.before_value_is_start_value else last_index_of_segment
                 assert variable.label_full not in new_before_values.keys(), f' before_value is already set for {variable.label_full}'
