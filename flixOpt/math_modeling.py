@@ -43,29 +43,25 @@ class Variable:
         self.upper_bound = upper_bound
 
         self.indices = range(self.length)
-        self.label_full = label_of_owner + '__' + label
+        self.label_full = f"{label_of_owner}__{label}"
         self.fixed = False
-        self._result = None  # Ergebnis
 
         self._result = None  # Ergebnis-Speicher
-        logger.debug('Variable created: ' + self.label)
 
-        # Check conformity:
-        self.label = utils.check_name_for_conformity(label)
+        self.label = utils.check_name_for_conformity(label)  # Check label for conformity
 
-        # Wenn Vorgabewert vorhanden:
-        if value is not None:
-            # check if conflict with min/max values
-            # Wenn ein Element nicht in min/max-Grenzen
+        if value is not None:   # Check if value is within bounds, element-wise
+            min_ok = (self.lower_bound is None) or np.all(self.value >= self.lower_bound)
+            max_ok = (self.upper_bound is None) or np.all(self.value <= self.upper_bound)
 
-            minOk = (self.lower_bound is None) or (np.all(self.value >= self.lower_bound))  # prüft elementweise
-            maxOk = (self.upper_bound is None) or (np.all(self.value <= self.upper_bound))  # prüft elementweise
-            if (not (minOk)) or (not (maxOk)):
-                raise Exception('Variable.value' + self.label_full + ' not inside set bounds')
+            if not (min_ok and max_ok):
+                raise Exception(f'Variable.value {self.label_full} not inside set bounds')
 
-            # Werte in Variable festsetzen:
+            # Set value and mark as fixed
             self.fixed = True
             self.value = utils.as_vector(value, length)
+
+        logger.debug('Variable created: ' + self.label)
 
         # Register Element:
         # owner .variables.append(self) # Komponentenliste
@@ -245,21 +241,19 @@ class Equation:
         # TODO: Functionality to create A Sum of Summand over a specified range of indices? For Limiting stuff per one year...?
         if not isinstance(variable, Variable):
             raise TypeError(f'Error in Equation "{self.label}": no variable given (variable = "{variable}")')
-        # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
-        if np.isscalar(indices_of_variable):
+        if np.isscalar(indices_of_variable):   # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
             indices_of_variable = [indices_of_variable]
 
         if not as_sum:
             summand = Summand(variable, factor, indices=indices_of_variable)
         else:
             if variable is None:
-                raise Exception(f'Error in Equation "{self.label}": variable = None! is not allowed if the variable is summed up!')
+                raise Exception(
+                    f'Error in Equation "{self.label}": Variable can not be None if the variable is summed up!')
             summand = SumOfSummand(variable, factor, indices=indices_of_variable)
 
-        # Check Variablen-Länge:
-        self._update_nr_of_single_equations(summand.length, summand.variable.label)
-        # zu Liste hinzufügen:
-        self.listOfSummands.append(summand)
+        self._update_nr_of_single_equations(summand.length, summand.variable.label)   # Check Variablen-Länge:
+        self.listOfSummands.append(summand)   # zu Liste hinzufügen:
 
     def add_constant(self, value: Numeric) -> None:
         """
@@ -410,17 +404,19 @@ class Summand:
                  indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
         self.variable = variable
         self.factor = factor
-        self.indices = indices
+        self.indices = indices if indices is not None else variable.indices    # wenn nicht definiert, dann alle Indexe
 
-        # wenn nicht definiert, dann alle Indexe
-        if self.indices is None:
-            self.indices = variable.indices  # alle indices
+        self.length = self._check_length()   # Länge ermitteln:
 
-        # Länge ermitteln:
-        self.length = self._check_length()
+        self.factor_vec = utils.as_vector(factor, self.length)   # Faktor als Vektor:
 
-        # Faktor als Vektor:
-        self.factor_vec = utils.as_vector(factor, self.length)
+    def math_expression(self, at_index: int = 0):
+        # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
+        if self.length == 1:
+            return self.variable.var[self.indices[0]] * self.factor_vec[0]  # ignore argument at_index, because Skalar is used for every single equation
+        if len(self.indices) == 1:
+            return self.variable.var[self.indices[0]] * self.factor_vec[at_index]
+        return self.variable.var[self.indices[at_index]] * self.factor_vec[at_index]
 
     def _check_length(self):
         """
@@ -449,14 +445,6 @@ class Summand:
         else:
             raise Exception(f'Variable {self.variable.label_full} (length={length_of_indices}) und '
                             f'Faktor (length={length_of_factor}) müssen gleiche Länge haben oder Skalar sein')
-
-    # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
-    def math_expression(self, at_index: int = 0):
-        if self.length == 1:
-            return self.variable.var[self.indices[0]] * self.factor_vec[0]  # ignore argument at_index, because Skalar is used for every single equation
-        if len(self.indices) == 1:
-            return self.variable.var[self.indices[0]] * self.factor_vec[at_index]
-        return self.variable.var[self.indices[at_index]] * self.factor_vec[at_index]
 
 
 class SumOfSummand(Summand):
