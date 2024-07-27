@@ -336,9 +336,7 @@ class Element:
 
     # 2.
     def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
-        logger.debug('new model for ' + self.label)
-        # subElemente ebenso:
-        element: Element
+        logger.debug(f'New Model for {self.label_full}')
         for element in self.sub_elements:
             element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
 
@@ -360,76 +358,54 @@ class Element:
     #   # for aFeature in self.features:
     #   aFeature.do_modeling(model, time_indices)
 
-    # Ergebnisse als dict ausgeben:
     def get_results(self) -> Tuple[Dict, Dict]:
-        aData = {}
-        aVars = {}
-        # 1. Unterelemente füllen (rekursiv!):
+        # Ergebnisse als dict ausgeben:
+        data, variables = {}, {}
+
+        # 1. Fill sub-elements recursively:
         for element in self.sub_elements:
-            (aData[element.label], aVars[element.label]) = element.get_results()  # rekursiv
+            data[element.label], variables[element.label] = element.get_results()
 
-        # 2. Variablenwerte ablegen:
-        aVar: Variable
-        for aVar in self.model.variables.values():
-            aData[aVar.label] = aVar.result
-            aVars[aVar.label] = aVar  # link zur Variable
-            if aVar.is_binary and aVar.length > 1:
-                # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
-                #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = utils.zero_to_nan(aVar.result)
-                aVars[aVar.label + '_'] = aVar  # link zur Variable
+        # 2. Store variable values:
+        for var in self.model.variables.values():
+            data[var.label] = var.result
+            variables[var.label] = var  # link to the variable
+            if var.is_binary and var.length > 1:
+                data[f"{var.label}_"] = utils.zero_to_nan(var.result)   # Additional vector when binary with nan
+                variables[f"{var.label}_"] = var  # link to the variable
 
-        # 3. Alle TS übergeben
-        aTS: TimeSeries
-        for aTS in self.TS_list:
-            aData[aTS.label] = aTS.data
-            aVars[aTS.label] = aTS  # link zur Variable
+        # 3. Pass all time series:
+        for ts in self.TS_list:
+            data[ts.label] = ts.data
+            variables[ts.label] = ts  # link to the time series
 
-            # 4. Attribut Group übergeben, wenn vorhanden
-            aGroup: str
-            if hasattr(self, 'group'):
-                if self.group is not None:
-                    aData["group"] = self.group
-                    aVars["group"] = self.group
+        # 4. Pass the group attribute, if it exists:
+        if hasattr(self, 'group') and self.group is not None:
+            data["group"] = self.group
+            variables["group"] = self.group
 
-        return aData, aVars
+        return data, variables
 
-    def description_of_equations(self):
+    def description_of_equations(self) -> Union[List, Dict]:
+        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
 
-        ## subelemente durchsuchen:
-        subs = {}
-        for aSubElement in self.sub_elements:
-            subs[aSubElement.label] = aSubElement.description_of_equations()  # rekursiv
-        ## Element:
-
-        # wenn sub-eqs, dann dict:
-        if not (subs == {}):
-            eqsAsStr = {}
-            eqsAsStr['_self'] = self.model.description_of_equations()  # zuerst eigene ...
-            eqsAsStr.update(subs)  # ... dann sub-Eqs
-        # sonst liste:
+        if sub_element_desc:
+            return {'_self': self.model.description_of_equations(), **sub_element_desc}
         else:
-            eqsAsStr = self.model.description_of_equations()
-
-        return eqsAsStr
+            return self.model.description_of_equations()
 
     def description_of_variables(self) -> List:
-        aList = []
-        aList += self.model.description_of_variables()
-        for aSubElement in self.sub_elements:
-            aList += aSubElement.description_of_variables()  # rekursiv
-
-        return aList
+        return self.model.description_of_variables() + [
+            description for sub_element in self.sub_elements for description in sub_element.description_of_variables()
+        ]
 
     def overview_of_eqs_and_vars(self) -> Dict[str, int]:
-        aDict = {}
-        aDict['no eqs'] = len(self.model.eqs)
-        aDict['no eqs single'] = sum([eq.nr_of_single_equations for eq in self.model.eqs])
-        aDict['no inEqs'] = len(self.model.ineqs)
-        aDict['no inEqs single'] = sum([ineq.nr_of_single_equations for ineq in self.model.ineqs])
-        aDict['no vars'] = len(self.model.variables)
-        aDict['no vars single'] = sum([var.length for var in self.model.variables])
-        return aDict
+        return {'no eqs': len(self.model.eqs),
+                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
+                'no inEqs': len(self.model.ineqs),
+                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
+                'no vars': len(self.model.variables),
+                'no vars single': sum(var.length for var in self.model.variables.values())}
 
 
 class ElementModel:
@@ -484,3 +460,7 @@ class ElementModel:
         for aVar in self.variables.values():
             aList.append(aVar.get_str_description())
         return aList
+
+    @property
+    def ineqs(self) -> Dict[str, Equation]:
+        return {name: eq for name, eq in self.eqs.items() if eq.eqType == 'ineq'}

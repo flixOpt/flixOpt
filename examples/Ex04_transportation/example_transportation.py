@@ -120,7 +120,7 @@ aCalc = Calculation('Sim1', flow_system, 'pyomo', time_indices)
 aCalc.do_modeling_as_one_segment()
 
 # PRINT Model-Charactaricstics:
-flow_system.printModel()
+flow_system.print_model()
 flow_system.print_variables()
 flow_system.print_equations()
 

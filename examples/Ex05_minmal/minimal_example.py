@@ -90,7 +90,7 @@ aCalc = FullCalculation('Sim1',  # name of calculation
 aCalc.do_modeling()  # mathematic modeling of flow_system
 
 # 3. (optional) print Model-Characteristics:
-flow_system.printModel()  # string-output:network structure of model
+flow_system.print_model()  # string-output:network structure of model
 flow_system.print_variables()  # string output: variables of model
 flow_system.print_equations()  # string-output: equations of model
 

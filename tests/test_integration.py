@@ -97,7 +97,7 @@ class TestSimple(BaseTest):
         aCalc = FullCalculation('Test_Sim', es, 'pyomo', time_indices)
         aCalc.do_modeling()
 
-        es.printModel()
+        es.print_model()
         es.print_variables()
         es.print_equations()
 
@@ -250,7 +250,7 @@ class TestComplex(BaseTest):
         aCalc = FullCalculation('Sim1', es, 'pyomo', None)
         aCalc.do_modeling()
 
-        es.printModel()
+        es.print_model()
         es.print_variables()
         es.print_equations()
 
@@ -294,7 +294,7 @@ class TestComplex(BaseTest):
         aCalc = FullCalculation('Sim1', es, 'pyomo', None)
         aCalc.do_modeling()
 
-        es.printModel()
+        es.print_model()
         es.print_variables()
         es.print_equations()
 
@@ -364,7 +364,7 @@ class TestModelingTypes(BaseTest):
             calc = AggregatedCalculation('aggModel', es, 'pyomo')
             calc.do_modeling(6, 4, True, True, False, 0, 0, addPeakMax=[TS_Q_th_Last], addPeakMin=[TS_P_el_Last, TS_Q_th_Last])
 
-        es.printModel()
+        es.print_model()
         es.print_variables()
         es.print_equations()
 
