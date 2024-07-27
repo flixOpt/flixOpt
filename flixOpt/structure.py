@@ -329,14 +329,7 @@ class Element:
 
     # 3.
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        #   #   # Features preparing:
-        #   # for aFeature in self.features:
-        #   #   aFeature.declare_vars_and_eqs(model)
         pass
-
-    # def do_modeling(self,model,time_indices):
-    #   # for aFeature in self.features:
-    #   aFeature.do_modeling(model, time_indices)
 
     def get_results(self) -> Tuple[Dict, Dict]:
         # Ergebnisse als dict ausgeben:
