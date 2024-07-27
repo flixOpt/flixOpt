@@ -336,9 +336,7 @@ class Element:
 
     # 2.
     def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
-        logger.debug('new model for ' + self.label)
-        # subElemente ebenso:
-        element: Element
+        logger.debug(f'New Model for {self.label_full}')
         for element in self.sub_elements:
             element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
 
