@@ -515,57 +515,6 @@ class MathModel:
         else:
             raise Exception('not defined for modeling_language' + str(self.modeling_language))
 
-    def to_math_model(self) -> None:
-        t_start = timeit.default_timer()
-        for variable in self.variables:   # Variablen erstellen
-            variable.to_math_model(self)
-        for eq in self.eqs:   # Gleichungen erstellen
-            eq.to_math_model(self)
-        for ineq in self.ineqs:   # Ungleichungen erstellen:
-            ineq.to_math_model(self)
-
-        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
-
-    @property
-    def variables(self) -> List[Variable]:
-        return self._variables
-
-    @property
-    def eqs(self) -> List[Equation]:
-        return self._eqs
-
-    @property
-    def ineqs(self) -> List[Equation]:
-        return self._ineqs
-
-    @property
-    def ts_variables(self) -> List[VariableTS]:
-        return [variable for variable in self.variables if isinstance(variable, VariableTS)]
-
-    @property
-    def nr_of_equations(self) -> int:
-        return len(self.eqs)
-
-    @property
-    def nr_of_single_equations(self) -> int:
-        return sum([eq.nr_of_single_equations for eq in self.eqs])
-
-    @property
-    def nr_of_inequations(self) -> int:
-        return len(self.ineqs)
-
-    @property
-    def nr_of_single_inequations(self) -> int:
-        return sum([eq.nr_of_single_equations for eq in self.ineqs])
-
-    @property
-    def nr_of_variables(self) -> int:
-        return len(self.variables)
-
-    @property
-    def nr_of_single_variables(self) -> int:
-        return sum([var.length for var in self.variables])
-
     def add(self, *args: Union[Variable, Equation]) -> None:
         if not isinstance(args, list):
             args = list(args)
@@ -581,6 +530,22 @@ class MathModel:
                     raise Exception(f'{arg} cant be added this way!')
             else:
                 raise Exception(f'{arg} cant be added this way!')
+
+    def describe(self) -> str:
+        return (f'no of Eqs   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
+                f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
+                f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
+
+    def to_math_model(self) -> None:
+        t_start = timeit.default_timer()
+        for variable in self.variables:   # Variablen erstellen
+            variable.to_math_model(self)
+        for eq in self.eqs:   # Gleichungen erstellen
+            eq.to_math_model(self)
+        for ineq in self.ineqs:   # Ungleichungen erstellen:
+            ineq.to_math_model(self)
+
+        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
     def solve(self,
               mip_gap: float,
@@ -662,10 +627,45 @@ class MathModel:
             infos['solver_log'] = self.solver_log.infos
         return infos
 
-    def describe(self) -> str:
-        return (f'no of Eqs   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
-                f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
-                f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
+    @property
+    def variables(self) -> List[Variable]:
+        return self._variables
+
+    @property
+    def eqs(self) -> List[Equation]:
+        return self._eqs
+
+    @property
+    def ineqs(self) -> List[Equation]:
+        return self._ineqs
+
+    @property
+    def ts_variables(self) -> List[VariableTS]:
+        return [variable for variable in self.variables if isinstance(variable, VariableTS)]
+
+    @property
+    def nr_of_variables(self) -> int:
+        return len(self.variables)
+
+    @property
+    def nr_of_equations(self) -> int:
+        return len(self.eqs)
+
+    @property
+    def nr_of_inequations(self) -> int:
+        return len(self.ineqs)
+
+    @property
+    def nr_of_single_variables(self) -> int:
+        return sum([var.length for var in self.variables])
+
+    @property
+    def nr_of_single_equations(self) -> int:
+        return sum([eq.nr_of_single_equations for eq in self.eqs])
+
+    @property
+    def nr_of_single_inequations(self) -> int:
+        return sum([eq.nr_of_single_equations for eq in self.ineqs])
 
     ##############################################################################################
     ################ pyomo-Spezifisch
@@ -711,8 +711,6 @@ class MathModel:
         self.model.add_component(aName, py_comp)
 
     ######## Other Modeling Languages
-
-
 
 
 class SolverLog:

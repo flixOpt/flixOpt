@@ -28,15 +28,6 @@ class SystemModel(MathModel):
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     '''
 
-    @property
-    def infos(self):
-        infos = super().infos
-        # Hauptergebnisse:
-        infos['main_results'] = self.main_results_str
-        # unten dran den vorhanden rest:
-        infos.update(self._infos)  # da steht schon zeug drin
-        return infos
-
     def __init__(self,
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
@@ -56,6 +47,15 @@ class SystemModel(MathModel):
         # Zeitdaten generieren:
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             flow_system.get_time_data_from_indices(time_indices))
+
+    @property
+    def infos(self):
+        infos = super().infos
+        # Hauptergebnisse:
+        infos['main_results'] = self.main_results_str
+        # unten dran den vorhanden rest:
+        infos.update(self._infos)  # da steht schon zeug drin
+        return infos
 
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
