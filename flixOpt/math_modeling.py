@@ -337,11 +337,13 @@ class Equation:
     def description(self, equation_nr: int = 0) -> str:
         equation_nr = min(equation_nr, self.nr_of_single_equations - 1)
 
-        # Header:
+        # Name and index
         if self.eqType == 'objective':
-            header = 'obj'
+            name = 'OBJ'
+            index_str = ''
         else:
-            header = f'eq {self.label}[{equation_nr} of {self.nr_of_single_equations}]'
+            name = f'EQ {self.label}'
+            index_str = f'[{equation_nr+1}/{self.nr_of_single_equations}]'
 
         # Summands:
         summand_strings = []
@@ -350,7 +352,7 @@ class Equation:
             index = summand.indices[i]
             factor = summand.factor_vec[i]
             factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
-            single_summand_str = f"{factor_str}* {summand.variable.label_full}[{index}]"
+            single_summand_str = f"{factor_str} * {summand.variable.label_full}[{index}]"
 
             if isinstance(summand, SumOfSummand):
                 summand_strings.append(
@@ -361,16 +363,14 @@ class Equation:
         all_summands_string = ' + '.join(summand_strings)
 
         # Equation type:
-        if self.eqType in ['eq', 'objective']:
-            sign = '='
-        elif self.eqType == 'ineq':
-            sign = '<='
-        else:
-            sign = '?'
+        signs = {'eq': '= ', 'ineq': '=>', 'objective': '= '}
+        sign = signs.get(self.eqType, '? ')
 
-        constant_str = f'{self.constant_vector[equation_nr]}'
+        constant = self.constant_vector[equation_nr]
 
-        return f'{header:<30}: {all_summands_string} {sign} {constant_str}'
+        header_width = 30
+        header = f"{name:<{header_width-len(index_str)-1}} {index_str}"
+        return f'{header:<{header_width}}: {constant:>8} {sign} {all_summands_string}'
 
     def _update_nr_of_single_equations(self, length_of_summand: int, label_of_summand: str) -> None:
         """Checks if the new Summand is compatible with the existing Summands"""
