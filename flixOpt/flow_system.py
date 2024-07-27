@@ -110,7 +110,7 @@ class FlowSystem:
         components = '\n'.join(component.__str__() for component in
                                sorted(self.components, key=lambda component: component.label.upper()))
         effects = '\n'.join(effect.__str__() for effect in
-                               sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
+                            sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
         return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
     def add_effects(self, *args: Effect) -> None:
@@ -123,10 +123,10 @@ class FlowSystem:
         new_components = list(args)
         for new_component in new_components:
             logger.info(f'Registered new Component {new_component.label}')
-            self._check_if_element_is_unique(new_component)   # check if already exists:
-            new_component.register_component_in_flows()   # Komponente in Flow registrieren
-            new_component.register_flows_in_bus()   # Flows in Bus registrieren:
-        self.components.extend(new_components)   # Add to existing list of components
+            self._check_if_element_is_unique(new_component)  # check if already exists:
+            new_component.register_component_in_flows()  # Komponente in Flow registrieren
+            new_component.register_flows_in_bus()  # Flows in Bus registrieren:
+        self.components.extend(new_components)  # Add to existing list of components
 
     def add_elements(self, *args: Element) -> None:
         '''
@@ -210,7 +210,7 @@ class FlowSystem:
                     f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}'
             # invest:
             for shareEffect in effect.specific_share_to_other_effects_invest.keys():
-                assert effect not in shareEffect.specific_share_to_other_effects_invest.keys(),\
+                assert effect not in shareEffect.specific_share_to_other_effects_invest.keys(), \
                     f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}'
 
     # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
@@ -314,8 +314,8 @@ class FlowSystem:
             for element in self.all_first_level_elements_with_flows:
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
-    # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
     def get_results_after_solve(self) -> Tuple[Dict, Dict]:
+        # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
         results = {}  # Daten
         results_var = {}  # zugehörige Variable
         # für alle Komponenten:
@@ -333,12 +333,6 @@ class FlowSystem:
 
         return results, results_var
 
-    def print_model(self) -> str:
-        return (f'\n'
-                f'{"":#^80}\n'
-                f'{" Short String Description of FlowSystem ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_system())}')
-
     def description_of_system(self) -> Dict:
         return {'buses': {k: v for bus in self.all_buses for k, v in bus.description().items()},
                 'components': {k: v for comp in self.components for k, v in comp.description().items()},
@@ -349,30 +343,34 @@ class FlowSystem:
                 'buses': {bus.label: bus.description_of_equations() for bus in self.all_buses},
                 'objective': self.objective.description_of_equations(),
                 'effects': self.effect_collection.description_of_equations(),
-                'flows': {flow.label_full: flow.description_of_equations() for comp in self.components for flow in
-                          (comp.inputs + comp.outputs)},
+                'flows': {flow.label_full: flow.description_of_equations()
+                          for comp in self.components for flow in (comp.inputs + comp.outputs)},
                 'others': {element.label: element.description_of_equations() for element in self.other_elements}}
+
+    def description_of_variables(self) -> Dict:
+        return {'comps': {comp.label: comp.description_of_variables() +
+                                      [flow.description_of_variables() for flow in (comp.inputs + comp.outputs)]
+                          for comp in self.components},
+                'buses': {bus.label: bus.description_of_variables() for bus in self.all_buses},
+                'objective': self.objective.description_of_variables(),
+                'effects': self.effect_collection.description_of_variables(),
+                'others': {element.label: element.description_of_variables() for element in self.other_elements}
+                }
+
+    def description_of_variables_unstructured(self) -> List:
+        return [var.get_str_description() for var in self.model.variables]
+
+    def print_model(self) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Short String Description of FlowSystem ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_system())}')
 
     def print_equations(self) -> str:
         return (f'\n'
                 f'{"":#^80}\n'
                 f'{" Equations of FlowSystem ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_equations(), default_flow_style=False, allow_unicode=True)}')
-
-    def description_of_variables(self) -> Dict:
-        return {
-            'comps': {comp.label: comp.description_of_variables() +
-                                  [flow.description_of_variables() for flow in (comp.inputs + comp.outputs)]
-                      for comp in self.components},
-            'buses': {bus.label: bus.description_of_variables() for bus in self.all_buses},
-            'objective': self.objective.description_of_variables(),
-            'effects': self.effect_collection.description_of_variables(),
-            'others': {element.label: element.description_of_variables() for element in self.other_elements}
-        }
-
-    def description_of_variables_unstructured(self) -> List:
-        return [var.get_str_description() for var in self.model.variables]
-
 
     def print_variables(self) -> str:
         return (f'\n'
@@ -384,11 +382,10 @@ class FlowSystem:
                 f'{yaml.dump(self.description_of_variables())}')
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
-    def get_time_data_from_indices(self, time_indices: Union[List[int], range]) -> Tuple[
-                                                                                        np.ndarray[np.datetime64],
-                                                                                        np.ndarray[np.datetime64],
-                                                                                        np.ndarray[np.float64],
-                                                                                        np.float64]:
+    def get_time_data_from_indices(
+            self,
+            time_indices: Union[List[int], range]
+    ) -> Tuple[np.ndarray[np.datetime64],np.ndarray[np.datetime64], np.ndarray[np.float64], np.float64]:
         # if time_indices is None, dann alle : time_indices = range(length(self.time_series))
         # Zeitreihen:
         time_series = self.time_series[time_indices]
