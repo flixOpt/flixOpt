@@ -333,7 +333,7 @@ class FlowSystem:
 
         return results, results_var
 
-    def printModel(self) -> str:
+    def print_model(self) -> str:
         return (f'\n'
                 f'{"":#^80}\n'
                 f'{" Short String Description of FlowSystem ":#^80}\n\n'

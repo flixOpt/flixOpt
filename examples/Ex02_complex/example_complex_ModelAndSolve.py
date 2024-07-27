@@ -209,9 +209,11 @@ aCalc = FullCalculation('Sim1', flow_system, 'pyomo', time_indices)
 aCalc.do_modeling()
 
 # print Model-Charactaricstics:
-flow_system.printModel()
+flow_system.print_model()
 flow_system.print_variables()
 flow_system.print_equations()
+for eq in aCalc.system_models[0].eqs:
+    print(eq.description())
 
 solverProps = {'mip_gap': gapFrac, 'time_limit_seconds': timelimit, 'solver_name': solver_name,
                'solver_output_to_console': displaySolverOutput, }

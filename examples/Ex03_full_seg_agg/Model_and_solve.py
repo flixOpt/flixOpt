@@ -120,17 +120,6 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 from flixOpt import *
 from flixOpt.components import Boiler, CHP, Storage, Sink, Source
 
-import logging as log
-import os  # für logging
-
-root = log.getLogger()
-root.setLevel(os.environ.get("LOGLEVEL", "DEBUG"))
-root.setLevel(os.environ.get("LOGLEVEL", "INFO"))
-
-log.warning('test warning')
-log.info('test info')
-log.debug('test debung')
-
 print('#######################################################################')
 print('################### start of modeling #################################')
 
@@ -219,7 +208,7 @@ if doFullCalc:
     calcFull = FullCalculation('fullModel', flow_system, 'pyomo', time_indices)
     calcFull.do_modeling()
 
-    flow_system.printModel()
+    flow_system.print_model()
     flow_system.print_variables()
     flow_system.print_equations()
 
