@@ -392,6 +392,23 @@ class ElementModel:
         self.eqs = {}
         self.objective = None
 
+    def description_of_equations(self) -> List:
+        # Wenn Glg vorhanden:
+        eq: Equation
+        aList = []
+        if len(self.eqs) > 0:
+            for eq in list(self.eqs.values()):
+                aList.append(eq.description())
+        if not (self.objective is None):
+            aList.append(self.objective.description())
+        return aList
+
+    def description_of_variables(self) -> List:
+        aList = []
+        for aVar in self.variables.values():
+            aList.append(aVar.description())
+        return aList
+
     def get_var(self, label: str) -> Variable:
         if label in self.variables.keys():
             return self.variables[label]
@@ -416,23 +433,6 @@ class ElementModel:
             self.eqs[equation.label] = equation
         else:
             raise Exception(f'Equation "{equation.label}" already exists')
-
-    def description_of_equations(self) -> List:
-        # Wenn Glg vorhanden:
-        eq: Equation
-        aList = []
-        if len(self.eqs) > 0:
-            for eq in list(self.eqs.values()):
-                aList.append(eq.description())
-        if not (self.objective is None):
-            aList.append(self.objective.description())
-        return aList
-
-    def description_of_variables(self) -> List:
-        aList = []
-        for aVar in self.variables.values():
-            aList.append(aVar.description())
-        return aList
 
     @property
     def ineqs(self) -> Dict[str, Equation]:
