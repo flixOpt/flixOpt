@@ -360,39 +360,33 @@ class Element:
     #   # for aFeature in self.features:
     #   aFeature.do_modeling(model, time_indices)
 
-    # Ergebnisse als dict ausgeben:
     def get_results(self) -> Tuple[Dict, Dict]:
-        aData = {}
-        aVars = {}
-        # 1. Unterelemente füllen (rekursiv!):
+        # Ergebnisse als dict ausgeben:
+        data, variables = {}, {}
+
+        # 1. Fill sub-elements recursively:
         for element in self.sub_elements:
-            (aData[element.label], aVars[element.label]) = element.get_results()  # rekursiv
+            data[element.label], variables[element.label] = element.get_results()
 
-        # 2. Variablenwerte ablegen:
-        aVar: Variable
-        for aVar in self.model.variables.values():
-            aData[aVar.label] = aVar.result
-            aVars[aVar.label] = aVar  # link zur Variable
-            if aVar.is_binary and aVar.length > 1:
-                # Bei binären Variablen zusätzlichen Vektor erstellen,z.B. a  = [0, 1, 0, 0, 1]
-                #                                                       -> a_ = [nan, 1, nan, nan, 1]
-                aData[aVar.label + '_'] = utils.zero_to_nan(aVar.result)
-                aVars[aVar.label + '_'] = aVar  # link zur Variable
+        # 2. Store variable values:
+        for var in self.model.variables.values():
+            data[var.label] = var.result
+            variables[var.label] = var  # link to the variable
+            if var.is_binary and var.length > 1:
+                data[f"{var.label}_"] = utils.zero_to_nan(var.result)   # Additional vector when binary with nan
+                variables[f"{var.label}_"] = var  # link to the variable
 
-        # 3. Alle TS übergeben
-        aTS: TimeSeries
-        for aTS in self.TS_list:
-            aData[aTS.label] = aTS.data
-            aVars[aTS.label] = aTS  # link zur Variable
+        # 3. Pass all time series:
+        for ts in self.TS_list:
+            data[ts.label] = ts.data
+            variables[ts.label] = ts  # link to the time series
 
-            # 4. Attribut Group übergeben, wenn vorhanden
-            aGroup: str
-            if hasattr(self, 'group'):
-                if self.group is not None:
-                    aData["group"] = self.group
-                    aVars["group"] = self.group
+        # 4. Pass the group attribute, if it exists:
+        if hasattr(self, 'group') and self.group is not None:
+            data["group"] = self.group
+            variables["group"] = self.group
 
-        return aData, aVars
+        return data, variables
 
     def description_of_equations(self) -> Union[List, Dict]:
         sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
