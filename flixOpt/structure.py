@@ -44,15 +44,6 @@ class SystemModel(MathModel):
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             flow_system.get_time_data_from_indices(time_indices))
 
-    @property
-    def infos(self):
-        infos = super().infos
-        infos['str_Eqs'] = self.flow_system.description_of_equations()
-        infos['str_Vars'] = self.flow_system.description_of_variables()
-        infos['main_results'] = self.main_results_str   # Hauptergebnisse:
-        infos.update(self._infos)
-        return infos
-
     def solve(self,
               mip_gap: float = 0.02,
               time_limit_seconds: int = 3600,
@@ -176,6 +167,15 @@ class SystemModel(MathModel):
             logger.warning(f'A total penalty of {self.main_results_str["penalty"]} occurred.'
                            f'This might distort the results')
         logger.info(f'{" End of Main Results ":#^80}')
+
+    @property
+    def infos(self):
+        infos = super().infos
+        infos['str_Eqs'] = self.flow_system.description_of_equations()
+        infos['str_Vars'] = self.flow_system.description_of_variables()
+        infos['main_results'] = self.main_results_str   # Hauptergebnisse:
+        infos.update(self._infos)
+        return infos
 
     @property
     def variables(self) -> List[Variable]:
@@ -315,6 +315,27 @@ class Element:
 
         return str_desc
 
+    def description_of_equations(self) -> Union[List, Dict]:
+        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
+
+        if sub_element_desc:
+            return {'_self': self.model.description_of_equations(), **sub_element_desc}
+        else:
+            return self.model.description_of_equations()
+
+    def description_of_variables(self) -> List:
+        return self.model.description_of_variables() + [
+            description for sub_element in self.sub_elements for description in sub_element.description_of_variables()
+        ]
+
+    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
+        return {'no eqs': len(self.model.eqs),
+                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
+                'no inEqs': len(self.model.ineqs),
+                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
+                'no vars': len(self.model.variables),
+                'no vars single': sum(var.length for var in self.model.variables.values())}
+
     # 1.
     def finalize(self) -> None:
         for element in self.sub_elements:
@@ -359,32 +380,11 @@ class Element:
 
         return data, variables
 
-    def description_of_equations(self) -> Union[List, Dict]:
-        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
-
-        if sub_element_desc:
-            return {'_self': self.model.description_of_equations(), **sub_element_desc}
-        else:
-            return self.model.description_of_equations()
-
-    def description_of_variables(self) -> List:
-        return self.model.description_of_variables() + [
-            description for sub_element in self.sub_elements for description in sub_element.description_of_variables()
-        ]
-
-    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
-        return {'no eqs': len(self.model.eqs),
-                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
-                'no inEqs': len(self.model.ineqs),
-                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
-                'no vars': len(self.model.variables),
-                'no vars single': sum(var.length for var in self.model.variables.values())}
-
 
 class ElementModel:
-    '''
+    """
     is existing in every Element and owns eqs and vars of the activated calculation
-    '''
+    """
 
     def __init__(self, element: Element):
         self.element = element
