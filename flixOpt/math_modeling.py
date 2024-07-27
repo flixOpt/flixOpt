@@ -527,6 +527,22 @@ class MathModel:
         self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
 
     @property
+    def variables(self) -> List[Variable]:
+        return self._variables
+
+    @property
+    def eqs(self) -> List[Equation]:
+        return self._eqs
+
+    @property
+    def ineqs(self) -> List[Equation]:
+        return self._ineqs
+
+    @property
+    def ts_variables(self) -> List[VariableTS]:
+        return [variable for variable in self.variables if isinstance(variable, VariableTS)]
+
+    @property
     def nr_of_equations(self) -> int:
         return len(self.eqs)
 
@@ -550,6 +566,21 @@ class MathModel:
     def nr_of_single_variables(self) -> int:
         return sum([var.length for var in self.variables])
 
+    def add(self, *args: Union[Variable, Equation]) -> None:
+        if not isinstance(args, list):
+            args = list(args)
+        for arg in args:
+            if isinstance(arg, Variable):
+                self._variables.append(arg)
+            elif isinstance(arg, Equation):
+                if arg.eqType == 'eq':
+                    self._eqs.append(arg)
+                elif arg.eqType == 'ineq':
+                    self._ineqs.append(arg)
+                else:
+                    raise Exception(f'{arg} cant be added this way!')
+            else:
+                raise Exception(f'{arg} cant be added this way!')
 
     def solve(self,
               mip_gap: float,
@@ -630,10 +661,6 @@ class MathModel:
         if self.solver_log is not None:
             infos['solver_log'] = self.solver_log.infos
         return infos
-
-    @property
-    def ts_variables(self) -> List[VariableTS]:
-        return [variable for variable in self.variables if isinstance(variable, VariableTS)]
 
     def describe(self) -> str:
         return (f'no of Eqs   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'

@@ -201,15 +201,6 @@ class SystemModel(MathModel):
             all_vars += [var for var in model.variables.values()]
         return all_vars
 
-    @variables.setter
-    def variables(self, *new_vars: Variable):
-        if len(new_vars) == 1 and isinstance(new_vars[0], list): # Check if the first element is a list, then unpack it
-            new_vars = new_vars[0]
-        for var in new_vars:
-            if not isinstance(var, Variable):
-                raise TypeError("All elements must be instances of Variable")
-        self._variables.extend(new_vars)
-
     @property
     def eqs(self) -> List[Equation]:
         all_eqs = list(self._eqs)
@@ -217,27 +208,9 @@ class SystemModel(MathModel):
             all_eqs += [var for var in model.eqs.values()]
         return all_eqs
 
-    @eqs.setter
-    def eqs(self, *new_eqs: Equation):
-        if len(new_eqs) == 1 and isinstance(new_eqs[0], list):   # Check if the first element is a list, then unpack it
-            new_eqs = new_eqs[0]
-        for eq in new_eqs:
-            if not isinstance(eq, Equation):
-                raise TypeError("All elements must be instances of Equation")
-        self._eqs.extend(new_eqs)
-
     @property
     def ineqs(self) -> List[Equation]:
         return [eq for eq in self.eqs if eq.eqType == 'ineq']
-
-    @ineqs.setter
-    def ineqs(self, *new_ineq: Equation):
-        if len(new_ineq) == 1 and isinstance(new_ineq[0], list):   # Check if the first element is a list, then unpack it
-            new_ineq = new_ineq[0]
-        for ineq in new_ineq:
-            if not isinstance(ineq, Equation) or not ineq.eqType == 'ineq':
-                raise TypeError("All elements must be instances of Equation and of tyoe 'ineq'")
-        self._ineqs.extend(new_ineq)  # Add new variables to the internal list
 
 
 class Element:
