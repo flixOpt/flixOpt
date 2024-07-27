@@ -337,12 +337,10 @@ class Element:
             element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
 
         # create model:
-        model = ElementModel(self)
-        # register model:
-        system_model.register_element_with_model(self, model)
-
+        self.model = ElementModel(self)
         self.system_model = system_model
-        self.model = system_model.models_of_elements[self]
+        # register model:
+        system_model.register_element_with_model(self, self.model)
 
     # 3.
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
