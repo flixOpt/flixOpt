@@ -335,8 +335,8 @@ class FlowSystem:
                 'others': {element.label: element.description_of_equations() for element in self.other_elements}}
 
     def description_of_variables(self) -> Dict:
-        return {'comps': {comp.label: comp.description_of_variables() +
-                                      [flow.description_of_variables() for flow in (comp.inputs + comp.outputs)]
+        return {'comps': {comp.label: comp.description_of_variables() + [{flow.label: flow.description_of_variables()
+                                                                         for flow in comp.inputs + comp.outputs}]
                           for comp in self.components},
                 'buses': {bus.label: bus.description_of_variables() for bus in self.all_buses},
                 'objective': self.objective.description_of_variables(),
