@@ -41,7 +41,7 @@ class SystemModel(MathModel):
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
 
         # Zeitdaten generieren:
-        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
+        self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
             flow_system.get_time_data_from_indices(time_indices))
 
     def solve(self,
