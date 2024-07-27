@@ -307,7 +307,7 @@ class FlowSystem:
             raise Exception(f'activate_model() cant be called before all elements are finalized')
         logger.debug(f'Creating ElementModels for Elements in FlowSystem')
         for element in self.all_first_level_elements_with_flows:
-            element.create_model(self.model)  # inkl. sub_elements
+            element.create_model()  # inkl. sub_elements
 
     def get_results_after_solve(self) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
         # Ensure this is only called after solving, as references might change after activating the model again

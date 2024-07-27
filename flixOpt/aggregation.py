@@ -339,7 +339,7 @@ class AggregationModeling(Element):
         return eq
 
     def add_share_to_globals(self, effect_collection: EffectCollection, system_model):
-
+        # TODO: BUGFIX
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentage_of_period_freedom > 0) & (self.costs_of_period_freedom != 0):
             for var_K in self.var_K_list:

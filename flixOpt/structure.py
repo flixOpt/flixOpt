@@ -342,9 +342,9 @@ class Element:
             element.finalize()
 
     # 2.
-    def create_model(self, system_model: SystemModel) -> None:
+    def create_model(self) -> None:
         for element in self.sub_elements:
-            element.create_model(system_model)  # rekursiv!
+            element.create_model()  # rekursiv!
         logger.debug(f'New Model for {self.label_full}')
         self.model = ElementModel(self)
 
