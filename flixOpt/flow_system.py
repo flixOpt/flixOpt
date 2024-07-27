@@ -345,41 +345,13 @@ class FlowSystem:
                 'flows': [flow.description() for flow in self.all_flows]}
 
     def description_of_equations(self) -> Dict:
-        aDict = {}
-
-        # comps:
-        aSubDict = {}
-        aDict['Components'] = aSubDict
-        aComp: Element
-        for aComp in self.components:
-            aSubDict[aComp.label] = aComp.description_of_equations()
-
-        # buses:
-        aSubDict = {}
-        aDict['buses'] = aSubDict
-        for aBus in self.all_buses:
-            aSubDict[aBus.label] = aBus.description_of_equations()
-
-        # Objective:
-        aDict['objective'] = self.objective.description_of_equations()
-
-        # Effects:
-        aDict['effects'] = self.effect_collection.description_of_equations()
-
-        # flows:
-        aSubDict = {}
-        aDict['flows'] = aSubDict
-        for aComp in self.components:
-            for aFlow in (aComp.inputs + aComp.outputs):
-                aSubDict[aFlow.label_full] = aFlow.description_of_equations()
-
-        # others
-        aSubDict = {}
-        aDict['others'] = aSubDict
-        for element in self.other_elements:
-            aSubDict[element.label] = element.description_of_equations()
-
-        return aDict
+        return {'Components': {comp.label: comp.description_of_equations() for comp in self.components},
+                'buses': {bus.label: bus.description_of_equations() for bus in self.all_buses},
+                'objective': self.objective.description_of_equations(),
+                'effects': self.effect_collection.description_of_equations(),
+                'flows': {flow.label_full: flow.description_of_equations() for comp in self.components for flow in
+                          (comp.inputs + comp.outputs)},
+                'others': {element.label: element.description_of_equations() for element in self.other_elements}}
 
     def print_equations(self) -> str:
         return (f'\n'
