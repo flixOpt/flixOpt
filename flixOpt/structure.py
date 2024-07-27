@@ -422,14 +422,12 @@ class Element:
         return aList
 
     def overview_of_eqs_and_vars(self) -> Dict[str, int]:
-        aDict = {}
-        aDict['no eqs'] = len(self.model.eqs)
-        aDict['no eqs single'] = sum([eq.nr_of_single_equations for eq in self.model.eqs])
-        aDict['no inEqs'] = len(self.model.ineqs)
-        aDict['no inEqs single'] = sum([ineq.nr_of_single_equations for ineq in self.model.ineqs])
-        aDict['no vars'] = len(self.model.variables)
-        aDict['no vars single'] = sum([var.length for var in self.model.variables])
-        return aDict
+        return {'no eqs': len(self.model.eqs),
+                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs),
+                'no inEqs': len(self.model.ineqs),
+                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs),
+                'no vars': len(self.model.variables),
+                'no vars single': sum(var.length for var in self.model.variables)}
 
 
 class ElementModel:
