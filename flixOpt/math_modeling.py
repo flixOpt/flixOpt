@@ -337,52 +337,41 @@ class Equation:
     def description(self, equation_nr: int = 0) -> str:
         equation_nr = min(equation_nr, self.nr_of_single_equations - 1)
 
-        aStr = ''
-        # header:
+        # Header:
         if self.eqType == 'objective':
-            aStr += 'obj' + ': '  # leerzeichen wichtig, sonst im yaml interpretation als dict
+            description_str = 'obj: '
         else:
-            aStr += 'eq ' + self.label + '[' + str(equation_nr) + ' of ' + str(self.nr_of_single_equations) + ']: '
+            description_str = f"eq {self.label}[{equation_nr} of {self.nr_of_single_equations}]: "
 
-        # Summanden:
-        first = True
-        for aSummand in self.listOfSummands:
-            if not first: aStr += ' + '
-            first = False
-            if aSummand.length == 1:
-                i = 0
-            else:
-                i = equation_nr
-            #      i     = min(equation_nr, aSummand.length-1) # wenn zu groß, dann letzter Eintrag ???
-            index = aSummand.indices[i]
-            # factor formatieren:
-            factor = aSummand.factor_vec[i]
-            factor_str = str(factor) if isinstance(factor, int) else "{:.6}".format(float(factor))
-            # Gesamtstring:
-            aElementOfSummandStr = factor_str + '* ' + aSummand.variable.label_full + '[' + str(index) + ']'
-            if isinstance(aSummand, SumOfSummand):
-                aStr += '∑('
-                if i > 0:
-                    aStr += '..+'
-                aStr += aElementOfSummandStr
-                if i < aSummand.length:
-                    aStr += '+..'
-                aStr += ')'
-            else:
-                aStr += aElementOfSummandStr
+        # Summands:
+        for idx, summand in enumerate(self.list_of_summands):
+            if idx > 0:
+                description_str += ' + '
 
-                # = oder <= :
-        if self.eqType in ['eq', 'objective']:
-            aStr += ' = '
-        elif self.eqType == 'ineq':
-            aStr += ' <= '
+            i = 0 if summand.length == 1 else equation_nr
+            index = summand.indices[i]
+            factor = summand.factor_vec[i]
+            factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
+            summand_str = f"{factor_str}* {summand.variable.label_full}[{index}]"
+
+            if isinstance(summand, SumOfSummand):
+                sum_str = f"∑({('..+' if i > 0 else '')}{summand_str}{('+..' if i < summand.length else '')})"
+                description_str += sum_str
+            else:
+                description_str += summand_str
+
+        # Equation type:
+        if self.eq_type in ['eq', 'objective']:
+            description_str += ' = '
+        elif self.eq_type == 'ineq':
+            description_str += ' <= '
         else:
-            aStr += ' ? '
+            description_str += ' ? '
 
-            # right side:
-        aStr += str(self.constant_vector[equation_nr])  # todo: hier könnte man noch aufsplitten nach parts_of_constant
+        # Right side:
+        description_str += str(self.constant_vector[equation_nr])
 
-        return aStr
+        return description_str
 
     def _update_nr_of_single_equations(self, length_of_summand: int, label_of_summand: str) -> None:
         """Checks if the new Summand is compatible with the existing Summands"""
