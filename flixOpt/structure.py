@@ -48,23 +48,16 @@ class SystemModel(MathModel):
     @property
     def infos(self):
         infos = super().infos
-        # Hauptergebnisse:
-        infos['main_results'] = self.main_results_str
-        # unten dran den vorhanden rest:
-        infos.update(self._infos)  # da steht schon zeug drin
+        infos['str_Eqs'] = self.flow_system.description_of_equations()
+        infos['str_Vars'] = self.flow_system.description_of_variables()
+        infos['main_results'] = self.main_results_str   # Hauptergebnisse:
+        infos.update(self._infos)
         return infos
 
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
         # allocation Element -> model
         self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
-
-    # override:
-    def characterize_math_problem(self):  # overriding same method in motherclass!
-        # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
-        # self.flow_system.activate_model()
-        self._infos['str_Eqs'] = self.flow_system.description_of_equations()
-        self._infos['str_Vars'] = self.flow_system.description_of_variables()
 
     # 'gurobi'
     def solve(self,
