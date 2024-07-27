@@ -339,14 +339,15 @@ class Equation:
 
         # Header:
         if self.eqType == 'objective':
-            description_str = 'obj: '
+            header = 'obj'
         else:
-            description_str = f"eq {self.label}[{equation_nr} of {self.nr_of_single_equations}]: "
+            header = f'eq {self.label}[{equation_nr} of {self.nr_of_single_equations}]'
 
         # Summands:
-        for idx, summand in enumerate(self.list_of_summands):
+        all_summands_str = ''
+        for idx, summand in enumerate(self.listOfSummands):
             if idx > 0:
-                description_str += ' + '
+                all_summands_str += ' + '
 
             i = 0 if summand.length == 1 else equation_nr
             index = summand.indices[i]
@@ -356,22 +357,21 @@ class Equation:
 
             if isinstance(summand, SumOfSummand):
                 sum_str = f"∑({('..+' if i > 0 else '')}{summand_str}{('+..' if i < summand.length else '')})"
-                description_str += sum_str
+                all_summands_str += sum_str
             else:
-                description_str += summand_str
+                all_summands_str += summand_str
 
         # Equation type:
-        if self.eq_type in ['eq', 'objective']:
-            description_str += ' = '
-        elif self.eq_type == 'ineq':
-            description_str += ' <= '
+        if self.eqType in ['eq', 'objective']:
+            sign = '='
+        elif self.eqType == 'ineq':
+            sign = '<='
         else:
-            description_str += ' ? '
+            sign = '?'
 
-        # Right side:
-        description_str += str(self.constant_vector[equation_nr])
+        constant_str = f'{self.constant_vector[equation_nr]}'
 
-        return description_str
+        return f'{header:<30}: {all_summands_str} {sign} {constant_str}'
 
     def _update_nr_of_single_equations(self, length_of_summand: int, label_of_summand: str) -> None:
         """Checks if the new Summand is compatible with the existing Summands"""
