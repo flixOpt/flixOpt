@@ -339,29 +339,10 @@ class FlowSystem:
                 f'{" Short String Description of FlowSystem ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_system())}')
 
-    def description_of_system(self, flowsWithBusInfo=False) -> Dict:
-        modelDescription = {}
-
-        # Anmerkung buses und comps als dict, weil Namen eindeutig!
-        # Buses:
-        modelDescription['buses'] = {}
-        for aBus in self.all_buses:
-            aBus: Bus
-            modelDescription['buses'].update(aBus.description())
-        # Comps:
-        modelDescription['components'] = {}
-        aComp: Component
-        for aComp in self.components:
-            modelDescription['components'].update(aComp.description())
-
-        # Flows:
-        flowList = []
-        modelDescription['flows'] = flowList
-        aFlow: Flow
-        for aFlow in self.all_flows:
-            flowList.append(aFlow.description())
-
-        return modelDescription
+    def description_of_system(self) -> Dict:
+        return {'buses': {k: v for bus in self.all_buses for k, v in bus.description().items()},
+                'components': {k: v for comp in self.components for k, v in comp.description().items()},
+                'flows': [flow.description() for flow in self.all_flows]}
 
     def description_of_equations(self) -> Dict:
         aDict = {}
