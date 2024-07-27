@@ -659,43 +659,40 @@ class MathModel:
     ##############################################################################################
     ################ pyomo-Spezifisch
     # alle Pyomo Elemente müssen im model registriert sein, sonst werden sie nicht berücksichtigt
-    def _pyomo_register(self, py_comp, aStr='', oldPyCompToOverwrite=None) -> None:
+    def _pyomo_register(self, pyomo_comp, label='', old_pyomo_comp_to_overwrite=None) -> None:
         # neu erstellen
-        if oldPyCompToOverwrite == None:
+        if old_pyomo_comp_to_overwrite is None:
             self.countComp += 1
             # Komponenten einfach hochzählen, damit eindeutige Namen, d.h. a1_timesteps, a2, a3 ,...
             # Beispiel:
             # model.add_component('a1',py_comp) äquivalent zu model.a1 = py_comp
-            self.model.add_component('a' + str(self.countComp) + '_' + aStr, py_comp)  # a1,a2,a3, ...
+            self.model.add_component('a' + str(self.countComp) + '_' + label, pyomo_comp)  # a1,a2,a3, ...
         # altes überschreiben:
         else:
-            self._pyomo_overwrite_comp(py_comp, oldPyCompToOverwrite)
+            self._pyomo_overwrite_comp(pyomo_comp, old_pyomo_comp_to_overwrite)
 
-    def _pyomo_delete(self, old_py_comp) -> None:
+    def _pyomo_delete(self, old_pyomo_comp) -> None:
         # Komponente löschen:
-        aName = self._pyomo_get_internal_name(old_py_comp)
-        aNameOfAdditionalComp = aName + '_index'  # sowas wird bei manchen Komponenten als Komponente automatisch mit erzeugt.
-        # sonstige zugehörige Variablen löschen:
-        if aNameOfAdditionalComp in self.model.component_map().keys():
-            self.model.del_component(aNameOfAdditionalComp)
-        self.model.del_component(aName)
+        name_of_pyomo_comp = self._pyomo_get_internal_name(old_pyomo_comp)
+        additional_comps_to_delete = name_of_pyomo_comp + '_index'  # sowas wird bei manchen Komponenten als Komponente automatisch mit erzeugt.
+        if additional_comps_to_delete in self.model.component_map().keys():   # sonstige zugehörige Variablen löschen:
+            self.model.del_component(additional_comps_to_delete)
+        self.model.del_component(name_of_pyomo_comp)
 
-    def _pyomo_get_internal_name(self, aComp) -> str:
+    def _pyomo_get_internal_name(self, pyomo_comp) -> str:
         # name of component
-        for key, val in self.model.component_map().iteritems():
-            if aComp == val:
+        for key, value in self.model.component_map().iteritems():
+            if pyomo_comp == value:
                 return key
 
-    def _pyomo_get_comp(self, aStr):
-        return self.model.component_map()[aStr]
+    def _pyomo_get_comp(self, name_of_pyomo_comp: str):
+        return self.model.component_map()[name_of_pyomo_comp]
 
-    def _pyomo_overwrite_comp(self, py_comp, old_py_comp) -> None:
+    def _pyomo_overwrite_comp(self, pyomo_comp, old_py_comp) -> None:
         # gleichnamige Pyomo-Komponente überschreiben (wenn schon vorhanden, sonst neu)
-        aName = self._pyomo_get_internal_name(old_py_comp)
-        # alles alte löschen:
-        self._pyomo_delete(old_py_comp)
-        # überschreiben:
-        self.model.add_component(aName, py_comp)
+        name_of_pyomo_comp = self._pyomo_get_internal_name(old_py_comp)
+        self._pyomo_delete(old_py_comp)   # alles alte löschen:
+        self.model.add_component(name_of_pyomo_comp, pyomo_comp)   # überschreiben:
 
     ######## Other Modeling Languages
 
