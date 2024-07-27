@@ -288,25 +288,23 @@ class FlowSystem:
             aTS.activate(indices, explicitData)
 
     def activate_model(self, system_model: SystemModel) -> None:
+        """
+        This function to connect a SystemModel to the FLowSystem and connect it to all Elements in the FLowSystem
+        """
         self.model = system_model
-        system_model: SystemModel
-        element: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
         self.activate_indices_in_time_series(system_model.time_indices, system_model.TS_explicit)
 
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
-            logger.debug('create model-Vars for Elements of EnergySystem')
+            if not self._finalized:
+                raise Exception(f'activate_model() cant be called before all elements are finalized')
+            logger.debug(f'Creating ElementModels for Elements in FlowSystem')
             for element in self.all_first_level_elements_with_flows:
-                # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
-                if not self._finalized:
-                    raise Exception('activate_model(): --> Geht nicht, da FlowSystem noch nicht finalized!')
-                # model bauen und in model registrieren.
                 element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
         else:
-            # nur Aktivieren:
-            for element in self.all_first_level_elements_with_flows:
+            for element in self.all_first_level_elements_with_flows:  # nur Aktivieren:
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
     def get_results_after_solve(self) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
