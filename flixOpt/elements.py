@@ -1122,7 +1122,7 @@ class Flow(Element):
               self.positive_gradient_constr =  Constraint(model.timestepsOfRun,rule = positive_gradient_rule)   # timestepsOfRun = [start:end]
               # raise error();
             system_model._pyomo_register(self.positive_gradient_constr, self.label + '_positive_gradient_constr')
-          elif model.modeling_language == 'vcxpy':
+          elif model.modeling_language == 'cvxpy':
             raise Exception('not defined for modtype ' + model.modeling_language)
           else:
             raise Exception('not defined for modtype ' + model.modeling_language)'''

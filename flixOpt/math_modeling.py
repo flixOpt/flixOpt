@@ -117,7 +117,7 @@ class Variable:
                     self._pyomo_comp[i].setlb(lower_bound_vector[i])  # min
                     self._pyomo_comp[i].setub(upper_bound_vector[i])  # max
 
-        elif math_model.modeling_language == 'vcxpy':
+        elif math_model.modeling_language == 'cvxpy':
             raise Exception('not defined for modtype ' + math_model.modeling_language)
         else:
             raise Exception('not defined for modtype ' + math_model.modeling_language)
@@ -143,7 +143,7 @@ class Variable:
                 if len(self._result) == 1:
                     self._result = self._result[0]
 
-            elif self.math_model.modeling_language == 'vcxpy':
+            elif self.math_model.modeling_language == 'cvxpy':
                 raise Exception('not defined for modtype ' + self.math_model.modeling_language)
             else:
                 raise Exception('not defined for modtype ' + self.math_model.modeling_language)
@@ -327,7 +327,7 @@ class Equation:
                 # 3. Undefined:
             else:
                 raise Exception('equation.eqType= ' + str(self.eqType) + ' nicht definiert')
-        elif math_model.modeling_language == 'vcxpy':
+        elif math_model.modeling_language == 'cvxpy':
             raise Exception('not defined for modtype ' + math_model.modeling_language)
         else:
             raise Exception('not defined for modtype ' + math_model.modeling_language)
