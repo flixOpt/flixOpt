@@ -27,7 +27,7 @@ class Variable:
                  label: str,
                  length: int,
                  label_of_owner: str,
-                 math_model: MathModel,
+                 math_model: 'MathModel',
                  is_binary: bool = False,
                  value: Optional[Skalar] = None,
                  lower_bound: Optional[Skalar] = None,
@@ -70,7 +70,7 @@ class Variable:
         #math_model.variables.append(self)  # math_model-Liste mit allen vars
         #owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
-    def to_math_model(self, math_model: MathModel):
+    def to_math_model(self, math_model: 'MathModel'):
         self.math_model = math_model
 
         # TODO: self.var ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
@@ -161,7 +161,7 @@ class VariableTS(Variable):
                  label: str,
                  length: int,
                  label_of_owner: str,
-                 math_model: MathModel,
+                 math_model: 'MathModel',
                  is_binary: bool = False,
                  value: Optional[Numeric] = None,
                  lower_bound: Optional[Numeric] = None,
@@ -191,7 +191,7 @@ class Equation:
     def __init__(self,
                  label: str,
                  owner,
-                 math_model: MathModel,
+                 math_model: 'MathModel',
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         self.label = label
         self.listOfSummands = []
@@ -277,7 +277,7 @@ class Equation:
         self._update_nr_of_single_equations(length, 'constant')   # Update
         self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
 
-    def to_math_model(self, math_model: MathModel) -> None:
+    def to_math_model(self, math_model: 'MathModel') -> None:
         logger.debug('eq ' + self.label + '.to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
