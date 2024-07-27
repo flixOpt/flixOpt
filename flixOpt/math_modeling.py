@@ -102,8 +102,7 @@ class Variable:
                 self.var = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
 
             # Register in pyomo-model:
-            aNameSuffixInPyomo = 'var__' + self.label_full
-            math_model._pyomo_register(self.var, aNameSuffixInPyomo)
+            math_model._pyomo_register(self.var, f'var__{self.label_full}')
 
             lower_bound_vector = utils.as_vector(self.lower_bound, self.length)
             upper_bound_vector = utils.as_vector(self.upper_bound, self.length)
@@ -304,8 +303,10 @@ class Equation:
                 self.eq = pyomoEnv.Constraint(range(self.nr_of_single_equations),
                                               rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
-                math_model._pyomo_register(self.eq,
-                                         'eq_' + self.myMom.label + '_' + self.label)  # in pyomo-Modell mit eindeutigem Namen registrieren
+                math_model._pyomo_register(
+                    self.eq,
+                    f'eq_{self.myMom.label}_{self.label}'   # in pyomo-Modell mit eindeutigem Namen registrieren
+                )
 
             # 2. Zielfunktion:
             elif self.eqType == 'objective':
@@ -656,9 +657,7 @@ class MathModel:
     def nr_of_single_inequations(self) -> int:
         return sum([eq.nr_of_single_equations for eq in self.ineqs])
 
-    ##############################################################################################
-    ################ pyomo-Spezifisch
-    # alle Pyomo Elemente müssen im model registriert sein, sonst werden sie nicht berücksichtigt
+    ################################## pyomo
     def _pyomo_register(self, pyomo_comp, label='', old_pyomo_comp_to_overwrite=None) -> None:
         # neu erstellen
         if old_pyomo_comp_to_overwrite is None:
@@ -666,7 +665,7 @@ class MathModel:
             # Komponenten einfach hochzählen, damit eindeutige Namen, d.h. a1_timesteps, a2, a3 ,...
             # Beispiel:
             # model.add_component('a1',py_comp) äquivalent zu model.a1 = py_comp
-            self.model.add_component('a' + str(self.countComp) + '_' + label, pyomo_comp)  # a1,a2,a3, ...
+            self.model.add_component(f'a{self.countComp}__{label}', pyomo_comp)  # a1,a2,a3, ...
         # altes überschreiben:
         else:
             self._pyomo_overwrite_comp(pyomo_comp, old_pyomo_comp_to_overwrite)
