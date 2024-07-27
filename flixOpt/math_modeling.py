@@ -118,9 +118,9 @@ class Variable:
                     self._pyomo_comp[i].setub(upper_bound_vector[i])  # max
 
         elif math_model.modeling_language == 'cvxpy':
-            raise Exception('not defined for modtype ' + math_model.modeling_language)
+            raise NotImplementedError('CVXPY not yet implemented')
         else:
-            raise Exception('not defined for modtype ' + math_model.modeling_language)
+            raise NotImplementedError(f'Modeling Language {math_model.modeling_language} not yet implemented')
 
     def reset_result(self):
         self._result = None
@@ -144,9 +144,9 @@ class Variable:
                     self._result = self._result[0]
 
             elif self.math_model.modeling_language == 'cvxpy':
-                raise Exception('not defined for modtype ' + self.math_model.modeling_language)
+                raise NotImplementedError('CVXPY not yet implemented')
             else:
-                raise Exception('not defined for modtype ' + self.math_model.modeling_language)
+                raise NotImplementedError(f'Modeling Language {self.math_model.modeling_language} not yet implemented')
 
         return self._result
 
@@ -328,9 +328,9 @@ class Equation:
             else:
                 raise Exception('equation.eqType= ' + str(self.eqType) + ' nicht definiert')
         elif math_model.modeling_language == 'cvxpy':
-            raise Exception('not defined for modtype ' + math_model.modeling_language)
+            raise NotImplementedError('CVXPY not yet implemented')
         else:
-            raise Exception('not defined for modtype ' + math_model.modeling_language)
+            raise NotImplementedError(f'Modeling Language {math_model.modeling_language} not yet implemented')
 
             # print i-th equation:
 
