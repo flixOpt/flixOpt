@@ -423,11 +423,11 @@ class Element:
 
     def overview_of_eqs_and_vars(self) -> Dict[str, int]:
         return {'no eqs': len(self.model.eqs),
-                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs),
+                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
                 'no inEqs': len(self.model.ineqs),
-                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs),
+                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
                 'no vars': len(self.model.variables),
-                'no vars single': sum(var.length for var in self.model.variables)}
+                'no vars single': sum(var.length for var in self.model.variables.values())}
 
 
 class ElementModel:
@@ -482,3 +482,7 @@ class ElementModel:
         for aVar in self.variables.values():
             aList.append(aVar.get_str_description())
         return aList
+
+    @property
+    def ineqs(self) -> Dict[str, Equation]:
+        return {name: eq for name, eq in self.eqs.items() if eq.eqType == 'ineq'}
