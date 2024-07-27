@@ -414,12 +414,9 @@ class Element:
         return eqsAsStr
 
     def description_of_variables(self) -> List:
-        aList = []
-        aList += self.model.description_of_variables()
-        for aSubElement in self.sub_elements:
-            aList += aSubElement.description_of_variables()  # rekursiv
-
-        return aList
+        return self.model.description_of_variables() + [
+            description for sub_element in self.sub_elements for description in sub_element.description_of_variables()
+        ]
 
     def overview_of_eqs_and_vars(self) -> Dict[str, int]:
         return {'no eqs': len(self.model.eqs),
