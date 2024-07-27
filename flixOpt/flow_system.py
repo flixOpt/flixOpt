@@ -345,7 +345,7 @@ class FlowSystem:
                 }
 
     def description_of_variables_unstructured(self) -> List:
-        return [var.get_str_description() for var in self.model.variables]
+        return [var.description() for var in self.model.variables]
 
     def print_model(self) -> str:
         return (f'\n'

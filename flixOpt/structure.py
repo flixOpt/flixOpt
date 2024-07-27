@@ -458,7 +458,7 @@ class ElementModel:
     def description_of_variables(self) -> List:
         aList = []
         for aVar in self.variables.values():
-            aList.append(aVar.get_str_description())
+            aList.append(aVar.description())
         return aList
 
     @property

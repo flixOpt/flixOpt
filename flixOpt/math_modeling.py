@@ -68,27 +68,16 @@ class Variable:
         #math_model.variables.append(self)  # math_model-Liste mit allen vars
         #owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
-    def get_str_description(self) -> str:
-        maxChars = 50  # länge begrenzen falls vector-Darstellung
-        aStr = 'var'
+    def description(self, max_length_ts=60) -> str:
+        bin_type = 'bin' if self.is_binary else '   '
 
-        if isinstance(self, VariableTS):
-            aStr += ' TS'
-        else:
-            aStr += '   '
-
-        if self.is_binary:
-            aStr += ' bin '
-        else:
-            aStr += '     '
-
-        aStr += self.label_full + ': ' + 'length=' + str(self.length)
+        header = f'Var {bin_type} x {self.length:<6} "{self.label}"'
         if self.fixed:
-            aStr += ', fixed =' + str(self.value)[:maxChars]
-
-        aStr += ' min = ' + str(self.lower_bound)[:maxChars] + ', max = ' + str(self.upper_bound)[:maxChars]
-
-        return aStr
+            description = f'{header:<40}: fixed={str(self.value)[:max_length_ts]:<10}'
+        else:
+            description = (f'{header:<40}: min={str(self.lower_bound)[:max_length_ts]:<10}, '
+                           f'max={str(self.upper_bound)[:max_length_ts]:<10}')
+        return description
 
     def to_math_model(self, math_model: 'MathModel'):
         self.math_model = math_model
