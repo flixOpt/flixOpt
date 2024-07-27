@@ -28,15 +28,6 @@ class SystemModel(MathModel):
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     '''
 
-    @property
-    def infos(self):
-        infos = super().infos
-        # Hauptergebnisse:
-        infos['main_results'] = self.main_results_str
-        # unten dran den vorhanden rest:
-        infos.update(self._infos)  # da steht schon zeug drin
-        return infos
-
     def __init__(self,
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
@@ -54,17 +45,19 @@ class SystemModel(MathModel):
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             flow_system.get_time_data_from_indices(time_indices))
 
+    @property
+    def infos(self):
+        infos = super().infos
+        infos['str_Eqs'] = self.flow_system.description_of_equations()
+        infos['str_Vars'] = self.flow_system.description_of_variables()
+        infos['main_results'] = self.main_results_str   # Hauptergebnisse:
+        infos.update(self._infos)
+        return infos
+
     # register ModelingElements and belonging Mod:
     def register_element_with_model(self, aModelingElement, aMod):
         # allocation Element -> model
         self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
-
-    # override:
-    def characterize_math_problem(self):  # overriding same method in motherclass!
-        # Systembeschreibung abspeichern: (Beachte: system_model muss aktiviert sein)
-        # self.flow_system.activate_model()
-        self._infos['str_Eqs'] = self.flow_system.description_of_equations()
-        self._infos['str_Vars'] = self.flow_system.description_of_variables()
 
     # 'gurobi'
     def solve(self,
@@ -192,40 +185,22 @@ class SystemModel(MathModel):
         logger.info(f'{" End of Main Results ":#^80}')
 
     @property
-    def all_variables(self) -> List[Variable]:
-        all_vars = []
+    def variables(self) -> List[Variable]:
+        all_vars = list(self._variables)
         for model in self.models_of_elements.values():
             all_vars += [var for var in model.variables.values()]
         return all_vars
 
     @property
-    def all_ts_variables(self) -> List[VariableTS]:
-        return [var for var in self.all_variables if isinstance(var, VariableTS)]
-
-    @property
-    def all_equations(self) -> List[Equation]:
-        all_eqs = []
+    def eqs(self) -> List[Equation]:
+        all_eqs = list(self._eqs)
         for model in self.models_of_elements.values():
-            all_eqs += [eq for eq in model.eqs.values()]
+            all_eqs += [var for var in model.eqs.values()]
         return all_eqs
 
     @property
-    def all_inequations(self) -> List[Equation]:
-        all_eqs = []
-        for model in self.models_of_elements.values():
-            all_eqs += [ineq for ineq in model.ineqs.values()]
-        return all_eqs
-
-    def to_math_model(self) -> None:
-        t_start = timeit.default_timer()
-        for variable in self.all_variables:   # Variablen erstellen
-            variable.to_math_model(self)
-        for eq in self.all_equations:   # Gleichungen erstellen
-            eq.to_math_model(self)
-        for ineq in self.all_inequations:   # Ungleichungen erstellen:
-            ineq.to_math_model(self)
-
-        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
+    def ineqs(self) -> List[Equation]:
+        return [eq for eq in self.eqs if eq.eqType == 'ineq']
 
 
 class Element:
@@ -466,7 +441,6 @@ class ElementModel:
         self.element = element
         self.variables = {}
         self.eqs = {}
-        self.ineqs = {}
         self.objective = None
 
     def get_var(self, label: str) -> Variable:
@@ -477,8 +451,6 @@ class ElementModel:
     def get_eq(self, label: str) -> Equation:
         if label in self.eqs.keys():
             return self.eqs[label]
-        if label in self.ineqs.keys():
-            return self.ineqs[label]
         raise Exception(f'Equation "{label}" does not exist')
 
     def add_variable(self, variable: Variable) -> None:
@@ -500,8 +472,8 @@ class ElementModel:
         # Wenn Glg vorhanden:
         eq: Equation
         aList = []
-        if (len(self.eqs) + len(self.ineqs)) > 0:
-            for eq in (list(self.eqs.values()) + list(self.ineqs.values())):
+        if len(self.eqs) > 0:
+            for eq in list(self.eqs.values()):
                 aList.append(eq.description())
         if not (self.objective is None):
             aList.append(self.objective.description())
