@@ -5,18 +5,13 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import math
-import time
-import textwrap
-import pprint
-from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Set, Tuple, Dict, Union, Optional
 import logging
 
 import numpy as np
 import yaml  # (für json-Schnipsel-print)
 
 from flixOpt import utils
-from flixOpt.math_modeling import Variable
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Objective
