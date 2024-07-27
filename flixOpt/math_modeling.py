@@ -21,8 +21,10 @@ pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 logger = logging.getLogger('flixOpt')
 
 
-
 class Variable:
+    """
+    Regular single Variable
+    """
     def __init__(self,
                  label: str,
                  length: int,
@@ -69,6 +71,28 @@ class Variable:
         # owner .variables.append(self) # Komponentenliste
         #math_model.variables.append(self)  # math_model-Liste mit allen vars
         #owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
+
+    def get_str_description(self) -> str:
+        maxChars = 50  # länge begrenzen falls vector-Darstellung
+        aStr = 'var'
+
+        if isinstance(self, VariableTS):
+            aStr += ' TS'
+        else:
+            aStr += '   '
+
+        if self.is_binary:
+            aStr += ' bin '
+        else:
+            aStr += '     '
+
+        aStr += self.label_full + ': ' + 'length=' + str(self.length)
+        if self.fixed:
+            aStr += ', fixed =' + str(self.value)[:maxChars]
+
+        aStr += ' min = ' + str(self.lower_bound)[:maxChars] + ', max = ' + str(self.upper_bound)[:maxChars]
+
+        return aStr
 
     def to_math_model(self, math_model: 'MathModel'):
         self.math_model = math_model
@@ -132,31 +156,11 @@ class Variable:
 
         return self._result
 
-    def get_str_description(self) -> str:
-        maxChars = 50  # länge begrenzen falls vector-Darstellung
-        aStr = 'var'
 
-        if isinstance(self, VariableTS):
-            aStr += ' TS'
-        else:
-            aStr += '   '
-
-        if self.is_binary:
-            aStr += ' bin '
-        else:
-            aStr += '     '
-
-        aStr += self.label_full + ': ' + 'length=' + str(self.length)
-        if self.fixed:
-            aStr += ', fixed =' + str(self.value)[:maxChars]
-
-        aStr += ' min = ' + str(self.lower_bound)[:maxChars] + ', max = ' + str(self.upper_bound)[:maxChars]
-
-        return aStr
-
-
-# Timeseries-Variable, optional mit Before-Werten:
 class VariableTS(Variable):
+    """
+    # Timeseries-Variable, optional mit Before-Werten
+    """
     def __init__(self,
                  label: str,
                  length: int,
@@ -188,6 +192,9 @@ class VariableTS(Variable):
 #     super().__init__(label, owner, math_model, eqType='ineq')
 
 class Equation:
+    """
+    Representing a single equation or, with the Variable being a VariableTS, a set of equations
+    """
     def __init__(self,
                  label: str,
                  owner,
@@ -205,7 +212,6 @@ class Equation:
         self.eq = None  # z.B. für pyomo : pyomoComponente
 
         logger.debug('equation created: ' + str(label))
-
 
     def add_summand(self,
                     variable: Variable,
@@ -395,6 +401,9 @@ class Equation:
 
 # Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
 class Summand:
+    """
+    Part of an equation. Either with a single Variable or a VariableTS
+    """
     def __init__(self,
                  variable: Variable,
                  factor: Numeric,
@@ -451,6 +460,10 @@ class Summand:
 
 
 class SumOfSummand(Summand):
+    """
+    Part of an Equation. Summing up all parts of a regular Summand of a regular Summand
+    'sum(factor[i]*variable[i] for i in all_indexes)'
+    """
     def __init__(self,
                  variable: Variable,
                  factor: Numeric,
