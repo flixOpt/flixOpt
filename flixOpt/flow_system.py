@@ -360,47 +360,18 @@ class FlowSystem:
                 f'{yaml.dump(self.description_of_equations(), default_flow_style=False, allow_unicode=True)}')
 
     def description_of_variables(self, structured=True) -> Union[List, Dict]:
-        aVar: Variable
-
-        # liste:
         if not structured:
-            aList = []
-            for aVar in self.model.variables:
-                aList.append(aVar.get_str_description())
-            return aList
+            return [var.get_str_description() for var in self.model.variables]
 
-        # struktur:
-        else:
-            aDict = {}
-
-            # comps (and belonging flows):
-            subDict = {}
-            aDict['Comps'] = subDict
-            # comps:
-            for aComp in self.components:
-                subDict[aComp.label] = aComp.description_of_variables()
-                for aFlow in aComp.inputs + aComp.outputs:
-                    subDict[aComp.label] += aFlow.description_of_variables()
-
-            # buses:
-            subDict = {}
-            aDict['buses'] = subDict
-            for bus in self.all_buses:
-                subDict[bus.label] = bus.description_of_variables()
-
-            # Objective:
-            aDict['objective'] = self.objective.description_of_variables()
-
-            # Effects:
-            aDict['effects'] = self.effect_collection.description_of_variables()
-
-            # others
-            aSubDict = {}
-            aDict['others'] = aSubDict
-            for element in self.other_elements:
-                aSubDict[element.label] = element.description_of_variables()
-
-            return aDict
+        return {
+            'comps': {comp.label: comp.description_of_variables() +
+                                  [flow.description_of_variables() for flow in (comp.inputs + comp.outputs)]
+                      for comp in self.components},
+            'buses': {bus.label: bus.description_of_variables() for bus in self.all_buses},
+            'objective': self.objective.description_of_variables(),
+            'effects': self.effect_collection.description_of_variables(),
+            'others': {element.label: element.description_of_variables() for element in self.other_elements}
+        }
 
     def print_variables(self) -> str:
         return (f'\n'
