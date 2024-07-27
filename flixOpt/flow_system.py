@@ -359,10 +359,7 @@ class FlowSystem:
                 f'{" Equations of FlowSystem ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_equations(), default_flow_style=False, allow_unicode=True)}')
 
-    def description_of_variables(self, structured=True) -> Union[List, Dict]:
-        if not structured:
-            return [var.get_str_description() for var in self.model.variables]
-
+    def description_of_variables(self) -> Dict:
         return {
             'comps': {comp.label: comp.description_of_variables() +
                                   [flow.description_of_variables() for flow in (comp.inputs + comp.outputs)]
@@ -373,14 +370,18 @@ class FlowSystem:
             'others': {element.label: element.description_of_variables() for element in self.other_elements}
         }
 
+    def description_of_variables_unstructured(self) -> List:
+        return [var.get_str_description() for var in self.model.variables]
+
+
     def print_variables(self) -> str:
         return (f'\n'
                 f'{"":#^80}\n'
                 f'{" Variables of FlowSystem ":#^80}\n\n'
                 f'{" a) as list ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_variables(structured=False))}\n\n'
+                f'{yaml.dump(self.description_of_variables_unstructured())}\n\n'
                 f'{" b) structured ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_variables(structured=True))}')
+                f'{yaml.dump(self.description_of_variables())}')
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def get_time_data_from_indices(self, time_indices: Union[List[int], range]) -> Tuple[
