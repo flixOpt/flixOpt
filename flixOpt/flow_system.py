@@ -314,23 +314,15 @@ class FlowSystem:
             for element in self.all_first_level_elements_with_flows:
                 element.activate_system_model(system_model)  # inkl. sub_elements
 
-    def get_results_after_solve(self) -> Tuple[Dict, Dict]:
-        # ! nur nach Solve aufrufen, nicht später nochmal nach activating model (da evtl stimmen Referenzen nicht mehr unbedingt!)
-        results = {}  # Daten
-        results_var = {}  # zugehörige Variable
-        # für alle Komponenten:
-        for element in self.all_first_level_elements:
-            # results        füllen:
-            (results[element.label], results_var[element.label]) = element.get_results()  # inklusive sub_elements!
+    def get_results_after_solve(self) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
+        # Ensure this is only called after solving, as references might change after activating the model again
+        results = {element.label: element.get_results()[0] for element in self.all_first_level_elements}
+        results_var = {element.label: element.get_results()[1] for element in self.all_first_level_elements}
 
-        # Zeitdaten ergänzen
-        aTime = {}
-        results['time'] = aTime
-        aTime['time_series_with_end'] = self.model.time_series_with_end
-        aTime['time_series'] = self.model.time_series
-        aTime['dt_in_hours'] = self.model.dt_in_hours
-        aTime['dt_in_hours_total'] = self.model.dt_in_hours_total
-
+        results['time'] = {'time_series_with_end': self.model.time_series_with_end,
+                           'time_series': self.model.time_series,
+                           'dt_in_hours': self.model.dt_in_hours,
+                           'dt_in_hours_total': self.model.dt_in_hours_total}
         return results, results_var
 
     def description_of_system(self) -> Dict:
