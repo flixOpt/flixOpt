@@ -11,6 +11,7 @@ import copy
 import timeit
 from typing import Optional, List, Dict, Union
 import warnings
+import logging
 
 import pandas as pd
 import numpy as np
@@ -25,7 +26,7 @@ from flixOpt.structure import Element, SystemModel
 from flixOpt.math_modeling import Equation, Variable, VariableTS, MathModel
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-
+logger = logging.getLogger('flixOpt')
 
 class Aggregation:
     """
@@ -118,7 +119,7 @@ class Aggregation:
         self.results = self.aggregation.predictOriginalData()
 
         self.time_for_clustering = timeit.default_timer() - start_time   # Zeit messen:
-        print(self.describe_clusters())
+        logger.info(self.describe_clusters())
 
     @property
     def results_original_index(self):
@@ -164,18 +165,18 @@ class Aggregation:
         else:
             extremePeriods = {}
 
-        return (f'#########################\n'
-                f'###### Clustering #######\n'
+        return (f'{"":#^80}\n'
+                f'{" Clustering ":#^80}\n'
                 f'periods_order:\n'
                 f'{self.aggregation.clusterOrder}\n'
                 f'clusterPeriodNoOccur:\n'
                 f'{self.aggregation.clusterPeriodNoOccur}\n'
                 f'index_vectors_of_clusters:\n'
                 f'{aVisual}\n'
-                f'########################\n'
+                f'{"":#^80}\n'
                 f'extremePeriods:\n'
                 f'{extremePeriods}\n'
-                f'########################')
+                f'{"":#^80}')
 
 
 class AggregationModeling(Element):
@@ -442,12 +443,12 @@ class TimeSeriesCollection:
                 if not isinstance(aTSraw, TimeSeriesRaw):
                     raise Exception('addPeak_max/min must be list of TimeSeriesRaw-objects!')
 
-    def print(self):
-        print('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
+    def __str__(self) -> str:
+        result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'
         for TS in self.time_series_list:
-            aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_group: ' + str(self._get_agg_type(TS)) + ')'
-            print(aStr.format(self._getWeight(TS)))
+            result += f' -> {TS.label_full} (weight: {self._getWeight(TS):.4f}; agg_group: {self._get_agg_type(TS)})\n'
         if len(self.agg_type_count.keys()) > 0:
-            print('agg_types: ' + str(list(self.agg_type_count.keys())))
+            result += f'agg_types: {list(self.agg_type_count.keys())}\n'
         else:
-            print('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
+            result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
+        return result

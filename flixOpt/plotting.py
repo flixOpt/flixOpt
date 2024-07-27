@@ -4,10 +4,12 @@ Created on Fri Mar 26 09:43:09 2021
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+import logging
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
+logger = logging.getLogger('flixOpt')
 
 def plotStackedSteps(ax, df: pd.DataFrame, showLegend=True, colors=None):  # df = dataframes!
     # Händische Lösung für stacked steps, da folgendes nicht funktioniert:

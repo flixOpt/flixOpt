@@ -5,11 +5,14 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 import numpy as np
+import logging
 
 from flixOpt.elements import Bus, Flow
 from flixOpt.components import LinearTransformer, CHP
 from flixOpt.interface import InvestParameters
 from flixOpt.utils import check_exists
+
+logger = logging.getLogger('flixOpt')
 
 
 def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,

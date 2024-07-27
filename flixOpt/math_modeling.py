@@ -18,7 +18,7 @@ from flixOpt.core import Skalar, Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 class MathModel:
@@ -59,7 +59,7 @@ class MathModel:
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
             import pyomo.environ as pyomoEnv
-            log.info('Loaded pyomo modules')
+            logger.debug('Loaded pyomo modules')
             # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchlaufe immer wieder genutzt wird.
             self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
         elif self.modeling_language == 'cvxpy':
@@ -187,10 +187,10 @@ class MathModel:
     def all_ts_variables(self) -> List:
         return [variable for variable in self.variables if isinstance(variable, VariableTS)]
 
-    def printNoEqsAndVars(self) -> None:
-        print('no of Eqs   (single):' + str(self.nr_of_equations) + ' (' + str(self.nr_of_single_equations) + ')')
-        print('no of InEqs (single):' + str(self.nr_of_inequations) + ' (' + str(self.nr_of_single_inequations) + ')')
-        print('no of Vars  (single):' + str(self.nr_of_variables) + ' (' + str(self.nr_of_single_variables) + ')')
+    def describe(self) -> str:
+        return (f'no of Eqs   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
+                f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
+                f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
 
     ##############################################################################################
     ################ pyomo-Spezifisch
@@ -262,7 +262,7 @@ class Variable:
         self._result = None  # Ergebnis
 
         self._result = None  # Ergebnis-Speicher
-        log.debug('Variable created: ' + self.label)
+        logger.debug('Variable created: ' + self.label)
 
         # Check conformity:
         self.label = utils.check_name_for_conformity(label)
@@ -420,7 +420,7 @@ class Equation:
         self.myMom = owner
         self.eq = None  # z.B. für pyomo : pyomoComponente
 
-        log.debug('equation created: ' + str(label))
+        logger.debug('equation created: ' + str(label))
 
 
     def add_summand(self,
@@ -494,7 +494,7 @@ class Equation:
         self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
 
     def to_math_model(self, math_model: MathModel) -> None:
-        log.debug('eq ' + self.label + '.to_math_model()')
+        logger.debug('eq ' + self.label + '.to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)
@@ -762,7 +762,7 @@ class SolverLog:
                 self.presolved_continuous = self.presolved_cols - self.presolved_integer
 
         elif self.solver_name == 'glpk':
-            print('######################################################')
-            print('### No solver-log parsing implemented for glpk yet! ###')
+            logger.warning(f'{"":#^80}\n')
+            logger.warning(f'{" No solver-log parsing implemented for glpk yet! ":#^80}\n')
         else:
             raise Exception('SolverLog.parse_infos() is not defined for solver ' + self.solver_name)

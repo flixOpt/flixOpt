@@ -6,6 +6,7 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import pickle
+import logging
 
 import yaml
 import numpy as np
@@ -14,6 +15,8 @@ import matplotlib.pyplot as plt  # für Plots im Postprocessing
 import matplotlib.dates as mdates
 
 from flixOpt import utils
+
+logger = logging.getLogger('flixOpt')
 
 
 class cFlow_post():
@@ -231,7 +234,6 @@ class flix_results():
     def isGreaterMinFlowHours(aFlowValues, dt_in_hours, minFlowHours):
         # absolute Summe, damit auch negative Werte gezählt werden:
         absFlowHours = sum(abs(aFlowValues * dt_in_hours))
-        # print(absFlowHours)
         return absFlowHours > minFlowHours
 
     def getLoadFactorOfComp(self, aComp):

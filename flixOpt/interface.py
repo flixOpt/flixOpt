@@ -4,10 +4,12 @@ Created on Tue Sep  6 15:25:43 2022
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+import logging
 from typing import Union, Optional, Dict, List
 
 import numpy as np
 
+logger = logging.getLogger('flixOpt')
 
 # Anmerkung: TimeSeriesRaw separat von TimeSeries wg. Einfachheit für Anwender
 class TimeSeriesRaw:

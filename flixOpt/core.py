@@ -4,12 +4,15 @@ Created on Wed Mar 31 22:51:38 2021
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-from typing import Union, Optional, List, Dict, Any
+from typing import Union, Optional, List, Dict, Any, Literal
+import logging
 
 import numpy as np
 
 from flixOpt import utils
 from flixOpt.interface import TimeSeriesRaw
+
+logger = logging.getLogger('flixOpt')
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
@@ -228,3 +231,74 @@ def as_effect_dict_with_ts(name_of_param: str,
     effect_dict = as_effect_dict(effect_values)
     effect_ts_dict = effect_values_to_ts(name_of_param, effect_dict, owner)
     return effect_ts_dict
+
+
+class CustomFormatter(logging.Formatter):
+    # ANSI escape codes for colors
+    COLORS = {
+        'DEBUG': '\033[96m',    # Cyan
+        'INFO': '\033[92m',     # Green
+        'WARNING': '\033[93m',  # Yellow
+        'ERROR': '\033[91m',    # Red
+        'CRITICAL': '\033[91m\033[1m',  # Bold Red
+    }
+    RESET = '\033[0m'
+
+    def format(self, record):
+        log_color = self.COLORS.get(record.levelname, self.RESET)
+        original_message = record.getMessage()
+        message_lines = original_message.split('\n')
+
+        # Create a formatted message for each line separately
+        formatted_lines = []
+        for line in message_lines:
+            temp_record = logging.LogRecord(
+                record.name, record.levelno, record.pathname, record.lineno,
+                line, record.args, record.exc_info, record.funcName, record.stack_info
+            )
+            formatted_line = super().format(temp_record)
+            formatted_lines.append(f"{log_color}{formatted_line}{self.RESET}")
+
+        formatted_message = '\n'.join(formatted_lines)
+        return formatted_message
+
+
+def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+    """Setup logging configuration"""
+    logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
+    logging_level = get_logging_level_by_name(level_name)
+    logger.setLevel(logging_level)
+
+    # Clear existing handlers
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # Create console handler
+    c_handler = logging.StreamHandler()
+    c_handler.setLevel(logging_level)
+
+    # Create a clean and aligned formatter
+    log_format = '%(asctime)s - %(levelname)-8s : %(message)s'
+    date_format = '%Y-%m-%d %H:%M:%S'
+    c_format = CustomFormatter(log_format, datefmt=date_format)
+    c_handler.setFormatter(c_format)
+    logger.addHandler(c_handler)
+
+    return logger
+
+
+def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) -> int:
+    possible_logging_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    if level_name.upper() not in possible_logging_levels:
+        raise ValueError(f'Invalid logging level {level_name}')
+    else:
+        logging_level = getattr(logging, level_name.upper(), logging.WARNING)
+        return logging_level
+
+
+def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+    logger = logging.getLogger('flixOpt')
+    logging_level = get_logging_level_by_name(level_name)
+    logger.setLevel(logging_level)
+    for handler in logger.handlers:
+        handler.setLevel(logging_level)

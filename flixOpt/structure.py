@@ -14,12 +14,13 @@ import numpy as np
 
 from flixOpt import utils
 from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # Modelliersprache
-from flixOpt.core import TimeSeries
+from flixOpt.core import TimeSeries, Skalar
+
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.elements import Flow
     from flixOpt.flow_system import FlowSystem
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 class SystemModel(MathModel):
@@ -103,12 +104,8 @@ class SystemModel(MathModel):
                     raise Exception(
                         'no allowed arguments for kwargs: ' + str(key) + '(all arguments:' + str(kwargs) + ')')
 
-        print('')
-        print('##############################################################')
-        print('##################### solving ################################')
-        print('')
-
-        self.printNoEqsAndVars()
+        logger.info(f'{" starting solving ":#^80}')
+        logger.info(f'{self.describe()}')
 
         super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
 
@@ -118,96 +115,81 @@ class SystemModel(MathModel):
             termination_message = self.solver_results['Solver'][0]['Status']
         else:
             termination_message = f'not implemented for solver "{solver_name}" yet'
-        print(f'Termination message: "{termination_message}"')
+        logger.info(f'Termination message: "{termination_message}"')
 
-        print('')
         # Variablen-Ergebnisse abspeichern:
         # 1. dict:
         (self.results, self.results_var) = self.flow_system.get_results_after_solve()
         # 2. struct:
         self.results_struct = utils.createStructFromDictInDict(self.results)
 
-        print('##############################################################')
-        print('################### finished #################################')
-        print('')
-        for aEffect in self.flow_system.effect_collection.effects:
-            print(aEffect.label + ' in ' + aEffect.unit + ':')
-            print('  operation: ' + str(aEffect.operation.model.variables['sum'].result))
-            print('  invest   : ' + str(aEffect.invest.model.variables['sum'].result))
-            print('  sum      : ' + str(aEffect.all.model.variables['sum'].result))
-
-        print('SUM              : ' + '...todo...')
-        print('penaltyCosts     : ' + str(self.flow_system.effect_collection.penalty.model.variables['sum'].result))
-        print('––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––')
-        print('Result of Obj : ' + str(self.objective_result))
-        try:
-            print('lower bound   : ' + str(self.solver_results['Problem'][0]['Lower bound']))
-        except:
-            print
-        print('')
-        for aBus in self.flow_system.all_buses:
-            if aBus.with_excess:
-                if any(self.results[aBus.label]['excess_input'] > 1e-6) or any(
-                        self.results[aBus.label]['excess_output'] > 1e-6):
-                    # if any(aBus.excess_input.result > 0) or any(aBus.excess_output.result > 0):
-                    print('!!!!! Attention !!!!!')
-                    print('!!!!! Exzess.Value in Bus ' + aBus.label + '!!!!!')
-
-                    # if penalties exist
-        if self.flow_system.effect_collection.penalty.model.variables['sum'].result > 10:
-            print('Take care: -> high penalty makes the used mip_gap quite high')
-            print('           -> real costs are not optimized to mip_gap')
-
-        print('')
-        print('##############################################################')
-
-        # str description of results:
-        # nested fct:
-        def _getMainResultsAsStr():
-            main_results_str = {}
-
-            aEffectDict = {}
-            main_results_str['Effects'] = aEffectDict
-            for aEffect in self.flow_system.effect_collection.effects:
-                aDict = {}
-                aEffectDict[aEffect.label + ' [' + aEffect.unit + ']'] = aDict
-                aDict['operation'] = str(aEffect.operation.model.variables['sum'].result)
-                aDict['invest'] = str(aEffect.invest.model.variables['sum'].result)
-                aDict['sum'] = str(aEffect.all.model.variables['sum'].result)
-            main_results_str['penaltyCosts'] = str(self.flow_system.effect_collection.penalty.model.variables['sum'].result)
-            main_results_str['Result of Obj'] = self.objective_result
-            if self.solver_name =='highs':
-                main_results_str['lower bound'] = self.solver_results.best_objective_bound
+        def extract_main_results() -> Dict[str, Union[Skalar, Dict]]:
+            main_results = {}
+            effect_results = {}
+            main_results['Effects'] = effect_results
+            for effect in self.flow_system.effect_collection.effects:
+                effect_results[f'{effect.label} [{effect.unit}]'] = {
+                    'operation': float(effect.operation.model.variables['sum'].result),
+                    'invest': float(effect.invest.model.variables['sum'].result),
+                    'sum': float(effect.all.model.variables['sum'].result)}
+            main_results['penalty'] = float(self.flow_system.effect_collection.penalty.model.variables['sum'].result)
+            main_results['Result of objective'] = self.objective_result
+            if self.solver_name == 'highs':
+                main_results['lower bound'] = self.solver_results.best_objective_bound
             else:
-                main_results_str['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
+                main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
             busesWithExcess = []
-            main_results_str['busesWithExcess'] = busesWithExcess
+            main_results['buses with excess'] = busesWithExcess
             for aBus in self.flow_system.all_buses:
                 if aBus.with_excess:
-                    if sum(self.results[aBus.label]['excess_input']) > excess_threshold or sum(
-                            self.results[aBus.label]['excess_output']) > excess_threshold:
+                    if (
+                            np.sum(self.results[aBus.label]['excess_input']) > excess_threshold or
+                            np.sum(self.results[aBus.label]['excess_output']) > excess_threshold
+                    ):
                         busesWithExcess.append(aBus.label)
 
-            aDict = {'invested': {},
-                     'not invested': {}
-                     }
-            main_results_str['Invest-Decisions'] = aDict
-            for aInvestFeature in self.flow_system.all_investments:
-                investValue = aInvestFeature.model.variables[aInvestFeature.name_of_investment_size].result
-                investValue = float(investValue)  # bei np.floats Probleme bei Speichern
-                # umwandeln von numpy:
-                if isinstance(investValue, np.ndarray):
-                    investValue = investValue.tolist()
-                label = aInvestFeature.owner.label_full
-                if investValue > 1e-3:
-                    aDict['invested'][label] = investValue
+            invest_decisions = {'invested': {}, 'not invested': {}}
+            main_results['Invest-Decisions'] = invest_decisions
+            for invest_feature in self.flow_system.all_investments:
+                invested_size = invest_feature.model.variables[invest_feature.name_of_investment_size].result
+                invested_size = float(invested_size)  # bei np.floats Probleme bei Speichern
+                label = invest_feature.owner.label_full
+                if invested_size > 1e-3:
+                    invest_decisions['invested'][label] = invested_size
                 else:
-                    aDict['not invested'][label] = investValue
+                    invest_decisions['not invested'][label] = invested_size
 
-            return main_results_str
+            return main_results
 
-        self.main_results_str = _getMainResultsAsStr()
-        utils.printDictAndList(self.main_results_str)
+        self.main_results_str = extract_main_results()
+
+        logger.info(f'{" finished solving ":#^80}')
+        logger.info(f'{" Main Results ":#^80}')
+        for effect_name, effect_results in self.main_results_str['Effects'].items():
+            logger.info(f'{effect_name}:\n'
+                        f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
+                        f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
+                        f'  {"sum":<15}: {effect_results["sum"]:>10.2f}')
+
+        logger.info(
+            # f'{"SUM":<15}: ...todo...\n'
+            f'{"penalty":<17}: {self.main_results_str["penalty"]:>10.2f}\n'
+            f'{"":-^80}\n'
+            f'{"Objective":<17}: {self.main_results_str["Result of objective"]:>10.2f}\n'
+            f'{"":-^80}')
+
+        logger.info(f'Investment Decisions:')
+        logger.info(utils.apply_formating(data_dict={**self.main_results_str["Invest-Decisions"]["invested"],
+                                                     **self.main_results_str["Invest-Decisions"]["not invested"]},
+                                          key_format="<30", indent=2, sort_by='value'))
+
+        for bus in self.main_results_str['buses with excess']:
+            logger.warning(f'Excess Value in Bus {bus.label}!')
+
+        if self.main_results_str["penalty"] > 10:
+            logger.warning(f'A total penalty of {self.main_results_str["penalty"]} occurred.'
+                           f'This might distort the results')
+        logger.info(f'{" End of Main Results ":#^80}')
 
     @property
     def all_variables(self) -> List[Variable]:
@@ -379,7 +361,7 @@ class Element:
 
     # 2.
     def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
-        # print('new model for ' + self.label)
+        logger.debug('new model for ' + self.label)
         # subElemente ebenso:
         element: Element
         for element in self.sub_elements:
@@ -414,7 +396,6 @@ class Element:
         # 2. Variablenwerte ablegen:
         aVar: Variable
         for aVar in self.model.variables.values():
-            # print(aVar.label)
             aData[aVar.label] = aVar.result
             aVars[aVar.label] = aVar  # link zur Variable
             if aVar.is_binary and aVar.length > 1:
@@ -426,7 +407,6 @@ class Element:
         # 3. Alle TS übergeben
         aTS: TimeSeries
         for aTS in self.TS_list:
-            # print(aVar.label)
             aData[aTS.label] = aTS.data
             aVars[aTS.label] = aTS  # link zur Variable
 

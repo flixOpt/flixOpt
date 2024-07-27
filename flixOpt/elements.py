@@ -17,7 +17,7 @@ from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict
 from flixOpt.interface import InvestParameters
 from flixOpt.structure import Element, SystemModel
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 class Effect(Element):
     '''
@@ -126,7 +126,7 @@ class Effect(Element):
         self.all.declare_vars_and_eqs(system_model)
 
     def do_modeling(self, system_model, time_indices: Union[List[int], range]) -> None:
-        print('modeling ' + self.label)
+        logger.debug('modeling ' + self.label)
         super().declare_vars_and_eqs(system_model)
         self.operation.do_modeling(system_model, time_indices)
         self.invest.do_modeling(system_model, time_indices)
@@ -508,7 +508,7 @@ class Component(Element):
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
     def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
-        log.debug(str(self.label) + 'do_modeling()')
+        logger.debug(str(self.label) + 'do_modeling()')
         self.featureOn.do_modeling(system_model, time_indices)
 
     def add_share_to_globals_of_flows(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
@@ -970,7 +970,7 @@ class Flow(Element):
         super().finalize()
 
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        print('declare_vars_and_eqs ' + self.label)
+        logger.debug('declare_vars_and_eqs ' + self.label)
         super().declare_vars_and_eqs(system_model)
 
         self.featureOn.declare_vars_and_eqs(system_model)  # TODO: rekursiv aufrufen für sub_elements

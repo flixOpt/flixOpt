@@ -301,7 +301,7 @@ print('############ time durations #####################')
 
 for aResult in listOfCalcs:
     print(aResult.label + ':')
-    aResult.listOfModbox[0].printNoEqsAndVars()
+    aResult.listOfModbox[0].describe()
     # print(aResult.infos)
     # print(aResult.duration)
     print('costs: ' + str(aResult.results_struct.global_comp.costs.all.sum))

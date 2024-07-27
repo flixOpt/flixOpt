@@ -6,13 +6,16 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 # TODO: as_vector() -> int32 Vektoren möglich machen
+import logging
+from typing import Union, List, Optional, Dict, Literal
 
 import numpy as np
 import math  # für nan
 
 from flixOpt.interface import TimeSeriesRaw
 from flixOpt.core import Numeric
-from typing import Union, List, Optional
+
+logger = logging.getLogger('flixOpt')
 
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
@@ -71,7 +74,7 @@ def check_name_for_conformity(label: str):
                 ord('-'): '_'}
     new_label = label.translate(char_map)
     if new_label != label:
-        print(f'{label=} doesnt allign with name restrictions and is changed to {new_label=}')
+        logger.warning(f'{label=} doesnt allign with name restrictions and is changed to {new_label=}')
 
     # check, ob jetzt valid variable name: (für Verwendung in results_struct notwendig)
     import re
@@ -184,18 +187,18 @@ def check_time_series(label: str,
 
     # unterschiedliche dt:
     if np.max(dt_in_hours) - np.min(dt_in_hours) != 0:
-        print(label + ': !! Achtung !! unterschiedliche delta_t von ' + str(min(dt)) + 'h bis ' + str(max(dt)) + ' h')
+        logger.warning(f'{label}: !! Achtung !! unterschiedliche delta_t von {min(dt)} h bis  {max(dt)} h')
     # negative dt:
     if np.min(dt_in_hours) < 0:
         raise Exception(label + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
 
 
-def printDictAndList(aDictOrList):
+def printDictAndList(aDictOrList) -> str:
     import yaml
-    print(yaml.dump(aDictOrList,
+    return yaml.dump(aDictOrList,
                     default_flow_style=False,
                     width=1000,  # verhindern von zusätzlichen Zeilenumbrüchen
-                    allow_unicode=True))
+                    allow_unicode=True)
 
 def max_args(*args):
     # max from num-lists and skalars
@@ -220,3 +223,19 @@ def _mergeToArray(args):
             arg = args[i]
         array = np.append(array, arg)
     return array
+
+
+def apply_formating(data_dict: Dict[str, Union[int, float]],
+                    key_format: str = "<17",
+                    value_format: str = ">10.2f",
+                    indent: int = 0,
+                    sort_by: Optional[Literal['key', 'value']] = None) -> str:
+    if sort_by == 'key':
+        sorted_keys = sorted(data_dict.keys(), key=str.lower)
+    elif sort_by == 'value':
+        sorted_keys = sorted(data_dict, key=lambda k: data_dict[k], reverse=True)
+    else:
+        sorted_keys = data_dict.keys()
+
+    lines = [f'{indent*" "}{key:{key_format}}: {data_dict[key]:{value_format}}' for key in sorted_keys]
+    return '\n'.join(lines)

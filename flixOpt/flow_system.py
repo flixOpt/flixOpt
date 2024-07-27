@@ -22,7 +22,7 @@ from flixOpt.structure import Element, SystemModel
 from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Objective
 from flixOpt.features import FeatureInvest
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger('flixOpt')
 
 
 class FlowSystem:
@@ -115,14 +115,14 @@ class FlowSystem:
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
-            print('Register new effect ' + new_effect.label)
+            logger.info(f'Registered new Effect {new_effect.label}')
             self.effect_collection.add_effect(new_effect)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
         new_components = list(args)
         for new_component in new_components:
-            print('Register new Component ' + new_component.label)
+            logger.info(f'Registered new Component {new_component.label}')
             self._check_if_element_is_unique(new_component)   # check if already exists:
             new_component.register_component_in_flows()   # Komponente in Flow registrieren
             new_component.register_flows_in_bus()   # Flows in Bus registrieren:
@@ -206,22 +206,21 @@ class FlowSystem:
             # operation:
             for shareEffect in effect.specific_share_to_other_effects_operation.keys():
                 # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-                assert (effect not in shareEffect.specific_share_to_other_effects_operation.keys(),
-                        f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}')
+                assert effect not in shareEffect.specific_share_to_other_effects_operation.keys(), \
+                    f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}'
             # invest:
             for shareEffect in effect.specific_share_to_other_effects_invest.keys():
-                assert (effect not in shareEffect.specific_share_to_other_effects_invest.keys(),
-                        f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}')
+                assert effect not in shareEffect.specific_share_to_other_effects_invest.keys(),\
+                    f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}'
 
     # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
     def finalize(self) -> None:
-        print('finalize all Elements...')
+        logger.debug('finalize all Elements...')
         self._plausibility_checks()
         # nur EINMAL ausführen: Finalisieren der Elements:
         if not self._finalized:
             # finalize Elements for modeling:
             for element in self.all_first_level_elements_with_flows:
-                print(element.label)   #TODO: Remove this print??
                 element.finalize()  # inklusive sub_elements!
             self._finalized = True
 
@@ -244,7 +243,7 @@ class FlowSystem:
         # Komponenten-Modellierung (# inklusive sub_elements!)
         for aComp in self.components:
             aComp: Component
-            log.debug('model ' + aComp.label + '...')
+            logger.debug('model ' + aComp.label + '...')
             # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
             aComp.declare_vars_and_eqs_of_flows(self.model)
             aComp.declare_vars_and_eqs(self.model)
@@ -258,7 +257,7 @@ class FlowSystem:
         # Bus-Modellierung (# inklusive sub_elements!)
         aBus: Bus
         for aBus in self.all_buses:
-            log.debug('model ' + aBus.label + '...')
+            logger.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
             aBus.do_modeling(self.model, time_indices)
             aBus.add_share_to_globals(self.effect_collection, self.model)
@@ -303,7 +302,7 @@ class FlowSystem:
 
         # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
         if system_model.models_of_elements == {}:
-            log.debug('create model-Vars for Elements of EnergySystem')
+            logger.debug('create model-Vars for Elements of EnergySystem')
             for element in self.all_first_level_elements_with_flows:
                 # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
                 if not self._finalized:
@@ -334,15 +333,11 @@ class FlowSystem:
 
         return results, results_var
 
-    def printModel(self) -> None:
-        aBus: Bus
-        aComp: Component
-        print('')
-        print('##############################################################')
-        print('########## Short String Description of Energysystem ##########')
-        print('')
-
-        print(yaml.dump(self.description_of_system()))
+    def printModel(self) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Short String Description of FlowSystem ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_system())}')
 
     def description_of_system(self, flowsWithBusInfo=False) -> Dict:
         modelDescription = {}
@@ -405,16 +400,11 @@ class FlowSystem:
 
         return aDict
 
-    def print_equations(self) -> None:
-
-        print('')
-        print('##############################################################')
-        print('################# Equations of Energysystem ##################')
-        print('')
-
-        print(yaml.dump(self.description_of_equations(),
-                        default_flow_style=False,
-                        allow_unicode=True))
+    def print_equations(self) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Equations of FlowSystem ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_equations(), default_flow_style=False, allow_unicode=True)}')
 
     def description_of_variables(self, structured=True) -> Union[List, Dict]:
         aVar: Variable
@@ -459,21 +449,14 @@ class FlowSystem:
 
             return aDict
 
-    def print_variables(self) -> None:
-        print('')
-        print('##############################################################')
-        print('################# Variables of Energysystem ##################')
-        print('')
-        print('############# a) as list : ################')
-        print('')
-
-        yaml.dump(self.description_of_variables(structured=False))
-
-        print('')
-        print('############# b) structured : ################')
-        print('')
-
-        yaml.dump(self.description_of_variables(structured=True))
+    def print_variables(self) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Variables of FlowSystem ":#^80}\n\n'
+                f'{" a) as list ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_variables(structured=False))}\n\n'
+                f'{" b) structured ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_variables(structured=True))}')
 
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def get_time_data_from_indices(self, time_indices: Union[List[int], range]) -> Tuple[
