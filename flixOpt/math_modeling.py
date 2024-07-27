@@ -96,13 +96,12 @@ class Variable:
         # TODO: self.var ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
         if math_model.modeling_language == 'pyomo':
             if self.is_binary:
-                self.var = pyomoEnv.Var(self.indices, domain=pyomoEnv.Binary)
-                # self.var = Var(math_model.timesteps,domain=Binary)
+                self._pyomo_comp = pyomoEnv.Var(self.indices, domain=pyomoEnv.Binary)
             else:
-                self.var = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
+                self._pyomo_comp = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
 
             # Register in pyomo-model:
-            math_model._pyomo_register(self.var, f'var__{self.label_full}')
+            math_model._pyomo_register(self._pyomo_comp, f'var__{self.label_full}')
 
             lower_bound_vector = utils.as_vector(self.lower_bound, self.length)
             upper_bound_vector = utils.as_vector(self.upper_bound, self.length)
@@ -111,12 +110,12 @@ class Variable:
                 # Wenn Vorgabe-Wert vorhanden:
                 if self.fixed and (value_vector[i] != None):
                     # Fixieren:
-                    self.var[i].value = value_vector[i]
-                    self.var[i].fix()
+                    self._pyomo_comp[i].value = value_vector[i]
+                    self._pyomo_comp[i].fix()
                 else:
                     # Boundaries:
-                    self.var[i].setlb(lower_bound_vector[i])  # min
-                    self.var[i].setub(upper_bound_vector[i])  # max
+                    self._pyomo_comp[i].setlb(lower_bound_vector[i])  # min
+                    self._pyomo_comp[i].setub(upper_bound_vector[i])  # max
 
         elif math_model.modeling_language == 'vcxpy':
             raise Exception('not defined for modtype ' + math_model.modeling_language)
@@ -132,7 +131,7 @@ class Variable:
         if self._result is None:
             if self.math_model.modeling_language == 'pyomo':
                 # get Data:
-                values = self.var.get_values().values()  # .values() of dict, because {0:0.1, 1:0.3,...}
+                values = self._pyomo_comp.get_values().values()  # .values() of dict, because {0:0.1, 1:0.3,...}
                 # choose dataType:
                 if self.is_binary:
                     dType = np.int8  # geht das vielleicht noch kleiner ???
@@ -204,7 +203,7 @@ class Equation:
         self.parts_of_constant = []  # liste mit shares von constant
         self.eqType = eqType
         self.myMom = owner
-        self.eq = None  # z.B. für pyomo : pyomoComponente
+        self._pyomo_comp = None  # z.B. für pyomo : pyomoComponente
 
         logger.debug('equation created: ' + str(label))
 
@@ -299,12 +298,12 @@ class Equation:
                     elif self.eqType == 'ineq':
                         return lhs <= rhs
 
-                # TODO: self.eq ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
-                self.eq = pyomoEnv.Constraint(range(self.nr_of_single_equations),
+                # TODO: self._pyomo_comp ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
+                self._pyomo_comp = pyomoEnv.Constraint(range(self.nr_of_single_equations),
                                               rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
                 math_model._pyomo_register(
-                    self.eq,
+                    self._pyomo_comp,
                     f'eq_{self.myMom.label}_{self.label}'   # in pyomo-Modell mit eindeutigem Namen registrieren
                 )
 
@@ -321,9 +320,9 @@ class Equation:
                         skalar += aSummand.math_expression(math_model.modeling_language)  # kein i übergeben, da skalar
                     return skalar
 
-                self.eq = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
+                self._pyomo_comp = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
                 # Register im Pyomo:
-                math_model.model.objective = self.eq
+                math_model.model.objective = self._pyomo_comp
 
                 # 3. Undefined:
             else:
@@ -402,10 +401,10 @@ class Summand:
     def math_expression(self, at_index: int = 0):
         # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
         if self.length == 1:
-            return self.variable.var[self.indices[0]] * self.factor_vec[0]  # ignore argument at_index, because Skalar is used for every single equation
+            return self.variable._pyomo_comp[self.indices[0]] * self.factor_vec[0]  # ignore argument at_index, because Skalar is used for every single equation
         if len(self.indices) == 1:
-            return self.variable.var[self.indices[0]] * self.factor_vec[at_index]
-        return self.variable.var[self.indices[at_index]] * self.factor_vec[at_index]
+            return self.variable._pyomo_comp[self.indices[0]] * self.factor_vec[at_index]
+        return self.variable._pyomo_comp[self.indices[at_index]] * self.factor_vec[at_index]
 
     def _check_length(self):
         """
@@ -455,7 +454,7 @@ class SumOfSummand(Summand):
         if self._math_expression is not None:
             return self._math_expression
         else:
-            self._math_expression = sum(self.variable.var[self.indices[j]] * self.factor_vec[j] for j in self.indices)
+            self._math_expression = sum(self.variable._pyomo_comp[self.indices[j]] * self.factor_vec[j] for j in self.indices)
             return self._math_expression
 
 
