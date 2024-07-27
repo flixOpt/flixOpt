@@ -394,24 +394,13 @@ class Element:
 
         return aData, aVars
 
-    def description_of_equations(self):
+    def description_of_equations(self) -> Union[List, Dict]:
+        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
 
-        ## subelemente durchsuchen:
-        subs = {}
-        for aSubElement in self.sub_elements:
-            subs[aSubElement.label] = aSubElement.description_of_equations()  # rekursiv
-        ## Element:
-
-        # wenn sub-eqs, dann dict:
-        if not (subs == {}):
-            eqsAsStr = {}
-            eqsAsStr['_self'] = self.model.description_of_equations()  # zuerst eigene ...
-            eqsAsStr.update(subs)  # ... dann sub-Eqs
-        # sonst liste:
+        if sub_element_desc:
+            return {'_self': self.model.description_of_equations(), **sub_element_desc}
         else:
-            eqsAsStr = self.model.description_of_equations()
-
-        return eqsAsStr
+            return self.model.description_of_equations()
 
     def description_of_variables(self) -> List:
         return self.model.description_of_variables() + [
