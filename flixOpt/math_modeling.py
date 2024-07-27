@@ -103,7 +103,7 @@ class Variable:
 
             # Register in pyomo-model:
             aNameSuffixInPyomo = 'var__' + self.label_full
-            math_model.registerPyComp(self.var, aNameSuffixInPyomo)
+            math_model._pyomo_register(self.var, aNameSuffixInPyomo)
 
             lower_bound_vector = utils.as_vector(self.lower_bound, self.length)
             upper_bound_vector = utils.as_vector(self.upper_bound, self.length)
@@ -304,7 +304,7 @@ class Equation:
                 self.eq = pyomoEnv.Constraint(range(self.nr_of_single_equations),
                                               rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
-                math_model.registerPyComp(self.eq,
+                math_model._pyomo_register(self.eq,
                                          'eq_' + self.myMom.label + '_' + self.label)  # in pyomo-Modell mit eindeutigem Namen registrieren
 
             # 2. Zielfunktion:
@@ -659,7 +659,7 @@ class MathModel:
     ##############################################################################################
     ################ pyomo-Spezifisch
     # alle Pyomo Elemente müssen im model registriert sein, sonst werden sie nicht berücksichtigt
-    def registerPyComp(self, py_comp, aStr='', oldPyCompToOverwrite=None) -> None:
+    def _pyomo_register(self, py_comp, aStr='', oldPyCompToOverwrite=None) -> None:
         # neu erstellen
         if oldPyCompToOverwrite == None:
             self.countComp += 1
@@ -669,33 +669,31 @@ class MathModel:
             self.model.add_component('a' + str(self.countComp) + '_' + aStr, py_comp)  # a1,a2,a3, ...
         # altes überschreiben:
         else:
-            self.__overwritePyComp(py_comp, oldPyCompToOverwrite)
+            self._pyomo_overwrite_comp(py_comp, oldPyCompToOverwrite)
 
-            # Komponente löschen:
-
-    def deletePyComp(self, old_py_comp) -> None:
-        aName = self.getPyCompStr(old_py_comp)
+    def _pyomo_delete(self, old_py_comp) -> None:
+        # Komponente löschen:
+        aName = self._pyomo_get_internal_name(old_py_comp)
         aNameOfAdditionalComp = aName + '_index'  # sowas wird bei manchen Komponenten als Komponente automatisch mit erzeugt.
         # sonstige zugehörige Variablen löschen:
         if aNameOfAdditionalComp in self.model.component_map().keys():
             self.model.del_component(aNameOfAdditionalComp)
         self.model.del_component(aName)
 
+    def _pyomo_get_internal_name(self, aComp) -> str:
         # name of component
-
-    def getPyCompStr(self, aComp) -> str:
         for key, val in self.model.component_map().iteritems():
             if aComp == val:
                 return key
 
-    def getPyComp(self, aStr):
+    def _pyomo_get_comp(self, aStr):
         return self.model.component_map()[aStr]
 
-    # gleichnamige Pyomo-Komponente überschreiben (wenn schon vorhanden, sonst neu)
-    def __overwritePyComp(self, py_comp, old_py_comp) -> None:
-        aName = self.getPyCompStr(old_py_comp)
+    def _pyomo_overwrite_comp(self, py_comp, old_py_comp) -> None:
+        # gleichnamige Pyomo-Komponente überschreiben (wenn schon vorhanden, sonst neu)
+        aName = self._pyomo_get_internal_name(old_py_comp)
         # alles alte löschen:
-        self.deletePyComp(old_py_comp)
+        self._pyomo_delete(old_py_comp)
         # überschreiben:
         self.model.add_component(aName, py_comp)
 
