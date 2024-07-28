@@ -35,8 +35,8 @@ class SystemModel(MathModel):
                  time_indices: Union[List[int], range],
                  TS_explicit=None):
         super().__init__(label, modeling_language)
-        self.flow_system: FlowSystem = flow_system  # energysystem (wäre Attribut von cTimePeriodModel)
-        self.time_indices = time_indices
+        self.flow_system: FlowSystem = flow_system
+        self.time_indices = range(len(time_indices))
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
 

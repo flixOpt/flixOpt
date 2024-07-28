@@ -240,7 +240,7 @@ class AggregationModeling(Element):
     def declare_vars_and_eqs(self, system_model: SystemModel):
         super().declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel):
 
         if self.elements_to_clusterize is None:
             # Alle:

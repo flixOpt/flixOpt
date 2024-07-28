@@ -231,14 +231,8 @@ class FlowSystem:
         if not self._finalized:
             raise Exception('modeling not possible, because Energysystem is not finalized')
 
-        # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
-
-        # TODO: Achtung time_indices kann auch nur ein Teilbereich von time_indices abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
-        # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
-        time_indices = range(len(self.model.time_indices))
-
         self.effect_collection.declare_vars_and_eqs(self.model)
-        self.effect_collection.do_modeling(self.model, time_indices)
+        self.effect_collection.do_modeling(self.model)
         self.objective.declare_vars_and_eqs(self.model)
         self.objective.add_objective_effect_and_penalty(self.effect_collection)
 
@@ -250,8 +244,8 @@ class FlowSystem:
             aComp.declare_vars_and_eqs_of_flows(self.model)
             aComp.declare_vars_and_eqs(self.model)
 
-            aComp.do_modeling_of_flows(self.model, time_indices)
-            aComp.do_modeling(self.model, time_indices)
+            aComp.do_modeling_of_flows(self.model)
+            aComp.do_modeling(self.model)
 
             aComp.add_share_to_globals_of_flows(self.effect_collection, self.model)
             aComp.add_share_to_globals(self.effect_collection, self.model)
@@ -261,14 +255,14 @@ class FlowSystem:
         for aBus in self.all_buses:
             logger.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
-            aBus.do_modeling(self.model, time_indices)
+            aBus.do_modeling(self.model)
             aBus.add_share_to_globals(self.effect_collection, self.model)
 
         # TODO: Currently there are no "other elements"
         # weitere übergeordnete Modellierungen:
         for element in self.other_elements:
             element.declare_vars_and_eqs(self.model)
-            element.do_modeling(self.model, time_indices)
+            element.do_modeling(self.model)
             element.add_share_to_globals(self.effect_collection, self.model)
 
         return self.model
@@ -294,14 +288,14 @@ class FlowSystem:
                 # Aktivieren:
             aTS.activate(indices, explicitData)
 
-    def activate_model(self, system_model: SystemModel) -> None:
+    def activate_model(self, system_model: SystemModel, time_indices: Union[range, List[int]]) -> None:
         """
         This function to connect a SystemModel to the FLowSystem and connect it to all Elements in the FLowSystem
         """
         self.model = system_model
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
-        self.activate_indices_in_time_series(system_model.time_indices, system_model.TS_explicit)
+        self.activate_indices_in_time_series(time_indices, system_model.TS_explicit)
 
         if not self._finalized:
             raise Exception(f'activate_model() cant be called before all elements are finalized')

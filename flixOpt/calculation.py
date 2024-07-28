@@ -144,7 +144,7 @@ class FullCalculation(Calculation):
 
         t_start = timeit.default_timer()
         system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
-        self.flow_system.activate_model(system_model)  # model aktivieren:
+        self.flow_system.activate_model(system_model, self.time_indices)  # model aktivieren:
         self.flow_system.do_modeling_of_elements()  # modellieren:
         self.flow_system.transform_to_math_model()
 
@@ -373,7 +373,7 @@ class AggregatedCalculation(Calculation):
                                    TS_explicit)  # alle Indexe nehmen!
         self.system_models.append(system_model)
         # model aktivieren:
-        self.flow_system.activate_model(system_model)
+        self.flow_system.activate_model(system_model, self.time_indices)
         # modellieren:
         self.flow_system.do_modeling_of_elements()
         self.flow_system.transform_to_math_model()
@@ -480,7 +480,7 @@ class SegmentedCalculation(Calculation):
                 logger.info(f'{"":#^80}')
 
             # model in Energiesystem aktivieren:
-            self.flow_system.activate_model(system_model_of_segment)
+            self.flow_system.activate_model(system_model_of_segment, indices_global)
 
             # modellieren:
             t_start_modeling = timeit.default_timer()
