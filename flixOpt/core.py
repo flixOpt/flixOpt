@@ -71,7 +71,10 @@ class TimeSeries:
         self._aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
 
     def __repr__(self):
-        return f"{self.active_data}"
+        return (f"TimeSeries(label={self.label}, owner={self.owner.label_full}, "
+                f"aggregation_weight={self.aggregation_weight}, "
+                f"data={self.data}, active_time_indices={self.active_time_indices}, "
+                f"explicit_active_data={self.explicit_active_data}")
 
     @property
     def active_data_vector(self) -> np.ndarray:
