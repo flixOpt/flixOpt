@@ -76,6 +76,26 @@ class TimeSeries:
                 f"data={self.data}, active_time_indices={self.active_time_indices}, "
                 f"explicit_active_data={self.explicit_active_data}")
 
+    def __str__(self):
+        active_data = self.active_data
+        if isinstance(active_data, Skalar):
+            data_stats = active_data
+        else:
+            data_mean = np.mean(active_data)
+            data_std = np.std(active_data)
+            data_min = np.min(active_data)
+            data_max = np.max(active_data)
+            data_stats = (f"Mean: {data_mean:.2f}, Std: {data_std:.2f}, "
+                          f"Min: {data_min:.2f}, Max: {data_max:.2f}")
+
+        return (f"TimeSeries:\n"
+                f"  Label: {self.label}\n"
+                f"  Owner: {self.owner.label_full}\n"
+                f"  Active Data Statistics: {data_stats}\n"
+                f"  All Indices Active: {len(active_data) == len(self.data)}\n"
+                f"  Aggregation Weight: {self.aggregation_weight}\n"
+                f"  Explicit Active Data: {self.explicit_active_data is not None}")
+
     @property
     def active_data_vector(self) -> np.ndarray:
         # Always returns the active data as a vector.
