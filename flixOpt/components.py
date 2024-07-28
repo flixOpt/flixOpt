@@ -227,15 +227,8 @@ class LinearTransformer(Component):
         else:
             self.feature_linSegments.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, time_indices):
-        """
-        Durchführen der Modellierung?
-
-        :param system_model:
-        :param time_indices:
-        :return:
-        """
-        super().do_modeling(system_model, time_indices)
+    def do_modeling(self, system_model: SystemModel):
+        super().do_modeling(system_model)
         # factor_Sets:
         if self.segmentsOfFlows is None:
             # Transformer-Constraints:
@@ -268,7 +261,7 @@ class LinearTransformer(Component):
         # (linear) segments:
         # Zusammenhänge zw. inputs & outputs können auch vollständig über Segmente beschrieben werden:
         else:
-            self.feature_linSegments.do_modeling(system_model, time_indices)
+            self.feature_linSegments.do_modeling(system_model)
 
     # todo: checkbounds!
     # def initializeParameter(self,aStr,aBounds):
@@ -786,18 +779,11 @@ class Storage(Component):
         initialStates['chargeState0_inFlowHours'] = charge_state[time_indices[0]]
         return initialStates
 
-    def do_modeling(self, system_model, time_indices):
-        """
-        Durchführen der Modellierung?
-
-        :param system_model:
-        :param time_indices:
-        :return:
-        """
-        super().do_modeling(system_model, time_indices)
+    def do_modeling(self, system_model):
+        super().do_modeling(system_model)
 
         # Gleichzeitiges Be-/Entladen verhindern:
-        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.do_modeling(system_model, time_indices)
+        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.do_modeling(system_model)
 
         # % Speicherladezustand am Start
         if self.chargeState0_inFlowHours is None:
@@ -807,12 +793,15 @@ class Storage(Component):
             # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
             self.model.add_equation(Equation('charge_state_start', self, system_model, eqType='eq'))
             self.model.eqs['charge_state_start'].add_constant(self.model.variables['charge_state'].before_value)  # chargeState_0 !
-            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1, time_indices[0])
+            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1,
+                                                             system_model.time_indices[0])
         elif self.chargeState0_inFlowHours == 'lastValueOfSim':
             # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
             self.model.add_equation(Equation('charge_state_start', self, system_model, eqType='eq'))
-            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1, time_indices[0])
-            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], -1, time_indices[-1])
+            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1,
+                                                             system_model.time_indices[0])
+            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], -1,
+                                                             system_model.time_indices[-1])
         else:
             raise Exception('chargeState0_inFlowHours has undefined value = ' + str(self.chargeState0_inFlowHours))
 
@@ -821,7 +810,7 @@ class Storage(Component):
         # Q_Ladezustand(n+1) + (-1+VerlustanteilProStunde*dt(n)) *Q_Ladezustand(n) -  dt(n)*eta_Lade*Q_th_Lade(n) +  dt(n)* 1/eta_Entlade*Q_th_Entlade(n)  = 0
 
         # charge_state hat ein Index mehr:
-        time_indicesChargeState = range(time_indices.start, time_indices.stop + 1)
+        time_indicesChargeState = range(system_model.time_indices.start, system_model.time_indices.stop + 1)
         self.model.add_equation(Equation('charge_state', self, system_model, eqType='eq'))
         self.model.eqs['charge_state'].add_summand(self.model.variables['charge_state'],
                                          -1 * (1 - self.fracLossPerHour.active_data * system_model.dt_in_hours),
@@ -854,7 +843,7 @@ class Storage(Component):
         self.model.eqs['nettoFlow'].add_summand(self.outFlow.model.variables['val'], -1)
 
         if self.featureInvest is not None:
-            self.featureInvest.do_modeling(system_model, time_indices)
+            self.featureInvest.do_modeling(system_model)
 
         # ############# Gleichungen ##########################
         # % Speicherleistung an Bilanzgrenze / Speicher-Ladung / Speicher-Entladung
@@ -957,18 +946,11 @@ class SourceAndSink(Component):
         """
         super().declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model, time_indices):
-        """
-        Durchführen der Modellierung?
-
-        :param system_model:
-        :param time_indices:
-        :return:
-        """
-        super().do_modeling(system_model, time_indices)
+    def do_modeling(self, system_model):
+        super().do_modeling(system_model)
         # Entweder Sink-Flow oder Source-Flow aktiv. Nicht beide Zeitgleich!
         if self.featureAvoidInAndOutAtOnce is not None:
-            self.featureAvoidInAndOutAtOnce.do_modeling(system_model, time_indices)
+            self.featureAvoidInAndOutAtOnce.do_modeling(system_model)
 
 
 class Source(Component):
@@ -1147,12 +1129,12 @@ class Transportation(Component):
         """
         super().declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model, time_indices):
-        super().do_modeling(system_model, time_indices)
+    def do_modeling(self, system_model):
+        super().do_modeling(system_model)
 
         # not both directions at once:
-        if self.avoidFlowInBothDirectionsAtOnce and (
-                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.do_modeling(system_model, time_indices)
+        if self.avoidFlowInBothDirectionsAtOnce and (self.in2 is not None):
+            self.featureAvoidBothDirectionsAtOnce.do_modeling(system_model)
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)

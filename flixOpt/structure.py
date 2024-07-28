@@ -35,31 +35,15 @@ class SystemModel(MathModel):
                  time_indices: Union[List[int], range],
                  TS_explicit=None):
         super().__init__(label, modeling_language)
-        self.flow_system: FlowSystem = flow_system  # energysystem (wäre Attribut von cTimePeriodModel)
-        self.time_indices = time_indices
+        self.flow_system: FlowSystem = flow_system
+        self.time_indices = range(len(time_indices))
         self.nrOfTimeSteps = len(time_indices)
         self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
-        self.models_of_elements: Dict[Element, ElementModel] = {}  # dict with all ElementModel's of Elements in FlowSystem
 
         # Zeitdaten generieren:
-        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
+        self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
             flow_system.get_time_data_from_indices(time_indices))
 
-    @property
-    def infos(self):
-        infos = super().infos
-        infos['str_Eqs'] = self.flow_system.description_of_equations()
-        infos['str_Vars'] = self.flow_system.description_of_variables()
-        infos['main_results'] = self.main_results_str   # Hauptergebnisse:
-        infos.update(self._infos)
-        return infos
-
-    # register ModelingElements and belonging Mod:
-    def register_element_with_model(self, aModelingElement, aMod):
-        # allocation Element -> model
-        self.models_of_elements[aModelingElement] = aMod  # aktuelles model hier speichern
-
-    # 'gurobi'
     def solve(self,
               mip_gap: float = 0.02,
               time_limit_seconds: int = 3600,
@@ -185,6 +169,15 @@ class SystemModel(MathModel):
         logger.info(f'{" End of Main Results ":#^80}')
 
     @property
+    def infos(self):
+        infos = super().infos
+        infos['str_Eqs'] = self.flow_system.description_of_equations()
+        infos['str_Vars'] = self.flow_system.description_of_variables()
+        infos['main_results'] = self.main_results_str   # Hauptergebnisse:
+        infos.update(self._infos)
+        return infos
+
+    @property
     def variables(self) -> List[Variable]:
         all_vars = list(self._variables)
         for model in self.models_of_elements.values():
@@ -201,6 +194,10 @@ class SystemModel(MathModel):
     @property
     def ineqs(self) -> List[Equation]:
         return [eq for eq in self.eqs if eq.eqType == 'ineq']
+
+    @property
+    def models_of_elements(self) -> Dict['Element', 'ElementModel']:
+        return {element: element.model for element in self.flow_system.all_elements}
 
 
 class Element:
@@ -318,47 +315,56 @@ class Element:
 
         return str_desc
 
-    # activate inkl. sub_elements:
-    def activate_system_model(self, system_model: SystemModel) -> None:
-        for element in self.sub_elements:
-            element.activate_system_model(system_model)  # inkl. sub_elements
-        self.activate_system_model_for_me(system_model)
+    def description_of_equations(self) -> Union[List, Dict]:
+        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
 
-    # activate ohne SubElements!
-    def activate_system_model_for_me(self, system_model: SystemModel) -> None:
-        self.system_model = system_model
-        self.model = system_model.models_of_elements[self]
+        if sub_element_desc:
+            return {'_self': self.model.description_of_equations(), **sub_element_desc}
+        else:
+            return self.model.description_of_equations()
+
+    def description_of_variables(self) -> List:
+        return self.model.description_of_variables() + [
+            description for sub_element in self.sub_elements for description in sub_element.description_of_variables()
+        ]
+
+    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
+        return {'no eqs': len(self.model.eqs),
+                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
+                'no inEqs': len(self.model.ineqs),
+                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
+                'no vars': len(self.model.variables),
+                'no vars single': sum(var.length for var in self.model.variables.values())}
 
     # 1.
     def finalize(self) -> None:
+        """
+        Finalizing the creation of all sub_elements in the Elements
+        """
         for element in self.sub_elements:
             element.finalize()
 
     # 2.
-    def create_new_model_and_activate_system_model(self, system_model: SystemModel) -> None:
-        logger.debug(f'New Model for {self.label_full}')
+    def create_model(self) -> None:
+        """
+        Create the empty model for each Element and its sub_elements
+        """
         for element in self.sub_elements:
-            element.create_new_model_and_activate_system_model(system_model)  # rekursiv!
-
-        # create model:
-        model = ElementModel(self)
-        # register model:
-        system_model.register_element_with_model(self, model)
-
-        self.activate_system_model_for_me(system_model)  # sub_elements werden bereits aktiviert über aElement.createNewMod...()
+            element.create_model()  # rekursiv!
+        logger.debug(f'New Model for {self.label_full}')
+        self.model = ElementModel(self)
 
     # 3.
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        #   #   # Features preparing:
-        #   # for aFeature in self.features:
-        #   #   aFeature.declare_vars_and_eqs(model)
+        """
+        Declare variables and equations for all sub elements.
+        """
         pass
 
-    # def do_modeling(self,model,time_indices):
-    #   # for aFeature in self.features:
-    #   aFeature.do_modeling(model, time_indices)
-
     def get_results(self) -> Tuple[Dict, Dict]:
+        """
+        Get results after the solve
+        """
         # Ergebnisse als dict ausgeben:
         data, variables = {}, {}
 
@@ -386,38 +392,34 @@ class Element:
 
         return data, variables
 
-    def description_of_equations(self) -> Union[List, Dict]:
-        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
-
-        if sub_element_desc:
-            return {'_self': self.model.description_of_equations(), **sub_element_desc}
-        else:
-            return self.model.description_of_equations()
-
-    def description_of_variables(self) -> List:
-        return self.model.description_of_variables() + [
-            description for sub_element in self.sub_elements for description in sub_element.description_of_variables()
-        ]
-
-    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
-        return {'no eqs': len(self.model.eqs),
-                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
-                'no inEqs': len(self.model.ineqs),
-                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
-                'no vars': len(self.model.variables),
-                'no vars single': sum(var.length for var in self.model.variables.values())}
-
 
 class ElementModel:
-    '''
+    """
     is existing in every Element and owns eqs and vars of the activated calculation
-    '''
+    """
 
     def __init__(self, element: Element):
         self.element = element
         self.variables = {}
         self.eqs = {}
         self.objective = None
+
+    def description_of_equations(self) -> List:
+        # Wenn Glg vorhanden:
+        eq: Equation
+        aList = []
+        if len(self.eqs) > 0:
+            for eq in list(self.eqs.values()):
+                aList.append(eq.description())
+        if not (self.objective is None):
+            aList.append(self.objective.description())
+        return aList
+
+    def description_of_variables(self) -> List:
+        aList = []
+        for aVar in self.variables.values():
+            aList.append(aVar.description())
+        return aList
 
     def get_var(self, label: str) -> Variable:
         if label in self.variables.keys():
@@ -443,23 +445,6 @@ class ElementModel:
             self.eqs[equation.label] = equation
         else:
             raise Exception(f'Equation "{equation.label}" already exists')
-
-    def description_of_equations(self) -> List:
-        # Wenn Glg vorhanden:
-        eq: Equation
-        aList = []
-        if len(self.eqs) > 0:
-            for eq in list(self.eqs.values()):
-                aList.append(eq.description())
-        if not (self.objective is None):
-            aList.append(self.objective.description())
-        return aList
-
-    def description_of_variables(self) -> List:
-        aList = []
-        for aVar in self.variables.values():
-            aList.append(aVar.description())
-        return aList
 
     @property
     def ineqs(self) -> Dict[str, Equation]:

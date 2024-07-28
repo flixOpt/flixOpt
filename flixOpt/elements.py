@@ -125,17 +125,17 @@ class Effect(Element):
         self.invest.declare_vars_and_eqs(system_model)
         self.all.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model, time_indices: Union[List[int], range]) -> None:
+    def do_modeling(self, system_model) -> None:
         logger.debug('modeling ' + self.label)
         super().declare_vars_and_eqs(system_model)
-        self.operation.do_modeling(system_model, time_indices)
-        self.invest.do_modeling(system_model, time_indices)
+        self.operation.do_modeling(system_model)
+        self.invest.do_modeling(system_model)
 
         # Gleichung für Summe Operation und Invest:
         # eq: shareSum = effect.operation_sum + effect.operation_invest
         self.all.add_variable_share('operation', self, self.operation.model.variables['sum'], 1, 1)
         self.all.add_variable_share('invest', self, self.invest.model.variables['sum'], 1, 1)
-        self.all.do_modeling(system_model, time_indices)
+        self.all.do_modeling(system_model)
 
     def __str__(self):
         objective = "Objective" if self.is_objective else ""
@@ -284,10 +284,10 @@ class EffectCollection(Element):
         for effect in self.effects:
             effect.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
-        self.penalty.do_modeling(system_model, time_indices)
+    def do_modeling(self, system_model: SystemModel) -> None:
+        self.penalty.do_modeling(system_model)
         for effect in self.effects:
-            effect.do_modeling(system_model, time_indices)
+            effect.do_modeling(system_model)
 
         ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
         for effectType in self.effects:
@@ -466,11 +466,11 @@ class Component(Element):
         for aFlow in self.inputs + self.outputs:
             aFlow.declare_vars_and_eqs(system_model)
 
-    def do_modeling_of_flows(self, system_model: SystemModel, time_indices: Union[
-        list[int], range]) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
+    def do_modeling_of_flows(self, system_model: SystemModel) -> None:
+        # todo: macht aber bei Kindklasse Bus keinen Sinn!
         # Flows modellieren:
         for aFlow in self.inputs + self.outputs:
-            aFlow.do_modeling(system_model, time_indices)
+            aFlow.do_modeling(system_model)
 
     def get_results(self) -> Tuple[Dict, Dict]:
         # Variablen der Komponente:
@@ -507,9 +507,9 @@ class Component(Element):
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
 
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]) -> None:
+    def do_modeling(self, system_model) -> None:
         logger.debug(str(self.label) + 'do_modeling()')
-        self.featureOn.do_modeling(system_model, time_indices)
+        self.featureOn.do_modeling(system_model)
 
     def add_share_to_globals_of_flows(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
         for aFlow in self.inputs + self.outputs:
@@ -642,8 +642,8 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
             self.model.add_variable(VariableTS('excess_output', len(system_model.time_series), self.label_full, system_model,
                                             lower_bound=0))
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
-        super().do_modeling(system_model, time_indices)
+    def do_modeling(self, system_model: SystemModel) -> None:
+        super().do_modeling(system_model)
 
         # inputs = outputs
         bus_balance = Equation('busBalance', self, system_model)
@@ -1014,7 +1014,7 @@ class Flow(Element):
             self.featureInvest.set_defining_variables(self.model.variables['val'], self.model.variables.get('on'))
             self.featureInvest.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]) -> None:
+    def do_modeling(self, system_model: SystemModel) -> None:
         # super().do_modeling(model,time_indices)
 
         # for aFeature in self.features:
@@ -1065,14 +1065,14 @@ class Flow(Element):
         # ############## Constraints für Binärvariablen : ##############
         #
 
-        self.featureOn.do_modeling(system_model, time_indices)  # TODO: rekursiv aufrufen für sub_elements
+        self.featureOn.do_modeling(system_model)  # TODO: rekursiv aufrufen für sub_elements
 
         #
         # ############## Glg. für Investition : ##############
         #
 
         if self.featureInvest is not None:
-            self.featureInvest.do_modeling(system_model, time_indices)
+            self.featureInvest.do_modeling(system_model)
 
         ## ############## full load fraction bzw. load factor ##############
 

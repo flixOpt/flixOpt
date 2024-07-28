@@ -133,14 +133,14 @@ class FeatureLinearSegmentVars(Feature):
             new_segment = Segment(f'seg_{section_index}', self, sample_points_of_segment, section_index)
             # todo: hier muss activate() selbst gesetzt werden, weil bereits gesetzt 
             # todo: alle Elemente sollten eigentlich hier schon längst instanziert sein und werden dann auch activated!!!
-            new_segment.create_new_model_and_activate_system_model(self.system_model)
+            new_segment.create_model()
 
     def declare_vars_and_eqs(self, system_model: SystemModel):
         for aSegment in self.segments:
             # Segmentvariablen erstellen:
             aSegment.declare_vars_and_eqs(system_model)
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel):
         #########################################
         ## 1. Gleichungen für: Nur ein Segment kann aktiv sein! ##
         # eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0 
@@ -284,7 +284,7 @@ class FeatureAvoidFlowsAtOnce(Feature):
                     existing_on_variables += 1
                 i += 1
 
-    def do_modeling(self, system_model, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel):
         # Nur 1 Flow aktiv! Nicht mehrere Zeitgleich!    
         # "classic":
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
@@ -435,21 +435,21 @@ class FeatureOn(Feature):
             self.model.add_variable(Variable('nrSwitchOn', 1, self.label_full, system_model,
                                                  upper_bound=self.switch_on_total_max))  # wenn max/min = None, dann bleibt das frei
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel):
         if self.use_on:
-            self._add_on_constraints(system_model, time_indices)
+            self._add_on_constraints(system_model, system_model.time_indices)
         if self.use_off:
-            self._add_off_constraints(system_model, time_indices)
+            self._add_off_constraints(system_model, system_model.time_indices)
         if self.use_switch_on:
-            self.add_switch_constraints(system_model, time_indices)
+            self.add_switch_constraints(system_model, system_model.time_indices)
         if self.use_on_hours:
             FeatureOn._add_duration_constraints(
                 self.model.variables['onHours'], self.model.variables['on'], self.consecutive_on_hours_min,
-                self, system_model, time_indices)
+                self, system_model, system_model.time_indices)
         if self.use_off_hours:
             FeatureOn._add_duration_constraints(
                 self.model.variables['offHours'], self.model.variables['off'], self.consecutive_off_hours_min,
-                self, system_model, time_indices)
+                self, system_model, system_model.time_indices)
 
     def _add_on_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         # % Bedingungen 1) und 2) müssen erfüllt sein:
@@ -722,8 +722,8 @@ class Feature_ShareSum(Feature):
             self.model.add_equation(Equation('bilanz', self, system_model))
         self.model.add_equation(Equation('sum', self, system_model))
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
-        self.shares.do_modeling(system_model, time_indices)
+    def do_modeling(self, system_model: SystemModel):
+        self.shares.do_modeling(system_model)
         if self.shares_are_time_series:
             # eq: sum_TS = sum(share_TS_i) # TS
             self.model.eqs['bilanz'].add_summand(self.model.variables['sum_TS'], -1)
@@ -842,11 +842,8 @@ class FeatureShares(Feature):
     def __init__(self, label: str, owner: Feature_ShareSum):
         super().__init__(label, owner)
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel):
         pass
-
-    def declare_vars_and_eqs(self, system_model: SystemModel):
-        super().declare_vars_and_eqs(system_model)
 
     def get_equation_of_new_share(self,
                                   name_of_share: str,
@@ -1035,7 +1032,7 @@ class FeatureInvest(Feature):
         self.model.add_variable(var_investForEffect)
         return var_investForEffect
 
-    def do_modeling(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+    def do_modeling(self, system_model: SystemModel):
         assert self.defining_variable is not None, 'set_defining_variables() still not executed!'
         # wenn var_isInvested existiert:    
         if self.invest_parameters.optional:
@@ -1052,7 +1049,7 @@ class FeatureInvest(Feature):
 
             # if linear Segments defined:
         if self.featureLinearSegments is not None:
-            self.featureLinearSegments.do_modeling(system_model, time_indices)
+            self.featureLinearSegments.do_modeling(system_model)
 
     def _add_fixEq_of_definingVar_with_var_investmentSize(self, system_model: SystemModel):
 

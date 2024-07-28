@@ -68,6 +68,13 @@ class FlowSystem:
     def all_buses(self) -> Set[Bus]:
         return {flow.bus for flow in self.all_flows}
 
+    @property
+    def all_elements(self) -> List[Element]:
+        first_level_elements = self.all_first_level_elements_with_flows
+        all_sub_elements = [sub_element for element in first_level_elements
+                        for sub_element in element.all_sub_elements]
+        return first_level_elements + all_sub_elements
+
     def __init__(self,
                  time_series: np.ndarray[np.datetime64],
                  last_time_step_hours: Optional[Union[int, float]] = None):
@@ -224,14 +231,8 @@ class FlowSystem:
         if not self._finalized:
             raise Exception('modeling not possible, because Energysystem is not finalized')
 
-        # Bus-Liste erstellen: -> Wird die denn überhaupt benötigt?
-
-        # TODO: Achtung time_indices kann auch nur ein Teilbereich von time_indices abdecken, z.B. wenn man für die anderen Zeiten anderweitig modellieren will
-        # --> ist aber nicht sauber durchimplementiert in den ganzehn add_summand()-Befehlen!!
-        time_indices = range(len(self.model.time_indices))
-
         self.effect_collection.declare_vars_and_eqs(self.model)
-        self.effect_collection.do_modeling(self.model, time_indices)
+        self.effect_collection.do_modeling(self.model)
         self.objective.declare_vars_and_eqs(self.model)
         self.objective.add_objective_effect_and_penalty(self.effect_collection)
 
@@ -243,8 +244,8 @@ class FlowSystem:
             aComp.declare_vars_and_eqs_of_flows(self.model)
             aComp.declare_vars_and_eqs(self.model)
 
-            aComp.do_modeling_of_flows(self.model, time_indices)
-            aComp.do_modeling(self.model, time_indices)
+            aComp.do_modeling_of_flows(self.model)
+            aComp.do_modeling(self.model)
 
             aComp.add_share_to_globals_of_flows(self.effect_collection, self.model)
             aComp.add_share_to_globals(self.effect_collection, self.model)
@@ -254,14 +255,14 @@ class FlowSystem:
         for aBus in self.all_buses:
             logger.debug('model ' + aBus.label + '...')
             aBus.declare_vars_and_eqs(self.model)
-            aBus.do_modeling(self.model, time_indices)
+            aBus.do_modeling(self.model)
             aBus.add_share_to_globals(self.effect_collection, self.model)
 
         # TODO: Currently there are no "other elements"
         # weitere übergeordnete Modellierungen:
         for element in self.other_elements:
             element.declare_vars_and_eqs(self.model)
-            element.do_modeling(self.model, time_indices)
+            element.do_modeling(self.model)
             element.add_share_to_globals(self.effect_collection, self.model)
 
         return self.model
@@ -287,27 +288,20 @@ class FlowSystem:
                 # Aktivieren:
             aTS.activate(indices, explicitData)
 
-    def activate_model(self, system_model: SystemModel) -> None:
+    def activate_model(self, system_model: SystemModel, time_indices: Union[range, List[int]]) -> None:
+        """
+        This function to connect a SystemModel to the FLowSystem and connect it to all Elements in the FLowSystem
+        """
         self.model = system_model
-        system_model: SystemModel
-        element: Element
 
         # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
-        self.activate_indices_in_time_series(system_model.time_indices, system_model.TS_explicit)
+        self.activate_indices_in_time_series(time_indices, system_model.TS_explicit)
 
-        # Wenn noch nicht gebaut, dann einmalig Element.model bauen:
-        if system_model.models_of_elements == {}:
-            logger.debug('create model-Vars for Elements of EnergySystem')
-            for element in self.all_first_level_elements_with_flows:
-                # BEACHTE: erst nach finalize(), denn da werden noch sub_elements erst erzeugt!
-                if not self._finalized:
-                    raise Exception('activate_model(): --> Geht nicht, da FlowSystem noch nicht finalized!')
-                # model bauen und in model registrieren.
-                element.create_new_model_and_activate_system_model(self.model)  # inkl. sub_elements
-        else:
-            # nur Aktivieren:
-            for element in self.all_first_level_elements_with_flows:
-                element.activate_system_model(system_model)  # inkl. sub_elements
+        if not self._finalized:
+            raise Exception(f'activate_model() cant be called before all elements are finalized')
+        logger.debug(f'Creating ElementModels for Elements in FlowSystem')
+        for element in self.all_first_level_elements_with_flows:
+            element.create_model()  # inkl. sub_elements
 
     def get_results_after_solve(self) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
         # Ensure this is only called after solving, as references might change after activating the model again
