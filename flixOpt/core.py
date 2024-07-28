@@ -53,22 +53,19 @@ class TimeSeries:
     def __init__(self, label: str, data: Optional[Numeric_TS], owner):
         self.label: str = label
         self.owner: object = owner
+        self.active_time_indices = None  # aktuelle time_indices der model
+        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
+        self.TSraw = None
 
         if isinstance(data, TimeSeriesRaw):
-            self.TSraw: Optional[TimeSeriesRaw] = data
-            data = self.TSraw.value  # extract value
-            #TODO: Instead of storing the TimeSeriesRaw object, storing the underlying data directly would be preferable.
+            self.data: Optional[Numeric] = self.make_scalar_if_possible(data.value)
+            self.TSraw = data
         else:
-            self.TSraw = None
-
-        self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
-        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
-
-        self.active_time_indices = None  # aktuelle time_indices der model
+            self.data: Optional[Numeric] = self.make_scalar_if_possible(data)
 
         owner.TS_list.append(self)  # Register TimeSeries in owner
-
-        self._aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
+        self._aggregation_weight = None
+        self._aggregation_group = None
 
     def __repr__(self):
         return (f"TimeSeries(label={self.label}, owner={self.owner.label_full}, "
@@ -126,14 +123,12 @@ class TimeSeries:
         return self.owner.label_full + '__' + self.label
 
     @property
-    def aggregation_weight(self):
-        return self._aggregation_weight
+    def aggregation_weight(self) -> Optional[float]:
+        return None if self.TSraw is None else self.TSraw.agg_weight
 
-    @aggregation_weight.setter
-    def aggregation_weight(self, weight: Union[int, float]):
-        if weight > 1 or weight < 0:
-            raise Exception('Aggregation weight must not be below 0 or above 1!')
-        self._aggregation_weight = weight
+    @property
+    def aggregation_group(self) -> Optional[str]:
+        return None if self.TSraw is None else self.TSraw.agg_group
 
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:

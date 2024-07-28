@@ -347,8 +347,6 @@ class TestModelingTypes(BaseTest):
 
         p_feed_in, p_sell = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el'), TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
         aStromEinspeisung, aStromTarif = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour=p_feed_in)), Source('Stromtarif', source=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour={costs: p_sell, CO2: 0.3}))
-        aStromEinspeisung.sink.effects_per_flow_hour[None].aggregation_weight = .5
-        aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
         es = FlowSystem(aTimeSeries, last_time_step_hours=None)
         es.add_effects(costs, CO2, PE)
