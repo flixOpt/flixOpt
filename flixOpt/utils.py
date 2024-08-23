@@ -13,7 +13,7 @@ import numpy as np
 import math  # für nan
 
 from flixOpt.interface import TimeSeriesRaw
-from flixOpt.core import Numeric
+from flixOpt.core import Numeric, Skalar
 
 logger = logging.getLogger('flixOpt')
 
@@ -168,6 +168,7 @@ class cDataBox2:
 
 def get_time_series_with_end(time_series: np.ndarray[np.datetime64],
                              dt_last: Optional[np.timedelta64] = None):
+    #TODO: Migrate to single usage
     ## letzten Zeitpunkt hinzufügen:
     if dt_last is None:
         dt_last = time_series[-1] - time_series[-2]
@@ -200,29 +201,20 @@ def printDictAndList(aDictOrList) -> str:
                     width=1000,  # verhindern von zusätzlichen Zeilenumbrüchen
                     allow_unicode=True)
 
-def max_args(*args):
-    # max from num-lists and skalars
-    # arg = list, array, skalar
-    # example: max_of_lists_and_scalars([1,2],3) --> 3
-    array = _mergeToArray(args)
-    return array.max()
 
-def min_args(*args):
-    # example: min_of_lists_and_scalars([1,2],3) --> 1
-    array = _mergeToArray(args)
-    return array.min()
+def get_max_value(*args: Union[Numeric, List[Skalar]]) -> Skalar:
+    """Get the maximum value from multiple values, lists, or arrays of values."""
+    return merge_to_array(*args).max()
 
 
-def _mergeToArray(args):
-    array = np.array([])
-    for i in range(len(args)):
+def get_min_value(*args: Union[Numeric, List[Skalar]]) -> Skalar:
+    """Get the minimum value from multiple values, lists, or arrays of values."""
+    return merge_to_array(*args).min()
 
-        if np.isscalar(args[i]):
-            arg = [args[i]]  # liste draus machen
-        else:
-            arg = args[i]
-        array = np.append(array, arg)
-    return array
+
+def merge_to_array(*args: Union[Numeric, List[Skalar]]) -> np.ndarray:
+    """Merge multiple values to a single array"""
+    return np.concatenate([np.array(arg).ravel() for arg in args])
 
 
 def apply_formating(data_dict: Dict[str, Union[int, float]],

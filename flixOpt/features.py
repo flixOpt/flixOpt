@@ -1088,8 +1088,8 @@ class FeatureInvest(Feature):
                 # äquivalent zu:.
                 # eq: - defining_variable(t) + Big * On(t) + relative_minimum(t) * investment_size <= Big
 
-                Big = utils.max_args(self.relative_minimum.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
-
+                Big = utils.get_max_value(self.relative_minimum.active_data * self.invest_parameters.maximum_size,
+                                          system_model.epsilon)
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_variable, -1)
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_on_variable, Big)  # übergebene On-Variable
                 self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.relative_minimum.active_data)
