@@ -161,7 +161,7 @@ class SystemModel(MathModel):
                                           key_format="<30", indent=2, sort_by='value'))
 
         for bus in self.main_results_str['buses with excess']:
-            logger.warning(f'Excess Value in Bus {bus.label}!')
+            logger.warning(f'Excess Value in Bus {bus}!')
 
         if self.main_results_str["penalty"] > 10:
             logger.warning(f'A total penalty of {self.main_results_str["penalty"]} occurred.'
