@@ -145,8 +145,9 @@ class FeatureLinearSegmentVars(Feature):
         ## 1. Gleichungen für: Nur ein Segment kann aktiv sein! ##
         # eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0 
         # -> Wenn Variable On(t) nicht existiert, dann nur 
-        # eq:          Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                                         
-
+        # eq:          Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1
+        #TODO: This should be an Inequation. Else, not all Segments can be 0 (Off).
+        # TODO: Decide which version is Prefered. Maybe use "can_switch_off" to let the user decide (intuitive)
         self.model.add_equation(Equation('ICanOnlyBeInOneSegment', self, system_model))
 
         # a) zusätzlich zu Aufenthalt in Segmenten kann alles auch Null sein:
