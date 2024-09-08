@@ -103,7 +103,7 @@ class InfiniteFullSet(object):
         return ('<InfiniteFullSet>')
 
 
-def is_number(number_alias:str):
+def is_number(number_alias: Union[Skalar, str]):
     """ Returns True is string is a number. """
     try:
         float(number_alias)
@@ -111,9 +111,8 @@ def is_number(number_alias:str):
     except ValueError:
         return False
 
+def createStructFromDictInDict(aDict: Dict):
     # Macht aus verschachteltem Dict ein "matlab-struct"-like object
-
-def createStructFromDictInDict(aDict):
     # --> als FeldNamen wird key verwendet wenn string, sonst key.label
 
     # --> dict[key1]['key1_1'] -> struct.key1.key1_1
