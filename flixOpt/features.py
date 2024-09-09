@@ -630,7 +630,7 @@ class FeatureOn(Feature):
 
         self.model.add_equation(Equation('NrSwitchOn', self, system_model))
         self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], 1)
-        self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], -1, as_sum=True)
+        self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['switchOn'], -1, as_sum=True)
 
     def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel):
         shareHolder = self.owner
