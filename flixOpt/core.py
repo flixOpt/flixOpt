@@ -77,21 +77,31 @@ class TimeSeries:
         active_data = self.active_data
         if isinstance(active_data, Skalar):
             data_stats = active_data
+            all_indices_active = None
         else:
-            data_mean = np.mean(active_data)
-            data_std = np.std(active_data)
-            data_min = np.min(active_data)
-            data_max = np.max(active_data)
-            data_stats = (f"Mean: {data_mean:.2f}, Std: {data_std:.2f}, "
-                          f"Min: {data_min:.2f}, Max: {data_max:.2f}")
+            data_stats = (f"[min={np.min(active_data):.2f}, max={np.max(active_data):.2f}, "
+                          f"mean={np.mean(active_data):.2f}, std={np.std(active_data):.2f}]")
+            if len(active_data) == len(self.data):
+                all_indices_active = 'all'
+            else:
+                all_indices_active = 'some'
 
-        return (f"TimeSeries:\n"
-                f"  Label: {self.label}\n"
-                f"  Owner: {self.owner.label_full}\n"
-                f"  Active Data Statistics: {data_stats}\n"
-                f"  All Indices Active: {len(active_data) == len(self.data)}\n"
-                f"  Aggregation Weight: {self.aggregation_weight}\n"
-                f"  Explicit Active Data: {self.explicit_active_data is not None}")
+        further_infos = []
+        if all_indices_active:
+            further_infos.append(f"indices='{all_indices_active}'")
+        if self.aggregation_weight is not None:
+            further_infos.append(f"aggregation_weight={self._aggregation_weight}")
+        if self.aggregation_group is not None:
+            further_infos.append(f"aggregation_group= '{self._aggregation_weight}'")
+        if self.explicit_active_data is not None:
+            further_infos.append(f"'Explicit Active Data was used'")
+
+        if further_infos:
+            infos = f"TimeSeries(active_data={data_stats}, {', '.join(further_infos)})"
+        else:
+            infos = f"TimeSeries({data_stats})"
+
+        return infos
 
     @property
     def active_data_vector(self) -> np.ndarray:
