@@ -4,19 +4,23 @@ Created on Wed Mar 31 22:51:38 2021
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+from typing import Union, Optional, List, Dict, Any, Literal
+import logging
 
 import numpy as np
-from . import flixOptHelperFcts as helpers
-from .flixBasicsPublic import TimeSeriesRaw
-from typing import Union, Optional, List, Dict, Any
+
+from flixOpt import utils
+from flixOpt.interface import TimeSeriesRaw
+
+logger = logging.getLogger('flixOpt')
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
 # zeitreihenbezogene Input-Daten:
 Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesRaw]
 # Datatype Numeric_TS:
-#   Skalar      --> wird später dann in array ("Zeitreihe" mit len=nrOfTimeIndexe) übersetzt
-#   np.ndarray  --> muss len=nrOfTimeIndexe haben ("Zeitreihe")
+#   Skalar      --> wird später dann in array ("Zeitreihe" mit length=nrOfTimeIndexe) übersetzt
+#   np.ndarray  --> muss length=nrOfTimeIndexe haben ("Zeitreihe")
 #   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
@@ -49,30 +53,60 @@ class TimeSeries:
     def __init__(self, label: str, data: Optional[Numeric_TS], owner):
         self.label: str = label
         self.owner: object = owner
+        self.active_time_indices = None  # aktuelle time_indices der model
+        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
+        self.TSraw = None
 
         if isinstance(data, TimeSeriesRaw):
-            self.TSraw: Optional[TimeSeriesRaw] = data
-            data = self.TSraw.value  # extract value
-            #TODO: Instead of storing the TimeSeriesRaw object, storing the underlying data directly would be preferable.
+            self.data: Optional[Numeric] = self.make_scalar_if_possible(data.value)
+            self.TSraw = data
         else:
-            self.TSraw = None
-
-        self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
-        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
-
-        self.active_time_indices = None  # aktuelle timeIndexe der model
+            self.data: Optional[Numeric] = self.make_scalar_if_possible(data)
 
         owner.TS_list.append(self)  # Register TimeSeries in owner
-
-        self._aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
+        self._aggregation_weight = None
+        self._aggregation_group = None
 
     def __repr__(self):
-        return f"{self.active_data}"
+        return (f"TimeSeries(label={self.label}, owner={self.owner.label_full}, "
+                f"aggregation_weight={self.aggregation_weight}, "
+                f"data={self.data}, active_time_indices={self.active_time_indices}, "
+                f"explicit_active_data={self.explicit_active_data}")
+
+    def __str__(self):
+        active_data = self.active_data
+        if isinstance(active_data, Skalar):
+            data_stats = active_data
+            all_indices_active = None
+        else:
+            data_stats = (f"[min={np.min(active_data):.2f}, max={np.max(active_data):.2f}, "
+                          f"mean={np.mean(active_data):.2f}, std={np.std(active_data):.2f}]")
+            if len(active_data) == len(self.data):
+                all_indices_active = 'all'
+            else:
+                all_indices_active = 'some'
+
+        further_infos = []
+        if all_indices_active:
+            further_infos.append(f"indices='{all_indices_active}'")
+        if self.aggregation_weight is not None:
+            further_infos.append(f"aggregation_weight={self._aggregation_weight}")
+        if self.aggregation_group is not None:
+            further_infos.append(f"aggregation_group= '{self._aggregation_weight}'")
+        if self.explicit_active_data is not None:
+            further_infos.append(f"'Explicit Active Data was used'")
+
+        if further_infos:
+            infos = f"TimeSeries(active_data={data_stats}, {', '.join(further_infos)})"
+        else:
+            infos = f"TimeSeries({data_stats})"
+
+        return infos
 
     @property
     def active_data_vector(self) -> np.ndarray:
         # Always returns the active data as a vector.
-        return helpers.getVector(self.active_data, len(self.active_time_indices))
+        return utils.as_vector(self.active_data, len(self.active_time_indices))
 
     @property
     def active_data(self) -> Numeric:
@@ -96,17 +130,15 @@ class TimeSeries:
 
     @property
     def label_full(self) -> str:
-        return self.owner.label_full + '_' + self.label
+        return self.owner.label_full + '__' + self.label
 
     @property
-    def aggregation_weight(self):
-        return self._aggregation_weight
+    def aggregation_weight(self) -> Optional[float]:
+        return None if self.TSraw is None else self.TSraw.agg_weight
 
-    @aggregation_weight.setter
-    def aggregation_weight(self, weight: Union[int, float]):
-        if weight > 1 or weight < 0:
-            raise Exception('Aggregation weight must not be below 0 or above 1!')
-        self._aggregation_weight = weight
+    @property
+    def aggregation_group(self) -> Optional[str]:
+        return None if self.TSraw is None else self.TSraw.agg_group
 
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
@@ -139,113 +171,6 @@ class TimeSeries:
             assert len(explicit_active_data) == len(self.active_time_indices) or len(explicit_active_data) == 1, \
                 'explicit_active_data has incorrect length!'
             self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
-
-
-class TimeSeriesCollection:
-    '''
-    calculates weights of TimeSeries for being in that collection (depending on)
-    '''
-
-    @property
-    def addPeak_Max_labels(self):
-        if self._addPeakMax_labels == []:
-            return None
-        else:
-            return self._addPeakMax_labels
-
-    @property
-    def addPeak_Min_labels(self):
-        if self._addPeakMin_labels == []:
-            return None
-        else:
-            return self._addPeakMin_labels
-
-    def __init__(self,
-                 time_series_list: List[TimeSeries],
-                 addPeakMax_TSraw: Optional[List[TimeSeriesRaw]] = None,
-                 addPeakMin_TSraw: Optional[List[TimeSeriesRaw]] = None):
-        self.time_series_list = time_series_list
-        self.addPeakMax_TSraw = addPeakMax_TSraw or []
-        self.addPeakMin_TSraw = addPeakMin_TSraw or []
-        # i.g.: self.agg_type_count = {'solar': 3, 'price_el' = 2}
-        self.agg_type_count = self._get_agg_type_count()
-
-        self._checkPeak_TSraw(addPeakMax_TSraw)
-        self._checkPeak_TSraw(addPeakMin_TSraw)
-
-        # these 4 attributes are now filled:
-        self.seriesDict = {}
-        self.weightDict = {}
-        self._addPeakMax_labels = []
-        self._addPeakMin_labels = []
-        self.calculateParametersForTSAM()
-
-    def calculateParametersForTSAM(self):
-        for i in range(len(self.time_series_list)):
-            aTS: TimeSeries
-            aTS = self.time_series_list[i]
-            # check uniqueness of label:
-            if aTS.label_full in self.seriesDict.keys():
-                raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
-            # add to dict:
-            self.seriesDict[
-                aTS.label_full] = aTS.active_data_vector  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
-            self.weightDict[aTS.label_full] = self._getWeight(aTS)  # Wichtung ermitteln!
-            if (aTS.TSraw is not None):
-                if aTS.TSraw in self.addPeakMax_TSraw:
-                    self._addPeakMax_labels.append(aTS.label_full)
-                if aTS.TSraw in self.addPeakMin_TSraw:
-                    self._addPeakMin_labels.append(aTS.label_full)
-
-    def _get_agg_type_count(self):
-        # count agg_types:
-        from collections import Counter
-
-        TSlistWithAggType = []
-        for TS in self.time_series_list:
-            if self._get_agg_type(TS) is not None:
-                TSlistWithAggType.append(TS)
-        agg_types = (aTS.TSraw.agg_type for aTS in TSlistWithAggType)
-        return Counter(agg_types)
-
-    def _get_agg_type(self, aTS: TimeSeries):
-        if (aTS.TSraw is not None):
-            agg_type = aTS.TSraw.agg_type
-        else:
-            agg_type = None
-        return agg_type
-
-    def _getWeight(self, aTS: TimeSeries):
-        if aTS.TSraw is None:
-            # default:
-            weight = 1
-        elif aTS.TSraw.agg_weight is not None:
-            # explicit:
-            weight = aTS.TSraw.agg_weight
-        elif aTS.TSraw.agg_type is not None:
-            # via agg_type:
-            # i.g. n=3 -> weight=1/3
-            weight = 1 / self.agg_type_count[aTS.TSraw.agg_type]
-        else:
-            weight = 1
-            # raise Exception('TSraw is without weight definition.')
-        return weight
-
-    def _checkPeak_TSraw(self, aTSrawlist):
-        if aTSrawlist is not None:
-            for aTSraw in aTSrawlist:
-                if not isinstance(aTSraw, TimeSeriesRaw):
-                    raise Exception('addPeak_max/min must be list of TimeSeriesRaw-objects!')
-
-    def print(self):
-        print('used ' + str(len(self.time_series_list)) + ' TS for aggregation:')
-        for TS in self.time_series_list:
-            aStr = ' ->' + TS.label_full + ' (weight: {:.4f}; agg_type: ' + str(self._get_agg_type(TS)) + ')'
-            print(aStr.format(self._getWeight(TS)))
-        if len(self.agg_type_count.keys()) > 0:
-            print('agg_types: ' + str(list(self.agg_type_count.keys())))
-        else:
-            print('Warning!: no agg_types defined, i.e. all TS have weigth 1 (or explicit given weight)!')
 
 
 def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[Dict]:
@@ -334,3 +259,74 @@ def as_effect_dict_with_ts(name_of_param: str,
     effect_dict = as_effect_dict(effect_values)
     effect_ts_dict = effect_values_to_ts(name_of_param, effect_dict, owner)
     return effect_ts_dict
+
+
+class CustomFormatter(logging.Formatter):
+    # ANSI escape codes for colors
+    COLORS = {
+        'DEBUG': '\033[96m',    # Cyan
+        'INFO': '\033[92m',     # Green
+        'WARNING': '\033[93m',  # Yellow
+        'ERROR': '\033[91m',    # Red
+        'CRITICAL': '\033[91m\033[1m',  # Bold Red
+    }
+    RESET = '\033[0m'
+
+    def format(self, record):
+        log_color = self.COLORS.get(record.levelname, self.RESET)
+        original_message = record.getMessage()
+        message_lines = original_message.split('\n')
+
+        # Create a formatted message for each line separately
+        formatted_lines = []
+        for line in message_lines:
+            temp_record = logging.LogRecord(
+                record.name, record.levelno, record.pathname, record.lineno,
+                line, record.args, record.exc_info, record.funcName, record.stack_info
+            )
+            formatted_line = super().format(temp_record)
+            formatted_lines.append(f"{log_color}{formatted_line}{self.RESET}")
+
+        formatted_message = '\n'.join(formatted_lines)
+        return formatted_message
+
+
+def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+    """Setup logging configuration"""
+    logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
+    logging_level = get_logging_level_by_name(level_name)
+    logger.setLevel(logging_level)
+
+    # Clear existing handlers
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # Create console handler
+    c_handler = logging.StreamHandler()
+    c_handler.setLevel(logging_level)
+
+    # Create a clean and aligned formatter
+    log_format = '%(asctime)s - %(levelname)-8s : %(message)s'
+    date_format = '%Y-%m-%d %H:%M:%S'
+    c_format = CustomFormatter(log_format, datefmt=date_format)
+    c_handler.setFormatter(c_format)
+    logger.addHandler(c_handler)
+
+    return logger
+
+
+def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) -> int:
+    possible_logging_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    if level_name.upper() not in possible_logging_levels:
+        raise ValueError(f'Invalid logging level {level_name}')
+    else:
+        logging_level = getattr(logging, level_name.upper(), logging.WARNING)
+        return logging_level
+
+
+def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+    logger = logging.getLogger('flixOpt')
+    logging_level = get_logging_level_by_name(level_name)
+    logger.setLevel(logging_level)
+    for handler in logger.handlers:
+        handler.setLevel(logging_level)

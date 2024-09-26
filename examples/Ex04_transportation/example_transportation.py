@@ -37,8 +37,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 
-from flixOpt.flixStructure import *
-from flixOpt.flixComps import *
+from flixOpt.structure import *
+from flixOpt.components import *
 
 ####################### kleine Daten zum Test ###############################
 
@@ -46,7 +46,7 @@ nrOfTimeSteps = 4
 sink1 = [0.,   0.,  0., 100 , 40 , 40, 40, 40, 40][:nrOfTimeSteps]
 sink2 = [10., 20., 30., 0   , 40 , 40, 40, 40, 40][:nrOfTimeSteps]
   
-# todo: ggf. Umstellung auf numpy: aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(Q_th_Last)) * datetime.timedelta(hours=1)
+# todo: ggf. Umstellung auf numpy: aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(length(Q_th_Last)) * datetime.timedelta(hours=1)
 aTimeSeries = datetime.datetime(2020, 1,1) +  np.arange(len(sink1)) * datetime.timedelta(hours=1)
 aTimeSeries = aTimeSeries.astype('datetime64')
 
@@ -63,17 +63,17 @@ print('################### start of modeling #################################')
 
 # Bus-Definition:
 #                 Typ         Name              
-heat1 = Bus('heat', 'heat1', excessCostsPerFlowHour = excessCosts);
-heat2 = Bus('heat', 'heat2', excessCostsPerFlowHour = excessCosts);
+heat1 = Bus('heat', 'heat1', excess_effects_per_flow_hour= excessCosts);
+heat2 = Bus('heat', 'heat2', excess_effects_per_flow_hour= excessCosts);
 
 # Effect-Definition:
-costs = Effect('costs', '€', 'Kosten', isStandard = True, isObjective = True)
+costs = Effect('costs', '€', 'Kosten', is_standard= True, is_objective= True)
 
 
-aSink1   = Sink   ('Sink1', sink   = Flow('Q_th', bus = heat1, nominal_val = 1, val_rel = sink1))
-aSink2   = Sink   ('Sink2', sink   = Flow('Q_th', bus = heat2, nominal_val = 1, val_rel = sink2))
-aSource1 = Source ('Source1', source = Flow('Q_th', bus = heat1, nominal_val = 60, costsPerFlowHour = -1))
-aSource2 = Source ('Source2', source = Flow('Q_th', bus = heat2, nominal_val = 60, costsPerFlowHour = -1)) # doppelt so teuer
+aSink1   = Sink   ('Sink1', sink   = Flow('Q_th', bus = heat1, size=1, fixed_relative_value = sink1))
+aSink2   = Sink   ('Sink2', sink   = Flow('Q_th', bus = heat2, size=1, fixed_relative_value = sink2))
+aSource1 = Source ('Source1', source = Flow('Q_th', bus = heat1, size=60, effects_per_flow_hour= -1))
+aSource2 = Source ('Source2', source = Flow('Q_th', bus = heat2, size=60, effects_per_flow_hour= -1)) # doppelt so teuer
 
 
 loss_abs = 1
@@ -81,59 +81,59 @@ loss_abs = 1
 loss_rel = 0.1
 # loss_rel = 0
 
-invest1 = InvestParameters(fixCosts=10,
-                           investmentSize_is_fixed=False,
-                           investment_is_optional=True,
-                           max_investmentSize=1000,
-                           specificCosts=1)
+invest1 = InvestParameters(fix_effects=10,
+                           fixed_size=False,
+                           optional=True,
+                           maximum_size=1000,
+                           specific_effects=1)
 
 # only for getting realizing investSize-Variable:
-invest2 = InvestParameters(fixCosts=0,
-                           investmentSize_is_fixed=False,
-                           investment_is_optional=True,
-                           max_investmentSize=1000,
-                           specificCosts=0
+invest2 = InvestParameters(fix_effects=0,
+                           fixed_size=False,
+                           optional=True,
+                           maximum_size=1000,
+                           specific_effects=0
                            )
 
 aTransporter = Transportation('Rohr',
-                              in1  = Flow('in1', bus=heat1, invest_parameters=invest1, nominal_val = None, min_rel = 0.1),
+                              in1  = Flow('in1', bus=heat1, invest_parameters=invest1, size=None, relative_minimum = 0.1),
                               out1 = Flow('out1', bus=heat2),
                               loss_abs = loss_abs,
                               loss_rel = loss_rel,
-                              in2  = Flow('in2', bus=heat2, invest_parameters=invest2, nominal_val = None, min_rel = 0.1),
+                              in2  = Flow('in2', bus=heat2, invest_parameters=invest2, size=None, relative_minimum = 0.1),
                               out2 = Flow('out2', bus=heat1),
                               )
 
 # Built energysystem:
-system = System(aTimeSeries, dt_last=None)
-# system.addComponents(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
-system.addEffects(costs)
-system.addComponents(aSink2, aSource1, aSource2)
-if useAdditionalSink1 : system.addComponents(aSink1)
-if useRohr : system.addComponents(aTransporter)
+flow_system = FlowSystem(aTimeSeries, last_time_step_hours=None)
+# flow_system.add_components(aGaskessel,aWaermeLast,aGasTarif)#,aGaskessel2)
+flow_system.add_effects(costs)
+flow_system.add_components(aSink2, aSource1, aSource2)
+if useAdditionalSink1 : flow_system.add_components(aSink1)
+if useRohr : flow_system.add_components(aTransporter)
 
-chosenEsTimeIndexe = None
-# chosenEsTimeIndexe = [1,3,5]
+time_indices = None
+# time_indices = [1,3,5]
 
 ## modeling "full":
-aCalc = Calculation('Sim1', system, 'pyomo', chosenEsTimeIndexe)
-aCalc.doModelingAsOneSegment()
+aCalc = Calculation('Sim1', flow_system, 'pyomo', time_indices)
+aCalc.do_modeling_as_one_segment()
 
 # PRINT Model-Charactaricstics:
-system.printModel()
-system.printVariables()
-system.printEquations()
+flow_system.print_model()
+flow_system.print_variables()
+flow_system.print_equations()
 
-solverProps = {'gapFrac': gapFrac, 
-               'timelimit': timelimit,
-               'solver': solver_name, 
-               'displaySolverOutput' : displaySolverOutput,
+solverProps = {'mip_gap': gapFrac,
+               'time_limit_seconds': timelimit,
+               'solver_name': solver_name,
+               'solver_output_to_console' : displaySolverOutput,
                }
 if solver_name == 'gurobi': solverProps['threads'] = nrOfThreads
 
 ## calculation "full":
 
-aCalc.solve(solverProps, nameSuffix = '_' + solver_name)
+aCalc.solve(solverProps)
 
 aCalc.results_struct
 

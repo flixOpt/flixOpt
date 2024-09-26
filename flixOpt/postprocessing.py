@@ -6,12 +6,17 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import pickle
+import logging
+
 import yaml
-from . import flixOptHelperFcts as helpers
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt  # für Plots im Postprocessing
 import matplotlib.dates as mdates
+
+from flixOpt import utils
+
+logger = logging.getLogger('flixOpt')
 
 
 class cFlow_post():
@@ -34,7 +39,7 @@ class cFlow_post():
         self.flixResults = flixResults
         self.comp_post = flixResults.postObjOfStr(self.comp)
         # Richtung:    
-        self.isInputInComp = aDescr['isInputInComp']
+        self.isInputInComp = aDescr['is_input_in_comp']
         if self.isInputInComp:
             self.from_node = self.bus
             self.to_node = self.comp
@@ -44,27 +49,27 @@ class cFlow_post():
 
     def extractResults(self, allResults):
         self.results = allResults[self.comp][self.label]
-        self.results_struct = helpers.createStructFromDictInDict(self.results)
+        self.results_struct = utils.createStructFromDictInDict(self.results)
 
     def getFlowHours(self):
-        flowHours = sum(self.results['val'] * self.flixResults.dtInHours)
+        flowHours = sum(self.results['val'] * self.flixResults.dt_in_hours)
         return flowHours
 
     def getLoadFactor(self, small=1e-2):
         loadFactor = None
-        if ('invest' in self.results.keys()) and ('nominal_val' in self.results['invest'].keys()):
+        if ('invest' in self.results.keys()) and ('size' in self.results['invest'].keys()):
             flowHours = self.getFlowHours()
             #  loadFactor = Arbeit / Nennleistung / Zeitbereich = kWh / kW_N / h 
-            nominal_val = self.results['invest']['nominal_val']
-            if nominal_val < small:
+            size = self.results['invest']['size']
+            if size < small:
                 loadFactor = None
             else:
-                loadFactor = flowHours / self.results['invest']['nominal_val'] / self.flixResults.dtInHours_tot
+                loadFactor = flowHours / self.results['invest']['size'] / self.flixResults.dt_in_hours_total
         return loadFactor
 
     def belongToStorage(self):
-        if 'isStorage' in self.flixResults.infos_system['components'][self.comp].keys():
-            return self.flixResults.infos_system['components'][self.comp]['isStorage']
+        if 'is_storage' in self.flixResults.infos_system['components'][self.comp].keys():
+            return self.flixResults.infos_system['components'][self.comp]['is_storage']
         else:
             return False
 
@@ -83,13 +88,13 @@ class cCompOrBus_post():
 
 
 class flix_results():
-    def __init__(self, nameOfCalc, results_folder='results', comp_colors=None):
+    def __init__(self, label, results_folder='results', comp_colors=None):
         '''
         postprocessing: Create this object to load a solved optimization-calculation into workspace
 
         Parameters
         ----------
-        nameOfCalc : str
+        label : str
             name of calculation which should be loaded
         results_folder : str
             location of the result-files
@@ -98,7 +103,7 @@ class flix_results():
             
         '''
 
-        self.label = nameOfCalc
+        self.label = label
         self.comp_colors = comp_colors
         # default value:
         if self.comp_colors == None:
@@ -109,8 +114,8 @@ class flix_results():
             # see: https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
 
         # 'z.B.' 2022-06-14_Sim1_gurobi_SolvingInfos
-        self.filename_infos = results_folder + '/' + nameOfCalc + '_solvingInfos.yaml'
-        self.filename_data = results_folder + '/' + nameOfCalc + '_data.pickle'
+        self.filename_infos = results_folder + '/' + label + '_solvingInfos.yaml'
+        self.filename_data = results_folder + '/' + label + '_data.pickle'
 
         with open(self.filename_infos, 'rb') as f:
             self.infos = yaml.safe_load(f)
@@ -118,7 +123,7 @@ class flix_results():
 
         with open(self.filename_data, 'rb') as f:
             self.results = pickle.load(f)
-        self.results_struct = helpers.createStructFromDictInDict(self.results)
+        self.results_struct = utils.createStructFromDictInDict(self.results)
 
         # list of str:
         self.buses = self.__getBuses()
@@ -129,10 +134,10 @@ class flix_results():
         self.flows = self.__getAllFlows()
 
         # Zeiten:
-        self.timeSeries = self.results['time']['timeSeries']
-        self.timeSeriesWithEnd = self.results['time']['timeSeriesWithEnd']
-        self.dtInHours = self.results['time']['dtInHours']
-        self.dtInHours_tot = self.results['time']['dtInHours_tot']
+        self.time_series = self.results['time']['time_series']
+        self.time_series_with_end = self.results['time']['time_series_with_end']
+        self.dt_in_hours = self.results['time']['dt_in_hours']
+        self.dt_in_hours_total = self.results['time']['dt_in_hours_total']
 
     def __getBuses(self):
         try:
@@ -226,10 +231,9 @@ class flix_results():
 
     @staticmethod
     # check if SeriesValues should be shown
-    def isGreaterMinFlowHours(aFlowValues, dtInHours, minFlowHours):
+    def isGreaterMinFlowHours(aFlowValues, dt_in_hours, minFlowHours):
         # absolute Summe, damit auch negative Werte gezählt werden:
-        absFlowHours = sum(abs(aFlowValues * dtInHours))
-        # print(absFlowHours)
+        absFlowHours = sum(abs(aFlowValues * dt_in_hours))
         return absFlowHours > minFlowHours
 
     def getLoadFactorOfComp(self, aComp):
@@ -261,7 +265,7 @@ class flix_results():
         for aFlow in flows:
             flowHours = aFlow.getFlowHours()
             if flowHours > small:
-                FH[aFlow.comp + '.' + aFlow.label] = aFlow.getFlowHours()
+                FH[aFlow.comp + '__' + aFlow.label] = aFlow.getFlowHours()
         return FH
 
     # def plotFullLoadHours(self):
@@ -334,18 +338,18 @@ class flix_results():
         # total flowhours of chosen balance:
         totalSum = 0
         for aFlow in flows:
-            totalSum += sum(aFlow.results['val'] * self.dtInHours)  # Flow-Hours
+            totalSum += sum(aFlow.results['val'] * self.dt_in_hours)  # Flow-Hours
 
         # single shares of total flowhours:
         others_Sum = 0
         for aFlow in flows:
-            aSum = sum(aFlow.results['val'] * self.dtInHours)  # flow-hours
+            aSum = sum(aFlow.results['val'] * self.dt_in_hours)  # flow-hours
             if aSum > minSum:
                 if aSum / totalSum < othersMax_rel:
                     others_Sum += aSum
                 else:
                     sums = np.append(sums, aSum)
-                    labels.append(aFlow.comp + '.' + aFlow.label)
+                    labels.append(aFlow.comp + '__' + aFlow.label)
                     colors.append(aFlow.color)
 
         if others_Sum > 0:
@@ -411,7 +415,7 @@ class flix_results():
 
         (in_flows, out_flows) = self.getFlowsOf(busOrComponent)
 
-        df = pd.DataFrame(index=self.timeSeries)
+        df = pd.DataFrame(index=self.time_series)
         for flow in in_flows + out_flows:
             flow: cFlow_post
             flow.label_full
@@ -505,37 +509,37 @@ class flix_results():
             pos_flows = out_flows
             neg_flows = in_flows
 
-        y_pos, y_pos_colors, = self._get_FlowValues_As_DataFrame(pos_flows, self.timeSeriesWithEnd, self.dtInHours,
+        y_pos, y_pos_colors, = self._get_FlowValues_As_DataFrame(pos_flows, self.time_series_with_end, self.dt_in_hours,
                                                                  minFlowHours)
         # Outputs; als negative Werte interpretiert:
-        y_neg, y_neg_colors = self._get_FlowValues_As_DataFrame(neg_flows, self.timeSeriesWithEnd, self.dtInHours,
+        y_neg, y_neg_colors = self._get_FlowValues_As_DataFrame(neg_flows, self.time_series_with_end, self.dt_in_hours,
                                                                 minFlowHours)
         y_neg = -1 * y_neg
         # Outputs above X-Axis:
         y_neg_aboveX, y_above_colors = self._get_FlowValues_As_DataFrame(flowObjects_above_x_axis,
-                                                                         self.timeSeriesWithEnd, self.dtInHours,
+                                                                         self.time_series_with_end, self.dt_in_hours,
                                                                          minFlowHours)
 
         # append excessValues:
-        if 'excessIn' in self.results[busOrComponent].keys():
+        if 'excess_input' in self.results[busOrComponent].keys():
             # in and out zusammenfassen:
 
-            excessIn = self.results[busOrComponent]['excessIn']
-            excessOut = - self.results[busOrComponent]['excessOut']
+            excessIn = self.results[busOrComponent]['excess_input']
+            excessOut = - self.results[busOrComponent]['excess_output']
 
-            if flix_results.isGreaterMinFlowHours(excessIn, self.dtInHours, minFlowHours):
+            if flix_results.isGreaterMinFlowHours(excessIn, self.dt_in_hours, minFlowHours):
                 y_pos['excess_in'] = excessIn
                 y_pos_colors.append('#FF0000')
-            if flix_results.isGreaterMinFlowHours(excessOut, self.dtInHours, minFlowHours):
+            if flix_results.isGreaterMinFlowHours(excessOut, self.dt_in_hours, minFlowHours):
                 y_neg['excess_out'] = excessOut
                 y_neg_colors.append('#FF0000')
 
         # 1. sorting(if "sortBy") AND
         # 2. appending last index (for visualizing last bar (last timestep-width) in plot)
         listOfDataFrames = (y_pos, y_neg, y_neg_aboveX)
-        y_pos = self._sortDataFramesAndAppendLastStep(y_pos, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)
-        y_neg = self._sortDataFramesAndAppendLastStep(y_neg, self.timeSeriesWithEnd, self.dtInHours, indexSeq=indexSeq)
-        y_neg_aboveX = self._sortDataFramesAndAppendLastStep(y_neg_aboveX, self.timeSeriesWithEnd, self.dtInHours,
+        y_pos = self._sortDataFramesAndAppendLastStep(y_pos, self.time_series_with_end, self.dt_in_hours, indexSeq=indexSeq)
+        y_neg = self._sortDataFramesAndAppendLastStep(y_neg, self.time_series_with_end, self.dt_in_hours, indexSeq=indexSeq)
+        y_neg_aboveX = self._sortDataFramesAndAppendLastStep(y_neg_aboveX, self.time_series_with_end, self.dt_in_hours,
                                                              indexSeq=indexSeq)
 
         # wenn title nicht gegeben
@@ -589,12 +593,12 @@ class flix_results():
             # # Speicher finden:
             # setOfStorages = set()
             # # for aFlow in self.inputs + self.outputs:
-            # for acomp in self.model.system.allElementsOfFirstLayerWithoutFlows:
+            # for acomp in self.model.flow_system.elements_of_first_layer_wo_flows:
             #   if acomp.__class__.__name__ == 'Storage': # nicht schön, da Storage hier noch nicht bekannt
             #     setOfStorages.add(acomp)      
             # for aStorage in setOfStorages:
-            #   chargeState = aStorage.model.var_charge_state.getResult()
-            #   fig.add_trace(go.Scatter(x=timeSeriesWithEnd, y=chargeState, name=aStorage.label+'.chargeState',line_shape='linear',line={'dash' : 'dash'} ),secondary_y = True)
+            #   chargeState = aStorage.model.var_charge_state.result()
+            #   fig.add_trace(go.Scatter(x=time_series_with_end, y=chargeState, name=aStorage.label+'.chargeState',line_shape='linear',line={'dash' : 'dash'} ),secondary_y = True)
 
             # fig.update_layout(title_text = title,
             #                   xaxis_title = 'Zeit',
@@ -623,7 +627,8 @@ class flix_results():
 
             # gestapelt:
             if stacked:
-                helpers.plotStackedSteps(ax, y)  # legende here automatically
+                from flixOpt.plotting import plotStackedSteps
+                plotStackedSteps(ax, y)  # legende here automatically
             # normal:
             else:
                 y.plot(drawstyle='steps-post', ax=ax)
@@ -655,11 +660,11 @@ class flix_results():
 
     @staticmethod
     # get values of flow as dataframe and belonging colors:    
-    def _get_FlowValues_As_DataFrame(flows, timeSeriesWithEnd, dtInHours, minFlowHours):
+    def _get_FlowValues_As_DataFrame(flows, time_series_with_end, dt_in_hours, minFlowHours):
         numericalZero = -1e-4
         # Dataframe mit Inputs (+) und Outputs (-) erstellen:
         y = pd.DataFrame()  # letzten Zeitschritt vorerst weglassen
-        y.index = timeSeriesWithEnd[0:-1]  # letzten Zeitschritt vorerst weglassen
+        y.index = time_series_with_end[0:-1]  # letzten Zeitschritt vorerst weglassen
         y_color = []
         # Beachte: hier noch nicht als df-Index, damit sortierbar
         for aFlow in flows:
@@ -669,30 +674,30 @@ class flix_results():
             assert (
                         values >= numericalZero).all(), 'Warning, Zeitreihen ' + aFlow.label_full + ' in inputs enthalten neg. Werte -> Darstellung Graph nicht korrekt'
 
-            if flix_results.isGreaterMinFlowHours(values, dtInHours,
+            if flix_results.isGreaterMinFlowHours(values, dt_in_hours,
                                                   minFlowHours):  # nur wenn gewisse FlowHours-Sum überschritten
                 y[aFlow.label_full] = + values  # ! positiv!
                 y_color.append(aFlow.color)
         return y, y_color
 
     @staticmethod
-    def _sortDataFramesAndAppendLastStep(y, timeSeriesWithEnd, dtInHours, indexSeq=None):
+    def _sortDataFramesAndAppendLastStep(y, time_series_with_end, dt_in_hours, indexSeq=None):
         # add index (for steps-graph)
         if indexSeq is not None:
-            y['dtInHours'] = dtInHours
+            y['dt_in_hours'] = dt_in_hours
             # sorting:
             y = y.iloc[indexSeq]
             # index:
-            indexWithEnd = np.append([0], np.cumsum(y['dtInHours'].values))
-            del y['dtInHours']
+            indexWithEnd = np.append([0], np.cumsum(y['dt_in_hours'].values))
+            del y['dt_in_hours']
             # Index überschreiben:
             y.index = indexWithEnd[:-1]
             lastIndex = indexWithEnd[-1]
 
         else:
             # Index beibehalten:
-            y.index = timeSeriesWithEnd[0:-1]
-            lastIndex = timeSeriesWithEnd[-1]  # withEnd
+            y.index = time_series_with_end[0:-1]
+            lastIndex = time_series_with_end[-1]  # withEnd
 
         def _appendEndIndex(y, lastIndex):
             # append timestep for full visualization in graphs (steps)
@@ -728,7 +733,7 @@ class flix_results():
 
         (in_flows, out_flows) = self.getFlowsOf(busOrComponent)
 
-        df = pd.DataFrame(index=self.timeSeries)
+        df = pd.DataFrame(index=self.time_series)
         if direction == "in":
             flows = in_flows
             for flow in flows:

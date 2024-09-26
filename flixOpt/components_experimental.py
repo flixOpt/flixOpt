@@ -4,21 +4,25 @@ Created on Thu Sep 10 13:45:12 2020
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+import numpy as np
+import logging
 
-from .flixStructure import *
-from .flixFeatures import *
-from .flixComps import LinearTransformer, CHP
-from flixOpt.flixOptHelperFcts import checkExists
+from flixOpt.elements import Bus, Flow
+from flixOpt.components import LinearTransformer, CHP
+from flixOpt.interface import InvestParameters
+from flixOpt.utils import check_exists
+
+logger = logging.getLogger('flixOpt')
 
 
-def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
+def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
             eta_th: list, eta_el: list, exists=None, group=None, **kwargs) -> list:
     '''
     EKT A - Modulation, linear interpolation
 
     Creates a KWK with a variable rate between electricity and heat production.
     Properties:
-        Modulation of Total Power (Fuel) [min_rel, max_rel, nominal value]
+        Modulation of Total Power (Fuel) [relative_minimum, relative_maximum, nominal value]
         linear interpolation between efficiencies A and B
 
         Not working: InvestParameters with variable Size
@@ -52,7 +56,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
     Returns
     -------
     list(LinearTransformer, CHP, CHP)
-            a list of Components that need to be added to the System
+            a list of Components that need to be added to the FlowSystem
     '''
 
     # filtering,because eta can not be 0
@@ -71,7 +75,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
     HelperBus = Bus(label='Helper' + label + 'In', media=None)  # balancing node/bus of electricity
 
     # Transformer 1
-    Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val, min_rel=1, **kwargs)
+    Qin = Flow(label="Qfu", bus=BusFuel, size=size, relative_minimum=1, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
                               inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
@@ -91,7 +95,7 @@ def KWKektA(label: str, nominal_val: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus
 
 
 def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
-            nominal_val_Qfu: float, segQth: list[float], segPel: list[float],
+            size_Qfu: float, segQth: list[float], segPel: list[float],
             costsPerFlowHour_fuel: dict = None, costsPerFlowHour_th: dict = None, costsPerFlowHour_el: dict = None,
             iCanSwitchOff=True, exists=1, group=None, invest_parameters: InvestParameters = None, **kwargs) -> list:
     '''
@@ -118,8 +122,8 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
         The bus representing the thermal output for the component.
     BusEl: Bus
         The bus representing the electrical output for the component.
-    nominal_val_Qfu: float
-        Fuel flow. Constant, But iCanSwitchOff=True
+    size_Qfu: float
+        Fuel flow. Constant, But can_switch_off=True
     segQth: list[float]
         Expression with Base Points for thermal flow.
         [2, 5, 9]
@@ -146,7 +150,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Returns
     -------
     list(LinearTransformer, LinearTransformer, LinearTransformer)
-        a list of Components that need to be added to the System
+        a list of Components that need to be added to the FlowSystem
 
     Raises
     ------
@@ -155,11 +159,11 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     '''
 
     # Create Lists for segments_of_flows
-    segQfu_el = np.linspace(start=0.0001, stop=nominal_val_Qfu, num=len(segPel)).tolist()
+    segQfu_el = np.linspace(start=0.0001, stop=size_Qfu, num=len(segPel)).tolist()
     segQfu_th = segQfu_el[::-1]  # reversed
     # Apply proper formating for segments of flows, rounding to avoid numerical error, which leads to excess in HelperBus
     # TODO: Is this necessary?
-    nominal_val_Qfu = round(nominal_val_Qfu, 4)
+    size_Qfu = round(size_Qfu, 4)
     segQfu_el = [num for num in segQfu_el for _ in range(2)][1:-1]
     segQfu_th = [num for num in segQfu_th for _ in range(2)][1:-1]
     segQth = [num for num in segQth for _ in range(2)][1:-1]
@@ -177,27 +181,27 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
         segPel = [0, 0] + segPel
 
     HelperBus = Bus(label='Helper' + label + 'In', media=None,
-                    excessCostsPerFlowHour=None)  # balancing node/bus of electricity
-    # Handling min_rel and max_rel
-    max_rel = kwargs.pop("max_rel", 1)
-    checkExists(max_rel)
+                    excess_effects_per_flow_hour=None)  # balancing node/bus of electricity
+    # Handling relative_minimum and relative_maximum
+    relative_maximum = kwargs.pop("relative_maximum", 1)
+    check_exists(relative_maximum)
 
     # Transformer 1
-    Qin = Flow(label="Qfu", bus=BusFuel, nominal_val=nominal_val_Qfu, min_rel=max_rel, max_rel=max_rel,
-               costsPerFlowHour=costsPerFlowHour_fuel, **kwargs)
+    Qin = Flow(label="Qfu", bus=BusFuel, size=size_Qfu, relative_minimum=relative_maximum, relative_maximum=relative_maximum,
+               effects_per_flow_hour=costsPerFlowHour_fuel, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
                               inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
 
     # Transformer Strom
-    P_el = Flow(label="Pel", bus=BusEl, nominal_val=max(segPel), costsPerFlowHour=costsPerFlowHour_el)
-    Q_fu = Flow(label="Helper" + label + 'A', bus=HelperBus, nominal_val=nominal_val_Qfu)
+    P_el = Flow(label="Pel", bus=BusEl, size=max(segPel), effects_per_flow_hour=costsPerFlowHour_el)
+    Q_fu = Flow(label="Helper" + label + 'A', bus=HelperBus, size=size_Qfu)
     segs_el = {Q_fu: segQfu_el, P_el: segPel.copy()}
     EKTA = LinearTransformer(label=label + "A", exists=exists, group=group,
                              outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs_el)
 
     # Transformer Wärme
-    Q_th = Flow(label="Qth", bus=BusTh, nominal_val=max(segQth), costsPerFlowHour=costsPerFlowHour_th,
+    Q_th = Flow(label="Qth", bus=BusTh, size=max(segQth), effects_per_flow_hour=costsPerFlowHour_th,
                 invest_parameters=invest_parameters)
     Q_fu2 = Flow(label="Helper" + label + 'B', bus=HelperBus)
     segments = {Q_fu2: segQfu_th, Q_th: segQth}

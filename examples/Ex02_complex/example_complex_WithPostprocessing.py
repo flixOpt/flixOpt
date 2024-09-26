@@ -5,31 +5,31 @@
 from . import example_complex_ModelAndSolve as example_pre
 
 # Name der Rechnung:
-nameOfCalc = example_pre.aCalc.nameOfCalc
+label = example_pre.aCalc.name
 
 if hasattr(example_pre, 'calcSegs'): 
-  nameOfCalcSegs = example_pre.calcSegs.nameOfCalc
+  labelSegs = example_pre.calcSegs.label
 else:
-  nameOfCalcSegs = None
-print(nameOfCalc)
+  labelSegs = None
+print(label)
 
 # ####################
 # # PostProcessing: ##
 # ####################
 
 # ##### loading ######
-import flixOpt.flixPostprocessing as flixPost
+import flixOpt.postprocessing as flixPost
 # comp_colors = px.colors.qualitative.Plotly + px.colors.qualitative.Bold
 comp_colors = None
 # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
 
-calc1 = flixPost.flix_results(nameOfCalc, comp_colors = comp_colors)
+calc1 = flixPost.flix_results(label, comp_colors = comp_colors)
 
 #explizite Farbänderung
 calc1.postObjOfStr('Waermelast').color = '#000000'
 
-if nameOfCalcSegs is not None:  
-  calcSegs = flixPost.flix_results(nameOfCalcSegs)
+if labelSegs is not None:  
+  calcSegs = flixPost.flix_results(labelSegs)
 else: 
   calcSegs = None
 
@@ -59,7 +59,7 @@ fig = calc1.plotShares('Fernwaerme', withoutStorage = True, plotAsPlotly  = True
 fig.show()
 
 import matplotlib.pyplot as plt
-from flixOpt.flixPlotHelperFcts import *
+from flixOpt.plotting import *
 
 # Zeitreihe greifen:
 print('Variante 1:')
@@ -69,8 +69,8 @@ print(calc1.results_struct.Kessel.Q_th.val)
 
 
 # Beispiele von Zugriff:
-sum(calc1.results_struct.globalComp.costs.operation.sum_TS)
-calc1.results_struct.globalComp.costs.operation.sum
+sum(calc1.results_struct.global_comp.costs.operation.sum_TS)
+calc1.results_struct.global_comp.costs.operation.sum
 
 fuel = calc1.results_struct.Gastarif.Q_Gas.val * 0.04 - calc1.results_struct.Einspeisung.P_el.val * 0.7
 print(fuel)
@@ -93,7 +93,7 @@ import matplotlib.pyplot as plt
 
 def uebersichtsPlot(aCalc):
   fig, ax = plt.subplots(figsize=(10, 5))
-  plt.title(aCalc.label)
+  plt.title(aCalc.name)
     
   plotFlow(aCalc, aCalc.results_struct.BHKW2.P_el.val,  'P_el')
   plotFlow(aCalc, aCalc.results_struct.BHKW2.Q_th.val,  'Q_th_BHKW')
@@ -105,13 +105,13 @@ def uebersichtsPlot(aCalc):
   
   plotFlow(aCalc, aCalc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
   
-  plt.plot(aCalc.timeSeries, aCalc.results_struct.globalComp.costs.operation.sum_TS, '--', label='costs (operating)') 
+  plt.plot(aCalc.time_series, aCalc.results_struct.global_comp.costs.operation.sum_TS, '--', label='costs (operating)')
   
   if hasattr(aCalc.results_struct,'Speicher'):
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_unload.val, where = 'post', label='Speicher_unload')
-    plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher.Q_th_load.val  , where = 'post', label='Speicher_load')
-    plt.plot(aCalc.timeSeriesWithEnd, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
-  # plt.step(aCalc.timeSeries, aCalc.results_struct.Speicher., label='Speicher_load')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_unload.val, where ='post', label='Speicher_unload')
+    plt.step(aCalc.time_series, aCalc.results_struct.Speicher.Q_th_load.val, where ='post', label='Speicher_load')
+    plt.plot(aCalc.time_series_with_end, aCalc.results_struct.Speicher.charge_state   , label='charge_state')
+  # plt.step(aCalc.time_series, aCalc.results_struct.Speicher., label='Speicher_load')
   plt.grid(axis='y')
   plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
   plt.show()
