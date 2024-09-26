@@ -923,7 +923,8 @@ class Flow(Element):
         details = [
             f"bus={self.bus.label if self.bus else 'None'}",
             f"size={self.size.__str__() if isinstance(self.size, InvestParameters) else self.size}",
-            f"min/relative_maximum={self.relative_minimum}-{self.relative_maximum}",
+            f"relative_minimum={self.relative_minimum}",
+            f"relative_maximum={self.relative_maximum}",
             f"medium={self.medium}",
             f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
             f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",

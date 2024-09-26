@@ -145,8 +145,9 @@ class FeatureLinearSegmentVars(Feature):
         ## 1. Gleichungen für: Nur ein Segment kann aktiv sein! ##
         # eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0 
         # -> Wenn Variable On(t) nicht existiert, dann nur 
-        # eq:          Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                                         
-
+        # eq:          Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1
+        #TODO: This should be an Inequation. Else, not all Segments can be 0 (Off).
+        # TODO: Decide which version is Prefered. Maybe use "can_switch_off" to let the user decide (intuitive)
         self.model.add_equation(Equation('ICanOnlyBeInOneSegment', self, system_model))
 
         # a) zusätzlich zu Aufenthalt in Segmenten kann alles auch Null sein:
@@ -629,7 +630,7 @@ class FeatureOn(Feature):
 
         self.model.add_equation(Equation('NrSwitchOn', self, system_model))
         self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], 1)
-        self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['nrSwitchOn'], -1, as_sum=True)
+        self.model.eqs['NrSwitchOn'].add_summand(self.model.variables['switchOn'], -1, as_sum=True)
 
     def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel):
         shareHolder = self.owner
@@ -1088,8 +1089,8 @@ class FeatureInvest(Feature):
                 # äquivalent zu:.
                 # eq: - defining_variable(t) + Big * On(t) + relative_minimum(t) * investment_size <= Big
 
-                Big = utils.max_args(self.relative_minimum.active_data * self.invest_parameters.maximum_size, system_model.epsilon)
-
+                Big = utils.get_max_value(self.relative_minimum.active_data * self.invest_parameters.maximum_size,
+                                          system_model.epsilon)
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_variable, -1)
                 self.model.eqs['min_via_investmentSize'].add_summand(self.defining_on_variable, Big)  # übergebene On-Variable
                 self.model.eqs['min_via_investmentSize'].add_summand(self.model.variables[self.name_of_investment_size], self.relative_minimum.active_data)

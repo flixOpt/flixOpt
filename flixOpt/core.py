@@ -53,25 +53,55 @@ class TimeSeries:
     def __init__(self, label: str, data: Optional[Numeric_TS], owner):
         self.label: str = label
         self.owner: object = owner
+        self.active_time_indices = None  # aktuelle time_indices der model
+        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
+        self.TSraw = None
 
         if isinstance(data, TimeSeriesRaw):
-            self.TSraw: Optional[TimeSeriesRaw] = data
-            data = self.TSraw.value  # extract value
-            #TODO: Instead of storing the TimeSeriesRaw object, storing the underlying data directly would be preferable.
+            self.data: Optional[Numeric] = self.make_scalar_if_possible(data.value)
+            self.TSraw = data
         else:
-            self.TSraw = None
-
-        self.data: Optional[Numeric] = self.make_scalar_if_possible(data)  # (data wie data), data so knapp wie möglich speichern
-        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
-
-        self.active_time_indices = None  # aktuelle time_indices der model
+            self.data: Optional[Numeric] = self.make_scalar_if_possible(data)
 
         owner.TS_list.append(self)  # Register TimeSeries in owner
-
-        self._aggregation_weight = 1  # weight for Aggregation method # between 0..1, normally 1
+        self._aggregation_weight = None
+        self._aggregation_group = None
 
     def __repr__(self):
-        return f"{self.active_data}"
+        return (f"TimeSeries(label={self.label}, owner={self.owner.label_full}, "
+                f"aggregation_weight={self.aggregation_weight}, "
+                f"data={self.data}, active_time_indices={self.active_time_indices}, "
+                f"explicit_active_data={self.explicit_active_data}")
+
+    def __str__(self):
+        active_data = self.active_data
+        if isinstance(active_data, Skalar):
+            data_stats = active_data
+            all_indices_active = None
+        else:
+            data_stats = (f"[min={np.min(active_data):.2f}, max={np.max(active_data):.2f}, "
+                          f"mean={np.mean(active_data):.2f}, std={np.std(active_data):.2f}]")
+            if len(active_data) == len(self.data):
+                all_indices_active = 'all'
+            else:
+                all_indices_active = 'some'
+
+        further_infos = []
+        if all_indices_active:
+            further_infos.append(f"indices='{all_indices_active}'")
+        if self.aggregation_weight is not None:
+            further_infos.append(f"aggregation_weight={self._aggregation_weight}")
+        if self.aggregation_group is not None:
+            further_infos.append(f"aggregation_group= '{self._aggregation_weight}'")
+        if self.explicit_active_data is not None:
+            further_infos.append(f"'Explicit Active Data was used'")
+
+        if further_infos:
+            infos = f"TimeSeries(active_data={data_stats}, {', '.join(further_infos)})"
+        else:
+            infos = f"TimeSeries({data_stats})"
+
+        return infos
 
     @property
     def active_data_vector(self) -> np.ndarray:
@@ -103,14 +133,12 @@ class TimeSeries:
         return self.owner.label_full + '__' + self.label
 
     @property
-    def aggregation_weight(self):
-        return self._aggregation_weight
+    def aggregation_weight(self) -> Optional[float]:
+        return None if self.TSraw is None else self.TSraw.agg_weight
 
-    @aggregation_weight.setter
-    def aggregation_weight(self, weight: Union[int, float]):
-        if weight > 1 or weight < 0:
-            raise Exception('Aggregation weight must not be below 0 or above 1!')
-        self._aggregation_weight = weight
+    @property
+    def aggregation_group(self) -> Optional[str]:
+        return None if self.TSraw is None else self.TSraw.agg_group
 
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
