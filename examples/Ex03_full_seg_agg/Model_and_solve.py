@@ -152,11 +152,11 @@ aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, effects_per_switch_on=24000,
            on_values_before_begin=[0])
 
 aSpeicher = Storage('Speicher',
-                    inFlow=Flow('Q_th_load', size=137, bus=Fernwaerme),
-                    outFlow=Flow('Q_th_unload', size=158, bus=Fernwaerme),
-                    capacity_inFlowHours=684, chargeState0_inFlowHours=137,
-                    charge_state_end_min=137, charge_state_end_max=158,
-                    eta_load=1, eta_unload=1, fracLossPerHour=0.001, avoidInAndOutAtOnce=True)
+                    charging_flow=Flow('Q_th_load', size=137, bus=Fernwaerme),
+                    discharging_flow=Flow('Q_th_unload', size=158, bus=Fernwaerme),
+                    capacity_in_flow_hours=684, initial_charge_state=137,
+                    minimal_final_charge_state=137, maximal_final_charge_state=158,
+                    eta_load=1, eta_unload=1, relative_loss_per_hour=0.001, prevent_simultaneous_charge_and_discharge=True)
 
 TS_Q_th_Last = TimeSeriesRaw(Q_th_Last)
 aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=TS_Q_th_Last))

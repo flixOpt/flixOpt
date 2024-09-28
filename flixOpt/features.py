@@ -871,8 +871,8 @@ class FeatureShares(Feature):
 
 
 class FeatureInvest(Feature):
-    # -> var_name            : z.B. "size", "capacity_inFlowHours"
-    # -> investment_size : size, capacity_inFlowHours, ...
+    # -> var_name            : z.B. "size", "capacity_in_flow_hours"
+    # -> investment_size : size, capacity_in_flow_hours, ...
     # -> defining_variable         : z.B. flow.model.var_val
     # -> relative_minimum,relative_maximum     : ist relatives Min,Max der defining_variable bzgl. investment_size
 
