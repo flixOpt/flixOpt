@@ -10,7 +10,8 @@ import datetime
 import numpy as np
 
 from flixOpt import *
-from flixOpt.components import Boiler, CHP, Storage, Sink, Source, LinearConverter
+from flixOpt.components import Storage, Sink, Source, LinearConverter
+from flixOpt.linear_converters import Boiler, CHP
 
 # ## Solver-Inputs:##
 displaySolverOutput = False  # ausführlicher Solver-Output.

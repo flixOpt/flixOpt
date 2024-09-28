@@ -8,7 +8,8 @@ import numpy as np
 import logging
 
 from flixOpt.elements import Bus, Flow
-from flixOpt.components import LinearConverter, CHP
+from flixOpt.components import LinearConverter
+from flixOpt.linear_converters import CHP
 from flixOpt.interface import InvestParameters
 from flixOpt.utils import check_exists
 
