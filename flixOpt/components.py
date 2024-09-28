@@ -24,10 +24,10 @@ class LinearTransformer(Component):
     """
     Klasse LinearTransformer: Grundgerüst lineare Übertragungskomponente
     """
-    new_init_args = ['label', 'inputs', 'outputs', 'factor_Sets', 'segmentsOfFlows']
+    new_init_args = ['label', 'inputs', 'outputs', 'conversion_factors', 'segmentsOfFlows']
     not_used_args = ['label']
 
-    def __init__(self, label: str, inputs: list, outputs: list, group: str = None, factor_Sets=None,
+    def __init__(self, label: str, inputs: list, outputs: list, group: str = None, conversion_factors=None,
                  segmentsOfFlows=None, **kwargs):
         '''
         Parameters
@@ -40,15 +40,15 @@ class LinearTransformer(Component):
             output flows.
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
-        factor_Sets : list
+        conversion_factors : list
             linear relation between flows
             eq: sum (factor * flow_in) = sum (factor * flow_out)
             factor can be TimeSeries, scalar or list.
-            Either 'factor_Sets' or 'segmentsOfFlows' can be used!
+            Either 'conversion_factors' or 'segmentsOfFlows' can be used!
 
             example heat pump:  
                 
-            >>> factor_Sets= [{Q_th: COP_th , Q_0 : 1}
+            >>> conversion_factors= [{Q_th: COP_th , Q_0 : 1}
                               {P_el: COP_el , Q_0 : 1},              # COP_th
                               {Q_th: 1 , P_el: 1, Q_0 : 1, Q_ab: 1}] # Energiebilanz
                 
@@ -56,7 +56,7 @@ class LinearTransformer(Component):
             Segmented linear correlation. begin and end of segment has to be given/defined.
             factors can be scalar or lists (i.e.timeseries)!
             if Begin of segment n+1 is not end of segment n, then "gap", i.e. not allowed area
-            Either 'segmentsOfFlows' or 'factor_Sets' can be used!
+            Either 'segmentsOfFlows' or 'conversion_factors' can be used!
             example with two segments:
             
             >>> #           flow    begin, end, begin, end
@@ -80,12 +80,12 @@ class LinearTransformer(Component):
         # invest_parameters to attributes:
         self.inputs = inputs
         self.outputs = outputs
-        self.factor_Sets = factor_Sets
+        self.conversion_factors = conversion_factors
         self.segmentsOfFlows = segmentsOfFlows
-        if (factor_Sets is None) and (segmentsOfFlows is None):
-            raise Exception('factor_Sets or segmentsOfFlows must be defined!')
-        elif (factor_Sets is not None) and (segmentsOfFlows is not None):
-            raise Exception('Either factor_Sets or segmentsOfFlows must \
+        if (conversion_factors is None) and (segmentsOfFlows is None):
+            raise Exception('conversion_factors or segmentsOfFlows must be defined!')
+        elif (conversion_factors is not None) and (segmentsOfFlows is not None):
+            raise Exception('Either conversion_factors or segmentsOfFlows must \
                             be defined! Not Both!')
 
         self.group = group
@@ -104,13 +104,13 @@ class LinearTransformer(Component):
                     self.segmentsOfFlows[key] = list(np.array(item) * self.exists.active_data)
 
     def __str__(self):
-        # Creating a representation for factor_Sets with flow labels and their corresponding values
-        if self.factor_Sets:
-            factor_sets_rep = []
-            for factor_set in self.factor_Sets:
-                factor_sets_rep.append({flow.__repr__(): value for flow, value in factor_set.items()})
+        # Creating a representation for conversion_factors with flow labels and their corresponding values
+        if self.conversion_factors:
+            conversion_factors_rep = []
+            for conversion_factor in self.conversion_factors:
+                conversion_factors_rep.append({flow.__repr__(): value for flow, value in conversion_factor.items()})
         else:
-            factor_sets_rep = "None"
+            conversion_factors_rep = "None"
 
         # Representing inputs and outputs by their labels
         inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
@@ -118,14 +118,14 @@ class LinearTransformer(Component):
         inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs else "inputs=[]"
         outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.inputs else "outputs=[]"
 
-        other_relevant_data = (f"factor_Sets={factor_sets_rep},\n"
+        other_relevant_data = (f"conversion_factors={conversion_factors_rep},\n"
                                f"segmentsOfFlows={self.segmentsOfFlows}")
 
         remaining_data = {
             key: value for key, value in self.__dict__.items()
             if value and
                not isinstance(value, Flow) and
-               key not in ["label", "TS_list", "segmentsOfFlows", "factor_Sets", "inputs", "outputs"]
+               key not in ["label", "TS_list", "segmentsOfFlows", "conversion_factors", "inputs", "outputs"]
         }
 
         remaining_data_str = ""
@@ -146,25 +146,25 @@ class LinearTransformer(Component):
 
         return str_desc
 
-    def transformFactorsToTS(self, factor_Sets):
+    def transformFactorsToTS(self, conversion_factors):
         """
         macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries
 
-        :param factor_Sets:
+        :param conversion_factors:
         :return:
         """
         # Einzelne Faktoren zu Vektoren:
-        factor_Sets_TS = []
+        conversion_factors_TS = []
         # für jedes Dict -> Values (=Faktoren) zu Vektoren umwandeln:
-        for aFactor_Dict in factor_Sets:  # Liste of dicts
+        for aFactor_Dict in conversion_factors:  # Liste of dicts
             # Transform to TS:
             aFactor_Dict_TS = effect_values_to_ts('Faktor', aFactor_Dict, self)
-            factor_Sets_TS.append(aFactor_Dict_TS)
+            conversion_factors_TS.append(aFactor_Dict_TS)
             # check flows:
             for flow in aFactor_Dict_TS:
                 if not (flow in self.inputs + self.outputs):
-                    raise Exception(self.label + ': Flow ' + flow.label + ' in Factor_Set ist nicht in inputs/outputs')
-        return factor_Sets_TS
+                    raise Exception(self.label + ': Flow ' + flow.label + ' in conversion_factors ist nicht in inputs/outputs')
+        return conversion_factors_TS
 
     def finalize(self):
         """
@@ -180,11 +180,11 @@ class LinearTransformer(Component):
             #  Anzahl Freiheitsgrade checken: =  Anz. Variablen - Anz. Gleichungen
 
             # alle Faktoren, die noch nicht TS_vector sind, umwandeln:
-            self.factor_Sets = self.transformFactorsToTS(self.factor_Sets)
+            self.conversion_factors = self.transformFactorsToTS(self.conversion_factors)
 
-            self.degreesOfFreedom = (len(self.inputs) + len(self.outputs)) - len(self.factor_Sets)
+            self.degreesOfFreedom = (len(self.inputs) + len(self.outputs)) - len(self.conversion_factors)
             if self.degreesOfFreedom <= 0:
-                raise Exception(self.label + ': ' + str(len(self.factor_Sets)) + ' Gleichungen VERSUS '
+                raise Exception(self.label + ': ' + str(len(self.conversion_factors)) + ' Gleichungen VERSUS '
                                 + str(len(self.inputs + self.outputs)) + ' Variablen!!!')
 
         # linear segments:
@@ -229,7 +229,7 @@ class LinearTransformer(Component):
 
     def do_modeling(self, system_model: SystemModel):
         super().do_modeling(system_model)
-        # factor_Sets:
+        # conversion_factors:
         if self.segmentsOfFlows is None:
             # Transformer-Constraints:
 
@@ -237,12 +237,12 @@ class LinearTransformer(Component):
             outputs_set = set(self.outputs)
 
             # für alle linearen Gleichungen:
-            for i in range(len(self.factor_Sets)):
+            for i in range(len(self.conversion_factors)):
                 # erstelle Gleichung für jedes t:
                 # sum(inputs * factor) = sum(outputs * factor)
                 # in1.val[t] * factor_in1[t] + in2.val[t] * factor_in2[t] + ... = out1.val[t] * factor_out1[t] + out2.val[t] * factor_out2[t] + ...
 
-                aFactorVec_Dict = self.factor_Sets[i]
+                aFactorVec_Dict = self.conversion_factors[i]
 
                 leftSideFlows = inputs_set & aFactorVec_Dict.keys()  # davon nur die input-flows, die in Glg sind.
                 rightSideFlows = outputs_set & aFactorVec_Dict.keys()  # davon nur die output-flows, die in Glg. sind.
@@ -277,7 +277,7 @@ class Boiler(LinearTransformer):
     class Boiler
     """
     new_init_args = ['label', 'eta', 'Q_fu', 'Q_th', ]
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+    not_used_args = ['label', 'inputs', 'outputs', 'conversion_factors']
 
     def __init__(self, label: str, eta: Numeric_TS, Q_fu: Flow, Q_th: Flow, **kwargs):
         '''
@@ -301,7 +301,7 @@ class Boiler(LinearTransformer):
         kessel_bilanz = {Q_fu: eta,
                          Q_th: 1}  # eq: eta * Q_fu = 1 * Q_th # TODO: Achtung eta ist hier noch nicht TS-vector!!!
 
-        super().__init__(label, inputs=[Q_fu], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
+        super().__init__(label, inputs=[Q_fu], outputs=[Q_th], conversion_factors=[kessel_bilanz], **kwargs)
 
         # invest_parameters to attributes:
         self.eta = TimeSeries('eta', eta, self)  # thermischer Wirkungsgrad
@@ -325,7 +325,7 @@ class Power2Heat(LinearTransformer):
     class Power2Heat
     """
     new_init_args = ['label', 'eta', 'P_el', 'Q_th', ]
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+    not_used_args = ['label', 'inputs', 'outputs', 'conversion_factors']
 
     def __init__(self, label:str, eta:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
@@ -349,7 +349,7 @@ class Power2Heat(LinearTransformer):
         kessel_bilanz = {P_el: eta,
                          Q_th: 1}  # eq: eta * Q_fu = 1 * Q_th # TODO: Achtung eta ist hier noch nicht TS-vector!!!
 
-        super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[kessel_bilanz], **kwargs)
+        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[kessel_bilanz], **kwargs)
 
         # invest_parameters to attributes:
         self.eta = TimeSeries('eta', eta, self)  # thermischer Wirkungsgrad
@@ -373,7 +373,7 @@ class HeatPump(LinearTransformer):
     class HeatPump
     """
     new_init_args = ['label', 'COP', 'P_el', 'Q_th', ]
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+    not_used_args = ['label', 'inputs', 'outputs', 'conversion_factors']
 
     def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
@@ -392,7 +392,7 @@ class HeatPump(LinearTransformer):
 
         # super:
         heatPump_bilanz = {P_el: COP, Q_th: 1}  # TODO: Achtung eta ist hier noch nicht TS-vector!!!
-        super().__init__(label, inputs=[P_el], outputs=[Q_th], factor_Sets=[heatPump_bilanz], **kwargs)
+        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[heatPump_bilanz], **kwargs)
 
         # invest_parameters to attributes:
         self.COP = TimeSeries('COP', COP, self)  # thermischer Wirkungsgrad
@@ -413,7 +413,7 @@ class CoolingTower(LinearTransformer):
     Klasse CoolingTower
     """
     new_init_args = ['label', 'specificElectricityDemand', 'P_el', 'Q_th', ]
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+    not_used_args = ['label', 'inputs', 'outputs', 'conversion_factors']
 
     def __init__(self, label:str, specificElectricityDemand:Numeric_TS, P_el:Flow, Q_th:Flow, **kwargs):
         '''
@@ -433,7 +433,7 @@ class CoolingTower(LinearTransformer):
         # super:         
         auxElectricity_eq = {P_el: 1,
                              Q_th: -specificElectricityDemand}  # eq: 1 * P_el - specificElectricityDemand * Q_th = 0  # TODO: Achtung eta ist hier noch nicht TS-vector!!!
-        super().__init__(label, inputs=[P_el, Q_th], outputs=[], factor_Sets=[auxElectricity_eq], **kwargs)
+        super().__init__(label, inputs=[P_el, Q_th], outputs=[], conversion_factors=[auxElectricity_eq], **kwargs)
 
         # invest_parameters to attributes:
         self.specificElectricityDemand = TimeSeries('specificElectricityDemand', specificElectricityDemand,
@@ -456,7 +456,7 @@ class CHP(LinearTransformer):
     class of combined heat and power unit (CHP)
     """
     new_init_args = ['label', 'eta_th', 'eta_el', 'Q_fu', 'P_el', 'Q_th']
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+    not_used_args = ['label', 'inputs', 'outputs', 'conversion_factors']
 
     # eta = 1 # Thermischer Wirkungsgrad
     # __eta_bound = [0,1]
@@ -487,7 +487,7 @@ class CHP(LinearTransformer):
         waerme_glg = {Q_fu: eta_th, Q_th: 1}
         strom_glg = {Q_fu: eta_el, P_el: 1}
         #                      inputs         outputs               lineare Gleichungen
-        super().__init__(label, inputs=[Q_fu], outputs=[P_el, Q_th], factor_Sets=[waerme_glg, strom_glg], **kwargs)
+        super().__init__(label, inputs=[Q_fu], outputs=[P_el, Q_th], conversion_factors=[waerme_glg, strom_glg], **kwargs)
 
         # invest_parameters to attributes:
         self.eta_th = TimeSeries('eta_th', eta_th, self)
@@ -517,7 +517,7 @@ class HeatPumpWithSource(LinearTransformer):
     class HeatPumpWithSource
     """
     new_init_args = ['label', 'COP', 'Q_ab', 'P_el', 'Q_th', ]
-    not_used_args = ['label', 'inputs', 'outputs', 'factor_Sets']
+    not_used_args = ['label', 'inputs', 'outputs', 'conversion_factors']
 
     def __init__(self, label:str, COP:Numeric_TS, P_el:Flow, Q_ab:Flow, Q_th:Flow, **kwargs):
         '''
@@ -544,7 +544,7 @@ class HeatPumpWithSource(LinearTransformer):
         else:
             heatPump_bilanzAb = {Q_ab: COP / (COP - 1), Q_th: 1}
         super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
-                         factor_Sets=[heatPump_bilanzEl, heatPump_bilanzAb], **kwargs)
+                         conversion_factors=[heatPump_bilanzEl, heatPump_bilanzAb], **kwargs)
 
         # invest_parameters to attributes:
         self.COP = TimeSeries('COP', COP, self)  # thermischer Wirkungsgrad

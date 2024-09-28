@@ -78,7 +78,7 @@ def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Qin = Flow(label="Qfu", bus=BusFuel, size=size, relative_minimum=1, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
-                              inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+                              inputs=[Qin], outputs=[Qout], conversion_factors=[{Qin: 1, Qout: 1}])
     # EKT A
     EKTA = CHP(label=label + "A", exists=exists, group=group,
                eta_th=eta_thA, eta_el=eta_elA,
@@ -191,7 +191,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
                effects_per_flow_hour=costsPerFlowHour_fuel, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
     EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
-                              inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+                              inputs=[Qin], outputs=[Qout], conversion_factors=[{Qin: 1, Qout: 1}])
 
     # Transformer Strom
     P_el = Flow(label="Pel", bus=BusEl, size=max(segPel), effects_per_flow_hour=costsPerFlowHour_el)
