@@ -85,14 +85,14 @@ aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency,
 # # 2. storage #
 
 aSpeicher = Storage('Speicher',
-                    inFlow  = Flow('Q_th_load', bus = Fernwaerme, size=1e4),  # load-flow, maximum load-power: 1e4 kW
-                    outFlow = Flow('Q_th_unload', bus = Fernwaerme, size=1e4),  # unload-flow, maximum load-power: 1e4 kW
-                    capacity_inFlowHours=InvestParameters(fix_effects=20, fixed_size=30, optional=False),  # 30 kWh; storage capacity
-                    chargeState0_inFlowHours=0,  # empty storage at first time step
-                    maximum_relative_chargeState = 1/100*np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
+                    charging= Flow('Q_th_load', bus = Fernwaerme, size=1e4),  # load-flow, maximum load-power: 1e4 kW
+                    discharging= Flow('Q_th_unload', bus = Fernwaerme, size=1e4),  # unload-flow, maximum load-power: 1e4 kW
+                    capacity_in_flow_hours=InvestParameters(fix_effects=20, fixed_size=30, optional=False),  # 30 kWh; storage capacity
+                    initial_charge_state=0,  # empty storage at first time step
+                    relative_maximum_charge_state=1 / 100 * np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),
                     eta_load=0.9, eta_unload=1,  #loading efficiency factor, unloading efficiency factor
-                    fracLossPerHour=0.08,  # 8 %/h; 8 percent of storage loading level is lossed every hour
-                    avoidInAndOutAtOnce=True,  # no parallel loading and unloading at one time
+                    relative_loss_per_hour=0.08,  # 8 %/h; 8 percent of storage loading level is lossed every hour
+                    prevent_simultaneous_charge_and_discharge=True,  # no parallel loading and unloading at one time
                     )
  
 # # 3. sinks and sources #

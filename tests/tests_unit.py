@@ -70,13 +70,13 @@ class TestExistance(unittest.TestCase):
         exists = np.array([0, 0, 1, 1, 1])
         size=5
         capacity = 10
-        storage_exists = Storage(label="Storage_ex", exists=exists, capacity_inFlowHours=capacity,
-                                 inFlow=Flow(label="in",
-                                             size=size,
-                                             bus=self.busses["Gas"]),
-                                 outFlow=Flow(label="out",
-                                              size=size,
-                                              bus=self.busses["Gas"])
+        storage_exists = Storage(label="Storage_ex", exists=exists, capacity_in_flow_hours=capacity,
+                                 charging=Flow(label="in",
+                                               size=size,
+                                               bus=self.busses["Gas"]),
+                                 discharging=Flow(label="out",
+                                                  size=size,
+                                                  bus=self.busses["Gas"])
                                  )
 
         self.es.add_elements(*self.effects.values(), *self.sinks_n_sources.values())
