@@ -20,9 +20,9 @@ from flixOpt.interface import InvestParameters, TimeSeriesRaw
 
 logger = logging.getLogger('flixOpt')
 
-class LinearTransformer(Component):
+class LinearConverter(Component):
     """
-    Klasse LinearTransformer: Grundgerüst lineare Übertragungskomponente
+    Klasse LinearConverter: Grundgerüst lineare Übertragungskomponente
     """
     new_init_args = ['label', 'inputs', 'outputs', 'conversion_factors', 'segmentsOfFlows']
     not_used_args = ['label']
@@ -272,7 +272,8 @@ class LinearTransformer(Component):
     #    self.eta            = property(lambda s: s.__get_param('eta'), lambda s,v: s.__set_param(v,'eta')')
     # exec('self.'   + aStr + ' = property(lambda s: s.__get_param(aStr) , lambda s,v: s.__set_param(v,aStr ))')
 
-class Boiler(LinearTransformer):
+
+class Boiler(LinearConverter):
     """
     class Boiler
     """
@@ -320,7 +321,7 @@ class Boiler(LinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class Power2Heat(LinearTransformer):
+class Power2Heat(LinearConverter):
     """
     class Power2Heat
     """
@@ -368,7 +369,7 @@ class Power2Heat(LinearTransformer):
         # self.eta = property(lambda s: s.__get_coeff('eta'), lambda s,v: s.__set_coeff(v,'eta'))
 
 
-class HeatPump(LinearTransformer):
+class HeatPump(LinearConverter):
     """
     class HeatPump
     """
@@ -408,7 +409,7 @@ class HeatPump(LinearTransformer):
         utils.check_bounds(COP, 'COP', self.eta_bounds[0], self.eta_bounds[1])
 
 
-class CoolingTower(LinearTransformer):
+class CoolingTower(LinearConverter):
     """
     Klasse CoolingTower
     """
@@ -451,7 +452,7 @@ class CoolingTower(LinearTransformer):
                              self.specificElectricityDemand_bounds[0], self.specificElectricityDemand_bounds[1])
 
 
-class CHP(LinearTransformer):
+class CHP(LinearConverter):
     """
     class of combined heat and power unit (CHP)
     """
@@ -512,7 +513,7 @@ class CHP(LinearTransformer):
                              self.eta_th_bounds[1]+self.eta_el_bounds[1])
 
 
-class HeatPumpWithSource(LinearTransformer):
+class HeatPumpWithSource(LinearConverter):
     """
     class HeatPumpWithSource
     """

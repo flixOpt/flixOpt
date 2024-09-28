@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from flixOpt import *
-from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearTransformer
+from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearConverter
 
 
 class BaseTest(unittest.TestCase):
@@ -276,7 +276,7 @@ class TestComplex(BaseTest):
         Q_th = Flow('Q_th', bus=Fernwaerme)
         Q_fu = Flow('Q_fu', bus=Gas)
         segmentsOfFlows = {P_el: [5, 30, 40, 60], Q_th: [6, 35, 45, 100], Q_fu: [12, 70, 90, 200]}
-        aKWK = LinearTransformer('KWK', inputs=[Q_fu], outputs=[P_el, Q_th], segmentsOfFlows=segmentsOfFlows, effects_per_switch_on=0.01, on_values_before_begin=[1])
+        aKWK = LinearConverter('KWK', inputs=[Q_fu], outputs=[P_el, Q_th], segmentsOfFlows=segmentsOfFlows, effects_per_switch_on=0.01, on_values_before_begin=[1])
 
         costsInvestsizeSegments = [[5, 25, 25, 100], {costs: [50, 250, 250, 800], PE: [5, 25, 25, 100]}]
         invest_Speicher = InvestParameters(fix_effects=0, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
