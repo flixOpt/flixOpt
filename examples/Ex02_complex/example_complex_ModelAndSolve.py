@@ -151,8 +151,8 @@ invest_Speicher = InvestParameters(fix_effects=0,  # no fix costs
 
 # 4.b) storage itself:
 aSpeicher = Storage('Speicher',  # defining flows:
-                    charging_flow=Flow('Q_th_load', bus=Fernwaerme, size=1e4),
-                    discharging_flow=Flow('Q_th_unload', bus=Fernwaerme, size=1e4),
+                    charging=Flow('Q_th_load', bus=Fernwaerme, size=1e4),
+                    discharging=Flow('Q_th_unload', bus=Fernwaerme, size=1e4),
                     capacity_in_flow_hours=InvestParameters(
                         fix_effects=0,  # no fix costs
                         fixed_size=None,  # variable size

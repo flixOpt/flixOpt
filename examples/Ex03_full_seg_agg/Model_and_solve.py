@@ -152,8 +152,8 @@ aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, effects_per_switch_on=24000,
            on_values_before_begin=[0])
 
 aSpeicher = Storage('Speicher',
-                    charging_flow=Flow('Q_th_load', size=137, bus=Fernwaerme),
-                    discharging_flow=Flow('Q_th_unload', size=158, bus=Fernwaerme),
+                    charging=Flow('Q_th_load', size=137, bus=Fernwaerme),
+                    discharging=Flow('Q_th_unload', size=158, bus=Fernwaerme),
                     capacity_in_flow_hours=684, initial_charge_state=137,
                     minimal_final_charge_state=137, maximal_final_charge_state=158,
                     eta_load=1, eta_unload=1, relative_loss_per_hour=0.001, prevent_simultaneous_charge_and_discharge=True)

@@ -85,8 +85,8 @@ aKWK  = CHP('CHP_unit', eta_th = 0.5, eta_el = 0.4,  # name, thermal efficiency,
 # # 2. storage #
 
 aSpeicher = Storage('Speicher',
-                    charging_flow= Flow('Q_th_load', bus = Fernwaerme, size=1e4),  # load-flow, maximum load-power: 1e4 kW
-                    discharging_flow= Flow('Q_th_unload', bus = Fernwaerme, size=1e4),  # unload-flow, maximum load-power: 1e4 kW
+                    charging= Flow('Q_th_load', bus = Fernwaerme, size=1e4),  # load-flow, maximum load-power: 1e4 kW
+                    discharging= Flow('Q_th_unload', bus = Fernwaerme, size=1e4),  # unload-flow, maximum load-power: 1e4 kW
                     capacity_in_flow_hours=InvestParameters(fix_effects=20, fixed_size=30, optional=False),  # 30 kWh; storage capacity
                     initial_charge_state=0,  # empty storage at first time step
                     relative_maximum_charge_state=1 / 100 * np.array([80., 70., 80., 80 , 80, 80, 80, 80, 80, 80]),

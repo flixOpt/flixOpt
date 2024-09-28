@@ -287,7 +287,7 @@ class Storage(Component):
     # costs_default = property(get_costs())
     # param_defalt  = property(get_params())
 
-    new_init_args = ['label', 'exists', 'charging_flow', 'discharging_flow', 'capacity_in_flow_hours', 'relative_minimum_charge_state', 'relative_maximum_charge_state',
+    new_init_args = ['label', 'exists', 'charging', 'discharging', 'capacity_in_flow_hours', 'relative_minimum_charge_state', 'relative_maximum_charge_state',
                      'initial_charge_state', 'minimal_final_charge_state', 'maximal_final_charge_state', 'eta_load',
                      'eta_unload', 'relative_loss_per_hour', 'prevent_simultaneous_charge_and_discharge']
 
@@ -296,8 +296,8 @@ class Storage(Component):
     # capacity_in_flow_hours: float, 'lastValueOfSim', None
     def __init__(self,
                  label: str,
-                 charging_flow: Flow,
-                 discharging_flow: Flow,
+                 charging: Flow,
+                 discharging: Flow,
                  capacity_in_flow_hours: Union[Skalar, InvestParameters],
                  group: Optional[str] = None,
                  relative_minimum_charge_state: Numeric_TS = 0,
@@ -316,9 +316,9 @@ class Storage(Component):
         ----------
         label : str
             description.
-        charging_flow : Flow
+        charging : Flow
             ingoing flow.
-        discharging_flow : Flow
+        discharging : Flow
             outgoing flow.
         group: str, None
             group name to assign components to groups. Used for later analysis of the results
@@ -358,10 +358,10 @@ class Storage(Component):
         super().__init__(label, **kwargs)
 
         # invest_parameters to attributes:
-        self.inputs = [charging_flow]
-        self.outputs = [discharging_flow]
-        self.inFlow = charging_flow
-        self.outFlow = discharging_flow
+        self.inputs = [charging]
+        self.outputs = [discharging]
+        self.charging = charging
+        self.discharging = discharging
         self.capacity_inFlowHours = capacity_in_flow_hours
         self.maximum_relative_chargeState = TimeSeries('relative_maximum_charge_state', relative_maximum_charge_state, self)
         self.minimum_relative_chargeState = TimeSeries('relative_minimum_charge_state', relative_minimum_charge_state, self)
@@ -397,7 +397,7 @@ class Storage(Component):
 
         if self.avoidInAndOutAtOnce:
             self.featureAvoidInAndOut = FeatureAvoidFlowsAtOnce('feature_avoidInAndOutAtOnce', self,
-                                                                [self.inFlow, self.outFlow])
+                                                                [self.charging, self.discharging])
 
         if isinstance(self.capacity_inFlowHours, InvestParameters):
             self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.capacity_inFlowHours,
@@ -407,9 +407,9 @@ class Storage(Component):
                                                featureOn=None)  # hier gibt es kein On-Wert
 
         # Medium-Check:
-        if not (MediumCollection.checkIfFits(charging_flow.medium, discharging_flow.medium)):
-            raise Exception('in Storage ' + self.label + ': input.medium = ' + str(charging_flow.medium) +
-                            ' and output.medium = ' + str(discharging_flow.medium) + ' don`t fit!')
+        if not (MediumCollection.checkIfFits(charging.medium, discharging.medium)):
+            raise Exception('in Storage ' + self.label + ': input.medium = ' + str(charging.medium) +
+                            ' and output.medium = ' + str(discharging.medium) + ' don`t fit!')
         # TODO: chargeState0 darf nicht größer max usw. abfangen!
 
         self.isStorage = True  # for postprocessing
@@ -519,8 +519,8 @@ class Storage(Component):
                                         time_indicesChargeState[
                                         :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
         self.model.eqs['charge_state'].add_summand(self.model.variables['charge_state'], 1, time_indicesChargeState[1:])  # 1:end
-        self.model.eqs['charge_state'].add_summand(self.inFlow.model.variables['val'], -1 * self.eta_load.active_data * system_model.dt_in_hours)
-        self.model.eqs['charge_state'].add_summand(self.outFlow.model.variables['val'],
+        self.model.eqs['charge_state'].add_summand(self.charging.model.variables['val'], -1 * self.eta_load.active_data * system_model.dt_in_hours)
+        self.model.eqs['charge_state'].add_summand(self.discharging.model.variables['val'],
                                          1 / self.eta_unload.active_data * system_model.dt_in_hours)  # Achtung hier 1/eta!
 
         # Speicherladezustand am Ende
@@ -538,11 +538,11 @@ class Storage(Component):
             self.model.eqs['eq_charge_state_end_min'].add_constant(- self.charge_state_end_min)
 
         # nettoflow:
-        # eq: nettoFlow(t) - discharging_flow(t) + charging_flow(t) = 0
+        # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
         self.model.add_equation(Equation('nettoFlow', self, system_model, eqType='eq'))
         self.model.eqs['nettoFlow'].add_summand(self.model.variables['nettoFlow'], 1)
-        self.model.eqs['nettoFlow'].add_summand(self.inFlow.model.variables['val'], 1)
-        self.model.eqs['nettoFlow'].add_summand(self.outFlow.model.variables['val'], -1)
+        self.model.eqs['nettoFlow'].add_summand(self.charging.model.variables['val'], 1)
+        self.model.eqs['nettoFlow'].add_summand(self.discharging.model.variables['val'], -1)
 
         if self.featureInvest is not None:
             self.featureInvest.do_modeling(system_model)

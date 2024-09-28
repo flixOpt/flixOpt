@@ -71,12 +71,12 @@ class TestExistance(unittest.TestCase):
         size=5
         capacity = 10
         storage_exists = Storage(label="Storage_ex", exists=exists, capacity_in_flow_hours=capacity,
-                                 charging_flow=Flow(label="in",
-                                                    size=size,
-                                                    bus=self.busses["Gas"]),
-                                 discharging_flow=Flow(label="out",
-                                                       size=size,
-                                                       bus=self.busses["Gas"])
+                                 charging=Flow(label="in",
+                                               size=size,
+                                               bus=self.busses["Gas"]),
+                                 discharging=Flow(label="out",
+                                                  size=size,
+                                                  bus=self.busses["Gas"])
                                  )
 
         self.es.add_elements(*self.effects.values(), *self.sinks_n_sources.values())
