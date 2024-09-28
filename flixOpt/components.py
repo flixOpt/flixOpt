@@ -481,15 +481,6 @@ class Storage(Component):
         # refToStromLastEq.add_summand(obj.vars.Q_th_Lade   ,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
         # refToStromLastEq.add_summand(obj.vars.Q_th_Entlade,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
 
-    def getInitialStatesOfNextSection(timeIndex):
-        """
-        TODO: was passiert hier? Zuweisungen noch nicht richtig?
-
-        :return:
-        """
-        initialStates['initial_charge_state'] = charge_state[time_indices[0]]
-        return initialStates
-
     def do_modeling(self, system_model):
         super().do_modeling(system_model)
 
@@ -716,7 +707,7 @@ class Sink(Component):
 
     def __init__(self, label: str, sink: Flow, group: str = None, **kwargs):
         '''
-        constructor of sink 
+        constructor of sink
 
         Parameters
         ----------
