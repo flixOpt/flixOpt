@@ -60,8 +60,8 @@ class TestExistance(unittest.TestCase):
         # self.assertEqual(exists, kessel.exists.d, msg=f"Kessel exists mismatch: Expected {exists}, got {kessel.exists}")
         self.assertTrue(np.array_equal(exists, boiler_exists.inputs[0].exists_with_comp.active_data))
         self.assertTrue(np.array_equal(exists, boiler_exists.outputs[0].exists_with_comp.active_data))
-        self.assertTrue(np.array_equal(exists, boiler_exists.inputs[0].max_rel_with_exists.active_data))
-        self.assertTrue(np.array_equal(exists, boiler_exists.outputs[0].max_rel_with_exists.active_data))
+        self.assertTrue(np.array_equal(exists, boiler_exists.inputs[0].relative_maxiumum_with_exists.active_data))
+        self.assertTrue(np.array_equal(exists, boiler_exists.outputs[0].relative_maxiumum_with_exists.active_data))
 
         results = flix_results(calc.label).results
         self.assertTrue(np.all(results["Boiler_ex"]["Q_th"]["val"] <= exists * size))
@@ -91,8 +91,8 @@ class TestExistance(unittest.TestCase):
         # self.assertEqual(exists, kessel.exists.d, msg=f"Kessel exists mismatch: Expected {exists}, got {kessel.exists}")
         self.assertTrue(np.array_equal(exists, storage_exists.inputs[0].exists_with_comp.active_data))
         self.assertTrue(np.array_equal(exists, storage_exists.outputs[0].exists_with_comp.active_data))
-        self.assertTrue(np.array_equal(exists, storage_exists.inputs[0].max_rel_with_exists.active_data))
-        self.assertTrue(np.array_equal(exists, storage_exists.outputs[0].max_rel_with_exists.active_data))
+        self.assertTrue(np.array_equal(exists, storage_exists.inputs[0].relative_maxiumum_with_exists.active_data))
+        self.assertTrue(np.array_equal(exists, storage_exists.outputs[0].relative_maxiumum_with_exists.active_data))
         self.assertTrue(np.array_equal(exists, storage_exists.maximum_relative_chargeState.active_data))
 
         results = flix_results(calc.label).results

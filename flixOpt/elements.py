@@ -954,7 +954,7 @@ class Flow(Element):
         exists_global = np.multiply(self.exists.data, self.comp.exists.data)  # array of 0 and 1
         self.exists_with_comp = TimeSeries('exists_with_comp', utils.check_exists(exists_global), self)
         # combine relative_maximum with and exist from the flow and the comp it belongs to
-        self.max_rel_with_exists = TimeSeries('max_rel_with_exists',
+        self.relative_maxiumum_with_exists = TimeSeries('relative_maxiumum_with_exists',
                                               np.multiply(self.relative_maximum.data, self.exists_with_comp.data), self)
         self.relative_minimum_with_exists = TimeSeries('relative_minimum_with_exists',
                                               np.multiply(self.relative_minimum.data, self.exists_with_comp.data), self)
@@ -964,7 +964,7 @@ class Flow(Element):
             from flixOpt.features import FeatureInvest
             self.featureInvest = FeatureInvest('size', self, self.size,
                                                relative_minimum=self.relative_minimum_with_exists,
-                                               relative_maximum=self.max_rel_with_exists,
+                                               relative_maximum=self.relative_maxiumum_with_exists,
                                                fixed_relative_value=self.fixed_relative_value,
                                                featureOn=self.featureOn)
 
@@ -991,7 +991,7 @@ class Flow(Element):
                 fix_value = self.fixed_relative_value.active_data * self.size
             else:
                 lower_bound = 0 if self.featureOn.use_on else self.relative_minimum_with_exists.active_data * self.size
-                upper_bound = self.max_rel_with_exists.active_data * self.size
+                upper_bound = self.relative_maxiumum_with_exists.active_data * self.size
                 fix_value = None
             return lower_bound, upper_bound, fix_value
 
