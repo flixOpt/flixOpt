@@ -223,7 +223,7 @@ class FeatureLinearSegmentSet(FeatureLinearSegmentVars):
                  get_var_on: Optional[Callable] = None,
                  flows: Optional[List[Flow]] = None):
         # segementsData - Elemente sind Listen!.
-        # segmentsOfFlows = {Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Zeitreihenabbildung über arrays!!!
+        # segmented_conversion_factors = {Q_fu: [ 5  , 10,  10, 22], # je zwei Werte bilden ein Segment. Zeitreihenabbildung über arrays!!!
         #                    P_el: [ 2  , 5,    5, 8 ],
         #                    Q_th: [ 2.5, 4,    4, 12]}
         # -> auch einzelne zulässige Punkte können über Segment ausgedrückt werden, z.B. [5, 5]

@@ -8,7 +8,7 @@ import numpy as np
 import logging
 
 from flixOpt.elements import Bus, Flow
-from flixOpt.components import LinearTransformer, CHP
+from flixOpt.components import LinearConverter, CHP
 from flixOpt.interface import InvestParameters
 from flixOpt.utils import check_exists
 
@@ -55,7 +55,7 @@ def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
 
     Returns
     -------
-    list(LinearTransformer, CHP, CHP)
+    list(LinearConverter, CHP, CHP)
             a list of Components that need to be added to the FlowSystem
     '''
 
@@ -77,8 +77,8 @@ def KWKektA(label: str, size: float, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     # Transformer 1
     Qin = Flow(label="Qfu", bus=BusFuel, size=size, relative_minimum=1, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
-    EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
-                              inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+    EKTIn = LinearConverter(label=label + "In", exists=exists, group=group,
+                              inputs=[Qin], outputs=[Qout], conversion_factors=[{Qin: 1, Qout: 1}])
     # EKT A
     EKTA = CHP(label=label + "A", exists=exists, group=group,
                eta_th=eta_thA, eta_el=eta_elA,
@@ -149,7 +149,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
 
     Returns
     -------
-    list(LinearTransformer, LinearTransformer, LinearTransformer)
+    list(LinearConverter, LinearConverter, LinearConverter)
         a list of Components that need to be added to the FlowSystem
 
     Raises
@@ -190,22 +190,22 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Qin = Flow(label="Qfu", bus=BusFuel, size=size_Qfu, relative_minimum=relative_maximum, relative_maximum=relative_maximum,
                effects_per_flow_hour=costsPerFlowHour_fuel, **kwargs)
     Qout = Flow(label="Helper" + label + 'Fu', bus=HelperBus)
-    EKTIn = LinearTransformer(label=label + "In", exists=exists, group=group,
-                              inputs=[Qin], outputs=[Qout], factor_Sets=[{Qin: 1, Qout: 1}])
+    EKTIn = LinearConverter(label=label + "In", exists=exists, group=group,
+                              inputs=[Qin], outputs=[Qout], conversion_factors=[{Qin: 1, Qout: 1}])
 
     # Transformer Strom
     P_el = Flow(label="Pel", bus=BusEl, size=max(segPel), effects_per_flow_hour=costsPerFlowHour_el)
     Q_fu = Flow(label="Helper" + label + 'A', bus=HelperBus, size=size_Qfu)
     segs_el = {Q_fu: segQfu_el, P_el: segPel.copy()}
-    EKTA = LinearTransformer(label=label + "A", exists=exists, group=group,
-                             outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs_el)
+    EKTA = LinearConverter(label=label + "A", exists=exists, group=group,
+                             outputs=[P_el], inputs=[Q_fu], segmented_conversion_factors=segs_el)
 
     # Transformer Wärme
     Q_th = Flow(label="Qth", bus=BusTh, size=max(segQth), effects_per_flow_hour=costsPerFlowHour_th,
                 invest_parameters=invest_parameters)
     Q_fu2 = Flow(label="Helper" + label + 'B', bus=HelperBus)
     segments = {Q_fu2: segQfu_th, Q_th: segQth}
-    EKTB = LinearTransformer(label=label + "B", exists=exists, group=group,
-                             outputs=[Q_th], inputs=[Q_fu2], segmentsOfFlows=segments)
+    EKTB = LinearConverter(label=label + "B", exists=exists, group=group,
+                             outputs=[Q_th], inputs=[Q_fu2], segmented_conversion_factors=segments)
 
     return [EKTIn, EKTA, EKTB]

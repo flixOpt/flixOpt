@@ -10,7 +10,7 @@ import datetime
 import numpy as np
 
 from flixOpt import *
-from flixOpt.components import Boiler, CHP, Storage, Sink, Source, LinearTransformer
+from flixOpt.components import Boiler, CHP, Storage, Sink, Source, LinearConverter
 
 # ## Solver-Inputs:##
 displaySolverOutput = False  # ausführlicher Solver-Output.
@@ -118,11 +118,11 @@ P_el = Flow('P_el', bus=Strom, size=60, relative_maximum=55)
 Q_th = Flow('Q_th', bus=Fernwaerme)
 Q_fu = Flow('Q_fu', bus=Gas)
 # linear segments (eta-definitions than become useless!):
-segmentsOfFlows = ({P_el: [5, 30, 40, 60],  # elements an be list (timeseries)
+segmented_conversion_factors = ({P_el: [5, 30, 40, 60],  # elements an be list (timeseries)
                     Q_th: [6, 35, 45, 100],
                     Q_fu: [12, 70, 90, 200]})
 
-aKWK2 = LinearTransformer('BHKW2', inputs=[Q_fu], outputs=[P_el, Q_th], segmentsOfFlows=segmentsOfFlows,
+aKWK2 = LinearConverter('BHKW2', inputs=[Q_fu], outputs=[P_el, Q_th], segmented_conversion_factors=segmented_conversion_factors,
                           effects_per_switch_on=0.01, on_values_before_begin=[1])
 
 # 4. definition of storage:
