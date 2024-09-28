@@ -4,10 +4,14 @@ Created on Thu Sep 10 13:45:12 2020
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+import logging
+
 from flixOpt import Flow, utils, TimeSeriesRaw
 from flixOpt.components import LinearConverter
 from flixOpt.core import Numeric_TS, TimeSeries
 from flixOpt.elements import MediumCollection
+
+logger = logging.getLogger('flixOpt')
 
 
 class Boiler(LinearConverter):
