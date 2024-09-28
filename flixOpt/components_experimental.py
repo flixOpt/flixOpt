@@ -198,7 +198,7 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Q_fu = Flow(label="Helper" + label + 'A', bus=HelperBus, size=size_Qfu)
     segs_el = {Q_fu: segQfu_el, P_el: segPel.copy()}
     EKTA = LinearConverter(label=label + "A", exists=exists, group=group,
-                             outputs=[P_el], inputs=[Q_fu], segmentsOfFlows=segs_el)
+                             outputs=[P_el], inputs=[Q_fu], segmented_conversion_factors=segs_el)
 
     # Transformer Wärme
     Q_th = Flow(label="Qth", bus=BusTh, size=max(segQth), effects_per_flow_hour=costsPerFlowHour_th,
@@ -206,6 +206,6 @@ def KWKektB(label: str, BusFuel: Bus, BusTh: Bus, BusEl: Bus,
     Q_fu2 = Flow(label="Helper" + label + 'B', bus=HelperBus)
     segments = {Q_fu2: segQfu_th, Q_th: segQth}
     EKTB = LinearConverter(label=label + "B", exists=exists, group=group,
-                             outputs=[Q_th], inputs=[Q_fu2], segmentsOfFlows=segments)
+                             outputs=[Q_th], inputs=[Q_fu2], segmented_conversion_factors=segments)
 
     return [EKTIn, EKTA, EKTB]
