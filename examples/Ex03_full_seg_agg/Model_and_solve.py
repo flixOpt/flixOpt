@@ -118,7 +118,6 @@ aTimeSeries = aTimeSeries.astype('datetime64')
 ##########################################################################
 
 from flixOpt import *
-from flixOpt.components import Storage, Sink, Source
 from flixOpt.linear_converters import Boiler, CHP
 
 print('#######################################################################')
