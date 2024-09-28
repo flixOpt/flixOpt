@@ -6,6 +6,7 @@ Created on Tue Feb 16 09:16:58 2021
 """
 
 from flixOpt.elements import Bus, Flow, Effect
+from flixOpt.components import Source, Sink, SourceAndSink, Storage, LinearConverter
 from flixOpt.flow_system import FlowSystem
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 from flixOpt.interface import InvestParameters, TimeSeriesRaw

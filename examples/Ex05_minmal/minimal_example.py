@@ -11,7 +11,7 @@ import datetime
 import numpy as np
 
 from flixOpt import *
-from flixOpt.components import Boiler, Source, Sink
+from flixOpt.linear_converters import Boiler
 
 #####################
 ## some timeseries ##

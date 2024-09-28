@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from flixOpt import *
-from flixOpt.components import CHP, Boiler, Sink, Source, Storage, LinearConverter
+from flixOpt.linear_converters import Boiler, CHP
 
 
 class BaseTest(unittest.TestCase):
