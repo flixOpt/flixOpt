@@ -14,7 +14,7 @@ import numpy as np
 
 from flixOpt import utils
 from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # Modelliersprache
-from flixOpt.core import TimeSeries, Skalar
+from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.elements import Flow
@@ -449,3 +449,334 @@ class ElementModel:
     @property
     def ineqs(self) -> Dict[str, Equation]:
         return {name: eq for name, eq in self.eqs.items() if eq.eqType == 'ineq'}
+
+
+class FlowModel(ElementModel):
+    def __init__(self, element: Flow):
+        super().__init__(element)
+        self.element = element
+        self.flow_rate: Optional[VariableTS] = None
+        self.sum_flow_hours: Optional[Variable] = None
+        self.size: Optional[Union[Skalar, Variable]] = self.element.size if isinstance(self.element.size, Skalar) else None
+
+        self._on: Optional[OnModel] = None if element.featureOn else OnModel(element.featureOn)
+        self._investment: Optional[InvestmentModel] = None if element.featureInvest is None else InvestmentModel(element.featureInvest, element.featureOn.use_on)
+
+
+    def create_variables(self, system_model: SystemModel):
+        # flow_rate
+        if isinstance(self.element.size, Skalar):
+            fixed_value = None if self.element.fixed_relative_value is None else self.element.fixed_relative_value * self.element.size
+            self.flow_rate = VariableTS('flow_rate', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+                                        lower_bound=self.element.relative_minimum_with_exists.active_data * self.element.size,
+                                        upper_bound=self.element.relative_maxiumum_with_exists.active_data * self.element.size,
+                                        value=fixed_value)
+        else:
+            self.flow_rate = VariableTS('flow_rate', system_model.nrOfTimeSteps, self.element.label_full, system_model)
+        self.add_variable(self.flow_rate)
+
+        # sumFLowHours
+        self.sum_flow_hours = Variable('sumFlowHours', 1, self.element.label_full, system_model,
+                                       lower_bound=self.element.flow_hours_total_min,
+                                       upper_bound=self.element.flow_hours_total_max)
+        self.add_variable(self.sum_flow_hours)
+
+        self._on.create_variables(system_model) if self._on is not None else None
+        self._investment.create_variables(system_model, ) if self._investment is not None else None
+
+    def create_equations(self, system_model: SystemModel):
+        # sumFLowHours
+        eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')
+        eq_sumFlowHours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
+        eq_sumFlowHours.add_summand(self.sum_flow_hours, -1)
+        self.add_equation(eq_sumFlowHours)
+
+        # load factor #  eq: var_sumFlowHours <= size * dt_tot * load_factor_max
+        if self.element.load_factor_max is not None:
+            flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
+            eq_load_factor_max = Equation('load_factor_max', self, system_model, 'ineq')
+            self.add_equation(eq_load_factor_max)
+            eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
+            eq_load_factor_max.add_constant(self.element.size * flow_hours_per_size_max)
+            # if investment:
+            if self.featureInvest is not None:
+                eq_load_factor_max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
+                                                          -1 * flow_hours_per_size_max)
+
+
+from flixOpt.features import FeatureInvest, FeatureOn, Segment, FeatureLinearSegmentVars, Feature
+class InvestmentModel(ElementModel):
+    def __init__(self, element: FeatureInvest, with_on_variable: bool):
+        super().__init__(element)
+        self.element = element
+        self.size: Optional[Union[Skalar, Variable]] = None
+        self.is_invested: Optional[Variable] = None
+
+        self._with_on_variable = with_on_variable
+
+    def create_variables(self, system_model: SystemModel):
+        if self.element.invest_parameters.fixed_size:
+            self.size = Variable('size', 1, self.element.label_full, system_model,
+                                 value=self.element.invest_parameters.fixed_size)
+        else:
+            lower_bound = 0 if self.element.invest_parameters.optional else self.element.invest_parameters.minimum_size
+            self.size = Variable('size', 1, self.element.label_full, system_model,
+                                 lower_bound=lower_bound, upper_bound=self.element.invest_parameters.maximum_size)
+
+        # Optional
+        if self.element.invest_parameters.optional:
+            self.is_invested = Variable('isInvested', 1, self.element.label_full, system_model,
+                                        is_binary=True)
+
+    def create_equations(self, system_model: SystemModel):
+        if self.element.invest_parameters.optional:
+            self._create_bounds_for_variable_size(system_model)
+
+        if self.element.fixed_relative_value is not None:  # Wenn fixer relativer Lastgang:
+            self._create_bounds_for_fixed_defining_var(system_model)
+        else:   # Wenn nicht fix:
+            self._create_bounds_for_defining_var(system_model, on_is_used=self._with_on_variable)
+
+        if self.featureLinearSegments is not None:  # if linear Segments defined:
+            self.featureLinearSegments.do_modeling(system_model)
+
+    def _create_bounds_for_variable_size(self, system_model: SystemModel):
+        if self.element.invest_parameters.fixed_size:
+            # eq: investment_size = isInvested * fixed_size
+            isInvested_constraint_1 = Equation('isInvested_constraint_1', self.element, system_model, 'eq')
+            self.add_equation(isInvested_constraint_1)
+            isInvested_constraint_1.add_summand(self.size, -1)
+            isInvested_constraint_1.add_summand(self.is_invested, self.element.invest_parameters.fixed_size)
+        else:
+            # eq1: P_invest <= isInvested * investSize_max
+            self.add_equation(Equation('isInvested_constraint_1', self.element, system_model, 'ineq'))
+            self.eqs['isInvested_constraint_1'].add_summand(self.size, 1)
+            self.eqs['isInvested_constraint_1'].add_summand(
+                self.variables['isInvested'], np.multiply(-1, self.element.invest_parameters.maximum_size)
+            )
+
+            # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
+            self.add_equation(Equation('isInvested_constraint_2', self.element, system_model, 'ineq'))
+            self.eqs['isInvested_constraint_2'].add_summand(self.size, -1)
+            self.eqs['isInvested_constraint_2'].add_summand(
+                self.variables['isInvested'], max(system_model.epsilon, self.element.invest_parameters.minimum_size))
+
+    def _create_bounds_for_fixed_defining_var(self, system_model: SystemModel):
+        # eq: defining_variable(t) = var_investmentSize * fixed_relative_value
+        self.add_equation(Equation('fix_via_InvestmentSize', self, system_model, 'eq'))
+        self.eqs['fix_via_InvestmentSize'].add_summand(self.element.defining_variable, 1)
+        self.eqs['fix_via_InvestmentSize'].add_summand(
+            self.size, np.multiply(-1, self.element.fixed_relative_value.active_data)
+        )
+
+    def _create_bounds_for_defining_var(self, system_model: SystemModel, on_is_used: bool):
+
+        ## 1. Gleichung: Maximum durch Investmentgröße ##
+        # eq: defining_variable(t) <=                var_investmentSize * relative_maximum(t)
+        # eq: P(t) <= relative_maximum(t) * P_inv
+        self.add_equation(Equation('max_via_InvestmentSize', self, system_model, 'ineq'))
+        self.eqs['max_via_InvestmentSize'].add_summand(self.element.defining_variable, 1)
+        # self.eqs['max_via_InvestmentSize'].add_summand(self.size, np.multiply(-1, self.element.relative_maximum.active_data))
+        self.eqs['max_via_InvestmentSize'].add_summand(self.size, np.multiply(-1, self.element.relative_maximum.data))
+        # TODO: BUGFIX: Here has to be active_data, but it throws an error for storages (length)
+        # TODO: Changed by FB
+
+        ## 2. Gleichung: Minimum durch Investmentgröße ##
+
+        # Glg nur, wenn nicht Kombination On und fixed:
+        if not (on_is_used and self.element.invest_parameters.fixed_size):
+            self.add_equation(Equation('min_via_investmentSize', self, system_model, 'ineq'))
+
+        if on_is_used:
+            # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
+            if not self.element.invest_parameters.fixed_size:
+                # eq: defining_variable(t) >= Big * (On(t)-1) + investment_size * relative_minimum(t)
+                #     ... mit Big = max(relative_minimum*P_inv_max, epsilon)
+                # (P < relative_minimum*P_inv -> On=0 | On=1 -> P >= relative_minimum*P_inv)
+
+                # äquivalent zu:.
+                # eq: - defining_variable(t) + Big * On(t) + relative_minimum(t) * investment_size <= Big
+
+                Big = utils.get_max_value(
+                    self.element.relative_minimum.active_data * self.element.invest_parameters.maximum_size,
+                    system_model.epsilon)
+                self.eqs['min_via_investmentSize'].add_summand(self.element.defining_variable, -1)
+                self.eqs['min_via_investmentSize'].add_summand(self.element.defining_on_variable, Big)  # übergebene On-Variable
+                self.eqs['min_via_investmentSize'].add_summand(self.size, self.element.relative_minimum.active_data)
+                self.eqs['min_via_investmentSize'].add_constant(Big)
+                # Anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu FeatureOn-Glg.
+            else:
+                pass  # Bereits in FeatureOn mit P>= On(t)*Min ausreichend definiert
+        else:
+            # eq: defining_variable(t) >= investment_size * relative_minimum(t)
+            self.eqs['min_via_investmentSize'].add_summand(self.element.defining_variable, -1)
+            self.eqs['min_via_investmentSize'].add_summand(self.size, self.element.relative_minimum.active_data)
+
+
+class OnModel(ElementModel):
+    def __init__(self, element: FeatureOn):
+        super().__init__(element)
+        self.element = element
+        self.on: Optional[VariableTS] = None
+        self.total_on_hours : Optional[Variable] = None
+
+        self.consecutive_on_hours: Optional[VariableTS] = None
+        self.consecutive_off_hours: Optional[VariableTS] = None
+
+        self.off: Optional[VariableTS] = None
+
+        self.switch_on: Optional[VariableTS] = None
+        self.switch_off: Optional[VariableTS] = None
+        self.nr_switch_on: Optional[VariableTS] = None
+
+    def create_variables(self, system_model: SystemModel):
+        if self.element.use_on:
+            # Before-Variable:
+            self.on = VariableTS('on', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+                                 is_binary=True, before_value=self.element.on_values_before_begin[0])
+            self.total_on_hours = Variable('onHoursSum', 1, self.element.label_full, system_model,
+                                           lower_bound=self.element.on_hours_total_min,
+                                           upper_bound=self.element.on_hours_total_max)
+
+        if self.element.use_off:
+            # off-Var is needed:
+            self.off = VariableTS('off', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+                                  is_binary=True)
+
+        # onHours:
+        #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
+        #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
+        if self.element.use_on_hours:
+            maximum_consecutive_on_hours = None if self.element.consecutive_on_hours_max is None \
+                else self.element.consecutive_on_hours_max.active_data
+            self.consecutive_on_hours = VariableTS('onHours', system_model.nrOfTimeSteps,
+                                                   self.element.label_full, system_model,
+                                                   lower_bound=0,
+                                                   upper_bound=maximum_consecutive_on_hours)  # min separat
+        # offHours:
+        if self.element.use_off_hours:
+            maximum_consecutive_off_hours = None if self.element.consecutive_off_hours_max is None \
+                else self.element.consecutive_off_hours_max.active_data
+            self.consecutive_off_hours = VariableTS('offHours', system_model.nrOfTimeSteps,
+                                                   self.element.label_full, system_model,
+                                                   lower_bound=0,
+                                                   upper_bound=maximum_consecutive_off_hours)  # min separat
+        # Var SwitchOn
+        if self.element.use_switch_on:
+            self.switch_on = VariableTS('switchOn', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
+            self.switch_off = VariableTS('switchOff', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
+            self.nr_switch_on = Variable('nrSwitchOn', 1, self.element.label_full, system_model,
+                                         upper_bound=self.element.switch_on_total_max)
+
+    def create_equations(self, system_model: SystemModel):
+        pass
+
+
+class SegmentModel(ElementModel):
+    def __init__(self, element: Feature,
+                 sample_points: Tuple[Numeric, Numeric],
+                 defining_variable: VariableTS,
+                 segment_index: Union[int, str]):
+        super().__init__(element)
+        self.element = element
+        self.in_segment: Optional[VariableTS] = None
+        self.lambda0: Optional[VariableTS] = None
+        self.lambda1: Optional[VariableTS] = None
+
+        self._defined_variable = defining_variable
+        self._sample_points = sample_points
+        self._segment_index = segment_index
+
+    def create_variables(self, system_model: SystemModel):
+        length = system_model.nrOfTimeSteps
+        self.in_segment = VariableTS(f'onSeg_{self._segment_index}', length, self.element.label_full, system_model,
+                                     is_binary=True)  # Binär-Variable
+        self.lambda0 = VariableTS(f'lambda0_{self._segment_index}', length, self.element.label_full, system_model,
+                                  lower_bound=0, upper_bound=1)  # Wertebereich 0..1
+        self.lambda1 = VariableTS(f'lambda1_{self._segment_index}', length, self.element.label_full, system_model,
+                                  lower_bound=0, upper_bound=1)  # Wertebereich 0..1
+
+    def create_equations(self, system_model: SystemModel):
+        # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
+        name_of_equation = f'Lambda_onSeg_{self._segment_index}'
+        equation = Equation(name_of_equation, self, system_model)
+        self.add_equation(equation)
+
+        equation.add_summand(self.in_segment, -1)
+        equation.add_summand(self.lambda0, 1)
+        equation.add_summand(self.lambda1, 1)
+
+
+class SegmentedVariableModel(SegmentModel):
+    def __init__(self, element: Feature,
+                 sample_points: Tuple[Numeric, Numeric],
+                 defining_variable: Variable,
+                 segment_index: Union[int, str]):
+        super().__init__(element, segment_index)
+        self._defining_variable = defining_variable
+        self._sample_points = sample_points
+
+    def create_equations(self, system_model: SystemModel):
+        super().create_equations(system_model)
+
+        lambda_eq = Equation(self._defining_variable.label_full + '_lambda', self, system_model)  # z.B. Q_th(t)
+        self.add_equation(lambda_eq)
+        lambda_eq.add_summand(self._defining_variable, -1)
+        sample_0, sample_1 = self._sample_points
+
+        if isinstance(sample_0, TimeSeries):  # wenn Stützstellen TS_vector:
+            sample_0 = sample_0.active_data
+            sample_1 = sample_1.active_data
+        else:
+            sample_0 = sample_0
+            sample_1 = sample_1
+
+        lambda_eq.add_summand(self.lambda0, sample_0)
+        lambda_eq.add_summand(self.lambda1, sample_1)
+
+
+class ParallelSegmentedVariablesModel(ElementModel):
+    def __init__(self, element: FeatureLinearSegmentVars, in_segments: Optional[VariableTS]):
+        super().__init__(element)
+        self.element = element
+        self.in_segments: Optional[VariableTS] = in_segments
+        self._segmented_variable_models: List[SegmentedVariableModel] = []
+
+    def _create_segments(self, variables_with_segments: Dict[Variable, List[Numeric]]):
+        restructured_variables_with_segments: List[Dict[Variable, Tuple[Numeric, Numeric]]] = [
+            dict(zip(variables_with_segments.keys(), values)) for values in zip(*variables_with_segments.values())
+        ]
+
+        for i, segment in enumerate(restructured_variables_with_segments):
+            for variable, sample_points in segment.items():
+                self._segmented_variable_models.append(SegmentedVariableModel(self.element, sample_points, variable, i))
+
+    def create_variables(self, system_model: SystemModel, variables_with_segments: Dict[Variable, List[Numeric]]):
+        self._create_segments(variables_with_segments)
+
+        if self.in_segments is None:  # TODO: Make optional
+            self.in_segments = VariableTS(f'in_segments', system_model.nrOfTimeSteps, self.element.label_full,
+                                          system_model, is_binary=True)
+
+    def create_equations(self, system_model: SystemModel):
+        for segment_model in self._segmented_variable_models:
+            segment_model.create_equations(system_model)
+
+        in_single_segment = Equation('in_single_Segment', self, system_model)
+        # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
+        # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
+
+        for segment_model in self._segmented_variable_models:
+            in_single_segment.add_summand(segment_model.in_segment, 1)
+        if self.in_segments is None:
+            in_single_segment.add_constant(1)
+        else:
+            in_single_segment.add_summand(self.in_segments, -1)
+
+        self.add_equation(in_single_segment)
+        # TODO: # Eigentlich wird die On-Variable durch linearSegment-equations bereits vollständig definiert.
+
+
+class SegmentedConversionModel(ElementModel):
+    pass
+
