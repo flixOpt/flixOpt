@@ -457,11 +457,9 @@ class FlowModel(ElementModel):
         self.element = element
         self.flow_rate: Optional[VariableTS] = None
         self.sum_flow_hours: Optional[Variable] = None
-        self.size: Optional[Union[Skalar, Variable]] = self.element.size if isinstance(self.element.size, Skalar) else None
 
         self._on: Optional[OnModel] = None if element.featureOn else OnModel(element.featureOn)
         self._investment: Optional[InvestmentModel] = None if element.featureInvest is None else InvestmentModel(element.featureInvest, element.featureOn.use_on)
-
 
     def create_variables(self, system_model: SystemModel):
         # flow_rate
@@ -504,8 +502,13 @@ class FlowModel(ElementModel):
                                                           -1 * flow_hours_per_size_max)
 
 
+class EffectModel(ElementModel):
+    raise NotImplementedError
+
+
 from flixOpt.features import FeatureInvest, FeatureOn, Segment, FeatureLinearSegmentVars, Feature
 class InvestmentModel(ElementModel):
+    """Class for modeling an investment"""
     def __init__(self, element: FeatureInvest, with_on_variable: bool):
         super().__init__(element)
         self.element = element
@@ -522,11 +525,12 @@ class InvestmentModel(ElementModel):
             lower_bound = 0 if self.element.invest_parameters.optional else self.element.invest_parameters.minimum_size
             self.size = Variable('size', 1, self.element.label_full, system_model,
                                  lower_bound=lower_bound, upper_bound=self.element.invest_parameters.maximum_size)
-
+        self.add_variable(self.size)
         # Optional
         if self.element.invest_parameters.optional:
             self.is_invested = Variable('isInvested', 1, self.element.label_full, system_model,
                                         is_binary=True)
+        self.add_variable(self.is_invested)
 
     def create_equations(self, system_model: SystemModel):
         if self.element.invest_parameters.optional:
@@ -614,11 +618,12 @@ class InvestmentModel(ElementModel):
 
 
 class OnModel(ElementModel):
+    """Class for modeling the on and off state of a variable"""
     def __init__(self, element: FeatureOn):
         super().__init__(element)
         self.element = element
         self.on: Optional[VariableTS] = None
-        self.total_on_hours : Optional[Variable] = None
+        self.total_on_hours: Optional[Variable] = None
 
         self.consecutive_on_hours: Optional[VariableTS] = None
         self.consecutive_off_hours: Optional[VariableTS] = None
@@ -637,11 +642,14 @@ class OnModel(ElementModel):
             self.total_on_hours = Variable('onHoursSum', 1, self.element.label_full, system_model,
                                            lower_bound=self.element.on_hours_total_min,
                                            upper_bound=self.element.on_hours_total_max)
+            self.add_variable(self.on)
+            self.add_variable(self.total_on_hours)
 
         if self.element.use_off:
             # off-Var is needed:
             self.off = VariableTS('off', system_model.nrOfTimeSteps, self.element.label_full, system_model,
                                   is_binary=True)
+            self.add_variable(self.off)
 
         # onHours:
         #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
@@ -653,6 +661,7 @@ class OnModel(ElementModel):
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_on_hours)  # min separat
+            self.add_variable(self.consecutive_on_hours)
         # offHours:
         if self.element.use_off_hours:
             maximum_consecutive_off_hours = None if self.element.consecutive_off_hours_max is None \
@@ -661,19 +670,25 @@ class OnModel(ElementModel):
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_off_hours)  # min separat
+            self.add_variable(self.consecutive_off_hours)
         # Var SwitchOn
         if self.element.use_switch_on:
             self.switch_on = VariableTS('switchOn', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
             self.switch_off = VariableTS('switchOff', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
             self.nr_switch_on = Variable('nrSwitchOn', 1, self.element.label_full, system_model,
                                          upper_bound=self.element.switch_on_total_max)
+            self.add_variable(self.switch_on)
+            self.add_variable(self.switch_off)
+            self.add_variable(self.nr_switch_on)
 
     def create_equations(self, system_model: SystemModel):
-        pass
+        raise NotImplementedError
 
 
 class SegmentModel(ElementModel):
-    def __init__(self, element: Feature, segment_index: Union[int, str]):
+    """Class for modeling a linear segments of one or more variables in parallel"""
+    def __init__(self, element: Feature, segment_index: Union[int, str],
+                 sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]):
         super().__init__(element)
         self.element = element
         self.in_segment: Optional[VariableTS] = None
@@ -681,6 +696,7 @@ class SegmentModel(ElementModel):
         self.lambda1: Optional[VariableTS] = None
 
         self._segment_index = segment_index
+        self._sample_points = sample_points
 
     def create_variables(self, system_model: SystemModel):
         length = system_model.nrOfTimeSteps
@@ -690,6 +706,9 @@ class SegmentModel(ElementModel):
                                   lower_bound=0, upper_bound=1)  # Wertebereich 0..1
         self.lambda1 = VariableTS(f'lambda1_{self._segment_index}', length, self.element.label_full, system_model,
                                   lower_bound=0, upper_bound=1)  # Wertebereich 0..1
+        self.add_variable(self.in_segment)
+        self.add_variable(self.lambda0)
+        self.add_variable(self.lambda1)
 
     def create_equations(self, system_model: SystemModel):
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
@@ -701,30 +720,52 @@ class SegmentModel(ElementModel):
         equation.add_summand(self.lambda0, 1)
         equation.add_summand(self.lambda1, 1)
 
+        #  eq: - v(t) + (v_0 * lambda_0 + v_1 * lambda_1) = 0       -> v_0, v_1 = Stützstellen des Segments
+        for variable, sample_points in self._sample_points.items():
+            sample_0, sample_1 = sample_points
+            if isinstance(sample_0, TimeSeries):
+                sample_0 = sample_0.active_data
+                sample_1 = sample_1.active_data
+            else:
+                sample_0 = sample_0
+                sample_1 = sample_1
 
-class SegmentedVariableModel(ElementModel):
+            lambda_eq = Equation(variable.label_full + '_lambda', self, system_model)
+            lambda_eq.add_summand(variable, -1)
+            lambda_eq.add_summand(self.lambda0, sample_0)
+            lambda_eq.add_summand(self.lambda1, sample_1)
+            self.add_equation(lambda_eq)
+
+
+class MultipleSegmentsModel(ElementModel):
     def __init__(self, element: Feature,
                  in_segments: Optional[Variable],
-                 sample_points: List[Tuple[Numeric, Numeric]],
-                 defining_variable: Variable):
+                 sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]]):
         super().__init__(element)
         self.element = element
 
-        self.in_segments: Optional[VariableTS] = in_segments
+        self.outside_segments: Optional[VariableTS] = in_segments  # Variable to allow being outside segments = 0
 
-        self._defining_variable = defining_variable
         self._sample_points = sample_points
         self._segment_models: List[SegmentModel] = []
 
     def create_variables(self, system_model: SystemModel):
-        for i, start, end in enumerate(self._sample_points):
-            segment_model = SegmentModel(self.element, i)
-            self._segment_models.append(segment_model)
+        restructured_variables_with_segments: List[Dict[Variable, Tuple[Numeric, Numeric]]] = [
+            {key: values[i] for key, values in self._sample_points.items()}
+            for i in range(self._nr_of_segments)
+        ]
+
+        for i, sample_points in enumerate(restructured_variables_with_segments):
+            self._segment_models.append(SegmentModel(self.element, i, sample_points))
+
+        for segment_model in self._segment_models:
             segment_model.create_variables(system_model)
 
-        if self.in_segments is None:  # TODO: Make optional
-            self.in_segments = VariableTS(f'in_segments', system_model.nrOfTimeSteps, self.element.label_full,
+        # Outside of Segments
+        if self.outside_segments is None:  # TODO: Make optional
+            self.outside_segments = VariableTS(f'outside_segments', system_model.nrOfTimeSteps, self.element.label_full,
                                           system_model, is_binary=True)
+            self.add_variable(self.outside_segments)
 
     def create_equations(self, system_model: SystemModel):
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
@@ -732,79 +773,11 @@ class SegmentedVariableModel(ElementModel):
         in_single_segment = Equation('in_single_Segment', self, system_model)
         for segment_model in self._segment_models:
             in_single_segment.add_summand(segment_model.in_segment, 1)
-        if self.in_segments is None:
+        if self.outside_segments is None:
             in_single_segment.add_constant(1)
         else:
-            in_single_segment.add_summand(self.in_segments, -1)
+            in_single_segment.add_summand(self.outside_segments, -1)
 
-
-        lambda_eq = Equation(self._defining_variable.label_full + '_lambda', self, system_model)  # z.B. Q_th(t)
-        self.add_equation(lambda_eq)
-        lambda_eq.add_summand(self._defining_variable, -1)
-        sample_0, sample_1 = self._sample_points
-
-        if isinstance(sample_0, TimeSeries):  # wenn Stützstellen TS_vector:
-            sample_0 = sample_0.active_data
-            sample_1 = sample_1.active_data
-        else:
-            sample_0 = sample_0
-            sample_1 = sample_1
-
-        lambda_eq.add_summand(self.lambda0, sample_0)
-        lambda_eq.add_summand(self.lambda1, sample_1)
-
-
-class ParallelSegmentedVariablesModel(ElementModel):
-    def __init__(self, element: FeatureLinearSegmentVars, in_segments: Optional[VariableTS]):
-        super().__init__(element)
-        self.element = element
-        self.in_segments: Optional[VariableTS] = in_segments
-        self._segmented_variable_models: Dict[int,List[SegmentModel]] = {}
-
-    def _create_segments(self, variables_with_segments: Dict[Variable, List[Numeric]], system_model: SystemModel):
-        restructured_variables_with_segments: List[Dict[Variable, Tuple[Numeric, Numeric]]] = [
-            dict(zip(variables_with_segments.keys(), values)) for values in zip(*variables_with_segments.values())
-        ]
-
-        for i, segment in enumerate(restructured_variables_with_segments):
-            self._segmented_variable_models[i] = []
-            for variable, sample_points in segment.items():
-                self._segmented_variable_models[i].append(SegmentModel(self.element, sample_points, variable, i))
-        for segment_models in self._segmented_variable_models.values():
-            base_model = segment_models[0]
-            base_model.create_variables(system_model)
-            for segment_model in segment_models:
-                segment_model.lambda0 = base_model.lambda0
-                segment_model.lambda1 = base_model.lambda1
-                segment_model.in_segment = base_model.in_segment
-
-
-    def create_variables(self, system_model: SystemModel, variables_with_segments: Dict[Variable, List[Numeric]]):
-        self._create_segments(variables_with_segments)
-
-        if self.in_segments is None:  # TODO: Make optional
-            self.in_segments = VariableTS(f'in_segments', system_model.nrOfTimeSteps, self.element.label_full,
-                                          system_model, is_binary=True)
-
-    def create_equations(self, system_model: SystemModel):
-        for segment_model in self._segmented_variable_models:
-            segment_model.create_equations(system_model)
-
-        in_single_segment = Equation('in_single_Segment', self, system_model)
-        # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
-        # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
-
-        for segment_model in self._segmented_variable_models:
-            in_single_segment.add_summand(segment_model.in_segment, 1)
-        if self.in_segments is None:
-            in_single_segment.add_constant(1)
-        else:
-            in_single_segment.add_summand(self.in_segments, -1)
-
-        self.add_equation(in_single_segment)
-        # TODO: # Eigentlich wird die On-Variable durch linearSegment-equations bereits vollständig definiert.
-
-
-class SegmentedConversionModel(ElementModel):
-    pass
-
+    @property
+    def _nr_of_segments(self):
+        return len(next(iter(self._sample_points.values())))
