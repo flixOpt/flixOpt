@@ -675,7 +675,7 @@ class OnModel(ElementModel):
 class SegmentModel(ElementModel):
     def __init__(self, element: Feature,
                  sample_points: Tuple[Numeric, Numeric],
-                 defining_variable: VariableTS,
+                 defining_variable: Variable,
                  segment_index: Union[int, str]):
         super().__init__(element)
         self.element = element
@@ -683,7 +683,7 @@ class SegmentModel(ElementModel):
         self.lambda0: Optional[VariableTS] = None
         self.lambda1: Optional[VariableTS] = None
 
-        self._defined_variable = defining_variable
+        self._defining_variable = defining_variable
         self._sample_points = sample_points
         self._segment_index = segment_index
 
@@ -706,19 +706,6 @@ class SegmentModel(ElementModel):
         equation.add_summand(self.lambda0, 1)
         equation.add_summand(self.lambda1, 1)
 
-
-class SegmentedVariableModel(SegmentModel):
-    def __init__(self, element: Feature,
-                 sample_points: Tuple[Numeric, Numeric],
-                 defining_variable: Variable,
-                 segment_index: Union[int, str]):
-        super().__init__(element, segment_index)
-        self._defining_variable = defining_variable
-        self._sample_points = sample_points
-
-    def create_equations(self, system_model: SystemModel):
-        super().create_equations(system_model)
-
         lambda_eq = Equation(self._defining_variable.label_full + '_lambda', self, system_model)  # z.B. Q_th(t)
         self.add_equation(lambda_eq)
         lambda_eq.add_summand(self._defining_variable, -1)
@@ -740,16 +727,25 @@ class ParallelSegmentedVariablesModel(ElementModel):
         super().__init__(element)
         self.element = element
         self.in_segments: Optional[VariableTS] = in_segments
-        self._segmented_variable_models: List[SegmentedVariableModel] = []
+        self._segmented_variable_models: Dict[int,List[SegmentModel]] = {}
 
-    def _create_segments(self, variables_with_segments: Dict[Variable, List[Numeric]]):
+    def _create_segments(self, variables_with_segments: Dict[Variable, List[Numeric]], system_model: SystemModel):
         restructured_variables_with_segments: List[Dict[Variable, Tuple[Numeric, Numeric]]] = [
             dict(zip(variables_with_segments.keys(), values)) for values in zip(*variables_with_segments.values())
         ]
 
         for i, segment in enumerate(restructured_variables_with_segments):
+            self._segmented_variable_models[i] = []
             for variable, sample_points in segment.items():
-                self._segmented_variable_models.append(SegmentedVariableModel(self.element, sample_points, variable, i))
+                self._segmented_variable_models[i].append(SegmentModel(self.element, sample_points, variable, i))
+        for segment_models in self._segmented_variable_models.values():
+            base_model = segment_models[0]
+            base_model.create_variables(system_model)
+            for segment_model in segment_models:
+                segment_model.lambda0 = base_model.lambda0
+                segment_model.lambda1 = base_model.lambda1
+                segment_model.in_segment = base_model.in_segment
+
 
     def create_variables(self, system_model: SystemModel, variables_with_segments: Dict[Variable, List[Numeric]]):
         self._create_segments(variables_with_segments)
