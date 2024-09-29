@@ -673,18 +673,13 @@ class OnModel(ElementModel):
 
 
 class SegmentModel(ElementModel):
-    def __init__(self, element: Feature,
-                 sample_points: Tuple[Numeric, Numeric],
-                 defining_variable: Variable,
-                 segment_index: Union[int, str]):
+    def __init__(self, element: Feature, segment_index: Union[int, str]):
         super().__init__(element)
         self.element = element
         self.in_segment: Optional[VariableTS] = None
         self.lambda0: Optional[VariableTS] = None
         self.lambda1: Optional[VariableTS] = None
 
-        self._defining_variable = defining_variable
-        self._sample_points = sample_points
         self._segment_index = segment_index
 
     def create_variables(self, system_model: SystemModel):
@@ -705,6 +700,43 @@ class SegmentModel(ElementModel):
         equation.add_summand(self.in_segment, -1)
         equation.add_summand(self.lambda0, 1)
         equation.add_summand(self.lambda1, 1)
+
+
+class SegmentedVariableModel(ElementModel):
+    def __init__(self, element: Feature,
+                 in_segments: Optional[Variable],
+                 sample_points: List[Tuple[Numeric, Numeric]],
+                 defining_variable: Variable):
+        super().__init__(element)
+        self.element = element
+
+        self.in_segments: Optional[VariableTS] = in_segments
+
+        self._defining_variable = defining_variable
+        self._sample_points = sample_points
+        self._segment_models: List[SegmentModel] = []
+
+    def create_variables(self, system_model: SystemModel):
+        for i, start, end in enumerate(self._sample_points):
+            segment_model = SegmentModel(self.element, i)
+            self._segment_models.append(segment_model)
+            segment_model.create_variables(system_model)
+
+        if self.in_segments is None:  # TODO: Make optional
+            self.in_segments = VariableTS(f'in_segments', system_model.nrOfTimeSteps, self.element.label_full,
+                                          system_model, is_binary=True)
+
+    def create_equations(self, system_model: SystemModel):
+        # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
+        # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
+        in_single_segment = Equation('in_single_Segment', self, system_model)
+        for segment_model in self._segment_models:
+            in_single_segment.add_summand(segment_model.in_segment, 1)
+        if self.in_segments is None:
+            in_single_segment.add_constant(1)
+        else:
+            in_single_segment.add_summand(self.in_segments, -1)
+
 
         lambda_eq = Equation(self._defining_variable.label_full + '_lambda', self, system_model)  # z.B. Q_th(t)
         self.add_equation(lambda_eq)
