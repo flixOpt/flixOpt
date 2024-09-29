@@ -13,7 +13,7 @@ import timeit
 import numpy as np
 
 from flixOpt import utils
-from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation  # Modelliersprache
+from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation, Summand  # Modelliersprache
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -506,7 +506,7 @@ class EffectModel(ElementModel):
     raise NotImplementedError
 
 
-from flixOpt.features import FeatureInvest, FeatureOn, Segment, FeatureLinearSegmentVars, Feature
+from flixOpt.features import FeatureInvest, FeatureOn, Segment, FeatureLinearSegmentVars, Feature, FeatureShares, Feature_ShareSum
 class InvestmentModel(ElementModel):
     """Class for modeling an investment"""
     def __init__(self, element: FeatureInvest, with_on_variable: bool):
@@ -781,3 +781,128 @@ class MultipleSegmentsModel(ElementModel):
     @property
     def _nr_of_segments(self):
         return len(next(iter(self._sample_points.values())))
+
+
+class SharesModel(ElementModel):
+    def __init__(self, element: Feature_ShareSum):
+        super().__init__(element)
+        self.element = element
+        self.sum_TS: Optional[VariableTS] = None
+        self.sum: Optional[Variable] = None
+
+        self._shares: List[SharesModel] = []
+
+        self._eq_bilanz: Optional[Equation] = None
+        self._eq_sum: Optional[Equation] = None
+
+    def create_variables(self, system_model: SystemModel):
+        self.sum = Variable('sum', 1, self.element.label_full, system_model,
+                            lower_bound=self.element.total_min, upper_bound=self.element.total_max)
+        self.add_variable(self.sum)
+
+        if self.element.shares_are_time_series:
+            lb_TS = None if (self.element.min_per_hour is None) else np.multiply(self.element.min_per_hour.active_data, system_model.dt_in_hours)
+            ub_TS = None if (self.element.max_per_hour is None) else np.multiply(self.element.max_per_hour.active_data, system_model.dt_in_hours)
+            self.sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+                                     lower_bound=lb_TS, upper_bound=ub_TS)
+            self.add_variable(self.sum_TS)
+
+    def create_equations(self, system_model: SystemModel):
+        self._eq_sum = Equation('sum', self, system_model)
+        self.add_equation(self._eq_sum)
+        # eq: sum = sum(share_i) # skalar
+        self._eq_sum.add_summand(self.sum, -1)
+        if self.element.shares_are_time_series:
+            # eq: sum = sum(sum_TS(t)) # additionaly to self.sum
+            self._eq_sum.add_summand(self.sum_TS, 1, as_sum=True)
+
+            # eq: sum_TS = sum(share_TS_i) # TS
+            self._eq_bilanz = Equation('bilanz', self, system_model)
+            self._eq_bilanz.add_summand(self.sum_TS, -1)
+            self.add_equation(self._eq_bilanz)
+
+    def add_variable_share(self,
+                           name_of_share: Optional[str],
+                           share_holder: Element,
+                           variable: Variable,
+                           factor1: Numeric_TS,
+                           factor2: Numeric_TS):  # if variable = None, then fix Share
+        if variable is None:
+            raise Exception('add_variable_share() needs variable as input. Use add_constant_share() instead')
+        self._add_share(name_of_share, share_holder, variable, factor1, factor2)
+
+    def add_constant_share(self,
+                           name_of_share: Optional[str],
+                           share_holder: Element,
+                           factor1: Numeric_TS,
+                           factor2: Numeric_TS):
+        variable = None
+        self._add_share(name_of_share, share_holder, variable, factor1, factor2)
+
+    def _add_share(self,
+                  system_model: SystemModel,
+                  name_of_share: Optional[str],
+                  share_holder: Element,
+                  variable: Optional[Variable],
+                  factor1: Numeric_TS,
+                  factor2: Numeric_TS):
+        # Falls TimeSeries, Daten auslesen:
+        if isinstance(factor1, TimeSeries):
+            factor1 = factor1.active_data
+        if isinstance(factor2, TimeSeries):
+            factor2 = factor2.active_data
+        total_factor = np.multiply(factor1, factor2)
+
+        # var and eq for publishing share-values in results:
+        if name_of_share is not None:  #TODO: is this check necessary?
+            new_share = SingleShareModel(self, self.element.shares_are_time_series)
+            new_share.create_variables(system_model, share_holder, name_of_share)
+            new_share.create_equations(system_model)
+            new_share.add_summand_to_share(name_of_share, variable, total_factor)
+
+        # Check to which equation the share should be added
+        if self.element.shares_are_time_series:
+            target_eq = self._eq_bilanz
+        else:
+            assert total_factor.shape[0] == 1, (f'factor1 und factor2 müssen Skalare sein, '
+                                                f'da shareSum {self.element.label} skalar ist')
+            target_eq = self._eq_sum
+
+        if variable is None:  # constant share
+            target_eq.add_constant(-1 * total_factor)
+        else:  # variable share
+            target_eq.add_summand(variable, total_factor)
+        #TODO: Instead use new_share.single_share: Variable ?
+
+
+class SingleShareModel(ElementModel):
+    def __init__(self, element: SharesModel, shares_are_time_series: bool):
+        self.element = element
+        self.single_share: Optional[Variable] = None
+        self._equation: Optional[Equation] = None
+        self._full_name_of_share: Optional[str] = None
+        self._shares_are_time_series = shares_are_time_series
+
+    def create_variables(self, system_model: SystemModel, share_holder: Element, name_of_share: str):
+        self._full_name_of_share = f'{share_holder.label_full}_{name_of_share}'
+        self.single_share = Variable(self._full_name_of_share, 1, self.element.label_full, system_model)
+        self.add_variable(self.single_share)
+
+    def create_equations(self, system_model: SystemModel):
+        self._equation = Equation(self._full_name_of_share, self, system_model)
+        self._equation.add_summand(self.single_share, -1)
+        self.add_equation(self._equation)
+
+    def add_summand_to_share(self,
+                  name_of_share: Optional[str],
+                  variable: Optional[Variable],
+                  total_factor: Numeric):
+        """share to a sum"""
+        if name_of_share is not None:
+            return
+
+        if variable is None:  # if constant share:
+            constant_value = sum(total_factor) if self._shares_are_time_series else total_factor
+            self._equation.add_constant(-1 * constant_value)
+        else:  # if variable share - always as a skalar -> as_sum=True if shares are timeseries
+            self._equation.add_summand(variable, total_factor, as_sum=self._shares_are_time_series)
