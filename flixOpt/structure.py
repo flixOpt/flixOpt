@@ -14,10 +14,10 @@ import numpy as np
 
 from flixOpt import utils
 from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation, Summand  # Modelliersprache
-from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS
+from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.elements import Flow
+    from flixOpt.elements import Flow, Effect
     from flixOpt.flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
@@ -403,6 +403,7 @@ class ElementModel:
         self.variables = {}
         self.eqs = {}
         self.objective = None
+        self.sub_models = []
 
     def description_of_equations(self) -> List:
         # Wenn Glg vorhanden:
@@ -449,6 +450,9 @@ class ElementModel:
     @property
     def ineqs(self) -> Dict[str, Equation]:
         return {name: eq for name, eq in self.eqs.items() if eq.eqType == 'ineq'}
+
+
+from flixOpt.elements import Effect, EffectCollection, Objective, Flow
 
 
 class FlowModel(ElementModel):
@@ -503,7 +507,81 @@ class FlowModel(ElementModel):
 
 
 class EffectModel(ElementModel):
-    raise NotImplementedError
+    def __init__(self, element: Effect):
+        super().__init__(element)
+        self.element = element
+        self._invest = SharesModel(element.invest)
+        self._operation = SharesModel(element.operation)
+        self._all = SharesModel(element.all)
+
+    def create_variables(self, system_model: SystemModel):
+        for model in (self._invest, self._operation, self._all):
+            model.create_variables(system_model)
+
+    def create_equations(self, system_model: SystemModel):
+        for model in (self._invest, self._operation, self._all):
+            model.create_equations(system_model)
+        self._all.add_variable_share('operation', self.element, self._operation.sum, 1, 1)
+        self._all.add_variable_share('invest', self.element, self._invest.sum, 1, 1)
+
+
+class EffectCollectionModel(ElementModel):
+    def __init__(self, element: EffectCollection, system_model: SystemModel):
+        super().__init__(element)
+        self.element = element
+        self._system_model = system_model
+        self._effect_models: Dict[Effect, EffectModel] = {}
+        self._penalty: Optional[SharesModel] = None
+
+    def create_variables(self, system_model: SystemModel):
+        self._effect_models = {effect: effect.model for effect in self.element.effects}
+        for model in self._effect_models.values():
+            model.create_variables(system_model)
+        self._penalty = SharesModel(self.element.penalty)
+        self._penalty.create_variables(system_model)
+
+    def create_equations(self, system_model: SystemModel):
+        for model in self._effect_models.values():
+            model.create_equations(system_model)
+        self._penalty.create_equations(system_model)
+
+    def add_share(self,
+                  operation_or_invest: Literal['operation', 'invest'],
+                  name_of_share: str,
+                  owner: Element,
+                  effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                  factor: Numeric,
+                  variable: Optional[Variable] = None) -> None:
+        assert operation_or_invest in ('operation', 'invest'), f'{operation_or_invest} not supported'
+        effect_values_dict = as_effect_dict(effect_values)
+
+        # an alle Effects, die einen Wert haben, anhängen:
+        for effect, value in effect_values_dict.items():
+            if effect is None:  # Falls None, dann Standard-effekt nutzen:
+                effect = self.element.standard_effect
+            assert effect in self.element.effects, f'Effect {effect.label} was used but not added to model!'
+
+            if operation_or_invest == 'operation':
+                model = self._effect_models[effect]._operation
+            else:
+                model = self._effect_models[effect]._invest
+
+            model._add_share(self._system_model, name_of_share, owner, variable, value, factor)  # hier darf aVariable auch None sein!
+
+    def add_share_between_effects(self):
+        for origin_effect in self.element.effects:
+            # 1. operation: -> hier sind es Zeitreihen (share_TS)
+            name_of_share = 'specific_share_to_other_effects_operation'  # + effectType.label
+            for target_effect, factor in origin_effect.specific_share_to_other_effects_operation.items():
+                target_model = self._effect_models[target_effect]._operation
+                origin_model = self._effect_models[origin_effect]._operation
+                target_model.add_variable_share(name_of_share, origin_effect, origin_model.sum_TS, factor, 1)
+            # 2. invest:    -> hier ist es Skalar (share)
+            name_of_share = 'specificShareToOtherEffects_invest_'  # + effectType.label
+            for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
+                target_model = self._effect_models[target_effect]._invest
+                origin_model = self._effect_models[origin_effect]._invest
+                target_model.add_variable_share(name_of_share, origin_effect, origin_model.sum, factor, 1)
 
 
 from flixOpt.features import FeatureInvest, FeatureOn, Segment, FeatureLinearSegmentVars, Feature, FeatureShares, Feature_ShareSum
@@ -846,6 +924,8 @@ class SharesModel(ElementModel):
                   variable: Optional[Variable],
                   factor1: Numeric_TS,
                   factor2: Numeric_TS):
+        #TODO: accept only one factor or accept unlimited factors -> *factors
+
         # Falls TimeSeries, Daten auslesen:
         if isinstance(factor1, TimeSeries):
             factor1 = factor1.active_data
