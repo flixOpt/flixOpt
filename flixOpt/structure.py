@@ -505,6 +505,17 @@ class FlowModel(ElementModel):
                 eq_load_factor_max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
                                                           -1 * flow_hours_per_size_max)
 
+    def create_shares(self, system_model: SystemModel):
+        # Arbeitskosten:
+        effect_collection = system_model.flow_system.effect_collection
+        if self.element.effects_per_flow_hour is not None:
+            effect_collection.add_share_to_operation(
+                name_of_share='effects_per_flow_hour',
+                owner=self.element, variable=self.flow_rate,
+                effect_values=self.element.effects_per_flow_hour,
+                factor=system_model.dt_in_hours
+            )
+
 
 class EffectModel(ElementModel):
     def __init__(self, element: Effect):
@@ -513,6 +524,7 @@ class EffectModel(ElementModel):
         self._invest = SharesModel(element.invest)
         self._operation = SharesModel(element.operation)
         self._all = SharesModel(element.all)
+        self.sub_models.extend([self._invest, self._operation, self._all])
 
     def create_variables(self, system_model: SystemModel):
         for model in (self._invest, self._operation, self._all):
@@ -526,6 +538,7 @@ class EffectModel(ElementModel):
 
 
 class EffectCollectionModel(ElementModel):
+    #TODO: Maybe all EffectModels should be sub_models of this Model? Including Objective and Penalty?
     def __init__(self, element: EffectCollection, system_model: SystemModel):
         super().__init__(element)
         self.element = element
@@ -594,6 +607,7 @@ class InvestmentModel(ElementModel):
         self.is_invested: Optional[Variable] = None
 
         self._with_on_variable = with_on_variable
+        #TODO: Add Submodel for Segmented Costs
 
     def create_variables(self, system_model: SystemModel):
         if self.element.invest_parameters.fixed_size:
@@ -621,6 +635,45 @@ class InvestmentModel(ElementModel):
 
         if self.featureLinearSegments is not None:  # if linear Segments defined:
             self.featureLinearSegments.do_modeling(system_model)
+
+    def create_shares(self, system_model: SystemModel):
+        effect_collection = system_model.flow_system.effect_collection
+        invest_parameters = self.element.invest_parameters
+
+        # fix_effects:
+        fix_effects = invest_parameters.fix_effects
+        if fix_effects is not None and fix_effects != 0:
+            if invest_parameters.optional:  # share: + isInvested * fix_effects
+                effect_collection.add_share_to_invest('fix_effects', self.element,
+                                                      self.is_invested, fix_effects, 1)
+            else:  # share: + fix_effects
+                effect_collection.add_constant_share_to_invest('fix_effects', self.element,
+                                                               fix_effects,1)
+
+        # divest_effects:
+        divest_effects = invest_parameters.divest_effects
+        if divest_effects is not None and divest_effects != 0:
+            if invest_parameters.optional:  # share: [divest_effects - isInvested * divest_effects]
+                # 1. part of share [+ divest_effects]:
+                effect_collection.add_constant_share_to_invest('divest_effects', self.element,
+                                                               divest_effects, 1)
+                # 2. part of share [- isInvested * divest_effects]:
+                effect_collection.add_share_to_invest('divestCosts_cancellation', self.element,
+                                                      self.is_invested, divest_effects, -1)
+                # TODO : these 2 parts should be one share!
+
+        # # specific_effects:
+        specific_effects = invest_parameters.specific_effects
+        if specific_effects is not None:
+            # share: + investment_size (=var)   * specific_effects
+            effect_collection.add_share_to_invest('specific_effects', self.element,
+                                                  self.size, specific_effects, 1)
+
+        # # segmentedCosts:
+        if self.element.featureLinearSegments is not None:
+            for effect, var_investSegs in self.element.investVar_effect_dict.items():
+                effect_collection.add_share_to_invest('linearSegments', self.element, var_investSegs, {effect: 1}, 1)
+
 
     def _create_bounds_for_variable_size(self, system_model: SystemModel):
         if self.element.invest_parameters.fixed_size:
@@ -693,6 +746,7 @@ class InvestmentModel(ElementModel):
             # eq: defining_variable(t) >= investment_size * relative_minimum(t)
             self.eqs['min_via_investmentSize'].add_summand(self.element.defining_variable, -1)
             self.eqs['min_via_investmentSize'].add_summand(self.size, self.element.relative_minimum.active_data)
+
 
 
 class OnModel(ElementModel):
