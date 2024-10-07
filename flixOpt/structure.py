@@ -758,7 +758,7 @@ class InvestmentModel(ElementModel):
 
 class OnModel(ElementModel):
     """Class for modeling the on and off state of a variable"""
-    def __init__(self, element: FeatureOn):
+    def __init__(self, element: Element):
         super().__init__(element)
         self.element = element
         self.on: Optional[VariableTS] = None
@@ -877,13 +877,13 @@ class SegmentModel(ElementModel):
 
 
 class MultipleSegmentsModel(ElementModel):
-    def __init__(self, element: Feature,
-                 in_segments: Optional[Variable],
+    def __init__(self, element: Element,
+                 outside_segments: Optional[Variable],
                  sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]]):
         super().__init__(element)
         self.element = element
 
-        self.outside_segments: Optional[VariableTS] = in_segments  # Variable to allow being outside segments = 0
+        self.outside_segments: Optional[VariableTS] = outside_segments  # Variable to allow being outside segments = 0
 
         self._sample_points = sample_points
         self._segment_models: List[SegmentModel] = []
@@ -1017,15 +1017,16 @@ class ShareAllocationModel(ElementModel):
 
 
 class SingleShareModel(ElementModel):
-    def __init__(self, element: SharesModel, shares_are_time_series: bool):
+    def __init__(self, element: Element, shares_are_time_series: bool, name_of_share: str):
         self.element = element
         self.single_share: Optional[Variable] = None
         self._equation: Optional[Equation] = None
         self._full_name_of_share: Optional[str] = None
         self._shares_are_time_series = shares_are_time_series
+        self._name_of_share = name_of_share
 
-    def create_variables(self, system_model: SystemModel, share_holder: Element, name_of_share: str):
-        self._full_name_of_share = f'{share_holder.label_full}_{name_of_share}'
+    def create_variables(self, system_model: SystemModel):
+        self._full_name_of_share = f'{self.element.label_full}_{self._name_of_share}'
         self.single_share = Variable(self._full_name_of_share, 1, self.element.label_full, system_model)
         self.add_variable(self.single_share)
 
