@@ -598,6 +598,13 @@ class EffectCollectionModel(ElementModel):
 
 
 from flixOpt.features import FeatureInvest, FeatureOn, Segment, FeatureLinearSegmentVars, Feature, FeatureShares, Feature_ShareSum
+
+
+def _extract_sample_points(data: List[Skalar]) -> List[Tuple[Skalar, Skalar]]:
+    assert len(data) % 2 == 0, f'Segments must have an even number of start-/endpoints'
+    return [(data[i], data[i+1]) for i in range(0, len(data), 2)]
+
+
 class InvestmentModel(ElementModel):
     """Class for modeling an investment"""
     def __init__(self, element: FeatureInvest, with_on_variable: bool):
