@@ -326,7 +326,7 @@ class Objective(Element):
     def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
         # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
         self.objective = Equation('objective', self, system_model, 'objective')
-        self.model.add_equation(self.objective)
+        self.model.add_equations(self.objective)
         system_model.objective = self.objective
 
     def add_objective_effect_and_penalty(self, effect_collection: EffectCollection) -> None:
@@ -637,17 +637,17 @@ class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element
         # Fehlerplus/-minus:
         if self.with_excess:
             # Fehlerplus und -minus definieren
-            self.model.add_variable(VariableTS('excess_input', len(system_model.time_series), self.label_full, system_model,
-                                           lower_bound=0))
-            self.model.add_variable(VariableTS('excess_output', len(system_model.time_series), self.label_full, system_model,
-                                            lower_bound=0))
+            self.model.add_variables(VariableTS('excess_input', len(system_model.time_series), self.label_full, system_model,
+                                                lower_bound=0))
+            self.model.add_variables(VariableTS('excess_output', len(system_model.time_series), self.label_full, system_model,
+                                                lower_bound=0))
 
     def do_modeling(self, system_model: SystemModel) -> None:
         super().do_modeling(system_model)
 
         # inputs = outputs
         bus_balance = Equation('busBalance', self, system_model)
-        self.model.add_equation(bus_balance)
+        self.model.add_equations(bus_balance)
         for aFlow in self.inputs:
             bus_balance.add_summand(aFlow.model.variables['val'], 1)
         for aFlow in self.outputs:
@@ -1002,10 +1002,10 @@ class Flow(Element):
             (lower_bound, upper_bound, fix_value) = self.featureInvest.bounds_of_defining_variable()
 
         # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?
-        self.model.add_variable(VariableTS('val', system_model.nrOfTimeSteps, self.label_full, system_model,
-                                           lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value))
-        self.model.add_variable(Variable('sumFlowHours', 1, self.label_full, system_model,
-                                         lower_bound=self.flow_hours_total_min, upper_bound=self.flow_hours_total_max))
+        self.model.add_variables(VariableTS('val', system_model.nrOfTimeSteps, self.label_full, system_model,
+                                            lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value))
+        self.model.add_variables(Variable('sumFlowHours', 1, self.label_full, system_model,
+                                          lower_bound=self.flow_hours_total_min, upper_bound=self.flow_hours_total_max))
         # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
         self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
         self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
@@ -1035,7 +1035,7 @@ class Flow(Element):
 
         if self.on_hours_total_max is not None:
             eq_on_hours_total_max = Equation('on_hours_total_max', self, system_model, 'ineq')
-            self.model.add_equation(eq_on_hours_total_max)
+            self.model.add_equations(eq_on_hours_total_max)
             eq_on_hours_total_max.add_summand(self.model.var_on, 1, as_sum=True)
             eq_on_hours_total_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
 
@@ -1047,7 +1047,7 @@ class Flow(Element):
 
         if self.on_hours_total_min is not None:
             eq_on_hours_total_min = Equation('on_hours_total_min', self, system_model, 'ineq')
-            self.model.add_equation(eq_on_hours_total_min)
+            self.model.add_equations(eq_on_hours_total_min)
             eq_on_hours_total_min.add_summand(self.model.var_on, -1, as_sum=True)
             eq_on_hours_total_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
 
@@ -1058,7 +1058,7 @@ class Flow(Element):
         # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
 
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        self.model.add_equation(eq_sumFlowHours)
+        self.model.add_equations(eq_sumFlowHours)
         eq_sumFlowHours.add_summand(self.model.variables["val"], system_model.dt_in_hours, as_sum=True)
         eq_sumFlowHours.add_summand(self.model.variables['sumFlowHours'], -1)
 
@@ -1083,7 +1083,7 @@ class Flow(Element):
         if self.load_factor_max is not None:
             flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.load_factor_max  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Max = Equation('load_factor_max', self, system_model, 'ineq')  # general mean
-            self.model.add_equation(eq_flowHoursPerInvestsize_Max)
+            self.model.add_equations(eq_flowHoursPerInvestsize_Max)
             eq_flowHoursPerInvestsize_Max.add_summand(self.model.variables["sumFlowHours"], 1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
@@ -1097,7 +1097,7 @@ class Flow(Element):
         if self.load_factor_min is not None:
             flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.load_factor_min  # = fullLoadHours if investsize in [kW]
             eq_flowHoursPerInvestsize_Min = Equation('load_factor_min', self, system_model, 'ineq')
-            self.model.add_equation(eq_flowHoursPerInvestsize_Min)
+            self.model.add_equations(eq_flowHoursPerInvestsize_Min)
             eq_flowHoursPerInvestsize_Min.add_summand(self.model.variables["sumFlowHours"], -1)
             if self.featureInvest is not None:
                 eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],

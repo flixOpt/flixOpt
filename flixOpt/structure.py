@@ -434,20 +434,21 @@ class ElementModel:
             return self.eqs[label]
         raise Exception(f'Equation "{label}" does not exist')
 
-    def add_variable(self, variable: Variable) -> None:
-        if variable.label not in self.variables.keys():
-            self.variables[variable.label] = variable
-        else:
-            if variable in self.variables.values():
+    def add_variables(self, *variables: Variable) -> None:
+        for variable in variables:
+            if variable.label not in self.variables.keys():
+                self.variables[variable.label] = variable
+            elif variable in self.variables.values():
                 raise Exception(f'Variable "{variable.label}" already exists')
             else:
                 raise Exception(f'A Variable with the label "{variable.label}" already exists')
 
-    def add_equation(self, equation: Equation) -> None:
-        if equation.label not in self.eqs.keys():
-            self.eqs[equation.label] = equation
-        else:
-            raise Exception(f'Equation "{equation.label}" already exists')
+    def add_equations(self, *equations: Equation) -> None:
+        for equation in equations:
+            if equation.label not in self.eqs.keys():
+                self.eqs[equation.label] = equation
+            else:
+                raise Exception(f'Equation "{equation.label}" already exists')
 
     @property
     def ineqs(self) -> Dict[str, Equation]:
@@ -475,7 +476,7 @@ class FlowModel(ElementModel):
                                         value=fixed_value)
         else:
             self.flow_rate = VariableTS('flow_rate', system_model.nrOfTimeSteps, self.element.label_full, system_model)
-        self.add_variable(self.flow_rate)
+        self.add_variables(self.flow_rate)
 
         # sumFLowHours
         self.sum_flow_hours = Variable('sumFlowHours', 1, self.element.label_full, system_model,
@@ -484,8 +485,8 @@ class FlowModel(ElementModel):
         eq_sum_flow_hours = Equation('sumFlowHours', self, system_model, 'eq')
         eq_sum_flow_hours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
         eq_sum_flow_hours.add_summand(self.sum_flow_hours, -1)
-        self.add_variable(self.sum_flow_hours)
-        self.add_equation(eq_sum_flow_hours)
+        self.add_variables(self.sum_flow_hours)
+        self.add_equations(eq_sum_flow_hours)
 
         self._create_bounds_for_load_factor(system_model)
 
@@ -510,7 +511,7 @@ class FlowModel(ElementModel):
         if self.element.load_factor_max is not None:
             flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
             eq_load_factor_max = Equation('load_factor_max', self, system_model, 'ineq')
-            self.add_equation(eq_load_factor_max)
+            self.add_equations(eq_load_factor_max)
             eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
             # if investment:
             if self._investment is not None:
@@ -522,7 +523,7 @@ class FlowModel(ElementModel):
         if self.element.load_factor_min is not None:
             flow_hours_per_size_min = system_model.dt_in_hours_total * self.element.load_factor_min
             eq_load_factor_min = Equation('load_factor_min', self, system_model, 'ineq')
-            self.add_equation(eq_load_factor_min)
+            self.add_equations(eq_load_factor_min)
             eq_load_factor_min.add_summand(self.sum_flow_hours, 1)
             if self._investment is not None:
                 eq_load_factor_min.add_summand(self._investment.size, flow_hours_per_size_min)
@@ -633,12 +634,12 @@ class InvestmentModel(ElementModel):
             lower_bound = 0 if invest_parameters.optional else invest_parameters.minimum_size
             self.size = Variable('size', 1, self.element.label_full, system_model,
                                  lower_bound=lower_bound, upper_bound=invest_parameters.maximum_size)
-        self.add_variable(self.size)
+        self.add_variables(self.size)
         # Optional
         if invest_parameters.optional:
             self.is_invested = Variable('isInvested', 1, self.element.label_full, system_model,
                                         is_binary=True)
-        self.add_variable(self.is_invested)
+        self.add_variables(self.is_invested)
 
         # Create Bounds
         #TODO: Revisit the Bounds
@@ -690,26 +691,26 @@ class InvestmentModel(ElementModel):
         if self._invest_parameters.fixed_size:
             # eq: investment_size = isInvested * fixed_size
             isInvested_constraint_1 = Equation('isInvested_constraint_1', self.element, system_model, 'eq')
-            self.add_equation(isInvested_constraint_1)
+            self.add_equations(isInvested_constraint_1)
             isInvested_constraint_1.add_summand(self.size, -1)
             isInvested_constraint_1.add_summand(self.is_invested, self._invest_parameters.fixed_size)
         else:
             # eq1: P_invest <= isInvested * investSize_max
-            self.add_equation(Equation('isInvested_constraint_1', self.element, system_model, 'ineq'))
+            self.add_equations(Equation('isInvested_constraint_1', self.element, system_model, 'ineq'))
             self.eqs['isInvested_constraint_1'].add_summand(self.size, 1)
             self.eqs['isInvested_constraint_1'].add_summand(
                 self.variables['isInvested'], np.multiply(-1, self._invest_parameters.maximum_size)
             )
 
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
-            self.add_equation(Equation('isInvested_constraint_2', self.element, system_model, 'ineq'))
+            self.add_equations(Equation('isInvested_constraint_2', self.element, system_model, 'ineq'))
             self.eqs['isInvested_constraint_2'].add_summand(self.size, -1)
             self.eqs['isInvested_constraint_2'].add_summand(
                 self.variables['isInvested'], max(system_model.epsilon, self._invest_parameters.minimum_size))
 
     def _create_bounds_for_fixed_defining_var(self, system_model: SystemModel):
         # eq: defining_variable(t) = var_investmentSize * fixed_relative_value
-        self.add_equation(Equation('fix_via_InvestmentSize', self, system_model, 'eq'))
+        self.add_equations(Equation('fix_via_InvestmentSize', self, system_model, 'eq'))
         self.eqs['fix_via_InvestmentSize'].add_summand(self.element.defining_variable, 1)
         self.eqs['fix_via_InvestmentSize'].add_summand(
             self.size, np.multiply(-1, self.element.fixed_relative_value.active_data)
@@ -720,7 +721,7 @@ class InvestmentModel(ElementModel):
         ## 1. Gleichung: Maximum durch Investmentgröße ##
         # eq: defining_variable(t) <=                var_investmentSize * relative_maximum(t)
         # eq: P(t) <= relative_maximum(t) * P_inv
-        self.add_equation(Equation('max_via_InvestmentSize', self, system_model, 'ineq'))
+        self.add_equations(Equation('max_via_InvestmentSize', self, system_model, 'ineq'))
         self.eqs['max_via_InvestmentSize'].add_summand(self.element.defining_variable, 1)
         # self.eqs['max_via_InvestmentSize'].add_summand(self.size, np.multiply(-1, self.element.relative_maximum.active_data))
         self.eqs['max_via_InvestmentSize'].add_summand(self.size, np.multiply(-1, self.element.relative_maximum.data))
@@ -731,7 +732,7 @@ class InvestmentModel(ElementModel):
 
         # Glg nur, wenn nicht Kombination On und fixed:
         if not (on_is_used and self._invest_parameters.fixed_size):
-            self.add_equation(Equation('min_via_investmentSize', self, system_model, 'ineq'))
+            self.add_equations(Equation('min_via_investmentSize', self, system_model, 'ineq'))
 
         if on_is_used:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
@@ -786,14 +787,14 @@ class OnModel(ElementModel):
             self.total_on_hours = Variable('onHoursSum', 1, self.element.label_full, system_model,
                                            lower_bound=self._on_off_parameters.on_hours_total_min,
                                            upper_bound=self._on_off_parameters.on_hours_total_max)
-            self.add_variable(self.on)
-            self.add_variable(self.total_on_hours)
+            self.add_variables(self.on)
+            self.add_variables(self.total_on_hours)
 
         if self._on_off_parameters.use_off:
             # off-Var is needed:
             self.off = VariableTS('off', system_model.nrOfTimeSteps, self.element.label_full, system_model,
                                   is_binary=True)
-            self.add_variable(self.off)
+            self.add_variables(self.off)
 
         # onHours:
         #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
@@ -805,7 +806,7 @@ class OnModel(ElementModel):
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_on_hours)  # min separat
-            self.add_variable(self.consecutive_on_hours)
+            self.add_variables(self.consecutive_on_hours)
         # offHours:
         if self._on_off_parameters.use_off_hours:
             maximum_consecutive_off_hours = None if self._on_off_parameters.consecutive_off_hours_max is None \
@@ -814,16 +815,16 @@ class OnModel(ElementModel):
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_off_hours)  # min separat
-            self.add_variable(self.consecutive_off_hours)
+            self.add_variables(self.consecutive_off_hours)
         # Var SwitchOn
         if self._on_off_parameters.use_switch_on:
             self.switch_on = VariableTS('switchOn', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
             self.switch_off = VariableTS('switchOff', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
             self.nr_switch_on = Variable('nrSwitchOn', 1, self.element.label_full, system_model,
                                          upper_bound=self._on_off_parameters.switch_on_total_max)
-            self.add_variable(self.switch_on)
-            self.add_variable(self.switch_off)
-            self.add_variable(self.nr_switch_on)
+            self.add_variables(self.switch_on)
+            self.add_variables(self.switch_off)
+            self.add_variables(self.nr_switch_on)
 
         #TODO: Equations!!
 
@@ -849,14 +850,14 @@ class SegmentModel(ElementModel):
                                   lower_bound=0, upper_bound=1)  # Wertebereich 0..1
         self.lambda1 = VariableTS(f'lambda1_{self._segment_index}', length, self.element.label_full, system_model,
                                   lower_bound=0, upper_bound=1)  # Wertebereich 0..1
-        self.add_variable(self.in_segment)
-        self.add_variable(self.lambda0)
-        self.add_variable(self.lambda1)
+        self.add_variables(self.in_segment)
+        self.add_variables(self.lambda0)
+        self.add_variables(self.lambda1)
 
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
         name_of_equation = f'Lambda_onSeg_{self._segment_index}'
         equation = Equation(name_of_equation, self, system_model)
-        self.add_equation(equation)
+        self.add_equations(equation)
 
         equation.add_summand(self.in_segment, -1)
         equation.add_summand(self.lambda0, 1)
@@ -876,7 +877,7 @@ class SegmentModel(ElementModel):
             lambda_eq.add_summand(variable, -1)
             lambda_eq.add_summand(self.lambda0, sample_0)
             lambda_eq.add_summand(self.lambda1, sample_1)
-            self.add_equation(lambda_eq)
+            self.add_equations(lambda_eq)
 
 
 class MultipleSegmentsModel(ElementModel):
@@ -907,7 +908,7 @@ class MultipleSegmentsModel(ElementModel):
         if self.outside_segments is None:  # TODO: Make optional
             self.outside_segments = VariableTS(f'outside_segments', system_model.nrOfTimeSteps, self.element.label_full,
                                           system_model, is_binary=True)
-            self.add_variable(self.outside_segments)
+            self.add_variables(self.outside_segments)
 
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
         # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
@@ -939,17 +940,17 @@ class ShareAllocationModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         self.sum = Variable('sum', 1, self.element.label_full, system_model,
                             lower_bound=self.element.total_min, upper_bound=self.element.total_max)
-        self.add_variable(self.sum)
+        self.add_variables(self.sum)
 
         if self.element.shares_are_time_series:
             lb_TS = None if (self.element.min_per_hour is None) else np.multiply(self.element.min_per_hour.active_data, system_model.dt_in_hours)
             ub_TS = None if (self.element.max_per_hour is None) else np.multiply(self.element.max_per_hour.active_data, system_model.dt_in_hours)
             self.sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self.element.label_full, system_model,
                                      lower_bound=lb_TS, upper_bound=ub_TS)
-            self.add_variable(self.sum_TS)
+            self.add_variables(self.sum_TS)
 
         self._eq_sum = Equation('sum', self, system_model)
-        self.add_equation(self._eq_sum)
+        self.add_equations(self._eq_sum)
         # eq: sum = sum(share_i) # skalar
         self._eq_sum.add_summand(self.sum, -1)
         if self.element.shares_are_time_series:
@@ -959,7 +960,7 @@ class ShareAllocationModel(ElementModel):
             # eq: sum_TS = sum(share_TS_i) # TS
             self._eq_bilanz = Equation('bilanz', self, system_model)
             self._eq_bilanz.add_summand(self.sum_TS, -1)
-            self.add_equation(self._eq_bilanz)
+            self.add_equations(self._eq_bilanz)
 
     def add_variable_share(self,
                            name_of_share: Optional[str],
@@ -1027,11 +1028,11 @@ class SingleShareModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self.single_share = Variable(self._full_name_of_share, 1, self.element.label_full, system_model)
-        self.add_variable(self.single_share)
+        self.add_variables(self.single_share)
 
         self._equation = Equation(self._full_name_of_share, self, system_model)
         self._equation.add_summand(self.single_share, -1)
-        self.add_equation(self._equation)
+        self.add_equations(self._equation)
 
     def add_summand_to_share(self, variable: Optional[Variable], factor: Numeric):
         """share to a sum"""

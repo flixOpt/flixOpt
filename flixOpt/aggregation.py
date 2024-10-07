@@ -294,7 +294,7 @@ class AggregationModeling(Element):
                 idx_var2 = np.append(idx_var2, v2[:minLen])
 
         eq = Equation('equalIdx_' + aVar.label_full, self, system_model, eqType='eq')
-        self.model.add_equation(eq)
+        self.model.add_equations(eq)
         eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
         eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
 
@@ -304,11 +304,11 @@ class AggregationModeling(Element):
             var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
                               system_model,
                               is_binary=True)
-            self.model.add_variable(var_K1)
+            self.model.add_variables(var_K1)
             var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
                               system_model,
                               is_binary=True)
-            self.model.add_variable(var_K0)
+            self.model.add_variables(var_K0)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
@@ -323,7 +323,7 @@ class AggregationModeling(Element):
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
             eq_lock = Equation('lock_K0andK1' + aVar.label_full, self, system_model, eqType='ineq')
-            self.model.add_equation(eq_lock)
+            self.model.add_equations(eq_lock)
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
             eq_lock.add_constant(1.1)
@@ -332,7 +332,7 @@ class AggregationModeling(Element):
             # eq: sum(K) <= n_Corr_max
             self.noOfCorrections = round(self.percentage_of_period_freedom / 100 * var_K1.length)
             eq_max = Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
-            self.model.add_equation(eq_max)
+            self.model.add_equations(eq_max)
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
             eq_max.add_constant(self.noOfCorrections)  # Maximum
