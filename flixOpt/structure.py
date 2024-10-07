@@ -465,7 +465,7 @@ class FlowModel(ElementModel):
         self._on: Optional[OnModel] = None if element.featureOn else OnModel(element.featureOn)
         self._investment: Optional[InvestmentModel] = None if element.featureInvest is None else InvestmentModel(element.featureInvest, element.featureOn.use_on)
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         # flow_rate
         if isinstance(self.element.size, Skalar):
             fixed_value = None if self.element.fixed_relative_value is None else self.element.fixed_relative_value * self.element.size
@@ -483,10 +483,9 @@ class FlowModel(ElementModel):
                                        upper_bound=self.element.flow_hours_total_max)
         self.add_variable(self.sum_flow_hours)
 
-        self._on.create_variables(system_model) if self._on is not None else None
-        self._investment.create_variables(system_model, ) if self._investment is not None else None
+        self._on.do_modeling(system_model) if self._on is not None else None
+        self._investment.do_modeling(system_model, ) if self._investment is not None else None
 
-    def create_equations(self, system_model: SystemModel):
         # sumFLowHours
         eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')
         eq_sumFlowHours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
@@ -504,8 +503,9 @@ class FlowModel(ElementModel):
             if self.featureInvest is not None:
                 eq_load_factor_max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
                                                           -1 * flow_hours_per_size_max)
+        self._create_shares(system_model)
 
-    def create_shares(self, system_model: SystemModel):
+    def _create_shares(self, system_model: SystemModel):
         # Arbeitskosten:
         effect_collection = system_model.flow_system.effect_collection
         if self.element.effects_per_flow_hour is not None:
@@ -526,13 +526,10 @@ class EffectModel(ElementModel):
         self._all = ShareAllocationModel(element.all)
         self.sub_models.extend([self._invest, self._operation, self._all])
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         for model in (self._invest, self._operation, self._all):
-            model.create_variables(system_model)
+            model.do_modeling(system_model)
 
-    def create_equations(self, system_model: SystemModel):
-        for model in (self._invest, self._operation, self._all):
-            model.create_equations(system_model)
         self._all.add_variable_share('operation', self.element, self._operation.sum, 1, 1)
         self._all.add_variable_share('invest', self.element, self._invest.sum, 1, 1)
 
@@ -546,17 +543,12 @@ class EffectCollectionModel(ElementModel):
         self._effect_models: Dict[Effect, EffectModel] = {}
         self._penalty: Optional[ShareAllocationModel] = None
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         self._effect_models = {effect: effect.model for effect in self.element.effects}
         for model in self._effect_models.values():
-            model.create_variables(system_model)
+            model.do_modeling(system_model)
         self._penalty = ShareAllocationModel(self.element.penalty)
-        self._penalty.create_variables(system_model)
-
-    def create_equations(self, system_model: SystemModel):
-        for model in self._effect_models.values():
-            model.create_equations(system_model)
-        self._penalty.create_equations(system_model)
+        self._penalty.do_modeling(system_model)
 
     def add_share(self,
                   operation_or_invest: Literal['operation', 'invest'],
@@ -616,7 +608,7 @@ class InvestmentModel(ElementModel):
         self._with_on_variable = with_on_variable
         self._segments: Optional[SegmentedSharesModel] = None
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         if self.element.invest_parameters.fixed_size:
             self.size = Variable('size', 1, self.element.label_full, system_model,
                                  value=self.element.invest_parameters.fixed_size)
@@ -636,9 +628,8 @@ class InvestmentModel(ElementModel):
             self._segments = SegmentedSharesModel(self.element,
                                                   (self.size, invest_segments[0]),
                                                   invest_segments[1], None)
-            self._segments.create_variables(system_model)
+            self._segments.do_modeling(system_model)
 
-    def create_equations(self, system_model: SystemModel):
         if self.element.invest_parameters.optional:
             self._create_bounds_for_variable_size(system_model)
 
@@ -650,7 +641,9 @@ class InvestmentModel(ElementModel):
         if self.featureLinearSegments is not None:  # if linear Segments defined:
             self.featureLinearSegments.do_modeling(system_model)
 
-    def create_shares(self, system_model: SystemModel):
+        self._create_shares(system_model)
+
+    def _create_shares(self, system_model: SystemModel):
         effect_collection = system_model.flow_system.effect_collection
         invest_parameters = self.element.invest_parameters
 
@@ -773,7 +766,7 @@ class OnModel(ElementModel):
         self.switch_off: Optional[VariableTS] = None
         self.nr_switch_on: Optional[VariableTS] = None
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         if self.element.use_on:
             # Before-Variable:
             self.on = VariableTS('on', system_model.nrOfTimeSteps, self.element.label_full, system_model,
@@ -820,8 +813,7 @@ class OnModel(ElementModel):
             self.add_variable(self.switch_off)
             self.add_variable(self.nr_switch_on)
 
-    def create_equations(self, system_model: SystemModel):
-        raise NotImplementedError
+        #TODO: Equations!!
 
 
 class SegmentModel(ElementModel):
@@ -837,7 +829,7 @@ class SegmentModel(ElementModel):
         self._segment_index = segment_index
         self._sample_points = sample_points
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         length = system_model.nrOfTimeSteps
         self.in_segment = VariableTS(f'onSeg_{self._segment_index}', length, self.element.label_full, system_model,
                                      is_binary=True)  # Binär-Variable
@@ -849,7 +841,6 @@ class SegmentModel(ElementModel):
         self.add_variable(self.lambda0)
         self.add_variable(self.lambda1)
 
-    def create_equations(self, system_model: SystemModel):
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
         name_of_equation = f'Lambda_onSeg_{self._segment_index}'
         equation = Equation(name_of_equation, self, system_model)
@@ -888,7 +879,7 @@ class MultipleSegmentsModel(ElementModel):
         self._sample_points = sample_points
         self._segment_models: List[SegmentModel] = []
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         restructured_variables_with_segments: List[Dict[Variable, Tuple[Numeric, Numeric]]] = [
             {key: values[i] for key, values in self._sample_points.items()}
             for i in range(self._nr_of_segments)
@@ -898,7 +889,7 @@ class MultipleSegmentsModel(ElementModel):
             self._segment_models.append(SegmentModel(self.element, i, sample_points))
 
         for segment_model in self._segment_models:
-            segment_model.create_variables(system_model)
+            segment_model.do_modeling(system_model)
 
         # Outside of Segments
         if self.outside_segments is None:  # TODO: Make optional
@@ -906,7 +897,6 @@ class MultipleSegmentsModel(ElementModel):
                                           system_model, is_binary=True)
             self.add_variable(self.outside_segments)
 
-    def create_equations(self, system_model: SystemModel):
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
         # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
         in_single_segment = Equation('in_single_Segment', self, system_model)
@@ -934,7 +924,7 @@ class ShareAllocationModel(ElementModel):
         self._eq_bilanz: Optional[Equation] = None
         self._eq_sum: Optional[Equation] = None
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         self.sum = Variable('sum', 1, self.element.label_full, system_model,
                             lower_bound=self.element.total_min, upper_bound=self.element.total_max)
         self.add_variable(self.sum)
@@ -946,7 +936,6 @@ class ShareAllocationModel(ElementModel):
                                      lower_bound=lb_TS, upper_bound=ub_TS)
             self.add_variable(self.sum_TS)
 
-    def create_equations(self, system_model: SystemModel):
         self._eq_sum = Equation('sum', self, system_model)
         self.add_equation(self._eq_sum)
         # eq: sum = sum(share_i) # skalar
@@ -997,8 +986,7 @@ class ShareAllocationModel(ElementModel):
         # var and eq for publishing share-values in results:
         if name_of_share is not None:  #TODO: is this check necessary?
             new_share = SingleShareModel(self, self.element.shares_are_time_series)
-            new_share.create_variables(system_model, share_holder, name_of_share)
-            new_share.create_equations(system_model)
+            new_share.do_modeling(system_model)
             new_share.add_summand_to_share(name_of_share, variable, total_factor)
 
         # Check to which equation the share should be added
@@ -1025,12 +1013,11 @@ class SingleShareModel(ElementModel):
         self._shares_are_time_series = shares_are_time_series
         self._name_of_share = name_of_share
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         self._full_name_of_share = f'{self.element.label_full}_{self._name_of_share}'
         self.single_share = Variable(self._full_name_of_share, 1, self.element.label_full, system_model)
         self.add_variable(self.single_share)
 
-    def create_equations(self, system_model: SystemModel):
         self._equation = Equation(self._full_name_of_share, self, system_model)
         self._equation.add_summand(self.single_share, -1)
         self.add_equation(self._equation)
@@ -1066,22 +1053,20 @@ class SegmentedSharesModel(ElementModel):
         self._shares: Optional[Dict[Effect, SingleShareModel]] = None
         self._segments_model: Optional[MultipleSegmentsModel] = None
 
-    def create_variables(self, system_model: SystemModel):
+    def do_modeling(self, system_model: SystemModel):
         self._shares = {effect: SingleShareModel(self.element, False, f'segmented')
                         for effect in self._share_segments}
         for single_share in self._shares.values():
-            single_share.create_variables(system_model)
+            single_share.do_modeling(system_model)
 
         segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
             self._shares[effect].single_share: segment for effect, segment in self._share_segments.values()}
         self._segments_model = MultipleSegmentsModel(self.element, self._outside_segments, segments)
-        self._segments_model.create_variables(system_model)
+        self._segments_model.do_modeling(system_model)
 
-    def create_equations(self, system_model: SystemModel):
-        for model in self._shares.values():
-            model.create_equations(system_model)
+        self._create_shares(system_model)
 
-    def create_shares(self, system_model: SystemModel):
+    def _create_shares(self, system_model: SystemModel):
         effect_collection = system_model.flow_system.effect_collection
         for effect, single_share_model in self._shares.items():
             effect_collection.add_share_to_invest(
