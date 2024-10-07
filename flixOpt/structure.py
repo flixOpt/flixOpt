@@ -8,17 +8,19 @@ developed by Felix Panitz* and Peter Stange*
 import textwrap
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
-import timeit
 
 import numpy as np
 
 from flixOpt import utils
-from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation, Summand  # Modelliersprache
+from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from flixOpt.interface import InvestParameters, OnOffParameters
+from flixOpt.components import Storage
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.elements import Flow, Effect
+    from flixOpt.elements import Flow, Effect, EffectCollection, Objective
     from flixOpt.flow_system import FlowSystem
+
 
 logger = logging.getLogger('flixOpt')
 
@@ -452,18 +454,16 @@ class ElementModel:
         return {name: eq for name, eq in self.eqs.items() if eq.eqType == 'ineq'}
 
 
-from flixOpt.elements import Effect, EffectCollection, Objective, Flow
-
-
 class FlowModel(ElementModel):
     def __init__(self, element: Flow):
         super().__init__(element)
-        self.element = element
+        self.element: Flow = element
         self.flow_rate: Optional[VariableTS] = None
         self.sum_flow_hours: Optional[Variable] = None
 
         self._on: Optional[OnModel] = None if element.featureOn else OnModel(element.featureOn)
-        self._investment: Optional[InvestmentModel] = None if element.featureInvest is None else InvestmentModel(element.featureInvest, element.featureOn.use_on)
+        self._investment: Optional[InvestmentModel] = None if isinstance(element.size, Skalar) else InvestmentModel(element.featureInvest, element.featureOn.use_on)
+        self.sub_models.extend([model for model in (self._on, self._investment) if model is not None])
 
     def do_modeling(self, system_model: SystemModel):
         # flow_rate
@@ -481,28 +481,16 @@ class FlowModel(ElementModel):
         self.sum_flow_hours = Variable('sumFlowHours', 1, self.element.label_full, system_model,
                                        lower_bound=self.element.flow_hours_total_min,
                                        upper_bound=self.element.flow_hours_total_max)
+        eq_sum_flow_hours = Equation('sumFlowHours', self, system_model, 'eq')
+        eq_sum_flow_hours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
+        eq_sum_flow_hours.add_summand(self.sum_flow_hours, -1)
         self.add_variable(self.sum_flow_hours)
+        self.add_equation(eq_sum_flow_hours)
+
+        self._create_bounds_for_load_factor(system_model)
 
         self._on.do_modeling(system_model) if self._on is not None else None
         self._investment.do_modeling(system_model, ) if self._investment is not None else None
-
-        # sumFLowHours
-        eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')
-        eq_sumFlowHours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
-        eq_sumFlowHours.add_summand(self.sum_flow_hours, -1)
-        self.add_equation(eq_sumFlowHours)
-
-        # load factor #  eq: var_sumFlowHours <= size * dt_tot * load_factor_max
-        if self.element.load_factor_max is not None:
-            flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
-            eq_load_factor_max = Equation('load_factor_max', self, system_model, 'ineq')
-            self.add_equation(eq_load_factor_max)
-            eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
-            eq_load_factor_max.add_constant(self.element.size * flow_hours_per_size_max)
-            # if investment:
-            if self.featureInvest is not None:
-                eq_load_factor_max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
-                                                          -1 * flow_hours_per_size_max)
         self._create_shares(system_model)
 
     def _create_shares(self, system_model: SystemModel):
@@ -516,6 +504,31 @@ class FlowModel(ElementModel):
                 factor=system_model.dt_in_hours
             )
 
+    def _create_bounds_for_load_factor(self, system_model: SystemModel):
+        ## ############## full load fraction bzw. load factor ##############
+        # eq: var_sumFlowHours <= size * dt_tot * load_factor_max
+        if self.element.load_factor_max is not None:
+            flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
+            eq_load_factor_max = Equation('load_factor_max', self, system_model, 'ineq')
+            self.add_equation(eq_load_factor_max)
+            eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
+            # if investment:
+            if self._investment is not None:
+                eq_load_factor_max.add_summand(self._investment.size, -1 * flow_hours_per_size_max)
+            else:
+                eq_load_factor_max.add_constant(self.element.size * flow_hours_per_size_max)
+
+        #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
+        if self.element.load_factor_min is not None:
+            flow_hours_per_size_min = system_model.dt_in_hours_total * self.element.load_factor_min
+            eq_load_factor_min = Equation('load_factor_min', self, system_model, 'ineq')
+            self.add_equation(eq_load_factor_min)
+            eq_load_factor_min.add_summand(self.sum_flow_hours, 1)
+            if self._investment is not None:
+                eq_load_factor_min.add_summand(self._investment.size, flow_hours_per_size_min)
+            else:
+                eq_load_factor_min.add_constant(-1 * self.element.size * flow_hours_per_size_min)
+
 
 class EffectModel(ElementModel):
     def __init__(self, element: Effect):
@@ -527,7 +540,7 @@ class EffectModel(ElementModel):
         self.sub_models.extend([self._invest, self._operation, self._all])
 
     def do_modeling(self, system_model: SystemModel):
-        for model in (self._invest, self._operation, self._all):
+        for model in self.sub_models:
             model.do_modeling(system_model)
 
         self._all.add_variable_share('operation', self.element, self._operation.sum, 1, 1)
@@ -544,11 +557,11 @@ class EffectCollectionModel(ElementModel):
         self._penalty: Optional[ShareAllocationModel] = None
 
     def do_modeling(self, system_model: SystemModel):
-        self._effect_models = {effect: effect.model for effect in self.element.effects}
-        for model in self._effect_models.values():
-            model.do_modeling(system_model)
+        self._effect_models = {effect: EffectModel(effect) for effect in self.element.effects}
         self._penalty = ShareAllocationModel(self.element.penalty)
-        self._penalty.do_modeling(system_model)
+        self.sub_models.extend(list(self._effect_models.values()) + [self._penalty])
+        for model in self.sub_models:
+            model.do_modeling(system_model)
 
     def add_share(self,
                   operation_or_invest: Literal['operation', 'invest'],
@@ -599,54 +612,44 @@ def _extract_sample_points(data: List[Skalar]) -> List[Tuple[Skalar, Skalar]]:
 
 class InvestmentModel(ElementModel):
     """Class for modeling an investment"""
-    def __init__(self, element: FeatureInvest, with_on_variable: bool):
+    def __init__(self, element: Union[Flow, Storage], invest_parameters: InvestParameters, with_on_variable: bool):
         super().__init__(element)
-        self.element = element
+        self.element: Union[Flow, Storage] = element
         self.size: Optional[Union[Skalar, Variable]] = None
         self.is_invested: Optional[Variable] = None
-
-        self._with_on_variable = with_on_variable
+        
         self._segments: Optional[SegmentedSharesModel] = None
+        
+        self._invest_parameters = invest_parameters
+        self._with_on_variable = with_on_variable
 
     def do_modeling(self, system_model: SystemModel):
-        if self.element.invest_parameters.fixed_size:
+        effect_collection = system_model.flow_system.effect_collection
+        invest_parameters = self._invest_parameters
+        if invest_parameters.fixed_size:
             self.size = Variable('size', 1, self.element.label_full, system_model,
-                                 value=self.element.invest_parameters.fixed_size)
+                                 value=invest_parameters.fixed_size)
         else:
-            lower_bound = 0 if self.element.invest_parameters.optional else self.element.invest_parameters.minimum_size
+            lower_bound = 0 if invest_parameters.optional else invest_parameters.minimum_size
             self.size = Variable('size', 1, self.element.label_full, system_model,
-                                 lower_bound=lower_bound, upper_bound=self.element.invest_parameters.maximum_size)
+                                 lower_bound=lower_bound, upper_bound=invest_parameters.maximum_size)
         self.add_variable(self.size)
         # Optional
-        if self.element.invest_parameters.optional:
+        if invest_parameters.optional:
             self.is_invested = Variable('isInvested', 1, self.element.label_full, system_model,
                                         is_binary=True)
         self.add_variable(self.is_invested)
 
-        invest_segments = self.element.invest_parameters.effects_in_segments
-        if invest_segments:
-            self._segments = SegmentedSharesModel(self.element,
-                                                  (self.size, invest_segments[0]),
-                                                  invest_segments[1], None)
-            self._segments.do_modeling(system_model)
-
-        if self.element.invest_parameters.optional:
+        # Create Bounds
+        #TODO: Revisit the Bounds
+        if invest_parameters.optional:
             self._create_bounds_for_variable_size(system_model)
-
         if self.element.fixed_relative_value is not None:  # Wenn fixer relativer Lastgang:
             self._create_bounds_for_fixed_defining_var(system_model)
         else:   # Wenn nicht fix:
             self._create_bounds_for_defining_var(system_model, on_is_used=self._with_on_variable)
 
-        if self.featureLinearSegments is not None:  # if linear Segments defined:
-            self.featureLinearSegments.do_modeling(system_model)
-
-        self._create_shares(system_model)
-
-    def _create_shares(self, system_model: SystemModel):
-        effect_collection = system_model.flow_system.effect_collection
-        invest_parameters = self.element.invest_parameters
-
+        #############################################################
         # fix_effects:
         fix_effects = invest_parameters.fix_effects
         if fix_effects is not None and fix_effects != 0:
@@ -656,7 +659,6 @@ class InvestmentModel(ElementModel):
             else:  # share: + fix_effects
                 effect_collection.add_constant_share_to_invest('fix_effects', self.element,
                                                                fix_effects,1)
-
         # divest_effects:
         divest_effects = invest_parameters.divest_effects
         if divest_effects is not None and divest_effects != 0:
@@ -667,7 +669,7 @@ class InvestmentModel(ElementModel):
                 # 2. part of share [- isInvested * divest_effects]:
                 effect_collection.add_share_to_invest('divest_cancellation_effects', self.element,
                                                       self.is_invested, divest_effects, -1)
-                # TODO : these 2 parts should be one share!
+                # TODO : these 2 parts should be one share! -> SingleShareModel...?
 
         # # specific_effects:
         specific_effects = invest_parameters.specific_effects
@@ -675,27 +677,35 @@ class InvestmentModel(ElementModel):
             # share: + investment_size (=var)   * specific_effects
             effect_collection.add_share_to_invest('specific_effects', self.element,
                                                   self.size, specific_effects, 1)
+        # segmented Effects
+        invest_segments = invest_parameters.effects_in_segments
+        if invest_segments:
+            self._segments = SegmentedSharesModel(self.element,
+                                                  (self.size, invest_segments[0]),
+                                                  invest_segments[1], self.is_invested)
+            self.sub_models.append(self._segments)
+            self._segments.do_modeling(system_model)
 
     def _create_bounds_for_variable_size(self, system_model: SystemModel):
-        if self.element.invest_parameters.fixed_size:
+        if self._invest_parameters.fixed_size:
             # eq: investment_size = isInvested * fixed_size
             isInvested_constraint_1 = Equation('isInvested_constraint_1', self.element, system_model, 'eq')
             self.add_equation(isInvested_constraint_1)
             isInvested_constraint_1.add_summand(self.size, -1)
-            isInvested_constraint_1.add_summand(self.is_invested, self.element.invest_parameters.fixed_size)
+            isInvested_constraint_1.add_summand(self.is_invested, self._invest_parameters.fixed_size)
         else:
             # eq1: P_invest <= isInvested * investSize_max
             self.add_equation(Equation('isInvested_constraint_1', self.element, system_model, 'ineq'))
             self.eqs['isInvested_constraint_1'].add_summand(self.size, 1)
             self.eqs['isInvested_constraint_1'].add_summand(
-                self.variables['isInvested'], np.multiply(-1, self.element.invest_parameters.maximum_size)
+                self.variables['isInvested'], np.multiply(-1, self._invest_parameters.maximum_size)
             )
 
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
             self.add_equation(Equation('isInvested_constraint_2', self.element, system_model, 'ineq'))
             self.eqs['isInvested_constraint_2'].add_summand(self.size, -1)
             self.eqs['isInvested_constraint_2'].add_summand(
-                self.variables['isInvested'], max(system_model.epsilon, self.element.invest_parameters.minimum_size))
+                self.variables['isInvested'], max(system_model.epsilon, self._invest_parameters.minimum_size))
 
     def _create_bounds_for_fixed_defining_var(self, system_model: SystemModel):
         # eq: defining_variable(t) = var_investmentSize * fixed_relative_value
@@ -720,12 +730,12 @@ class InvestmentModel(ElementModel):
         ## 2. Gleichung: Minimum durch Investmentgröße ##
 
         # Glg nur, wenn nicht Kombination On und fixed:
-        if not (on_is_used and self.element.invest_parameters.fixed_size):
+        if not (on_is_used and self._invest_parameters.fixed_size):
             self.add_equation(Equation('min_via_investmentSize', self, system_model, 'ineq'))
 
         if on_is_used:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
-            if not self.element.invest_parameters.fixed_size:
+            if not self._invest_parameters.fixed_size:
                 # eq: defining_variable(t) >= Big * (On(t)-1) + investment_size * relative_minimum(t)
                 #     ... mit Big = max(relative_minimum*P_inv_max, epsilon)
                 # (P < relative_minimum*P_inv -> On=0 | On=1 -> P >= relative_minimum*P_inv)
@@ -734,7 +744,7 @@ class InvestmentModel(ElementModel):
                 # eq: - defining_variable(t) + Big * On(t) + relative_minimum(t) * investment_size <= Big
 
                 Big = utils.get_max_value(
-                    self.element.relative_minimum.active_data * self.element.invest_parameters.maximum_size,
+                    self.element.relative_minimum.active_data * self._invest_parameters.maximum_size,
                     system_model.epsilon)
                 self.eqs['min_via_investmentSize'].add_summand(self.element.defining_variable, -1)
                 self.eqs['min_via_investmentSize'].add_summand(self.element.defining_on_variable, Big)  # übergebene On-Variable
@@ -751,7 +761,7 @@ class InvestmentModel(ElementModel):
 
 class OnModel(ElementModel):
     """Class for modeling the on and off state of a variable"""
-    def __init__(self, element: Element):
+    def __init__(self, element: Element, on_off_parameters: OnOffParameters):
         super().__init__(element)
         self.element = element
         self.on: Optional[VariableTS] = None
@@ -766,18 +776,20 @@ class OnModel(ElementModel):
         self.switch_off: Optional[VariableTS] = None
         self.nr_switch_on: Optional[VariableTS] = None
 
+        self._on_off_parameters = on_off_parameters
+
     def do_modeling(self, system_model: SystemModel):
-        if self.element.use_on:
+        if self._on_off_parameters.use_on:
             # Before-Variable:
             self.on = VariableTS('on', system_model.nrOfTimeSteps, self.element.label_full, system_model,
-                                 is_binary=True, before_value=self.element.on_values_before_begin[0])
+                                 is_binary=True, before_value=self._on_off_parameters.on_values_before_begin[0])
             self.total_on_hours = Variable('onHoursSum', 1, self.element.label_full, system_model,
-                                           lower_bound=self.element.on_hours_total_min,
-                                           upper_bound=self.element.on_hours_total_max)
+                                           lower_bound=self._on_off_parameters.on_hours_total_min,
+                                           upper_bound=self._on_off_parameters.on_hours_total_max)
             self.add_variable(self.on)
             self.add_variable(self.total_on_hours)
 
-        if self.element.use_off:
+        if self._on_off_parameters.use_off:
             # off-Var is needed:
             self.off = VariableTS('off', system_model.nrOfTimeSteps, self.element.label_full, system_model,
                                   is_binary=True)
@@ -786,29 +798,29 @@ class OnModel(ElementModel):
         # onHours:
         #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
         #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
-        if self.element.use_on_hours:
-            maximum_consecutive_on_hours = None if self.element.consecutive_on_hours_max is None \
-                else self.element.consecutive_on_hours_max.active_data
+        if self._on_off_parameters.use_on_hours:
+            maximum_consecutive_on_hours = None if self._on_off_parameters.consecutive_on_hours_max is None \
+                else self._on_off_parameters.consecutive_on_hours_max.active_data
             self.consecutive_on_hours = VariableTS('onHours', system_model.nrOfTimeSteps,
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_on_hours)  # min separat
             self.add_variable(self.consecutive_on_hours)
         # offHours:
-        if self.element.use_off_hours:
-            maximum_consecutive_off_hours = None if self.element.consecutive_off_hours_max is None \
-                else self.element.consecutive_off_hours_max.active_data
+        if self._on_off_parameters.use_off_hours:
+            maximum_consecutive_off_hours = None if self._on_off_parameters.consecutive_off_hours_max is None \
+                else self._on_off_parameters.consecutive_off_hours_max.active_data
             self.consecutive_off_hours = VariableTS('offHours', system_model.nrOfTimeSteps,
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_off_hours)  # min separat
             self.add_variable(self.consecutive_off_hours)
         # Var SwitchOn
-        if self.element.use_switch_on:
+        if self._on_off_parameters.use_switch_on:
             self.switch_on = VariableTS('switchOn', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
             self.switch_off = VariableTS('switchOff', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
             self.nr_switch_on = Variable('nrSwitchOn', 1, self.element.label_full, system_model,
-                                         upper_bound=self.element.switch_on_total_max)
+                                         upper_bound=self._on_off_parameters.switch_on_total_max)
             self.add_variable(self.switch_on)
             self.add_variable(self.switch_off)
             self.add_variable(self.nr_switch_on)
@@ -1076,3 +1088,31 @@ class SegmentedSharesModel(ElementModel):
                 factor=1
             )
 
+
+def bounds_of_defining_variable(minimum_size: Skalar,
+                                maximum_size: Skalar,
+                                size_is_optional: bool,
+                                fixed_relative_value: Optional[Numeric],
+                                relative_minimum: Numeric,
+                                relative_maximum: Numeric,
+                                can_be_off: bool,
+                                ) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
+
+    if fixed_relative_value is not None:   # Wenn fixer relativer Lastgang:
+        # relative_maximum = relative_minimum = fixed_relative_value !
+        relative_minimum = fixed_relative_value
+        relative_maximum = fixed_relative_value
+
+    upper_bound = relative_maximum * maximum_size  # Use maximum of Investment
+
+    # min-Wert:
+    if size_is_optional or (can_be_off and fixed_relative_value is None):
+        lower_bound = 0  # can be zero (if no invest) or can switch off
+    else:
+        lower_bound = relative_minimum * minimum_size   # Use minimum of Investment
+
+    # upper_bound und lower_bound gleich, dann fix:
+    if np.all(upper_bound == lower_bound):  # np.all -> kann listen oder werte vergleichen
+        return None, None, upper_bound
+    else:
+        return lower_bound, upper_bound, None
