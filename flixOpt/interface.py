@@ -9,6 +9,8 @@ from typing import Union, Optional, Dict, List
 
 import numpy as np
 
+from flixOpt.core import Numeric
+
 logger = logging.getLogger('flixOpt')
 
 # Anmerkung: TimeSeriesRaw separat von TimeSeries wg. Einfachheit für Anwender
@@ -136,4 +138,66 @@ class InvestParameters:
         all_relevant_parts = [part for part in details if part != ""]
         full_str = f"{', '.join(all_relevant_parts)}"
         return f"<{self.__class__.__name__}>: {full_str}"
+
+
+class OnOffParameters:
+    def __init__(self,
+                 #flows_defining_on: Optional[List[Flow]],
+                 on_values_before_begin: List[int],
+                 effects_per_switch_on: Optional[Union[Dict, Numeric]] = None,
+                 effects_per_running_hour: Optional[Union[Dict, Numeric]] = None,
+                 on_hours_total_min: Optional[int] = None,
+                 on_hours_total_max: Optional[int] = None,
+                 consecutive_on_hours_min: Optional[Numeric] = None,
+                 consecutive_on_hours_max: Optional[Numeric] = None,
+                 consecutive_off_hours_min: Optional[Numeric] = None,
+                 consecutive_off_hours_max: Optional[Numeric] = None,
+                 switch_on_total_max: Optional[int] = None,
+                 force_on: bool = False,
+                 force_switch_on: bool = False):
+        #self.flows_defining_on = flows_defining_on
+        self.on_values_before_begin = on_values_before_begin
+        self.effects_per_switch_on = effects_per_switch_on
+        self.effects_per_running_hour = effects_per_running_hour
+        self.on_hours_total_min = on_hours_total_min  # scalar
+        self.on_hours_total_max = on_hours_total_max  # scalar
+        self.consecutive_on_hours_min = consecutive_on_hours_min  # TimeSeries
+        self.consecutive_on_hours_max = consecutive_on_hours_max  # TimeSeries
+        self.consecutive_off_hours_min = consecutive_off_hours_min  # TimeSeries
+        self.consecutive_off_hours_max = consecutive_off_hours_max  # TimeSeries
+        self.switch_on_total_max = switch_on_total_max
+        self.force_on = force_on  # Can be set to True if needed, even after creation
+        self.force_switch_on = force_switch_on
+
+    @property
+    def use_on(self) -> bool:
+        """Determines wether the ON Variable is needed or not"""
+        return (any(param is not None for param in [self.effects_per_running_hour,
+                                                    self.on_hours_total_min,
+                                                    self.on_hours_total_max])
+                or self.force_on or self.use_switch_on or self.use_on_hours or self.use_off_hours or self.use_off)
+
+    @property
+    def use_off(self) -> bool:
+        """Determines wether the OFF Variable is needed or not"""
+        return self.use_off_hours
+
+    @property
+    def use_on_hours(self) -> bool:
+        """Determines wether a Variable for consecutive off hours is needed or not"""
+        return any(param is not None for param in [self.consecutive_on_hours_min, self.consecutive_on_hours_max])
+
+    @property
+    def use_off_hours(self) -> bool:
+        """Determines wether a Variable for consecutive off hours is needed or not"""
+        return any(param is not None for param in [self.consecutive_off_hours_min, self.consecutive_off_hours_max])
+
+    @property
+    def use_switch_on(self) -> bool:
+        """Determines wether a Variable for SWITCH-ON is needed or not"""
+        return (any(param is not None for param in [self.effects_per_switch_on,
+                                                    self.switch_on_total_max,
+                                                    self.on_hours_total_min,
+                                                    self.on_hours_total_max])
+                or self.force_switch_on)
 
