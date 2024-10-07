@@ -1018,15 +1018,14 @@ class ShareAllocationModel(ElementModel):
 
 class SingleShareModel(ElementModel):
     def __init__(self, element: Element, shares_are_time_series: bool, name_of_share: str):
-        self.element = element
+        super().__init__(element)
         self.single_share: Optional[Variable] = None
         self._equation: Optional[Equation] = None
-        self._full_name_of_share: Optional[str] = None
+        self._full_name_of_share = f'{element.label_full}_{name_of_share}'
         self._shares_are_time_series = shares_are_time_series
         self._name_of_share = name_of_share
 
     def do_modeling(self, system_model: SystemModel):
-        self._full_name_of_share = f'{self.element.label_full}_{self._name_of_share}'
         self.single_share = Variable(self._full_name_of_share, 1, self.element.label_full, system_model)
         self.add_variable(self.single_share)
 
@@ -1034,19 +1033,13 @@ class SingleShareModel(ElementModel):
         self._equation.add_summand(self.single_share, -1)
         self.add_equation(self._equation)
 
-    def add_summand_to_share(self,
-                  name_of_share: Optional[str],
-                  variable: Optional[Variable],
-                  total_factor: Numeric):
+    def add_summand_to_share(self, variable: Optional[Variable], factor: Numeric):
         """share to a sum"""
-        if name_of_share is not None:
-            return
-
         if variable is None:  # if constant share:
-            constant_value = sum(total_factor) if self._shares_are_time_series else total_factor
+            constant_value = np.sum(factor) if self._shares_are_time_series else factor
             self._equation.add_constant(-1 * constant_value)
         else:  # if variable share - always as a skalar -> as_sum=True if shares are timeseries
-            self._equation.add_summand(variable, total_factor, as_sum=self._shares_are_time_series)
+            self._equation.add_summand(variable, factor, as_sum=self._shares_are_time_series)
 
 
 class SegmentedSharesModel(ElementModel):
@@ -1076,9 +1069,7 @@ class SegmentedSharesModel(ElementModel):
         self._segments_model = MultipleSegmentsModel(self.element, self._outside_segments, segments)
         self._segments_model.do_modeling(system_model)
 
-        self._create_shares(system_model)
-
-    def _create_shares(self, system_model: SystemModel):
+        # Shares
         effect_collection = system_model.flow_system.effect_collection
         for effect, single_share_model in self._shares.items():
             effect_collection.add_share_to_invest(
