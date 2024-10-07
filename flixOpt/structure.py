@@ -672,7 +672,7 @@ class InvestmentModel(ElementModel):
                 effect_collection.add_constant_share_to_invest('divest_effects', self.element,
                                                                divest_effects, 1)
                 # 2. part of share [- isInvested * divest_effects]:
-                effect_collection.add_share_to_invest('divestCosts_cancellation', self.element,
+                effect_collection.add_share_to_invest('divest_cancellation_effects', self.element,
                                                       self.is_invested, divest_effects, -1)
                 # TODO : these 2 parts should be one share!
 
@@ -682,7 +682,6 @@ class InvestmentModel(ElementModel):
             # share: + investment_size (=var)   * specific_effects
             effect_collection.add_share_to_invest('specific_effects', self.element,
                                                   self.size, specific_effects, 1)
-
 
     def _create_bounds_for_variable_size(self, system_model: SystemModel):
         if self.element.invest_parameters.fixed_size:
@@ -755,7 +754,6 @@ class InvestmentModel(ElementModel):
             # eq: defining_variable(t) >= investment_size * relative_minimum(t)
             self.eqs['min_via_investmentSize'].add_summand(self.element.defining_variable, -1)
             self.eqs['min_via_investmentSize'].add_summand(self.size, self.element.relative_minimum.active_data)
-
 
 
 class OnModel(ElementModel):
