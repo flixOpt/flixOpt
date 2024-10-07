@@ -5,11 +5,13 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 import logging
-from typing import Union, Optional, Dict, List
+from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
 import numpy as np
 
-from flixOpt.core import Numeric
+from flixOpt.core import Numeric, Skalar
+if TYPE_CHECKING:
+    from flixOpt.structure import Effect
 
 logger = logging.getLogger('flixOpt')
 
@@ -68,7 +70,7 @@ class InvestParameters:
                  optional: bool = True,  # Investition ist weglassbar
                  fix_effects: Optional[Union[Dict, int, float]] = None,
                  specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
-                 effects_in_segments: Optional[Union[Dict, List]] = None,
+                 effects_in_segments: Optional[Tuple[List[Tuple[Skalar, Skalar]], Dict[Effect, List[Tuple[Skalar, Skalar]]]]] = None,
                  divest_effects: Optional[Union[Dict, int, float]] = None):
         """
         Parameters
