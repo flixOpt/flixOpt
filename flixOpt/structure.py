@@ -614,7 +614,7 @@ class InvestmentModel(ElementModel):
         self.is_invested: Optional[Variable] = None
 
         self._with_on_variable = with_on_variable
-        #TODO: Add Submodel for Segmented Costs
+        self._segments: Optional[SegmentedSharesModel] = None
 
     def create_variables(self, system_model: SystemModel):
         if self.element.invest_parameters.fixed_size:
@@ -630,6 +630,13 @@ class InvestmentModel(ElementModel):
             self.is_invested = Variable('isInvested', 1, self.element.label_full, system_model,
                                         is_binary=True)
         self.add_variable(self.is_invested)
+
+        invest_segments = self.element.invest_parameters.effects_in_segments
+        if invest_segments:
+            self._segments = SegmentedSharesModel(self.element,
+                                                  (self.size, invest_segments[0]),
+                                                  invest_segments[1], None)
+            self._segments.create_variables(system_model)
 
     def create_equations(self, system_model: SystemModel):
         if self.element.invest_parameters.optional:
@@ -675,11 +682,6 @@ class InvestmentModel(ElementModel):
             # share: + investment_size (=var)   * specific_effects
             effect_collection.add_share_to_invest('specific_effects', self.element,
                                                   self.size, specific_effects, 1)
-
-        # # segmentedCosts:
-        if self.element.featureLinearSegments is not None:
-            for effect, var_investSegs in self.element.investVar_effect_dict.items():
-                effect_collection.add_share_to_invest('linearSegments', self.element, var_investSegs, {effect: 1}, 1)
 
 
     def _create_bounds_for_variable_size(self, system_model: SystemModel):
@@ -1048,3 +1050,46 @@ class SingleShareModel(ElementModel):
             self._equation.add_constant(-1 * constant_value)
         else:  # if variable share - always as a skalar -> as_sum=True if shares are timeseries
             self._equation.add_summand(variable, total_factor, as_sum=self._shares_are_time_series)
+
+
+class SegmentedSharesModel(ElementModel):
+    def __init__(self,
+                 element: Element,
+                 variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
+                 share_segments: Dict[Effect, List[Tuple[Skalar, Skalar]]],
+                 outside_segments: Optional[Variable]):
+        super().__init__(element)
+        assert len(variable_segments[1]) == len(list(share_segments.values())[0]), \
+            f'Segment length of variable_segments and share_segments must be equal'
+        self.element: Element
+        self._outside_segments = outside_segments
+        self._variable_segments = variable_segments
+        self._share_segments = share_segments
+        self._shares: Optional[Dict[Effect, SingleShareModel]] = None
+        self._segments_model: Optional[MultipleSegmentsModel] = None
+
+    def create_variables(self, system_model: SystemModel):
+        self._shares = {effect: SingleShareModel(self.element, False, f'segmented')
+                        for effect in self._share_segments}
+        for single_share in self._shares.values():
+            single_share.create_variables(system_model)
+
+        segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
+            self._shares[effect].single_share: segment for effect, segment in self._share_segments.values()}
+        self._segments_model = MultipleSegmentsModel(self.element, self._outside_segments, segments)
+        self._segments_model.create_variables(system_model)
+
+    def create_equations(self, system_model: SystemModel):
+        for model in self._shares.values():
+            model.create_equations(system_model)
+
+    def create_shares(self, system_model: SystemModel):
+        effect_collection = system_model.flow_system.effect_collection
+        for effect, single_share_model in self._shares.items():
+            effect_collection.add_share_to_invest(
+                name_of_share='segmented_effects',
+                owner=self.element, variable=single_share_model.single_share,
+                effect_values={effect: 1},
+                factor=1
+            )
+
