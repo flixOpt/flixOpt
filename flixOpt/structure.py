@@ -521,9 +521,9 @@ class EffectModel(ElementModel):
     def __init__(self, element: Effect):
         super().__init__(element)
         self.element = element
-        self._invest = SharesModel(element.invest)
-        self._operation = SharesModel(element.operation)
-        self._all = SharesModel(element.all)
+        self._invest = ShareAllocationModel(element.invest)
+        self._operation = ShareAllocationModel(element.operation)
+        self._all = ShareAllocationModel(element.all)
         self.sub_models.extend([self._invest, self._operation, self._all])
 
     def create_variables(self, system_model: SystemModel):
@@ -544,13 +544,13 @@ class EffectCollectionModel(ElementModel):
         self.element = element
         self._system_model = system_model
         self._effect_models: Dict[Effect, EffectModel] = {}
-        self._penalty: Optional[SharesModel] = None
+        self._penalty: Optional[ShareAllocationModel] = None
 
     def create_variables(self, system_model: SystemModel):
         self._effect_models = {effect: effect.model for effect in self.element.effects}
         for model in self._effect_models.values():
             model.create_variables(system_model)
-        self._penalty = SharesModel(self.element.penalty)
+        self._penalty = ShareAllocationModel(self.element.penalty)
         self._penalty.create_variables(system_model)
 
     def create_equations(self, system_model: SystemModel):
@@ -818,7 +818,7 @@ class OnModel(ElementModel):
 
 
 class SegmentModel(ElementModel):
-    """Class for modeling a linear segments of one or more variables in parallel"""
+    """Class for modeling a linear segment of one or more variables in parallel"""
     def __init__(self, element: Feature, segment_index: Union[int, str],
                  sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]):
         super().__init__(element)
@@ -915,14 +915,14 @@ class MultipleSegmentsModel(ElementModel):
         return len(next(iter(self._sample_points.values())))
 
 
-class SharesModel(ElementModel):
+class ShareAllocationModel(ElementModel):
     def __init__(self, element: Feature_ShareSum):
         super().__init__(element)
         self.element = element
         self.sum_TS: Optional[VariableTS] = None
         self.sum: Optional[Variable] = None
 
-        self._shares: List[SharesModel] = []
+        self._shares: List[ShareAllocationModel] = []
 
         self._eq_bilanz: Optional[Equation] = None
         self._eq_sum: Optional[Equation] = None
