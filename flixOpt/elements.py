@@ -237,7 +237,7 @@ class EffectCollection(Element):
                             name_of_share: str,
                             owner: Element,
                             variable: Variable,
-                            effect_values: Dict[Optional[Effect], TimeSeries],
+                            effect_values: Dict[Optional[Effect], Skalar],
                             factor: Numeric) -> None:
         if variable is None:
             raise Exception('add_share_to_invest() needs variable or use add_constant_share instead')
@@ -256,7 +256,7 @@ class EffectCollection(Element):
                    operation_or_invest: Literal['operation', 'invest'],
                    name_of_share: str,
                    owner: Element,
-                   effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                   effect_values: Union[Numeric, Dict[Optional[Effect], Union[Numeric, TimeSeries]]],
                    factor: Numeric,
                    variable: Optional[Variable] = None) -> None:
         effect_values_dict = as_effect_dict(effect_values)
