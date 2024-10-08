@@ -535,17 +535,17 @@ class EffectModel(ElementModel):
     def __init__(self, element: Effect):
         super().__init__(element)
         self.element = element
-        self._invest = ShareAllocationModel(element.invest)
-        self._operation = ShareAllocationModel(element.operation)
-        self._all = ShareAllocationModel(element.all)
-        self.sub_models.extend([self._invest, self._operation, self._all])
+        self.invest = ShareAllocationModel(element.invest)
+        self.operation = ShareAllocationModel(element.operation)
+        self.all = ShareAllocationModel(element.all)
+        self.sub_models.extend([self.invest, self.operation, self.all])
 
     def do_modeling(self, system_model: SystemModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self._all.add_variable_share('operation', self.element, self._operation.sum, 1, 1)
-        self._all.add_variable_share('invest', self.element, self._invest.sum, 1, 1)
+        self.all.add_variable_share('operation', self.element, self.operation.sum, 1, 1)
+        self.all.add_variable_share('invest', self.element, self.invest.sum, 1, 1)
 
 
 class EffectCollectionModel(ElementModel):
@@ -581,25 +581,30 @@ class EffectCollectionModel(ElementModel):
             assert effect in self.element.effects, f'Effect {effect.label} was used but not added to model!'
 
             if operation_or_invest == 'operation':
-                model = self._effect_models[effect]._operation
+                model = self._effect_models[effect].operation
             else:
-                model = self._effect_models[effect]._invest
-
-            model._add_share(self._system_model, name_of_share, owner, variable, value, factor)  # hier darf aVariable auch None sein!
+                model = self._effect_models[effect].invest
+            
+            if variable is not None:
+                model.add_constant_share(name_of_share, owner, value, factor)
+            elif isinstance(variable, Variable):
+                model.add_variable_share(name_of_share, owner, variable, value, factor)
+            else:
+                raise TypeError
 
     def add_share_between_effects(self):
         for origin_effect in self.element.effects:
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             name_of_share = 'specific_share_to_other_effects_operation'  # + effectType.label
             for target_effect, factor in origin_effect.specific_share_to_other_effects_operation.items():
-                target_model = self._effect_models[target_effect]._operation
-                origin_model = self._effect_models[origin_effect]._operation
+                target_model = self._effect_models[target_effect].operation
+                origin_model = self._effect_models[origin_effect].operation
                 target_model.add_variable_share(name_of_share, origin_effect, origin_model.sum_TS, factor, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             name_of_share = 'specificShareToOtherEffects_invest_'  # + effectType.label
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
-                target_model = self._effect_models[target_effect]._invest
-                origin_model = self._effect_models[origin_effect]._invest
+                target_model = self._effect_models[target_effect].invest
+                origin_model = self._effect_models[origin_effect].invest
                 target_model.add_variable_share(name_of_share, origin_effect, origin_model.sum, factor, 1)
 
 
