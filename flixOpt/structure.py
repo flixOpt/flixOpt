@@ -462,7 +462,7 @@ class FlowModel(ElementModel):
         self.flow_rate: Optional[VariableTS] = None
         self.sum_flow_hours: Optional[Variable] = None
 
-        self._on: Optional[OnModel] = None if element.featureOn else OnModel(element.featureOn)
+        self._on: Optional[OnOffModel] = None if element.featureOn else OnOffModel(element.featureOn)
         self._investment: Optional[InvestmentModel] = None if isinstance(element.size, Skalar) else InvestmentModel(element.featureInvest, element.featureOn.use_on)
         self.sub_models.extend([model for model in (self._on, self._investment) if model is not None])
 
@@ -534,10 +534,18 @@ class FlowModel(ElementModel):
 class EffectModel(ElementModel):
     def __init__(self, element: Effect):
         super().__init__(element)
-        self.element = element
-        self.invest = ShareAllocationModel(element.invest)
-        self.operation = ShareAllocationModel(element.operation)
-        self.all = ShareAllocationModel(element.all)
+        self.element: Effect
+        self.invest = ShareAllocationModel(self.element, False,
+                                           total_max=self.element.maximum_invest,
+                                           total_min=self.element.minimum_invest)
+        self.operation = ShareAllocationModel(self.element, True,
+                                              total_max=self.element.maximum_operation,
+                                              total_min=self.element.minimum_operation,
+                                              min_per_hour=self.element.minimum_operation_per_hour,
+                                              max_per_hour=self.element.maximum_operation_per_hour)
+        self.all = ShareAllocationModel(self.element, False,
+                                        total_max=self.element.maximum_total,
+                                        total_min=self.element.minimum_total)
         self.sub_models.extend([self.invest, self.operation, self.all])
 
     def do_modeling(self, system_model: SystemModel):
@@ -618,16 +626,27 @@ def _extract_sample_points(data: List[Skalar]) -> List[Tuple[Skalar, Skalar]]:
 
 class InvestmentModel(ElementModel):
     """Class for modeling an investment"""
-    def __init__(self, element: Union[Flow, Storage], invest_parameters: InvestParameters, with_on_variable: bool):
+    def __init__(self, element: Union[Flow, Storage],
+                 invest_parameters: InvestParameters,
+                 defining_variable: Optional[VariableTS],
+                 fixed_relative_value: Optional[Numeric],
+                 relative_minimum: Numeric,
+                 relative_maximum: Numeric,
+                 on_variable: Optional[VariableTS]):
         super().__init__(element)
         self.element: Union[Flow, Storage] = element
         self.size: Optional[Union[Skalar, Variable]] = None
         self.is_invested: Optional[Variable] = None
+
+        self._defining_variable = defining_variable
+        self._on_variable = on_variable
+        self._fixed_relative_value = fixed_relative_value
+        self._relative_minimum = relative_minimum
+        self._relative_maximum = relative_maximum
         
         self._segments: Optional[SegmentedSharesModel] = None
         
         self._invest_parameters = invest_parameters
-        self._with_on_variable = with_on_variable
 
     def do_modeling(self, system_model: SystemModel):
         effect_collection = system_model.flow_system.effect_collection
@@ -644,16 +663,10 @@ class InvestmentModel(ElementModel):
         if invest_parameters.optional:
             self.is_invested = Variable('isInvested', 1, self.element.label_full, system_model,
                                         is_binary=True)
-        self.add_variables(self.is_invested)
+            self.add_variables(self.is_invested)
+            self._create_bounds_for_optional_investment(system_model)
 
-        # Create Bounds
-        #TODO: Revisit the Bounds
-        if invest_parameters.optional:
-            self._create_bounds_for_variable_size(system_model)
-        if self.element.fixed_relative_value is not None:  # Wenn fixer relativer Lastgang:
-            self._create_bounds_for_fixed_defining_var(system_model)
-        else:   # Wenn nicht fix:
-            self._create_bounds_for_defining_var(system_model, on_is_used=self._with_on_variable)
+        self._create_bounds_for_defining_var(system_model)
 
         #############################################################
         # fix_effects:
@@ -692,80 +705,68 @@ class InvestmentModel(ElementModel):
             self.sub_models.append(self._segments)
             self._segments.do_modeling(system_model)
 
-    def _create_bounds_for_variable_size(self, system_model: SystemModel):
+    def _create_bounds_for_optional_investment(self, system_model: SystemModel):
         if self._invest_parameters.fixed_size:
             # eq: investment_size = isInvested * fixed_size
-            isInvested_constraint_1 = Equation('isInvested_constraint_1', self.element, system_model, 'eq')
-            self.add_equations(isInvested_constraint_1)
-            isInvested_constraint_1.add_summand(self.size, -1)
-            isInvested_constraint_1.add_summand(self.is_invested, self._invest_parameters.fixed_size)
+            eq_is_invested = Equation('is_invested', self.element, system_model, 'eq')
+            eq_is_invested.add_summand(self.size, -1)
+            eq_is_invested.add_summand(self.is_invested, self._invest_parameters.fixed_size)
+            self.add_equations(eq_is_invested)
         else:
             # eq1: P_invest <= isInvested * investSize_max
-            self.add_equations(Equation('isInvested_constraint_1', self.element, system_model, 'ineq'))
-            self.eqs['isInvested_constraint_1'].add_summand(self.size, 1)
-            self.eqs['isInvested_constraint_1'].add_summand(
-                self.variables['isInvested'], np.multiply(-1, self._invest_parameters.maximum_size)
-            )
+            eq_is_invested_ub = Equation('is_invested_ub', self.element, system_model, 'ineq')
+            eq_is_invested_ub.add_summand(self.size, 1)
+            eq_is_invested_ub.add_summand(self.is_invested, np.multiply(-1, self._invest_parameters.maximum_size))
 
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
-            self.add_equations(Equation('isInvested_constraint_2', self.element, system_model, 'ineq'))
-            self.eqs['isInvested_constraint_2'].add_summand(self.size, -1)
-            self.eqs['isInvested_constraint_2'].add_summand(
-                self.variables['isInvested'], max(system_model.epsilon, self._invest_parameters.minimum_size))
+            eq_is_invested_lb = Equation('is_invested_lb', self.element, system_model, 'ineq')
+            eq_is_invested_lb.add_summand(self.size, -1)
+            eq_is_invested_lb.add_summand(self.is_invested, np.max(system_model.epsilon, self._invest_parameters.minimum_size))
+            self.add_equations(eq_is_invested_ub, eq_is_invested_lb)
 
-    def _create_bounds_for_fixed_defining_var(self, system_model: SystemModel):
-        # eq: defining_variable(t) = var_investmentSize * fixed_relative_value
-        self.add_equations(Equation('fix_via_InvestmentSize', self, system_model, 'eq'))
-        self.eqs['fix_via_InvestmentSize'].add_summand(self.element.defining_variable, 1)
-        self.eqs['fix_via_InvestmentSize'].add_summand(
-            self.size, np.multiply(-1, self.element.fixed_relative_value.active_data)
-        )
+    def _create_bounds_for_defining_var(self, system_model: SystemModel):
+        if self._fixed_relative_value is not None:  # Wenn fixer relativer Lastgang:
+            # eq: defining_variable(t) = var_investmentSize * fixed_relative_value
+            eq = Equation('fixed_relative_value', self.element, system_model, 'eq')
+            eq.add_summand(self._defining_variable, 1)
+            eq.add_summand(self.size, np.multiply(-1, self._fixed_relative_value))
+            self.add_equations(eq)
+        else:
+            ## 1. Gleichung: Maximum durch Investmentgröße ##
+            eq_upper = Equation('ub_defining_var', self.element, system_model, 'ineq')
+            # eq: defining_variable(t)  <= size * relative_maximum(t)
+            eq_upper.add_summand(self._defining_variable, 1)
+            eq_upper.add_summand(self.size, np.multiply(-1, self._relative_maximum))
 
-    def _create_bounds_for_defining_var(self, system_model: SystemModel, on_is_used: bool):
+            ## 2. Gleichung: Minimum durch Investmentgröße ##
+            eq_lower = Equation('lb_defining_var', self, system_model, 'ineq')
+            if self._on_variable is None:
+                # eq: defining_variable(t) >= investment_size * relative_minimum(t)
+                eq_lower.add_summand(self._defining_variable, -1)
+                eq_lower.add_summand(self.size, self._relative_minimum)
 
-        ## 1. Gleichung: Maximum durch Investmentgröße ##
-        # eq: defining_variable(t) <=                var_investmentSize * relative_maximum(t)
-        # eq: P(t) <= relative_maximum(t) * P_inv
-        self.add_equations(Equation('max_via_InvestmentSize', self, system_model, 'ineq'))
-        self.eqs['max_via_InvestmentSize'].add_summand(self.element.defining_variable, 1)
-        # self.eqs['max_via_InvestmentSize'].add_summand(self.size, np.multiply(-1, self.element.relative_maximum.active_data))
-        self.eqs['max_via_InvestmentSize'].add_summand(self.size, np.multiply(-1, self.element.relative_maximum.data))
-        # TODO: BUGFIX: Here has to be active_data, but it throws an error for storages (length)
-        # TODO: Changed by FB
-
-        ## 2. Gleichung: Minimum durch Investmentgröße ##
-
-        # Glg nur, wenn nicht Kombination On und fixed:
-        if not (on_is_used and self._invest_parameters.fixed_size):
-            self.add_equations(Equation('min_via_investmentSize', self, system_model, 'ineq'))
-
-        if on_is_used:
             # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
-            if not self._invest_parameters.fixed_size:
-                # eq: defining_variable(t) >= Big * (On(t)-1) + investment_size * relative_minimum(t)
-                #     ... mit Big = max(relative_minimum*P_inv_max, epsilon)
-                # (P < relative_minimum*P_inv -> On=0 | On=1 -> P >= relative_minimum*P_inv)
+            elif not self._invest_parameters.fixed_size:
+                # eq: defining_variable(t) >= mega * (On(t)-1) + size * relative_minimum(t)
+                #     ... mit mega = relative_maximum * maximum_size
 
                 # äquivalent zu:.
-                # eq: - defining_variable(t) + Big * On(t) + relative_minimum(t) * investment_size <= Big
+                # eq: - defining_variable(t) + mega * On(t) + size * relative_minimum(t) <= + mega
 
-                Big = utils.get_max_value(
-                    self.element.relative_minimum.active_data * self._invest_parameters.maximum_size,
-                    system_model.epsilon)
-                self.eqs['min_via_investmentSize'].add_summand(self.element.defining_variable, -1)
-                self.eqs['min_via_investmentSize'].add_summand(self.element.defining_on_variable, Big)  # übergebene On-Variable
-                self.eqs['min_via_investmentSize'].add_summand(self.size, self.element.relative_minimum.active_data)
-                self.eqs['min_via_investmentSize'].add_constant(Big)
+                mega = self._relative_maximum * self._invest_parameters.maximum_size
+                eq_lower.add_summand(self._defining_variable, -1)
+                eq_lower.add_summand(self._on_variable, mega)  # übergebene On-Variable
+                eq_lower.add_summand(self.size, self._relative_minimum)
+                eq_lower.add_constant(mega)
                 # Anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu FeatureOn-Glg.
             else:
                 pass  # Bereits in FeatureOn mit P>= On(t)*Min ausreichend definiert
-        else:
-            # eq: defining_variable(t) >= investment_size * relative_minimum(t)
-            self.eqs['min_via_investmentSize'].add_summand(self.element.defining_variable, -1)
-            self.eqs['min_via_investmentSize'].add_summand(self.size, self.element.relative_minimum.active_data)
+                #TODO: CHECK THIS!!!
+
+            self.add_equations(eq_lower, eq_upper)
 
 
-class OnModel(ElementModel):
+class OnOffModel(ElementModel):
     """Class for modeling the on and off state of a variable"""
     def __init__(self, element: Element, on_off_parameters: OnOffParameters):
         super().__init__(element)
