@@ -945,7 +945,7 @@ class ShareAllocationModel(ElementModel):
         self.sum_TS: Optional[VariableTS] = None
         self.sum: Optional[Variable] = None
 
-        self._eq_bilanz: Optional[Equation] = None
+        self._eq_time_series: Optional[Equation] = None
         self._eq_sum: Optional[Equation] = None
 
         # Parameters
@@ -959,6 +959,10 @@ class ShareAllocationModel(ElementModel):
         self.sum = Variable('sum', 1, self.element.label_full, system_model,
                             lower_bound=self._total_min, upper_bound=self._total_max)
         self.add_variables(self.sum)
+        # eq: sum = sum(share_i) # skalar
+        self._eq_sum = Equation('sum', self, system_model)
+        self._eq_sum.add_summand(self.sum, -1)
+        self.add_equations(self._eq_sum)
 
         if self._shares_are_time_series:
             lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour.active_data, system_model.dt_in_hours)
@@ -967,20 +971,16 @@ class ShareAllocationModel(ElementModel):
                                      lower_bound=lb_TS, upper_bound=ub_TS)
             self.add_variables(self.sum_TS)
 
-        self._eq_sum = Equation('sum', self, system_model)
-        self.add_equations(self._eq_sum)
-        # eq: sum = sum(share_i) # skalar
-        self._eq_sum.add_summand(self.sum, -1)
-        if self._shares_are_time_series:
+            # eq: sum_TS = sum(share_TS_i) # TS
+            self._eq_time_series = Equation('time_series', self, system_model)
+            self._eq_time_series.add_summand(self.sum_TS, -1)
+            self.add_equations(self._eq_time_series)
+
             # eq: sum = sum(sum_TS(t)) # additionaly to self.sum
             self._eq_sum.add_summand(self.sum_TS, 1, as_sum=True)
 
-            # eq: sum_TS = sum(share_TS_i) # TS
-            self._eq_bilanz = Equation('bilanz', self, system_model)
-            self._eq_bilanz.add_summand(self.sum_TS, -1)
-            self.add_equations(self._eq_bilanz)
-
     def add_variable_share(self,
+                           system_model: SystemModel,
                            name_of_share: Optional[str],
                            share_holder: Element,
                            variable: Variable,
@@ -988,23 +988,24 @@ class ShareAllocationModel(ElementModel):
                            factor2: Numeric_TS):  # if variable = None, then fix Share
         if variable is None:
             raise Exception('add_variable_share() needs variable as input. Use add_constant_share() instead')
-        self._add_share(name_of_share, share_holder, variable, factor1, factor2)
+        self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
 
     def add_constant_share(self,
+                           system_model: SystemModel,
                            name_of_share: Optional[str],
                            share_holder: Element,
                            factor1: Numeric_TS,
                            factor2: Numeric_TS):
         variable = None
-        self._add_share(name_of_share, share_holder, variable, factor1, factor2)
+        self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
 
     def _add_share(self,
-                  system_model: SystemModel,
-                  name_of_share: Optional[str],
-                  share_holder: Element,
-                  variable: Optional[Variable],
-                  factor1: Numeric_TS,
-                  factor2: Numeric_TS):
+                   system_model: SystemModel,
+                   name_of_share: Optional[str],
+                   share_holder: Element,
+                   variable: Optional[Variable],
+                   factor1: Numeric_TS,
+                   factor2: Numeric_TS):
         #TODO: accept only one factor or accept unlimited factors -> *factors
 
         # Falls TimeSeries, Daten auslesen:
@@ -1022,7 +1023,7 @@ class ShareAllocationModel(ElementModel):
 
         # Check to which equation the share should be added
         if self._shares_are_time_series:
-            target_eq = self._eq_bilanz
+            target_eq = self._eq_time_series
         else:
             assert total_factor.shape[0] == 1, (f'factor1 und factor2 müssen Skalare sein, '
                                                 f'da shareSum {self.element.label} skalar ist')
