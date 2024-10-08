@@ -836,7 +836,7 @@ class OnModel(ElementModel):
 
 class SegmentModel(ElementModel):
     """Class for modeling a linear segment of one or more variables in parallel"""
-    def __init__(self, element: Feature, segment_index: Union[int, str],
+    def __init__(self, element: Element, segment_index: Union[int, str],
                  sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]):
         super().__init__(element)
         self.element = element
@@ -860,8 +860,7 @@ class SegmentModel(ElementModel):
         self.add_variables(self.lambda1)
 
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
-        name_of_equation = f'Lambda_onSeg_{self._segment_index}'
-        equation = Equation(name_of_equation, self, system_model)
+        equation = Equation(f'Lambda_onSeg_{self._segment_index}', self, system_model)
         self.add_equations(equation)
 
         equation.add_summand(self.in_segment, -1)
@@ -878,7 +877,7 @@ class SegmentModel(ElementModel):
                 sample_0 = sample_0
                 sample_1 = sample_1
 
-            lambda_eq = Equation(variable.label_full + '_lambda', self, system_model)
+            lambda_eq = Equation(f'{variable.label_full}_lambda', self, system_model)
             lambda_eq.add_summand(variable, -1)
             lambda_eq.add_summand(self.lambda0, sample_0)
             lambda_eq.add_summand(self.lambda1, sample_1)
@@ -887,8 +886,8 @@ class SegmentModel(ElementModel):
 
 class MultipleSegmentsModel(ElementModel):
     def __init__(self, element: Element,
-                 outside_segments: Optional[Variable],
-                 sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]]):
+                 sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]],
+                 outside_segments: Optional[Variable] = None):
         super().__init__(element)
         self.element = element
 
@@ -931,25 +930,39 @@ class MultipleSegmentsModel(ElementModel):
 
 
 class ShareAllocationModel(ElementModel):
-    def __init__(self, element: Feature_ShareSum):
+    def __init__(self,
+                 element: Element,
+                 shares_are_time_series: bool,
+                 total_max: Optional[Skalar] = None,
+                 total_min: Optional[Skalar] = None,
+                 max_per_hour: Optional[TimeSeries] = None,
+                 min_per_hour: Optional[TimeSeries] = None):
         super().__init__(element)
+        if not shares_are_time_series:  # If the condition is True
+            assert max_per_hour is None and min_per_hour is None, \
+                "Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False"
         self.element = element
         self.sum_TS: Optional[VariableTS] = None
         self.sum: Optional[Variable] = None
 
-        self._shares: List[ShareAllocationModel] = []
-
         self._eq_bilanz: Optional[Equation] = None
         self._eq_sum: Optional[Equation] = None
 
+        # Parameters
+        self._shares_are_time_series = shares_are_time_series
+        self._total_max = total_max
+        self._total_min = total_min
+        self._max_per_hour = max_per_hour
+        self._min_per_hour = min_per_hour
+
     def do_modeling(self, system_model: SystemModel):
         self.sum = Variable('sum', 1, self.element.label_full, system_model,
-                            lower_bound=self.element.total_min, upper_bound=self.element.total_max)
+                            lower_bound=self._total_min, upper_bound=self._total_max)
         self.add_variables(self.sum)
 
-        if self.element.shares_are_time_series:
-            lb_TS = None if (self.element.min_per_hour is None) else np.multiply(self.element.min_per_hour.active_data, system_model.dt_in_hours)
-            ub_TS = None if (self.element.max_per_hour is None) else np.multiply(self.element.max_per_hour.active_data, system_model.dt_in_hours)
+        if self._shares_are_time_series:
+            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour.active_data, system_model.dt_in_hours)
+            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour.active_data, system_model.dt_in_hours)
             self.sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self.element.label_full, system_model,
                                      lower_bound=lb_TS, upper_bound=ub_TS)
             self.add_variables(self.sum_TS)
@@ -958,7 +971,7 @@ class ShareAllocationModel(ElementModel):
         self.add_equations(self._eq_sum)
         # eq: sum = sum(share_i) # skalar
         self._eq_sum.add_summand(self.sum, -1)
-        if self.element.shares_are_time_series:
+        if self._shares_are_time_series:
             # eq: sum = sum(sum_TS(t)) # additionaly to self.sum
             self._eq_sum.add_summand(self.sum_TS, 1, as_sum=True)
 
@@ -1003,12 +1016,12 @@ class ShareAllocationModel(ElementModel):
 
         # var and eq for publishing share-values in results:
         if name_of_share is not None:  #TODO: is this check necessary?
-            new_share = SingleShareModel(self, self.element.shares_are_time_series)
+            new_share = SingleShareModel(share_holder, self._shares_are_time_series, name_of_share)
             new_share.do_modeling(system_model)
-            new_share.add_summand_to_share(name_of_share, variable, total_factor)
+            new_share.add_summand_to_share(variable, total_factor)
 
         # Check to which equation the share should be added
-        if self.element.shares_are_time_series:
+        if self._shares_are_time_series:
             target_eq = self._eq_bilanz
         else:
             assert total_factor.shape[0] == 1, (f'factor1 und factor2 müssen Skalare sein, '
