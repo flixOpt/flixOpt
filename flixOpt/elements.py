@@ -783,20 +783,15 @@ class Flow(Element):
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
                  size: Union[Skalar, InvestParameters] = _default_size,
+                 fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
                  relative_minimum: Numeric_TS = 0,
                  relative_maximum: Numeric_TS = 1,
+                 effects_per_flow_hour: Optional[EffectValues] = None,
                  can_be_off: Optional[OnOffParameters] = None,
-                 fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
                  flow_hours_total_max: Optional[Skalar] = None,
                  flow_hours_total_min: Optional[Skalar] = None,
                  load_factor_min: Optional[Skalar] = None,
-                 load_factor_max: Optional[Skalar] = None,
-                 values_before_begin: Optional[List[Skalar]] = None,
-                 medium: Optional[str] = None,
-                 exists: Numeric_TS = 1,
-                 group: Optional[str] = None,
-                 # positive_gradient=None,
-                 **kwargs):
+                 load_factor_max: Optional[Skalar] = None):
         """
         Parameters
         ----------
@@ -833,9 +828,6 @@ class Flow(Element):
         flow_hours_total_min : TYPE, optional
             minimum flow-hours ("flow-work")
             (if size is not const, maybe load_factor_min fits better for you!)
-        values_before_begin : list (TODO: why not scalar?), optional
-            Flow-value before begin (for calculation of i.g. switchOn for first time step, gradient for first time step ,...)'),
-            # TODO: integration of option for 'first is last'
         fixed_relative_value : scalar, array, TimeSeriesRaw, optional
             fixed relative values for flow (if given).
             val(t) := fixed_relative_value(t) * size(t)
@@ -843,342 +835,41 @@ class Flow(Element):
             (relative_minimum u. relative_maximum are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
             If the load-profile is just an upper limit, use relative_maximum instead.
-        medium: string, None
-            medium is relevant, if the linked bus only allows a special defined set of media.
-            If None, any bus can be used.
-        invest_parameters : None or InvestParameters, optional
-            used for investment costs or/and investment-optimization!
-        exists : int, array, None
-            indicates when a flow is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-            relative_maximum is multiplied with this value before the solve
-        group: str, None
-            group name to assign flows to groups. Used for later analysis of the results
         """
-
-        super().__init__(label, **kwargs)
-        # args to attributes:
-        self.bus = bus
+        super().__init__(label)
         self.size = size
-        self.relative_minimum = TimeSeries('relative_minimum', relative_minimum, self)
-        self.relative_maximum = TimeSeries('relative_maximum', relative_maximum, self)
+        self.relative_minimum = relative_minimum
+        self.relative_maximum = relative_maximum
+        self.fixed_relative_value = fixed_relative_value
 
         self.load_factor_min = load_factor_min
         self.load_factor_max = load_factor_max
         # self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
-        self.effects_per_flow_hour = as_effect_dict_with_ts('effects_per_flow_hour', effects_per_flow_hour, self)
-        self.can_switch_off = can_switch_off
-        self.on_hours_total_min = on_hours_total_min
-        self.on_hours_total_max = on_hours_total_max
-        self.consecutive_on_hours_min = None if (consecutive_on_hours_min is None) else TimeSeries('consecutive_on_hours_min', consecutive_on_hours_min, self)
-        self.consecutive_on_hours_max = None if (consecutive_on_hours_max is None) else TimeSeries('consecutive_on_hours_max', consecutive_on_hours_max, self)
-        self.consecutive_off_hours_min = None if (consecutive_off_hours_min is None) else TimeSeries('consecutive_off_hours_min', consecutive_off_hours_min, self)
-        self.consecutive_off_hours_max = None if (consecutive_off_hours_max is None) else TimeSeries('consecutive_off_hours_max', consecutive_off_hours_max, self)
-        self.effects_per_switch_on = as_effect_dict_with_ts('effects_per_switch_on', effects_per_switch_on, self)
-        self.switch_on_total_max = switch_on_total_max
-        self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', effects_per_running_hour, self)
+        self.effects_per_flow_hour = effects_per_flow_hour
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
+        self.on_off_parameters = can_be_off
 
-        self.exists = TimeSeries('exists', utils.check_exists(exists), self)
-        self.group = group  # TODO: wird überschrieben von Component!
-        self.values_before_begin = np.array(values_before_begin) if values_before_begin else np.array(
-            [0, 0])  # list -> np-array
+        self.bus = bus
+        self.comp: Optional[Component] = None
 
-        self.comp = None  # zugehörige Komponente (wird später von Komponente gefüllt)
+        self._plausibility_test()
 
-        self.fixed_relative_value = None
-        if fixed_relative_value is not None:
-            # Wenn noch size noch Default, aber investment_size nicht optimiert werden soll:
-            size_is_default = self.size == Flow._default_size
-            if size_is_default and self.size_is_fixed:
-                raise Exception(
-                    'Achtung: Wenn fixed_relative_value genutzt wird, muss zugehöriges size definiert werden, da: value = fixed_relative_value * size!')
-            self.fixed_relative_value = TimeSeries('fixed_relative_value', fixed_relative_value, self)
+    def transform_to_time_series(self):
+        self.relative_minimum = _create_time_series(f'{self.label_full}_relative_minimum', self.relative_minimum, self)
+        self.relative_maximum = _create_time_series(f'{self.label_full}_relative_maximum', self.relative_maximum, self)
+        self.fixed_relative_value = _create_time_series(f'{self.label_full}_fixed_relative_value', self.fixed_relative_value, self)
+        self.effects_per_flow_hour = _effect_values_to_ts(f'{self.label_full}_effects_per_flow_hour', self.effects_per_flow_hour, self)
+        # TODO: self.on_off_parameters ??
 
-        self.medium = medium
-        if (self.medium is not None) and (not isinstance(self.medium, str)):
-            raise Exception('medium must be a string or None')
-
-        # Liste. Ich selbst bin der definierende Flow! (Bei Komponente sind es hingegen alle in/out-flows)
-        flows_defining_on = [self]
-        # TODO: besser wäre model.epsilon, aber hier noch nicht bekannt!)
-        on_values_before_begin = 1 * (self.values_before_begin >= 0.0001)
-        # TODO: Wenn can_switch_off = False und min > 0, dann könnte man var_on fest auf 1 setzen um Rechenzeit zu sparen
-
-        # TODO: Why not in sub_elements?
-        from flixOpt.features import FeatureOn, FeatureInvest
-        self.featureOn = FeatureOn(self, flows_defining_on,
-                                   on_values_before_begin,
-                                   self.effects_per_switch_on,
-                                   self.effects_per_running_hour,
-                                   on_hours_total_min=self.on_hours_total_min,
-                                   on_hours_total_max=self.on_hours_total_max,
-                                   consecutive_on_hours_min=self.consecutive_on_hours_min,
-                                   consecutive_on_hours_max=self.consecutive_on_hours_max,
-                                   consecutive_off_hours_min=self.consecutive_off_hours_min,
-                                   consecutive_off_hours_max=self.consecutive_off_hours_max,
-                                   switch_on_total_max=self.switch_on_total_max,
-                                   force_on=self.on_variable_is_forced)
-
-        self.featureInvest: Optional[FeatureInvest] = None  # Is defined in finalize()
-
-    # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
-    def plausibility_test(self) -> None:
+    def _plausibility_test(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
-        if np.any(self.relative_minimum.data > self.relative_maximum.data):
+        if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
 
-    # bei Bedarf kann von außen Existenz von Binärvariable erzwungen werden:
-    def force_on_variable(self) -> None:
-        self.featureOn.force_on = True
-
-    def finalize(self) -> None:
-        self.plausibility_test()  # hier Input-Daten auf Plausibilität testen (erst hier, weil bei __init__ self.comp noch nicht bekannt)
-
-        # exist-merge aus Flow.exist und Comp.exist
-        exists_global = np.multiply(self.exists.data, self.comp.exists.data)  # array of 0 and 1
-        self.exists_with_comp = TimeSeries('exists_with_comp', utils.check_exists(exists_global), self)
-        # combine relative_maximum with and exist from the flow and the comp it belongs to
-        self.relative_maxiumum_with_exists = TimeSeries('relative_maxiumum_with_exists',
-                                              np.multiply(self.relative_maximum.data, self.exists_with_comp.data), self)
-        self.relative_minimum_with_exists = TimeSeries('relative_minimum_with_exists',
-                                              np.multiply(self.relative_minimum.data, self.exists_with_comp.data), self)
-
-        # prepare invest Feature:
-        if isinstance(self.size, InvestParameters):
-            from flixOpt.features import FeatureInvest
-            self.featureInvest = FeatureInvest('size', self, self.size,
-                                               relative_minimum=self.relative_minimum_with_exists,
-                                               relative_maximum=self.relative_maxiumum_with_exists,
-                                               fixed_relative_value=self.fixed_relative_value,
-                                               featureOn=self.featureOn)
-
-        super().finalize()
-
-    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        logger.debug('declare_vars_and_eqs ' + self.label)
-        super().declare_vars_and_eqs(system_model)
-
-        self.featureOn.declare_vars_and_eqs(system_model)  # TODO: rekursiv aufrufen für sub_elements
-
-        self.system_model = system_model
-
-        def bounds_of_defining_variable() -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
-            """
-            Returns the lower and upper bound and the fixed value of the defining variable.
-            Returns: (lower_bound, upper_bound, fixed_value)
-            """
-            # Wenn fixer Lastgang:
-            if self.fixed_relative_value is not None:
-                # min = max = val !
-                lower_bound = None
-                upper_bound = None
-                fix_value = self.fixed_relative_value.active_data * self.size
-            else:
-                lower_bound = 0 if self.featureOn.use_on else self.relative_minimum_with_exists.active_data * self.size
-                upper_bound = self.relative_maxiumum_with_exists.active_data * self.size
-                fix_value = None
-            return lower_bound, upper_bound, fix_value
-
-        # wenn keine Investrechnung:
-        if self.featureInvest is None:
-            (lower_bound, upper_bound, fix_value) = bounds_of_defining_variable()
-        else:
-            (lower_bound, upper_bound, fix_value) = self.featureInvest.bounds_of_defining_variable()
-
-        # TODO --> wird trotzdem modelliert auch wenn value = konst -> Sinnvoll?
-        self.model.add_variables(VariableTS('val', system_model.nrOfTimeSteps, self.label_full, system_model,
-                                            lower_bound=lower_bound, upper_bound=upper_bound, value=fix_value))
-        self.model.add_variables(Variable('sumFlowHours', 1, self.label_full, system_model,
-                                          lower_bound=self.flow_hours_total_min, upper_bound=self.flow_hours_total_max))
-        # ! Die folgenden Variablen müssen erst von featureOn erstellt worden sein:
-        self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
-        self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
-
-        # erst hier, da defining_variable vorher nicht belegt!
-        if self.featureInvest is not None:
-            self.featureInvest.set_defining_variables(self.model.variables['val'], self.model.variables.get('on'))
-            self.featureInvest.declare_vars_and_eqs(system_model)
-
-    def do_modeling(self, system_model: SystemModel) -> None:
-        # super().do_modeling(model,time_indices)
-
-        # for aFeature in self.features:
-        #   aFeature.do_modeling(model,time_indices)
-
-        #
-        # ############## Variablen aktivieren: ##############
-        #
-
-        # todo -> für pyomo: fix()
-
-        #
-        # ############## on_hours_total_max: ##############
-        #
-
-        # ineq: sum(var_on(t)) <= on_hours_total_max
-
-        if self.on_hours_total_max is not None:
-            eq_on_hours_total_max = Equation('on_hours_total_max', self, system_model, 'ineq')
-            self.model.add_equations(eq_on_hours_total_max)
-            eq_on_hours_total_max.add_summand(self.model.var_on, 1, as_sum=True)
-            eq_on_hours_total_max.add_constant(self.on_hours_total_max / system_model.dt_in_hours)
-
-        #
-        # ############## on_hours_total_max: ##############
-        #
-
-        # ineq: sum(var_on(t)) >= on_hours_total_min
-
-        if self.on_hours_total_min is not None:
-            eq_on_hours_total_min = Equation('on_hours_total_min', self, system_model, 'ineq')
-            self.model.add_equations(eq_on_hours_total_min)
-            eq_on_hours_total_min.add_summand(self.model.var_on, -1, as_sum=True)
-            eq_on_hours_total_min.add_constant(-1 * self.on_hours_total_min / system_model.dt_in_hours)
-
-        #
-        # ############## sumFlowHours: ##############
-        #
-
-        # eq: var_sumFlowHours - sum(var_val(t)* dt(t) = 0
-
-        eq_sumFlowHours = Equation('sumFlowHours', self, system_model, 'eq')  # general mean
-        self.model.add_equations(eq_sumFlowHours)
-        eq_sumFlowHours.add_summand(self.model.variables["val"], system_model.dt_in_hours, as_sum=True)
-        eq_sumFlowHours.add_summand(self.model.variables['sumFlowHours'], -1)
-
-        #
-        # ############## Constraints für Binärvariablen : ##############
-        #
-
-        self.featureOn.do_modeling(system_model)  # TODO: rekursiv aufrufen für sub_elements
-
-        #
-        # ############## Glg. für Investition : ##############
-        #
-
-        if self.featureInvest is not None:
-            self.featureInvest.do_modeling(system_model)
-
-        ## ############## full load fraction bzw. load factor ##############
-
-        ## max load factor:
-        #  eq: var_sumFlowHours <= size * dt_tot * load_factor_max
-
-        if self.load_factor_max is not None:
-            flowHoursPerInvestsize_max = system_model.dt_in_hours_total * self.load_factor_max  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Max = Equation('load_factor_max', self, system_model, 'ineq')  # general mean
-            self.model.add_equations(eq_flowHoursPerInvestsize_Max)
-            eq_flowHoursPerInvestsize_Max.add_summand(self.model.variables["sumFlowHours"], 1)
-            if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Max.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
-                                                          -1 * flowHoursPerInvestsize_max)
-            else:
-                eq_flowHoursPerInvestsize_Max.add_constant(self.size * flowHoursPerInvestsize_max)
-
-                ## min load factor:
-        #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
-
-        if self.load_factor_min is not None:
-            flowHoursPerInvestsize_min = system_model.dt_in_hours_total * self.load_factor_min  # = fullLoadHours if investsize in [kW]
-            eq_flowHoursPerInvestsize_Min = Equation('load_factor_min', self, system_model, 'ineq')
-            self.model.add_equations(eq_flowHoursPerInvestsize_Min)
-            eq_flowHoursPerInvestsize_Min.add_summand(self.model.variables["sumFlowHours"], -1)
-            if self.featureInvest is not None:
-                eq_flowHoursPerInvestsize_Min.add_summand(self.featureInvest.model.variables[self.featureInvest.name_of_investment_size],
-                                                          flowHoursPerInvestsize_min)
-            else:
-                eq_flowHoursPerInvestsize_Min.add_constant(-1 * self.size * flowHoursPerInvestsize_min)
-
-        # ############## positiver Gradient #########
-
-        '''        
-        if self.positive_gradient == None :                    
-          if model.modeling_language == 'pyomo':
-            def positive_gradient_rule(t):
-              if t == 0:
-                return (self.model.var_val[t] - self.val_initial) / model.dt_in_hours[t] <= self.positive_gradient[t] #             
-              else: 
-                return (self.model.var_val[t] - self.model.var_val[t-1])    / model.dt_in_hours[t] <= self.positive_gradient[t] #
-
-            # Erster Zeitschritt beachten:          
-            if (self.val_initial == None) & (start == 0):
-              self.positive_gradient_constr =  Constraint([start+1:end]        ,rule = positive_gradient_rule)          
-            else:
-              self.positive_gradient_constr =  Constraint(model.timestepsOfRun,rule = positive_gradient_rule)   # timestepsOfRun = [start:end]
-              # raise error();
-            system_model._pyomo_register(self.positive_gradient_constr, self.label + '_positive_gradient_constr')
-          elif model.modeling_language == 'cvxpy':
-            raise Exception('not defined for modtype ' + model.modeling_language)
-          else:
-            raise Exception('not defined for modtype ' + model.modeling_language)'''
-
-        # ############# Beiträge zu globalen constraints ############
-
-        # z.B. max_PEF, max_CO2, ...
-
-    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
-
-        # Arbeitskosten:
-        if self.effects_per_flow_hour is not None:
-            owner = self
-            effect_collection.add_share_to_operation(
-                'effects_per_flow_hour', owner, self.model.variables['val'],
-                self.effects_per_flow_hour, system_model.dt_in_hours)
-
-        # Anfahrkosten, Betriebskosten, ... etc ergänzen:
-        self.featureOn.add_share_to_globals(effect_collection, system_model)
-
-        if self.featureInvest is not None:
-            self.featureInvest.add_share_to_globals(effect_collection, system_model)
-
-        """
-        in oemof gibt es noch 
-            if m.flows[i, o].positive_gradient['ub'][0] is not None:
-                for t in m.TIMESTEPS:
-                    gradient_costs += (self.positive_gradient[i, o, t] *
-                                       m.flows[i, o].positive_gradient[
-                                           'costs'])
-
-            if m.flows[i, o].negative_gradient['ub'][0] is not None:
-                for t in m.TIMESTEPS:
-                    gradient_costs += (self.negative_gradient[i, o, t] *
-                                       m.flows[i, o].negative_gradient[
-                                           'costs'])
-        """
-
-    def description(self, type: str = 'full') -> Dict:
-        aDescr = {}
-        if type == 'for bus-list':
-            # aDescr = str(self.comp.label) + '.'
-            aDescr['comp'] = self.comp.label
-            aDescr = {str(self.label): aDescr}  # label in front of
-        elif type == 'for comp-list':
-            # aDescr += ' @Bus ' + str(self.bus.label)
-            aDescr['bus'] = self.bus.label
-            aDescr = {str(self.label): aDescr}  # label in front of
-        elif type == 'full':
-            aDescr['label'] = self.label
-            aDescr['comp'] = self.comp.label
-            aDescr['bus'] = self.bus.label
-            aDescr['is_input_in_comp'] = self.is_input_in_comp
-            if hasattr(self, 'group'):
-                if self.group is not None:
-                    aDescr["group"] = self.group
-
-            if hasattr(self, 'color'):
-                if self.color is not None:
-                    aDescr['color'] = str(self.color)
-
-        else:
-            raise Exception('type = \'' + str(type) + '\' is not defined')
-
-        return aDescr
-
-    # Preset medium (only if not setted explicitly by user)
-    def set_medium_if_not_set(self, medium) -> None:
-        if self.medium is None:  # nicht überschreiben, nur wenn leer:
-            self.medium = medium
+        if self.size == Flow._default_size and self.size_is_fixed:  #Default Size --> Most likely by accident
+            raise Exception('Achtung: Wenn fixed_relative_value genutzt wird, muss zugehöriges size definiert werden, '
+                            'da: value = fixed_relative_value * size!')
 
     def __str__(self):
         details = [
@@ -1186,10 +877,9 @@ class Flow(Element):
             f"size={self.size.__str__() if isinstance(self.size, InvestParameters) else self.size}",
             f"relative_minimum={self.relative_minimum}",
             f"relative_maximum={self.relative_maximum}",
-            f"medium={self.medium}",
             f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
             f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
-            f"effects_per_running_hour={self.effects_per_running_hour}" if self.effects_per_running_hour else "",
+            f"on_off_parameters={self.on_off_parameters.__str__()}" if self.on_off_parameters else "",
         ]
 
         all_relevant_parts = [part for part in details if part != ""]
@@ -1206,7 +896,6 @@ class Flow(Element):
 
     @property  # Richtung
     def is_input_in_comp(self) -> bool:
-        comp: Component
         return True if self in self.comp.inputs else False
 
     @property
@@ -1218,8 +907,3 @@ class Flow(Element):
     def invest_is_optional(self) -> bool:
         # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
         return False if (isinstance(self.size, InvestParameters) and not self.size.optional) else True
-
-    @property
-    def on_variable_is_forced(self) -> bool:
-        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        return self.can_switch_off & np.any(self.relative_minimum.data > 0)
