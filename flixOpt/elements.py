@@ -13,7 +13,7 @@ import numpy as np
 
 from flixOpt import utils
 from flixOpt.math_modeling import Variable, VariableTS, Equation
-from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
+from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.structure import Element, SystemModel
 
@@ -168,8 +168,67 @@ class Effect(Element):
         return f"<{self.__class__.__name__}> {full_str}"
 
 
+EffectDict = Dict[Optional[Effect], Numeric_TS]
+EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Input
+EffectTimeSeries = Dict[Optional[Effect], TimeSeries]  # Final Internal Data Structure
 
-EffectTypeDict = Dict[Effect, Numeric_TS]  # Datatype
+
+def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
+    """
+    Converts effect values into a dictionary. If a scalar value is provided, it is associated with a standard effect type.
+
+    Examples
+    --------
+    If costs are given without specifying the effect, the standard effect is used (see class Effect):
+      costs = 20                        -> {None: 20}
+      costs = None                      -> no change
+      costs = {effect1: 20, effect2: 0.3} -> no change
+
+    Parameters
+    ----------
+    effect_values : None, int, float, TimeSeries, or dict
+        The effect values to convert can be a scalar, a TimeSeries, or a dictionary with an effectas key
+
+    Returns
+    -------
+    dict or None
+        Converted values in from of dict with either None or Effect as key. if values is None, None is returned
+    """
+    if isinstance(effect_values, dict):
+        return effect_values
+    elif effect_values is None:
+        return None
+    else:
+        return {None: effect_values}
+
+
+def _effect_values_to_ts(label: str, effect_dict: EffectDict, element: Element) -> Optional[EffectTimeSeries]:
+    """
+    Transforms values in a dictionary to instances of TimeSeries.
+
+    Parameters
+    ----------
+    label : str
+        The name of the parameter. (the effect_label gets added)
+    effect_dict : dict
+        A dictionary with effect-value pairs.
+    element : object
+        The owner object where TimeSeries belongs to.
+
+    Returns
+    -------
+    dict
+        A dictionary with Effects (or None {= standard effect}) as keys and TimeSeries instances as values. On
+    """
+    if effect_dict is None:
+        return None
+
+    transformed_dict = {}
+    for effect, values in effect_dict.items():
+        if not isinstance(values, TimeSeries):
+            subname = 'standard' if effect is None else effect.label
+            transformed_dict[effect] = _create_time_series(f"{label}_{subname}", values, element)
+    return transformed_dict
 
 
 class EffectCollection(Element):
