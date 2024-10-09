@@ -736,7 +736,7 @@ class Flow(Element):
                  group: Optional[str] = None,
                  # positive_gradient=None,
                  **kwargs):
-        '''
+        """
         Parameters
         ----------
         label : str
@@ -762,32 +762,10 @@ class Flow(Element):
            not implemented yet
         effects_per_flow_hour : scalar, array, TimeSeriesRaw, optional
             operational costs, costs per flow-"work"
-        can_switch_off : boolean, optional
+        can_be_off : OnOffParameters, optional
             flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
-            Then a binary var "on" is used.
-            If any on/off-forcing parameters like "effects_per_switch_on", "consecutive_on_hours_min" etc. are used, then
-            this is automatically forced.
-        on_hours_total_min : scalar, optional
-            min. overall sum of operating hours.
-        on_hours_total_max : scalar, optional
-            max. overall sum of operating hours.
-        consecutive_on_hours_min : scalar, optional
-            min sum of operating hours in one piece
-            (last on-time period of timeseries is not checked and can be shorter)
-        consecutive_on_hours_max : scalar, optional
-            max sum of operating hours in one piece
-        consecutive_off_hours_min : scalar, optional
-            min sum of non-operating hours in one piece
-            (last off-time period of timeseries is not checked and can be shorter)
-        consecutive_off_hours_max : scalar, optional
-            max sum of non-operating hours in one piece
-        effects_per_switch_on : scalar, array, TimeSeriesRaw, optional
-            cost of one switch from off (var_on=0) to on (var_on=1),
-            unit i.g. in Euro
-        switch_on_total_max : integer, optional
-            max nr of switchOn operations
-        effects_per_running_hour : scalar or TS, optional
-            costs for operating, i.g. in € per hour
+            Then a binary var "on" is used.. Further, several other restrictions and effects can be modeled
+            through this On and Off State (See OnOffParameters)
         flow_hours_total_max : TYPE, optional
             maximum flow-hours ("flow-work")
             (if size is not const, maybe load_factor_max fits better for you!)
@@ -814,7 +792,7 @@ class Flow(Element):
             relative_maximum is multiplied with this value before the solve
         group: str, None
             group name to assign flows to groups. Used for later analysis of the results
-        '''
+        """
 
         super().__init__(label, **kwargs)
         # args to attributes:

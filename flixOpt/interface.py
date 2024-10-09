@@ -157,6 +157,29 @@ class OnOffParameters:
                  switch_on_total_max: Optional[int] = None,
                  force_on: bool = False,
                  force_switch_on: bool = False):
+        """
+        on_hours_total_min : scalar, optional
+            min. overall sum of operating hours.
+        on_hours_total_max : scalar, optional
+            max. overall sum of operating hours.
+        consecutive_on_hours_min : scalar, optional
+            min sum of operating hours in one piece
+            (last on-time period of timeseries is not checked and can be shorter)
+        consecutive_on_hours_max : scalar, optional
+            max sum of operating hours in one piece
+        consecutive_off_hours_min : scalar, optional
+            min sum of non-operating hours in one piece
+            (last off-time period of timeseries is not checked and can be shorter)
+        consecutive_off_hours_max : scalar, optional
+            max sum of non-operating hours in one piece
+        effects_per_switch_on : scalar, array, TimeSeriesRaw, optional
+            cost of one switch from off (var_on=0) to on (var_on=1),
+            unit i.g. in Euro
+        switch_on_total_max : integer, optional
+            max nr of switchOn operations
+        effects_per_running_hour : scalar or TS, optional
+            costs for operating, i.g. in € per hour
+        """
         #self.flows_defining_on = flows_defining_on
         self.on_values_before_begin = on_values_before_begin
         self.effects_per_switch_on = effects_per_switch_on
