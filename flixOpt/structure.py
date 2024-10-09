@@ -597,7 +597,7 @@ class EffectCollectionModel(ElementModel):
             else:
                 raise ValueError(f'Target {target} not supported!')
             
-            if variable is not None:
+            if variable is None:
                 model.add_constant_share(name_of_share, owner, value, factor)
             elif isinstance(variable, Variable):
                 model.add_variable_share(name_of_share, owner, variable, value, factor)
