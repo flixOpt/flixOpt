@@ -168,12 +168,6 @@ class Effect(Element):
         return f"<{self.__class__.__name__}> {full_str}"
 
 
-# ModelingElement (Element) Klasse zum Summieren einzelner Shares
-# geht für skalar und TS
-# z.B. invest.costs
-
-
-# Liste mit zusätzlicher Methode für Rückgabe Standard-Element:
 
 EffectTypeDict = Dict[Effect, Numeric_TS]  # Datatype
 
