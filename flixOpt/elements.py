@@ -616,149 +616,49 @@ class Component(Element):
         return descr
 
 
-class Bus(Component):  # sollte das wirklich geerbt werden oder eher nur Element???
-    '''
+class Bus(Element):
+    """
     realizing balance of all linked flows
     (penalty flow is excess can be activated)
-    '''
-
-    # --> excess_effects_per_flow_hour
-    #        none/ 0 -> kein Exzess berücksichtigt
-    #        > 0 berücksichtigt
-
-    new_init_args = ['media', 'label', 'excess_effects_per_flow_hour']
-    not_used_args = ['label']
+    """
 
     def __init__(self,
-                 media: Optional[str],
                  label: str,
-                 excess_effects_per_flow_hour: Optional[Numeric_TS] = 1e5,
-                 **kwargs):
+                 excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5):
         """
         Parameters
         ----------
-        media : None, str or set of str
-            media or set of allowed media of the coupled flows,
-            if None, then any flow is allowed
-            example 1: media = None -> every media is allowed
-            example 1: media = 'gas' -> flows with medium 'gas' are allowed
-            example 2: media = {'gas','biogas','H2'} -> flows of these media are allowed
         label : str
             name.
-        excess_effects_per_flow_hour : none or scalar, array or TimeSeriesRaw
+        excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesRaw
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
-        exists : not implemented yet for Bus!
-        **kwargs : TYPE
-            DESCRIPTION.
         """
+        super().__init__(label)
+        self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
+        self.inputs: List[Flow] = []
+        self.outputs: List[Flow] = []
 
-        super().__init__(label, **kwargs)
-        if media is None:
-            self.media = media  # alle erlaubt
-        elif isinstance(media, str):
-            self.media = {media}  # convert to set
-        elif isinstance(media, set):
-            self.media = media
-        else:
-            raise Exception('no valid input for argument media!')
+    def transform_to_time_series(self):
+        self.excess_penalty_per_flow_hour = _create_time_series(f'{self.label_full}_relative_minimum',
+                                                                self.excess_penalty_per_flow_hour, self)
 
-        self.excess_effects_per_flow_hour = None
-        if (excess_effects_per_flow_hour is not None) and (excess_effects_per_flow_hour > 0):
-            self.excess_effects_per_flow_hour = TimeSeries('excess_effects_per_flow_hour', excess_effects_per_flow_hour,
-                                                           self)
+    def add_input(self, flow) -> None:
+        flow: Flow
+        self.inputs.append(flow)
+
+    def add_output(self, flow) -> None:
+        flow: Flow
+        self.outputs.append(flow)
+
+    def _plausibility_test(self) -> None:
+        if self.excess_penalty_per_flow_hour == 0:
+            logger.warning(f'In Bus {self.label}, the excess_penalty_per_flow_hour is 0. Use "None" or a value > 0.')
 
     @property
     def with_excess(self) -> bool:
-        return False if self.excess_effects_per_flow_hour is None else True
-
-    def register_input_flow(self, flow) -> None:
-        flow: Flow
-        self.inputs.append(flow)
-        self.check_medium(flow)
-
-    def register_output_flow(self, flow) -> None:
-        flow: Flow
-        self.outputs.append(flow)
-        self.check_medium(flow)
-
-    def check_medium(self, flow) -> None:
-        flow: Flow
-        if self.media is not None and flow.medium is not None and flow.medium not in self.media:
-            raise Exception(
-                f"In Bus {self.label}: register_flows_in_bus(): Medium '{flow.medium}' of {flow.label_full} "
-                f"and media {self.media} of bus {self.label_full} have no common medium! "
-                f"Check if the flow is connected correctly OR append flow-medium to the allowed bus-media in bus-definition! "
-                f"OR generally deactivate media-check by setting media in bus-definition to None."
-            )
-
-    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        super().declare_vars_and_eqs(system_model)
-        # Fehlerplus/-minus:
-        if self.with_excess:
-            # Fehlerplus und -minus definieren
-            self.model.add_variables(VariableTS('excess_input', len(system_model.time_series), self.label_full, system_model,
-                                                lower_bound=0))
-            self.model.add_variables(VariableTS('excess_output', len(system_model.time_series), self.label_full, system_model,
-                                                lower_bound=0))
-
-    def do_modeling(self, system_model: SystemModel) -> None:
-        super().do_modeling(system_model)
-
-        # inputs = outputs
-        bus_balance = Equation('busBalance', self, system_model)
-        self.model.add_equations(bus_balance)
-        for aFlow in self.inputs:
-            bus_balance.add_summand(aFlow.model.variables['val'], 1)
-        for aFlow in self.outputs:
-            bus_balance.add_summand(aFlow.model.variables['val'], -1)
-
-        if self.with_excess:  # Fehlerplus/-minus hinzufügen zur Bilanz:
-            bus_balance.add_summand(self.model.variables['excess_output'], -1)
-            bus_balance.add_summand(self.model.variables['excess_input'], 1)
-
-    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
-        super().add_share_to_globals(effect_collection, system_model)
-        if self.with_excess:  # Strafkosten hinzufügen:
-            effect_collection.penalty.add_variable_share('excess_effects_per_flow_hour_in', self, self.model.variables['excess_input'],
-                                                   self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-            effect_collection.penalty.add_variable_share('excess_effects_per_flow_hour_out', self, self.model.variables['excess_output'],
-                                                   self.excess_effects_per_flow_hour, system_model.dt_in_hours)
-
-
-# Medien definieren:
-class MediumCollection:
-    '''
-    attributes are defined possible media for flow (not tested!) TODO!
-    you can use them, i.g. MediumCollection.heat or you can explicitly work with strings (i.g. 'heat')
-    '''
-    # predefined medium: (just the string is used for comparison)
-    heat = 'heat'  # set(['heat'])
-    el = 'el'  # set(['el'])
-    fuel = 'fuel'  # gas | lignite | biomass
-
-    # neues Medium hinzufügen:
-    def addMedium(attrName, strOfMedium):
-        '''
-        add new medium to predefined media
-
-        Parameters
-        ----------
-        attrName : str
-        strOfMedium : str
-        '''
-        MediumCollection.setattr(attrName, strOfMedium)
-
-    # checkifFits(medium1,medium2,...)
-    def checkIfFits(*args):
-        aCommonMedium = utils.InfiniteFullSet()
-        for aMedium in args:
-            if aMedium is not None: aCommonMedium = aCommonMedium & aMedium
-        if aCommonMedium:
-            return True
-        else:
-            return False
+        return False if self.excess_penalty_per_flow_hour is None else True
 
 
 class Connection:
