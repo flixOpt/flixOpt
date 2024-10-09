@@ -14,7 +14,7 @@ import numpy as np
 from flixOpt import utils
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar, as_effect_dict, as_effect_dict_with_ts
-from flixOpt.interface import InvestParameters
+from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.structure import Element, SystemModel
 
 logger = logging.getLogger('flixOpt')
@@ -724,23 +724,13 @@ class Flow(Element):
                  size: Union[Skalar, InvestParameters] = _default_size,
                  relative_minimum: Numeric_TS = 0,
                  relative_maximum: Numeric_TS = 1,
+                 can_be_off: Optional[OnOffParameters] = None,
                  fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
                  flow_hours_total_max: Optional[Skalar] = None,
                  flow_hours_total_min: Optional[Skalar] = None,
                  load_factor_min: Optional[Skalar] = None,
                  load_factor_max: Optional[Skalar] = None,
                  values_before_begin: Optional[List[Skalar]] = None,
-                 effects_per_flow_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
-                 effects_per_running_hour: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
-                 can_switch_off: bool = True,
-                 on_hours_total_min: Optional[Skalar] = None,
-                 on_hours_total_max: Optional[Skalar] = None,
-                 consecutive_on_hours_min: Optional[Skalar] = None,
-                 consecutive_on_hours_max: Optional[Skalar] = None,
-                 consecutive_off_hours_min: Optional[Skalar] = None,
-                 consecutive_off_hours_max: Optional[Skalar] = None,
-                 effects_per_switch_on: Optional[Union[Numeric_TS, EffectTypeDict]] = None,
-                 switch_on_total_max: Optional[Skalar] = None,
                  medium: Optional[str] = None,
                  exists: Numeric_TS = 1,
                  group: Optional[str] = None,
