@@ -19,6 +19,14 @@ from flixOpt.structure import Element, SystemModel
 
 logger = logging.getLogger('flixOpt')
 
+EffectDict = Dict[Optional['Effect'], Numeric_TS]
+EffectDictInvest = Dict[Optional['Effect'], Skalar]
+
+EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Input
+EffectValuesInvest = Optional[Union[Skalar, EffectDictInvest]]  # Datatype for User Input
+
+EffectTimeSeries = Dict[Optional['Effect'], TimeSeries]  # Final Internal Data Structure
+
 
 def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:
     """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
@@ -166,11 +174,6 @@ class Effect(Element):
         full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
 
         return f"<{self.__class__.__name__}> {full_str}"
-
-
-EffectDict = Dict[Optional[Effect], Numeric_TS]
-EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Input
-EffectTimeSeries = Dict[Optional[Effect], TimeSeries]  # Final Internal Data Structure
 
 
 def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
