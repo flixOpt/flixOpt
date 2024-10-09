@@ -19,6 +19,14 @@ from flixOpt.structure import Element, SystemModel
 
 logger = logging.getLogger('flixOpt')
 
+
+def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:
+    """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
+    time_series = TimeSeries(label=label, data=data)
+    element.TS_list.append(time_series)
+    return time_series
+
+
 class Effect(Element):
     '''
     Effect, i.g. costs, CO2 emissions, area, ...

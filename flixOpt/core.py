@@ -36,8 +36,6 @@ class TimeSeries:
     ----------
     label : str
         The label for the time series.
-    owner : object
-        The owner object which holds the time series list.
     TSraw : Optional[TimeSeriesRaw]
         The raw time series data if provided as cTSraw.
     data : Optional[Numeric]
@@ -50,9 +48,8 @@ class TimeSeries:
         Weight for aggregation method, between 0 and 1, normally 1.
     '''
 
-    def __init__(self, label: str, data: Optional[Numeric_TS], owner):
+    def __init__(self, label: str, data: Optional[Numeric_TS]):
         self.label: str = label
-        self.owner: object = owner
         self.active_time_indices = None  # aktuelle time_indices der model
         self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
         self.TSraw = None
@@ -63,12 +60,11 @@ class TimeSeries:
         else:
             self.data: Optional[Numeric] = self.make_scalar_if_possible(data)
 
-        owner.TS_list.append(self)  # Register TimeSeries in owner
         self._aggregation_weight = None
         self._aggregation_group = None
 
     def __repr__(self):
-        return (f"TimeSeries(label={self.label}, owner={self.owner.label_full}, "
+        return (f"TimeSeries(label={self.label}, "
                 f"aggregation_weight={self.aggregation_weight}, "
                 f"data={self.data}, active_time_indices={self.active_time_indices}, "
                 f"explicit_active_data={self.explicit_active_data}")
@@ -127,10 +123,6 @@ class TimeSeries:
     @property
     def is_array(self) -> bool:
         return not self.is_scalar and self.data is not None
-
-    @property
-    def label_full(self) -> str:
-        return self.owner.label_full + '__' + self.label
 
     @property
     def aggregation_weight(self) -> Optional[float]:
