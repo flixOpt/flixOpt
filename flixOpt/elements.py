@@ -398,7 +398,6 @@ class Objective(Element):
         self.objective.add_summand(effect_collection.penalty.model.variables['sum'], 1)
 
 
-# Beliebige Komponente (:= Element mit Ein- und Ausgängen)
 class Component(Element):
     """
     basic component class for all components
@@ -511,8 +510,6 @@ class Connection:
         raise NotImplementedError()
 
 
-# todo: könnte Flow nicht auch von Basecomponent erben. Hat zumindest auch Variablen und Eqs
-# Fluss/Strippe
 class Flow(Element):
     '''
     flows are inputs and outputs of components
