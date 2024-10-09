@@ -403,75 +403,15 @@ class Component(Element):
     """
     basic component class for all components
     """
-    system_model: SystemModel
-    new_init_args = ['label', 'on_values_before_begin', 'effects_per_switch_on', 'switch_on_total_max',
-                     'on_hours_total_min',
-                     'on_hours_total_max', 'effects_per_running_hour', 'exists']
-    not_used_args = ['label']
-
     def __init__(self,
                  label: str,
-                 on_values_before_begin: Optional[List[Skalar]] = None,
-                 effects_per_running_hour: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
-                 effects_per_switch_on: Optional[Union[EffectTypeDict, Numeric_TS]] = None,
-                 switch_on_total_max: Optional[Skalar] = None,
-                 on_hours_total_min: Optional[Skalar] = None,
-                 on_hours_total_max: Optional[Skalar] = None,
-                 exists: Numeric = 1,
-                 **kwargs):
-        '''
+                 on_off_parameters: OnOffParameters):
+        """ Old Docstring"""
+        super().__init__(label)
+        self.on_off_parameters = on_off_parameters
 
-
-        Parameters
-        ----------
-        label : str
-            name.
-
-        Parameters of on/off-feature
-        ----------------------------
-        (component is off, if all flows are zero!)
-
-        on_values_before_begin :  array (TODO: why not scalar?)
-            Ein(1)/Aus(0)-Wert vor Zeitreihe
-        effects_per_switch_on : look in Flow for description
-        switch_on_total_max : look in Flow for description
-        on_hours_total_min : look in Flow for description
-        on_hours_total_max : look in Flow for description
-        effects_per_running_hour : look in Flow for description
-        exists : array, int, None
-            indicates when a component is present. Used for timing of Investments. Only contains blocks of 0 and 1.
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
-        '''
-        if on_hours_total_min is not None:
-            raise NotImplementedError(
-                "'on_hours_total_min' is not implemented yet for Components. Use Flow directly instead")
-        if on_hours_total_max is not None:
-            raise NotImplementedError(
-                "'on_hours_total_max' is not implemented yet for Components. Use Flow directly instead")
-        label = utils.check_name_for_conformity(label)  # todo: indexierbar / eindeutig machen!
-        super().__init__(label, **kwargs)
-        self.on_values_before_begin = on_values_before_begin if on_values_before_begin else [0, 0]
-        self.effects_per_switch_on = as_effect_dict_with_ts('effects_per_switch_on', effects_per_switch_on, self)
-        self.switch_on_max = switch_on_total_max
-        self.on_hours_total_min = on_hours_total_min
-        self.on_hours_total_max = on_hours_total_max
-        self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', effects_per_running_hour, self)
-        self.exists = TimeSeries('exists', utils.check_exists(exists), self)
-
-        ## TODO: theoretisch müsste man auch zusätzlich checken, ob ein flow Werte beforeBegin hat!
-        # % On Werte vorher durch Flow-values bestimmen:
-        # self.on_valuesBefore = 1 * (self.featureOwner.values_before_begin >= np.maximum(model.epsilon,self.flowMin)) für alle Flows!
-
-        # TODO: Dict instead of list?
-        self.inputs = []  # list of flows
-        self.outputs = []  # list of flows
-        self.is_storage = False  # TODO: Use isinstance instead?
+        self.inputs: List[Flow] = []
+        self.outputs: List[Flow] = []
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -507,113 +447,14 @@ class Component(Element):
         return str_desc
 
     def register_component_in_flows(self) -> None:
-        for aFlow in self.inputs + self.outputs:
-            aFlow.comp = self
+        for flow in self.inputs + self.outputs:
+            flow.comp = self
 
-    def register_flows_in_bus(self) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
-        #
-        # ############## register in Bus: ##############
-        #
-        # input ist output von Bus:
-        for aFlow in self.inputs:
-            aFlow.bus.register_output_flow(aFlow)  # ist das schön programmiert?
-        # output ist input von Bus:
-        for aFlow in self.outputs:
-            aFlow.bus.register_input_flow(aFlow)
-
-    def declare_vars_and_eqs_of_flows(self,
-                                      system_model: SystemModel) -> None:  # todo: macht aber bei Kindklasse Bus keinen Sinn!
-        # Flows modellieren:
-        for aFlow in self.inputs + self.outputs:
-            aFlow.declare_vars_and_eqs(system_model)
-
-    def do_modeling_of_flows(self, system_model: SystemModel) -> None:
-        # todo: macht aber bei Kindklasse Bus keinen Sinn!
-        # Flows modellieren:
-        for aFlow in self.inputs + self.outputs:
-            aFlow.do_modeling(system_model)
-
-    def get_results(self) -> Tuple[Dict, Dict]:
-        # Variablen der Komponente:
-        (results, results_var) = super().get_results()
-
-        # Variablen der In-/Out-Puts ergänzen:
-        for aFlow in self.inputs + self.outputs:
-            # z.B. results['Q_th'] = {'val':..., 'on': ..., ...}
-            if isinstance(self, Bus):
-                flow_label = aFlow.label_full  # Kessel_Q_th
-            else:
-                flow_label = aFlow.label  # Q_th
-            (results[flow_label], results_var[flow_label]) = aFlow.get_results()
-        return results, results_var
-
-    def finalize(self) -> None:
-        super().finalize()
-        from flixOpt.features import FeatureOn
-
-        # feature for: On and SwitchOn Vars
-        # (kann erst hier gebaut werden wg. weil input/output Flows erst hier vorhanden)
-        flows_defining_on = self.inputs + self.outputs  # Sobald ein input oder  output > 0 ist, dann soll On =1 sein!
-        self.featureOn = FeatureOn(self, flows_defining_on, self.on_values_before_begin, self.effects_per_switch_on,
-                                   self.effects_per_running_hour, on_hours_total_min=self.on_hours_total_min,
-                                   on_hours_total_max=self.on_hours_total_max, switch_on_total_max=self.switch_on_max)
-
-    def declare_vars_and_eqs(self, system_model) -> None:
-        super().declare_vars_and_eqs(system_model)
-
-        self.featureOn.declare_vars_and_eqs(system_model)
-
-        # Binärvariablen holen (wenn vorh., sonst None):
-        #   (hier und nicht erst bei do_modeling, da linearSegments die Variable zum Modellieren benötigt!)
-        self.model.var_on = self.featureOn.getVar_on()  # mit None belegt, falls nicht notwendig
-        self.model.var_switchOn, self.model.var_switchOff = self.featureOn.getVars_switchOnOff()  # mit None belegt, falls nicht notwendig
-
-    def do_modeling(self, system_model) -> None:
-        logger.debug(str(self.label) + 'do_modeling()')
-        self.featureOn.do_modeling(system_model)
-
-    def add_share_to_globals_of_flows(self, effect_collection: EffectCollection, system_model: SystemModel) -> None:
-        for aFlow in self.inputs + self.outputs:
-            aFlow.add_share_to_globals(effect_collection, system_model)
-
-    # wird von Kindklassen überschrieben:
-    def add_share_to_globals(self,
-                             effect_collection: EffectCollection,
-                             system_model: SystemModel) -> None:
-        # Anfahrkosten, Betriebskosten, ... etc ergänzen:
-        self.featureOn.add_share_to_globals(effect_collection, system_model)
-
-    def description(self) -> Dict:
-
-        descr = {}
-        inhalt = {'In-Flows': [], 'Out-Flows': []}
-        aFlow: Flow
-
-        descr[self.label] = inhalt
-
-        if isinstance(self, Bus):
-            descrType = 'for bus-list'
-        else:
-            descrType = 'for comp-list'
-
-        for aFlow in self.inputs:
-            inhalt['In-Flows'].append(aFlow.description(type=descrType))  # '  -> Flow: '))
-        for aFlow in self.outputs:
-            inhalt['Out-Flows'].append(aFlow.description(type=descrType))  # '  <- Flow: '))
-
-        if self.is_storage:
-            inhalt['is_storage'] = self.is_storage
-        inhalt['class'] = type(self).__name__
-
-        if hasattr(self, 'group'):
-            if self.group is not None:
-                inhalt['group'] = self.group
-
-        if hasattr(self, 'color'):
-            if self.color is not None:
-                inhalt['color'] = str(self.color)
-
-        return descr
+    def register_flows_in_bus(self) -> None:
+        for flow in self.inputs:
+            flow.bus.add_output(flow)
+        for flow in self.outputs:
+            flow.bus.add_input(flow)
 
 
 class Bus(Element):
