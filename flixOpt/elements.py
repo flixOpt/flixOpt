@@ -680,7 +680,8 @@ class Flow(Element):
     # static var:
     _default_size = 1e9  # Großer Gültigkeitsbereich als Standard
 
-    def __init__(self, label,
+    def __init__(self,
+                 label: str,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
                  size: Union[Skalar, InvestParameters] = _default_size,
                  fixed_relative_value: Optional[Numeric_TS] = None,  # TODO: Rename?
@@ -714,8 +715,6 @@ class Flow(Element):
              def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
         load_factor_max : scalar, optional
             maximal load factor (see minimal load factor)
-        positive_gradient : TYPE, optional
-           not implemented yet
         effects_per_flow_hour : scalar, array, TimeSeriesRaw, optional
             operational costs, costs per flow-"work"
         can_be_off : OnOffParameters, optional
