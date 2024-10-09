@@ -531,6 +531,41 @@ class FlowModel(ElementModel):
                 eq_load_factor_min.add_constant(-1 * self.element.size * flow_hours_per_size_min)
 
 
+class BusModel(ElementModel):
+    def __init__(self, element: Bus):
+        super().__init__(element)
+        self.element: Bus
+        self.excess_input: Optional[VariableTS] = None
+        self.excess_output: Optional[VariableTS] = None
+
+    def do_modeling(self, system_model: SystemModel) -> None:
+        self.element: Bus
+        # inputs = outputs
+        eq_bus_balance = Equation('busBalance', self.element, system_model)
+        self.add_equations(eq_bus_balance)
+        for flow in self.element.inputs:
+            eq_bus_balance.add_summand(flow.model.flow_rate, 1)
+        for flow in self.element.outputs:
+            eq_bus_balance.add_summand(flow.model.flow_rate, -1)
+
+        # Fehlerplus/-minus:
+        if self.element.with_excess:
+            excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_effects_per_flow_hour)
+            self.excess_input = VariableTS('excess_input', system_model.nrOfTimeSteps, self.element.label_full,
+                                           system_model, lower_bound=0)
+            self.excess_output = VariableTS('excess_output', system_model.nrOfTimeSteps,
+                                            self.element.label_full, system_model, lower_bound=0)
+            self.add_variables(self.excess_input, self.excess_output)
+
+            eq_bus_balance.add_summand(self.excess_output, -1)
+            eq_bus_balance.add_summand(self.excess_input, 1)
+
+            effect_collection_model: EffectCollectionModel = system_model.flow_system.effect_collection.model
+
+            effect_collection_model.add_share_to_penalty('penalty', self.element, self.excess_input, excess_penalty)
+            effect_collection_model.add_share_to_penalty('penalty', self.element, self.excess_output, excess_penalty)
+
+
 class EffectModel(ElementModel):
     def __init__(self, element: Effect):
         super().__init__(element)
