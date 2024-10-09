@@ -563,23 +563,21 @@ class EffectCollectionModel(ElementModel):
         self.element = element
         self._system_model = system_model
         self._effect_models: Dict[Effect, EffectModel] = {}
-        self._penalty: Optional[ShareAllocationModel] = None
+        self.penalty: Optional[ShareAllocationModel] = None
 
     def do_modeling(self, system_model: SystemModel):
         self._effect_models = {effect: EffectModel(effect) for effect in self.element.effects}
-        self._penalty = ShareAllocationModel(self.element.penalty, True)
-        self.sub_models.extend(list(self._effect_models.values()) + [self._penalty])
+        self.penalty = ShareAllocationModel(self.element.penalty, True)
+        self.sub_models.extend(list(self._effect_models.values()) + [self.penalty])
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-    def add_share(self,
-                  target: Literal['operation', 'invest', 'penalty'],
-                  name_of_share: str,
-                  owner: Element,
-                  effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
-                  factor: Numeric,
-                  variable: Optional[Variable] = None) -> None:
-        assert target in ('operation', 'invest', 'penalty'), f'{target} not supported'
+    def add_share_to_effects(self,
+                             name: str,
+                             target: Literal['operation', 'invest'],
+                             effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                             factor: Numeric,
+                             variable: Optional[Variable] = None) -> None:
         effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effects, die einen Wert haben, anhängen:
@@ -592,17 +590,29 @@ class EffectCollectionModel(ElementModel):
                 model = self._effect_models[effect].operation
             elif target == 'invest':
                 model = self._effect_models[effect].invest
-            elif target == 'penalty':
-                model = self._penalty
             else:
                 raise ValueError(f'Target {target} not supported!')
             
             if variable is None:
-                model.add_constant_share(name_of_share, owner, value, factor)
+                model.add_constant_share(self._system_model, name, effect, value, factor)
             elif isinstance(variable, Variable):
-                model.add_variable_share(name_of_share, owner, variable, value, factor)
+                model.add_variable_share(self._system_model, name, effect, variable, value, factor)
             else:
                 raise TypeError
+
+    def add_share_to_penalty(self,
+                             name: str,
+                             share_holder: Element,
+                             variable: Optional[Variable],
+                             factor: Numeric,
+                             ) -> None:
+        assert variable is not None
+        if variable is None:
+            self.penalty.add_constant_share(self._system_model, name, share_holder, factor, 1)
+        elif isinstance(variable, Variable):
+            self.penalty.add_variable_share(self._system_model, name, share_holder, variable, factor, 1)
+        else:
+            raise TypeError
 
     def add_share_between_effects(self):
         for origin_effect in self.element.effects:
@@ -611,13 +621,13 @@ class EffectCollectionModel(ElementModel):
             for target_effect, factor in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
-                target_model.add_variable_share(name_of_share, origin_effect, origin_model.sum_TS, factor, 1)
+                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS, factor, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             name_of_share = 'specificShareToOtherEffects_invest_'  # + effectType.label
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
-                target_model.add_variable_share(name_of_share, origin_effect, origin_model.sum, factor, 1)
+                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum, factor, 1)
 
 
 def _extract_sample_points(data: List[Skalar]) -> List[Tuple[Skalar, Skalar]]:
