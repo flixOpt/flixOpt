@@ -233,13 +233,12 @@ def _effect_values_to_ts(label: str, effect_dict: EffectDict, element: Element) 
 
 class EffectCollection(Element):
     """
-    Handling Effects and penalties
+    Handling all Effects
     """
 
-    def __init__(self, label: str, **kwargs):
-        super().__init__(label, **kwargs)
-        self.effects = []
-        self.penalty = None
+    def __init__(self, label: str):
+        super().__init__(label)
+        self.effects: List[Effect] = []
 
     def add_effect(self, effect: Effect) -> None:
         if effect.is_standard and self.standard_effect is not None:
@@ -251,7 +250,6 @@ class EffectCollection(Element):
         if effect.label in [existing_effect.label for existing_effect in self.effects]:
             raise Exception(f'Effect with label "{effect.label=}" already added!')
         self.effects.append(effect)
-        self.sub_elements.append(effect)
 
     @property
     def standard_effect(self) -> Optional[Effect]:
@@ -264,115 +262,6 @@ class EffectCollection(Element):
         for effect in self.effects:
             if effect.is_objective:
                 return effect
-
-    def finalize(self) -> None:
-        for effect in self.effects:
-            effect.finalize()
-        from flixOpt.features import Feature_ShareSum
-        self.penalty = Feature_ShareSum('penalty', self, shares_are_time_series=True)
-
-    # Beiträge registrieren:
-    # effectValues kann sein
-    #   1. {effecttype1 : TS, effectType2: : TS} oder
-    #   2. TS oder skalar
-    #     -> Zuweisung zu Standard-EffektType
-
-    def add_share_to_operation(self,
-                               name_of_share: str,
-                               owner: Element,
-                               variable: Variable,
-                               effect_values: Dict[Optional[Effect], TimeSeries],
-                               factor: Numeric) -> None:
-        if variable is None: raise Exception(
-            'add_share_to_operation() needs variable or use add_constant_share instead')
-        self._add_share('operation', name_of_share, owner, effect_values, factor, variable)
-
-    def add_constant_share_to_operation(self,
-                                        name_of_share: str,
-                                        owner: Element,
-                                        effect_values: Dict[Optional[Effect], TimeSeries],
-                                        factor: Numeric) -> None:
-        self._add_share('operation', name_of_share, owner, effect_values, factor)
-
-    def add_share_to_invest(self,
-                            name_of_share: str,
-                            owner: Element,
-                            variable: Variable,
-                            effect_values: Dict[Optional[Effect], Skalar],
-                            factor: Numeric) -> None:
-        if variable is None:
-            raise Exception('add_share_to_invest() needs variable or use add_constant_share instead')
-        self._add_share('invest', name_of_share, owner, effect_values, factor, variable)
-
-    def add_constant_share_to_invest(self,
-                                     name_of_share: str,
-                                     owner: Element,
-                                     effect_values: Dict[Optional[Effect], TimeSeries],
-                                     factor: Numeric) -> None:
-        self._add_share('invest', name_of_share, owner, effect_values, factor)
-
-        # wenn aVariable = None, dann constanter Share
-
-    def _add_share(self,
-                   operation_or_invest: Literal['operation', 'invest'],
-                   name_of_share: str,
-                   owner: Element,
-                   effect_values: Union[Numeric, Dict[Optional[Effect], Union[Numeric, TimeSeries]]],
-                   factor: Numeric,
-                   variable: Optional[Variable] = None) -> None:
-        effect_values_dict = as_effect_dict(effect_values)
-
-        # an alle Effekttypen, die einen Wert haben, anhängen:
-        for effect, value in effect_values_dict.items():
-            # Falls None, dann Standard-effekt nutzen:
-            if effect is None:
-                effect = self.standard_effect
-            elif effect not in self.effects:
-                raise Exception('Effect \'' + effect.label + '\' was used but not added to model!')
-
-            if operation_or_invest == 'operation':
-                effect.operation.add_share(name_of_share, owner, variable, value,
-                                           factor)  # hier darf aVariable auch None sein!
-            elif operation_or_invest == 'invest':
-                effect.invest.add_share(name_of_share, owner, variable, value,
-                                        factor)  # hier darf aVariable auch None sein!
-            else:
-                raise Exception('operationOrInvest=' + str(operation_or_invest) + ' ist kein zulässiger Wert')
-
-    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        self.penalty.declare_vars_and_eqs(system_model)
-        # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
-        for effect in self.effects:
-            effect.declare_vars_and_eqs(system_model)
-
-    def do_modeling(self, system_model: SystemModel) -> None:
-        self.penalty.do_modeling(system_model)
-        for effect in self.effects:
-            effect.do_modeling(system_model)
-
-        ## Beiträge von Effekt zu anderen Effekten, Beispiel 180 €/t_CO2: ##
-        for effectType in self.effects:
-            # Beitrag/Share ergänzen:
-            # 1. operation: -> hier sind es Zeitreihen (share_TS)
-            # alle specificSharesToOtherEffects durchgehen:
-            nameOfShare = 'specific_share_to_other_effects_operation'  # + effectType.label
-            for effectTypeOfShare, specShare_TS in effectType.specific_share_to_other_effects_operation.items():
-                # Share anhängen (an jeweiligen Effekt):
-                shareSum_op = effectTypeOfShare.operation
-                shareSum_op: flixOpt.flixFeatures.Feature_ShareSum
-                shareHolder = effectType
-                shareSum_op.add_variable_share(nameOfShare, shareHolder, effectType.operation.model.variables['sum_TS'],
-                                               specShare_TS, 1)
-            # 2. invest:    -> hier ist es Skalar (share)
-            # alle specificSharesToOtherEffects durchgehen:
-            nameOfShare = 'specificShareToOtherEffects_invest_'  # + effectType.label
-            for effectTypeOfShare, specShare in effectType.specific_share_to_other_effects_invest.items():
-                # Share anhängen (an jeweiligen Effekt):
-                shareSum_inv = effectTypeOfShare.invest
-                from flixOpt.features import Feature_ShareSum
-                shareSum_inv: Feature_ShareSum
-                shareHolder = effectType
-                shareSum_inv.add_variable_share(nameOfShare, shareHolder, effectType.invest.model.var_sum, specShare, 1)
 
 
 class Objective(Element):
