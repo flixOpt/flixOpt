@@ -719,32 +719,6 @@ class Flow(Element):
     # static var:
     _default_size = 1e9  # Großer Gültigkeitsbereich als Standard
 
-    @property
-    def label_full(self) -> str:
-        # Wenn im Erstellungsprozess comp noch nicht bekannt:
-        comp_label = 'unknownComp' if self.comp is None else self.comp.label
-        return f'{comp_label}__{self.label}'  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
-
-    @property  # Richtung
-    def is_input_in_comp(self) -> bool:
-        comp: Component
-        return True if self in self.comp.inputs else False
-
-    @property
-    def size_is_fixed(self) -> bool:
-        # Wenn kein InvestParameters existiert --> True; Wenn Investparameter, den Wert davon nehmen
-        return False if (isinstance(self.size, InvestParameters) and self.size.fixed_size is None) else True
-
-    @property
-    def invest_is_optional(self) -> bool:
-        # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
-        return False if (isinstance(self.size, InvestParameters) and not self.size.optional) else True
-
-    @property
-    def on_variable_is_forced(self) -> bool:
-        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
-        return self.can_switch_off & np.any(self.relative_minimum.data > 0)
-
     def __init__(self, label,
                  bus: Bus = None,  # TODO: Is this for sure Optional?
                  size: Union[Skalar, InvestParameters] = _default_size,
@@ -918,24 +892,6 @@ class Flow(Element):
                                    force_on=self.on_variable_is_forced)
 
         self.featureInvest: Optional[FeatureInvest] = None  # Is defined in finalize()
-
-    def __str__(self):
-        details = [
-            f"bus={self.bus.label if self.bus else 'None'}",
-            f"size={self.size.__str__() if isinstance(self.size, InvestParameters) else self.size}",
-            f"relative_minimum={self.relative_minimum}",
-            f"relative_maximum={self.relative_maximum}",
-            f"medium={self.medium}",
-            f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
-            f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
-            f"effects_per_running_hour={self.effects_per_running_hour}" if self.effects_per_running_hour else "",
-        ]
-
-        all_relevant_parts = [part for part in details if part != ""]
-
-        full_str = f"{', '.join(all_relevant_parts)}"
-
-        return f"<{self.__class__.__name__}> {self.label}: {full_str}"
 
     # Plausitest der Eingangsparameter (sollte erst aufgerufen werden, wenn self.comp bekannt ist)
     def plausibility_test(self) -> None:
@@ -1194,3 +1150,47 @@ class Flow(Element):
     def set_medium_if_not_set(self, medium) -> None:
         if self.medium is None:  # nicht überschreiben, nur wenn leer:
             self.medium = medium
+
+    def __str__(self):
+        details = [
+            f"bus={self.bus.label if self.bus else 'None'}",
+            f"size={self.size.__str__() if isinstance(self.size, InvestParameters) else self.size}",
+            f"relative_minimum={self.relative_minimum}",
+            f"relative_maximum={self.relative_maximum}",
+            f"medium={self.medium}",
+            f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
+            f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
+            f"effects_per_running_hour={self.effects_per_running_hour}" if self.effects_per_running_hour else "",
+        ]
+
+        all_relevant_parts = [part for part in details if part != ""]
+
+        full_str = f"{', '.join(all_relevant_parts)}"
+
+        return f"<{self.__class__.__name__}> {self.label}: {full_str}"
+
+    @property
+    def label_full(self) -> str:
+        # Wenn im Erstellungsprozess comp noch nicht bekannt:
+        comp_label = 'unknownComp' if self.comp is None else self.comp.label
+        return f'{comp_label}__{self.label}'  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
+
+    @property  # Richtung
+    def is_input_in_comp(self) -> bool:
+        comp: Component
+        return True if self in self.comp.inputs else False
+
+    @property
+    def size_is_fixed(self) -> bool:
+        # Wenn kein InvestParameters existiert --> True; Wenn Investparameter, den Wert davon nehmen
+        return False if (isinstance(self.size, InvestParameters) and self.size.fixed_size is None) else True
+
+    @property
+    def invest_is_optional(self) -> bool:
+        # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
+        return False if (isinstance(self.size, InvestParameters) and not self.size.optional) else True
+
+    @property
+    def on_variable_is_forced(self) -> bool:
+        # Wenn Min-Wert > 0 wird binäre On-Variable benötigt (nur bei flow!):
+        return self.can_switch_off & np.any(self.relative_minimum.data > 0)
