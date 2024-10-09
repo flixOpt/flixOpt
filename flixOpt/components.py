@@ -8,28 +8,32 @@ developed by Felix Panitz* and Peter Stange*
 import numpy as np
 import textwrap
 import logging
-from typing import Union, Optional, Literal
+from typing import Union, Optional, Literal, List, Dict, Tuple
 
 from flixOpt import utils
-from flixOpt.elements import Flow, Component, MediumCollection, EffectCollection, Objective
-from flixOpt.core import Skalar, Numeric, Numeric_TS, TimeSeries, effect_values_to_ts
+from flixOpt.elements import Flow, Component, EffectCollection, _create_time_series
+from flixOpt.core import Skalar, Numeric_TS, TimeSeries
 from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.structure import SystemModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
-from flixOpt.interface import InvestParameters, TimeSeriesRaw
+from flixOpt.interface import InvestParameters, TimeSeriesRaw, OnOffParameters
 
 logger = logging.getLogger('flixOpt')
 
+
 class LinearConverter(Component):
     """
-    Klasse LinearConverter: Grundgerüst lineare Übertragungskomponente
+    Converts one FLow into another via linear conversion factors
     """
-    new_init_args = ['label', 'inputs', 'outputs', 'conversion_factors', 'segmented_conversion_factors']
-    not_used_args = ['label']
 
-    def __init__(self, label: str, inputs: list, outputs: list, group: str = None, conversion_factors=None,
-                 segmented_conversion_factors=None, **kwargs):
-        '''
+    def __init__(self,
+                 label: str,
+                 inputs: List[Flow],
+                 outputs: List[Flow],
+                 on_off_parameters: OnOffParameters = None,
+                 conversion_factors: Optional[List[Dict[Flow, Numeric_TS]]] = None,
+                 segmented_conversion_factors: Optional[Dict[Flow, List[Tuple[Numeric_TS, Numeric_TS]]]] = None):
+        """
         Parameters
         ----------
         label : str
@@ -66,42 +70,64 @@ class LinearConverter(Component):
             
             --> "points" can expressed as segment with same begin and end, i.g. [5, 5]
 
-
-        **kwargs : TYPE
-            DESCRIPTION.
-
         Returns
         -------
         None.
 
-        '''
-
-        super().__init__(label, **kwargs)
-        # invest_parameters to attributes:
+        """
+        super().__init__(label, on_off_parameters)
         self.inputs = inputs
         self.outputs = outputs
         self.conversion_factors = conversion_factors
         self.segmented_conversion_factors = segmented_conversion_factors
-        if (conversion_factors is None) and (segmented_conversion_factors is None):
-            raise Exception('conversion_factors or segmented_conversion_factors must be defined!')
-        elif (conversion_factors is not None) and (segmented_conversion_factors is not None):
-            raise Exception('Either conversion_factors or segmented_conversion_factors must \
-                            be defined! Not Both!')
+        self._plausibility_test()
 
-        self.group = group
+    def _plausibility_test(self) -> None:
+        if self.conversion_factors is None and self.segmented_conversion_factors is None:
+            raise Exception('Either conversion_factors or segmented_conversion_factors must be defined!')
+        if self.conversion_factors is not None and self.segmented_conversion_factors is not None:
+            raise Exception('Only one of conversion_factors or segmented_conversion_factors can be defined, not both!')
 
-        # copy information of group to in-flows and out-flows
-        for flow in self.inputs + self.outputs:
-            flow.group = self.group
+        if self.conversion_factors is not None:
+            if self.degrees_of_freedom <= 0:
+                raise Exception(
+                    f"Too Many conversion_factors_specified. Care that you use less conversion_factors "
+                    f"then inputs + outputs!! With {len(self.inputs+self.outputs)} inputs and outputs, "
+                    f"use not more than {len(self.inputs+self.outputs)-1} conversion_factors!")
 
-        # copy information about exists into segments of flows
+            for conversion_factor in self.conversion_factors:
+                for flow in conversion_factor:
+                    if flow not in (self.inputs + self.outputs):
+                        raise Exception(f'{self.label}: Flow {flow.label} in conversion_factors '
+                                        f'is not in inputs/outputs')
         if self.segmented_conversion_factors is not None:
-            if isinstance(self.exists.active_data, (np.ndarray, list)):
-                for key, item in self.segmented_conversion_factors.items():
-                    self.segmented_conversion_factors[key] = [list(np.array(item) * factor) for factor in self.exists.active_data]
-            elif isinstance(self.exists.active_data, (int, float)):
-                for key, item in self.segmented_conversion_factors.items():
-                    self.segmented_conversion_factors[key] = list(np.array(item) * self.exists.active_data)
+            for flow in (self.inputs + self.outputs):
+                if isinstance(flow.size, InvestParameters) and flow.size.fixed_size is None:
+                    raise Exception(f"segmented_conversion_factors (in {self.label_full}) and variable size "
+                                    f"(in flow {flow.label_full}) do not make sense together!")
+
+    def transform_to_time_series(self):
+        if self.conversion_factors is not None:
+            self.conversion_factors = self._transform_conversion_factors()
+        else:
+            segmented_conversion_factors = {}
+            for flow, segments in self.segmented_conversion_factors.items():
+                segmented_conversion_factors[flow] = [
+                    (_create_time_series('Stuetzstelle', segment[0], self),
+                     _create_time_series('Stuetzstelle', segment[1], self)
+                     ) for segment in segments
+                ]
+
+    def _transform_conversion_factors(self) -> List[Dict[Flow, TimeSeries]]:
+        """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
+        list_of_conversion_factors = []
+        for conversion_factor in self.conversion_factors:
+            transformed_dict = {}
+            for flow, values in conversion_factor.items():
+                if not isinstance(values, TimeSeries):
+                    transformed_dict[flow] = _create_time_series(f"{flow.label}_factor", values, self)
+            list_of_conversion_factors.append(transformed_dict)
+        return list_of_conversion_factors
 
     def __str__(self):
         # Creating a representation for conversion_factors with flow labels and their corresponding values
@@ -146,86 +172,9 @@ class LinearConverter(Component):
 
         return str_desc
 
-    def transformFactorsToTS(self, conversion_factors):
-        """
-        macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries
-
-        :param conversion_factors:
-        :return:
-        """
-        # Einzelne Faktoren zu Vektoren:
-        conversion_factors_TS = []
-        # für jedes Dict -> Values (=Faktoren) zu Vektoren umwandeln:
-        for aFactor_Dict in conversion_factors:  # Liste of dicts
-            # Transform to TS:
-            aFactor_Dict_TS = effect_values_to_ts('Faktor', aFactor_Dict, self)
-            conversion_factors_TS.append(aFactor_Dict_TS)
-            # check flows:
-            for flow in aFactor_Dict_TS:
-                if not (flow in self.inputs + self.outputs):
-                    raise Exception(self.label + ': Flow ' + flow.label + ' in conversion_factors ist nicht in inputs/outputs')
-        return conversion_factors_TS
-
-    def finalize(self):
-        """
-
-        :return:
-        """
-        super().finalize()
-
-        # factor-sets:
-        if self.segmented_conversion_factors is None:
-
-            # TODO: mathematisch für jeden Zeitschritt checken!!!!
-            #  Anzahl Freiheitsgrade checken: =  Anz. Variablen - Anz. Gleichungen
-
-            # alle Faktoren, die noch nicht TS_vector sind, umwandeln:
-            self.conversion_factors = self.transformFactorsToTS(self.conversion_factors)
-
-            self.degreesOfFreedom = (len(self.inputs) + len(self.outputs)) - len(self.conversion_factors)
-            if self.degreesOfFreedom <= 0:
-                raise Exception(self.label + ': ' + str(len(self.conversion_factors)) + ' Gleichungen VERSUS '
-                                + str(len(self.inputs + self.outputs)) + ' Variablen!!!')
-
-        # linear segments:
-        else:
-            # check if investsize is variable for any flow:            
-            for flow in (self.inputs + self.outputs):
-                if isinstance(flow.size, InvestParameters) and flow.size.fixed_size is None:
-                    raise Exception(
-                        f"Linear segments of flows (in {self.label_full}) and variable size "
-                        f"(invest_size) (in flow {flow.label_full}) do not make sense together!")
-
-            # Flow als Keys rauspicken und alle Stützstellen als TimeSeries:
-            self.segmented_conversion_factors_TS = self.segmented_conversion_factors
-            for aFlow in self.segmented_conversion_factors.keys():
-                # 2. Stützstellen zu TimeSeries machen, wenn noch nicht TimeSeries!:
-                for i in range(len(self.segmented_conversion_factors[aFlow])):
-                    stuetzstelle = self.segmented_conversion_factors[aFlow][i]
-                    self.segmented_conversion_factors_TS[aFlow][i] = TimeSeries('Stuetzstelle', stuetzstelle, self)
-
-            def get_var_on():
-                return self.model.var_on
-
-            self.feature_linSegments = FeatureLinearSegmentSet('linearSegments', self, self.segmented_conversion_factors_TS,
-                                                               get_var_on=get_var_on,
-                                                               flows=self.inputs + self.outputs)  # erst hier, damit auch nach __init__() noch Übergabe möglich.
-
-    def declare_vars_and_eqs(self, system_model: SystemModel):
-        """
-        Deklarieren von Variablen und Gleichungen
-
-        :param system_model:
-        :return:
-        """
-        super().declare_vars_and_eqs(system_model)  # (ab hier sollte auch self.model.var_on dann vorhanden sein)
-
-        # factor-sets:
-        if self.segmented_conversion_factors is None:
-            pass
-        # linear segments:
-        else:
-            self.feature_linSegments.declare_vars_and_eqs(system_model)
+    @property
+    def degrees_of_freedom(self):
+        return len(self.inputs+self.outputs) - len(self.conversion_factors
 
     def do_modeling(self, system_model: SystemModel):
         super().do_modeling(system_model)
@@ -262,15 +211,6 @@ class LinearConverter(Component):
         # Zusammenhänge zw. inputs & outputs können auch vollständig über Segmente beschrieben werden:
         else:
             self.feature_linSegments.do_modeling(system_model)
-
-    # todo: checkbounds!
-    # def initializeParameter(self,aStr,aBounds):
-    # private Variable:
-    #     self._eta          = aBounds['eta'][0]
-    # exec('self.__' + aStr + ' = aBounds[0] ')
-    # property dazu:
-    #    self.eta            = property(lambda s: s.__get_param('eta'), lambda s,v: s.__set_param(v,'eta')')
-    # exec('self.'   + aStr + ' = property(lambda s: s.__get_param(aStr) , lambda s,v: s.__set_param(v,aStr ))')
 
 
 class Storage(Component):
