@@ -36,20 +36,19 @@ def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element
 
 
 class Effect(Element):
-    '''
+    """
     Effect, i.g. costs, CO2 emissions, area, ...
-    can be used later afterwards for allocating effects to compontents and flows.
-    '''
+    Components, FLows, and so on can contribute to an Effect. One Effect is chosen as the Objective of the Optimization
+    """
 
-    # is_standard -> Standard-Effekt (bei Eingabe eines skalars oder TS (statt dict) wird dieser automatisch angewendet)
     def __init__(self,
                  label: str,
                  unit: str,
                  description: str,
                  is_standard: bool = False,
                  is_objective: bool = False,
-                 specific_share_to_other_effects_operation: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used as type hint
-                 specific_share_to_other_effects_invest: Optional[Dict] = None,  # TODO: EffectTypeDict can not be used as type hint
+                 specific_share_to_other_effects_operation: Optional[EffectValues] = None,
+                 specific_share_to_other_effects_invest: Optional[EffectValuesInvest] = None,
                  minimum_operation: Optional[Skalar] = None,
                  maximum_operation: Optional[Skalar] = None,
                  minimum_invest: Optional[Skalar] = None,
@@ -57,9 +56,8 @@ class Effect(Element):
                  minimum_operation_per_hour: Optional[Numeric_TS] = None,
                  maximum_operation_per_hour: Optional[Numeric_TS] = None,
                  minimum_total: Optional[Skalar] = None,
-                 maximum_total: Optional[Skalar] = None,
-                 **kwargs):
-        '''
+                 maximum_total: Optional[Skalar] = None):
+        """
         Parameters
         ----------
         label : str
@@ -99,15 +97,15 @@ class Effect(Element):
         -------
         None.
 
-        '''
-        super().__init__(label, **kwargs)
+        """
+        super().__init__(label)
         self.label = label
         self.unit = unit
         self.description = description
         self.is_standard = is_standard
         self.is_objective = is_objective
-        self.specific_share_to_other_effects_operation = specific_share_to_other_effects_operation or {}
-        self.specific_share_to_other_effects_invest = specific_share_to_other_effects_invest or {}
+        self.specific_share_to_other_effects_operation = specific_share_to_other_effects_operation
+        self.specific_share_to_other_effects_invest = specific_share_to_other_effects_invest
         self.minimum_operation = minimum_operation
         self.maximum_operation = maximum_operation
         self.minimum_operation_per_hour = minimum_operation_per_hour
@@ -117,41 +115,15 @@ class Effect(Element):
         self.minimum_total = minimum_total
         self.maximum_total = maximum_total
 
-        #  operation-Effect-shares umwandeln in TS (invest bleibt skalar ):
-        for effect, share in self.specific_share_to_other_effects_operation.items():
-            name_of_ts = 'specificShareToOtherEffect' + '_' + effect.label
-            self.specific_share_to_other_effects_operation[effect] = TimeSeries(
-                name_of_ts, specific_share_to_other_effects_operation[effect], self)
+    def transform_to_time_series(self):
+        self.minimum_operation_per_hour = _create_time_series(
+            f'{self.label_full}_minimum_operation_per_hour', self.minimum_operation_per_hour, self)
+        self.maximum_operation_per_hour = _create_time_series(
+            f'{self.label_full}_maximum_operation_per_hour', self.maximum_operation_per_hour, self)
 
-        # ShareSums:
-        # TODO: Why as attributes, and not only in sub_elements?
-        from flixOpt.features import Feature_ShareSum
-        self.operation = Feature_ShareSum(
-            label='operation', owner=self, shares_are_time_series=True,
-            total_min=self.minimum_operation, total_max=self.maximum_operation,
-            min_per_hour=self.minimum_operation_per_hour, max_per_hour=self.maximum_operation_per_hour)
-        self.invest = Feature_ShareSum(label='invest', owner=self, shares_are_time_series=False,
-                                       total_min=self.minimum_invest, total_max=self.maximum_invest)
-        self.all = Feature_ShareSum(label='all', owner=self, shares_are_time_series=False,
-                                    total_min=self.minimum_total, total_max=self.maximum_total)
-
-    def declare_vars_and_eqs(self, system_model) -> None:
-        super().declare_vars_and_eqs(system_model)
-        self.operation.declare_vars_and_eqs(system_model)
-        self.invest.declare_vars_and_eqs(system_model)
-        self.all.declare_vars_and_eqs(system_model)
-
-    def do_modeling(self, system_model) -> None:
-        logger.debug('modeling ' + self.label)
-        super().declare_vars_and_eqs(system_model)
-        self.operation.do_modeling(system_model)
-        self.invest.do_modeling(system_model)
-
-        # Gleichung für Summe Operation und Invest:
-        # eq: shareSum = effect.operation_sum + effect.operation_invest
-        self.all.add_variable_share('operation', self, self.operation.model.variables['sum'], 1, 1)
-        self.all.add_variable_share('invest', self, self.invest.model.variables['sum'], 1, 1)
-        self.all.do_modeling(system_model)
+        self.specific_share_to_other_effects_operation = _effect_values_to_ts(
+            f'{self.label_full}_specific_share_to_other_effects_operation',
+            self.specific_share_to_other_effects_operation, self)
 
     def __str__(self):
         objective = "Objective" if self.is_objective else ""
