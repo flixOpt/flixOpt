@@ -18,7 +18,7 @@ from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.components import Storage
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.elements import Flow, Effect, EffectCollection, Objective
+    from flixOpt.elements import Flow, Effect, EffectCollection, Objective, Bus
     from flixOpt.flow_system import FlowSystem
 
 
@@ -567,19 +567,19 @@ class EffectCollectionModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self._effect_models = {effect: EffectModel(effect) for effect in self.element.effects}
-        self._penalty = ShareAllocationModel(self.element.penalty)
+        self._penalty = ShareAllocationModel(self.element.penalty, True)
         self.sub_models.extend(list(self._effect_models.values()) + [self._penalty])
         for model in self.sub_models:
             model.do_modeling(system_model)
 
     def add_share(self,
-                  operation_or_invest: Literal['operation', 'invest'],
+                  target: Literal['operation', 'invest', 'penalty'],
                   name_of_share: str,
                   owner: Element,
                   effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
                   factor: Numeric,
                   variable: Optional[Variable] = None) -> None:
-        assert operation_or_invest in ('operation', 'invest'), f'{operation_or_invest} not supported'
+        assert target in ('operation', 'invest', 'penalty'), f'{target} not supported'
         effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effects, die einen Wert haben, anhängen:
@@ -588,10 +588,14 @@ class EffectCollectionModel(ElementModel):
                 effect = self.element.standard_effect
             assert effect in self.element.effects, f'Effect {effect.label} was used but not added to model!'
 
-            if operation_or_invest == 'operation':
+            if target == 'operation':
                 model = self._effect_models[effect].operation
-            else:
+            elif target == 'invest':
                 model = self._effect_models[effect].invest
+            elif target == 'penalty':
+                model = self._penalty
+            else:
+                raise ValueError(f'Target {target} not supported!')
             
             if variable is not None:
                 model.add_constant_share(name_of_share, owner, value, factor)
