@@ -203,165 +203,20 @@ class SystemModel(MathModel):
 
 
 class Element:
-    """
-    Element mit Variablen und Gleichungen
-    -> besitzt Methoden, die jede Kindklasse ergänzend füllt:
-    1. Element.finalize()          --> Finalisieren der Modell-Beschreibung (z.B. notwendig, wenn Bezug zu Elementen, die bei __init__ noch gar nicht bekannt sind)
-    2. Element.declare_vars_and_eqs() --> Variablen und Eqs definieren.
-    3. Element.do_modeling()        --> Modellierung
-    4. Element.add_share_to_globals() --> Beitrag zu Gesamt-Kosten
-    """
-    system_model: SystemModel
-
-    new_init_args = ['label']
-    not_used_args = []
-
-    @classmethod
-    def get_init_args(cls):
-        '''
-        diese (Klassen-)Methode holt aus dieser und den Kindklassen
-        alle zulässigen Argumente der Kindklasse!
-        '''
-
-        ### 1. Argumente der Mutterklasse (rekursiv) ###
-        # wird rekursiv aufgerufen bis man bei Mutter-Klasse cModelingElement ankommt.
-        # nur bis zu cArgsClass zurück gehen:
-        if hasattr(cls.__base__, 'get_init_args'):  # man könnte auch schreiben: if cls.__name__ == cArgsClass
-            allArgsFromMotherClass = cls.__base__.get_init_args()  # rekursiv in Mutterklasse aufrufen
-
-        # wenn cls.__base__ also bereits eine Ebene UNTER cArgsClass:
-        else:
-            allArgsFromMotherClass = []
-
-            # checken, dass die zwei class-Atributes auch wirklich für jede Klasse (und nicht nur für Mutterklasse) existieren (-> die nimmt er sonst einfach automatisch)
-        if (not ('not_used_args' in cls.__dict__)) | (not ('new_init_args' in cls.__dict__)):
-            raise Exception(
-                'class ' + cls.__name__ + ': you forgot to implement class attribute <not_used_args> or/and <new_int_args>')
-        notTransferedMotherArgs = cls.not_used_args
-
-        ### 2. Abziehen der nicht durchgereichten Argumente ###
-        # delete not Transfered Args:
-        allArgsFromMotherClass = [prop for prop in allArgsFromMotherClass if prop not in notTransferedMotherArgs]
-
-        ### 3. Ergänzen der neuen Argumente ###
-        myArgs = cls.new_init_args.copy()  # get all new arguments of __init__() (as a copy)
-        # melt lists:
-        myArgs.extend(allArgsFromMotherClass)
-        return myArgs
-
-    @property
-    def label_full(self) -> str:  # standard-Funktion, wird von Kindern teilweise überschrieben
-        return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
-
-    @property  # sub_elements of all layers
-    def all_sub_elements(self) -> list:  #TODO: List[Element] doesnt work...
-        all_sub_elements = []  # wichtig, dass neues Listenobjekt!
-        all_sub_elements += self.sub_elements
-        for subElem in self.sub_elements:
-            # all sub_elements of subElement hinzufügen:
-            all_sub_elements += subElem.all_sub_elements
-        return all_sub_elements
-
-    @property
-    def all_variables_with_sub_elements(self) -> Dict[str, Variable]:
-        all_vars = self.model.variables
-        for sub_element in self.all_sub_elements:
-            all_vars_of_sub_element = sub_element.model.variables
-            duplicate_var_names = set(all_vars.keys()) & set(all_vars_of_sub_element.keys())
-            if duplicate_var_names:
-                raise Exception(f'Variables {duplicate_var_names} of Subelement "{sub_element.label_full}" '
-                                f'already exists in Element "{self.label_full}". labels must be unique.')
-            all_vars.update(all_vars_of_sub_element)
-
-        return all_vars
-
-    # TODO: besser occupied_args
-    def __init__(self, label: str, **kwargs):
+    """ Basic Element of flixOpt"""
+    def __init__(self, label: str):
         self.label = label
-        self.TS_list: List[TimeSeries] = []  # = list with ALL timeseries-Values (--> need all classes with .trimTimeSeries()-Method, e.g. TimeSeries)
+        self.used_time_series: List[TimeSeries] = []  # Used for better access
 
-        self.sub_elements: List[Element] = []  # zugehörige Sub-ModelingElements
-        self.system_model: Optional[SystemModel] = None  # hier kommt die aktive system_model rein
-        self.model: Optional[ElementModel] = None  # hier kommen alle Glg und Vars rein
+        self.sub_elements: List[Element] = []
+        self.model: Optional[ElementModel] = None
 
-        # wenn hier kwargs auftauchen, dann wurde zuviel übergeben:
-        if len(kwargs) > 0:
-            raise Exception('class and its motherclasses have no allowed arguments for:' + str(kwargs)[:200])
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.label}"
-
-    def __str__(self):
-        remaining_data = {
-            key: value for key, value in self.__dict__.items()
-            if value and
-               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
-               #TODO: Bugfix, as Flow is not imported in this module...
-        }
-
-        remaining_data_keys = sorted(remaining_data.keys())
-        remaining_data_values = [remaining_data[key] for key in remaining_data_keys]
-
-        remaining_data_str = ""
-        for key, value in zip(remaining_data_keys, remaining_data_values):
-            if hasattr(value, '__str__'):
-                remaining_data_str += f"{key}: {value}\n"
-            elif hasattr(value, '__repr__'):
-                remaining_data_str += f"{key}: {repr(value)}\n"
-            else:
-                remaining_data_str += f"{key}: {value}\n"
-
-        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
-                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
-                    )
-
-        return str_desc
-
-    def description_of_equations(self) -> Union[List, Dict]:
-        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations() for sub_elem in self.sub_elements}
-
-        if sub_element_desc:
-            return {'_self': self.model.description_of_equations(), **sub_element_desc}
-        else:
-            return self.model.description_of_equations()
-
-    def description_of_variables(self) -> List:
-        return self.model.description_of_variables() + [
-            description for sub_element in self.sub_elements for description in sub_element.description_of_variables()
-        ]
-
-    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
-        return {'no eqs': len(self.model.eqs),
-                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
-                'no inEqs': len(self.model.ineqs),
-                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
-                'no vars': len(self.model.variables),
-                'no vars single': sum(var.length for var in self.model.variables.values())}
-
-    # 1.
-    def finalize(self) -> None:
-        """
-        Finalizing the creation of all sub_elements in the Elements
-        """
-        for element in self.sub_elements:
-            element.finalize()
-
-    # 2.
     def create_model(self) -> None:
         """
-        Create the empty model for each Element and its sub_elements
+        Create the Model for the Element
         """
-        for element in self.sub_elements:
-            element.create_model()  # rekursiv!
-        logger.debug(f'New Model for {self.label_full}')
         self.model = ElementModel(self)
-
-    # 3.
-    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        """
-        Declare variables and equations for all sub elements.
-        """
-        pass
+        logger.debug(f'New Model for {self.label_full}')
 
     def get_results(self) -> Tuple[Dict, Dict]:
         """
@@ -393,6 +248,37 @@ class Element:
             variables["group"] = self.group
 
         return data, variables
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}> {self.label}"
+
+    @property
+    def label_full(self) -> str:  # standard-Funktion, wird von Kindern teilweise überschrieben
+        return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
+
+    @property
+    def description_of_equations(self) -> Union[List, Dict]:
+        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations for sub_elem in self.sub_elements}
+
+        if sub_element_desc:
+            return {'_self': self.model.description_of_equations(), **sub_element_desc}
+        else:
+            return self.model.description_of_equations()
+
+    @property
+    def description_of_variables(self) -> List:
+        return self.model.description_of_variables() + [
+            description for sub_element in self.sub_elements for description in sub_element.description_of_variables
+        ]
+
+    @property
+    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
+        return {'no eqs': len(self.model.eqs),
+                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
+                'no inEqs': len(self.model.ineqs),
+                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
+                'no vars': len(self.model.variables),
+                'no vars single': sum(var.length for var in self.model.variables.values())}
 
 
 class ElementModel:
