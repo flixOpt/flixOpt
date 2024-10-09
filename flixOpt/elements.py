@@ -264,29 +264,6 @@ class EffectCollection(Element):
                 return effect
 
 
-class Objective(Element):
-    """
-    Storing the Objective
-    """
-
-    def __init__(self, label: str, **kwargs):
-        super().__init__(label, **kwargs)
-        self.objective = None
-
-    def declare_vars_and_eqs(self, system_model: SystemModel) -> None:
-        # TODO: ggf. Unterscheidung, ob Summen überhaupt als Zeitreihen-Variablen abgebildet werden sollen, oder nicht, wg. Performance.
-        self.objective = Equation('objective', self, system_model, 'objective')
-        self.model.add_equations(self.objective)
-        system_model.objective = self.objective
-
-    def add_objective_effect_and_penalty(self, effect_collection: EffectCollection) -> None:
-        if effect_collection.objective_effect is None:
-            raise Exception('Kein Effekt als Zielfunktion gewählt!')
-        self.objective.add_summand(effect_collection.objective_effect.operation.model.variables['sum'], 1)
-        self.objective.add_summand(effect_collection.objective_effect.invest.model.variables['sum'], 1)
-        self.objective.add_summand(effect_collection.penalty.model.variables['sum'], 1)
-
-
 class Component(Element):
     """
     basic component class for all components

@@ -599,6 +599,7 @@ class EffectCollectionModel(ElementModel):
         self._system_model = system_model
         self._effect_models: Dict[Effect, EffectModel] = {}
         self.penalty: Optional[ShareAllocationModel] = None
+        self.objective: Optional[Equation] = None
 
     def do_modeling(self, system_model: SystemModel):
         self._effect_models = {effect: EffectModel(effect) for effect in self.element.effects}
@@ -606,6 +607,16 @@ class EffectCollectionModel(ElementModel):
         self.sub_models.extend(list(self._effect_models.values()) + [self.penalty])
         for model in self.sub_models:
             model.do_modeling(system_model)
+
+        self.objective = Equation('OBJECTIVE', self, system_model, 'objective')
+        self.add_equations(self.objective)
+        self.objective.add_summand(self._objective_effect_model.operation.sum, 1)
+        self.objective.add_summand(self._objective_effect_model.invest.sum, 1)
+        self.objective.add_summand(self.penalty.sum, 1)
+
+    @property
+    def _objective_effect_model(self) -> EffectModel:
+        return self._effect_models[self.element.objective_effect]
 
     def add_share_to_effects(self,
                              name: str,
