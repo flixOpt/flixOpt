@@ -207,16 +207,10 @@ class Element:
     def __init__(self, label: str):
         self.label = label
         self.used_time_series: List[TimeSeries] = []  # Used for better access
-
-        self.sub_elements: List[Element] = []
         self.model: Optional[ElementModel] = None
 
     def create_model(self) -> None:
-        """
-        Create the Model for the Element
-        """
         self.model = ElementModel(self)
-        logger.debug(f'New Model for {self.label_full}')
 
     def get_results(self) -> Tuple[Dict, Dict]:
         """
@@ -253,32 +247,8 @@ class Element:
         return f"<{self.__class__.__name__}> {self.label}"
 
     @property
-    def label_full(self) -> str:  # standard-Funktion, wird von Kindern teilweise überschrieben
-        return self.label  # eigtl später mal rekursiv: return self.owner.label_full + self.label
-
-    @property
-    def description_of_equations(self) -> Union[List, Dict]:
-        sub_element_desc = {sub_elem.label: sub_elem.description_of_equations for sub_elem in self.sub_elements}
-
-        if sub_element_desc:
-            return {'_self': self.model.description_of_equations(), **sub_element_desc}
-        else:
-            return self.model.description_of_equations()
-
-    @property
-    def description_of_variables(self) -> List:
-        return self.model.description_of_variables() + [
-            description for sub_element in self.sub_elements for description in sub_element.description_of_variables
-        ]
-
-    @property
-    def overview_of_eqs_and_vars(self) -> Dict[str, int]:
-        return {'no eqs': len(self.model.eqs),
-                'no eqs single': sum(eq.nr_of_single_equations for eq in self.model.eqs.values()),
-                'no inEqs': len(self.model.ineqs),
-                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in self.model.ineqs.values()),
-                'no vars': len(self.model.variables),
-                'no vars single': sum(var.length for var in self.model.variables.values())}
+    def label_full(self) -> str:
+        return self.label
 
 
 class ElementModel:
@@ -287,38 +257,11 @@ class ElementModel:
     """
 
     def __init__(self, element: Element):
+        logger.debug(f'Created Model for {element.label_full}')
         self.element = element
         self.variables = {}
         self.eqs = {}
-        self.objective = None
         self.sub_models = []
-
-    def description_of_equations(self) -> List:
-        # Wenn Glg vorhanden:
-        eq: Equation
-        aList = []
-        if len(self.eqs) > 0:
-            for eq in list(self.eqs.values()):
-                aList.append(eq.description())
-        if not (self.objective is None):
-            aList.append(self.objective.description())
-        return aList
-
-    def description_of_variables(self) -> List:
-        aList = []
-        for aVar in self.variables.values():
-            aList.append(aVar.description())
-        return aList
-
-    def get_var(self, label: str) -> Variable:
-        if label in self.variables.keys():
-            return self.variables[label]
-        raise Exception(f'Variable "{label}" does not exist')
-
-    def get_eq(self, label: str) -> Equation:
-        if label in self.eqs.keys():
-            return self.eqs[label]
-        raise Exception(f'Equation "{label}" does not exist')
 
     def add_variables(self, *variables: Variable) -> None:
         for variable in variables:
@@ -337,8 +280,61 @@ class ElementModel:
                 raise Exception(f'Equation "{equation.label}" already exists')
 
     @property
+    def description_of_variables(self) -> List[str]:
+        if self.all_variables:
+            return [var.description() for var in self.all_variables.values()]
+        return []
+
+    @property
+    def description_of_equations(self) -> List[str]:
+        if self.all_equations:
+            return [eq.description() for eq in self.all_equations.values()]
+        return []
+
+    @property
+    def overview_of_model_size(self) -> Dict[str, int]:
+        all_vars, all_eqs, all_ineqs = self.all_variables, self.all_equations, self.all_inequations
+        return {'no eqs': len(all_eqs),
+                'no eqs single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
+                'no inEqs': len(all_ineqs),
+                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
+                'no vars': len(all_vars),
+                'no vars single': sum(var.length for var in all_vars.values())}
+
+    @property
     def ineqs(self) -> Dict[str, Equation]:
         return {name: eq for name, eq in self.eqs.items() if eq.eqType == 'ineq'}
+
+    @property
+    def all_variables(self) -> Dict[str, Variable]:
+        all_vars = self.variables.copy()
+        for sub_model in self.sub_models:
+            for key, value in sub_model.all_variables.items():
+                if key in all_vars:
+                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
+                all_vars[key] = value
+        return all_vars
+
+    @property
+    def all_equations(self) -> Dict[str, Equation]:
+        all_eqs = self.eqs.copy()
+        for sub_model in self.sub_models:
+            for key, value in sub_model.all_equations.items():
+                if key in all_eqs:
+                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
+                all_eqs[key] = value
+        return all_eqs
+
+    @property
+    def all_inequations(self) -> Dict[str, Equation]:
+        all_ineqs = self.ineqs.copy()
+        for sub_model in self.sub_models:
+            for key, value in sub_model.all_equations.items():
+                if key in all_ineqs:
+                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
+                if value.eqType == 'ineq':
+                    all_ineqs[key] = value
+        return all_ineqs
 
 
 class FlowModel(ElementModel):
