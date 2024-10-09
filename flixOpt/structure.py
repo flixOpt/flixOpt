@@ -616,9 +616,6 @@ class EffectCollectionModel(ElementModel):
                 target_model.add_variable_share(name_of_share, origin_effect, origin_model.sum, factor, 1)
 
 
-from flixOpt.features import FeatureInvest, FeatureOn, Segment, FeatureLinearSegmentVars, Feature, FeatureShares, Feature_ShareSum
-
-
 def _extract_sample_points(data: List[Skalar]) -> List[Tuple[Skalar, Skalar]]:
     assert len(data) % 2 == 0, f'Segments must have an even number of start-/endpoints'
     return [(data[i], data[i+1]) for i in range(0, len(data), 2)]
