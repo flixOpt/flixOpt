@@ -15,6 +15,7 @@ from flixOpt import utils
 from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.interface import InvestParameters, OnOffParameters
+from flixOpt.elements import Component
 from flixOpt.components import Storage
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -46,11 +47,16 @@ class SystemModel(MathModel):
 
         self.effect_collection_model = EffectCollectionModel(self.flow_system.effect_collection, self)
         self.component_models: List[ComponentModel] = []
+        self.bus_models: List[BusModel] = []
 
     def do_modeling(self):
         self.effect_collection_model.do_modeling(self)
+        self.component_models = [component.create_model() for component in self.flow_system.components]
+        self.bus_models = [bus.create_model() for bus in self.flow_system.all_buses]
         for component_model in self.component_models:
             component_model.do_modeling(self)
+        for bus_model in self.bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
+            bus_model.do_modeling(self)
 
     def solve(self,
               mip_gap: float = 0.02,
@@ -340,10 +346,14 @@ class ElementModel:
 
 
 class ComponentModel(ElementModel):
-    def __init__(self, element: Element):
+    def __init__(self, element: Component):
         super().__init__(element)
-        self.element: Flow = element
-        raise NotImplementedError
+        self.element: Component = element
+
+    def do_modeling(self, system_model: SystemModel):
+        self.sub_models.extend([flow.create_model() for flow in self.element.inputs + self.element.outputs])
+        for sub_model in self.sub_models:
+            sub_model.do_modeling(system_model)
 
 
 class FlowModel(ElementModel):
