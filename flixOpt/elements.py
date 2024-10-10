@@ -15,7 +15,7 @@ from flixOpt import utils
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.structure import Element, SystemModel
+from flixOpt.structure import Element, SystemModel, ComponentModel, EffectModel, BusModel, FlowModel
 
 logger = logging.getLogger('flixOpt')
 
@@ -147,6 +147,10 @@ class Effect(Element):
             f'{self.label_full}_specific_share_to_other_effects_operation',
             self.specific_share_to_other_effects_operation, self)
 
+    def create_model(self) -> EffectModel:
+        self.model = EffectModel(self)
+        return self.model
+
     def __str__(self):
         objective = "Objective" if self.is_objective else ""
         standart = "Standardeffect" if self.is_standard else ""
@@ -237,6 +241,10 @@ class EffectCollection(Element):
         super().__init__(label)
         self.effects: List[Effect] = []
 
+    def create_model(self) -> EffectModel:
+        self.model = EffectModel(self)
+        return self.model
+
     def add_effect(self, effect: Effect) -> None:
         if effect.is_standard and self.standard_effect is not None:
             raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
@@ -275,6 +283,10 @@ class Component(Element):
         self.inputs = inputs
         self.outputs = outputs
         self.on_off_parameters = on_off_parameters
+
+    def create_model(self) -> ComponentModel:
+        self.model = ComponentModel(self)
+        return self.model
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -343,6 +355,10 @@ class Bus(Element):
         self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
+
+    def create_model(self) -> BusModel:
+        self.model = BusModel(self)
+        return self.model
 
     def transform_to_time_series(self):
         self.excess_penalty_per_flow_hour = _create_time_series(f'{self.label_full}_relative_minimum',
@@ -455,6 +471,10 @@ class Flow(Element):
         self.comp: Optional[Component] = None
 
         self._plausibility_checks()
+
+    def create_model(self) -> FlowModel:
+        self.model = FlowModel(self)
+        return self.model
 
     def transform_to_time_series(self):
         self.relative_minimum = _create_time_series(f'{self.label_full}_relative_minimum', self.relative_minimum, self)
