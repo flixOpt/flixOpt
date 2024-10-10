@@ -14,7 +14,7 @@ import yaml  # (für json-Schnipsel-print)
 from flixOpt import utils
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel
-from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component, Objective
+from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component
 from flixOpt.features import FeatureInvest
 
 logger = logging.getLogger('flixOpt')
@@ -22,59 +22,8 @@ logger = logging.getLogger('flixOpt')
 
 class FlowSystem:
     """
-    A FlowSystem holds Elements (Components, Buses, Flows, Effects,...).
+    A FlowSystem organizes the high level Elements (Components & Effects).
     """
-
-    @property
-    def all_first_level_elements(self) -> List[Element]:
-        return (self.components + list(self.all_buses) + [self.objective, self.effect_collection] +
-                list(self.other_elements))
-
-    @property
-    def all_first_level_elements_with_flows(self) -> List[Element]:
-        return self.all_first_level_elements + list(self.all_flows)
-
-    @property
-    def all_investments(self) -> List[FeatureInvest]:
-        all_investments = []
-
-        def get_invest_features_of_element(element: Element) -> List[FeatureInvest]:
-            invest_features = []
-            for aSubComp in element.all_sub_elements:
-                if isinstance(aSubComp, FeatureInvest):
-                    invest_features.append(aSubComp)
-                invest_features += get_invest_features_of_element(aSubComp)  # recursive!
-            return invest_features
-
-        for element in self.all_first_level_elements_with_flows:  # kann in Komponente (z.B. Speicher) oder Flow stecken
-            all_investments += get_invest_features_of_element(element)
-
-        return all_investments
-
-    # Achtung: Funktion wird nicht nur für Getter genutzt.
-    @property
-    def all_flows(self) -> Set[Flow]:
-        return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
-
-    @property
-    def all_time_series_in_elements(self) -> List[TimeSeries]:
-        element: Element
-        all_TS = []
-        for element in self.all_first_level_elements_with_flows:
-            all_TS += element.TS_list
-        return all_TS
-
-    @property
-    def all_buses(self) -> Set[Bus]:
-        return {flow.bus for flow in self.all_flows}
-
-    @property
-    def all_elements(self) -> List[Element]:
-        first_level_elements = self.all_first_level_elements_with_flows
-        all_sub_elements = [sub_element for element in first_level_elements
-                        for sub_element in element.all_sub_elements]
-        return first_level_elements + all_sub_elements
-
     def __init__(self,
                  time_series: np.ndarray[np.datetime64],
                  last_time_step_hours: Optional[Union[int, float]] = None):
@@ -97,23 +46,10 @@ class FlowSystem:
 
         # defaults:
         self.components: List[Component] = []
+        self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
         self.other_elements: Set[Element] = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
-        self.effect_collection: EffectCollection = EffectCollection('Effects')  # Kosten, CO2, Primärenergie, ...
         self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
-        # instanzieren einer globalen Komponente (diese hat globale Gleichungen!!!)
-        self.objective = Objective('Objective')
-        self._finalized = False  # wenn die Elements alle finalisiert sind, dann True
-        self.model: Optional[SystemModel] = None  # later activated
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
-
-    def __str__(self):
-        components = '\n'.join(component.__str__() for component in
-                               sorted(self.components, key=lambda component: component.label.upper()))
-        effects = '\n'.join(effect.__str__() for effect in
-                            sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
-        return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
+        self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
@@ -257,64 +193,27 @@ class FlowSystem:
                 # Aktivieren:
             aTS.activate(indices, explicitData)
 
-    def activate_model(self, system_model: SystemModel, time_indices: Union[range, List[int]]) -> None:
-        """
-        This function to connect a SystemModel to the FLowSystem and connect it to all Elements in the FLowSystem
-        """
-        self.model = system_model
-
-        # hier nochmal TS updaten (teilweise schon für Preprozesse gemacht):
-        self.activate_indices_in_time_series(time_indices, system_model.TS_explicit)
-
-        if not self._finalized:
-            raise Exception(f'activate_model() cant be called before all elements are finalized')
-        logger.debug(f'Creating ElementModels for Elements in FlowSystem')
-        for element in self.all_first_level_elements_with_flows:
-            element.create_model()  # inkl. sub_elements
-
-    def get_results_after_solve(self) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
-        # Ensure this is only called after solving, as references might change after activating the model again
-        results = {element.label: element.get_results()[0] for element in self.all_first_level_elements}
-        results_var = {element.label: element.get_results()[1] for element in self.all_first_level_elements}
-
-        results['time'] = {'time_series_with_end': self.model.time_series_with_end,
-                           'time_series': self.model.time_series,
-                           'dt_in_hours': self.model.dt_in_hours,
-                           'dt_in_hours_total': self.model.dt_in_hours_total}
-        return results, results_var
-
-    def description_of_system(self) -> Dict:
-        return {'buses': {k: v for bus in self.all_buses for k, v in bus.description().items()},
-                'components': {k: v for comp in self.components for k, v in comp.description().items()},
-                'flows': [flow.description() for flow in self.all_flows]}
-
     def description_of_equations(self) -> Dict:
-        return {'Components': {comp.label: comp.description_of_equations() for comp in self.components},
-                'buses': {bus.label: bus.description_of_equations() for bus in self.all_buses},
-                'objective': self.objective.description_of_equations(),
-                'effects': self.effect_collection.description_of_equations(),
-                'flows': {flow.label_full: flow.description_of_equations()
+        return {'Components': {comp.label: comp.model.description_of_equations for comp in self.components},
+                'buses': {bus.label: bus.model.description_of_equations for bus in self.all_buses},
+                'objective': 'MISSING AFTER REWORK',
+                'effects': self.effect_collection.model.description_of_equations,
+                'flows': {flow.label_full: flow.model.description_of_equations
                           for comp in self.components for flow in (comp.inputs + comp.outputs)},
-                'others': {element.label: element.description_of_equations() for element in self.other_elements}}
+                'others': {element.label: element.model.description_of_equations for element in self.other_elements}}
 
     def description_of_variables(self) -> Dict:
-        return {'comps': {comp.label: comp.description_of_variables() + [{flow.label: flow.description_of_variables()
+        return {'comps': {comp.label: comp.model.description_of_variables + [{flow.label: flow.model.description_of_variables
                                                                          for flow in comp.inputs + comp.outputs}]
                           for comp in self.components},
-                'buses': {bus.label: bus.description_of_variables() for bus in self.all_buses},
-                'objective': self.objective.description_of_variables(),
-                'effects': self.effect_collection.description_of_variables(),
-                'others': {element.label: element.description_of_variables() for element in self.other_elements}
+                'buses': {bus.label: bus.model.description_of_variables for bus in self.all_buses},
+                'objective': 'MISSING AFTER REWORK',
+                'effects': self.effect_collection.model.description_of_variables,
+                'others': {element.label: element.model.description_of_variables for element in self.other_elements}
                 }
 
     def description_of_variables_unstructured(self) -> List:
         return [var.description() for var in self.model.variables]
-
-    def print_model(self) -> str:
-        return (f'\n'
-                f'{"":#^80}\n'
-                f'{" Short String Description of FlowSystem ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_system())}')
 
     def print_equations(self) -> str:
         return (f'\n'
@@ -350,3 +249,37 @@ class FlowSystem:
         # dt_in_hours    = dt.total_seconds() / 3600
         dt_in_hours_total = sum(dt_in_hours)  # Gesamtzeit
         return (time_series, time_series_with_end, dt_in_hours, dt_in_hours_total)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
+
+    def __str__(self):
+        components = '\n'.join(component.__str__() for component in
+                               sorted(self.components, key=lambda component: component.label.upper()))
+        effects = '\n'.join(effect.__str__() for effect in
+                            sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
+        return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
+
+
+    @property
+    def all_flows(self) -> Set[Flow]:
+        return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
+
+    @property
+    def all_time_series_in_elements(self) -> List[TimeSeries]:
+        element: Element
+        all_TS = []
+        for element in self.all_first_level_elements_with_flows:
+            all_TS += element.TS_list
+        return all_TS
+
+    @property
+    def all_buses(self) -> Set[Bus]:
+        return {flow.bus for flow in self.all_flows}
+
+    @property
+    def all_elements(self) -> List[Element]:
+        first_level_elements = self.all_first_level_elements_with_flows
+        all_sub_elements = [sub_element for element in first_level_elements
+                        for sub_element in element.all_sub_elements]
+        return first_level_elements + all_sub_elements
