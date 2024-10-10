@@ -309,11 +309,11 @@ class Component(Element):
 
         return str_desc
 
-    def _register_component_in_flows(self) -> None:
+    def register_component_in_flows(self) -> None:
         for flow in self.inputs + self.outputs:
             flow.comp = self
 
-    def _register_flows_in_bus(self) -> None:
+    def register_flows_in_bus(self) -> None:
         for flow in self.inputs:
             flow.bus.add_output(flow)
         for flow in self.outputs:
