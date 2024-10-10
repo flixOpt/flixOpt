@@ -195,37 +195,6 @@ class FlowSystem:
         if element.label in [elem.label for elem in self.all_first_level_elements]:
             raise Exception(f'Label of Element {element.label} already used in another element!')
 
-    def _plausibility_checks(self) -> None:
-        # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
-
-        def error_str(effect_label: str, shareEffect_label: str):
-            return (
-                f'  {effect_label} -> has share in: {shareEffect_label}\n'
-                f'  {shareEffect_label} -> has share in: {effect_label}'
-            )
-
-        for effect in self.effect_collection.effects:
-            # operation:
-            for shareEffect in effect.specific_share_to_other_effects_operation.keys():
-                # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-                assert effect not in shareEffect.specific_share_to_other_effects_operation.keys(), \
-                    f'Error: circular operation-shares \n{error_str(effect.label, shareEffect.label)}'
-            # invest:
-            for shareEffect in effect.specific_share_to_other_effects_invest.keys():
-                assert effect not in shareEffect.specific_share_to_other_effects_invest.keys(), \
-                    f'Error: circular invest-shares \n{error_str(effect.label, shareEffect.label)}'
-
-    # Finalisieren aller ModelingElemente (dabei werden teilweise auch noch sub_elements erzeugt!)
-    def finalize(self) -> None:
-        logger.debug('finalize all Elements...')
-        self._plausibility_checks()
-        # nur EINMAL ausführen: Finalisieren der Elements:
-        if not self._finalized:
-            # finalize Elements for modeling:
-            for element in self.all_first_level_elements_with_flows:
-                element.finalize()  # inklusive sub_elements!
-            self._finalized = True
-
     def do_modeling_of_elements(self) -> SystemModel:
 
         if not self._finalized:

@@ -115,6 +115,28 @@ class Effect(Element):
         self.minimum_total = minimum_total
         self.maximum_total = maximum_total
 
+        self._plausibility_checks()
+
+    def _plausibility_checks(self) -> None:
+        # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
+        #TODO: Improve checks!! Only most basic case covered...
+
+        def error_str(effect_label: str, shareEffect_label: str):
+            return (
+                f'  {effect_label} -> has share in: {shareEffect_label}\n'
+                f'  {shareEffect_label} -> has share in: {effect_label}'
+            )
+
+        # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
+        # operation:
+        for target_effect in self.specific_share_to_other_effects_operation.keys():
+            assert self not in target_effect.specific_share_to_other_effects_operation.keys(), \
+                f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
+        # invest:
+        for target_effect in self.specific_share_to_other_effects_invest.keys():
+            assert self not in target_effect.specific_share_to_other_effects_invest.keys(), \
+                f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
+
     def transform_to_time_series(self):
         self.minimum_operation_per_hour = _create_time_series(
             f'{self.label_full}_minimum_operation_per_hour', self.minimum_operation_per_hour, self)
@@ -334,7 +356,7 @@ class Bus(Element):
         flow: Flow
         self.outputs.append(flow)
 
-    def _plausibility_test(self) -> None:
+    def _plausibility_checks(self) -> None:
         if self.excess_penalty_per_flow_hour == 0:
             logger.warning(f'In Bus {self.label}, the excess_penalty_per_flow_hour is 0. Use "None" or a value > 0.')
 
@@ -432,7 +454,7 @@ class Flow(Element):
         self.bus = bus
         self.comp: Optional[Component] = None
 
-        self._plausibility_test()
+        self._plausibility_checks()
 
     def transform_to_time_series(self):
         self.relative_minimum = _create_time_series(f'{self.label_full}_relative_minimum', self.relative_minimum, self)
@@ -441,7 +463,7 @@ class Flow(Element):
         self.effects_per_flow_hour = _effect_values_to_ts(f'{self.label_full}_effects_per_flow_hour', self.effects_per_flow_hour, self)
         # TODO: self.on_off_parameters ??
 
-    def _plausibility_test(self) -> None:
+    def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
