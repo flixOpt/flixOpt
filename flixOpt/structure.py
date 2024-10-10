@@ -33,18 +33,24 @@ class SystemModel(MathModel):
     def __init__(self,
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
-                 flow_system,
-                 time_indices: Union[List[int], range],
-                 TS_explicit=None):
+                 flow_system: FlowSystem,
+                 time_indices: Union[List[int], range]):
         super().__init__(label, modeling_language)
-        self.flow_system: FlowSystem = flow_system
-        self.time_indices = range(len(time_indices))
-        self.nrOfTimeSteps = len(time_indices)
-        self.TS_explicit = TS_explicit  # für explizite Vorgabe von Daten für TS {TS1: data, TS2:data,...}
+        self.flow_system = flow_system
+        self.nr_of_time_steps = len(time_indices)
+        self.time_indices = range(self.nr_of_time_steps)
 
         # Zeitdaten generieren:
         self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
             flow_system.get_time_data_from_indices(time_indices))
+
+        self.effect_collection_model = EffectCollectionModel(self.flow_system.effect_collection, self)
+        self.component_models: List[ComponentModel] = []
+
+    def do_modeling(self):
+        self.effect_collection_model.do_modeling(self)
+        for component_model in self.component_models:
+            component_model.do_modeling(self)
 
     def solve(self,
               mip_gap: float = 0.02,
@@ -180,26 +186,34 @@ class SystemModel(MathModel):
         return infos
 
     @property
-    def variables(self) -> List[Variable]:
-        all_vars = list(self._variables)
-        for model in self.models_of_elements.values():
-            all_vars += [var for var in model.variables.values()]
+    def all_variables(self) -> Dict[str, Variable]:
+        all_vars = {}
+        for sub_model in self.sub_models:
+            for key, value in sub_model.all_variables.items():
+                if key in all_vars:
+                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
+                all_vars[key] = value
         return all_vars
 
     @property
-    def eqs(self) -> List[Equation]:
-        all_eqs = list(self._eqs)
-        for model in self.models_of_elements.values():
-            all_eqs += [var for var in model.eqs.values()]
+    def all_equations(self) -> Dict[str, Equation]:
+        all_eqs = {}
+        for sub_model in self.sub_models:
+            for key, value in sub_model.all_equations.items():
+                if key in all_eqs:
+                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
+                all_eqs[key] = value
         return all_eqs
 
     @property
-    def ineqs(self) -> List[Equation]:
-        return [eq for eq in self.eqs if eq.eqType == 'ineq']
+    def all_inequations(self) -> Dict[str, Equation]:
+        return {name: eq for name, eq in self.all_equations.items() if eq.eqType == 'ineq'}
 
     @property
-    def models_of_elements(self) -> Dict['Element', 'ElementModel']:
-        return {element: element.model for element in self.flow_system.all_elements}
+    def sub_models(self) -> List['ElementModel']:
+        direct_models = [self.effect_collection_model] + self.component_models
+        sub_models = [sub_model for direct_model in direct_models for sub_model in direct_model.all_sub_models]
+        return direct_models + sub_models
 
 
 class Element:
@@ -209,39 +223,20 @@ class Element:
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 
+    def _plausibility_checks(self) -> None:
+        """ This function is used to do some basic plausibility checks for each Element during initialization """
+        raise NotImplementedError(f'Every Element needs a _plausibility_checks() method')
+    
+    def transform_to_time_series(self) -> None:
+        """ This function is used to transform the time series data from the User to proper TimeSeries Objects """
+        raise NotImplementedError(f'Every Element needs a transform_to_time_series() method')
+
     def create_model(self) -> None:
-        self.model = ElementModel(self)
+        raise NotImplementedError(f'Every Element needs a create_model() method')
 
     def get_results(self) -> Tuple[Dict, Dict]:
-        """
-        Get results after the solve
-        """
-        # Ergebnisse als dict ausgeben:
-        data, variables = {}, {}
-
-        # 1. Fill sub-elements recursively:
-        for element in self.sub_elements:
-            data[element.label], variables[element.label] = element.get_results()
-
-        # 2. Store variable values:
-        for var in self.model.variables.values():
-            data[var.label] = var.result
-            variables[var.label] = var  # link to the variable
-            if var.is_binary and var.length > 1:
-                data[f"{var.label}_"] = utils.zero_to_nan(var.result)   # Additional vector when binary with nan
-                variables[f"{var.label}_"] = var  # link to the variable
-
-        # 3. Pass all time series:
-        for ts in self.TS_list:
-            data[ts.label] = ts.data
-            variables[ts.label] = ts  # link to the time series
-
-        # 4. Pass the group attribute, if it exists:
-        if hasattr(self, 'group') and self.group is not None:
-            data["group"] = self.group
-            variables["group"] = self.group
-
-        return data, variables
+        """Get results after the solve"""
+        return self.model.results
 
     def __repr__(self):
         return f"<{self.__class__.__name__}> {self.label}"
@@ -252,9 +247,7 @@ class Element:
 
 
 class ElementModel:
-    """
-    is existing in every Element and owns eqs and vars of the activated calculation
-    """
+    """ Interface to create the mathematical Models for Elements """
 
     def __init__(self, element: Element):
         logger.debug(f'Created Model for {element.label_full}')
@@ -335,6 +328,22 @@ class ElementModel:
                 if value.eqType == 'ineq':
                     all_ineqs[key] = value
         return all_ineqs
+
+    @property
+    def all_sub_models(self) -> List['ElementModel']:
+        all_subs = []
+        to_process = self.sub_models.copy()
+        for model in to_process:
+            all_subs.append(model)
+            to_process.extend(model.sub_models)
+        return all_subs
+
+
+class ComponentModel(ElementModel):
+    def __init__(self, element: Element):
+        super().__init__(element)
+        self.element: Flow = element
+        raise NotImplementedError
 
 
 class FlowModel(ElementModel):
