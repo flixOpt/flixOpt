@@ -245,13 +245,14 @@ class Component(Element):
     """
     def __init__(self,
                  label: str,
+                 inputs: List['Flow'],
+                 outputs: List['Flow'],
                  on_off_parameters: OnOffParameters):
         """ Old Docstring"""
         super().__init__(label)
+        self.inputs = inputs
+        self.outputs = outputs
         self.on_off_parameters = on_off_parameters
-
-        self.inputs: List[Flow] = []
-        self.outputs: List[Flow] = []
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -286,11 +287,11 @@ class Component(Element):
 
         return str_desc
 
-    def register_component_in_flows(self) -> None:
+    def _register_component_in_flows(self) -> None:
         for flow in self.inputs + self.outputs:
             flow.comp = self
 
-    def register_flows_in_bus(self) -> None:
+    def _register_flows_in_bus(self) -> None:
         for flow in self.inputs:
             flow.bus.add_output(flow)
         for flow in self.outputs:

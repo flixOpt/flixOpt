@@ -75,14 +75,12 @@ class LinearConverter(Component):
         None.
 
         """
-        super().__init__(label, on_off_parameters)
-        self.inputs = inputs
-        self.outputs = outputs
+        super().__init__(label, inputs, outputs, on_off_parameters)
         self.conversion_factors = conversion_factors
         self.segmented_conversion_factors = segmented_conversion_factors
-        self._plausibility_test()
+        self._plausibility_checks()
 
-    def _plausibility_test(self) -> None:
+    def _plausibility_checks(self) -> None:
         if self.conversion_factors is None and self.segmented_conversion_factors is None:
             raise Exception('Either conversion_factors or segmented_conversion_factors must be defined!')
         if self.conversion_factors is not None and self.segmented_conversion_factors is not None:
