@@ -17,8 +17,7 @@ import numpy as np
 
 from flixOpt import utils
 from flixOpt.aggregation import TimeSeriesCollection
-from flixOpt.core import Skalar, Numeric
-from flixOpt.interface import TimeSeriesRaw
+from flixOpt.core import Skalar, Numeric, TimeSeriesRaw
 from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem

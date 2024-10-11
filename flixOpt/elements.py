@@ -15,258 +15,11 @@ from flixOpt import utils
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.structure import Element, SystemModel, ComponentModel, EffectModel, BusModel, FlowModel
+from flixOpt.modeling import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
+from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series
+from flixOpt.effects import EffectValues, _effect_values_to_ts, EffectCollectionModel
 
 logger = logging.getLogger('flixOpt')
-
-EffectDict = Dict[Optional['Effect'], Numeric_TS]
-EffectDictInvest = Dict[Optional['Effect'], Skalar]
-
-EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Input
-EffectValuesInvest = Optional[Union[Skalar, EffectDictInvest]]  # Datatype for User Input
-
-EffectTimeSeries = Dict[Optional['Effect'], TimeSeries]  # Final Internal Data Structure
-
-
-def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:
-    """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
-    time_series = TimeSeries(label=label, data=data)
-    element.TS_list.append(time_series)
-    return time_series
-
-
-class Effect(Element):
-    """
-    Effect, i.g. costs, CO2 emissions, area, ...
-    Components, FLows, and so on can contribute to an Effect. One Effect is chosen as the Objective of the Optimization
-    """
-
-    def __init__(self,
-                 label: str,
-                 unit: str,
-                 description: str,
-                 is_standard: bool = False,
-                 is_objective: bool = False,
-                 specific_share_to_other_effects_operation: Optional[EffectValues] = None,
-                 specific_share_to_other_effects_invest: Optional[EffectValuesInvest] = None,
-                 minimum_operation: Optional[Skalar] = None,
-                 maximum_operation: Optional[Skalar] = None,
-                 minimum_invest: Optional[Skalar] = None,
-                 maximum_invest: Optional[Skalar] = None,
-                 minimum_operation_per_hour: Optional[Numeric_TS] = None,
-                 maximum_operation_per_hour: Optional[Numeric_TS] = None,
-                 minimum_total: Optional[Skalar] = None,
-                 maximum_total: Optional[Skalar] = None):
-        """
-        Parameters
-        ----------
-        label : str
-            name
-        unit : str
-            unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
-        description : str
-            long name
-        is_standard : boolean, optional
-            true, if Standard-Effect (for direct input of value without effect (alternatively to dict)) , else false
-        is_objective : boolean, optional
-            true, if optimization target
-        specific_share_to_other_effects_operation : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
-            share to other effects (only operation)
-        specific_share_to_other_effects_invest : {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
-            share to other effects (only invest).
-        minimum_operation : scalar, optional
-            minimal sum (only operation) of the effect
-        maximum_operation : scalar, optional
-            maximal sum (nur operation) of the effect.
-        minimum_operation_per_hour : scalar or TS
-            maximum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
-        maximum_operation_per_hour : scalar or TS
-            minimum value per hour (only operation) of effect (=sum of all effect-shares) for each timestep!
-        minimum_invest : scalar, optional
-            minimal sum (only invest) of the effect
-        maximum_invest : scalar, optional
-            maximal sum (only invest) of the effect
-        minimum_total : sclalar, optional
-            min sum of effect (invest+operation).
-        maximum_total : scalar, optional
-            max sum of effect (invest+operation).
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
-        """
-        super().__init__(label)
-        self.label = label
-        self.unit = unit
-        self.description = description
-        self.is_standard = is_standard
-        self.is_objective = is_objective
-        self.specific_share_to_other_effects_operation = specific_share_to_other_effects_operation
-        self.specific_share_to_other_effects_invest = specific_share_to_other_effects_invest
-        self.minimum_operation = minimum_operation
-        self.maximum_operation = maximum_operation
-        self.minimum_operation_per_hour = minimum_operation_per_hour
-        self.maximum_operation_per_hour = maximum_operation_per_hour
-        self.minimum_invest = minimum_invest
-        self.maximum_invest = maximum_invest
-        self.minimum_total = minimum_total
-        self.maximum_total = maximum_total
-
-        self._plausibility_checks()
-
-    def _plausibility_checks(self) -> None:
-        # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
-        #TODO: Improve checks!! Only most basic case covered...
-
-        def error_str(effect_label: str, shareEffect_label: str):
-            return (
-                f'  {effect_label} -> has share in: {shareEffect_label}\n'
-                f'  {shareEffect_label} -> has share in: {effect_label}'
-            )
-
-        # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-        # operation:
-        for target_effect in self.specific_share_to_other_effects_operation.keys():
-            assert self not in target_effect.specific_share_to_other_effects_operation.keys(), \
-                f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
-        # invest:
-        for target_effect in self.specific_share_to_other_effects_invest.keys():
-            assert self not in target_effect.specific_share_to_other_effects_invest.keys(), \
-                f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
-
-    def transform_to_time_series(self):
-        self.minimum_operation_per_hour = _create_time_series(
-            f'{self.label_full}_minimum_operation_per_hour', self.minimum_operation_per_hour, self)
-        self.maximum_operation_per_hour = _create_time_series(
-            f'{self.label_full}_maximum_operation_per_hour', self.maximum_operation_per_hour, self)
-
-        self.specific_share_to_other_effects_operation = _effect_values_to_ts(
-            f'{self.label_full}_specific_share_to_other_effects_operation',
-            self.specific_share_to_other_effects_operation, self)
-
-    def create_model(self) -> EffectModel:
-        self.model = EffectModel(self)
-        return self.model
-
-    def __str__(self):
-        objective = "Objective" if self.is_objective else ""
-        standart = "Standardeffect" if self.is_standard else ""
-        op_sum = f"OperationSum={self.minimum_operation}-{self.maximum_operation}" \
-            if self.minimum_operation is not None or self.maximum_operation is not None else ""
-        inv_sum = f"InvestSum={self.minimum_invest}-{self.maximum_invest}" \
-            if self.minimum_invest is not None or self.maximum_invest is not None else ""
-        tot_sum = f"TotalSum={self.minimum_total}-{self.maximum_total}" \
-            if self.minimum_total is not None or self.maximum_total is not None else ""
-        label_unit = f"{self.label} [{self.unit}]:"
-        desc = f"({self.description})"
-        shares_op = f"Operation Shares={self.specific_share_to_other_effects_operation}" \
-            if self.specific_share_to_other_effects_operation != {} else ""
-        shares_inv = f"Invest Shares={self.specific_share_to_other_effects_invest}" \
-            if self.specific_share_to_other_effects_invest != {} else ""
-
-        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
-
-        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
-
-        return f"<{self.__class__.__name__}> {full_str}"
-
-
-def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
-    """
-    Converts effect values into a dictionary. If a scalar value is provided, it is associated with a standard effect type.
-
-    Examples
-    --------
-    If costs are given without specifying the effect, the standard effect is used (see class Effect):
-      costs = 20                        -> {None: 20}
-      costs = None                      -> no change
-      costs = {effect1: 20, effect2: 0.3} -> no change
-
-    Parameters
-    ----------
-    effect_values : None, int, float, TimeSeries, or dict
-        The effect values to convert can be a scalar, a TimeSeries, or a dictionary with an effectas key
-
-    Returns
-    -------
-    dict or None
-        Converted values in from of dict with either None or Effect as key. if values is None, None is returned
-    """
-    if isinstance(effect_values, dict):
-        return effect_values
-    elif effect_values is None:
-        return None
-    else:
-        return {None: effect_values}
-
-
-def _effect_values_to_ts(label: str, effect_dict: EffectDict, element: Element) -> Optional[EffectTimeSeries]:
-    """
-    Transforms values in a dictionary to instances of TimeSeries.
-
-    Parameters
-    ----------
-    label : str
-        The name of the parameter. (the effect_label gets added)
-    effect_dict : dict
-        A dictionary with effect-value pairs.
-    element : object
-        The owner object where TimeSeries belongs to.
-
-    Returns
-    -------
-    dict
-        A dictionary with Effects (or None {= standard effect}) as keys and TimeSeries instances as values. On
-    """
-    if effect_dict is None:
-        return None
-
-    transformed_dict = {}
-    for effect, values in effect_dict.items():
-        if not isinstance(values, TimeSeries):
-            subname = 'standard' if effect is None else effect.label
-            transformed_dict[effect] = _create_time_series(f"{label}_{subname}", values, element)
-    return transformed_dict
-
-
-class EffectCollection(Element):
-    """
-    Handling all Effects
-    """
-
-    def __init__(self, label: str):
-        super().__init__(label)
-        self.effects: List[Effect] = []
-
-    def create_model(self) -> EffectModel:
-        self.model = EffectModel(self)
-        return self.model
-
-    def add_effect(self, effect: Effect) -> None:
-        if effect.is_standard and self.standard_effect is not None:
-            raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
-        if effect.is_objective and self.objective_effect is not None:
-            raise Exception(f'A objective-effect already exists! ({self.objective_effect.label=})')
-        if effect in self.effects:
-            raise Exception(f'Effect already added! ({effect.label=})')
-        if effect.label in [existing_effect.label for existing_effect in self.effects]:
-            raise Exception(f'Effect with label "{effect.label=}" already added!')
-        self.effects.append(effect)
-
-    @property
-    def standard_effect(self) -> Optional[Effect]:
-        for effect in self.effects:
-            if effect.is_standard:
-                return effect
-
-    @property
-    def objective_effect(self) -> Optional[Effect]:
-        for effect in self.effects:
-            if effect.is_objective:
-                return effect
 
 
 class Component(Element):
@@ -286,7 +39,7 @@ class Component(Element):
         self.on_off_parameters = on_off_parameters
         self.prevent_simultaneous_flows = prevent_simultaneous_flows
 
-    def create_model(self) -> ComponentModel:
+    def create_model(self) -> 'ComponentModel':
         self.model = ComponentModel(self)
         return self.model
 
@@ -358,7 +111,7 @@ class Bus(Element):
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
 
-    def create_model(self) -> BusModel:
+    def create_model(self) -> 'BusModel':
         self.model = BusModel(self)
         return self.model
 
@@ -474,7 +227,7 @@ class Flow(Element):
 
         self._plausibility_checks()
 
-    def create_model(self) -> FlowModel:
+    def create_model(self) -> 'FlowModel':
         self.model = FlowModel(self)
         return self.model
 
@@ -530,3 +283,166 @@ class Flow(Element):
     def invest_is_optional(self) -> bool:
         # Wenn kein InvestParameters existiert: # Investment ist nicht optional -> Keine Variable --> False
         return False if (isinstance(self.size, InvestParameters) and not self.size.optional) else True
+
+
+class FlowModel(ElementModel):
+    def __init__(self, element: Flow):
+        super().__init__(element)
+        self.element: Flow = element
+        self.flow_rate: Optional[VariableTS] = None
+        self.sum_flow_hours: Optional[Variable] = None
+
+        self._on: Optional[OnOffModel] = None
+        self._investment: Optional[InvestmentModel] = None
+
+    def do_modeling(self, system_model: SystemModel):
+        # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
+        if self.element.on_off_parameters is None and not isinstance(self.element.size, InvestParameters):
+            if self.element.fixed_relative_value is None:
+                fixed_flow_rate = None
+            else:
+                fixed_flow_rate = self.element.fixed_relative_value * self.element.size
+            self.flow_rate = VariableTS('flow_rate',
+                                        system_model.nr_of_time_steps, self.element.label_full, system_model,
+                                        lower_bound=self.element.relative_minimum * self.element.size,
+                                        upper_bound=self.element.relative_maximum * self.element.size,
+                                        value=fixed_flow_rate)
+        else:  # Bounds are created later and in sub_models
+            self.flow_rate = VariableTS('flow_rate', system_model.nr_of_time_steps,
+                                        self.element.label_full, system_model, lower_bound=0)
+        self.add_variables(self.flow_rate)
+
+        # OnOff
+        if self.element.on_off_parameters is not None:
+            self._on = OnOffModel(self.element, self.element.on_off_parameters,
+                                  [self.flow_rate],
+                                  [self.flow_rate_bounds])
+            self._on.do_modeling(system_model)
+            self.sub_models.append(self._on)
+
+        # Investment
+        if isinstance(self.element.size, InvestParameters):
+            self._investment = InvestmentModel(self.element, self.element.size,
+                                               self.flow_rate,
+                                               (self.element.relative_minimum, self.element.size.minimum_size),
+                                               self._on.on)
+            self._investment.do_modeling(system_model)
+            self.sub_models.append(self._investment)
+
+        # sumFLowHours
+        self.sum_flow_hours = Variable('sumFlowHours', 1, self.element.label_full, system_model,
+                                       lower_bound=self.element.flow_hours_total_min,
+                                       upper_bound=self.element.flow_hours_total_max)
+        eq_sum_flow_hours = Equation('sumFlowHours', self, system_model, 'eq')
+        eq_sum_flow_hours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
+        eq_sum_flow_hours.add_summand(self.sum_flow_hours, -1)
+        self.add_variables(self.sum_flow_hours)
+        self.add_equations(eq_sum_flow_hours)
+
+        self._create_bounds_for_load_factor(system_model)
+        self._create_shares(system_model)
+
+    def _create_shares(self, system_model: SystemModel):
+        # Arbeitskosten:
+        effect_collection = system_model.flow_system.effect_collection
+        if self.element.effects_per_flow_hour is not None:
+            effect_collection.add_share_to_operation(
+                name_of_share='effects_per_flow_hour',
+                owner=self.element, variable=self.flow_rate,
+                effect_values=self.element.effects_per_flow_hour,
+                factor=system_model.dt_in_hours
+            )
+
+    def _create_bounds_for_load_factor(self, system_model: SystemModel):
+        # TODO: Add Variable load_factor for better evaluation?
+
+        # eq: var_sumFlowHours <= size * dt_tot * load_factor_max
+        if self.element.load_factor_max is not None:
+            flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
+            eq_load_factor_max = Equation('load_factor_max', self.element, system_model, 'ineq')
+            self.add_equations(eq_load_factor_max)
+            eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
+            # if investment:
+            if self._investment is not None:
+                eq_load_factor_max.add_summand(self._investment.size, -1 * flow_hours_per_size_max)
+            else:
+                eq_load_factor_max.add_constant(self.element.size * flow_hours_per_size_max)
+
+        #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
+        if self.element.load_factor_min is not None:
+            flow_hours_per_size_min = system_model.dt_in_hours_total * self.element.load_factor_min
+            eq_load_factor_min = Equation('load_factor_min', self, system_model, 'ineq')
+            self.add_equations(eq_load_factor_min)
+            eq_load_factor_min.add_summand(self.sum_flow_hours, 1)
+            if self._investment is not None:
+                eq_load_factor_min.add_summand(self._investment.size, flow_hours_per_size_min)
+            else:
+                eq_load_factor_min.add_constant(-1 * self.element.size * flow_hours_per_size_min)
+
+    @property
+    def flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
+        if not isinstance(self.element.size, InvestParameters):
+            return (self.element.relative_minimum * self.element.size,
+                    self.element.relative_maximum * self.element.size)
+        else:
+            return (self.element.relative_minimum * self.element.size.minimum_size,
+                    self.element.relative_maximum * self.element.size.maximum_size)
+
+
+class BusModel(ElementModel):
+    def __init__(self, element: Bus):
+        super().__init__(element)
+        self.element: Bus
+        self.excess_input: Optional[VariableTS] = None
+        self.excess_output: Optional[VariableTS] = None
+
+    def do_modeling(self, system_model: SystemModel) -> None:
+        self.element: Bus
+        # inputs = outputs
+        eq_bus_balance = Equation('busBalance', self.element, system_model)
+        self.add_equations(eq_bus_balance)
+        for flow in self.element.inputs:
+            eq_bus_balance.add_summand(flow.model.flow_rate, 1)
+        for flow in self.element.outputs:
+            eq_bus_balance.add_summand(flow.model.flow_rate, -1)
+
+        # Fehlerplus/-minus:
+        if self.element.with_excess:
+            excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_effects_per_flow_hour)
+            self.excess_input = VariableTS('excess_input', system_model.nr_of_time_steps, self.element.label_full,
+                                           system_model, lower_bound=0)
+            self.excess_output = VariableTS('excess_output', system_model.nr_of_time_steps,
+                                            self.element.label_full, system_model, lower_bound=0)
+            self.add_variables(self.excess_input, self.excess_output)
+
+            eq_bus_balance.add_summand(self.excess_output, -1)
+            eq_bus_balance.add_summand(self.excess_input, 1)
+
+            effect_collection_model: EffectCollectionModel = system_model.flow_system.effect_collection.model
+
+            effect_collection_model.add_share_to_penalty('penalty', self.element, self.excess_input, excess_penalty)
+            effect_collection_model.add_share_to_penalty('penalty', self.element, self.excess_output, excess_penalty)
+
+
+class ComponentModel(ElementModel):
+    def __init__(self, element: Component):
+        super().__init__(element)
+        self.element: Component = element
+
+    def do_modeling(self, system_model: SystemModel):
+        """ Initiates all FlowModels """
+        if self.element.prevent_simultaneous_flows:
+            for flow in self.element.inputs + self.element.outputs:
+                if flow.on_off_parameters is None:
+                    flow.on_off_parameters = OnOffParameters([0], force_on=True)
+                else:
+                    flow.on_off_parameters.force_on = True
+        self.sub_models.extend([flow.create_model() for flow in self.element.inputs + self.element.outputs])
+        for sub_model in self.sub_models:
+            sub_model.do_modeling(system_model)
+
+        # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
+        on_variables = [flow.model._on.on for flow in self.element.inputs + self.element.outputs]
+        simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
+        self.sub_models.append(simultaneous_use)
+        simultaneous_use.do_modeling(system_model)

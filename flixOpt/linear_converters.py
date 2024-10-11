@@ -9,7 +9,6 @@ import logging
 from flixOpt import Flow, utils, TimeSeriesRaw
 from flixOpt.components import LinearConverter
 from flixOpt.core import Numeric_TS, TimeSeries
-from flixOpt.elements import MediumCollection
 
 logger = logging.getLogger('flixOpt')
 

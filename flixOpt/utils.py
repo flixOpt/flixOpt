@@ -12,7 +12,7 @@ from typing import Union, List, Optional, Dict, Literal
 import numpy as np
 import math  # für nan
 
-from flixOpt.interface import TimeSeriesRaw
+from flixOpt.core import TimeSeriesRaw
 from flixOpt.core import Numeric, Skalar
 
 logger = logging.getLogger('flixOpt')

@@ -15,48 +15,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger('flixOpt')
 
-# Anmerkung: TimeSeriesRaw separat von TimeSeries wg. Einfachheit für Anwender
-class TimeSeriesRaw:
-    def __init__(self,
-                 value: Union[int, float, np.ndarray],
-                 agg_group: Optional[str] = None,
-                 agg_weight: Optional[float] = None):
-        """
-        timeseries class for transmit timeseries AND special characteristics of timeseries,
-        i.g. to define weights needed in calculation_type 'aggregated'
-            EXAMPLE solar:
-            you have several solar timeseries. These should not be overweighted
-            compared to the remaining timeseries (i.g. heat load, price)!
-            fixed_relative_value_solar1 = TimeSeriesRaw(sol_array_1, type = 'solar')
-            fixed_relative_value_solar2 = TimeSeriesRaw(sol_array_2, type = 'solar')
-            fixed_relative_value_solar3 = TimeSeriesRaw(sol_array_3, type = 'solar')
-            --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3
-            (instead of standard weight = 1)
-
-        Parameters
-        ----------
-        value : Union[int, float, np.ndarray]
-            The timeseries data, which can be a scalar, array, or numpy array.
-        agg_group : str, optional
-            The group this TimeSeriesRaw is a part of. agg_weight is split between members of a group. Default is None.
-        agg_weight : float, optional
-            The weight for calculation_type 'aggregated', should be between 0 and 1. Default is None.
-
-        Raises
-        ------
-        Exception
-            If both agg_group and agg_weight are set, an exception is raised.
-        """
-        self.value = value
-        self.agg_group = agg_group
-        self.agg_weight = agg_weight
-        if (agg_group is not None) and (agg_weight is not None):
-            raise Exception('Either <agg_group> or explicit <agg_weigth> can be used. Not both!')
-
-    def __repr__(self):
-        return f"TimeSeriesRaw(value={self.value}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
-
-
 # Sammlung von Props für Investitionskosten (für FeatureInvest)
 class InvestParameters:
     '''
@@ -70,7 +28,7 @@ class InvestParameters:
                  optional: bool = True,  # Investition ist weglassbar
                  fix_effects: Optional[Union[Dict, int, float]] = None,
                  specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
-                 effects_in_segments: Optional[Tuple[List[Tuple[Skalar, Skalar]], Dict[Effect, List[Tuple[Skalar, Skalar]]]]] = None,
+                 effects_in_segments: Optional[Tuple[List[Tuple[Skalar, Skalar]], Dict['Effect', List[Tuple[Skalar, Skalar]]]]] = None,
                  divest_effects: Optional[Union[Dict, int, float]] = None):
         """
         Parameters

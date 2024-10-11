@@ -14,8 +14,8 @@ import yaml  # (für json-Schnipsel-print)
 from flixOpt import utils
 from flixOpt.core import TimeSeries
 from flixOpt.structure import Element, SystemModel
-from flixOpt.elements import Bus, Flow, Effect, EffectCollection, Component
-from flixOpt.features import FeatureInvest
+from flixOpt.elements import Bus, Flow, Component
+from flixOpt.effects import Effect, EffectCollection
 
 logger = logging.getLogger('flixOpt')
 

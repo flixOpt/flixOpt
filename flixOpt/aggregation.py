@@ -9,7 +9,7 @@ Modul zur aggregierten Berechnung eines Energiesystemmodells.
 
 import copy
 import timeit
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, TYPE_CHECKING
 import warnings
 import logging
 
@@ -18,12 +18,16 @@ import numpy as np
 import tsam.timeseriesaggregation as tsam
 
 from flixOpt.core import Skalar, TimeSeries
-from flixOpt.elements import EffectCollection, Flow
+from flixOpt.elements import Flow
 from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Storage
-from flixOpt.interface import TimeSeriesRaw
+from flixOpt.core import TimeSeriesRaw
 from flixOpt.structure import Element, SystemModel
-from flixOpt.math_modeling import Equation, Variable, VariableTS, MathModel
+from flixOpt.math_modeling import Equation, Variable
+
+if TYPE_CHECKING:
+    from flixOpt.effects import EffectCollection
+
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 logger = logging.getLogger('flixOpt')
@@ -338,7 +342,7 @@ class AggregationModeling(Element):
             eq_max.add_constant(self.noOfCorrections)  # Maximum
         return eq
 
-    def add_share_to_globals(self, effect_collection: EffectCollection, system_model):
+    def add_share_to_globals(self, effect_collection: 'EffectCollection', system_model):
         # TODO: BUGFIX
         # einzelne Stellen korrigierbar machen (aber mit Kosten)
         if (self.percentage_of_period_freedom > 0) & (self.costs_of_period_freedom != 0):
