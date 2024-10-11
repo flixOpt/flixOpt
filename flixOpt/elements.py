@@ -275,13 +275,14 @@ class Component(Element):
     """
     def __init__(self,
                  label: str,
-                 inputs: List['Flow'],
-                 outputs: List['Flow'],
-                 on_off_parameters: Optional[OnOffParameters] = None):
+                 inputs: Optional[List['Flow']] = None,
+                 outputs: Optional[List['Flow']] = None,
+                 on_off_parameters: Optional[OnOffParameters] = None,
+                 prevent_simultaneous_flows: bool = False):
         """ Old Docstring"""
         super().__init__(label)
-        self.inputs = inputs
-        self.outputs = outputs
+        self.inputs: List['Flow'] = inputs or []
+        self.outputs: List['Flow'] = outputs or []
         self.on_off_parameters = on_off_parameters
 
     def create_model(self) -> ComponentModel:
