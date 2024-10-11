@@ -376,12 +376,11 @@ class StorageModel(ComponentModel):
         indices_charge_state = range(system_model.time_indices.start, system_model.time_indices.stop + 1)  # additional
 
         if self.element.initial_charge_state is not None:
-            eq_initial = Equation('initial_charge_state', self, system_model, eqType='eq')
+            eq_initial = Equation('initial_charge_state', self.element, system_model, eqType='eq')
             self.add_equations(eq_initial)
             if utils.is_number(self.element.initial_charge_state):
                 # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
-                self.add_equations(eq_initial)
-                eq_initial.add_constant(self.charge_state.before_value)  # chargeState_0 !
+                eq_initial.add_constant(self.element.initial_charge_state)  # chargeState_0 !
                 eq_initial.add_summand(self.charge_state, 1, system_model.time_indices[0])
             elif self.element.initial_charge_state == 'lastValueOfSim':
                 # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
