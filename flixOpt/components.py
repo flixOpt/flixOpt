@@ -265,13 +265,12 @@ class SourceAndSink(Component):
     # source : Flow
     # sink   : Flow
 
-    new_init_args = ['label', 'source', 'sink', 'prevent_simultaneous_charge_and_discharge']
-
-    not_used_args = ['label']
-
-    def __init__(self, label: str, source: Flow, sink: Flow, group: str = None,
-                 avoidInAndOutAtOnce: bool = True, **kwargs):
-        '''
+    def __init__(self,
+                 label: str,
+                 source: Flow,
+                 sink: Flow,
+                 prevent_simultaneous_flows: bool = True):
+        """
         Parameters
         ----------
         label : str
@@ -280,107 +279,37 @@ class SourceAndSink(Component):
             output-flow of this component
         sink : Flow
             input-flow of this component
-        group: str, None
-            group name to assign components to groups. Used for later analysis of the results
-        avoidInAndOutAtOnce: boolean. Default ist True.
+        prevent_simultaneous_flows: boolean. Default ist True.
             True: inflow and outflow are not allowed to be both non-zero at same timestep.
             False: inflow and outflow are working independently.
-            
-        **kwargs : TYPE
-            DESCRIPTION.
 
-
-        '''
-        super().__init__(label, **kwargs)
+        """
+        super().__init__(label, inputs=[sink], outputs=[source], prevent_simultaneous_flows=prevent_simultaneous_flows)
         self.source = source
         self.sink = sink
-        self.avoidInAndOutAtOnce = avoidInAndOutAtOnce
-        self.outputs.append(source)  # ein Output-Flow
-        self.inputs.append(sink)
-
-        self.group = group
-
-        # copy information of group to in-flows and out-flows
-        for flow in self.inputs + self.outputs:
-            flow.group = self.group
-
-        # Erzwinge die Erstellung der On-Variablen, da notwendig für gleichung
-        self.source.force_on = True
-        self.sink.force_on = True
-
-        if self.avoidInAndOutAtOnce:
-            self.featureAvoidInAndOutAtOnce = FeatureAvoidFlowsAtOnce('sinkOrSource', self, [self.source, self.sink])
-        else:
-            self.featureAvoidInAndOutAtOnce = None
-
-    def declare_vars_and_eqs(self, system_model):
-        """
-        Deklarieren von Variablen und Gleichungen
-
-        :param system_model:
-        :return:
-        """
-        super().declare_vars_and_eqs(system_model)
-
-    def do_modeling(self, system_model):
-        super().do_modeling(system_model)
-        # Entweder Sink-Flow oder Source-Flow aktiv. Nicht beide Zeitgleich!
-        if self.featureAvoidInAndOutAtOnce is not None:
-            self.featureAvoidInAndOutAtOnce.do_modeling(system_model)
 
 
 class Source(Component):
-    """
-    class of a source
-    """
-    new_init_args = ['label', 'source']
-    not_used_args = ['label']
-
-    def __init__(self, label: str, source: Flow, group: str = None, **kwargs):
-        '''       
+    def __init__(self,
+                 label: str,
+                 source: Flow):
+        """
         Parameters
         ----------
         label : str
             name of source
         source : Flow
             output-flow of source
-        group: str, None
-            group name to assign components to groups. Used for later analysis of the results
-        **kwargs : TYPE
-
-        Returns
-        -------
-        None.
-
-        '''
-
         """
-        Konstruktor für Instanzen der Klasse Source
-
-        :param str label: Bezeichnung
-        :param Flow source: flow-output Quelle
-        :param kwargs:
-        """
-        super().__init__(label, **kwargs)
+        super().__init__(label, outputs=[source])
         self.source = source
-        self.outputs.append(source)  # ein Output-Flow
-
-        self.group = group
-
-        # copy information of group to in-flows and out-flows
-        for flow in self.inputs + self.outputs:
-            flow.group = self.group
 
 
 class Sink(Component):
-    """
-    Klasse Sink
-    """
-    new_init_args = ['label', 'source']
-    not_used_args = ['label']
-
-    def __init__(self, label: str, sink: Flow, group: str = None, **kwargs):
-        '''
+    def __init__(self,
+                 label: str,
+                 sink: Flow):
+        """
         constructor of sink
 
         Parameters
@@ -389,26 +318,10 @@ class Sink(Component):
             name of sink.
         sink : Flow
             input-flow of sink
-        group: str, None
-            group name to assign components to groups. Used for later analysis of the results
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
-        '''
-
-        super().__init__(label, **kwargs)
+        """
+        super().__init__(label, inputs=[sink])
         self.sink = sink
         self.inputs.append(sink)  # ein Input-Flow
-
-        self.group = group
-
-        # copy information of group to in-flows and out-flows
-        for flow in self.inputs + self.outputs:
-            flow.group = self.group
 
 
 class Transportation(Component):
