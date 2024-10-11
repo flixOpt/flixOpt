@@ -260,12 +260,12 @@ class ElementModel:
 
     def add_variables(self, *variables: Variable) -> None:
         for variable in variables:
-            if variable.label not in self.variables.keys():
-                self.variables[variable.label] = variable
+            if variable.label_full not in self.variables.keys():
+                self.variables[variable.label_full] = variable
             elif variable in self.variables.values():
-                raise Exception(f'Variable "{variable.label}" already exists')
+                raise Exception(f'Variable "{variable.label_full}" already exists')
             else:
-                raise Exception(f'A Variable with the label "{variable.label}" already exists')
+                raise Exception(f'A Variable with the label "{variable.label_full}" already exists')
 
     def add_equations(self, *equations: Equation) -> None:
         for equation in equations:
