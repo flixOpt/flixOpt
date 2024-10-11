@@ -70,7 +70,7 @@ class InvestmentModel(ElementModel):
         self._create_shares(system_model)
 
     def _create_shares(self, system_model: SystemModel):
-        effect_collection = system_model.flow_system.effect_collection.model
+        effect_collection = system_model.effect_collection_model
         invest_parameters = self._invest_parameters
 
         # fix_effects:
@@ -679,7 +679,7 @@ class SegmentedSharesModel(ElementModel):
         self._segments_model.do_modeling(system_model)
 
         # Shares
-        effect_collection = system_model.flow_system.effect_collection.model
+        effect_collection = system_model.effect_collection_model
         for effect, single_share_model in self._shares.items():
             effect_collection.add_share_to_invest(
                 name='segmented_effects',

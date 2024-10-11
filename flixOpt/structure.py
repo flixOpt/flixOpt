@@ -41,8 +41,7 @@ class SystemModel(MathModel):
         self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
             flow_system.get_time_data_from_indices(time_indices))
 
-        from flixOpt.effects import EffectCollectionModel
-        self.effect_collection_model = EffectCollectionModel(self.flow_system.effect_collection, self)
+        self.effect_collection_model = flow_system.effect_collection.create_model(self)
         self.component_models: List['ComponentModel'] = []
         self.bus_models: List['BusModel'] = []
 
