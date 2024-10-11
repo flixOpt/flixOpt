@@ -434,15 +434,16 @@ class ComponentModel(ElementModel):
         if self.element.prevent_simultaneous_flows:
             for flow in self.element.inputs + self.element.outputs:
                 if flow.on_off_parameters is None:
-                    flow.on_off_parameters = OnOffParameters([0], force_on=True)
+                    flow.on_off_parameters = OnOffParameters(force_on=True)
                 else:
                     flow.on_off_parameters.force_on = True
         self.sub_models.extend([flow.create_model() for flow in self.element.inputs + self.element.outputs])
         for sub_model in self.sub_models:
             sub_model.do_modeling(system_model)
 
-        # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
-        on_variables = [flow.model._on.on for flow in self.element.inputs + self.element.outputs]
-        simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
-        self.sub_models.append(simultaneous_use)
-        simultaneous_use.do_modeling(system_model)
+        if self.element.prevent_simultaneous_flows:
+            # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
+            on_variables = [flow.model._on.on for flow in self.element.inputs + self.element.outputs]
+            simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
+            self.sub_models.append(simultaneous_use)
+            simultaneous_use.do_modeling(system_model)
