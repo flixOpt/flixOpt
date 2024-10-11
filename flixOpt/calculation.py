@@ -139,13 +139,11 @@ class FullCalculation(Calculation):
 
     def do_modeling(self) -> SystemModel:
         self.check_if_already_modeled()
-        self.flow_system.finalize()  # FlowSystem finalisieren:
 
         t_start = timeit.default_timer()
         system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
-        self.flow_system.activate_model(system_model, self.time_indices)  # model aktivieren:
-        self.flow_system.do_modeling_of_elements()  # modellieren:
-        self.flow_system.transform_to_math_model()
+        system_model.do_modeling()
+        system_model.to_math_model()
 
         self.system_models.append(system_model)
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)

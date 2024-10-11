@@ -124,56 +124,11 @@ class FlowSystem:
         element : Element
             new element to check
         """
-        # check if element is already registered:
-        if element in self.all_first_level_elements:
+        if element in self.all_elements:
             raise Exception(f'Element {element.label} already added to FlowSystem!')
         # check if name is already used:
-        if element.label in [elem.label for elem in self.all_first_level_elements]:
+        if element.label in [elem.label_full for elem in self.all_elements]:
             raise Exception(f'Label of Element {element.label} already used in another element!')
-
-    def do_modeling_of_elements(self) -> SystemModel:
-
-        if not self._finalized:
-            raise Exception('modeling not possible, because Energysystem is not finalized')
-
-        self.effect_collection.declare_vars_and_eqs(self.model)
-        self.effect_collection.do_modeling(self.model)
-        self.objective.declare_vars_and_eqs(self.model)
-        self.objective.add_objective_effect_and_penalty(self.effect_collection)
-
-        # Komponenten-Modellierung (# inklusive sub_elements!)
-        for aComp in self.components:
-            aComp: Component
-            logger.debug('model ' + aComp.label + '...')
-            # todo: ...OfFlows() ist nicht schön --> besser als rekursive Geschichte aller subModelingElements der Komponente umsetzen z.b.
-            aComp.declare_vars_and_eqs_of_flows(self.model)
-            aComp.declare_vars_and_eqs(self.model)
-
-            aComp.do_modeling_of_flows(self.model)
-            aComp.do_modeling(self.model)
-
-            aComp.add_share_to_globals_of_flows(self.effect_collection, self.model)
-            aComp.add_share_to_globals(self.effect_collection, self.model)
-
-        # Bus-Modellierung (# inklusive sub_elements!)
-        aBus: Bus
-        for aBus in self.all_buses:
-            logger.debug('model ' + aBus.label + '...')
-            aBus.declare_vars_and_eqs(self.model)
-            aBus.do_modeling(self.model)
-            aBus.add_share_to_globals(self.effect_collection, self.model)
-
-        # TODO: Currently there are no "other elements"
-        # weitere übergeordnete Modellierungen:
-        for element in self.other_elements:
-            element.declare_vars_and_eqs(self.model)
-            element.do_modeling(self.model)
-            element.add_share_to_globals(self.effect_collection, self.model)
-
-        return self.model
-
-    def transform_to_math_model(self):
-        self.model.to_math_model()
 
     # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activate_system_model)
     def activate_indices_in_time_series(
@@ -260,7 +215,6 @@ class FlowSystem:
                             sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
         return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
-
     @property
     def all_flows(self) -> Set[Flow]:
         return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
@@ -279,7 +233,5 @@ class FlowSystem:
 
     @property
     def all_elements(self) -> List[Element]:
-        first_level_elements = self.all_first_level_elements_with_flows
-        all_sub_elements = [sub_element for element in first_level_elements
-                        for sub_element in element.all_sub_elements]
-        return first_level_elements + all_sub_elements
+        return (self.components + self.effect_collection.effects + self.temporary_elements +
+                list(self.other_elements) + list(self.all_flows) + list(self.all_buses))
