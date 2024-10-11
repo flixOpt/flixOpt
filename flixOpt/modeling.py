@@ -493,6 +493,7 @@ class MultipleSegmentsModel(ElementModel):
 class ShareAllocationModel(ElementModel):
     def __init__(self,
                  element: Element,
+                 label: str,
                  shares_are_time_series: bool,
                  total_max: Optional[Skalar] = None,
                  total_min: Optional[Skalar] = None,
@@ -502,6 +503,7 @@ class ShareAllocationModel(ElementModel):
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, \
                 "Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False"
+        self.label = label
         self.element = element
         self.sum_TS: Optional[VariableTS] = None
         self.sum: Optional[Variable] = None
@@ -517,20 +519,20 @@ class ShareAllocationModel(ElementModel):
         self._min_per_hour = min_per_hour
 
     def do_modeling(self, system_model: SystemModel):
-        self.sum = create_variable('sum', self, 1, system_model,
+        self.sum = create_variable(f'{self.label}_sum', self, 1, system_model,
                                    lower_bound=self._total_min, upper_bound=self._total_max)
         # eq: sum = sum(share_i) # skalar
-        self._eq_sum = create_equation('sum', self, system_model)
+        self._eq_sum = create_equation(f'{self.label}_sum', self, system_model)
         self._eq_sum.add_summand(self.sum, -1)
 
         if self._shares_are_time_series:
             lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
             ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
-            self.sum_TS = create_ts_variable('sum_TS', self, system_model.nr_of_time_steps, system_model,
+            self.sum_TS = create_ts_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, system_model,
                                              lower_bound=lb_TS, upper_bound=ub_TS)
 
             # eq: sum_TS = sum(share_TS_i) # TS
-            self._eq_time_series = create_equation('time_series', self, system_model)
+            self._eq_time_series = create_equation(f'{self.label}_time_series', self, system_model)
             self._eq_time_series.add_summand(self.sum_TS, -1)
 
             # eq: sum = sum(sum_TS(t)) # additionaly to self.sum
