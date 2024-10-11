@@ -307,8 +307,8 @@ class EffectCollectionModel(ElementModel):
         self.objective: Optional[Equation] = None
 
     def do_modeling(self, system_model: SystemModel):
-        self._effect_models = {effect: EffectModel(effect) for effect in self.element.effects}
-        self.penalty = ShareAllocationModel(self.element, True)
+        self._effect_models = {effect: effect.create_model() for effect in self.element.effects}
+        self.penalty = ShareAllocationModel(self.element, 'penalty', True)
         self.sub_models.extend(list(self._effect_models.values()) + [self.penalty])
         for model in self.sub_models:
             model.do_modeling(system_model)
