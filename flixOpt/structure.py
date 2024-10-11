@@ -252,7 +252,7 @@ class ElementModel:
     """ Interface to create the mathematical Models for Elements """
 
     def __init__(self, element: Element):
-        logger.debug(f'Created Model for {element.label_full}')
+        logger.debug(f'Created {self.__class__.__name__} for {element.label_full}')
         self.element = element
         self.variables = {}
         self.eqs = {}
