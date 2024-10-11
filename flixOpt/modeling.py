@@ -194,7 +194,7 @@ class OnOffModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         if self._on_off_parameters.use_on:
             self.on = VariableTS('on', system_model.nr_of_time_steps, self.element.label_full, system_model,
-                                 is_binary=True, before_value=self._on_off_parameters.on_values_before_begin[0])
+                                 is_binary=True, before_value=0)
             self.total_on_hours = Variable('onHoursSum', 1, self.element.label_full, system_model,
                                            lower_bound=self._on_off_parameters.on_hours_total_min,
                                            upper_bound=self._on_off_parameters.on_hours_total_max)
