@@ -29,35 +29,6 @@ class Calculation:
     """
     class for defined way of solving a flow_system optimizatino
     """
-
-    @property
-    def infos(self):
-        infos = {}
-
-        calcInfos = self._infos
-        infos['calculation'] = calcInfos
-        calcInfos['name'] = self.name
-        calcInfos['no ChosenIndexe'] = len(self.time_indices)
-        calcInfos['calculation_type'] = self.__class__.__name__
-        calcInfos['duration'] = self.durations
-        infos['system_description'] = self.flow_system.description_of_system()
-        infos['system_models'] = {}
-        infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
-        infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
-
-        return infos
-
-    @property
-    def results(self):
-        # wenn noch nicht belegt, dann aus system_model holen
-        if self._results is None:
-            self._results = self.system_models[0].results  # (bei segmented Calc ist das schon explizit belegt.)
-        return self._results
-
-    @property
-    def results_struct(self):
-        raise NotImplementedError()
-
     # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
     def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
                  time_indices: Optional[list[int]] = None):
@@ -130,6 +101,34 @@ class Calculation:
         logger.info(f'{"":#^80}\n'
                     f'{message:#^80}\n'
                     f'{"":#^80}')
+
+    @property
+    def infos(self):
+        infos = {}
+
+        calcInfos = self._infos
+        infos['calculation'] = calcInfos
+        calcInfos['name'] = self.name
+        calcInfos['no ChosenIndexe'] = len(self.time_indices)
+        calcInfos['calculation_type'] = self.__class__.__name__
+        calcInfos['duration'] = self.durations
+        infos['system_description'] = self.flow_system.description_of_system()
+        infos['system_models'] = {}
+        infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
+        infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
+
+        return infos
+
+    @property
+    def results(self):
+        # wenn noch nicht belegt, dann aus system_model holen
+        if self._results is None:
+            self._results = self.system_models[0].results  # (bei segmented Calc ist das schon explizit belegt.)
+        return self._results
+
+    @property
+    def results_struct(self):
+        raise NotImplementedError()
 
 
 class FullCalculation(Calculation):
