@@ -277,7 +277,7 @@ class Component(Element):
                  label: str,
                  inputs: List['Flow'],
                  outputs: List['Flow'],
-                 on_off_parameters: OnOffParameters):
+                 on_off_parameters: Optional[OnOffParameters] = None):
         """ Old Docstring"""
         super().__init__(label)
         self.inputs = inputs

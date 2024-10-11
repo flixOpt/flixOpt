@@ -784,7 +784,7 @@ class InvestmentModel(ElementModel):
                  invest_parameters: InvestParameters,
                  defining_variable: [VariableTS],
                  relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
-                 on_variable: [VariableTS]):
+                 on_variable: Optional[VariableTS] = None):
         """
         if relative_bounds are both equal, then its like a fixed relative value
         """
