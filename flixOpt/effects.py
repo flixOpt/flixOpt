@@ -291,6 +291,10 @@ class EffectCollection:
             if effect.is_objective:
                 return effect
 
+    @property
+    def label_full(self):
+        return self.label
+
 
 class EffectCollectionModel(ElementModel):
     # TODO: Maybe all EffectModels should be sub_models of this Model? Including Objective and Penalty?
@@ -304,7 +308,7 @@ class EffectCollectionModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self._effect_models = {effect: EffectModel(effect) for effect in self.element.effects}
-        self.penalty = ShareAllocationModel(self.element.penalty, True)
+        self.penalty = ShareAllocationModel(self.element, True)
         self.sub_models.extend(list(self._effect_models.values()) + [self.penalty])
         for model in self.sub_models:
             model.do_modeling(system_model)
