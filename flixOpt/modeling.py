@@ -675,7 +675,7 @@ class SegmentedSharesModel(ElementModel):
 
         segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
             self._shares[effect].single_share: segment for effect, segment in self._share_segments.values()}
-        self._segments_model = MultipleSegmentsModel(self.element, self._outside_segments, segments)
+        self._segments_model = MultipleSegmentsModel(self.element, segments, self._outside_segments)
         self._segments_model.do_modeling(system_model)
 
         # Shares
