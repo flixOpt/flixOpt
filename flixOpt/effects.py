@@ -183,8 +183,8 @@ class EffectModel(ElementModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.all.add_variable_share('operation', self.element, self.operation.sum, 1, 1)
-        self.all.add_variable_share('invest', self.element, self.invest.sum, 1, 1)
+        self.all.add_variable_share(system_model, 'operation', self.element, self.operation.sum, 1, 1)
+        self.all.add_variable_share(system_model, 'invest', self.element, self.invest.sum, 1, 1)
 
 
 EffectDict = Dict[Optional['Effect'], Numeric_TS]
