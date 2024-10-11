@@ -16,7 +16,8 @@ from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.modeling import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series
+from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
+    create_ts_variable
 from flixOpt.effects import EffectValues, _effect_values_to_ts, EffectCollectionModel
 
 logger = logging.getLogger('flixOpt')
@@ -302,15 +303,14 @@ class FlowModel(ElementModel):
                 fixed_flow_rate = None
             else:
                 fixed_flow_rate = self.element.fixed_relative_value * self.element.size
-            self.flow_rate = VariableTS('flow_rate',
-                                        system_model.nr_of_time_steps, self.element.label_full, system_model,
-                                        lower_bound=self.element.relative_minimum * self.element.size,
-                                        upper_bound=self.element.relative_maximum * self.element.size,
-                                        value=fixed_flow_rate)
+            self.flow_rate = create_ts_variable('flow_rate', self, system_model.nr_of_time_steps,
+                                                system_model,
+                                                lower_bound=self.element.relative_minimum * self.element.size,
+                                                upper_bound=self.element.relative_maximum * self.element.size,
+                                                value=fixed_flow_rate)
         else:  # Bounds are created later and in sub_models
-            self.flow_rate = VariableTS('flow_rate', system_model.nr_of_time_steps,
-                                        self.element.label_full, system_model, lower_bound=0)
-        self.add_variables(self.flow_rate)
+            self.flow_rate = create_ts_variable('flow_rate', self, system_model.nr_of_time_steps,
+                                                system_model, lower_bound=0)
 
         # OnOff
         if self.element.on_off_parameters is not None:
@@ -330,14 +330,12 @@ class FlowModel(ElementModel):
             self.sub_models.append(self._investment)
 
         # sumFLowHours
-        self.sum_flow_hours = Variable('sumFlowHours', 1, self.element.label_full, system_model,
-                                       lower_bound=self.element.flow_hours_total_min,
-                                       upper_bound=self.element.flow_hours_total_max)
-        eq_sum_flow_hours = Equation('sumFlowHours', self, system_model, 'eq')
+        self.sum_flow_hours = create_variable('sumFlowHours', self, 1, system_model,
+                                              lower_bound=self.element.flow_hours_total_min,
+                                              upper_bound=self.element.flow_hours_total_max)
+        eq_sum_flow_hours = create_equation('sumFlowHours', self, system_model, 'eq')
         eq_sum_flow_hours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
         eq_sum_flow_hours.add_summand(self.sum_flow_hours, -1)
-        self.add_variables(self.sum_flow_hours)
-        self.add_equations(eq_sum_flow_hours)
 
         self._create_bounds_for_load_factor(system_model)
         self._create_shares(system_model)
@@ -358,8 +356,7 @@ class FlowModel(ElementModel):
         # eq: var_sumFlowHours <= size * dt_tot * load_factor_max
         if self.element.load_factor_max is not None:
             flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
-            eq_load_factor_max = Equation('load_factor_max', self.element, system_model, 'ineq')
-            self.add_equations(eq_load_factor_max)
+            eq_load_factor_max = create_equation('load_factor_max', self, system_model, 'ineq')
             eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
             # if investment:
             if self._investment is not None:
@@ -370,8 +367,7 @@ class FlowModel(ElementModel):
         #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
         if self.element.load_factor_min is not None:
             flow_hours_per_size_min = system_model.dt_in_hours_total * self.element.load_factor_min
-            eq_load_factor_min = Equation('load_factor_min', self, system_model, 'ineq')
-            self.add_equations(eq_load_factor_min)
+            eq_load_factor_min = create_equation('load_factor_min', self, system_model, 'ineq')
             eq_load_factor_min.add_summand(self.sum_flow_hours, 1)
             if self._investment is not None:
                 eq_load_factor_min.add_summand(self._investment.size, flow_hours_per_size_min)
@@ -398,8 +394,7 @@ class BusModel(ElementModel):
     def do_modeling(self, system_model: SystemModel) -> None:
         self.element: Bus
         # inputs = outputs
-        eq_bus_balance = Equation('busBalance', self.element, system_model)
-        self.add_equations(eq_bus_balance)
+        eq_bus_balance = create_equation('busBalance', self, system_model)
         for flow in self.element.inputs:
             eq_bus_balance.add_summand(flow.model.flow_rate, 1)
         for flow in self.element.outputs:
@@ -408,19 +403,18 @@ class BusModel(ElementModel):
         # Fehlerplus/-minus:
         if self.element.with_excess:
             excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour)
-            self.excess_input = VariableTS('excess_input', system_model.nr_of_time_steps, self.element.label_full,
-                                           system_model, lower_bound=0)
-            self.excess_output = VariableTS('excess_output', system_model.nr_of_time_steps,
-                                            self.element.label_full, system_model, lower_bound=0)
-            self.add_variables(self.excess_input, self.excess_output)
+            self.excess_input = create_ts_variable('excess_input', self, system_model.nr_of_time_steps,
+                                                   system_model, lower_bound=0)
+            self.excess_output = create_ts_variable('excess_output', self, system_model.nr_of_time_steps,
+                                                    system_model, lower_bound=0)
 
             eq_bus_balance.add_summand(self.excess_output, -1)
             eq_bus_balance.add_summand(self.excess_input, 1)
 
             fx_collection = system_model.effect_collection_model
 
-            fx_collection.add_share_to_penalty('penalty', self.element, self.excess_input, excess_penalty)
-            fx_collection.add_share_to_penalty('penalty', self.element, self.excess_output, excess_penalty)
+            fx_collection.add_share_to_penalty('penalty', self, self.excess_input, excess_penalty)
+            fx_collection.add_share_to_penalty('penalty', self, self.excess_output, excess_penalty)
 
 
 class ComponentModel(ElementModel):

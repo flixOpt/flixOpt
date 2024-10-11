@@ -15,7 +15,7 @@ from flixOpt.elements import Flow, _create_time_series
 from flixOpt.core import Skalar, Numeric_TS, TimeSeries, Numeric
 from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.modeling import OnOffModel, MultipleSegmentsModel, InvestmentModel
-from flixOpt.structure import SystemModel
+from flixOpt.structure import SystemModel, create_equation, create_ts_variable
 from flixOpt.elements import Component, ComponentModel
 from flixOpt.interface import InvestParameters, OnOffParameters
 
@@ -291,8 +291,7 @@ class LinearConverterModel(ComponentModel):
                 used_inputs: Set = all_input_flows & used_flows
                 used_outputs: Set = all_output_flows & used_flows
 
-                eq_conversion = Equation(f'conversion_{i}', self, system_model)
-                self.add_equations(eq_conversion)
+                eq_conversion = create_equation(f'conversion_{i}', self, system_model)
                 for flow in used_inputs:
                     factor = conversion_factor[flow]
                     eq_conversion.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
@@ -325,18 +324,15 @@ class StorageModel(ComponentModel):
         super().do_modeling(system_model)
 
         lb, ub = self.charge_state_bounds
-        self.charge_state = VariableTS('charge_state', system_model.nr_of_time_steps + 1, self.element.label_full,
-                                       system_model, lower_bound=lb, upper_bound=ub)
+        self.charge_state = create_ts_variable('charge_state', self, system_model.nr_of_time_steps + 1,
+                                               system_model, lower_bound=lb, upper_bound=ub)
 
-        self.netto_discharge = VariableTS('netto_discharge', system_model.nr_of_time_steps,
-                                          self.element.label_full, system_model,
-                                          lower_bound=-np.inf)  # negative Werte zulässig!
-        self.add_variables(self.charge_state, self.netto_discharge)
+        self.netto_discharge = create_ts_variable('netto_discharge', self, system_model.nr_of_time_steps,
+                                                  system_model, lower_bound=-np.inf)  # negative Werte zulässig!
 
         # netto_discharge:
         # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
-        eq_netto = Equation('netto_discharge', self, system_model, eqType='eq')
-        self.add_equations(eq_netto)
+        eq_netto = create_equation('netto_discharge', self, system_model, eq_type='eq')
         eq_netto.add_summand(self.netto_discharge, 1)
         eq_netto.add_summand(self.element.charging.model.flow_rate, 1)
         eq_netto.add_summand(self.element.discharging.model.flow_rate, -1)
@@ -349,7 +345,7 @@ class StorageModel(ComponentModel):
         # - charging(n)     * eta_charge * dt(n)
         # + discharging(n)  * 1 / eta_discharge * dt(n)
         # = 0
-        eq_charge_state = Equation('charge_state', self, system_model, eqType='eq')
+        eq_charge_state = create_equation('charge_state', self, system_model, eq_type='eq')
         eq_charge_state.add_summand(self.charge_state, 1, indices_charge_state[1:])  # 1:end
         eq_charge_state.add_summand(self.charge_state,
                                     (self.element.relative_loss_per_hour * system_model.dt_in_hours) - 1,
@@ -359,7 +355,6 @@ class StorageModel(ComponentModel):
                                     -1 * self.element.eta_charge * system_model.dt_in_hours)
         eq_charge_state.add_summand(self.element.discharging.model.flow_rate,
                                     1 / self.element.eta_discharge * system_model.dt_in_hours)
-        self.add_equations(eq_charge_state)
 
         if isinstance(self.element.capacity_inFlowHours, InvestParameters):
             self._investment = InvestmentModel(
@@ -376,8 +371,7 @@ class StorageModel(ComponentModel):
         indices_charge_state = range(system_model.time_indices.start, system_model.time_indices.stop + 1)  # additional
 
         if self.element.initial_charge_state is not None:
-            eq_initial = Equation('initial_charge_state', self.element, system_model, eqType='eq')
-            self.add_equations(eq_initial)
+            eq_initial = create_equation('initial_charge_state', self, system_model, eq_type='eq')
             if utils.is_number(self.element.initial_charge_state):
                 # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
                 eq_initial.add_constant(self.element.initial_charge_state)  # chargeState_0 !
@@ -394,15 +388,13 @@ class StorageModel(ComponentModel):
         # Final Charge State
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.element.maximal_final_charge_state is not None:
-            eq_max = Equation('eq_final_charge_state_max', self, system_model, eqType='ineq')
-            self.add_equations(eq_max)
+            eq_max = create_equation('eq_final_charge_state_max', self, system_model, eq_type='ineq')
             eq_max.add_summand(self.charge_state, 1, indices_charge_state[-1])
             eq_max.add_constant(self.element.maximal_final_charge_state)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.element.minimal_final_charge_state is not None:
-            eq_min = Equation('eq_charge_state_end_min', self, system_model, eqType='ineq')
-            self.add_equations(eq_min)
+            eq_min = create_equation('eq_charge_state_end_min', self, system_model, eq_type='ineq')
             eq_min.add_summand(self.charge_state, -1, indices_charge_state[-1])
             eq_min.add_constant(- self.element.minimal_final_charge_state)
 

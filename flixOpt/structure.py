@@ -11,12 +11,12 @@ import logging
 import numpy as np
 
 from flixOpt import utils
-from flixOpt.math_modeling import MathModel, Variable, Equation
+from flixOpt.math_modeling import MathModel, Variable, Equation, VariableTS
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.flow_system import FlowSystem
-    from flixOpt.modeling import ComponentModel, BusModel
+    from flixOpt.elements import ComponentModel, BusModel
 
 
 logger = logging.getLogger('flixOpt')
@@ -260,12 +260,12 @@ class ElementModel:
 
     def add_variables(self, *variables: Variable) -> None:
         for variable in variables:
-            if variable.label_full not in self.variables.keys():
-                self.variables[variable.label_full] = variable
+            if variable.label not in self.variables.keys():
+                self.variables[variable.label] = variable
             elif variable in self.variables.values():
-                raise Exception(f'Variable "{variable.label_full}" already exists')
+                raise Exception(f'Variable "{variable.label}" already exists')
             else:
-                raise Exception(f'A Variable with the label "{variable.label_full}" already exists')
+                raise Exception(f'A Variable with the label "{variable.label}" already exists')
 
     def add_equations(self, *equations: Equation) -> None:
         for equation in equations:
@@ -346,3 +346,45 @@ def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element
     time_series = TimeSeries(label=label, data=data)
     element.TS_list.append(time_series)
     return time_series
+
+
+def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
+                     eq_type: Literal['eq', 'ineq', 'objective'] = 'eq') -> Equation:
+    """ Creates an Equation and adds it to the model of the Element """
+    eq = Equation(f'{element_model.element.label_full}_{label}', label, system_model, eq_type)
+    element_model.add_equations(eq)
+    return eq
+
+
+def create_ts_variable(label: str,
+                       element_model: ElementModel,
+                       length: int,
+                       system_model: SystemModel,
+                       is_binary: bool = False,
+                       value: Optional[Numeric] = None,
+                       lower_bound: Optional[Numeric] = None,
+                       upper_bound: Optional[Numeric] = None,
+                       before_value: Optional[Numeric] = None,
+                       ) -> VariableTS:
+    """ Creates a VariableTS and adds it to the model of the Element """
+    var = VariableTS(f'{element_model.element.label_full}_{label}', label, length, system_model,
+                     is_binary, value, lower_bound, upper_bound, before_value)
+    element_model.add_variables(var)
+    return var
+
+
+def create_variable(label: str,
+                    element_model: ElementModel,
+                    length: int,
+                    system_model: SystemModel,
+                    is_binary: bool = False,
+                    value: Optional[Numeric] = None,
+                    lower_bound: Optional[Numeric] = None,
+                    upper_bound: Optional[Numeric] = None,
+                    ) -> Variable:
+    """ Creates a Variable and adds it to the model of the Element """
+    var = Variable(f'{element_model.element.label_full}_{label}', label, length, system_model,
+                   is_binary, value, lower_bound, upper_bound)
+    element_model.add_variables(var)
+    return var
+
