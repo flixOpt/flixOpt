@@ -409,6 +409,121 @@ class LinearConverterModel(ComponentModel):
             self.sub_models.append(linear_segments)
 
 
+class StorageModel(ComponentModel):
+    """ Model of Storage """
+    #TODO: Add additional Timestep!!!
+    def __init__(self, element: Storage):
+        super().__init__(element)
+        self.element: Storage = element
+        self.charge_state: Optional[VariableTS] = None
+        self.netto_discharge: Optional[VariableTS] = None
+        self._investment: Optional[InvestmentModel] = None
+
+    def do_modeling(self, system_model):
+        if self.element.prevent_simultaneous_charge_and_discharge:
+            for flow in self.element.inputs + self.element.outputs:
+                flow.on_off_parameters.force_on = True
+        super().do_modeling(system_model)
+
+        lb, ub = self.charge_state_bounds
+        self.charge_state = VariableTS('charge_state', system_model.nr_of_time_steps + 1, self.element.label_full,
+                                       system_model, lower_bound=lb, upper_bound=ub)
+
+        self.netto_discharge = VariableTS('netto_discharge', system_model.nr_of_time_steps,
+                                          self.element.label_full, system_model,
+                                          lower_bound=-np.inf)  # negative Werte zulässig!
+        self.add_variables(self.charge_state, self.netto_discharge)
+
+        # netto_discharge:
+        # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
+        eq_netto = Equation('netto_discharge', self, system_model, eqType='eq')
+        self.add_equations(eq_netto)
+        eq_netto.add_summand(self.netto_discharge, 1)
+        eq_netto.add_summand(self.element.charging.model.flow_rate, 1)
+        eq_netto.add_summand(self.element.discharging.model.flow_rate, -1)
+
+        indices_charge_state = range(system_model.time_indices.start, system_model.time_indices.stop + 1)  # additional
+
+        ############# Charge State Equation
+        # charge_state(n+1)
+        # + charge_state(n) * [relative_loss_per_hour * dt(n) - 1]
+        # - charging(n)     * eta_charge * dt(n)
+        # + discharging(n)  * 1 / eta_discharge * dt(n)
+        # = 0
+        eq_charge_state = Equation('charge_state', self, system_model, eqType='eq')
+        eq_charge_state.add_summand(self.charge_state, 1, indices_charge_state[1:])  # 1:end
+        eq_charge_state.add_summand(self.charge_state,
+                                    (self.element.relative_loss_per_hour * system_model.dt_in_hours) - 1,
+                                    indices_charge_state[
+                                    :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
+        eq_charge_state.add_summand(self.element.charging.model.flow_rate,
+                                    -1 * self.element.eta_charge * system_model.dt_in_hours)
+        eq_charge_state.add_summand(self.element.discharging.model.flow_rate,
+                                    1 / self.element.eta_discharge * system_model.dt_in_hours)
+        self.add_equations(eq_charge_state)
+
+        if isinstance(self.element.capacity_inFlowHours, InvestParameters):
+            self._investment = InvestmentModel(
+                self.element, self.element.capacity_inFlowHours, self.charge_state,
+                (self.element.relative_minimum_charge_state, self.element.relative_maximum_charge_state))
+            self.sub_models.append(self._investment)
+            self._investment.do_modeling(system_model)
+
+        if self.element.prevent_simultaneous_charge_and_discharge:
+            on_variables = [flow.model._on.on for flow in self.element.inputs + self.element.outputs]
+            simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
+            self.sub_models.append(simultaneous_use)
+            simultaneous_use.do_modeling(system_model)
+
+        # Initial charge state
+        if self.element.initial_charge_state is not None:
+            self._model_initial_and_final_charge_state(system_model)
+
+    def _model_initial_and_final_charge_state(self, system_model):
+        indices_charge_state = range(system_model.time_indices.start, system_model.time_indices.stop + 1)  # additional
+
+        if self.element.initial_charge_state is not None:
+            eq_initial = Equation('initial_charge_state', self, system_model, eqType='eq')
+            self.add_equations(eq_initial)
+            if utils.is_number(self.element.initial_charge_state):
+                # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
+                self.add_equations(eq_initial)
+                eq_initial.add_constant(self.charge_state.before_value)  # chargeState_0 !
+                eq_initial.add_summand(self.charge_state, 1, system_model.time_indices[0])
+            elif self.element.initial_charge_state == 'lastValueOfSim':
+                # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
+                eq_initial.add_summand(self.charge_state, 1, system_model.time_indices[0])
+                eq_initial.add_summand(self.charge_state, -1,  system_model.time_indices[-1])
+            else:
+                raise Exception(f'initial_charge_state has undefined value: {self.element.initial_charge_state}')
+                #TODO: Validation in Storage Class, not in Model
+
+        ####################################
+        # Final Charge State
+        # 1: eq:  Q_charge_state(end) <= Q_max
+        if self.element.maximal_final_charge_state is not None:
+            eq_max = Equation('eq_final_charge_state_max', self, system_model, eqType='ineq')
+            self.add_equations(eq_max)
+            eq_max.add_summand(self.charge_state, 1, indices_charge_state[-1])
+            eq_max.add_constant(self.element.maximal_final_charge_state)
+
+        # 2: eq: - Q_charge_state(end) <= - Q_min
+        if self.element.minimal_final_charge_state is not None:
+            eq_min = Equation('eq_charge_state_end_min', self, system_model, eqType='ineq')
+            self.add_equations(eq_min)
+            eq_min.add_summand(self.charge_state, -1, indices_charge_state[-1])
+            eq_min.add_constant(- self.element.minimal_final_charge_state)
+
+    @property
+    def charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
+        if not isinstance(self.element.capacity_inFlowHours, InvestParameters):
+            return (self.element.relative_minimum_charge_state * self.element.capacity_inFlowHours,
+                    self.element.relative_maximum_charge_state * self.element.capacity_inFlowHours)
+        else:
+            return (self.element.relative_minimum_charge_state * self.element.capacity_inFlowHours.minimum_size,
+                    self.element.relative_maximum_charge_state * self.element.capacity_inFlowHours.maximum_size)
+
+
 class FlowModel(ElementModel):
     def __init__(self, element: Flow):
         super().__init__(element)
@@ -1328,3 +1443,38 @@ class SegmentedSharesModel(ElementModel):
                 effect_values={effect: 1},
                 factor=1
             )
+
+
+class PreventSimultaneousUsageModel(ElementModel):
+    """
+    Prevents multiple Multiple Binary variables from being 1 at the same time
+
+    Only 'classic type is modeled for now (# "classic" -> alle Flows brauchen Binärvariable:)
+    In 'new', the binary Variables need to be forced beforehand, which is not that straight forward... --> TODO maybe
+
+
+    # "new":
+    # eq: flow_1.on(t) + flow_2.on(t) + .. + flow_i.val(t)/flow_i.max <= 1 (1 Flow ohne Binärvariable!)
+
+    # Anmerkung: Patrick Schönfeld (oemof, custom/link.py) macht bei 2 Flows ohne Binärvariable dies:
+    # 1)	bin + flow1/flow1_max <= 1
+    # 2)	bin - flow2/flow2_max >= 0
+    # 3)    geht nur, wenn alle flow.min >= 0
+    # --> könnte man auch umsetzen (statt force_on_variable() für die Flows, aber sollte aufs selbe wie "new" kommen)
+    """
+    def __init__(self,
+                 element: Element,
+                 variables: List[VariableTS]):
+        super().__init__(element)
+        self._variables = variables
+        assert len(self._variables) >= 2, f'Model {self.__class__.__name__} must get at least two variables'
+        for variable in self._variables:  # classic
+            assert variable.is_binary, f'Variable {variable} must be binary for use in {self.__class__.__name__}'
+
+    def do_modeling(self, system_model: SystemModel):
+        # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
+        eq = Equation('prevent_simultaneous_use', self, system_model, eqType='ineq')
+        self.add_equations(eq)
+        for variable in self._variables:
+            eq.add_summand(variable, 1)
+        eq.add_constant(1.1)

@@ -14,7 +14,7 @@ from flixOpt import utils
 from flixOpt.elements import Flow, Component, EffectCollection, _create_time_series
 from flixOpt.core import Skalar, Numeric_TS, TimeSeries
 from flixOpt.math_modeling import VariableTS, Equation
-from flixOpt.structure import SystemModel
+from flixOpt.structure import SystemModel, ComponentModel, StorageModel
 from flixOpt.features import FeatureLinearSegmentSet, FeatureInvest, FeatureAvoidFlowsAtOnce
 from flixOpt.interface import InvestParameters, TimeSeriesRaw, OnOffParameters
 
@@ -186,32 +186,21 @@ class Storage(Component):
     #  -> Sprich: speicherverlust = charge_state(t) * relative_loss_per_hour * dt + 0.5 * Q_lade(t) * dt * relative_loss_per_hour * dt
     #  -> müsste man aber auch für den sich ändernden Ladezustand berücksichtigten
 
-    # costs_default = property(get_costs())
-    # param_defalt  = property(get_params())
-
-    new_init_args = ['label', 'exists', 'charging', 'discharging', 'capacity_in_flow_hours', 'relative_minimum_charge_state', 'relative_maximum_charge_state',
-                     'initial_charge_state', 'minimal_final_charge_state', 'maximal_final_charge_state', 'eta_load',
-                     'eta_unload', 'relative_loss_per_hour', 'prevent_simultaneous_charge_and_discharge']
-
-    not_used_args = ['label', 'exists']
-
-    # capacity_in_flow_hours: float, 'lastValueOfSim', None
     def __init__(self,
                  label: str,
                  charging: Flow,
                  discharging: Flow,
                  capacity_in_flow_hours: Union[Skalar, InvestParameters],
-                 group: Optional[str] = None,
                  relative_minimum_charge_state: Numeric_TS = 0,
                  relative_maximum_charge_state: Numeric_TS = 1,
                  initial_charge_state: Optional[Union[Skalar, Literal['lastValueOfSim']]] = 0,
                  minimal_final_charge_state: Optional[Skalar] = None,
                  maximal_final_charge_state: Optional[Skalar] = None,
-                 eta_load: Numeric_TS = 1, eta_unload: Numeric_TS = 1,
+                 eta_charge: Numeric_TS = 1,
+                 eta_discharge: Numeric_TS = 1,
                  relative_loss_per_hour: Numeric_TS = 0,
-                 prevent_simultaneous_charge_and_discharge: bool = True,
-                 **kwargs):
-        '''
+                 prevent_simultaneous_charge_and_discharge: bool = True):
+        """
         constructor of storage
 
         Parameters
@@ -222,11 +211,6 @@ class Storage(Component):
             ingoing flow.
         discharging : Flow
             outgoing flow.
-        group: str, None
-            group name to assign components to groups. Used for later analysis of the results
-        exists: Numeric_TS
-            Limits the availlable capacity, and the in and out flow. DOes not affect other parameters yet
-            (like frac_loss_per_hour, starting value, ...)
         capacity_in_flow_hours : Skalar or InvestParameter
             nominal capacity of the storage
         relative_minimum_charge_state : float or TS, optional
@@ -242,248 +226,36 @@ class Storage(Component):
             minimal value of chargeState at the end of timeseries. 
         maximal_final_charge_state : float or None, optional
             maximal value of chargeState at the end of timeseries. 
-        eta_load : float, optional
+        eta_charge : float, optional
             efficiency factor of charging/loading. The default is 1.
-        eta_unload : TYPE, optional
+        eta_discharge : TYPE, optional
             efficiency factor of uncharging/unloading. The default is 1.
         relative_loss_per_hour : float or TS. optional
             loss per chargeState-Unit per hour. The default is 0.
         prevent_simultaneous_charge_and_discharge : boolean, optional
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
-        
-        **kwargs : TYPE # TODO welche kwargs werden hier genutzt???
-            DESCRIPTION.
-        '''
-        # TODO: neben relative_minimum_charge_state, relative_maximum_charge_state ggf. noch "fixed_relative_value_chargeState" implementieren damit konsistent zu flow (relative_maximum, relative_minimum, val_re)
+        """
+        # TODO: fixed_relative_chargeState implementieren
+        super().__init__(label, inputs=[charging], outputs=[discharging])
 
-        # minimal_final_charge_state (absolute Werte, aber relative wären ggf. auch manchmal hilfreich)
-        super().__init__(label, **kwargs)
-
-        # invest_parameters to attributes:
-        self.inputs = [charging]
-        self.outputs = [discharging]
         self.charging = charging
         self.discharging = discharging
         self.capacity_inFlowHours = capacity_in_flow_hours
-        self.maximum_relative_chargeState = TimeSeries('relative_maximum_charge_state', relative_maximum_charge_state, self)
-        self.minimum_relative_chargeState = TimeSeries('relative_minimum_charge_state', relative_minimum_charge_state, self)
+        self.relative_minimum_charge_state = relative_minimum_charge_state
+        self.relative_maximum_charge_state = relative_maximum_charge_state
 
-        self.group = group
+        self.initial_charge_state = initial_charge_state
+        self.minimal_final_charge_state = minimal_final_charge_state
+        self.maximal_final_charge_state = maximal_final_charge_state
 
-        # add last time step (if not scalar):
-        existsWithEndTimestep = self.exists.active_data if np.isscalar(self.exists.active_data) else np.append(self.exists.active_data, self.exists.active_data[-1])
-        self.maximum_relative_chargeState = TimeSeries('relative_maximum_charge_state',
-                                              self.maximum_relative_chargeState.active_data * existsWithEndTimestep, self)
-        self.minimum_relative_chargeState = TimeSeries('relative_minimum_charge_state',
-                                              self.minimum_relative_chargeState.active_data * existsWithEndTimestep, self)
+        self.eta_charge = eta_charge
+        self.eta_discharge = eta_discharge
+        self.relative_loss_per_hour = relative_loss_per_hour
+        self.prevent_simultaneous_charge_and_discharge = prevent_simultaneous_charge_and_discharge
 
-        # copy information of "group" to in-flows and out-flows
-        for flow in self.inputs + self.outputs:
-            flow.group = self.group
-
-        self.chargeState0_inFlowHours = initial_charge_state
-        self.charge_state_end_min = minimal_final_charge_state
-        if maximal_final_charge_state:
-            self.charge_state_end_max = maximal_final_charge_state
-        elif isinstance(self.capacity_inFlowHours, InvestParameters):
-            self.charge_state_end_max = self.capacity_inFlowHours.fixed_size
-        else:
-            self.charge_state_end_max = minimal_final_charge_state
-
-        self.eta_load = TimeSeries('eta_load', eta_load, self)
-        self.eta_unload = TimeSeries('eta_unload', eta_unload, self)
-        self.fracLossPerHour = TimeSeries('relative_loss_per_hour', relative_loss_per_hour, self)
-        self.avoidInAndOutAtOnce = prevent_simultaneous_charge_and_discharge
-
-        self.featureInvest = None
-
-        if self.avoidInAndOutAtOnce:
-            self.featureAvoidInAndOut = FeatureAvoidFlowsAtOnce('feature_avoidInAndOutAtOnce', self,
-                                                                [self.charging, self.discharging])
-
-        if isinstance(self.capacity_inFlowHours, InvestParameters):
-            self.featureInvest = FeatureInvest('used_capacity_inFlowHours', self, self.capacity_inFlowHours,
-                                               relative_minimum=self.minimum_relative_chargeState,
-                                               relative_maximum=self.maximum_relative_chargeState,
-                                               fixed_relative_value=None,  # kein vorgegebenes Profil
-                                               featureOn=None)  # hier gibt es kein On-Wert
-
-        # Medium-Check:
-        if not (MediumCollection.checkIfFits(charging.medium, discharging.medium)):
-            raise Exception('in Storage ' + self.label + ': input.medium = ' + str(charging.medium) +
-                            ' and output.medium = ' + str(discharging.medium) + ' don`t fit!')
-        # TODO: chargeState0 darf nicht größer max usw. abfangen!
-
-        self.isStorage = True  # for postprocessing
-
-    def declare_vars_and_eqs(self, system_model: SystemModel):
-        """
-        Deklarieren von Variablen und Gleichungen
-
-        :param system_model:
-        :return:
-        """
-        super().declare_vars_and_eqs(system_model)
-
-        # Variablen:
-
-        if self.featureInvest is None:
-            lb = self.minimum_relative_chargeState.active_data * self.capacity_inFlowHours
-            ub = self.maximum_relative_chargeState.active_data * self.capacity_inFlowHours
-            fix_value = None
-
-            if np.isscalar(lb):
-                pass
-            else:
-                lb = np.append(lb, 0)  # self.minimal_final_charge_state)
-            if np.isscalar(ub):
-                pass
-            else:
-                ub = np.append(ub, self.capacity_inFlowHours)  # maximal_final_charge_state)
-
-        else:
-            (lb, ub, fix_value) = self.featureInvest.bounds_of_defining_variable()
-
-            if np.isscalar(lb):
-                pass
-            else:
-                lb = np.append(lb, lb[-1])  # self.minimal_final_charge_state)
-            if np.isscalar(ub):
-                pass
-            else:
-                ub = np.append(ub, ub[-1])  # maximal_final_charge_state)
-
-        self.model.add_variables(
-            VariableTS('charge_state', system_model.nrOfTimeSteps + 1, self.label_full,
-                       system_model, lower_bound=lb, upper_bound=ub, value=fix_value,
-                       before_value=self.chargeState0_inFlowHours, before_value_is_start_value=True))  # Eins mehr am Ende!
-        self.model.add_variables(VariableTS('nettoFlow', system_model.nrOfTimeSteps, self.label_full, system_model,
-                                            lower_bound=-np.inf))  # negative Werte zulässig!
-
-        # erst hier, da defining_variable vorher nicht belegt!
-        if self.featureInvest is not None:
-            self.featureInvest.set_defining_variables(self.model.variables['charge_state'], None)  # None, da kein On-Wert
-            self.featureInvest.declare_vars_and_eqs(system_model)
-
-        # obj.vars.Q_Ladezustand   .setBoundaries(0, obj.inputData.Q_Ladezustand_Max);
-        # obj.vars.Q_th_Lade       .setBoundaries(0, inf);
-        # obj.vars.Q_th_Entlade    .setBoundaries(0, inf);
-
-        # ############ Variablen ###############
-
-        # obj.addVariable('Q_th'             ,obj.lengthOfTS  , 0);
-        # obj.addVariable('Q_th_Lade'        ,obj.lengthOfTS  , 0);
-        # obj.addVariable('Q_th_Entlade'     ,obj.lengthOfTS  , 0);
-        # obj.addVariable('Q_Ladezustand'    ,obj.lengthOfTS+1, 0);  % Eins mehr am Ende!
-        # obj.addVariable('IchLadeMich'      ,obj.lengthOfTS  , 1);  % binäre Variable um zu verhindern, dass gleichzeitig Be- und Entladen wird (bei KWK durchaus ein Kostenoptimum)
-        # obj.addVariable('IchEntladeMich'   ,obj.lengthOfTS  , 1);  % binäre Variable um zu verhindern, dass gleichzeitig Be- und Entladen wird (bei KWK durchaus ein Kostenoptimum)
-
-        # ############### verknüpfung mit anderen Variablen ##################
-        # % Pumpstromaufwand Beladen/Entladen
-        # refToStromLastEq.add_summand(obj.vars.Q_th_Lade   ,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
-        # refToStromLastEq.add_summand(obj.vars.Q_th_Entlade,-1*obj.inputData.spezifPumpstromAufwandBeladeEntlade); % für diese Komponenten Stromverbrauch!
-
-    def do_modeling(self, system_model):
-        super().do_modeling(system_model)
-
-        # Gleichzeitiges Be-/Entladen verhindern:
-        if self.avoidInAndOutAtOnce: self.featureAvoidInAndOut.do_modeling(system_model)
-
-        # % Speicherladezustand am Start
-        if self.chargeState0_inFlowHours is None:
-            # Startzustand bleibt Freiheitsgrad
-            pass
-        elif utils.is_number(self.chargeState0_inFlowHours):
-            # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
-            self.model.add_equations(Equation('charge_state_start', self, system_model, eqType='eq'))
-            self.model.eqs['charge_state_start'].add_constant(self.model.variables['charge_state'].before_value)  # chargeState_0 !
-            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1,
-                                                             system_model.time_indices[0])
-        elif self.chargeState0_inFlowHours == 'lastValueOfSim':
-            # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
-            self.model.add_equations(Equation('charge_state_start', self, system_model, eqType='eq'))
-            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], 1,
-                                                             system_model.time_indices[0])
-            self.model.eqs['charge_state_start'].add_summand(self.model.variables['charge_state'], -1,
-                                                             system_model.time_indices[-1])
-        else:
-            raise Exception('initial_charge_state has undefined value = ' + str(self.chargeState0_inFlowHours))
-
-        # Speicherleistung / Speicherladezustand / Speicherverlust
-        #                                                                          | Speicher-Beladung       |   |Speicher-Entladung                |
-        # Q_Ladezustand(n+1) + (-1+VerlustanteilProStunde*dt(n)) *Q_Ladezustand(n) -  dt(n)*eta_Lade*Q_th_Lade(n) +  dt(n)* 1/eta_Entlade*Q_th_Entlade(n)  = 0
-
-        # charge_state hat ein Index mehr:
-        time_indicesChargeState = range(system_model.time_indices.start, system_model.time_indices.stop + 1)
-        self.model.add_equations(Equation('charge_state', self, system_model, eqType='eq'))
-        self.model.eqs['charge_state'].add_summand(self.model.variables['charge_state'],
-                                         -1 * (1 - self.fracLossPerHour.active_data * system_model.dt_in_hours),
-                                        time_indicesChargeState[
-                                        :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
-        self.model.eqs['charge_state'].add_summand(self.model.variables['charge_state'], 1, time_indicesChargeState[1:])  # 1:end
-        self.model.eqs['charge_state'].add_summand(self.charging.model.variables['val'], -1 * self.eta_load.active_data * system_model.dt_in_hours)
-        self.model.eqs['charge_state'].add_summand(self.discharging.model.variables['val'],
-                                         1 / self.eta_unload.active_data * system_model.dt_in_hours)  # Achtung hier 1/eta!
-
-        # Speicherladezustand am Ende
-        # -> eigentlich min/max-Wert für variable, aber da nur für ein Element hier als Glg:
-        # 1: eq:  Q_charge_state(end) <= Q_max
-        if self.charge_state_end_max is not None:
-            self.model.add_equations(Equation('eq_charge_state_end_max', self, system_model, eqType='ineq'))
-            self.model.eqs['eq_charge_state_end_max'].add_summand(self.model.variables['charge_state'], 1, time_indicesChargeState[-1])
-            self.model.eqs['eq_charge_state_end_max'].add_constant(self.charge_state_end_max)
-
-        # 2: eq: - Q_charge_state(end) <= - Q_min
-        if self.charge_state_end_min is not None:
-            self.model.add_equations(Equation('eq_charge_state_end_min', self, system_model, eqType='ineq'))
-            self.model.eqs['eq_charge_state_end_min'].add_summand(self.model.variables['charge_state'], -1, time_indicesChargeState[-1])
-            self.model.eqs['eq_charge_state_end_min'].add_constant(- self.charge_state_end_min)
-
-        # nettoflow:
-        # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
-        self.model.add_equations(Equation('nettoFlow', self, system_model, eqType='eq'))
-        self.model.eqs['nettoFlow'].add_summand(self.model.variables['nettoFlow'], 1)
-        self.model.eqs['nettoFlow'].add_summand(self.charging.model.variables['val'], 1)
-        self.model.eqs['nettoFlow'].add_summand(self.discharging.model.variables['val'], -1)
-
-        if self.featureInvest is not None:
-            self.featureInvest.do_modeling(system_model)
-
-        # ############# Gleichungen ##########################
-        # % Speicherleistung an Bilanzgrenze / Speicher-Ladung / Speicher-Entladung
-        # % Q_th(n) + Q_th_Lade(n) - Q_th_Entlade(n) = 0;
-        # obj.eqs.Leistungen = Equation('Leistungen');
-        # obj.eqs.Leistungen.add_summand(obj.vars.Q_th        , 1);
-        # obj.eqs.Leistungen.add_summand(obj.vars.Q_th_Lade   , 1);
-        # obj.eqs.Leistungen.add_summand(obj.vars.Q_th_Entlade,-1);
-
-        # % Bedingungen der binären Variable "IchLadeMich"
-        # Q_th_Lade_Max   = obj.inputData.Q_Ladezustand_Max / obj.inputData.eta_Lade /obj.dt; % maximale Entladeleistung, wenn in einem Zeitschritt alles ausgeschoben wird
-        # Q_th_Lade_Min   = 0; % könnte eigtl auch größer Null sein.
-        # obj.addConstraintsOfVariableOn(obj.vars.IchLadeMich   ,obj.vars.Q_th_Lade   ,Q_th_Lade_Max   ,Q_th_Lade_Min); % korrelierende Leistungsvariable und ihr Maximum!
-
-        # % Bedingungen der binären Variable "IchEntladeMich"
-        # Q_th_Entlade_Max = obj.inputData.Q_Ladezustand_Max * obj.inputData.eta_Entlade /obj.dt; % maximale Entladeleistung, wenn in einem Zeitschritt alles ausgeschoben wird
-        # Q_th_Entlade_min = 0; % könnte eigtl auch größer Null sein.
-        # obj.addConstraintsOfVariableOn(obj.vars.IchEntladeMich,obj.vars.Q_th_Entlade,Q_th_Entlade_Max,Q_th_Entlade_min);  % korrelierende Leistungsvariable und ihr Maximum!
-
-        # % Bedingung "Laden ODER Entladen ODER nix von beiden" (insbesondere für KWK-Anlagen wichtig, da gleichzeitiges Entladen und Beladen sonst Kostenoptimum sein kann
-        # % eq: IchLadeMich(n) + IchEntladeMich(n) <= 1;
-        # obj.ineqs.EntwederLadenOderEntladen = Equation('EntwederLadenOderEntladen');
-        # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchLadeMich   ,1);
-        # obj.ineqs.EntwederLadenOderEntladen.add_summand(obj.vars.IchEntladeMich,1);
-        # obj.ineqs.EntwederLadenOderEntladen.add_constant(1);
-
-    def add_share_to_globals(self, effect_collection: EffectCollection, system_model: SystemModel):
-        """
-        :param effect_collection:
-        :param system_model:
-        :return:
-        """
-        super().add_share_to_globals(effect_collection, system_model)
-
-        if self.featureInvest is not None:
-            self.featureInvest.add_share_to_globals(effect_collection, system_model)
+    def create_model(self) -> StorageModel:
+        self.model = StorageModel(self)
+        return self.model
 
 
 class SourceAndSink(Component):
