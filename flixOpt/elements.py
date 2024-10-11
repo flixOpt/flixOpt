@@ -284,6 +284,7 @@ class Component(Element):
         self.inputs: List['Flow'] = inputs or []
         self.outputs: List['Flow'] = outputs or []
         self.on_off_parameters = on_off_parameters
+        self.prevent_simultaneous_flows = prevent_simultaneous_flows
 
     def create_model(self) -> ComponentModel:
         self.model = ComponentModel(self)

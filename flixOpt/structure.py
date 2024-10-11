@@ -352,9 +352,21 @@ class ComponentModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         """ Initiates all FlowModels """
+        if self.element.prevent_simultaneous_flows:
+            for flow in self.element.inputs + self.element.outputs:
+                if flow.on_off_parameters is None:
+                    flow.on_off_parameters = OnOffParameters([0], force_on=True)
+                else:
+                    flow.on_off_parameters.force_on = True
         self.sub_models.extend([flow.create_model() for flow in self.element.inputs + self.element.outputs])
         for sub_model in self.sub_models:
             sub_model.do_modeling(system_model)
+
+        # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
+        on_variables = [flow.model._on.on for flow in self.element.inputs + self.element.outputs]
+        simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
+        self.sub_models.append(simultaneous_use)
+        simultaneous_use.do_modeling(system_model)
 
 
 class LinearConverterModel(ComponentModel):
@@ -420,9 +432,6 @@ class StorageModel(ComponentModel):
         self._investment: Optional[InvestmentModel] = None
 
     def do_modeling(self, system_model):
-        if self.element.prevent_simultaneous_charge_and_discharge:
-            for flow in self.element.inputs + self.element.outputs:
-                flow.on_off_parameters.force_on = True
         super().do_modeling(system_model)
 
         lb, ub = self.charge_state_bounds
@@ -454,8 +463,7 @@ class StorageModel(ComponentModel):
         eq_charge_state.add_summand(self.charge_state, 1, indices_charge_state[1:])  # 1:end
         eq_charge_state.add_summand(self.charge_state,
                                     (self.element.relative_loss_per_hour * system_model.dt_in_hours) - 1,
-                                    indices_charge_state[
-                                    :-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
+                                    indices_charge_state[:-1])  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
         eq_charge_state.add_summand(self.element.charging.model.flow_rate,
                                     -1 * self.element.eta_charge * system_model.dt_in_hours)
         eq_charge_state.add_summand(self.element.discharging.model.flow_rate,
@@ -468,12 +476,6 @@ class StorageModel(ComponentModel):
                 (self.element.relative_minimum_charge_state, self.element.relative_maximum_charge_state))
             self.sub_models.append(self._investment)
             self._investment.do_modeling(system_model)
-
-        if self.element.prevent_simultaneous_charge_and_discharge:
-            on_variables = [flow.model._on.on for flow in self.element.inputs + self.element.outputs]
-            simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
-            self.sub_models.append(simultaneous_use)
-            simultaneous_use.do_modeling(system_model)
 
         # Initial charge state
         if self.element.initial_charge_state is not None:
