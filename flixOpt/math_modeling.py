@@ -55,7 +55,8 @@ class Variable:
             max_ok = (self.upper_bound is None) or np.all(self.value <= self.upper_bound)
 
             if not (min_ok and max_ok):
-                raise Exception(f'Variable.value {self.label_full} not inside set bounds')
+                raise Exception(f'Variable.fixed_value {self.label_full} not inside set bounds:'
+                                f'\n{self.value=};\n{self.lower_bound=};\n{self.upper_bound=}')
 
             # Set value and mark as fixed
             self.fixed = True
