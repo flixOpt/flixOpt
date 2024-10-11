@@ -70,36 +70,31 @@ class InvestmentModel(ElementModel):
         self._create_shares(system_model)
 
     def _create_shares(self, system_model: SystemModel):
-        effect_collection = system_model.flow_system.effect_collection
+        effect_collection = system_model.flow_system.effect_collection.model
         invest_parameters = self._invest_parameters
 
         # fix_effects:
         fix_effects = invest_parameters.fix_effects
         if fix_effects is not None and fix_effects != 0:
             if invest_parameters.optional:  # share: + isInvested * fix_effects
-                effect_collection.add_share_to_invest('fix_effects', self.element,
-                                                      self.is_invested, fix_effects, 1)
+                effect_collection.add_share_to_invest('fix_effects', fix_effects, 1, self.is_invested)
             else:  # share: + fix_effects
-                effect_collection.add_constant_share_to_invest('fix_effects', self.element,
-                                                               fix_effects ,1)
+                effect_collection.add_share_to_invest('fix_effects', fix_effects,1, None)
         # divest_effects:
         divest_effects = invest_parameters.divest_effects
         if divest_effects is not None and divest_effects != 0:
             if invest_parameters.optional:  # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
-                effect_collection.add_constant_share_to_invest('divest_effects', self.element,
-                                                               divest_effects, 1)
+                effect_collection.add_share_to_invest('divest_effects', divest_effects, 1, None)
                 # 2. part of share [- isInvested * divest_effects]:
-                effect_collection.add_share_to_invest('divest_cancellation_effects', self.element,
-                                                      self.is_invested, divest_effects, -1)
+                effect_collection.add_share_to_invest('divest_cancellation_effects', divest_effects, -1, self.is_invested)
                 # TODO : these 2 parts should be one share! -> SingleShareModel...?
 
         # # specific_effects:
         specific_effects = invest_parameters.specific_effects
         if specific_effects is not None:
             # share: + investment_size (=var)   * specific_effects
-            effect_collection.add_share_to_invest('specific_effects', self.element,
-                                                  self.size, specific_effects, 1)
+            effect_collection.add_share_to_invest('specific_effects', specific_effects, 1, self.size)
         # segmented Effects
         invest_segments = invest_parameters.effects_in_segments
         if invest_segments:
@@ -416,14 +411,13 @@ class OnOffModel(ElementModel):
         effect_collection = system_model.effect_collection_model
         effects_per_switch_on = self._on_off_parameters.effects_per_switch_on
         if effects_per_switch_on is not None:
-            effect_collection.add_share_to_effects('switch_on_effects', 'operation',
-                                                   effects_per_switch_on, 1, self.switch_on)
+            effect_collection.add_share_to_operation('switch_on_effects', effects_per_switch_on, 1, self.switch_on)
 
         # Betriebskosten:
         effects_per_running_hour = self._on_off_parameters.effects_per_running_hour
         if effects_per_running_hour is not None:
-            effect_collection.add_share_to_effects('running_hour_effects', 'operation',
-                                                   effects_per_running_hour, system_model.dt_in_hours, self.on)
+            effect_collection.add_share_to_operation('running_hour_effects', effects_per_running_hour,
+                                                     system_model.dt_in_hours, self.on)
 
 
 class SegmentModel(ElementModel):
@@ -685,14 +679,13 @@ class SegmentedSharesModel(ElementModel):
         self._segments_model.do_modeling(system_model)
 
         # Shares
-        effect_collection = system_model.flow_system.effect_collection
+        effect_collection = system_model.flow_system.effect_collection.model
         for effect, single_share_model in self._shares.items():
             effect_collection.add_share_to_invest(
-                name_of_share='segmented_effects',
-                owner=self.element, variable=single_share_model.single_share,
+                name='segmented_effects',
                 effect_values={effect: 1},
-                factor=1
-            )
+                factor=1,
+                variable=single_share_model.single_share)
 
 
 class PreventSimultaneousUsageModel(ElementModel):

@@ -324,11 +324,11 @@ class EffectCollectionModel(ElementModel):
         return self._effect_models[self.element.objective_effect]
 
     def _add_share_to_effects(self,
-                             name: str,
-                             target: Literal['operation', 'invest'],
-                             effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
-                             factor: Numeric,
-                             variable: Optional[Variable] = None) -> None:
+                              name: str,
+                              target: Literal['operation', 'invest'],
+                              effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
+                              factor: Numeric,
+                              variable: Optional[Variable] = None) -> None:
         effect_values_dict = as_effect_dict(effect_values)
 
         # an alle Effects, die einen Wert haben, anhängen:
@@ -353,7 +353,7 @@ class EffectCollectionModel(ElementModel):
 
     def add_share_to_invest(self,
                             name: str,
-                            effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                            effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
                             factor: Numeric,
                             variable: Optional[Variable] = None) -> None:
         #TODO: Add checks
@@ -361,7 +361,7 @@ class EffectCollectionModel(ElementModel):
 
     def add_share_to_operation(self,
                                name: str,
-                               effect_values: Union[Numeric, Dict[Optional[Effect], TimeSeries]],
+                               effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
                                factor: Numeric,
                                variable: Optional[Variable] = None) -> None:
         # TODO: Add checks
