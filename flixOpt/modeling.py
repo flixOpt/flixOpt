@@ -462,12 +462,11 @@ class SegmentModel(ElementModel):
         #  eq: - v(t) + (v_0 * lambda_0 + v_1 * lambda_1) = 0       -> v_0, v_1 = Stützstellen des Segments
         for variable, sample_points in self._sample_points.items():
             sample_0, sample_1 = sample_points
+            """
             if isinstance(sample_0, TimeSeries):
                 sample_0 = sample_0.active_data
                 sample_1 = sample_1.active_data
-            else:
-                sample_0 = sample_0
-                sample_1 = sample_1
+            """
 
             lambda_eq = Equation(f'{variable.label_full}_lambda', self, system_model)
             lambda_eq.add_summand(variable, -1)
@@ -557,8 +556,8 @@ class ShareAllocationModel(ElementModel):
         self.add_equations(self._eq_sum)
 
         if self._shares_are_time_series:
-            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour.active_data, system_model.dt_in_hours)
-            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour.active_data, system_model.dt_in_hours)
+            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
+            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
             self.sum_TS = VariableTS('sum_TS', system_model.nr_of_time_steps, self.element.label_full, system_model,
                                      lower_bound=lb_TS, upper_bound=ub_TS)
             self.add_variables(self.sum_TS)
@@ -599,12 +598,13 @@ class ShareAllocationModel(ElementModel):
                    factor1: Numeric_TS,
                    factor2: Numeric_TS):
         # TODO: accept only one factor or accept unlimited factors -> *factors
-
+        """
         # Falls TimeSeries, Daten auslesen:
         if isinstance(factor1, TimeSeries):
             factor1 = factor1.active_data
         if isinstance(factor2, TimeSeries):
             factor2 = factor2.active_data
+        """
         total_factor = np.multiply(factor1, factor2)
 
         # var and eq for publishing share-values in results:
