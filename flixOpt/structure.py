@@ -361,14 +361,17 @@ class LinearConverterModel(ComponentModel):
     def __init__(self, element: LinearConverter):
         super().__init__(element)
         self.element: LinearConverter = element
+        self._on: Optional[OnOffModel] = None
 
     def do_modeling(self, system_model: SystemModel):
         super().do_modeling(system_model)
 
-        #TODO OnOff
-        on_off_model = OnOffModel(self.element, self.element.on_off_parameters)
-
-
+        if self.element.on_off_parameters:
+            all_flows = self.element.inputs + self.element.outputs
+            flow_rates: List[VariableTS] = [flow.model.flow_rate for flow in all_flows]
+            bounds: List[Tuple[Numeric, Numeric]] = [flow.model.flow_rate_bounds for flow in all_flows]
+            self._on = OnOffModel(self.element, self.element.on_off_parameters,
+                                  flow_rates, bounds)
 
         # conversion_factors:
         if self.element.conversion_factors:
@@ -413,21 +416,42 @@ class FlowModel(ElementModel):
         self.flow_rate: Optional[VariableTS] = None
         self.sum_flow_hours: Optional[Variable] = None
 
-        self._on: Optional[OnOffModel] = None if element.featureOn else OnOffModel(element.featureOn)
-        self._investment: Optional[InvestmentModel] = None if isinstance(element.size, Skalar) else InvestmentModel(element.featureInvest, element.featureOn.use_on)
-        self.sub_models.extend([model for model in (self._on, self._investment) if model is not None])
+        self._on: Optional[OnOffModel] = None
+        self._investment: Optional[InvestmentModel] = None
 
     def do_modeling(self, system_model: SystemModel):
-        # flow_rate
-        if isinstance(self.element.size, Skalar):
-            fixed_value = None if self.element.fixed_relative_value is None else self.element.fixed_relative_value * self.element.size
-            self.flow_rate = VariableTS('flow_rate', system_model.nr_of_time_steps, self.element.label_full, system_model,
-                                        lower_bound=self.element.relative_minimum_with_exists.active_data * self.element.size,
-                                        upper_bound=self.element.relative_maxiumum_with_exists.active_data * self.element.size,
-                                        value=fixed_value)
-        else:
-            self.flow_rate = VariableTS('flow_rate', system_model.nr_of_time_steps, self.element.label_full, system_model)
+        # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
+        if self.element.on_off_parameters is None and not isinstance(self.element.size, InvestParameters):
+            if self.element.fixed_relative_value is None:
+                fixed_flow_rate = None
+            else:
+                fixed_flow_rate = self.element.fixed_relative_value * self.element.size
+            self.flow_rate = VariableTS('flow_rate',
+                                        system_model.nr_of_time_steps, self.element.label_full, system_model,
+                                        lower_bound=self.element.relative_minimum * self.element.size,
+                                        upper_bound=self.element.relative_maximum * self.element.size,
+                                        value=fixed_flow_rate)
+        else:  # Bounds are created later and in sub_models
+            self.flow_rate = VariableTS('flow_rate', system_model.nr_of_time_steps,
+                                        self.element.label_full, system_model, lower_bound=0)
         self.add_variables(self.flow_rate)
+
+        # OnOff
+        if self.element.on_off_parameters is not None:
+            self._on = OnOffModel(self.element, self.element.on_off_parameters,
+                                  [self.flow_rate],
+                                  [self.flow_rate_bounds])
+            self._on.do_modeling(system_model)
+            self.sub_models.append(self._on)
+
+        # Investment
+        if isinstance(self.element.size, InvestParameters):
+            self._investment = InvestmentModel(self.element, self.element.size,
+                                               self.flow_rate,
+                                               (self.element.relative_minimum, self.element.size.minimum_size),
+                                               self._on.on)
+            self._investment.do_modeling(system_model)
+            self.sub_models.append(self._investment)
 
         # sumFLowHours
         self.sum_flow_hours = Variable('sumFlowHours', 1, self.element.label_full, system_model,
@@ -440,9 +464,6 @@ class FlowModel(ElementModel):
         self.add_equations(eq_sum_flow_hours)
 
         self._create_bounds_for_load_factor(system_model)
-
-        self._on.do_modeling(system_model) if self._on is not None else None
-        self._investment.do_modeling(system_model, ) if self._investment is not None else None
         self._create_shares(system_model)
 
     def _create_shares(self, system_model: SystemModel):
@@ -457,11 +478,12 @@ class FlowModel(ElementModel):
             )
 
     def _create_bounds_for_load_factor(self, system_model: SystemModel):
-        ## ############## full load fraction bzw. load factor ##############
+        #TODO: Add Variable load_factor for better evaluation?
+
         # eq: var_sumFlowHours <= size * dt_tot * load_factor_max
         if self.element.load_factor_max is not None:
             flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
-            eq_load_factor_max = Equation('load_factor_max', self, system_model, 'ineq')
+            eq_load_factor_max = Equation('load_factor_max', self.element, system_model, 'ineq')
             self.add_equations(eq_load_factor_max)
             eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
             # if investment:
@@ -480,6 +502,15 @@ class FlowModel(ElementModel):
                 eq_load_factor_min.add_summand(self._investment.size, flow_hours_per_size_min)
             else:
                 eq_load_factor_min.add_constant(-1 * self.element.size * flow_hours_per_size_min)
+
+    @property
+    def flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
+        if not isinstance(self.element.size, InvestParameters):
+            return (self.element.relative_minimum * self.element.size,
+                    self.element.relative_maximum * self.element.size)
+        else:
+            return (self.element.relative_minimum * self.element.size.minimum_size,
+                    self.element.relative_maximum * self.element.size.maximum_size)
 
 
 class BusModel(ElementModel):
@@ -636,28 +667,25 @@ class InvestmentModel(ElementModel):
     """Class for modeling an investment"""
     def __init__(self, element: Union[Flow, Storage],
                  invest_parameters: InvestParameters,
-                 defining_variable: Optional[VariableTS],
-                 fixed_relative_value: Optional[Numeric],
-                 relative_minimum: Numeric,
-                 relative_maximum: Numeric,
-                 on_variable: Optional[VariableTS]):
+                 defining_variable: [VariableTS],
+                 relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
+                 on_variable: [VariableTS]):
+        """
+        if relative_bounds are both equal, then its like a fixed relative value
+        """
         super().__init__(element)
         self.element: Union[Flow, Storage] = element
         self.size: Optional[Union[Skalar, Variable]] = None
         self.is_invested: Optional[Variable] = None
-
-        self._defining_variable = defining_variable
-        self._on_variable = on_variable
-        self._fixed_relative_value = fixed_relative_value
-        self._relative_minimum = relative_minimum
-        self._relative_maximum = relative_maximum
         
         self._segments: Optional[SegmentedSharesModel] = None
-        
+
+        self._on_variable = on_variable
+        self._defining_variable = defining_variable
+        self._relative_bounds_of_defining_variable = relative_bounds_of_defining_variable
         self._invest_parameters = invest_parameters
 
     def do_modeling(self, system_model: SystemModel):
-        effect_collection = system_model.flow_system.effect_collection
         invest_parameters = self._invest_parameters
         if invest_parameters.fixed_size:
             self.size = Variable('size', 1, self.element.label_full, system_model,
@@ -665,7 +693,8 @@ class InvestmentModel(ElementModel):
         else:
             lower_bound = 0 if invest_parameters.optional else invest_parameters.minimum_size
             self.size = Variable('size', 1, self.element.label_full, system_model,
-                                 lower_bound=lower_bound, upper_bound=invest_parameters.maximum_size)
+                                 lower_bound=lower_bound,
+                                 upper_bound=invest_parameters.maximum_size)
         self.add_variables(self.size)
         # Optional
         if invest_parameters.optional:
@@ -674,9 +703,15 @@ class InvestmentModel(ElementModel):
             self.add_variables(self.is_invested)
             self._create_bounds_for_optional_investment(system_model)
 
-        self._create_bounds_for_defining_var(system_model)
+        # Bounds for defining variable
+        self._create_bounds_for_defining_variable(system_model)
 
-        #############################################################
+        self._create_shares(system_model)
+
+    def _create_shares(self, system_model: SystemModel):
+        effect_collection = system_model.flow_system.effect_collection
+        invest_parameters = self._invest_parameters
+
         # fix_effects:
         fix_effects = invest_parameters.fix_effects
         if fix_effects is not None and fix_effects != 0:
@@ -732,51 +767,55 @@ class InvestmentModel(ElementModel):
             eq_is_invested_lb.add_summand(self.is_invested, np.max(system_model.epsilon, self._invest_parameters.minimum_size))
             self.add_equations(eq_is_invested_ub, eq_is_invested_lb)
 
-    def _create_bounds_for_defining_var(self, system_model: SystemModel):
-        if self._fixed_relative_value is not None:  # Wenn fixer relativer Lastgang:
-            # eq: defining_variable(t) = var_investmentSize * fixed_relative_value
-            eq = Equation('fixed_relative_value', self.element, system_model, 'eq')
-            eq.add_summand(self._defining_variable, 1)
-            eq.add_summand(self.size, np.multiply(-1, self._fixed_relative_value))
-            self.add_equations(eq)
+    def _create_bounds_for_defining_variable(self, system_model: SystemModel):
+        label = self._defining_variable.label
+        relative_minimum, relative_maximum = self._relative_bounds_of_defining_variable
+        # fixed relative value
+        if np.array_equal(relative_minimum, relative_maximum):
+            #TODO: Allow Off? Currently not...
+            eq_fixed = Equation(f'fixed_{label}', self.element, system_model)
+            eq_fixed.add_summand(self._defining_variable, 1)
+            eq_fixed.add_summand(self.size, np.multiply(-1, relative_maximum))
+            self.add_equations(eq_fixed)
         else:
-            ## 1. Gleichung: Maximum durch Investmentgröße ##
-            eq_upper = Equation('ub_defining_var', self.element, system_model, 'ineq')
-            # eq: defining_variable(t)  <= size * relative_maximum(t)
+            eq_upper = Equation(f'ub_{label}', self.element, system_model, 'ineq')
+            # eq: defining_variable(t)  <= size * upper_bound(t)
             eq_upper.add_summand(self._defining_variable, 1)
-            eq_upper.add_summand(self.size, np.multiply(-1, self._relative_maximum))
+            eq_upper.add_summand(self.size, np.multiply(-1, relative_maximum))
 
             ## 2. Gleichung: Minimum durch Investmentgröße ##
-            eq_lower = Equation('lb_defining_var', self, system_model, 'ineq')
+            eq_lower = Equation(f'lb_{label}', self, system_model, 'ineq')
             if self._on_variable is None:
                 # eq: defining_variable(t) >= investment_size * relative_minimum(t)
                 eq_lower.add_summand(self._defining_variable, -1)
-                eq_lower.add_summand(self.size, self._relative_minimum)
-
-            # Wenn InvestSize nicht fix, dann weitere Glg notwendig für Minimum (abhängig von var_investSize)
-            elif not self._invest_parameters.fixed_size:
+                eq_lower.add_summand(self.size, relative_minimum)
+            else:
+                ## 2. Gleichung: Minimum durch Investmentgröße und On
                 # eq: defining_variable(t) >= mega * (On(t)-1) + size * relative_minimum(t)
                 #     ... mit mega = relative_maximum * maximum_size
-
                 # äquivalent zu:.
                 # eq: - defining_variable(t) + mega * On(t) + size * relative_minimum(t) <= + mega
-
-                mega = self._relative_maximum * self._invest_parameters.maximum_size
+                mega = relative_maximum * self._invest_parameters.maximum_size
                 eq_lower.add_summand(self._defining_variable, -1)
-                eq_lower.add_summand(self._on_variable, mega)  # übergebene On-Variable
-                eq_lower.add_summand(self.size, self._relative_minimum)
+                eq_lower.add_summand(self._on_variable, mega)
+                eq_lower.add_summand(self.size, relative_minimum)
                 eq_lower.add_constant(mega)
-                # Anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu FeatureOn-Glg.
-            else:
-                pass  # Bereits in FeatureOn mit P>= On(t)*Min ausreichend definiert
-                #TODO: CHECK THIS!!!
-
+                # Anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu OnOff ??
             self.add_equations(eq_lower, eq_upper)
 
 
 class OnOffModel(ElementModel):
-    """Class for modeling the on and off state of a variable"""
-    def __init__(self, element: Element, on_off_parameters: OnOffParameters):
+    """
+    Class for modeling the on and off state of a variable
+    If defining_bounds are given, creates sufficient lower bounds
+    """
+    def __init__(self, element: Element,
+                 on_off_parameters: OnOffParameters,
+                 defining_variables: List[VariableTS],
+                 defining_bounds: List[Tuple[Numeric, Numeric]]):
+        """
+        defining_bounds: a list of Numeric, that can be  used to create the bound for On/Off more efficiently
+        """
         super().__init__(element)
         self.element = element
         self.on: Optional[VariableTS] = None
@@ -792,55 +831,237 @@ class OnOffModel(ElementModel):
         self.nr_switch_on: Optional[VariableTS] = None
 
         self._on_off_parameters = on_off_parameters
+        self._defining_variables = defining_variables
+        self._defining_bounds = defining_bounds
+        assert len(defining_variables) == len(defining_bounds), f'Every defining Variable needs bounds to Model OnOff'
 
     def do_modeling(self, system_model: SystemModel):
         if self._on_off_parameters.use_on:
-            # Before-Variable:
             self.on = VariableTS('on', system_model.nr_of_time_steps, self.element.label_full, system_model,
                                  is_binary=True, before_value=self._on_off_parameters.on_values_before_begin[0])
             self.total_on_hours = Variable('onHoursSum', 1, self.element.label_full, system_model,
                                            lower_bound=self._on_off_parameters.on_hours_total_min,
                                            upper_bound=self._on_off_parameters.on_hours_total_max)
-            self.add_variables(self.on)
-            self.add_variables(self.total_on_hours)
+            self.add_variables(self.on, self.total_on_hours)
+
+            self._add_on_constraints(system_model, system_model.time_indices)
 
         if self._on_off_parameters.use_off:
-            # off-Var is needed:
             self.off = VariableTS('off', system_model.nr_of_time_steps, self.element.label_full, system_model,
                                   is_binary=True)
             self.add_variables(self.off)
 
-        # onHours:
-        #   var_on      = [0 0 1 1 1 1 0 0 0 1 1 1 0 ...]
-        #   var_onHours = [0 0 1 2 3 4 0 0 0 1 2 3 0 ...] (bei dt=1)
+            self._add_off_constraints(system_model, system_model.time_indices)
+
         if self._on_off_parameters.use_on_hours:
-            maximum_consecutive_on_hours = None if self._on_off_parameters.consecutive_on_hours_max is None \
-                else self._on_off_parameters.consecutive_on_hours_max.active_data
             self.consecutive_on_hours = VariableTS('onHours', system_model.nr_of_time_steps,
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
-                                                   upper_bound=maximum_consecutive_on_hours)  # min separat
+                                                   upper_bound=self._on_off_parameters.consecutive_on_hours_max)
             self.add_variables(self.consecutive_on_hours)
+            self._add_duration_constraints(self.consecutive_on_hours, self.on,
+                                           self._on_off_parameters.consecutive_on_hours_min,
+                                           system_model, system_model.time_indices)
         # offHours:
         if self._on_off_parameters.use_off_hours:
-            maximum_consecutive_off_hours = None if self._on_off_parameters.consecutive_off_hours_max is None \
-                else self._on_off_parameters.consecutive_off_hours_max.active_data
             self.consecutive_off_hours = VariableTS('offHours', system_model.nr_of_time_steps,
-                                                   self.element.label_full, system_model,
-                                                   lower_bound=0,
-                                                   upper_bound=maximum_consecutive_off_hours)  # min separat
+                                                    self.element.label_full, system_model,
+                                                    lower_bound=0,
+                                                    upper_bound=self._on_off_parameters.consecutive_off_hours_max)
             self.add_variables(self.consecutive_off_hours)
+            self._add_duration_constraints(self.consecutive_off_hours, self.off,
+                                           self._on_off_parameters.consecutive_off_hours_min,
+                                           system_model, system_model.time_indices)
         # Var SwitchOn
         if self._on_off_parameters.use_switch_on:
             self.switch_on = VariableTS('switchOn', system_model.nr_of_time_steps, self.element.label_full, system_model, is_binary=True)
             self.switch_off = VariableTS('switchOff', system_model.nr_of_time_steps, self.element.label_full, system_model, is_binary=True)
             self.nr_switch_on = Variable('nrSwitchOn', 1, self.element.label_full, system_model,
                                          upper_bound=self._on_off_parameters.switch_on_total_max)
-            self.add_variables(self.switch_on)
-            self.add_variables(self.switch_off)
-            self.add_variables(self.nr_switch_on)
+            self.add_variables(self.switch_on, self.switch_off, self.nr_switch_on)
+            self._add_switch_constraints(system_model, system_model.time_indices)
 
-        #TODO: Equations!!
+        self._create_shares(system_model)
+
+    def _add_on_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+        assert self.on is not None, f'On variable of {self.element} must be defined to add constraints'
+        # % Bedingungen 1) und 2) müssen erfüllt sein:
+
+        # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig
+        # %            (und dann auch nur wenn erstes Segment bei Q_th=0 beginnt. Dann soll bei Q_th=0 (d.h. die Maschine ist Aus) On = 0 und segment1.onSeg = 0):)
+        # %            Fazit: Wenn kein Performance-Verlust durch mehr Gleichungen, dann egal!
+
+        nr_of_defining_variables = len(self._defining_variables)
+        assert nr_of_defining_variables > 0, 'Achtung: mindestens 1 Flow notwendig'
+
+        eq_on_1 = Equation('On_Constraint_1', self.element, system_model, eqType='ineq')
+        eq_on_2 = Equation('On_Constraint_2', self.element, system_model, eqType='ineq')
+        self.add_equations(eq_on_1, eq_on_2)
+        if nr_of_defining_variables == 1:
+            variable = self._defining_variables[0]
+            lower_bound, upper_bound = self._defining_bounds
+            #### Bedingung 1) ####
+            # eq: On(t) * max(epsilon, lower_bound) <= -1 * Q_th(t)
+            eq_on_1.add_summand(variable, -1, time_indices)
+            eq_on_1.add_summand(self.on, np.maximum(system_model.epsilon, lower_bound), time_indices)
+
+            #### Bedingung 2) ####
+            # eq: Q_th(t) <= Q_th_max * On(t)
+            eq_on_2.add_summand(variable, 1, time_indices)
+            eq_on_2.add_summand(self.on, upper_bound, time_indices)
+
+        else:  # Bei mehreren Leistungsvariablen:
+            #### Bedingung 1) ####
+            # When all defining variables are 0, On is 0
+            # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
+            for variable in self._defining_variables:
+                eq_on_1.add_summand(variable, -1, time_indices)
+            eq_on_1.add_summand(self.on, system_model.epsilon, time_indices)
+
+            #### Bedingung 2) ####
+            ## sum(alle Leistung) >0 -> On = 1 | On=0 -> sum(Leistung)=0
+            #  eq: sum( Leistung(t,i))              - sum(Leistung_max(i))             * On(t) <= 0
+            #  --> damit Gleichungswerte nicht zu groß werden, noch durch nr_of_flows geteilt:
+            #  eq: sum( Leistung(t,i) / nr_of_flows ) - sum(Leistung_max(i)) / nr_of_flows * On(t) <= 0
+            absolute_maximum: Numeric = 0
+            for variable, bounds in zip(self._defining_variables, self._defining_bounds):
+                eq_on_2.add_summand(variable, 1 / nr_of_defining_variables, time_indices)
+                absolute_maximum += bounds[1]  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
+
+            upper_bound = absolute_maximum / nr_of_defining_variables
+            eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
+
+        if np.max(upper_bound) > 1000:
+            logger.warning(f'!!! ACHTUNG in {self.element.label_full}  Binärdefinition mit großem Max-Wert ('
+                           f'{np.max(upper_bound)}). Ggf. falsche Ergebnisse !!!')
+
+    def _add_off_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+        assert self.off is not None, f'Off variable of {self.element} must be defined to add constraints'
+        # Definition var_off:
+        # eq: var_on(t) + var_off(t) = 1
+        eq_off = Equation('var_off', self, system_model, eqType='eq')
+        self.add_equations(eq_off)
+        eq_off.add_summand(self.off, 1, time_indices)
+        eq_off.add_summand(self.on, 1, time_indices)
+        eq_off.add_constant(1)
+
+    def _add_duration_constraints(self,
+                                  duration_variable: VariableTS,
+                                  binary_variable: VariableTS,
+                                  minimum_duration: Optional[Numeric_TS],
+                                  system_model: SystemModel,
+                                  time_indices: Union[list[int], range]):
+        """
+        i.g.
+        binary_variable        = [0 0 1 1 1 1 0 1 1 1 0 ...]
+        duration_variable =      [0 0 1 2 3 4 0 1 2 3 0 ...] (bei dt=1)
+                                            |-> min_onHours = 3!
+
+        if you want to count zeros, define var_bin_off: = 1-binary_variable before!
+        """
+        assert duration_variable is not None, f'Duration Variable of {self.element} must be defined to add constraints'
+        assert binary_variable is not None, f'Duration Variable of {self.element} must be defined to add constraints'
+        # TODO: Einfachere Variante von Peter umsetzen!
+
+        # 1) eq: onHours(t) <= On(t)*Big | On(t)=0 -> onHours(t) = 0
+        # mit Big = dt_in_hours_total
+        label_prefix = duration_variable.label
+        mega = system_model.dt_in_hours_total
+        constraint_1 = Equation(f'{label_prefix}_constraint_1', self.element, system_model, eqType='ineq')
+        self.add_equations(constraint_1)
+        constraint_1.add_summand(duration_variable, 1)
+        constraint_1.add_summand(binary_variable, -1 * mega)
+
+        # 2a) eq: onHours(t) - onHours(t-1) <= dt(t)
+        #    on(t)=1 -> ...<= dt(t)
+        #    on(t)=0 -> onHours(t-1)>=
+        constraint_2a = Equation(f'{label_prefix}_constraint_2a', self.element, system_model, eqType='ineq')
+        self.add_equations(constraint_2a)
+        constraint_2a.add_summand(duration_variable, 1, time_indices[1:])  # onHours(t)
+        constraint_2a.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
+        constraint_2a.add_constant(system_model.dt_in_hours[1:])  # dt(t)
+
+        # 2b) eq:  onHours(t) - onHours(t-1)             >=  dt(t) - Big*(1-On(t)))
+        #    eq: -onHours(t) + onHours(t-1) + On(t)*Big <= -dt(t) + Big
+        # with Big = dt_in_hours_total # (Big = maxOnHours, should be usable, too!)
+        constraint_2b = Equation(f'{label_prefix}_constraint_2b', self.element, system_model, eqType='ineq')
+        self.add_equations(constraint_2b)
+        constraint_2b.add_summand(duration_variable, -1, time_indices[1:])  # onHours(t)
+        constraint_2b.add_summand(duration_variable, 1, time_indices[0:-1])  # onHours(t-1)
+        constraint_2b.add_summand(binary_variable, mega, time_indices[1:])  # on(t)
+        constraint_2b.add_constant(-1 + system_model.dt_in_hours[1:] + mega)  # dt(t)
+
+        # 3) check minimum_duration before switchOff-step
+        # (last on-time period of timeseries is not checked and can be shorter)
+        if minimum_duration is not None:
+            # Note: switchOff-step is when: On(t)-On(t-1) == -1
+            # eq:  onHours(t-1) >= minOnHours * -1 * [On(t)-On(t-1)]
+            # eq: -onHours(t-1) - minimum_duration * On(t) + minimum_duration*On(t-1) <= 0
+            eq_min_duration = Equation(f'{label_prefix}_minimum_duration', self.element, system_model, eqType='ineq')
+            self.add_equations(eq_min_duration)
+            eq_min_duration.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
+            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration, time_indices[1:])  # on(t)
+            eq_min_duration.add_summand(binary_variable, minimum_duration, time_indices[0:-1])  # on(t-1)
+
+        # TODO: Maximum Duration?? Is this not modeled yet?!!
+
+        # 4) first index:
+        #    eq: onHours(t=0)= dt(0) * On(0)
+        first_index = time_indices[0]  # only first element
+        eq_first = Equation(f'{label_prefix}_firstTimeStep', self.element, system_model)
+        self.add_equations(eq_first)
+        eq_first.add_summand(duration_variable, 1, first_index)
+        eq_first.add_summand(binary_variable, -1 * system_model.dt_in_hours[first_index], first_index)
+
+    def _add_switch_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+        assert self.switch_on is not None, f'Switch On Variable of {self.element} must be defined to add constraints'
+        assert self.switch_off is not None, f'Switch Off Variable of {self.element} must be defined to add constraints'
+        assert self.nr_switch_on is not None, f'Nr of Switch On Variable of {self.element} must be defined to add constraints'
+        assert self.on is not None, f'On Variable of {self.element} must be defined to add constraints'
+        # % Schaltänderung aus On-Variable
+        # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1)
+        eq_switch = Equation('Switch', self.element, system_model)
+        self.add_equations(eq_switch)
+        eq_switch.add_summand(self.switch_on, 1, time_indices[1:])  # SwitchOn(t)
+        eq_switch.add_summand(self.switch_off, -1, time_indices[1:])  # SwitchOff(t)
+        eq_switch.add_summand(self.on, -1, time_indices[1:])  # On(t)
+        eq_switch.add_summand(self.on, +1, time_indices[0:-1])  # On(t-1)
+
+        ## Ersten Wert SwitchOn(t=1) bzw. SwitchOff(t=1) festlegen
+        # eq: SwitchOn(t=1)-SwitchOff(t=1) = On(t=1)- ValueBeforeBeginOfTimeSeries;
+        eq_initial_switch = Equation('Initial_Switch', self.element, system_model)
+        first_index = time_indices[0]
+        eq_initial_switch.add_summand(self.switch_on, 1, first_index)
+        eq_initial_switch.add_summand(self.switch_off, -1, first_index)
+        eq_initial_switch.add_summand(self.on, -1, first_index)
+        eq_initial_switch.add_constant(-1 * self.on.before_value)  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
+
+        ## Entweder SwitchOff oder SwitchOn
+        # eq: SwitchOn(t) + SwitchOff(t) <= 1
+        eq_switch_on_or_off = Equation('Switch_On_or_Off', self.element, system_model, eqType='ineq')
+        eq_switch_on_or_off.add_summand(self.switch_on, 1)
+        eq_switch_on_or_off.add_summand(self.switch_off, 1)
+        eq_switch_on_or_off.add_constant(1)
+
+        ## Anzahl Starts:
+        # eq: nrSwitchOn = sum(SwitchOn(t))
+        eq_nr_switch_on = Equation('NrSwitchOn', self.element, system_model)
+        eq_nr_switch_on.add_summand(self.nr_switch_on, 1)
+        eq_nr_switch_on.add_summand(self.switch_on, -1, as_sum=True)
+
+    def _create_shares(self, system_model: SystemModel):
+        # Anfahrkosten:
+        effect_collection = system_model.effect_collection_model
+        effects_per_switch_on = self._on_off_parameters.effects_per_switch_on
+        if effects_per_switch_on is not None:
+            effect_collection.add_share_to_effects('switch_on_effects', 'operation',
+                                                   effects_per_switch_on, 1, self.switch_on)
+
+        # Betriebskosten:
+        effects_per_running_hour = self._on_off_parameters.effects_per_running_hour
+        if effects_per_running_hour is not None:
+            effect_collection.add_share_to_effects('running_hour_effects', 'operation',
+                                                   effects_per_running_hour, system_model.dt_in_hours, self.on)
 
 
 class SegmentModel(ElementModel):
