@@ -421,12 +421,12 @@ class FlowModel(ElementModel):
         # flow_rate
         if isinstance(self.element.size, Skalar):
             fixed_value = None if self.element.fixed_relative_value is None else self.element.fixed_relative_value * self.element.size
-            self.flow_rate = VariableTS('flow_rate', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+            self.flow_rate = VariableTS('flow_rate', system_model.nr_of_time_steps, self.element.label_full, system_model,
                                         lower_bound=self.element.relative_minimum_with_exists.active_data * self.element.size,
                                         upper_bound=self.element.relative_maxiumum_with_exists.active_data * self.element.size,
                                         value=fixed_value)
         else:
-            self.flow_rate = VariableTS('flow_rate', system_model.nrOfTimeSteps, self.element.label_full, system_model)
+            self.flow_rate = VariableTS('flow_rate', system_model.nr_of_time_steps, self.element.label_full, system_model)
         self.add_variables(self.flow_rate)
 
         # sumFLowHours
@@ -502,9 +502,9 @@ class BusModel(ElementModel):
         # Fehlerplus/-minus:
         if self.element.with_excess:
             excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_effects_per_flow_hour)
-            self.excess_input = VariableTS('excess_input', system_model.nrOfTimeSteps, self.element.label_full,
+            self.excess_input = VariableTS('excess_input', system_model.nr_of_time_steps, self.element.label_full,
                                            system_model, lower_bound=0)
-            self.excess_output = VariableTS('excess_output', system_model.nrOfTimeSteps,
+            self.excess_output = VariableTS('excess_output', system_model.nr_of_time_steps,
                                             self.element.label_full, system_model, lower_bound=0)
             self.add_variables(self.excess_input, self.excess_output)
 
@@ -796,7 +796,7 @@ class OnOffModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         if self._on_off_parameters.use_on:
             # Before-Variable:
-            self.on = VariableTS('on', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+            self.on = VariableTS('on', system_model.nr_of_time_steps, self.element.label_full, system_model,
                                  is_binary=True, before_value=self._on_off_parameters.on_values_before_begin[0])
             self.total_on_hours = Variable('onHoursSum', 1, self.element.label_full, system_model,
                                            lower_bound=self._on_off_parameters.on_hours_total_min,
@@ -806,7 +806,7 @@ class OnOffModel(ElementModel):
 
         if self._on_off_parameters.use_off:
             # off-Var is needed:
-            self.off = VariableTS('off', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+            self.off = VariableTS('off', system_model.nr_of_time_steps, self.element.label_full, system_model,
                                   is_binary=True)
             self.add_variables(self.off)
 
@@ -816,7 +816,7 @@ class OnOffModel(ElementModel):
         if self._on_off_parameters.use_on_hours:
             maximum_consecutive_on_hours = None if self._on_off_parameters.consecutive_on_hours_max is None \
                 else self._on_off_parameters.consecutive_on_hours_max.active_data
-            self.consecutive_on_hours = VariableTS('onHours', system_model.nrOfTimeSteps,
+            self.consecutive_on_hours = VariableTS('onHours', system_model.nr_of_time_steps,
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_on_hours)  # min separat
@@ -825,15 +825,15 @@ class OnOffModel(ElementModel):
         if self._on_off_parameters.use_off_hours:
             maximum_consecutive_off_hours = None if self._on_off_parameters.consecutive_off_hours_max is None \
                 else self._on_off_parameters.consecutive_off_hours_max.active_data
-            self.consecutive_off_hours = VariableTS('offHours', system_model.nrOfTimeSteps,
+            self.consecutive_off_hours = VariableTS('offHours', system_model.nr_of_time_steps,
                                                    self.element.label_full, system_model,
                                                    lower_bound=0,
                                                    upper_bound=maximum_consecutive_off_hours)  # min separat
             self.add_variables(self.consecutive_off_hours)
         # Var SwitchOn
         if self._on_off_parameters.use_switch_on:
-            self.switch_on = VariableTS('switchOn', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
-            self.switch_off = VariableTS('switchOff', system_model.nrOfTimeSteps, self.element.label_full, system_model, is_binary=True)
+            self.switch_on = VariableTS('switchOn', system_model.nr_of_time_steps, self.element.label_full, system_model, is_binary=True)
+            self.switch_off = VariableTS('switchOff', system_model.nr_of_time_steps, self.element.label_full, system_model, is_binary=True)
             self.nr_switch_on = Variable('nrSwitchOn', 1, self.element.label_full, system_model,
                                          upper_bound=self._on_off_parameters.switch_on_total_max)
             self.add_variables(self.switch_on)
@@ -857,7 +857,7 @@ class SegmentModel(ElementModel):
         self._sample_points = sample_points
 
     def do_modeling(self, system_model: SystemModel):
-        length = system_model.nrOfTimeSteps
+        length = system_model.nr_of_time_steps
         self.in_segment = VariableTS(f'onSeg_{self._segment_index}', length, self.element.label_full, system_model,
                                      is_binary=True)  # Binär-Variable
         self.lambda0 = VariableTS(f'lambda0_{self._segment_index}', length, self.element.label_full, system_model,
@@ -919,7 +919,7 @@ class MultipleSegmentsModel(ElementModel):
 
         # Outside of Segments
         if self.outside_segments is None:  # TODO: Make optional
-            self.outside_segments = VariableTS(f'outside_segments', system_model.nrOfTimeSteps, self.element.label_full,
+            self.outside_segments = VariableTS(f'outside_segments', system_model.nr_of_time_steps, self.element.label_full,
                                           system_model, is_binary=True)
             self.add_variables(self.outside_segments)
 
@@ -976,7 +976,7 @@ class ShareAllocationModel(ElementModel):
         if self._shares_are_time_series:
             lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour.active_data, system_model.dt_in_hours)
             ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour.active_data, system_model.dt_in_hours)
-            self.sum_TS = VariableTS('sum_TS', system_model.nrOfTimeSteps, self.element.label_full, system_model,
+            self.sum_TS = VariableTS('sum_TS', system_model.nr_of_time_steps, self.element.label_full, system_model,
                                      lower_bound=lb_TS, upper_bound=ub_TS)
             self.add_variables(self.sum_TS)
 
