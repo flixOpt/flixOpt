@@ -62,7 +62,7 @@ class Variable:
             self.fixed = True
             self.value = utils.as_vector(value, length)
 
-        logger.debug('Variable created: ' + self.label)
+        logger.debug('Variable created: ' + self.label_full)
 
         # Register Element:
         # owner .variables.append(self) # Komponentenliste
