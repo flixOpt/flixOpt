@@ -172,43 +172,7 @@ class LinearConverter(Component):
 
     @property
     def degrees_of_freedom(self):
-        return len(self.inputs+self.outputs) - len(self.conversion_factors
-
-    def do_modeling(self, system_model: SystemModel):
-        super().do_modeling(system_model)
-        # conversion_factors:
-        if self.segmented_conversion_factors is None:
-            # Transformer-Constraints:
-
-            inputs_set = set(self.inputs)
-            outputs_set = set(self.outputs)
-
-            # für alle linearen Gleichungen:
-            for i in range(len(self.conversion_factors)):
-                # erstelle Gleichung für jedes t:
-                # sum(inputs * factor) = sum(outputs * factor)
-                # in1.val[t] * factor_in1[t] + in2.val[t] * factor_in2[t] + ... = out1.val[t] * factor_out1[t] + out2.val[t] * factor_out2[t] + ...
-
-                aFactorVec_Dict = self.conversion_factors[i]
-
-                leftSideFlows = inputs_set & aFactorVec_Dict.keys()  # davon nur die input-flows, die in Glg sind.
-                rightSideFlows = outputs_set & aFactorVec_Dict.keys()  # davon nur die output-flows, die in Glg. sind.
-
-                eq_linearFlowRelation_i = Equation('linearFlowRelation_' + str(i), self, system_model)
-                self.model.add_equations(eq_linearFlowRelation_i)
-                for inFlow in leftSideFlows:
-                    aFactor = aFactorVec_Dict[inFlow].active_data
-                    eq_linearFlowRelation_i.add_summand(inFlow.model.variables['val'], aFactor)  # input1.val[t]      * factor[t]
-                for outFlow in rightSideFlows:
-                    aFactor = aFactorVec_Dict[outFlow].active_data
-                    eq_linearFlowRelation_i.add_summand(outFlow.model.variables['val'], -aFactor)  # output.val[t] * -1 * factor[t]
-
-                eq_linearFlowRelation_i.add_constant(0)  # nur zur Komplettisierung der Gleichung
-
-        # (linear) segments:
-        # Zusammenhänge zw. inputs & outputs können auch vollständig über Segmente beschrieben werden:
-        else:
-            self.feature_linSegments.do_modeling(system_model)
+        return len(self.inputs+self.outputs) - len(self.conversion_factors)
 
 
 class Storage(Component):

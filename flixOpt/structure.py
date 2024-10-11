@@ -16,7 +16,7 @@ from flixOpt.math_modeling import MathModel, Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.elements import Component
-from flixOpt.components import Storage
+from flixOpt.components import Storage, LinearConverter
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.elements import Flow, Effect, EffectCollection, Objective, Bus
@@ -351,9 +351,59 @@ class ComponentModel(ElementModel):
         self.element: Component = element
 
     def do_modeling(self, system_model: SystemModel):
+        """ Initiates all FlowModels """
         self.sub_models.extend([flow.create_model() for flow in self.element.inputs + self.element.outputs])
         for sub_model in self.sub_models:
             sub_model.do_modeling(system_model)
+
+
+class LinearConverterModel(ComponentModel):
+    def __init__(self, element: LinearConverter):
+        super().__init__(element)
+        self.element: LinearConverter = element
+
+    def do_modeling(self, system_model: SystemModel):
+        super().do_modeling(system_model)
+
+        #TODO OnOff
+        on_off_model = OnOffModel(self.element, self.element.on_off_parameters)
+
+
+
+        # conversion_factors:
+        if self.element.conversion_factors:
+            all_input_flows = set(self.element.inputs)
+            all_output_flows = set(self.element.outputs)
+
+            # für alle linearen Gleichungen:
+            for i, conversion_factor in enumerate(self.element.conversion_factors):
+                # erstelle Gleichung für jedes t:
+                # sum(inputs * factor) = sum(outputs * factor)
+                # left = in1.flow_rate[t] * factor_in1[t] + in2.flow_rate[t] * factor_in2[t] + ...
+                # right = out1.flow_rate[t] * factor_out1[t] + out2.flow_rate[t] * factor_out2[t] + ...
+                # eq: left = right
+                used_flows = set(conversion_factor.keys())
+                used_inputs: Set = all_input_flows & used_flows
+                used_outputs: Set = all_output_flows & used_flows
+
+                eq_conversion = Equation(f'conversion_{i}', self, system_model)
+                self.add_equations(eq_conversion)
+                for flow in used_inputs:
+                    factor = conversion_factor[flow]
+                    eq_conversion.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
+                for flow in used_outputs:
+                    factor = conversion_factor[flow]
+                    eq_conversion.add_summand(flow.model.flow_rate, -1 * factor)  # output.val[t] * -1 * factor[t]
+
+                eq_conversion.add_constant(0)  #TODO: Is this necessary?
+
+        # (linear) segments:
+        else:
+            segments = {flow.model.flow_rate: self.element.segmented_conversion_factors[flow]
+                        for flow in self.element.inputs + self.element.outputs}
+            linear_segments = MultipleSegmentsModel(self.element, segments, None)  #TODO: Add Outside_segments Variable (On)
+            linear_segments.do_modeling(system_model)
+            self.sub_models.append(linear_segments)
 
 
 class FlowModel(ElementModel):
