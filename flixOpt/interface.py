@@ -144,8 +144,6 @@ class InvestParameters:
 
 class OnOffParameters:
     def __init__(self,
-                 #flows_defining_on: Optional[List[Flow]],
-                 on_values_before_begin: List[int],
                  effects_per_switch_on: Optional[Union[Dict, Numeric]] = None,
                  effects_per_running_hour: Optional[Union[Dict, Numeric]] = None,
                  on_hours_total_min: Optional[int] = None,
@@ -180,8 +178,8 @@ class OnOffParameters:
         effects_per_running_hour : scalar or TS, optional
             costs for operating, i.g. in € per hour
         """
-        #self.flows_defining_on = flows_defining_on
-        self.on_values_before_begin = on_values_before_begin
+        # self.flows_defining_on = flows_defining_on
+        # self.on_values_before_begin = on_values_before_begin
         self.effects_per_switch_on = effects_per_switch_on
         self.effects_per_running_hour = effects_per_running_hour
         self.on_hours_total_min = on_hours_total_min  # scalar
@@ -193,6 +191,18 @@ class OnOffParameters:
         self.switch_on_total_max = switch_on_total_max
         self.force_on = force_on  # Can be set to True if needed, even after creation
         self.force_switch_on = force_switch_on
+
+    '''
+    def to_time_series(self, owner: Element):
+        """Transforms all Numeric Values to TimeSeries"""
+        self.consecutive_on_hours_min = self.consecutive_on_hours_min or TimeSeries('consecutive_on_hours_min', self.consecutive_on_hours_min, owner)
+        self.consecutive_on_hours_max = self.consecutive_on_hours_max or TimeSeries('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
+        self.consecutive_off_hours_min = self.consecutive_off_hours_min or TimeSeries('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
+        self.consecutive_off_hours_max = self.consecutive_off_hours_max or TimeSeries('consecutive_off_hours_max',  self.consecutive_off_hours_max, owner)
+        self.effects_per_switch_on = as_effect_dict_with_ts('effects_per_switch_on', self.effects_per_switch_on, owner)
+        self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', self.effects_per_running_hour, owner)
+    '''
+
 
     @property
     def use_on(self) -> bool:
