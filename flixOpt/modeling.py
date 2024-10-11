@@ -617,8 +617,11 @@ class ShareAllocationModel(ElementModel):
         if self._shares_are_time_series:
             target_eq = self._eq_time_series
         else:
-            assert total_factor.shape[0] == 1, (f'factor1 und factor2 müssen Skalare sein, '
-                                                f'da shareSum {self.element.label} skalar ist')
+            # checking for single value
+            assert any([np.issubdtype(type(total_factor), np.integer),
+                        np.issubdtype(type(total_factor), np.floating),
+                        isinstance(total_factor, Skalar)]) or total_factor.shape[0] == 1, \
+                f'factor1 und factor2 müssen Skalare sein, da shareSum {self.element.label} skalar ist'
             target_eq = self._eq_sum
 
         if variable is None:  # constant share
