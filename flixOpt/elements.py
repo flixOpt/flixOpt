@@ -243,7 +243,7 @@ class Flow(Element):
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
 
-        if self.size == Flow._default_size and self.size_is_fixed:  #Default Size --> Most likely by accident
+        if self.size == Flow._default_size and self.fixed_relative_value is not None:  #Default Size --> Most likely by accident
             raise Exception('Achtung: Wenn fixed_relative_value genutzt wird, muss zugehöriges size definiert werden, '
                             'da: value = fixed_relative_value * size!')
 
