@@ -190,21 +190,21 @@ class SystemModel(MathModel):
     @property
     def all_variables(self) -> Dict[str, Variable]:
         all_vars = {}
-        for model in self.component_models + self.bus_models + [self.effect_collection_model]:
-            for key, value in model.all_variables.items():
-                if key in all_vars:
-                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-                all_vars[key] = value
+        for model in self.sub_models:
+            for label, variable in model.variables.items():
+                if label in all_vars:
+                    raise KeyError(f"Duplicate Variable found in SystemModel: {label=}; {variable=}")
+                all_vars[label] = variable
         return all_vars
 
     @property
     def all_equations(self) -> Dict[str, Equation]:
         all_eqs = {}
-        for sub_model in self.sub_models:
-            for key, value in sub_model.all_equations.items():
-                if key in all_eqs:
-                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-                all_eqs[key] = value
+        for model in self.sub_models:
+            for label, equation in model.eqs.items():
+                if label in all_eqs:
+                    raise KeyError(f"Duplicate Equation found in SystemModel: {label=}; {equation=}")
+                all_eqs[label] = equation
         return all_eqs
 
     @property
@@ -213,7 +213,7 @@ class SystemModel(MathModel):
 
     @property
     def sub_models(self) -> List['ElementModel']:
-        direct_models = [self.effect_collection_model] + self.component_models
+        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models
         sub_models = [sub_model for direct_model in direct_models for sub_model in direct_model.all_sub_models]
         return direct_models + sub_models
 
