@@ -1328,32 +1328,3 @@ class SegmentedSharesModel(ElementModel):
                 effect_values={effect: 1},
                 factor=1
             )
-
-
-def bounds_of_defining_variable(minimum_size: Skalar,
-                                maximum_size: Skalar,
-                                size_is_optional: bool,
-                                fixed_relative_value: Optional[Numeric],
-                                relative_minimum: Numeric,
-                                relative_maximum: Numeric,
-                                can_be_off: bool,
-                                ) -> Tuple[Optional[Numeric], Optional[Numeric], Optional[Numeric]]:
-
-    if fixed_relative_value is not None:   # Wenn fixer relativer Lastgang:
-        # relative_maximum = relative_minimum = fixed_relative_value !
-        relative_minimum = fixed_relative_value
-        relative_maximum = fixed_relative_value
-
-    upper_bound = relative_maximum * maximum_size  # Use maximum of Investment
-
-    # min-Wert:
-    if size_is_optional or (can_be_off and fixed_relative_value is None):
-        lower_bound = 0  # can be zero (if no invest) or can switch off
-    else:
-        lower_bound = relative_minimum * minimum_size   # Use minimum of Investment
-
-    # upper_bound und lower_bound gleich, dann fix:
-    if np.all(upper_bound == lower_bound):  # np.all -> kann listen oder werte vergleichen
-        return None, None, upper_bound
-    else:
-        return lower_bound, upper_bound, None
