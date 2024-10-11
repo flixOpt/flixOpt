@@ -344,11 +344,10 @@ class FlowModel(ElementModel):
 
     def _create_shares(self, system_model: SystemModel):
         # Arbeitskosten:
-        effect_collection = system_model.flow_system.effect_collection
         if self.element.effects_per_flow_hour is not None:
-            effect_collection.add_share_to_operation(
-                name_of_share='effects_per_flow_hour',
-                owner=self.element, variable=self.flow_rate,
+            system_model.effect_collection_model.add_share_to_operation(
+                name=f'{self.element.label_full}__effects_per_flow_hour',
+                variable=self.flow_rate,
                 effect_values=self.element.effects_per_flow_hour,
                 factor=system_model.dt_in_hours
             )
@@ -418,10 +417,10 @@ class BusModel(ElementModel):
             eq_bus_balance.add_summand(self.excess_output, -1)
             eq_bus_balance.add_summand(self.excess_input, 1)
 
-            effect_collection_model: EffectCollectionModel = system_model.flow_system.effect_collection.model
+            fx_collection = system_model.effect_collection_model
 
-            effect_collection_model.add_share_to_penalty('penalty', self.element, self.excess_input, excess_penalty)
-            effect_collection_model.add_share_to_penalty('penalty', self.element, self.excess_output, excess_penalty)
+            fx_collection.add_share_to_penalty('penalty', self.element, self.excess_input, excess_penalty)
+            fx_collection.add_share_to_penalty('penalty', self.element, self.excess_output, excess_penalty)
 
 
 class ComponentModel(ElementModel):
