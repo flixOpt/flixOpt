@@ -471,4 +471,3 @@ class Sink(Component):
         """
         super().__init__(label, inputs=[sink])
         self.sink = sink
-        self.inputs.append(sink)  # ein Input-Flow
