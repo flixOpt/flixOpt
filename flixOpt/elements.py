@@ -407,7 +407,7 @@ class BusModel(ElementModel):
 
         # Fehlerplus/-minus:
         if self.element.with_excess:
-            excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_effects_per_flow_hour)
+            excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour)
             self.excess_input = VariableTS('excess_input', system_model.nr_of_time_steps, self.element.label_full,
                                            system_model, lower_bound=0)
             self.excess_output = VariableTS('excess_output', system_model.nr_of_time_steps,
