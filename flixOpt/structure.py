@@ -190,8 +190,8 @@ class SystemModel(MathModel):
     @property
     def all_variables(self) -> Dict[str, Variable]:
         all_vars = {}
-        for sub_model in self.sub_models:
-            for key, value in sub_model.all_variables.items():
+        for model in self.component_models + self.bus_models + [self.effect_collection_model]:
+            for key, value in model.all_variables.items():
                 if key in all_vars:
                     raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
                 all_vars[key] = value
