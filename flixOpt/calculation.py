@@ -11,9 +11,9 @@ import math
 import pathlib
 import timeit
 from typing import List, Dict, Optional, Literal, Tuple, Union
-from pprint import pp
 
 import numpy as np
+import yaml
 
 from flixOpt import utils
 from flixOpt.aggregation import TimeSeriesCollection
@@ -61,6 +61,43 @@ class Calculation:
         self._paths = {'log': None, 'data': None, 'info': None}
         self._results = None
         self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
+
+    def description_of_equations(self, system_model: int = 0) -> Dict:
+        return {'Components': {comp.label: comp.model.description_of_equations for comp in self.flow_system.components},
+                'buses': {bus.label: bus.model.description_of_equations for bus in self.flow_system.all_buses},
+                'objective': 'MISSING AFTER REWORK',
+                'effects': self.flow_system.effect_collection.model.description_of_equations,
+                'flows': {flow.label_full: flow.model.description_of_equations
+                          for comp in self.flow_system.components for flow in (comp.inputs + comp.outputs)},
+                'others': {element.label: element.model.description_of_equations for element in self.flow_system.other_elements}}
+
+    def description_of_variables(self, system_model: int = 0) -> Dict:
+        return {'comps': {comp.label: comp.model.description_of_variables + [{flow.label: flow.model.description_of_variables
+                                                                         for flow in comp.inputs + comp.outputs}]
+                          for comp in self.flow_system.components},
+                'buses': {bus.label: bus.model.description_of_variables for bus in self.flow_system.all_buses},
+                'objective': 'MISSING AFTER REWORK',
+                'effects': self.flow_system.effect_collection.model.description_of_variables,
+                'others': {element.label: element.model.description_of_variables for element in self.flow_system.other_elements}
+                }
+
+    def description_of_variables_unstructured(self, system_model: int = 0) -> List:
+        return [var.description() for var in self.system_models[system_model].all_variables.values()]
+
+    def print_equations(self, system_model: int = 0) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Equations of FlowSystem ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_equations(system_model), default_flow_style=False, allow_unicode=True)}')
+
+    def print_variables(self, system_model: int = 0) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Variables of FlowSystem ":#^80}\n\n'
+                f'{" a) as list ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_variables_unstructured(system_model))}\n\n'
+                f'{" b) structured ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_variables(system_model))}')
 
     def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True,
                            nr_of_system_models: int = 1):

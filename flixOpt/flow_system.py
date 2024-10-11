@@ -148,43 +148,6 @@ class FlowSystem:
                 # Aktivieren:
             aTS.activate(indices, explicitData)
 
-    def description_of_equations(self) -> Dict:
-        return {'Components': {comp.label: comp.model.description_of_equations for comp in self.components},
-                'buses': {bus.label: bus.model.description_of_equations for bus in self.all_buses},
-                'objective': 'MISSING AFTER REWORK',
-                'effects': self.effect_collection.model.description_of_equations,
-                'flows': {flow.label_full: flow.model.description_of_equations
-                          for comp in self.components for flow in (comp.inputs + comp.outputs)},
-                'others': {element.label: element.model.description_of_equations for element in self.other_elements}}
-
-    def description_of_variables(self) -> Dict:
-        return {'comps': {comp.label: comp.model.description_of_variables + [{flow.label: flow.model.description_of_variables
-                                                                         for flow in comp.inputs + comp.outputs}]
-                          for comp in self.components},
-                'buses': {bus.label: bus.model.description_of_variables for bus in self.all_buses},
-                'objective': 'MISSING AFTER REWORK',
-                'effects': self.effect_collection.model.description_of_variables,
-                'others': {element.label: element.model.description_of_variables for element in self.other_elements}
-                }
-
-    def description_of_variables_unstructured(self) -> List:
-        return [var.description() for var in self.model.variables]
-
-    def print_equations(self) -> str:
-        return (f'\n'
-                f'{"":#^80}\n'
-                f'{" Equations of FlowSystem ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_equations(), default_flow_style=False, allow_unicode=True)}')
-
-    def print_variables(self) -> str:
-        return (f'\n'
-                f'{"":#^80}\n'
-                f'{" Variables of FlowSystem ":#^80}\n\n'
-                f'{" a) as list ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_variables_unstructured())}\n\n'
-                f'{" b) structured ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_variables())}')
-
     # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
     def get_time_data_from_indices(
             self,
