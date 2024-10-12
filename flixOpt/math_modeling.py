@@ -343,7 +343,7 @@ class Equation:
             index = summand.indices[i]
             factor = summand.factor_vec[i]
             factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
-            single_summand_str = f"{factor_str} * {summand.variable.label_full}[{index}]"
+            single_summand_str = f"{factor_str} * {summand.variable.label}[{index}]"
 
             if isinstance(summand, SumOfSummand):
                 summand_strings.append(
