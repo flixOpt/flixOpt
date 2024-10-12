@@ -685,6 +685,9 @@ class MathModel:
 
     ######## Other Modeling Languages
 
+    def results(self):
+        return {variable.label: variable.result for variable in self.variables}
+
 
 class SolverLog:
     def __init__(self, solver_name: str, filename: str):

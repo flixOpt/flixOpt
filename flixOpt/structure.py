@@ -217,6 +217,16 @@ class SystemModel(MathModel):
         sub_models = [sub_model for direct_model in direct_models for sub_model in direct_model.all_sub_models]
         return direct_models + sub_models
 
+    @property
+    def variables(self) -> List[Variable]:
+        """ Needed for Mother class """
+        return list(self.all_variables.values())
+
+    @property
+    def eqs(self) -> List[Equation]:
+        """ Needed for Mother class """
+        return list(self.all_equations.values())
+
 
 class Element:
     """ Basic Element of flixOpt"""
