@@ -104,55 +104,9 @@ class SystemModel(MathModel):
             termination_message = f'not implemented for solver "{solver_name}" yet'
         logger.info(f'Termination message: "{termination_message}"')
 
-        # Variablen-Ergebnisse abspeichern:
-        # 1. dict:
-        (self.results, self.results_var) = self.flow_system.get_results_after_solve()
-        # 2. struct:
-        self.results_struct = utils.createStructFromDictInDict(self.results)
-
-        def extract_main_results() -> Dict[str, Union[Skalar, Dict]]:
-            main_results = {}
-            effect_results = {}
-            main_results['Effects'] = effect_results
-            for effect in self.flow_system.effect_collection.effects:
-                effect_results[f'{effect.label} [{effect.unit}]'] = {
-                    'operation': float(effect.operation.model.variables['sum'].result),
-                    'invest': float(effect.invest.model.variables['sum'].result),
-                    'sum': float(effect.all.model.variables['sum'].result)}
-            main_results['penalty'] = float(self.flow_system.effect_collection.penalty.model.variables['sum'].result)
-            main_results['Result of objective'] = self.objective_result
-            if self.solver_name == 'highs':
-                main_results['lower bound'] = self.solver_results.best_objective_bound
-            else:
-                main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
-            busesWithExcess = []
-            main_results['buses with excess'] = busesWithExcess
-            for aBus in self.flow_system.all_buses:
-                if aBus.with_excess:
-                    if (
-                            np.sum(self.results[aBus.label]['excess_input']) > excess_threshold or
-                            np.sum(self.results[aBus.label]['excess_output']) > excess_threshold
-                    ):
-                        busesWithExcess.append(aBus.label)
-
-            invest_decisions = {'invested': {}, 'not invested': {}}
-            main_results['Invest-Decisions'] = invest_decisions
-            for invest_feature in self.flow_system.all_investments:
-                invested_size = invest_feature.model.variables[invest_feature.name_of_investment_size].result
-                invested_size = float(invested_size)  # bei np.floats Probleme bei Speichern
-                label = invest_feature.owner.label_full
-                if invested_size > 1e-3:
-                    invest_decisions['invested'][label] = invested_size
-                else:
-                    invest_decisions['not invested'][label] = invested_size
-
-            return main_results
-
-        self.main_results_str = extract_main_results()
-
         logger.info(f'{" finished solving ":#^80}')
         logger.info(f'{" Main Results ":#^80}')
-        for effect_name, effect_results in self.main_results_str['Effects'].items():
+        for effect_name, effect_results in self.main_results['Effects'].items():
             logger.info(f'{effect_name}:\n'
                         f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
                         f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
@@ -160,30 +114,30 @@ class SystemModel(MathModel):
 
         logger.info(
             # f'{"SUM":<15}: ...todo...\n'
-            f'{"penalty":<17}: {self.main_results_str["penalty"]:>10.2f}\n'
+            f'{"penalty":<17}: {self.main_results["penalty"]:>10.2f}\n'
             f'{"":-^80}\n'
-            f'{"Objective":<17}: {self.main_results_str["Result of objective"]:>10.2f}\n'
+            f'{"Objective":<17}: {self.main_results["Objective"]:>10.2f}\n'
             f'{"":-^80}')
 
         logger.info(f'Investment Decisions:')
-        logger.info(utils.apply_formating(data_dict={**self.main_results_str["Invest-Decisions"]["invested"],
-                                                     **self.main_results_str["Invest-Decisions"]["not invested"]},
+        logger.info(utils.apply_formating(data_dict={**self.main_results["Invest-Decisions"]["invested"],
+                                                     **self.main_results["Invest-Decisions"]["not invested"]},
                                           key_format="<30", indent=2, sort_by='value'))
 
-        for bus in self.main_results_str['buses with excess']:
-            logger.warning(f'Excess Value in Bus {bus}!')
+        for bus in self.main_results['buses with excess']:
+            logger.warning(f'Excess in Bus {bus}!')
 
-        if self.main_results_str["penalty"] > 10:
-            logger.warning(f'A total penalty of {self.main_results_str["penalty"]} occurred.'
+        if self.main_results["penalty"] > 10:
+            logger.warning(f'A total penalty of {self.main_results["penalty"]} occurred.'
                            f'This might distort the results')
         logger.info(f'{" End of Main Results ":#^80}')
 
     @property
     def infos(self):
         infos = super().infos
-        infos['str_Eqs'] = self.flow_system.description_of_equations()
-        infos['str_Vars'] = self.flow_system.description_of_variables()
-        infos['main_results'] = self.main_results_str   # Hauptergebnisse:
+        #infos['str_Eqs'] = self.description_of_equations()
+        #infos['str_Vars'] = self.description_of_variables()
+        infos['main_results'] = self.main_results
         infos.update(self._infos)
         return infos
 
@@ -226,6 +180,42 @@ class SystemModel(MathModel):
     def eqs(self) -> List[Equation]:
         """ Needed for Mother class """
         return list(self.all_equations.values())
+
+    @property
+    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
+        main_results = {}
+        effect_results = {}
+        main_results['Effects'] = effect_results
+        for effect in self.flow_system.effect_collection.effects:
+            effect_results[f'{effect.label} [{effect.unit}]'] = {
+                'operation': float(effect.model.operation.sum.result),
+                'invest': float(effect.model.invest.sum.result),
+                'sum': float(effect.model.all.sum.result)}
+        main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
+        main_results['Objective'] = self.objective_result
+        if self.solver_name == 'highs':
+            main_results['lower bound'] = self.solver_results.best_objective_bound
+        else:
+            main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
+        buses_with_excess = []
+        main_results['buses with excess'] = buses_with_excess
+        for bus in self.flow_system.all_buses:
+            if bus.with_excess:
+                if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
+                    buses_with_excess.append(bus.label)
+
+        invest_decisions = {'invested': {}, 'not invested': {}}
+        main_results['Invest-Decisions'] = invest_decisions
+        from flixOpt.modeling import InvestmentModel
+        for sub_model in self.sub_models:
+            if isinstance(sub_model, InvestmentModel):
+                invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
+                if invested_size > 1e-3:
+                    invest_decisions['invested'][sub_model.element.label_full] = invested_size
+                else:
+                    invest_decisions['not invested'][sub_model.element.label_full] = invested_size
+
+        return main_results
 
 
 class Element:
