@@ -268,13 +268,6 @@ class LinearConverterModel(ComponentModel):
     def do_modeling(self, system_model: SystemModel):
         super().do_modeling(system_model)
 
-        if self.element.on_off_parameters:
-            all_flows = self.element.inputs + self.element.outputs
-            flow_rates: List[VariableTS] = [flow.model.flow_rate for flow in all_flows]
-            bounds: List[Tuple[Numeric, Numeric]] = [flow.model.flow_rate_bounds for flow in all_flows]
-            self._on = OnOffModel(self.element, self.element.on_off_parameters,
-                                  flow_rates, bounds)
-
         # conversion_factors:
         if self.element.conversion_factors:
             all_input_flows = set(self.element.inputs)

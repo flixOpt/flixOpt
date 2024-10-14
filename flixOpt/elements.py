@@ -421,22 +421,33 @@ class ComponentModel(ElementModel):
     def __init__(self, element: Component):
         super().__init__(element)
         self.element: Component = element
+        self._on: Optional[OnOffModel] = None
 
     def do_modeling(self, system_model: SystemModel):
         """ Initiates all FlowModels """
-        if self.element.prevent_simultaneous_flows:
-            for flow in self.element.inputs + self.element.outputs:
+        all_flows = self.element.inputs + self.element.outputs
+        if self.element.prevent_simultaneous_flows or self.element.on_off_parameters:
+            for flow in all_flows:
                 if flow.on_off_parameters is None:
                     flow.on_off_parameters = OnOffParameters(force_on=True)
                 else:
                     flow.on_off_parameters.force_on = True
-        self.sub_models.extend([flow.create_model() for flow in self.element.inputs + self.element.outputs])
+
+        self.sub_models.extend([flow.create_model() for flow in all_flows])
         for sub_model in self.sub_models:
             sub_model.do_modeling(system_model)
 
+        if self.element.on_off_parameters:
+            flow_rates: List[VariableTS] = [flow.model.flow_rate for flow in all_flows]
+            bounds: List[Tuple[Numeric, Numeric]] = [flow.model.flow_rate_bounds for flow in all_flows]
+            self._on = OnOffModel(self.element, self.element.on_off_parameters,
+                                  flow_rates, bounds)
+            self.sub_models.append(self._on)
+            self._on.do_modeling(system_model)
+
         if self.element.prevent_simultaneous_flows:
             # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
-            on_variables = [flow.model._on.on for flow in self.element.inputs + self.element.outputs]
+            on_variables = [flow.model._on.on for flow in all_flows]
             simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
             self.sub_models.append(simultaneous_use)
             simultaneous_use.do_modeling(system_model)
