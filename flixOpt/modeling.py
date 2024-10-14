@@ -244,7 +244,7 @@ class OnOffModel(ElementModel):
         eq_on_2 = create_equation('On_Constraint_2', self, system_model, eq_type='ineq')
         if nr_of_defining_variables == 1:
             variable = self._defining_variables[0]
-            lower_bound, upper_bound = self._defining_bounds
+            lower_bound, upper_bound = self._defining_bounds[0]
             #### Bedingung 1) ####
             # eq: On(t) * max(epsilon, lower_bound) <= -1 * Q_th(t)
             eq_on_1.add_summand(variable, -1, time_indices)
