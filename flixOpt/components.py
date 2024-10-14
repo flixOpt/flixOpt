@@ -81,6 +81,11 @@ class LinearConverter(Component):
         self.segmented_conversion_factors = segmented_conversion_factors
         self._plausibility_checks()
 
+    def create_model(self) -> 'LinearConverterModel':
+        self.model = LinearConverterModel(self)
+        return self.model
+
+
     def _plausibility_checks(self) -> None:
         if self.conversion_factors is None and self.segmented_conversion_factors is None:
             raise Exception('Either conversion_factors or segmented_conversion_factors must be defined!')
