@@ -313,6 +313,8 @@ class EffectCollectionModel(ElementModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
+        self.add_share_between_effects()
+
         self.objective = Equation('OBJECTIVE', 'OBJECTIVE', system_model, 'objective')
         self.add_equations(self.objective)
         self.objective.add_summand(self._objective_effect_model.operation.sum, 1)
