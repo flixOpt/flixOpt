@@ -237,7 +237,8 @@ class Storage(Component):
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
         """
         # TODO: fixed_relative_chargeState implementieren
-        super().__init__(label, inputs=[charging], outputs=[discharging])
+        super().__init__(label, inputs=[charging], outputs=[discharging],
+                         prevent_simultaneous_flows=prevent_simultaneous_charge_and_discharge)
 
         self.charging = charging
         self.discharging = discharging
@@ -252,7 +253,6 @@ class Storage(Component):
         self.eta_charge = eta_charge
         self.eta_discharge = eta_discharge
         self.relative_loss_per_hour = relative_loss_per_hour
-        self.prevent_simultaneous_charge_and_discharge = prevent_simultaneous_charge_and_discharge
 
     def create_model(self) -> 'StorageModel':
         self.model = StorageModel(self)
