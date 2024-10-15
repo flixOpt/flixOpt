@@ -6,7 +6,7 @@ developed by Felix Panitz* and Peter Stange*
 """
 import logging
 
-from flixOpt import Flow, utils
+from flixOpt import Flow, utils, OnOffParameters
 from flixOpt.components import LinearConverter
 from flixOpt.core import Numeric_TS
 
@@ -18,7 +18,8 @@ class Boiler(LinearConverter):
                  label: str,
                  eta: Numeric_TS,
                  Q_fu: Flow,
-                 Q_th: Flow):
+                 Q_th: Flow,
+                 on_off_parameters: OnOffParameters = None):
         """
         constructor for boiler
 
@@ -33,7 +34,8 @@ class Boiler(LinearConverter):
         Q_th : Flow
             thermal output-flow.
         """
-        super().__init__(label, inputs=[Q_fu], outputs=[Q_th], conversion_factors=[{Q_fu: eta, Q_th: 1}])
+        super().__init__(label, inputs=[Q_fu], outputs=[Q_th], conversion_factors=[{Q_fu: eta, Q_th: 1}],
+                         on_off_parameters=on_off_parameters)
 
         self.eta = eta
         self.Q_fu = Q_fu
@@ -48,7 +50,7 @@ class Power2Heat(LinearConverter):
                  eta: Numeric_TS,
                  P_el: Flow,
                  Q_th: Flow,
-                 **kwargs):
+                 on_off_parameters: OnOffParameters = None):
         """
         Parameters
         ----------
@@ -63,7 +65,8 @@ class Power2Heat(LinearConverter):
         **kwargs : see mother classes!
 
         """
-        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: eta, Q_th: 1}], **kwargs)
+        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: eta, Q_th: 1}],
+                         on_off_parameters=on_off_parameters)
 
         self.eta = eta
         self.P_el = P_el
@@ -78,7 +81,7 @@ class HeatPump(LinearConverter):
                  COP: Numeric_TS,
                  P_el: Flow,
                  Q_th: Flow,
-                 **kwargs):
+                 on_off_parameters: OnOffParameters = None):
         """
         Parameters
         ----------
@@ -92,7 +95,8 @@ class HeatPump(LinearConverter):
             thermal output-flow.
         **kwargs : see motherclasses
         """
-        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: COP, Q_th: 1}], **kwargs)
+        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: COP, Q_th: 1}],
+                         on_off_parameters=on_off_parameters)
 
         self.COP = COP
         self.P_el = P_el
@@ -107,7 +111,7 @@ class CoolingTower(LinearConverter):
                  specific_electricity_demand: Numeric_TS,
                  P_el:Flow,
                  Q_th:Flow,
-                 **kwargs):
+                 on_off_parameters: OnOffParameters = None):
         """
         Parameters
         ----------
@@ -123,7 +127,8 @@ class CoolingTower(LinearConverter):
 
         """
         super().__init__(label, inputs=[P_el, Q_th],
-                         conversion_factors=[{P_el: 1, Q_th: -specific_electricity_demand}], **kwargs)
+                         conversion_factors=[{P_el: 1, Q_th: -specific_electricity_demand}],
+                         on_off_parameters=on_off_parameters)
 
         self.specificElectricityDemand = specific_electricity_demand
         self.P_el = P_el
@@ -140,7 +145,7 @@ class CHP(LinearConverter):
                  Q_fu: Flow,
                  P_el: Flow,
                  Q_th: Flow,
-                 **kwargs):
+                 on_off_parameters: OnOffParameters = None):
         """
         constructor of cCHP
 
@@ -164,7 +169,8 @@ class CHP(LinearConverter):
         heat = {Q_fu: eta_th, Q_th: 1}
         electricity = {Q_fu: eta_el, P_el: 1}
 
-        super().__init__(label, inputs=[Q_fu], outputs=[Q_th, P_el], conversion_factors=[heat, electricity], **kwargs)
+        super().__init__(label, inputs=[Q_fu], outputs=[Q_th, P_el], conversion_factors=[heat, electricity],
+                         on_off_parameters=on_off_parameters)
 
         # args to attributes:
         self.eta_th = eta_th
@@ -185,7 +191,7 @@ class HeatPumpWithSource(LinearConverter):
                  P_el: Flow,
                  Q_ab: Flow,
                  Q_th: Flow,
-                 **kwargs):
+                 on_off_parameters: OnOffParameters = None):
         """
         Parameters
         ----------
@@ -207,7 +213,8 @@ class HeatPumpWithSource(LinearConverter):
         heat_source = {Q_ab: COP / (COP - 1), Q_th: 1}
 
         super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
-                         conversion_factors=[electricity, heat_source], **kwargs)
+                         conversion_factors=[electricity, heat_source],
+                         on_off_parameters=on_off_parameters)
 
         self.COP = COP
         self.P_el = P_el
