@@ -48,7 +48,6 @@ class Calculation:
         self.flow_system = flow_system
         self.modeling_language = modeling_language
         self.time_indices = time_indices
-        self._infos = {}
 
         self.system_models: List[SystemModel] = []
         self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
@@ -58,9 +57,8 @@ class Calculation:
             flow_system.get_time_data_from_indices(self.time_indices))
         utils.check_time_series('time_indices', self.time_series)
 
-        self._paths = {'log': None, 'data': None, 'info': None}
+        self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
-        self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
 
     def description_of_equations(self, system_model: int = 0) -> Dict:
         return {'Components': {comp.label: comp.model.description_of_equations for comp in self.flow_system.components},
@@ -81,9 +79,6 @@ class Calculation:
                 'others': {element.label: element.model.description_of_variables for element in self.flow_system.other_elements}
                 }
 
-    def description_of_variables_unstructured(self, system_model: int = 0) -> List:
-        return [var.description() for var in self.system_models[system_model].all_variables.values()]
-
     def print_equations(self, system_model: int = 0) -> str:
         return (f'\n'
                 f'{"":#^80}\n'
@@ -94,9 +89,6 @@ class Calculation:
         return (f'\n'
                 f'{"":#^80}\n'
                 f'{" Variables of FlowSystem ":#^80}\n\n'
-                f'{" a) as list ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_variables_unstructured(system_model))}\n\n'
-                f'{" b) structured ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_variables(system_model))}')
 
     def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True,
@@ -116,56 +108,17 @@ class Calculation:
             self._paths["data"] = path / f'{self.name}_data.pickle'
             self._paths["info"] = path / f'{self.name}_solvingInfos.yaml'
 
-    def check_if_already_modeled(self):
-        if self.flow_system.temporary_elements:  # if some element in this list
-            raise Exception(f'The Energysystem has some temporary modelingElements from previous calculation '
-                            f'(i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
-
     def _save_solve_infos(self):
-        import yaml
-        # Daten:
-        # with open(yamlPath_Data, 'w') as f:
-        #   yaml.dump(self.results, f, sort_keys = False)
-        import pickle
-        with open(self._paths['data'], 'wb') as f:
-            pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-        # Infos:'
-        with open(self._paths['info'], 'w', encoding='utf-8') as f:
-            yaml.dump(self.infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
-                      allow_unicode=True, sort_keys=False)
         message = f' Saved Calculation: {self.name} '
         logger.info(f'{"":#^80}\n'
                     f'{message:#^80}\n'
                     f'{"":#^80}')
 
     @property
-    def infos(self):
-        infos = {}
-
-        calcInfos = self._infos
-        infos['calculation'] = calcInfos
-        calcInfos['name'] = self.name
-        calcInfos['no ChosenIndexe'] = len(self.time_indices)
-        calcInfos['calculation_type'] = self.__class__.__name__
-        calcInfos['duration'] = self.durations
-        infos['system_description'] = self.flow_system.description_of_system()
-        infos['system_models'] = {}
-        infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
-        infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
-
-        return infos
-
-    @property
     def results(self):
-        # wenn noch nicht belegt, dann aus system_model holen
         if self._results is None:
-            self._results = self.system_models[0].results  # (bei segmented Calc ist das schon explizit belegt.)
+            self._results = self.system_models[0].results()
         return self._results
-
-    @property
-    def results_struct(self):
-        raise NotImplementedError()
 
 
 class FullCalculation(Calculation):
@@ -174,8 +127,6 @@ class FullCalculation(Calculation):
     """
 
     def do_modeling(self) -> SystemModel:
-        self.check_if_already_modeled()
-
         t_start = timeit.default_timer()
         system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         system_model.do_modeling()
