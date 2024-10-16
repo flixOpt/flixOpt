@@ -217,6 +217,12 @@ class SystemModel(MathModel):
 
         return main_results
 
+    def results(self):
+        return {'Components': {model.element.label: model.results() for model in self.component_models},
+                'Effects': self.effect_collection_model.results(),
+                'Objective': self.objective_result
+                }
+
 
 class Element:
     """ Basic Element of flixOpt"""
@@ -251,12 +257,13 @@ class Element:
 class ElementModel:
     """ Interface to create the mathematical Models for Elements """
 
-    def __init__(self, element: Element):
+    def __init__(self, element: Element, label: Optional[str] = None):
         logger.debug(f'Created {self.__class__.__name__} for {element.label_full}')
         self.element = element
         self.variables = {}
         self.eqs = {}
         self.sub_models = []
+        self.label = label or self.element.label
 
     def add_variables(self, *variables: Variable) -> None:
         for variable in variables:
@@ -339,6 +346,10 @@ class ElementModel:
             all_subs.append(model)
             to_process.extend(model.sub_models)
         return all_subs
+
+    def results(self):
+        return {**{variable.label_short: variable.result for variable in self.variables.values()},
+                **{model.label: model.results() for model in self.sub_models}}
 
 
 def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:

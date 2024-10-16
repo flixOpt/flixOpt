@@ -30,11 +30,12 @@ class InvestmentModel(ElementModel):
                  invest_parameters: InvestParameters,
                  defining_variable: [VariableTS],
                  relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
+                 label: str = 'Investment',
                  on_variable: Optional[VariableTS] = None):
         """
         if relative_bounds are both equal, then its like a fixed relative value
         """
-        super().__init__(element)
+        super().__init__(element, label)
         self.element: Union['Flow', 'Storage'] = element
         self.size: Optional[Union[Skalar, Variable]] = None
         self.is_invested: Optional[Variable] = None
@@ -161,11 +162,12 @@ class OnOffModel(ElementModel):
     def __init__(self, element: Element,
                  on_off_parameters: OnOffParameters,
                  defining_variables: List[VariableTS],
-                 defining_bounds: List[Tuple[Numeric, Numeric]]):
+                 defining_bounds: List[Tuple[Numeric, Numeric]],
+                 label: str = 'OnOff'):
         """
         defining_bounds: a list of Numeric, that can be  used to create the bound for On/Off more efficiently
         """
-        super().__init__(element)
+        super().__init__(element, label)
         self.element = element
         self.on: Optional[VariableTS] = None
         self.total_on_hours: Optional[Variable] = None
@@ -404,9 +406,10 @@ class OnOffModel(ElementModel):
 
 class SegmentModel(ElementModel):
     """Class for modeling a linear segment of one or more variables in parallel"""
-    def __init__(self, element: Element, segment_index: Union[int, str],
+    def __init__(self, element: Element,
+                 segment_index: Union[int, str],
                  sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]):
-        super().__init__(element)
+        super().__init__(element, f'Segment_{segment_index}')
         self.element = element
         self.in_segment: Optional[VariableTS] = None
         self.lambda0: Optional[VariableTS] = None
@@ -449,8 +452,9 @@ class SegmentModel(ElementModel):
 class MultipleSegmentsModel(ElementModel):
     def __init__(self, element: Element,
                  sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]],
+                 label: str = 'MultipleSegments',
                  outside_segments: Optional[Variable] = None):
-        super().__init__(element)
+        super().__init__(element, label)
         self.element = element
 
         self.outside_segments: Optional[VariableTS] = outside_segments  # Variable to allow being outside segments = 0
@@ -499,11 +503,10 @@ class ShareAllocationModel(ElementModel):
                  total_min: Optional[Skalar] = None,
                  max_per_hour: Optional[TimeSeries] = None,
                  min_per_hour: Optional[TimeSeries] = None):
-        super().__init__(element)
+        super().__init__(element, label)
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, \
                 "Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False"
-        self.label = label
         self.element = element
         self.sum_TS: Optional[VariableTS] = None
         self.sum: Optional[Variable] = None
@@ -600,16 +603,15 @@ class ShareAllocationModel(ElementModel):
 
 
 class SingleShareModel(ElementModel):
-    def __init__(self, element: Element, shares_are_time_series: bool, name_of_share: str):
-        super().__init__(element)
+    def __init__(self, element: Element, shares_are_time_series: bool, label: str):
+        super().__init__(element, label)
         self.single_share: Optional[Variable] = None
         self._equation: Optional[Equation] = None
-        self._full_name_of_share = f'{element.label_full}_{name_of_share}'
+        self._full_name_of_share = f'{element.label_full}_{self.label}'
         self._shares_are_time_series = shares_are_time_series
-        self._name_of_share = name_of_share
 
     def do_modeling(self, system_model: SystemModel):
-        self.single_share = Variable(self._full_name_of_share, self._name_of_share, 1, system_model)
+        self.single_share = Variable(self._full_name_of_share, self.label, 1, system_model)
         self.add_variables(self.single_share)
 
         self._equation = create_equation(self._full_name_of_share, self, system_model)
@@ -629,8 +631,9 @@ class SegmentedSharesModel(ElementModel):
                  element: Element,
                  variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
                  share_segments: Dict['Effect', List[Tuple[Skalar, Skalar]]],
-                 outside_segments: Optional[Variable]):
-        super().__init__(element)
+                 outside_segments: Optional[Variable],
+                 label: str = 'SegmentedShares'):
+        super().__init__(element, label)
         assert len(variable_segments[1]) == len(list(share_segments.values())[0]), \
             f'Segment length of variable_segments and share_segments must be equal'
         self.element: Element
@@ -680,8 +683,9 @@ class PreventSimultaneousUsageModel(ElementModel):
     """
     def __init__(self,
                  element: Element,
-                 variables: List[VariableTS]):
-        super().__init__(element)
+                 variables: List[VariableTS],
+                 label: str = 'PreventSimultaneousUsage'):
+        super().__init__(element, label)
         self._variables = variables
         assert len(self._variables) >= 2, f'Model {self.__class__.__name__} must get at least two variables'
         for variable in self._variables:  # classic
