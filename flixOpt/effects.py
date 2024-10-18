@@ -370,7 +370,7 @@ class EffectCollectionModel(ElementModel):
         self._add_share_to_effects(name, 'operation', effect_values, factor, variable)
 
     def add_share_to_penalty(self,
-                             name: str,
+                             name: Optional[str],
                              share_holder: Element,
                              variable: Optional[Variable],
                              factor: Numeric,

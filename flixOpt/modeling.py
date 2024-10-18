@@ -568,6 +568,8 @@ class ShareAllocationModel(ElementModel):
                    variable: Optional[Variable],
                    factor1: Numeric_TS,
                    factor2: Numeric_TS):
+        """ if name_of_share, then a proper share is created, which is explicitly published in results.
+        Else, its only added to the total of the Effect"""
         # TODO: accept only one factor or accept unlimited factors -> *factors
         """
         # Falls TimeSeries, Daten auslesen:
@@ -577,12 +579,6 @@ class ShareAllocationModel(ElementModel):
             factor2 = factor2.active_data
         """
         total_factor = np.multiply(factor1, factor2)
-
-        # var and eq for publishing share-values in results:
-        if name_of_share is not None:  # TODO: is this check necessary?
-            new_share = SingleShareModel(share_holder, self._shares_are_time_series, name_of_share)
-            new_share.do_modeling(system_model)
-            new_share.add_summand_to_share(variable, total_factor)
 
         # Check to which equation the share should be added
         if self._shares_are_time_series:
@@ -597,9 +593,14 @@ class ShareAllocationModel(ElementModel):
 
         if variable is None:  # constant share
             target_eq.add_constant(-1 * total_factor)
-        else:  # variable share
+        elif name_of_share is None:  # variable share
             target_eq.add_summand(variable, total_factor)
-        # TODO: Instead use new_share.single_share: Variable ?
+        else:  # var and eq for publishing share-values in results:
+            new_share = SingleShareModel(share_holder, self._shares_are_time_series, name_of_share)
+            new_share.do_modeling(system_model)
+            new_share.add_summand_to_share(variable, total_factor)
+            target_eq.add_summand(new_share.single_share, 1)
+            self.sub_models.append(new_share)
 
 
 class SingleShareModel(ElementModel):
