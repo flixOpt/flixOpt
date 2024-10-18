@@ -369,7 +369,7 @@ class FlowModel(ElementModel):
         if self.element.load_factor_min is not None:
             flow_hours_per_size_min = system_model.dt_in_hours_total * self.element.load_factor_min
             eq_load_factor_min = create_equation('load_factor_min', self, system_model, 'ineq')
-            eq_load_factor_min.add_summand(self.sum_flow_hours, 1)
+            eq_load_factor_min.add_summand(self.sum_flow_hours, -1)
             if self._investment is not None:
                 eq_load_factor_min.add_summand(self._investment.size, flow_hours_per_size_min)
             else:
