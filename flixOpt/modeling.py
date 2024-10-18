@@ -441,12 +441,13 @@ class MultipleSegmentsModel(ElementModel):
     def __init__(self, element: Element,
                  sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]],
                  label: str = 'MultipleSegments',
-                 outside_segments: Optional[Variable] = None):
+                 can_be_outside_segments: Union[bool, Variable] = False):
         super().__init__(element, label)
         self.element = element
 
-        self.outside_segments: Optional[VariableTS] = outside_segments  # Variable to allow being outside segments = 0
+        self.outside_segments: Optional[VariableTS] = None
 
+        self._can_be_outside_segments = can_be_outside_segments
         self._sample_points = sample_points
         self._segment_models: List[SegmentModel] = []
 
@@ -456,8 +457,11 @@ class MultipleSegmentsModel(ElementModel):
             for i in range(self._nr_of_segments)
         ]
 
-        for i, sample_points in enumerate(restructured_variables_with_segments):
-            self._segment_models.append(SegmentModel(self.element, i, sample_points))
+        self._segment_models = [
+            SegmentModel(self.element, i, sample_points)
+            for i, sample_points in enumerate(restructured_variables_with_segments)
+        ]
+
         self.sub_models.extend(self._segment_models)
 
         for segment_model in self._segment_models:
@@ -472,20 +476,22 @@ class MultipleSegmentsModel(ElementModel):
                 lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable][0])
                 lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable][1])
 
-        # Outside of Segments
-        if self.outside_segments is None:  # TODO: Make optional
-            self.outside_segments = create_ts_variable('outside_segments', self,
-                                                       system_model.nr_of_time_steps, system_model, is_binary=True)
-
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
         # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
         in_single_segment = create_equation('in_single_Segment', self, system_model)
         for segment_model in self._segment_models:
             in_single_segment.add_summand(segment_model.in_segment, 1)
-        if self.outside_segments is None:
-            in_single_segment.add_constant(1)
-        else:
+
+        # a) or b) ?
+        if isinstance(self._can_be_outside_segments, Variable):  # Use existing Variable
+            self.outside_segments = self._can_be_outside_segments
             in_single_segment.add_summand(self.outside_segments, -1)
+        elif self._can_be_outside_segments is True:  # Create Variable
+            self.outside_segments = create_ts_variable('outside_segments', self,
+                                                       system_model.nr_of_time_steps, system_model, is_binary=True)
+            in_single_segment.add_summand(self.outside_segments, -1)
+        else:  # Dont allow outside Segments
+            in_single_segment.add_constant(1)
 
     @property
     def _nr_of_segments(self):
