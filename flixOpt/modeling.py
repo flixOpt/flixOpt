@@ -440,8 +440,13 @@ class SegmentModel(ElementModel):
 class MultipleSegmentsModel(ElementModel):
     def __init__(self, element: Element,
                  sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]],
-                 label: str = 'MultipleSegments',
-                 can_be_outside_segments: Union[bool, Variable] = False):
+                 can_be_outside_segments: Optional[Union[bool, Variable]],
+                 label: str = 'MultipleSegments'):
+        """
+        can_be_outside_segments:    True -> Variable gets created;
+                                    False or None -> No Variable gets_created;
+                                    Variable -> the Variable gets used
+        """
         super().__init__(element, label)
         self.element = element
 
@@ -637,13 +642,13 @@ class SegmentedSharesModel(ElementModel):
                  element: Element,
                  variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
                  share_segments: Dict['Effect', List[Tuple[Skalar, Skalar]]],
-                 outside_segments: Optional[Variable],
+                 can_be_outside_segments: Optional[Union[bool, Variable]],
                  label: str = 'SegmentedShares'):
         super().__init__(element, label)
         assert len(variable_segments[1]) == len(list(share_segments.values())[0]), \
             f'Segment length of variable_segments and share_segments must be equal'
         self.element: Element
-        self._outside_segments = outside_segments
+        self._can_be_outside_segments = can_be_outside_segments
         self._variable_segments = variable_segments
         self._share_segments = share_segments
         self._shares: Optional[Dict['Effect', SingleShareModel]] = None
@@ -658,7 +663,8 @@ class SegmentedSharesModel(ElementModel):
 
         segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
             self._shares[effect].single_share: segment for effect, segment in self._share_segments.items()}
-        self._segments_model = MultipleSegmentsModel(self.element, segments, outside_segments=self._outside_segments)
+        self._segments_model = MultipleSegmentsModel(self.element, segments,
+                                                     can_be_outside_segments=self._can_be_outside_segments)
         self._segments_model.do_modeling(system_model)
         self.sub_models.append(self._segments_model)
 

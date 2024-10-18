@@ -303,7 +303,7 @@ class LinearConverterModel(ComponentModel):
         else:
             segments = {flow.model.flow_rate: self.element.segmented_conversion_factors[flow]
                         for flow in self.element.inputs + self.element.outputs}
-            linear_segments = MultipleSegmentsModel(self.element, segments, None)  # TODO: Add Outside_segments Variable (On)
+            linear_segments = MultipleSegmentsModel(self.element, segments, False)  # TODO: Add Outside_segments Variable (On)
             linear_segments.do_modeling(system_model)
             self.sub_models.append(linear_segments)
 
