@@ -418,7 +418,7 @@ class SegmentModel(ElementModel):
         self.lambda1: Optional[VariableTS] = None
 
         self._segment_index = segment_index
-        self._sample_points = sample_points
+        self.sample_points = sample_points
 
     def do_modeling(self, system_model: SystemModel):
         length = system_model.nr_of_time_steps
@@ -435,20 +435,6 @@ class SegmentModel(ElementModel):
         equation.add_summand(self.in_segment, -1)
         equation.add_summand(self.lambda0, 1)
         equation.add_summand(self.lambda1, 1)
-
-        #  eq: - v(t) + (v_0 * lambda_0 + v_1 * lambda_1) = 0       -> v_0, v_1 = Stützstellen des Segments
-        for variable, sample_points in self._sample_points.items():
-            sample_0, sample_1 = sample_points
-            """
-            if isinstance(sample_0, TimeSeries):
-                sample_0 = sample_0.active_data
-                sample_1 = sample_1.active_data
-            """
-
-            lambda_eq = create_equation(f'{variable.label_short}_lambda', self, system_model)
-            lambda_eq.add_summand(variable, -1)
-            lambda_eq.add_summand(self.lambda0, sample_0)
-            lambda_eq.add_summand(self.lambda1, sample_1)
 
 
 class MultipleSegmentsModel(ElementModel):
@@ -476,6 +462,15 @@ class MultipleSegmentsModel(ElementModel):
 
         for segment_model in self._segment_models:
             segment_model.do_modeling(system_model)
+
+        #  eq: - v(t) + (v_0_0 * lambda_0_0 + v_0_1 * lambda_0_1) + (v_1_0 * lambda_1_0 + v_1_1 * lambda_1_1) ... = 0
+        #  -> v_0_0, v_0_1 = Stützstellen des Segments 0
+        for variable in self._sample_points.keys():
+            lambda_eq = create_equation(f'lambda_{variable.label}', self, system_model)
+            lambda_eq.add_summand(variable, -1)
+            for segment_model in self._segment_models:
+                lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable][0])
+                lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable][1])
 
         # Outside of Segments
         if self.outside_segments is None:  # TODO: Make optional
@@ -657,7 +652,7 @@ class SegmentedSharesModel(ElementModel):
 
         segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
             self._shares[effect].single_share: segment for effect, segment in self._share_segments.items()}
-        self._segments_model = MultipleSegmentsModel(self.element, segments, self._outside_segments)
+        self._segments_model = MultipleSegmentsModel(self.element, segments, outside_segments=self._outside_segments)
         self._segments_model.do_modeling(system_model)
         self.sub_models.append(self._segments_model)
 
