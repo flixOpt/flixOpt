@@ -176,11 +176,9 @@ p_sell = TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
 aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour=p_feed_in))
-aStromEinspeisung.sink.effects_per_flow_hour[None].aggregation_weight = .5
 
 aStromTarif = Source('Stromtarif',
                      source=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour={costs: p_sell, CO2: 0.3}))
-aStromTarif.source.effects_per_flow_hour[costs].aggregation_weight = .5
 
 # Zusammenführung:
 flow_system = FlowSystem(aTimeSeries, last_time_step_hours=None)
