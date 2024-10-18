@@ -75,24 +75,26 @@ class InvestmentModel(ElementModel):
         fix_effects = invest_parameters.fix_effects
         if fix_effects is not None and fix_effects != 0:
             if invest_parameters.optional:  # share: + isInvested * fix_effects
-                effect_collection.add_share_to_invest('fix_effects', fix_effects, 1, self.is_invested)
-            else:  # share: + fix_effects
-                effect_collection.add_share_to_invest('fix_effects', fix_effects,1, None)
+                variable_is_invested = self.is_invested
+            else:
+                variable_is_invested = None
+            effect_collection.add_share_to_invest('fix_effects', self.element, fix_effects, 1, variable_is_invested)
+
         # divest_effects:
         divest_effects = invest_parameters.divest_effects
         if divest_effects is not None and divest_effects != 0:
             if invest_parameters.optional:  # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
-                effect_collection.add_share_to_invest('divest_effects', divest_effects, 1, None)
+                effect_collection.add_share_to_invest('divest_effects', self.element, divest_effects, 1, None)
                 # 2. part of share [- isInvested * divest_effects]:
-                effect_collection.add_share_to_invest('divest_cancellation_effects', divest_effects, -1, self.is_invested)
+                effect_collection.add_share_to_invest('divest_cancellation_effects', self.element, divest_effects, -1, self.is_invested)
                 # TODO : these 2 parts should be one share! -> SingleShareModel...?
 
         # # specific_effects:
         specific_effects = invest_parameters.specific_effects
         if specific_effects is not None:
             # share: + investment_size (=var)   * specific_effects
-            effect_collection.add_share_to_invest('specific_effects', specific_effects, 1, self.size)
+            effect_collection.add_share_to_invest(f'specific_effects', self.element, specific_effects, 1, self.size)
         # segmented Effects
         invest_segments = invest_parameters.effects_in_segments
         if invest_segments:
@@ -204,7 +206,7 @@ class OnOffModel(ElementModel):
 
         if self._on_off_parameters.use_on_hours:
             self.consecutive_on_hours = create_ts_variable('consecutiveOnHours',
-                                                           self.element, system_model.nr_of_time_steps,
+                                                           self, system_model.nr_of_time_steps,
                                                            system_model, lower_bound=0,
                                                            upper_bound=self._on_off_parameters.consecutive_on_hours_max)
             self._add_duration_constraints(self.consecutive_on_hours, self.on,
@@ -395,12 +397,12 @@ class OnOffModel(ElementModel):
         effect_collection = system_model.effect_collection_model
         effects_per_switch_on = self._on_off_parameters.effects_per_switch_on
         if effects_per_switch_on is not None:
-            effect_collection.add_share_to_operation('switch_on_effects', effects_per_switch_on, 1, self.switch_on)
+            effect_collection.add_share_to_operation('switch_on_effects', self.element, effects_per_switch_on, 1, self.switch_on)
 
         # Betriebskosten:
         effects_per_running_hour = self._on_off_parameters.effects_per_running_hour
         if effects_per_running_hour is not None:
-            effect_collection.add_share_to_operation('running_hour_effects', effects_per_running_hour,
+            effect_collection.add_share_to_operation('running_hour_effects', self.element, effects_per_running_hour,
                                                      system_model.dt_in_hours, self.on)
 
 
@@ -420,15 +422,15 @@ class SegmentModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         length = system_model.nr_of_time_steps
-        self.in_segment = create_ts_variable(f'onSeg_{self._segment_index}', self,
+        self.in_segment = create_ts_variable('inSegment', self,
                                              length, system_model, is_binary=True)
-        self.lambda0 = create_ts_variable(f'lambda0_{self._segment_index}', self, length, system_model,
+        self.lambda0 = create_ts_variable('lambda0', self, length, system_model,
                                           lower_bound=0, upper_bound=1)  # Wertebereich 0..1
-        self.lambda1 = create_ts_variable(f'lambda1_{self._segment_index}', self, length, system_model,
+        self.lambda1 = create_ts_variable('lambda1', self, length, system_model,
                                           lower_bound=0, upper_bound=1)  # Wertebereich 0..1
 
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
-        equation = create_equation(f'Lambda_onSeg_{self._segment_index}', self, system_model)
+        equation = create_equation('inSegment', self, system_model)
 
         equation.add_summand(self.in_segment, -1)
         equation.add_summand(self.lambda0, 1)
@@ -443,7 +445,7 @@ class SegmentModel(ElementModel):
                 sample_1 = sample_1.active_data
             """
 
-            lambda_eq = create_equation(f'{variable.label}_lambda', self, system_model)
+            lambda_eq = create_equation(f'{variable.label_short}_lambda', self, system_model)
             lambda_eq.add_summand(variable, -1)
             lambda_eq.add_summand(self.lambda0, sample_0)
             lambda_eq.add_summand(self.lambda1, sample_1)
@@ -470,6 +472,7 @@ class MultipleSegmentsModel(ElementModel):
 
         for i, sample_points in enumerate(restructured_variables_with_segments):
             self._segment_models.append(SegmentModel(self.element, i, sample_points))
+        self.sub_models.extend(self._segment_models)
 
         for segment_model in self._segment_models:
             segment_model.do_modeling(system_model)
@@ -604,11 +607,12 @@ class ShareAllocationModel(ElementModel):
 
 
 class SingleShareModel(ElementModel):
-    def __init__(self, element: Element, shares_are_time_series: bool, label: str):
+    """ Holds a Variable and an Equation. Summands can be added to the Equation. Used to publish Shares"""
+    def __init__(self, element: Element, shares_are_time_series: bool, label: str = 'Share'):
         super().__init__(element, label)
         self.single_share: Optional[Variable] = None
         self._equation: Optional[Equation] = None
-        self._full_name_of_share = f'{element.label_full}_{self.label}'
+        self._full_name_of_share = f'Share_of__{element.label_full}_{self.label}'
         self._shares_are_time_series = shares_are_time_series
 
     def do_modeling(self, system_model: SystemModel):
@@ -645,21 +649,24 @@ class SegmentedSharesModel(ElementModel):
         self._segments_model: Optional[MultipleSegmentsModel] = None
 
     def do_modeling(self, system_model: SystemModel):
-        self._shares = {effect: SingleShareModel(self.element, False, f'segmented')
+        self._shares = {effect: SingleShareModel(self.element, False, f'{effect.label}_segmented')
                         for effect in self._share_segments}
         for single_share in self._shares.values():
             single_share.do_modeling(system_model)
+            self.sub_models.append(single_share)
 
         segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
-            self._shares[effect].single_share: segment for effect, segment in self._share_segments.values()}
+            self._shares[effect].single_share: segment for effect, segment in self._share_segments.items()}
         self._segments_model = MultipleSegmentsModel(self.element, segments, self._outside_segments)
         self._segments_model.do_modeling(system_model)
+        self.sub_models.append(self._segments_model)
 
         # Shares
         effect_collection = system_model.effect_collection_model
         for effect, single_share_model in self._shares.items():
             effect_collection.add_share_to_invest(
                 name='segmented_effects',
+                element=self.element,
                 effect_values={effect: 1},
                 factor=1,
                 variable=single_share_model.single_share)

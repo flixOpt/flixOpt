@@ -147,7 +147,7 @@ class SystemModel(MathModel):
         for model in self.sub_models:
             for label, variable in model.variables.items():
                 if label in all_vars:
-                    raise KeyError(f"Duplicate Variable found in SystemModel: {label=}; {variable=}")
+                    raise KeyError(f"Duplicate Variable found in SystemModel:{model=} {label=}; {variable=}")
                 all_vars[label] = variable
         return all_vars
 
@@ -263,7 +263,7 @@ class ElementModel:
         self.variables = {}
         self.eqs = {}
         self.sub_models = []
-        self.label = label or self.element.label
+        self.label = label
 
     def add_variables(self, *variables: Variable) -> None:
         for variable in variables:
@@ -351,6 +351,10 @@ class ElementModel:
         return {**{variable.label_short: variable.result for variable in self.variables.values()},
                 **{model.label: model.results() for model in self.sub_models}}
 
+    @property
+    def label_full(self) -> str:
+        return f'{self.element.label_full}_{self.label}' if self.label else self.element.label_full
+
 
 def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:
     """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
@@ -362,7 +366,7 @@ def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element
 def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
                      eq_type: Literal['eq', 'ineq', 'objective'] = 'eq') -> Equation:
     """ Creates an Equation and adds it to the model of the Element """
-    eq = Equation(f'{element_model.element.label_full}_{label}', label, system_model, eq_type)
+    eq = Equation(f'{element_model.label_full}_{label}', label, system_model, eq_type)
     element_model.add_equations(eq)
     return eq
 
@@ -378,7 +382,7 @@ def create_ts_variable(label: str,
                        before_value: Optional[Numeric] = None,
                        ) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
-    var = VariableTS(f'{element_model.element.label_full}_{label}', label, length, system_model,
+    var = VariableTS(f'{element_model.label_full}_{label}', label, length, system_model,
                      is_binary, value, lower_bound, upper_bound, before_value)
     element_model.add_variables(var)
     return var
@@ -394,7 +398,7 @@ def create_variable(label: str,
                     upper_bound: Optional[Numeric] = None,
                     ) -> Variable:
     """ Creates a Variable and adds it to the model of the Element """
-    var = Variable(f'{element_model.element.label_full}_{label}', label, length, system_model,
+    var = Variable(f'{element_model.label_full}_{label}', label, length, system_model,
                    is_binary, value, lower_bound, upper_bound)
     element_model.add_variables(var)
     return var

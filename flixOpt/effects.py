@@ -327,6 +327,7 @@ class EffectCollectionModel(ElementModel):
 
     def _add_share_to_effects(self,
                               name: str,
+                              element: Element,
                               target: Literal['operation', 'invest'],
                               effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
                               factor: Numeric,
@@ -346,28 +347,31 @@ class EffectCollectionModel(ElementModel):
             else:
                 raise ValueError(f'Target {target} not supported!')
 
+            name_of_share = f'{element.label_full}__{name}'
             if variable is None:
-                model.add_constant_share(self._system_model, name, effect, value, factor)
+                model.add_constant_share(self._system_model, name_of_share, effect, value, factor)
             elif isinstance(variable, Variable):
-                model.add_variable_share(self._system_model, name, effect, variable, value, factor)
+                model.add_variable_share(self._system_model, name_of_share, effect, variable, value, factor)
             else:
                 raise TypeError
 
     def add_share_to_invest(self,
                             name: str,
+                            element: Element,
                             effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
                             factor: Numeric,
                             variable: Optional[Variable] = None) -> None:
         #TODO: Add checks
-        self._add_share_to_effects(name, 'invest', effect_values, factor, variable)
+        self._add_share_to_effects(name, element, 'invest', effect_values, factor, variable)
 
     def add_share_to_operation(self,
                                name: str,
+                               element: Element,
                                effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
                                factor: Numeric,
                                variable: Optional[Variable] = None) -> None:
         # TODO: Add checks
-        self._add_share_to_effects(name, 'operation', effect_values, factor, variable)
+        self._add_share_to_effects(name, element, 'operation', effect_values, factor, variable)
 
     def add_share_to_penalty(self,
                              name: Optional[str],

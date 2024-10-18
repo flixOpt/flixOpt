@@ -344,7 +344,8 @@ class FlowModel(ElementModel):
         # Arbeitskosten:
         if self.element.effects_per_flow_hour is not None:
             system_model.effect_collection_model.add_share_to_operation(
-                name=f'{self.element.label_full}__effects_per_flow_hour',
+                name='effects_per_flow_hour',
+                element=self.element,
                 variable=self.flow_rate,
                 effect_values=self.element.effects_per_flow_hour,
                 factor=system_model.dt_in_hours
