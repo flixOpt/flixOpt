@@ -324,7 +324,7 @@ class FlowModel(ElementModel):
         if isinstance(self.element.size, InvestParameters):
             self._investment = InvestmentModel(self.element, self.element.size,
                                                self.flow_rate,
-                                               (self.element.relative_minimum, self.element.size.minimum_size),
+                                               (self.element.relative_minimum, self.element.relative_maximum),
                                                on_variable=self._on.on if self._on is not None else None)
             self._investment.do_modeling(system_model)
             self.sub_models.append(self._investment)
