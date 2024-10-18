@@ -257,7 +257,7 @@ class OnOffModel(ElementModel):
             #### Bedingung 2) ####
             # eq: Q_th(t) <= Q_th_max * On(t)
             eq_on_2.add_summand(variable, 1, time_indices)
-            eq_on_2.add_summand(self.on, upper_bound, time_indices)
+            eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
 
         else:  # Bei mehreren Leistungsvariablen:
             #### Bedingung 1) ####
