@@ -119,7 +119,7 @@ class InvestmentModel(ElementModel):
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
             eq_is_invested_lb = create_equation('is_invested_lb', self, system_model, 'ineq')
             eq_is_invested_lb.add_summand(self.size, -1)
-            eq_is_invested_lb.add_summand(self.is_invested, np.max(system_model.epsilon, self._invest_parameters.minimum_size))
+            eq_is_invested_lb.add_summand(self.is_invested, np.maximum(system_model.epsilon, self._invest_parameters.minimum_size))
 
     def _create_bounds_for_defining_variable(self, system_model: SystemModel):
         label = self._defining_variable.label
