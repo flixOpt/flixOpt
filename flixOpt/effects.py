@@ -389,14 +389,13 @@ class EffectCollectionModel(ElementModel):
 
     def add_share_between_effects(self):
         for origin_effect in self.element.effects:
+            name_of_share = f'Share_from_Effect_{origin_effect.label_full}'  # + effectType.label
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
-            name_of_share = 'specific_share_to_other_effects_operation'  # + effectType.label
             for target_effect, factor in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
                 target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS, factor, 1)
             # 2. invest:    -> hier ist es Skalar (share)
-            name_of_share = 'specificShareToOtherEffects_invest_'  # + effectType.label
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest

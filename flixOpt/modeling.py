@@ -610,7 +610,7 @@ class ShareAllocationModel(ElementModel):
         elif name_of_share is None:  # variable share
             target_eq.add_summand(variable, total_factor)
         else:  # var and eq for publishing share-values in results:
-            new_share = SingleShareModel(share_holder, self._shares_are_time_series, name_of_share)
+            new_share = SingleShareModel(share_holder, not self._shares_are_time_series, name_of_share)
             new_share.do_modeling(system_model)
             new_share.add_summand_to_share(variable, total_factor)
             target_eq.add_summand(new_share.single_share, 1)
@@ -619,15 +619,18 @@ class ShareAllocationModel(ElementModel):
 
 class SingleShareModel(ElementModel):
     """ Holds a Variable and an Equation. Summands can be added to the Equation. Used to publish Shares"""
-    def __init__(self, element: Element, shares_are_time_series: bool, label: str = 'Share'):
+    def __init__(self, element: Element, create_sum_of: bool, label: str = 'Share'):
         super().__init__(element, label)
         self.single_share: Optional[Variable] = None
         self._equation: Optional[Equation] = None
         self._full_name_of_share = f'Share_of__{element.label_full}_{self.label}'
-        self._shares_are_time_series = shares_are_time_series
+        self._create_sum_of = create_sum_of
 
     def do_modeling(self, system_model: SystemModel):
-        self.single_share = Variable(self._full_name_of_share, self.label, 1, system_model)
+        if self._create_sum_of:
+            self.single_share = Variable(self._full_name_of_share, self.label, 1, system_model)
+        else:
+            self.single_share = VariableTS(self._full_name_of_share, self.label, system_model.nr_of_time_steps, system_model)
         self.add_variables(self.single_share)
 
         self._equation = create_equation(self._full_name_of_share, self, system_model)
@@ -636,10 +639,10 @@ class SingleShareModel(ElementModel):
     def add_summand_to_share(self, variable: Optional[Variable], factor: Numeric):
         """share to a sum"""
         if variable is None:  # if constant share:
-            constant_value = np.sum(factor) if self._shares_are_time_series else factor
+            constant_value = np.sum(factor) if self._create_sum_of else factor
             self._equation.add_constant(-1 * constant_value)
-        else:  # if variable share - always as a skalar -> as_sum=True if shares are timeseries
-            self._equation.add_summand(variable, factor, as_sum=self._shares_are_time_series)
+        else:
+            self._equation.add_summand(variable, factor, as_sum=self._create_sum_of)
 
 
 class SegmentedSharesModel(ElementModel):
