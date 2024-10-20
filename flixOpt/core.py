@@ -23,8 +23,6 @@ Numeric_TS = Union[Skalar, np.ndarray]
 #   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
-
-# Anmerkung: TimeSeriesRaw separat von TimeSeries wg. Einfachheit für Anwender
 class TimeSeriesRaw:
     def __init__(self,
                  value: Union[int, float, np.ndarray],
