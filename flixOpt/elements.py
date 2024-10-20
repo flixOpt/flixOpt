@@ -297,20 +297,20 @@ class FlowModel(ElementModel):
         self._investment: Optional[InvestmentModel] = None
 
     def do_modeling(self, system_model: SystemModel):
-        # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
-        if self.element.on_off_parameters is None and not isinstance(self.element.size, InvestParameters):
-            if self.element.fixed_relative_value is None:
-                fixed_flow_rate = None
-            else:
+        lower_bound, upper_bound, fixed_flow_rate = 0, None, None  # Standard configuration
+        if not isinstance(self.element.size, InvestParameters):
+            if self.element.fixed_relative_value is not None:  # Size is fixed -> flow_rate can be fixed
                 fixed_flow_rate = self.element.fixed_relative_value * self.element.size
-            self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
-                                                system_model,
-                                                lower_bound=self.element.relative_minimum * self.element.size,
-                                                upper_bound=self.element.relative_maximum * self.element.size,
-                                                value=fixed_flow_rate)
-        else:  # Bounds are created later and in sub_models
-            self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
-                                                system_model, lower_bound=0)
+            if self.element.on_off_parameters is None:  # Size is fixed and No On-Variable -> Bounds can be set
+                lower_bound = self.element.relative_minimum * self.element.size
+                upper_bound = self.element.relative_maximum * self.element.size
+
+        # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
+        self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
+                                         system_model,
+                                         lower_bound=lower_bound,
+                                         upper_bound=upper_bound,
+                                         value=fixed_flow_rate)
 
         # OnOff
         if self.element.on_off_parameters is not None:
@@ -322,9 +322,12 @@ class FlowModel(ElementModel):
 
         # Investment
         if isinstance(self.element.size, InvestParameters):
+            relative_bounds = (self.element.relative_minimum,
+                               self.element.relative_maximum) if self.element.fixed_relative_value is None \
+                else (self.element.fixed_relative_value, self.element.fixed_relative_value)
             self._investment = InvestmentModel(self.element, self.element.size,
                                                self.flow_rate,
-                                               (self.element.relative_minimum, self.element.relative_maximum),
+                                               relative_bounds,
                                                on_variable=self._on.on if self._on is not None else None)
             self._investment.do_modeling(system_model)
             self.sub_models.append(self._investment)
