@@ -524,6 +524,7 @@ class ShareAllocationModel(ElementModel):
         self.element = element
         self.sum_TS: Optional[VariableTS] = None
         self.sum: Optional[Variable] = None
+        self.shares: Dict[str, Variable] = {}
 
         self._eq_time_series: Optional[Equation] = None
         self._eq_sum: Optional[Equation] = None
@@ -615,6 +616,12 @@ class ShareAllocationModel(ElementModel):
             new_share.add_summand_to_share(variable, total_factor)
             target_eq.add_summand(new_share.single_share, 1)
             self.sub_models.append(new_share)
+            assert new_share.label_full not in self.shares, f'A Share with the label {new_share.label_full} wis already present in {self.label_full}'
+            self.shares[new_share.label_full] = new_share.single_share
+
+    def results(self):
+        return {**{variable.label_short: variable.result for variable in self.variables.values()},
+                **{'Shares': {variable.label_short: variable.result for variable in self.shares.values()}}}
 
 
 class SingleShareModel(ElementModel):
