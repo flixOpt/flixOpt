@@ -15,7 +15,7 @@ from flixOpt.elements import Flow, _create_time_series
 from flixOpt.core import Skalar, Numeric_TS, TimeSeries, Numeric
 from flixOpt.math_modeling import VariableTS, Equation
 from flixOpt.modeling import OnOffModel, MultipleSegmentsModel, InvestmentModel
-from flixOpt.structure import SystemModel, create_equation, create_ts_variable
+from flixOpt.structure import SystemModel, create_equation, create_variable
 from flixOpt.elements import Component, ComponentModel
 from flixOpt.interface import InvestParameters, OnOffParameters
 
@@ -39,41 +39,18 @@ class LinearConverter(Component):
         ----------
         label : str
             name.
-        inputs : list of flows
-            input flows.
-        outputs : list of flows
-            output flows.
-        group: str, None
-            group name to assign components to groups. Used for later analysis of the results
-        conversion_factors : list
-            linear relation between flows
-            eq: sum (factor * flow_in) = sum (factor * flow_out)
-            factor can be TimeSeries, scalar or list.
+        inputs : input flows.
+        outputs : output flows.
+        on_off_parameters: Information about on and off states. See class OnOffParameters.
+        conversion_factors : linear relation between flows.
             Either 'conversion_factors' or 'segmented_conversion_factors' can be used!
-
-            example heat pump:  
-                
-            >>> conversion_factors= [{Q_th: COP_th , Q_0 : 1}
-                              {P_el: COP_el , Q_0 : 1},              # COP_th
-                              {Q_th: 1 , P_el: 1, Q_0 : 1, Q_ab: 1}] # Energiebilanz
-                
-        segmented_conversion_factors : dict
-            Segmented linear correlation. begin and end of segment has to be given/defined.
-            factors can be scalar or lists (i.e.timeseries)!
-            if Begin of segment n+1 is not end of segment n, then "gap", i.e. not allowed area
+            example heat pump:
+        segmented_conversion_factors :  Segmented linear relation between flows.
+            Each Flow gets a List of Segments assigned.
+            If FLows need to be 0 (or Off), include a "Zero-Segment" "(0, 0)", or use on_off_parameters
             Either 'segmented_conversion_factors' or 'conversion_factors' can be used!
-            example with two segments:
-            
-            >>> #           flow    begin, end, begin, end
-                segments = {Q_fu: [ 5    , 10,  10,    22], # Abschnitte von 5 bis 10 und 10 bis 22
-                            P_el: [ 2    , 5,   5,     8 ],
-                            Q_fu: [ 2.5  , 4,   4,     12]}
-            
-            --> "points" can expressed as segment with same begin and end, i.g. [5, 5]
-
-        Returns
-        -------
-        None.
+            --> "gaps" can be expressed by a segment not starting at the end of the prior segment : [(1,3), (4,5)]
+            --> "points" can expressed as segment with same begin and end : [(3,3), (4,4)]
 
         """
         super().__init__(label, inputs, outputs, on_off_parameters)
@@ -84,7 +61,6 @@ class LinearConverter(Component):
     def create_model(self) -> 'LinearConverterModel':
         self.model = LinearConverterModel(self)
         return self.model
-
 
     def _plausibility_checks(self) -> None:
         if self.conversion_factors is None and self.segmented_conversion_factors is None:
@@ -301,9 +277,10 @@ class LinearConverterModel(ComponentModel):
 
         # (linear) segments:
         else:
+            #TODO: Improve Inclusion of OnOffParameters. Instead of creating a Binary in every flow, the binary could only be part of the Segment itself
             segments = {flow.model.flow_rate: self.element.segmented_conversion_factors[flow]
                         for flow in self.element.inputs + self.element.outputs}
-            linear_segments = MultipleSegmentsModel(self.element, segments, False)  # TODO: Add Outside_segments Variable (On)
+            linear_segments = MultipleSegmentsModel(self.element, segments, self._on.on if self._on is not None else None)  # TODO: Add Outside_segments Variable (On)
             linear_segments.do_modeling(system_model)
             self.sub_models.append(linear_segments)
 

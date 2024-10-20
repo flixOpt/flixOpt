@@ -33,7 +33,20 @@ class Component(Element):
                  outputs: Optional[List['Flow']] = None,
                  on_off_parameters: Optional[OnOffParameters] = None,
                  prevent_simultaneous_flows: bool = False):
-        """ Old Docstring"""
+        """
+        Parameters
+        ----------
+        label : str
+            name.
+        inputs : input flows.
+        outputs : output flows.
+        on_off_parameters: Information about on and off state of Component.
+            Component is On/Off, if all connected Flows are On/Off.
+            Induces On-Variable in all FLows!
+            See class OnOffParameters.
+        prevent_simultaneous_flows: States if more than one Flow is allowed to be On at once.
+            Induces On-Variable in all FLows!
+        """
         super().__init__(label)
         self.inputs: List['Flow'] = inputs or []
         self.outputs: List['Flow'] = outputs or []
