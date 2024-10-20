@@ -202,7 +202,7 @@ class OnOffModel(ElementModel):
             self.off = create_variable('off', self, system_model.nr_of_time_steps,
                                           system_model, is_binary=True)
 
-            self._add_off_constraints(system_model, system_model.time_indices)
+            self._add_off_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_on_hours:
             self.consecutive_on_hours = create_variable('consecutiveOnHours',
@@ -211,7 +211,7 @@ class OnOffModel(ElementModel):
                                                            upper_bound=self._on_off_parameters.consecutive_on_hours_max)
             self._add_duration_constraints(self.consecutive_on_hours, self.on,
                                            self._on_off_parameters.consecutive_on_hours_min,
-                                           system_model, system_model.time_indices)
+                                           system_model, system_model.indices)
         # offHours:
         if self._on_off_parameters.use_off_hours:
             self.consecutive_off_hours = create_variable(
@@ -220,7 +220,7 @@ class OnOffModel(ElementModel):
 
             self._add_duration_constraints(self.consecutive_off_hours, self.off,
                                            self._on_off_parameters.consecutive_off_hours_min,
-                                           system_model, system_model.time_indices)
+                                           system_model, system_model.indices)
         # Var SwitchOn
         if self._on_off_parameters.use_switch_on:
             self.switch_on = create_variable('switchOn', self, system_model.nr_of_time_steps,
@@ -229,7 +229,7 @@ class OnOffModel(ElementModel):
                                                  system_model.nr_of_time_steps, system_model, is_binary=True)
             self.nr_switch_on = create_variable('nrSwitchOn', self, 1, system_model,
                                                 upper_bound=self._on_off_parameters.switch_on_total_max)
-            self._add_switch_constraints(system_model, system_model.time_indices)
+            self._add_switch_constraints(system_model, system_model.indices)
 
         self._create_shares(system_model)
 

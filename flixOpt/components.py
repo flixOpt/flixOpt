@@ -312,7 +312,7 @@ class StorageModel(ComponentModel):
         eq_netto.add_summand(self.element.charging.model.flow_rate, 1)
         eq_netto.add_summand(self.element.discharging.model.flow_rate, -1)
 
-        indices_charge_state = range(system_model.time_indices.start, system_model.time_indices.stop + 1)  # additional
+        indices_charge_state = range(system_model.indices.start, system_model.indices.stop + 1)  # additional
 
         ############# Charge State Equation
         # charge_state(n+1)
@@ -343,18 +343,18 @@ class StorageModel(ComponentModel):
             self._model_initial_and_final_charge_state(system_model)
 
     def _model_initial_and_final_charge_state(self, system_model):
-        indices_charge_state = range(system_model.time_indices.start, system_model.time_indices.stop + 1)  # additional
+        indices_charge_state = range(system_model.indices.start, system_model.indices.stop + 1)  # additional
 
         if self.element.initial_charge_state is not None:
             eq_initial = create_equation('initial_charge_state', self, system_model, eq_type='eq')
             if utils.is_number(self.element.initial_charge_state):
                 # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
                 eq_initial.add_constant(self.element.initial_charge_state)  # chargeState_0 !
-                eq_initial.add_summand(self.charge_state, 1, system_model.time_indices[0])
+                eq_initial.add_summand(self.charge_state, 1, system_model.indices[0])
             elif self.element.initial_charge_state == 'lastValueOfSim':
                 # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
-                eq_initial.add_summand(self.charge_state, 1, system_model.time_indices[0])
-                eq_initial.add_summand(self.charge_state, -1,  system_model.time_indices[-1])
+                eq_initial.add_summand(self.charge_state, 1, system_model.indices[0])
+                eq_initial.add_summand(self.charge_state, -1,  system_model.indices[-1])
             else:
                 raise Exception(f'initial_charge_state has undefined value: {self.element.initial_charge_state}')
                 # TODO: Validation in Storage Class, not in Model
