@@ -32,23 +32,21 @@ class FlowSystem:
           ----------
           time_series : np.ndarray of datetime64
               timeseries of the data
-          last_time_step_hours : for calc
+          last_time_step_hours :
               The duration of last time step.
               Storages needs this time-duration for calculation of charge state
               after last time step.
               If None, then last time increment of time_series is used.
         """
         self.time_series = time_series
-        self.last_time_step_hours = last_time_step_hours
+        self.last_time_step_hours = self.time_series[-1] - self.time_series[-2] if last_time_step_hours is None else last_time_step_hours
+        self.time_series_with_end = np.append(self.time_series, self.last_time_step_hours)
 
-        self.time_series_with_end = utils.get_time_series_with_end(time_series, last_time_step_hours)
-        utils.check_time_series('global esTimeSeries', self.time_series_with_end)
+        utils.check_time_series('time series of FlowSystem', self.time_series_with_end)
 
         # defaults:
         self.components: List[Component] = []
         self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
-        self.other_elements: Set[Element] = set()  ## hier kommen zusätzliche Elements rein, z.B. aggregation
-        self.temporary_elements = []  # temporary elements, only valid for one calculation (i.g. aggregation modeling)
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
@@ -67,53 +65,22 @@ class FlowSystem:
         self.components.extend(new_components)  # Add to existing list of components
 
     def add_elements(self, *args: Element) -> None:
-        '''
+        """
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
 
         Parameters
         ----------
-        *args : childs of   Element like cBoiler, HeatPump, Bus,...
+        *args : childs of  Element like Boiler, HeatPump, Bus,...
             modeling Elements
 
-        '''
-
+        """
         for new_element in list(args):
             if isinstance(new_element, Component):
                 self.add_components(new_element)
             elif isinstance(new_element, Effect):
                 self.add_effects(new_element)
-            elif isinstance(new_element, Element):
-                # check if already exists:
-                self._check_if_element_is_unique(new_element)
-                # register Element:
-                self.other_elements.add(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
-
-    def add_temporary_elements(self, *args: Element) -> None:
-        '''
-        add temporary modeling elements, only valid for one calculation,
-        i.g. AggregationModeling-Element
-
-        Parameters
-        ----------
-        *args : Element
-            temporary modeling Elements.
-
-        '''
-
-        self.add_elements(*args)
-        self.temporary_elements += args  # Register temporary Elements
-
-    def delete_temporary_elements(self):  # function just implemented, still not used
-        '''
-        deletes all registered temporary Elements
-        '''
-        for temporary_element in self.temporary_elements:
-            # delete them again in the lists:
-            self.components.remove(temporary_element)
-            self.other_elements.remove(temporary_element)
-            self.effect_collection.effects.remove(temporary_element)
 
     def _check_if_element_is_unique(self, element: Element) -> None:
         """
@@ -127,46 +94,50 @@ class FlowSystem:
         if element in self.all_elements:
             raise Exception(f'Element {element.label} already added to FlowSystem!')
         # check if name is already used:
-        if element.label in [elem.label_full for elem in self.all_elements]:
+        if element.label_full in [elem.label_full for elem in self.all_elements]:
             raise Exception(f'Label of Element {element.label} already used in another element!')
 
-    # aktiviere in TS die gewählten Indexe: (wird auch direkt genutzt, nicht nur in activate_system_model)
-    def activate_indices_in_time_series(
-            self, indices: Union[List[int], range],
-            alternative_data_for_time_series: Optional[Dict[TimeSeries, np.ndarray]] = None) -> None:
-        # TODO: Aggreagation functionality to other part of framework?
-        aTS: TimeSeries
-        if alternative_data_for_time_series is None:
-            alternative_data_for_time_series = {}
+    def get_time_data_from_indices(self, time_indices: Optional[Union[List[int], range]] = None
+                                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.float64]:
+        """
+        Computes time series data based on the provided time indices.
 
-        for aTS in self.all_time_series_in_elements:
-            # Wenn explicitData vorhanden:
-            if aTS in alternative_data_for_time_series.keys():
-                explicitData = alternative_data_for_time_series[aTS]
-            else:
-                explicitData = None
-                # Aktivieren:
-            aTS.activate(indices, explicitData)
+        Args:
+            time_indices: A list of indices or a range object indicating which time steps to extract.
+                          If None, the entire time series is used.
 
-    # Datenzeitreihe auf Basis gegebener time_indices aus globaler extrahieren:
-    def get_time_data_from_indices(
-            self,
-            time_indices: Union[List[int], range]
-    ) -> Tuple[np.ndarray[np.datetime64],np.ndarray[np.datetime64], np.ndarray[np.float64], np.float64]:
-        # if time_indices is None, dann alle : time_indices = range(length(self.time_series))
-        # Zeitreihen:
+        Returns:
+            A tuple containing:
+            - Extracted time series
+            - Time series with the "end time" appended
+            - Differences between consecutive timestamps in hours
+            - Total time in hours
+        """
+        # If time_indices is None, use the full time series range
+        if time_indices is None:
+            time_indices = range(len(self.time_series))
+
+        # Extract the time series for the provided indices
         time_series = self.time_series[time_indices]
-        # next timestamp as endtime:
-        endTime = self.time_series_with_end[time_indices[-1] + 1]
-        time_series_with_end = np.append(time_series, endTime)
 
-        # Zeitdifferenz:
-        #              zweites bis Letztes            - erstes bis Vorletztes
-        dt = time_series_with_end[1:] - time_series_with_end[0:-1]
-        dt_in_hours = dt / np.timedelta64(1, 'h')
-        # dt_in_hours    = dt.total_seconds() / 3600
-        dt_in_hours_total = sum(dt_in_hours)  # Gesamtzeit
-        return (time_series, time_series_with_end, dt_in_hours, dt_in_hours_total)
+        # Ensure the next timestamp for end time is within bounds
+        last_index = time_indices[-1]
+        if last_index + 1 < len(self.time_series_with_end):
+            end_time = self.time_series_with_end[last_index + 1]
+        else:
+            raise IndexError(f"Index {last_index + 1} out of bounds for 'self.time_series_with_end'.")
+
+        # Append end time to the time series
+        time_series_with_end = np.append(time_series, end_time)
+
+        # Calculate time differences (time deltas) in hours
+        time_deltas = time_series_with_end[1:] - time_series_with_end[:-1]
+        dt_in_hours = time_deltas / np.timedelta64(1, 'h')
+
+        # Calculate the total time in hours
+        dt_in_hours_total = np.sum(dt_in_hours)
+
+        return time_series, time_series_with_end, dt_in_hours, dt_in_hours_total
 
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
@@ -183,18 +154,9 @@ class FlowSystem:
         return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
 
     @property
-    def all_time_series_in_elements(self) -> List[TimeSeries]:
-        element: Element
-        all_TS = []
-        for element in self.all_first_level_elements_with_flows:
-            all_TS += element.TS_list
-        return all_TS
-
-    @property
     def all_buses(self) -> Set[Bus]:
         return {flow.bus for flow in self.all_flows}
 
     @property
     def all_elements(self) -> List[Element]:
-        return (self.components + self.effect_collection.effects + self.temporary_elements +
-                list(self.other_elements) + list(self.all_flows) + list(self.all_buses))
+        return self.components + self.effect_collection.effects + list(self.all_flows) + list(self.all_buses)

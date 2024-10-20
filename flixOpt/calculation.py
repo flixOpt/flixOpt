@@ -52,7 +52,7 @@ class Calculation:
         self.system_models: List[SystemModel] = []
         self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
 
-        self.time_indices = time_indices or range(len(flow_system.time_series))  # Wenn time_indices = None, dann alle nehmen
+        self.time_indices = time_indices
         (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
             flow_system.get_time_data_from_indices(self.time_indices))
         utils.check_time_series('time_indices', self.time_series)

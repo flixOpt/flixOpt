@@ -165,16 +165,6 @@ class cDataBox2:
         return astr
 
 
-def get_time_series_with_end(time_series: np.ndarray[np.datetime64],
-                             dt_last: Optional[np.timedelta64] = None):
-    #TODO: Migrate to single usage
-    ## letzten Zeitpunkt hinzufügen:
-    if dt_last is None:
-        dt_last = time_series[-1] - time_series[-2]
-    t_end = time_series[-1] + dt_last
-    return np.append(time_series, t_end)
-
-
 def check_time_series(label: str,
                       time_series: np.ndarray[np.datetime64]):
     # check sowohl für globale Zeitreihe, als auch für chosenIndexe:
