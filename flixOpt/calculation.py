@@ -27,10 +27,9 @@ logger = logging.getLogger('flixOpt')
 
 class Calculation:
     """
-    class for defined way of solving a flow_system optimizatino
+    class for defined way of solving a flow_system optimization
     """
-    # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
@@ -41,8 +40,8 @@ class Calculation:
             flow_system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
-        time_indices : None, list
-            list with indexe, which should be used for calculation. If None, then all timesteps are used.
+        time_indices : List[int] or None
+            list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
         self.name = name
         self.flow_system = flow_system
@@ -51,11 +50,6 @@ class Calculation:
 
         self.system_models: List[SystemModel] = []
         self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
-
-        self.time_indices = time_indices
-        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
-            flow_system.get_time_data_from_indices(self.time_indices))
-        utils.check_time_series('time_indices', self.time_series)
 
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None

@@ -40,7 +40,7 @@ class FlowSystem:
         """
         self.time_series = time_series
         self.last_time_step_hours = self.time_series[-1] - self.time_series[-2] if last_time_step_hours is None else last_time_step_hours
-        self.time_series_with_end = np.append(self.time_series, self.last_time_step_hours)
+        self.time_series_with_end = np.append(self.time_series, self.time_series[-1] + self.last_time_step_hours)
 
         utils.check_time_series('time series of FlowSystem', self.time_series_with_end)
 

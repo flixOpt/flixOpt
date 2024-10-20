@@ -31,15 +31,14 @@ class SystemModel(MathModel):
                  label: str,
                  modeling_language: Literal['pyomo', 'cvxpy'],
                  flow_system: 'FlowSystem',
-                 time_indices: Union[List[int], range]):
+                 time_indices: Optional[Union[List[int], range]]):
         super().__init__(label, modeling_language)
         self.flow_system = flow_system
-        self.nr_of_time_steps = len(time_indices)
-        self.time_indices = range(self.nr_of_time_steps)
-
         # Zeitdaten generieren:
         self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
             flow_system.get_time_data_from_indices(time_indices))
+        self.nr_of_time_steps = len(self.time_series)
+        self.indices = range(self.nr_of_time_steps)
 
         self.effect_collection_model = flow_system.effect_collection.create_model(self)
         self.component_models: List['ComponentModel'] = []

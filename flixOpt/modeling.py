@@ -196,7 +196,7 @@ class OnOffModel(ElementModel):
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
                                                   upper_bound=self._on_off_parameters.on_hours_total_max)
 
-            self._add_on_constraints(system_model, system_model.time_indices)
+            self._add_on_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_off:
             self.off = create_variable('off', self, system_model.nr_of_time_steps,
