@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger('flixOpt')
 
-# Sammlung von Props für Investitionskosten (für FeatureInvest)
+
 class InvestParameters:
     '''
     collects arguments for invest-stuff
@@ -193,4 +193,3 @@ class OnOffParameters:
                                                     self.on_hours_total_min,
                                                     self.on_hours_total_max])
                 or self.force_switch_on)
-
