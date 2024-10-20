@@ -262,7 +262,7 @@ class ElementModel:
         self.variables = {}
         self.eqs = {}
         self.sub_models = []
-        self.label = label
+        self._label = label
 
     def add_variables(self, *variables: Variable) -> None:
         for variable in variables:
@@ -352,7 +352,11 @@ class ElementModel:
 
     @property
     def label_full(self) -> str:
-        return f'{self.element.label_full}_{self.label}' if self.label else self.element.label_full
+        return f'{self.element.label_full}_{self._label}' if self._label else self.element.label_full
+
+    @property
+    def label(self):
+        return self._label or self.element.label
 
 
 def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:
