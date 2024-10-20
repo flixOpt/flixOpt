@@ -48,42 +48,37 @@ class Calculation:
         self.modeling_language = modeling_language
         self.time_indices = time_indices
 
-        self.system_models: List[SystemModel] = []
+        self.system_model: Optional[SystemModel] = None
         self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
 
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
 
-    def description_of_equations(self, system_model: int = 0) -> Dict:
+    def description_of_equations_as_dict(self, system_model: int = 0) -> Dict:
         return {'Components': {comp.label: comp.model.description_of_equations for comp in self.flow_system.components},
-                'buses': {bus.label: bus.model.description_of_equations for bus in self.flow_system.all_buses},
-                'objective': 'MISSING AFTER REWORK',
-                'effects': self.flow_system.effect_collection.model.description_of_equations,
-                'flows': {flow.label_full: flow.model.description_of_equations
-                          for comp in self.flow_system.components for flow in (comp.inputs + comp.outputs)},
-                'others': {element.label: element.model.description_of_equations for element in self.flow_system.other_elements}}
+                'Buses': {bus.label: bus.model.description_of_equations for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_equations}
 
-    def description_of_variables(self, system_model: int = 0) -> Dict:
-        return {'comps': {comp.label: comp.model.description_of_variables + [{flow.label: flow.model.description_of_variables
+    def description_of_variables_as_dict(self, system_model: int = 0) -> Dict:
+        return {'Components': {comp.label: comp.model.description_of_variables + [{flow.label: flow.model.description_of_variables
                                                                          for flow in comp.inputs + comp.outputs}]
                           for comp in self.flow_system.components},
-                'buses': {bus.label: bus.model.description_of_variables for bus in self.flow_system.all_buses},
-                'objective': 'MISSING AFTER REWORK',
-                'effects': self.flow_system.effect_collection.model.description_of_variables,
-                'others': {element.label: element.model.description_of_variables for element in self.flow_system.other_elements}
-                }
+                'Buses': {bus.label: bus.model.description_of_variables for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_variables}
 
-    def print_equations(self, system_model: int = 0) -> str:
+    def describe_equations(self, system_model: int = 0) -> str:
         return (f'\n'
                 f'{"":#^80}\n'
                 f'{" Equations of FlowSystem ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_equations(system_model), default_flow_style=False, allow_unicode=True)}')
+                f'{yaml.dump(self.description_of_equations_as_dict(system_model), default_flow_style=False, allow_unicode=True)}')
 
-    def print_variables(self, system_model: int = 0) -> str:
+    def describe_variables(self, system_model: int = 0) -> str:
         return (f'\n'
                 f'{"":#^80}\n'
                 f'{" Variables of FlowSystem ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_variables(system_model))}')
+                f'{yaml.dump(self.description_of_variables_as_dict(system_model))}')
 
     def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True,
                            nr_of_system_models: int = 1):
@@ -111,7 +106,7 @@ class Calculation:
     @property
     def results(self):
         if self._results is None:
-            self._results = self.system_models[0].results()
+            self._results = self.system_model.results()
         return self._results
 
 
@@ -122,17 +117,16 @@ class FullCalculation(Calculation):
 
     def do_modeling(self) -> SystemModel:
         t_start = timeit.default_timer()
-        system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
-        system_model.do_modeling()
-        system_model.to_math_model()
+        self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
+        self.system_model.do_modeling()
+        self.system_model.to_math_model()
 
-        self.system_models.append(system_model)
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
-        return system_model
+        return self.system_model
 
     def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
-        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
+        self.system_model.solve(**solverProps, logfile_name=self._paths['log'][0])
 
         if save_results:
             self._save_solve_infos()
