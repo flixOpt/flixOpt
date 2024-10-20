@@ -17,7 +17,7 @@ from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.modeling import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
 from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
-    create_ts_variable
+    create_variable
 from flixOpt.effects import EffectValues, _effect_values_to_ts, EffectCollectionModel
 
 logger = logging.getLogger('flixOpt')
@@ -303,13 +303,13 @@ class FlowModel(ElementModel):
                 fixed_flow_rate = None
             else:
                 fixed_flow_rate = self.element.fixed_relative_value * self.element.size
-            self.flow_rate = create_ts_variable('flow_rate', self, system_model.nr_of_time_steps,
+            self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
                                                 system_model,
                                                 lower_bound=self.element.relative_minimum * self.element.size,
                                                 upper_bound=self.element.relative_maximum * self.element.size,
                                                 value=fixed_flow_rate)
         else:  # Bounds are created later and in sub_models
-            self.flow_rate = create_ts_variable('flow_rate', self, system_model.nr_of_time_steps,
+            self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
                                                 system_model, lower_bound=0)
 
         # OnOff
@@ -404,9 +404,9 @@ class BusModel(ElementModel):
         # Fehlerplus/-minus:
         if self.element.with_excess:
             excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour)
-            self.excess_input = create_ts_variable('excess_input', self, system_model.nr_of_time_steps,
+            self.excess_input = create_variable('excess_input', self, system_model.nr_of_time_steps,
                                                    system_model, lower_bound=0)
-            self.excess_output = create_ts_variable('excess_output', self, system_model.nr_of_time_steps,
+            self.excess_output = create_variable('excess_output', self, system_model.nr_of_time_steps,
                                                     system_model, lower_bound=0)
 
             eq_bus_balance.add_summand(self.excess_output, -1)

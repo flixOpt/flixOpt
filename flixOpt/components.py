@@ -322,10 +322,10 @@ class StorageModel(ComponentModel):
         super().do_modeling(system_model)
 
         lb, ub = self.charge_state_bounds
-        self.charge_state = create_ts_variable('charge_state', self, system_model.nr_of_time_steps + 1,
+        self.charge_state = create_variable('charge_state', self, system_model.nr_of_time_steps + 1,
                                                system_model, lower_bound=lb, upper_bound=ub)
 
-        self.netto_discharge = create_ts_variable('netto_discharge', self, system_model.nr_of_time_steps,
+        self.netto_discharge = create_variable('netto_discharge', self, system_model.nr_of_time_steps,
                                                   system_model, lower_bound=-np.inf)  # negative Werte zulässig!
 
         # netto_discharge:

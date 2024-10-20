@@ -13,7 +13,7 @@ import numpy as np
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS
 from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.structure import ElementModel, SystemModel, Element, create_equation, create_variable, create_ts_variable
+from flixOpt.structure import ElementModel, SystemModel, Element, create_equation, create_variable
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.effects import Effect
@@ -190,7 +190,7 @@ class OnOffModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         if self._on_off_parameters.use_on:
-            self.on = create_ts_variable('on', self, system_model.nr_of_time_steps,
+            self.on = create_variable('on', self, system_model.nr_of_time_steps,
                                          system_model, is_binary=True, before_value=0)
             self.total_on_hours = create_variable('totalOnHours', self, 1, system_model,
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
@@ -199,13 +199,13 @@ class OnOffModel(ElementModel):
             self._add_on_constraints(system_model, system_model.time_indices)
 
         if self._on_off_parameters.use_off:
-            self.off = create_ts_variable('off', self, system_model.nr_of_time_steps,
+            self.off = create_variable('off', self, system_model.nr_of_time_steps,
                                           system_model, is_binary=True)
 
             self._add_off_constraints(system_model, system_model.time_indices)
 
         if self._on_off_parameters.use_on_hours:
-            self.consecutive_on_hours = create_ts_variable('consecutiveOnHours',
+            self.consecutive_on_hours = create_variable('consecutiveOnHours',
                                                            self, system_model.nr_of_time_steps,
                                                            system_model, lower_bound=0,
                                                            upper_bound=self._on_off_parameters.consecutive_on_hours_max)
@@ -214,7 +214,7 @@ class OnOffModel(ElementModel):
                                            system_model, system_model.time_indices)
         # offHours:
         if self._on_off_parameters.use_off_hours:
-            self.consecutive_off_hours = create_ts_variable(
+            self.consecutive_off_hours = create_variable(
                 'consecutiveOffHours', self, system_model.nr_of_time_steps, system_model,
                 lower_bound=0, upper_bound=self._on_off_parameters.consecutive_off_hours_max)
 
@@ -223,9 +223,9 @@ class OnOffModel(ElementModel):
                                            system_model, system_model.time_indices)
         # Var SwitchOn
         if self._on_off_parameters.use_switch_on:
-            self.switch_on = create_ts_variable('switchOn', self, system_model.nr_of_time_steps,
+            self.switch_on = create_variable('switchOn', self, system_model.nr_of_time_steps,
                                                 system_model, is_binary=True)
-            self.switch_off = create_ts_variable('switchOff', self,
+            self.switch_off = create_variable('switchOff', self,
                                                  system_model.nr_of_time_steps, system_model, is_binary=True)
             self.nr_switch_on = create_variable('nrSwitchOn', self, 1, system_model,
                                                 upper_bound=self._on_off_parameters.switch_on_total_max)
@@ -410,7 +410,8 @@ class SegmentModel(ElementModel):
     """Class for modeling a linear segment of one or more variables in parallel"""
     def __init__(self, element: Element,
                  segment_index: Union[int, str],
-                 sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]):
+                 sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]],
+                 as_time_series: bool = True):
         super().__init__(element, f'Segment_{segment_index}')
         self.element = element
         self.in_segment: Optional[VariableTS] = None
@@ -418,15 +419,16 @@ class SegmentModel(ElementModel):
         self.lambda1: Optional[VariableTS] = None
 
         self._segment_index = segment_index
+        self._as_time_series = as_time_series
         self.sample_points = sample_points
 
     def do_modeling(self, system_model: SystemModel):
-        length = system_model.nr_of_time_steps
-        self.in_segment = create_ts_variable('inSegment', self,
+        length = system_model.nr_of_time_steps if self._as_time_series else 1
+        self.in_segment = create_variable('inSegment', self,
                                              length, system_model, is_binary=True)
-        self.lambda0 = create_ts_variable('lambda0', self, length, system_model,
+        self.lambda0 = create_variable('lambda0', self, length, system_model,
                                           lower_bound=0, upper_bound=1)  # Wertebereich 0..1
-        self.lambda1 = create_ts_variable('lambda1', self, length, system_model,
+        self.lambda1 = create_variable('lambda1', self, length, system_model,
                                           lower_bound=0, upper_bound=1)  # Wertebereich 0..1
 
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
@@ -438,9 +440,11 @@ class SegmentModel(ElementModel):
 
 
 class MultipleSegmentsModel(ElementModel):
+    # TODO: Length...
     def __init__(self, element: Element,
                  sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]],
                  can_be_outside_segments: Optional[Union[bool, Variable]],
+                 as_time_series: bool = True,
                  label: str = 'MultipleSegments'):
         """
         can_be_outside_segments:    True -> Variable gets created;
@@ -451,7 +455,8 @@ class MultipleSegmentsModel(ElementModel):
         self.element = element
 
         self.outside_segments: Optional[VariableTS] = None
-
+        
+        self._as_time_series = as_time_series
         self._can_be_outside_segments = can_be_outside_segments
         self._sample_points = sample_points
         self._segment_models: List[SegmentModel] = []
@@ -463,7 +468,7 @@ class MultipleSegmentsModel(ElementModel):
         ]
 
         self._segment_models = [
-            SegmentModel(self.element, i, sample_points)
+            SegmentModel(self.element, i, sample_points, self._as_time_series)
             for i, sample_points in enumerate(restructured_variables_with_segments)
         ]
 
@@ -492,8 +497,8 @@ class MultipleSegmentsModel(ElementModel):
             self.outside_segments = self._can_be_outside_segments
             in_single_segment.add_summand(self.outside_segments, -1)
         elif self._can_be_outside_segments is True:  # Create Variable
-            self.outside_segments = create_ts_variable('outside_segments', self,
-                                                       system_model.nr_of_time_steps, system_model, is_binary=True)
+            length = system_model.nr_of_time_steps if self._as_time_series else 1
+            self.outside_segments = create_variable('outside_segments', self, length, system_model, is_binary=True)
             in_single_segment.add_summand(self.outside_segments, -1)
         else:  # Dont allow outside Segments
             in_single_segment.add_constant(1)
@@ -540,7 +545,7 @@ class ShareAllocationModel(ElementModel):
         if self._shares_are_time_series:
             lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
             ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
-            self.sum_TS = create_ts_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, system_model,
+            self.sum_TS = create_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, system_model,
                                              lower_bound=lb_TS, upper_bound=ub_TS)
 
             # eq: sum_TS = sum(share_TS_i) # TS
@@ -638,6 +643,7 @@ class SingleShareModel(ElementModel):
 
 
 class SegmentedSharesModel(ElementModel):
+    #TODO: Length...
     def __init__(self,
                  element: Element,
                  variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
@@ -653,30 +659,41 @@ class SegmentedSharesModel(ElementModel):
         self._share_segments = share_segments
         self._shares: Optional[Dict['Effect', SingleShareModel]] = None
         self._segments_model: Optional[MultipleSegmentsModel] = None
+        self._as_tme_series: bool = isinstance(self._variable_segments[0], VariableTS)
 
     def do_modeling(self, system_model: SystemModel):
-        self._shares = {effect: SingleShareModel(self.element, False, f'{effect.label}_segmented')
+        length = system_model.nr_of_time_steps if self._as_tme_series else 1
+        self._shares = {effect: create_variable(f'{effect.label}_segmented', self, length, system_model)
                         for effect in self._share_segments}
-        for single_share in self._shares.values():
-            single_share.do_modeling(system_model)
-            self.sub_models.append(single_share)
 
         segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
-            self._shares[effect].single_share: segment for effect, segment in self._share_segments.items()}
+            **{self._shares[effect]: segment for effect, segment in self._share_segments.items()},
+            **{self._variable_segments[0]: self._variable_segments[1]}
+        }
+
         self._segments_model = MultipleSegmentsModel(self.element, segments,
-                                                     can_be_outside_segments=self._can_be_outside_segments)
+                                                     can_be_outside_segments=self._can_be_outside_segments,
+                                                     as_time_series=self._as_tme_series)
         self._segments_model.do_modeling(system_model)
         self.sub_models.append(self._segments_model)
 
         # Shares
         effect_collection = system_model.effect_collection_model
-        for effect, single_share_model in self._shares.items():
-            effect_collection.add_share_to_invest(
-                name='segmented_effects',
-                element=self.element,
-                effect_values={effect: 1},
-                factor=1,
-                variable=single_share_model.single_share)
+        for effect, variable in self._shares.items():
+            if self._as_tme_series:
+                effect_collection.add_share_to_operation(
+                    name='segmented_effects',
+                    element=self.element,
+                    effect_values={effect: 1},
+                    factor=1,
+                    variable=variable)
+            else:
+                effect_collection.add_share_to_invest(
+                    name='segmented_effects',
+                    element=self.element,
+                    effect_values={effect: 1},
+                    factor=1,
+                    variable=variable)
 
 
 class PreventSimultaneousUsageModel(ElementModel):

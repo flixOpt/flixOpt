@@ -371,7 +371,7 @@ def create_equation(label: str, element_model: ElementModel, system_model: Syste
     return eq
 
 
-def create_ts_variable(label: str,
+def create_variable(label: str,
                        element_model: ElementModel,
                        length: int,
                        system_model: SystemModel,
@@ -382,24 +382,14 @@ def create_ts_variable(label: str,
                        before_value: Optional[Numeric] = None,
                        ) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
-    var = VariableTS(f'{element_model.label_full}_{label}', label, length, system_model,
-                     is_binary, value, lower_bound, upper_bound, before_value)
+    variable_label = f'{element_model.label_full}_{label}'
+    if length > 1:
+        var = VariableTS(variable_label, label, length, system_model,
+                         is_binary, value, lower_bound, upper_bound, before_value)
+        logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
+    else:
+        var = Variable(variable_label, label, length, system_model,
+                       is_binary, value, lower_bound, upper_bound)
+        logger.debug(f'Created Variable "{variable_label}"')
     element_model.add_variables(var)
     return var
-
-
-def create_variable(label: str,
-                    element_model: ElementModel,
-                    length: int,
-                    system_model: SystemModel,
-                    is_binary: bool = False,
-                    value: Optional[Numeric] = None,
-                    lower_bound: Optional[Numeric] = None,
-                    upper_bound: Optional[Numeric] = None,
-                    ) -> Variable:
-    """ Creates a Variable and adds it to the model of the Element """
-    var = Variable(f'{element_model.label_full}_{label}', label, length, system_model,
-                   is_binary, value, lower_bound, upper_bound)
-    element_model.add_variables(var)
-    return var
-
