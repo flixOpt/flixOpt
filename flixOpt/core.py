@@ -110,6 +110,30 @@ class TimeSeries:
                  f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}')
             self.aggregated_data = self.make_scalar_if_possible(aggregated_data)
 
+    @property
+    def active_data(self) -> Numeric:
+        if self.aggregated_data is not None:  # Aggregated data is always active, if present
+            return self.aggregated_data
+
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_indices is None)
+        if indices_not_applicable:
+            return self.data
+        else:
+            return self.data[self.active_indices]
+
+    @property
+    def active_data_vector(self) -> np.ndarray:
+        # Always returns the active data as a vector.
+        return utils.as_vector(self.active_data, len(self.active_indices))
+
+    @property
+    def is_scalar(self) -> bool:
+        return np.isscalar(self.data)
+
+    @property
+    def is_array(self) -> bool:
+        return not self.is_scalar and self.data is not None
+
     def __repr__(self):
         return (f"TimeSeries(label={self.label}, "
                 f"aggregation_weight={self.aggregation_weight}, "
@@ -145,30 +169,6 @@ class TimeSeries:
             infos = f"TimeSeries({data_stats})"
 
         return infos
-
-    @property
-    def active_data_vector(self) -> np.ndarray:
-        # Always returns the active data as a vector.
-        return utils.as_vector(self.active_data, len(self.active_indices))
-
-    @property
-    def active_data(self) -> Numeric:
-        if self.aggregated_data is not None:  # Aggregated data is always active, if present
-            return self.aggregated_data
-
-        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_indices is None)
-        if indices_not_applicable:
-            return self.data
-        else:
-            return self.data[self.active_indices]
-
-    @property
-    def is_scalar(self) -> bool:
-        return np.isscalar(self.data)
-
-    @property
-    def is_array(self) -> bool:
-        return not self.is_scalar and self.data is not None
 
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
