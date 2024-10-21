@@ -24,6 +24,7 @@ Numeric_TS = Union[Skalar, np.ndarray]
 
 
 class TimeSeriesData:
+    # TODO: Move to Interface.py
     def __init__(self,
                  data: Numeric,
                  agg_group: Optional[str] = None,
@@ -65,7 +66,7 @@ class TimeSeriesData:
 
 
 class TimeSeries:
-    '''
+    """
     Class for data that applies to time series, stored as vector (np.ndarray) or scalar.
 
     This class represents a vector or scalar value that makes the handling of time series easier.
@@ -86,7 +87,7 @@ class TimeSeries:
         Indices of the time steps to activate.
     aggregation_weight : float
         Weight for aggregation method, between 0 and 1, normally 1.
-    '''
+    """
 
     def __init__(self, label: str, data: Optional[Numeric_TS]):
         self.label: str = label
@@ -293,6 +294,7 @@ def as_effect_dict_with_ts(name_of_param: str,
     return effect_ts_dict
 
 
+# TODO: Move logging to utils.py
 class CustomFormatter(logging.Formatter):
     # ANSI escape codes for colors
     COLORS = {
