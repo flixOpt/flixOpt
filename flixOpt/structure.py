@@ -241,10 +241,6 @@ class Element:
     def create_model(self) -> None:
         raise NotImplementedError(f'Every Element needs a create_model() method')
 
-    def get_results(self) -> Tuple[Dict, Dict]:
-        """Get results after the solve"""
-        return self.model.results
-
     def __repr__(self):
         return f"<{self.__class__.__name__}> {self.label}"
 
@@ -346,7 +342,7 @@ class ElementModel:
             to_process.extend(model.sub_models)
         return all_subs
 
-    def results(self):
+    def results(self) -> Dict:
         return {**{variable.label_short: variable.result for variable in self.variables.values()},
                 **{model.label: model.results() for model in self.sub_models}}
 
