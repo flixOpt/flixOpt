@@ -27,14 +27,19 @@ class Variable:
     """
     def __init__(self,
                  label: str,
+                 label_short: str,
                  length: int,
-                 label_of_owner: str,
                  math_model: 'MathModel',
                  is_binary: bool = False,
                  value: Optional[Skalar] = None,
                  lower_bound: Optional[Skalar] = None,
                  upper_bound: Optional[Skalar] = None):
+        """
+        label: full label of the variable
+        label_short: short label of the variable
+        """
         self.label = label
+        self.label_short = label_short
         self.length = length
         self.math_model = math_model
         self.is_binary = is_binary
@@ -43,30 +48,23 @@ class Variable:
         self.upper_bound = upper_bound
 
         self.indices = range(self.length)
-        self.label_full = f"{label_of_owner}__{label}"
         self.fixed = False
 
         self._result = None  # Ergebnis-Speicher
-
-        self.label = utils.check_name_for_conformity(label)  # Check label for conformity
 
         if value is not None:   # Check if value is within bounds, element-wise
             min_ok = (self.lower_bound is None) or np.all(self.value >= self.lower_bound)
             max_ok = (self.upper_bound is None) or np.all(self.value <= self.upper_bound)
 
             if not (min_ok and max_ok):
-                raise Exception(f'Variable.value {self.label_full} not inside set bounds')
+                raise Exception(f'Variable.fixed_value {self.label} not inside set bounds:'
+                                f'\n{self.value=};\n{self.lower_bound=};\n{self.upper_bound=}')
 
             # Set value and mark as fixed
             self.fixed = True
             self.value = utils.as_vector(value, length)
 
         logger.debug('Variable created: ' + self.label)
-
-        # Register Element:
-        # owner .variables.append(self) # Komponentenliste
-        #math_model.variables.append(self)  # math_model-Liste mit allen vars
-        #owner.model.variables.append(self)  # TODO: not nice, that this specific thing for energysystems is done here
 
     def description(self, max_length_ts=60) -> str:
         bin_type = 'bin' if self.is_binary else '   '
@@ -90,7 +88,7 @@ class Variable:
                 self._pyomo_comp = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
 
             # Register in pyomo-model:
-            math_model._pyomo_register(self._pyomo_comp, f'var__{self.label_full}')
+            math_model._pyomo_register(self._pyomo_comp, f'var__{self.label}')
 
             lower_bound_vector = utils.as_vector(self.lower_bound, self.length)
             upper_bound_vector = utils.as_vector(self.upper_bound, self.length)
@@ -146,8 +144,8 @@ class VariableTS(Variable):
     """
     def __init__(self,
                  label: str,
+                 label_short: str,
                  length: int,
-                 label_of_owner: str,
                  math_model: 'MathModel',
                  is_binary: bool = False,
                  value: Optional[Numeric] = None,
@@ -156,14 +154,14 @@ class VariableTS(Variable):
                  before_value: Optional[Numeric] = None,
                  before_value_is_start_value: bool = False):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        super().__init__(label, length, label_of_owner, math_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
+        super().__init__(label, label_short, length, math_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
         self._before_value = before_value
         self.before_value_is_start_value = before_value_is_start_value
 
     @property
     def before_value(self) -> Optional[Numeric]:
         # Return value if found in before_values, else return stored value
-        return self.math_model.before_values.get(self.label_full) or self._before_value
+        return self.math_model.before_values.get(self.label) or self._before_value
 
     @before_value.setter
     def before_value(self, value: Numeric):
@@ -180,10 +178,15 @@ class Equation:
     """
     def __init__(self,
                  label: str,
-                 owner,
-                 math_model: 'MathModel',
+                 label_short: str,
+                 math_model: 'MathModel',  #TODO Remove
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
+        """
+        label: full label of the variable
+        label_short: short label of the variable
+        """
         self.label = label
+        self.label_short = label_short
         self.listOfSummands = []
         self.constant = 0  # rechte Seite
 
@@ -191,10 +194,9 @@ class Equation:
         self.constant_vector = np.array([0])
         self.parts_of_constant = []  # liste mit shares von constant
         self.eqType = eqType
-        self.myMom = owner
         self._pyomo_comp = None  # z.B. für pyomo : pyomoComponente
 
-        logger.debug('equation created: ' + str(label))
+        logger.debug(f'Equation created: {self.label}')
 
     def add_summand(self,
                     variable: Variable,
@@ -265,7 +267,7 @@ class Equation:
         self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
 
     def to_math_model(self, math_model: 'MathModel') -> None:
-        logger.debug('eq ' + self.label + '.to_math_model()')
+        logger.debug(f'eq {self.label} .to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)
@@ -293,7 +295,7 @@ class Equation:
                 # Register im Pyomo:
                 math_model._pyomo_register(
                     self._pyomo_comp,
-                    f'eq_{self.myMom.label}_{self.label}'   # in pyomo-Modell mit eindeutigem Namen registrieren
+                    f'eq_{self.label}'   # in pyomo-Modell mit eindeutigem Namen registrieren
                 )
 
             # 2. Zielfunktion:
@@ -341,7 +343,7 @@ class Equation:
             index = summand.indices[i]
             factor = summand.factor_vec[i]
             factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
-            single_summand_str = f"{factor_str} * {summand.variable.label_full}[{index}]"
+            single_summand_str = f"{factor_str} * {summand.variable.label}[{index}]"
 
             if isinstance(summand, SumOfSummand):
                 summand_strings.append(
@@ -682,6 +684,9 @@ class MathModel:
         self.model.add_component(name_of_pyomo_comp, pyomo_comp)   # überschreiben:
 
     ######## Other Modeling Languages
+
+    def results(self):
+        return {variable.label: variable.result for variable in self.variables}
 
 
 class SolverLog:

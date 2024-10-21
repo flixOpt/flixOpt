@@ -11,14 +11,13 @@ import math
 import pathlib
 import timeit
 from typing import List, Dict, Optional, Literal, Tuple, Union
-from pprint import pp
 
 import numpy as np
+import yaml
 
 from flixOpt import utils
 from flixOpt.aggregation import TimeSeriesCollection
-from flixOpt.core import Skalar, Numeric
-from flixOpt.interface import TimeSeriesRaw
+from flixOpt.core import Skalar, Numeric, TimeSeriesRaw
 from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
@@ -28,39 +27,9 @@ logger = logging.getLogger('flixOpt')
 
 class Calculation:
     """
-    class for defined way of solving a flow_system optimizatino
+    class for defined way of solving a flow_system optimization
     """
-
-    @property
-    def infos(self):
-        infos = {}
-
-        calcInfos = self._infos
-        infos['calculation'] = calcInfos
-        calcInfos['name'] = self.name
-        calcInfos['no ChosenIndexe'] = len(self.time_indices)
-        calcInfos['calculation_type'] = self.__class__.__name__
-        calcInfos['duration'] = self.durations
-        infos['system_description'] = self.flow_system.description_of_system()
-        infos['system_models'] = {}
-        infos['system_models']['duration'] = [system_model.duration for system_model in self.system_models]
-        infos['system_models']['info'] = [system_model.infos for system_model in self.system_models]
-
-        return infos
-
-    @property
-    def results(self):
-        # wenn noch nicht belegt, dann aus system_model holen
-        if self._results is None:
-            self._results = self.system_models[0].results  # (bei segmented Calc ist das schon explizit belegt.)
-        return self._results
-
-    @property
-    def results_struct(self):
-        raise NotImplementedError()
-
-    # time_indices: die Indexe des Energiesystems, die genutzt werden sollen. z.B. [0,1,4,6,8]
-    def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
@@ -71,26 +40,45 @@ class Calculation:
             flow_system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
-        time_indices : None, list
-            list with indexe, which should be used for calculation. If None, then all timesteps are used.
+        time_indices : List[int] or None
+            list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
         self.name = name
         self.flow_system = flow_system
         self.modeling_language = modeling_language
         self.time_indices = time_indices
-        self._infos = {}
 
-        self.system_models: List[SystemModel] = []
+        self.system_model: Optional[SystemModel] = None
         self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
 
-        self.time_indices = time_indices or range(len(flow_system.time_series))  # Wenn time_indices = None, dann alle nehmen
-        (self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total) = (
-            flow_system.get_time_data_from_indices(self.time_indices))
-        utils.check_time_series('time_indices', self.time_series)
-
-        self._paths = {'log': None, 'data': None, 'info': None}
+        self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
-        self._results_struct = None  # hier kommen die verschmolzenen Ergebnisse der Segmente rein!
+
+    def description_of_equations_as_dict(self, system_model: int = 0) -> Dict:
+        return {'Components': {comp.label: comp.model.description_of_equations for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_equations for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_equations}
+
+    def description_of_variables_as_dict(self, system_model: int = 0) -> Dict:
+        return {'Components': {comp.label: comp.model.description_of_variables + [{flow.label: flow.model.description_of_variables
+                                                                         for flow in comp.inputs + comp.outputs}]
+                          for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_variables for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_variables}
+
+    def describe_equations(self, system_model: int = 0) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Equations of FlowSystem ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_equations_as_dict(system_model), default_flow_style=False, allow_unicode=True)}')
+
+    def describe_variables(self, system_model: int = 0) -> str:
+        return (f'\n'
+                f'{"":#^80}\n'
+                f'{" Variables of FlowSystem ":#^80}\n\n'
+                f'{yaml.dump(self.description_of_variables_as_dict(system_model))}')
 
     def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True,
                            nr_of_system_models: int = 1):
@@ -109,28 +97,17 @@ class Calculation:
             self._paths["data"] = path / f'{self.name}_data.pickle'
             self._paths["info"] = path / f'{self.name}_solvingInfos.yaml'
 
-    def check_if_already_modeled(self):
-        if self.flow_system.temporary_elements:  # if some element in this list
-            raise Exception(f'The Energysystem has some temporary modelingElements from previous calculation '
-                            f'(i.g. aggregation-Modeling-Elements. These must be deleted before new calculation.')
-
     def _save_solve_infos(self):
-        import yaml
-        # Daten:
-        # with open(yamlPath_Data, 'w') as f:
-        #   yaml.dump(self.results, f, sort_keys = False)
-        import pickle
-        with open(self._paths['data'], 'wb') as f:
-            pickle.dump(self.results, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-        # Infos:'
-        with open(self._paths['info'], 'w', encoding='utf-8') as f:
-            yaml.dump(self.infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
-                      allow_unicode=True, sort_keys=False)
         message = f' Saved Calculation: {self.name} '
         logger.info(f'{"":#^80}\n'
                     f'{message:#^80}\n'
                     f'{"":#^80}')
+
+    @property
+    def results(self):
+        if self._results is None:
+            self._results = self.system_model.results()
+        return self._results
 
 
 class FullCalculation(Calculation):
@@ -139,22 +116,17 @@ class FullCalculation(Calculation):
     """
 
     def do_modeling(self) -> SystemModel:
-        self.check_if_already_modeled()
-        self.flow_system.finalize()  # FlowSystem finalisieren:
-
         t_start = timeit.default_timer()
-        system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
-        self.flow_system.activate_model(system_model, self.time_indices)  # model aktivieren:
-        self.flow_system.do_modeling_of_elements()  # modellieren:
-        self.flow_system.transform_to_math_model()
+        self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
+        self.system_model.do_modeling()
+        self.system_model.to_math_model()
 
-        self.system_models.append(system_model)
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
-        return system_model
+        return self.system_model
 
     def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
-        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
+        self.system_model.solve(**solverProps, logfile_name=self._paths['log'][0])
 
         if save_results:
             self._save_solve_infos()
