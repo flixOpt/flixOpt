@@ -5,7 +5,6 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-# TODO: as_vector() -> int32 Vektoren möglich machen
 import logging
 from typing import Union, List, Optional, Dict, Literal
 
@@ -19,7 +18,7 @@ logger = logging.getLogger('flixOpt')
 
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
-    '''
+    """
     Macht aus Skalar einen Vektor. Vektor bleibt Vektor.
     -> Idee dahinter: Aufruf aus abgespeichertem Vektor schneller, als für jede i-te Gleichung zu Checken ob Vektor oder Skalar)
 
@@ -28,8 +27,9 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
 
     aValue: skalar, list, np.array
     aLen  : skalar
-    '''
+    """
     # dtype = 'float64' # -> muss mit übergeben werden, sonst entstehen evtl. int32 Reihen (dort ist kein +/-inf möglich)
+    # TODO: as_vector() -> int32 Vektoren möglich machen
 
     # Wenn Skalar oder None, return directly as array
     if value is None:
@@ -46,13 +46,6 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
         return np.array(value)
 
 
-def zero_to_nan(vector: np.ndarray) -> np.ndarray:
-    # changes zeros to Nans in Vector:
-    nan_vector = vector.astype(float)  # Binär ist erstmal int8-Vektor, Nan gibt es da aber nicht
-    nan_vector[nan_vector == 0] = math.nan
-    return nan_vector
-
-
 def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesRaw],
                  label: str,
                  lower_bound: Numeric,
@@ -65,44 +58,6 @@ def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesRaw],
         raise Exception(f'{label} is above its {upper_bound=}!')
 
 
-def check_name_for_conformity(label: str):
-    # löscht alle in Attributen ungültigen Zeichen: todo: Vollständiger machen!
-    char_map = {ord('ä'): 'ae',
-                ord('ü'): 'ue',
-                ord('ö'): 'oe',
-                ord('ß'): 'ss',
-                ord('-'): '_'}
-    new_label = label.translate(char_map)
-    if new_label != label:
-        logger.warning(f'{label=} doesnt allign with name restrictions and is changed to {new_label=}')
-
-    # check, ob jetzt valid variable name: (für Verwendung in results_struct notwendig)
-    import re
-    if not re.search(r'^[a-zA-Z_]\w*$', new_label):
-        raise Exception('label \'' + label + '\' is not valid for variable name \n .\
-                     (no number first, no special characteres etc.)')
-    return new_label
-
-
-def check_exists(exists: Union[int, list, np.ndarray])-> Union[int, list,np.ndarray]:
-    # type checking for argument "exist"
-    if np.all(np.isin(exists, [0, 1])):
-        return exists
-    else:
-        raise ValueError(f"Argument 'exists' must be int, list or np.ndarray with values 0 or 1")
-
-
-class InfiniteFullSet(object):
-    def __and__(self, item):  # left operand of &
-        return item
-
-    def __rand__(self, item):  # right operand of &
-        return item
-
-    def __str__(self):
-        return ('<InfiniteFullSet>')
-
-
 def is_number(number_alias: Union[Skalar, str]):
     """ Returns True is string is a number. """
     try:
@@ -110,59 +65,6 @@ def is_number(number_alias: Union[Skalar, str]):
         return True
     except ValueError:
         return False
-
-def createStructFromDictInDict(aDict: Dict):
-    # Macht aus verschachteltem Dict ein "matlab-struct"-like object
-    # --> als FeldNamen wird key verwendet wenn string, sonst key.label
-
-    # --> dict[key1]['key1_1'] -> struct.key1.key1_1
-
-    # z.B.:
-    #      {Kessel_object : {'Q_th':{'on':[..], 'val': [..]}
-    #                        'Pel' :{'on':[..], 'val': [..]} }
-    #       Last_object   : {'Q_th':{'val': [..]           } } }
-
-    aStruct = cDataBox2()
-    if isinstance(aDict, dict):
-        for key, val in aDict.items():
-
-            ## 1. attr-name :
-
-            # Wenn str (z.b. 'Q_th') :
-            if isinstance(key, str):
-                name = key
-            # sonst (z.B. bei Kessel_object):
-            else:
-                try:
-                    name = key.label
-                except:
-                    raise Exception('key has no label!')
-
-            ## 2. value:
-            # Wenn Wert wiederum dict, dann rekursiver Aufruf:
-            if isinstance(val, dict):
-                value = createStructFromDictInDict(val)  # rekursiver Aufruf!
-            else:
-                value = val
-
-            if hasattr(aStruct, name):
-                name = name + '_2'
-            setattr(aStruct, name, value)
-    else:
-        raise Exception('fct needs dict!')
-
-    return aStruct
-
-
-# emuliert matlab - struct-datentyp. (-> durch hinzufügen von Attributen)
-class cDataBox2:
-    # pass
-    def __str__(self):
-        astr = ('<cDataBox with ' + str(len(self.__dict__)) + ' values: ')
-        for aAttr in self.__dict__.keys():
-            astr += aAttr + ', '
-        astr += '>'
-        return astr
 
 
 def check_time_series(label: str,
@@ -181,29 +83,6 @@ def check_time_series(label: str,
     # negative dt:
     if np.min(dt_in_hours) < 0:
         raise Exception(label + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
-
-
-def printDictAndList(aDictOrList) -> str:
-    import yaml
-    return yaml.dump(aDictOrList,
-                    default_flow_style=False,
-                    width=1000,  # verhindern von zusätzlichen Zeilenumbrüchen
-                    allow_unicode=True)
-
-
-def get_max_value(*args: Union[Numeric, List[Skalar]]) -> Skalar:
-    """Get the maximum value from multiple values, lists, or arrays of values."""
-    return merge_to_array(*args).max()
-
-
-def get_min_value(*args: Union[Numeric, List[Skalar]]) -> Skalar:
-    """Get the minimum value from multiple values, lists, or arrays of values."""
-    return merge_to_array(*args).min()
-
-
-def merge_to_array(*args: Union[Numeric, List[Skalar]]) -> np.ndarray:
-    """Merge multiple values to a single array"""
-    return np.concatenate([np.array(arg).ravel() for arg in args])
 
 
 def apply_formating(data_dict: Dict[str, Union[int, float]],
