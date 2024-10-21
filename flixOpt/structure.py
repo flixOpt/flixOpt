@@ -226,6 +226,9 @@ class SystemModel(MathModel):
 class Element:
     """ Basic Element of flixOpt"""
     def __init__(self, label: str):
+        if not utils.label_is_valid(label):
+            logger.critical(f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
+                            f"Use any other symbol instead")
         self.label = label
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None

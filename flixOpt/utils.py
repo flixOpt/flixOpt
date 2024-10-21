@@ -99,3 +99,10 @@ def apply_formating(data_dict: Dict[str, Union[int, float]],
 
     lines = [f'{indent*" "}{key:{key_format}}: {data_dict[key]:{value_format}}' for key in sorted_keys]
     return '\n'.join(lines)
+
+
+def label_is_valid(label: str) -> bool:
+    """ Function to make shure '__' is reserved for internal splitting of labels"""
+    if label.startswith('_') or label.endswith('_') or '__' in label:
+        return False
+    return True
