@@ -77,38 +77,44 @@ class TimeSeries:
     ----------
     label : str
         The label for the time series.
-    TSraw : Optional[TimeSeriesData]
-        The raw time series data if provided as cTSraw.
     data : Optional[Numeric]
         The actual data for the time series. Can be None.
-    explicit_active_data : Optional[Numeric]
-        Explicit data to use instead of raw data if provided.
-    active_time_indices : Optional[np.ndarray]
+    aggregated_data : Optional[Numeric]
+        aggregated_data to use instead of data if provided.
+    active_indices : Optional[np.ndarray]
         Indices of the time steps to activate.
     aggregation_weight : float
         Weight for aggregation method, between 0 and 1, normally 1.
+    aggregation_group : str
+        Group for calculating the aggregation weigth for aggregation method.
     """
 
     def __init__(self, label: str, data: Optional[Numeric_TS]):
         self.label: str = label
-        self.active_time_indices = None  # aktuelle time_indices der model
-        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
-        self.TSraw = None
-
         if isinstance(data, TimeSeriesData):
-            self.data: Optional[Numeric] = self.make_scalar_if_possible(data.data)
-            self.TSraw = data
+            self.data = self.make_scalar_if_possible(data.data)
+            self.aggregation_weight, self.aggregation_group = data.agg_weight, data.agg_group
         else:
-            self.data: Optional[Numeric] = self.make_scalar_if_possible(data)
+            self.data = self.make_scalar_if_possible(data)
+            self.aggregation_weight, self.aggregation_group = None, None
 
-        self._aggregation_weight = None
-        self._aggregation_group = None
+        self.active_indices: Optional[Union[range, List[int]]] = None
+        self.aggregated_data: Optional[Numeric] = None
+
+    def activate_indices(self, indices: Optional[Union[range, List[int]]], aggregated_data: Optional[Numeric] = None):
+        self.active_indices = indices
+
+        if aggregated_data is not None:
+            assert len(aggregated_data) == len(self.active_indices) or len(aggregated_data) == 1, \
+                (f'The aggregated_data has the wrong length for TimeSeries {self.label}. '
+                 f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}')
+            self.aggregated_data = self.make_scalar_if_possible(aggregated_data)
 
     def __repr__(self):
         return (f"TimeSeries(label={self.label}, "
                 f"aggregation_weight={self.aggregation_weight}, "
-                f"data={self.data}, active_time_indices={self.active_time_indices}, "
-                f"explicit_active_data={self.explicit_active_data}")
+                f"data={self.data}, active_indices={self.active_indices}, "
+                f"aggregated_data={self.aggregated_data}")
 
     def __str__(self):
         active_data = self.active_data
@@ -127,9 +133,9 @@ class TimeSeries:
         if all_indices_active:
             further_infos.append(f"indices='{all_indices_active}'")
         if self.aggregation_weight is not None:
-            further_infos.append(f"aggregation_weight={self._aggregation_weight}")
+            further_infos.append(f"aggregation_weight={self.aggregation_weight}")
         if self.aggregation_group is not None:
-            further_infos.append(f"aggregation_group= '{self._aggregation_weight}'")
+            further_infos.append(f"aggregation_group= '{self.aggregation_group}'")
         if self.explicit_active_data is not None:
             further_infos.append(f"'Explicit Active Data was used'")
 
@@ -143,19 +149,18 @@ class TimeSeries:
     @property
     def active_data_vector(self) -> np.ndarray:
         # Always returns the active data as a vector.
-        return utils.as_vector(self.active_data, len(self.active_time_indices))
+        return utils.as_vector(self.active_data, len(self.active_indices))
 
     @property
     def active_data(self) -> Numeric:
-        # wenn explicit_active_data gesetzt wurde:
-        if self.explicit_active_data is not None:
-            return self.explicit_active_data
+        if self.aggregated_data is not None:  # Aggregated data is always active, if present
+            return self.aggregated_data
 
-        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_time_indices is None)
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_indices is None)
         if indices_not_applicable:
             return self.data
         else:
-            return self.data[self.active_time_indices]
+            return self.data[self.active_indices]
 
     @property
     def is_scalar(self) -> bool:
@@ -164,14 +169,6 @@ class TimeSeries:
     @property
     def is_array(self) -> bool:
         return not self.is_scalar and self.data is not None
-
-    @property
-    def aggregation_weight(self) -> Optional[float]:
-        return None if self.TSraw is None else self.TSraw.agg_weight
-
-    @property
-    def aggregation_group(self) -> Optional[str]:
-        return None if self.TSraw is None else self.TSraw.agg_group
 
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
@@ -196,14 +193,6 @@ class TimeSeries:
         if np.all(data == data[0]):
             return data[0]
         return data
-
-    def activate(self, time_indices, explicit_active_data: Optional = None):
-        self.active_time_indices = time_indices
-
-        if explicit_active_data is not None:
-            assert len(explicit_active_data) == len(self.active_time_indices) or len(explicit_active_data) == 1, \
-                'explicit_active_data has incorrect length!'
-            self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
 
 
 def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[Dict]:
