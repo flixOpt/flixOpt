@@ -360,8 +360,8 @@ class ElementModel:
 
 def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:
     """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
-    time_series = TimeSeries(label=label, data=data)
-    element.TS_list.append(time_series)
+    time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data)
+    element.used_time_series.append(time_series)
     return time_series
 
 
