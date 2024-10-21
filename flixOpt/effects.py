@@ -12,12 +12,12 @@ import numpy as np
 
 from flixOpt.math_modeling import Variable, Equation
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
-from flixOpt.modeling import ShareAllocationModel
+from flixOpt.features import ShareAllocationModel
 from flixOpt.structure import Element, ElementModel, SystemModel, _create_time_series
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.flow_system import FlowSystem
-    from flixOpt.modeling import ComponentModel, BusModel
+    from flixOpt.features import ComponentModel, BusModel
 
 
 logger = logging.getLogger('flixOpt')

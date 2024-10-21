@@ -15,7 +15,7 @@ from flixOpt import utils
 from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.modeling import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
+from flixOpt.features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
 from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
     create_variable
 from flixOpt.effects import EffectValues, _effect_values_to_ts, EffectCollectionModel

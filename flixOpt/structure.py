@@ -205,7 +205,7 @@ class SystemModel(MathModel):
 
         invest_decisions = {'invested': {}, 'not invested': {}}
         main_results['Invest-Decisions'] = invest_decisions
-        from flixOpt.modeling import InvestmentModel
+        from flixOpt.features import InvestmentModel
         for sub_model in self.sub_models:
             if isinstance(sub_model, InvestmentModel):
                 invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern

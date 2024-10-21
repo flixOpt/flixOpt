@@ -14,7 +14,7 @@ from flixOpt import utils
 from flixOpt.elements import Flow, _create_time_series
 from flixOpt.core import Skalar, Numeric_TS, TimeSeries, Numeric
 from flixOpt.math_modeling import VariableTS, Equation
-from flixOpt.modeling import OnOffModel, MultipleSegmentsModel, InvestmentModel
+from flixOpt.features import OnOffModel, MultipleSegmentsModel, InvestmentModel
 from flixOpt.structure import SystemModel, create_equation, create_variable
 from flixOpt.elements import Component, ComponentModel
 from flixOpt.interface import InvestParameters, OnOffParameters
