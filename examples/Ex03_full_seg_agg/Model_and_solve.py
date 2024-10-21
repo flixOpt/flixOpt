@@ -158,11 +158,11 @@ aSpeicher = Storage('Speicher',
                     minimal_final_charge_state=137, maximal_final_charge_state=158,
                     eta_load=1, eta_unload=1, relative_loss_per_hour=0.001, prevent_simultaneous_charge_and_discharge=True)
 
-TS_Q_th_Last = TimeSeriesRaw(Q_th_Last)
+TS_Q_th_Last = TimeSeriesData(Q_th_Last)
 aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=TS_Q_th_Last))
 
 # TS with explicit defined weight
-TS_P_el_Last = TimeSeriesRaw(P_el_Last, agg_weight=0.7)  # explicit defined weight
+TS_P_el_Last = TimeSeriesData(P_el_Last, agg_weight=0.7)  # explicit defined weight
 aStromLast = Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, fixed_relative_value=TS_P_el_Last))
 
 aKohleTarif = Source('Kohletarif',
@@ -171,8 +171,8 @@ aKohleTarif = Source('Kohletarif',
 aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: gP, CO2: 0.3}))
 
 # 2 TS with same aggType (--> implicit defined weigth = 0.5)
-p_feed_in = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el')  # weight shared in group p_el
-p_sell = TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
+p_feed_in = TimeSeriesData(-(p_el - 0.5), agg_group='p_el')  # weight shared in group p_el
+p_sell = TimeSeriesData(p_el + 0.5, agg_group='p_el')
 # p_feed_in = p_feed_in.value # only value
 # p_sell    = p_sell.value # only value
 aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour=p_feed_in))

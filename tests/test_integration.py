@@ -341,11 +341,11 @@ class TestModelingTypes(BaseTest):
         aKWK = CHP('BHKW2', eta_th=0.58, eta_el=0.22, effects_per_switch_on=24000, P_el=Flow('P_el', bus=Strom), Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Kohle, size=288, relative_minimum=87 / 288), on_values_before_begin=[0])
         aSpeicher = Storage('Speicher', charging=Flow('Q_th_load', size=137, bus=Fernwaerme), discharging=Flow('Q_th_unload', size=158, bus=Fernwaerme), capacity_in_flow_hours=684, initial_charge_state=137, minimal_final_charge_state=137, maximal_final_charge_state=158, eta_load=1, eta_unload=1, relative_loss_per_hour=0.001, prevent_simultaneous_charge_and_discharge=True)
 
-        TS_Q_th_Last, TS_P_el_Last = TimeSeriesRaw(Q_th_Last), TimeSeriesRaw(P_el_Last, agg_weight=0.7)
+        TS_Q_th_Last, TS_P_el_Last = TimeSeriesData(Q_th_Last), TimeSeriesData(P_el_Last, agg_weight=0.7)
         aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=TS_Q_th_Last)), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, fixed_relative_value=TS_P_el_Last))
         aKohleTarif, aGasTarif = Source('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3})), Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: gP, CO2: 0.3}))
 
-        p_feed_in, p_sell = TimeSeriesRaw(-(p_el - 0.5), agg_group='p_el'), TimeSeriesRaw(p_el + 0.5, agg_group='p_el')
+        p_feed_in, p_sell = TimeSeriesData(-(p_el - 0.5), agg_group='p_el'), TimeSeriesData(p_el + 0.5, agg_group='p_el')
         aStromEinspeisung, aStromTarif = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour=p_feed_in)), Source('Stromtarif', source=Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour={costs: p_sell, CO2: 0.3}))
 
         es = FlowSystem(aTimeSeries, last_time_step_hours=None)

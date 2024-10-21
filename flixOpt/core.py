@@ -20,12 +20,12 @@ Numeric_TS = Union[Skalar, np.ndarray]
 # Datatype Numeric_TS:
 #   Skalar      --> wird später dann in array ("Zeitreihe" mit length=nrOfTimeIndexe) übersetzt
 #   np.ndarray  --> muss length=nrOfTimeIndexe haben ("Zeitreihe")
-#   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
+#   TimeSeriesData      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
-class TimeSeriesRaw:
+class TimeSeriesData:
     def __init__(self,
-                 value: Union[int, float, np.ndarray],
+                 data: Numeric,
                  agg_group: Optional[str] = None,
                  agg_weight: Optional[float] = None):
         """
@@ -34,18 +34,18 @@ class TimeSeriesRaw:
             EXAMPLE solar:
             you have several solar timeseries. These should not be overweighted
             compared to the remaining timeseries (i.g. heat load, price)!
-            fixed_relative_value_solar1 = TimeSeriesRaw(sol_array_1, type = 'solar')
-            fixed_relative_value_solar2 = TimeSeriesRaw(sol_array_2, type = 'solar')
-            fixed_relative_value_solar3 = TimeSeriesRaw(sol_array_3, type = 'solar')
+            fixed_relative_value_solar1 = TimeSeriesData(sol_array_1, type = 'solar')
+            fixed_relative_value_solar2 = TimeSeriesData(sol_array_2, type = 'solar')
+            fixed_relative_value_solar3 = TimeSeriesData(sol_array_3, type = 'solar')
             --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3
             (instead of standard weight = 1)
 
         Parameters
         ----------
-        value : Union[int, float, np.ndarray]
+        data : Union[int, float, np.ndarray]
             The timeseries data, which can be a scalar, array, or numpy array.
         agg_group : str, optional
-            The group this TimeSeriesRaw is a part of. agg_weight is split between members of a group. Default is None.
+            The group this TimeSeriesData is a part of. agg_weight is split between members of a group. Default is None.
         agg_weight : float, optional
             The weight for calculation_type 'aggregated', should be between 0 and 1. Default is None.
 
@@ -54,14 +54,14 @@ class TimeSeriesRaw:
         Exception
             If both agg_group and agg_weight are set, an exception is raised.
         """
-        self.value = value
+        self.data = data
         self.agg_group = agg_group
         self.agg_weight = agg_weight
         if (agg_group is not None) and (agg_weight is not None):
             raise Exception('Either <agg_group> or explicit <agg_weigth> can be used. Not both!')
 
     def __repr__(self):
-        return f"TimeSeriesRaw(value={self.value}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
+        return f"TimeSeriesData(value={self.data}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
 
 
 class TimeSeries:
@@ -76,7 +76,7 @@ class TimeSeries:
     ----------
     label : str
         The label for the time series.
-    TSraw : Optional[TimeSeriesRaw]
+    TSraw : Optional[TimeSeriesData]
         The raw time series data if provided as cTSraw.
     data : Optional[Numeric]
         The actual data for the time series. Can be None.
@@ -94,8 +94,8 @@ class TimeSeries:
         self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
         self.TSraw = None
 
-        if isinstance(data, TimeSeriesRaw):
-            self.data: Optional[Numeric] = self.make_scalar_if_possible(data.value)
+        if isinstance(data, TimeSeriesData):
+            self.data: Optional[Numeric] = self.make_scalar_if_possible(data.data)
             self.TSraw = data
         else:
             self.data: Optional[Numeric] = self.make_scalar_if_possible(data)

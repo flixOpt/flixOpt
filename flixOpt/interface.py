@@ -128,7 +128,7 @@ class OnOffParameters:
             (last off-time period of timeseries is not checked and can be shorter)
         consecutive_off_hours_max : scalar, optional
             max sum of non-operating hours in one piece
-        effects_per_switch_on : scalar, array, TimeSeriesRaw, optional
+        effects_per_switch_on : scalar, array, TimeSeriesData, optional
             cost of one switch from off (var_on=0) to on (var_on=1),
             unit i.g. in Euro
         switch_on_total_max : integer, optional

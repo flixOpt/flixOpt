@@ -115,7 +115,7 @@ class Bus(Element):
         ----------
         label : str
             name.
-        excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesRaw
+        excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesData
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
@@ -187,9 +187,9 @@ class Flow(Element):
             name of flow
         bus : Bus, optional
             bus to which flow is linked
-        relative_minimum : scalar, array, TimeSeriesRaw, optional
+        relative_minimum : scalar, array, TimeSeriesData, optional
             min value is relative_minimum multiplied by size
-        relative_maximum : scalar, array, TimeSeriesRaw, optional
+        relative_maximum : scalar, array, TimeSeriesData, optional
             max value is relative_maximum multiplied by size. If size = max then relative_maximum=1
         size : scalar. None if is a nominal value is a opt-variable, optional
             nominal value/ invest size (linked to relative_minimum, relative_maximum and others).
@@ -202,7 +202,7 @@ class Flow(Element):
              def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
         load_factor_max : scalar, optional
             maximal load factor (see minimal load factor)
-        effects_per_flow_hour : scalar, array, TimeSeriesRaw, optional
+        effects_per_flow_hour : scalar, array, TimeSeriesData, optional
             operational costs, costs per flow-"work"
         can_be_off : OnOffParameters, optional
             flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
@@ -214,7 +214,7 @@ class Flow(Element):
         flow_hours_total_min : TYPE, optional
             minimum flow-hours ("flow-work")
             (if size is not const, maybe load_factor_min fits better for you!)
-        fixed_relative_value : scalar, array, TimeSeriesRaw, optional
+        fixed_relative_value : scalar, array, TimeSeriesData, optional
             fixed relative values for flow (if given).
             val(t) := fixed_relative_value(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;

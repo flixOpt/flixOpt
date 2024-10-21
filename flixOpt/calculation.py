@@ -17,7 +17,7 @@ import yaml
 
 from flixOpt import utils
 from flixOpt.aggregation import TimeSeriesCollection
-from flixOpt.core import Skalar, Numeric, TimeSeriesRaw
+from flixOpt.core import Skalar, Numeric, TimeSeriesData
 from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
@@ -195,10 +195,10 @@ class AggregatedCalculation(Calculation):
         useOriginalTimeSeries : boolean.
             orginal or aggregated timeseries should
             be chosen for the calculation. default is False.
-        addPeakMax : list of TimeSeriesRaw
+        addPeakMax : list of TimeSeriesData
             list of data-timeseries. The period with the max-value are
             chosen as a explicitly period.
-        addPeakMin : list of TimeSeriesRaw
+        addPeakMin : list of TimeSeriesData
             list of data-timeseries. The period with the min-value are
             chosen as a explicitly period.
 
