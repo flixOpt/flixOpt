@@ -92,12 +92,12 @@ class Effect(Element):
         self.description = description
         self.is_standard = is_standard
         self.is_objective = is_objective
-        self.specific_share_to_other_effects_operation: EffectValues = specific_share_to_other_effects_operation or {}
-        self.specific_share_to_other_effects_invest: EffectValuesInvest = specific_share_to_other_effects_invest or {}
+        self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_operation or {}
+        self.specific_share_to_other_effects_invest: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_invest or {}
         self.minimum_operation = minimum_operation
         self.maximum_operation = maximum_operation
-        self.minimum_operation_per_hour = minimum_operation_per_hour
-        self.maximum_operation_per_hour = maximum_operation_per_hour
+        self.minimum_operation_per_hour: Numeric_TS = minimum_operation_per_hour
+        self.maximum_operation_per_hour: Numeric_TS = maximum_operation_per_hour
         self.minimum_invest = minimum_invest
         self.maximum_invest = maximum_invest
         self.minimum_total = minimum_total

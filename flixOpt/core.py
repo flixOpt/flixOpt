@@ -16,7 +16,7 @@ logger = logging.getLogger('flixOpt')
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
 # zeitreihenbezogene Input-Daten:
-Numeric_TS = Union[Skalar, np.ndarray]
+Numeric_TS = Union[Skalar, np.ndarray, 'TimeSeries']
 # Datatype Numeric_TS:
 #   Skalar      --> wird später dann in array ("Zeitreihe" mit length=nrOfTimeIndexe) übersetzt
 #   np.ndarray  --> muss length=nrOfTimeIndexe haben ("Zeitreihe")

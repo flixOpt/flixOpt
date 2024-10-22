@@ -9,9 +9,10 @@ from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
 import numpy as np
 
-from flixOpt.core import Numeric, Skalar
+from flixOpt.core import Numeric, Skalar, Numeric_TS
 if TYPE_CHECKING:
-    from flixOpt.structure import Effect, Element
+    from flixOpt.structure import Element
+    from flixOpt.effects import EffectTimeSeries, EffectValues
 
 logger = logging.getLogger('flixOpt')
 
@@ -138,28 +139,17 @@ class OnOffParameters:
         """
         # self.flows_defining_on = flows_defining_on
         # self.on_values_before_begin = on_values_before_begin
-        self.effects_per_switch_on = effects_per_switch_on
-        self.effects_per_running_hour = effects_per_running_hour
+        self.effects_per_switch_on: Union[EffectValues, EffectTimeSeries] = effects_per_switch_on
+        self.effects_per_running_hour: Union[EffectValues, EffectTimeSeries] = effects_per_running_hour
         self.on_hours_total_min = on_hours_total_min  # scalar
         self.on_hours_total_max = on_hours_total_max  # scalar
-        self.consecutive_on_hours_min = consecutive_on_hours_min  # TimeSeries
-        self.consecutive_on_hours_max = consecutive_on_hours_max  # TimeSeries
-        self.consecutive_off_hours_min = consecutive_off_hours_min  # TimeSeries
-        self.consecutive_off_hours_max = consecutive_off_hours_max  # TimeSeries
+        self.consecutive_on_hours_min: Numeric_TS = consecutive_on_hours_min  # TimeSeries
+        self.consecutive_on_hours_max: Numeric_TS = consecutive_on_hours_max  # TimeSeries
+        self.consecutive_off_hours_min: Numeric_TS = consecutive_off_hours_min  # TimeSeries
+        self.consecutive_off_hours_max: Numeric_TS = consecutive_off_hours_max  # TimeSeries
         self.switch_on_total_max = switch_on_total_max
         self.force_on = force_on  # Can be set to True if needed, even after creation
         self.force_switch_on = force_switch_on
-
-    '''
-    def to_time_series(self, owner: Element):
-        """Transforms all Numeric Values to TimeSeries"""
-        self.consecutive_on_hours_min = self.consecutive_on_hours_min or TimeSeries('consecutive_on_hours_min', self.consecutive_on_hours_min, owner)
-        self.consecutive_on_hours_max = self.consecutive_on_hours_max or TimeSeries('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
-        self.consecutive_off_hours_min = self.consecutive_off_hours_min or TimeSeries('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
-        self.consecutive_off_hours_max = self.consecutive_off_hours_max or TimeSeries('consecutive_off_hours_max',  self.consecutive_off_hours_max, owner)
-        self.effects_per_switch_on = as_effect_dict_with_ts('effects_per_switch_on', self.effects_per_switch_on, owner)
-        self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', self.effects_per_running_hour, owner)
-    '''
 
     def transform_to_time_series(self, owner: 'Element'):
         from flixOpt.effects import effect_values_to_time_series
