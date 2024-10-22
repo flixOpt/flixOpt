@@ -16,9 +16,8 @@ from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
-    create_variable
-from flixOpt.effects import EffectValues, _effect_values_to_ts, EffectCollectionModel
+from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable
+from flixOpt.effects import EffectValues, effect_values_to_time_series, EffectCollectionModel
 
 logger = logging.getLogger('flixOpt')
 
@@ -56,6 +55,10 @@ class Component(Element):
     def create_model(self) -> 'ComponentModel':
         self.model = ComponentModel(self)
         return self.model
+
+    def transform_to_time_series(self) -> None:
+        if self.on_off_parameters is not None:
+            self.on_off_parameters.transform_to_time_series(self)
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -115,7 +118,7 @@ class Bus(Element):
         ----------
         label : str
             name.
-        excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesRaw
+        excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesData
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
@@ -130,7 +133,7 @@ class Bus(Element):
         return self.model
 
     def transform_to_time_series(self):
-        self.excess_penalty_per_flow_hour = _create_time_series(f'{self.label_full}_relative_minimum',
+        self.excess_penalty_per_flow_hour = _create_time_series('excess_penalty_per_flow_hour',
                                                                 self.excess_penalty_per_flow_hour, self)
 
     def add_input(self, flow) -> None:
@@ -187,9 +190,9 @@ class Flow(Element):
             name of flow
         bus : Bus, optional
             bus to which flow is linked
-        relative_minimum : scalar, array, TimeSeriesRaw, optional
+        relative_minimum : scalar, array, TimeSeriesData, optional
             min value is relative_minimum multiplied by size
-        relative_maximum : scalar, array, TimeSeriesRaw, optional
+        relative_maximum : scalar, array, TimeSeriesData, optional
             max value is relative_maximum multiplied by size. If size = max then relative_maximum=1
         size : scalar. None if is a nominal value is a opt-variable, optional
             nominal value/ invest size (linked to relative_minimum, relative_maximum and others).
@@ -202,7 +205,7 @@ class Flow(Element):
              def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
         load_factor_max : scalar, optional
             maximal load factor (see minimal load factor)
-        effects_per_flow_hour : scalar, array, TimeSeriesRaw, optional
+        effects_per_flow_hour : scalar, array, TimeSeriesData, optional
             operational costs, costs per flow-"work"
         can_be_off : OnOffParameters, optional
             flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
@@ -214,7 +217,7 @@ class Flow(Element):
         flow_hours_total_min : TYPE, optional
             minimum flow-hours ("flow-work")
             (if size is not const, maybe load_factor_min fits better for you!)
-        fixed_relative_value : scalar, array, TimeSeriesRaw, optional
+        fixed_relative_value : scalar, array, TimeSeriesData, optional
             fixed relative values for flow (if given).
             val(t) := fixed_relative_value(t) * size(t)
             With this value, the flow-value is no opt-variable anymore;
@@ -246,11 +249,12 @@ class Flow(Element):
         return self.model
 
     def transform_to_time_series(self):
-        self.relative_minimum = _create_time_series(f'{self.label_full}_relative_minimum', self.relative_minimum, self)
-        self.relative_maximum = _create_time_series(f'{self.label_full}_relative_maximum', self.relative_maximum, self)
-        self.fixed_relative_value = _create_time_series(f'{self.label_full}_fixed_relative_value', self.fixed_relative_value, self)
-        self.effects_per_flow_hour = _effect_values_to_ts(f'{self.label_full}_effects_per_flow_hour', self.effects_per_flow_hour, self)
-        # TODO: self.on_off_parameters ??
+        self.relative_minimum = _create_time_series(f'relative_minimum', self.relative_minimum, self)
+        self.relative_maximum = _create_time_series(f'relative_maximum', self.relative_maximum, self)
+        self.fixed_relative_value = _create_time_series(f'fixed_relative_value', self.fixed_relative_value, self)
+        self.effects_per_flow_hour = effect_values_to_time_series(f'per_flow_hour', self.effects_per_flow_hour, self)
+        if self.on_off_parameters is not None:
+            self.on_off_parameters.transform_to_time_series(self)
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
@@ -313,10 +317,10 @@ class FlowModel(ElementModel):
         lower_bound, upper_bound, fixed_flow_rate = 0, None, None  # Standard configuration
         if not isinstance(self.element.size, InvestParameters):
             if self.element.fixed_relative_value is not None:  # Size is fixed -> flow_rate can be fixed
-                fixed_flow_rate = self.element.fixed_relative_value * self.element.size
+                fixed_flow_rate = self.element.fixed_relative_value.active_data * self.element.size
             if self.element.on_off_parameters is None:  # Size is fixed and No On-Variable -> Bounds can be set
-                lower_bound = self.element.relative_minimum * self.element.size
-                upper_bound = self.element.relative_maximum * self.element.size
+                lower_bound = self.element.relative_minimum.active_data * self.element.size
+                upper_bound = self.element.relative_maximum.active_data * self.element.size
 
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
         self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
@@ -394,11 +398,11 @@ class FlowModel(ElementModel):
     @property
     def flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
         if not isinstance(self.element.size, InvestParameters):
-            return (self.element.relative_minimum * self.element.size,
-                    self.element.relative_maximum * self.element.size)
+            return (self.element.relative_minimum.active_data * self.element.size,
+                    self.element.relative_maximum.active_data * self.element.size)
         else:
-            return (self.element.relative_minimum * self.element.size.minimum_size,
-                    self.element.relative_maximum * self.element.size.maximum_size)
+            return (self.element.relative_minimum.active_data * self.element.size.minimum_size,
+                    self.element.relative_maximum.active_data * self.element.size.maximum_size)
 
 
 class BusModel(ElementModel):
@@ -419,7 +423,7 @@ class BusModel(ElementModel):
 
         # Fehlerplus/-minus:
         if self.element.with_excess:
-            excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour)
+            excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour.active_data)
             self.excess_input = create_variable('excess_input', self, system_model.nr_of_time_steps,
                                                    system_model, lower_bound=0)
             self.excess_output = create_variable('excess_output', self, system_model.nr_of_time_steps,

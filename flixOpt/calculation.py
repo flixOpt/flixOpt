@@ -17,7 +17,7 @@ import yaml
 
 from flixOpt import utils
 from flixOpt.aggregation import TimeSeriesCollection
-from flixOpt.core import Skalar, Numeric, TimeSeriesRaw
+from flixOpt.core import Skalar, Numeric, TimeSeriesData
 from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
@@ -49,7 +49,7 @@ class Calculation:
         self.time_indices = time_indices
 
         self.system_model: Optional[SystemModel] = None
-        self.durations = {'modeling': 0, 'solving': 0}  # Dauer der einzelnen Dinge
+        self.durations = {'modeling': 0.0, 'solving': 0.0}  # Dauer der einzelnen Dinge
 
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
@@ -117,6 +117,11 @@ class FullCalculation(Calculation):
 
     def do_modeling(self) -> SystemModel:
         t_start = timeit.default_timer()
+
+        self.flow_system.transform_to_time_series()
+        for time_series in self.flow_system.all_time_series:
+            time_series.activate_indices(self.time_indices)
+
         self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         self.system_model.do_modeling()
         self.system_model.to_math_model()
@@ -126,7 +131,9 @@ class FullCalculation(Calculation):
 
     def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
+        t_start = timeit.default_timer()
         self.system_model.solve(**solverProps, logfile_name=self._paths['log'][0])
+        self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         if save_results:
             self._save_solve_infos()
@@ -193,10 +200,10 @@ class AggregatedCalculation(Calculation):
         useOriginalTimeSeries : boolean.
             orginal or aggregated timeseries should
             be chosen for the calculation. default is False.
-        addPeakMax : list of TimeSeriesRaw
+        addPeakMax : list of TimeSeriesData
             list of data-timeseries. The period with the max-value are
             chosen as a explicitly period.
-        addPeakMin : list of TimeSeriesRaw
+        addPeakMin : list of TimeSeriesData
             list of data-timeseries. The period with the min-value are
             chosen as a explicitly period.
 

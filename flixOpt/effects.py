@@ -92,12 +92,12 @@ class Effect(Element):
         self.description = description
         self.is_standard = is_standard
         self.is_objective = is_objective
-        self.specific_share_to_other_effects_operation: EffectValues = specific_share_to_other_effects_operation or {}
-        self.specific_share_to_other_effects_invest: EffectValuesInvest = specific_share_to_other_effects_invest or {}
+        self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_operation or {}
+        self.specific_share_to_other_effects_invest: Union[EffectValuesInvest, EffectDictInvest] = specific_share_to_other_effects_invest or {}
         self.minimum_operation = minimum_operation
         self.maximum_operation = maximum_operation
-        self.minimum_operation_per_hour = minimum_operation_per_hour
-        self.maximum_operation_per_hour = maximum_operation_per_hour
+        self.minimum_operation_per_hour: Numeric_TS = minimum_operation_per_hour
+        self.maximum_operation_per_hour: Numeric_TS = maximum_operation_per_hour
         self.minimum_invest = minimum_invest
         self.maximum_invest = maximum_invest
         self.minimum_total = minimum_total
@@ -127,12 +127,12 @@ class Effect(Element):
 
     def transform_to_time_series(self):
         self.minimum_operation_per_hour = _create_time_series(
-            f'{self.label_full}_minimum_operation_per_hour', self.minimum_operation_per_hour, self)
+            'minimum_operation_per_hour', self.minimum_operation_per_hour, self)
         self.maximum_operation_per_hour = _create_time_series(
-            f'{self.label_full}_maximum_operation_per_hour', self.maximum_operation_per_hour, self)
+            'maximum_operation_per_hour', self.maximum_operation_per_hour, self)
 
-        self.specific_share_to_other_effects_operation = _effect_values_to_ts(
-            f'{self.label_full}_specific_share_to_other_effects_operation',
+        self.specific_share_to_other_effects_operation = effect_values_to_time_series(
+            f'specific_share_to_other_effects_operation',
             self.specific_share_to_other_effects_operation, self)
 
     def create_model(self) -> 'EffectModel':
@@ -187,71 +187,72 @@ class EffectModel(ElementModel):
         self.all.add_variable_share(system_model, 'invest', self.element, self.invest.sum, 1, 1)
 
 
-EffectDict = Dict[Optional['Effect'], Numeric_TS]
+EffectDict = Dict[Optional['Effect'], Numeric]
 EffectDictInvest = Dict[Optional['Effect'], Skalar]
 
 EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Input
 EffectValuesInvest = Optional[Union[Skalar, EffectDictInvest]]  # Datatype for User Input
 
 EffectTimeSeries = Dict[Optional['Effect'], TimeSeries]  # Final Internal Data Structure
+ElementTimeSeries = Dict[Optional[Element], TimeSeries]  # Final Internal Data Structure
+
+
+def nested_values_to_time_series(nested_values: Dict[Element, Numeric_TS],
+                                 label_suffix: str,
+                                 parent_element: Element) -> ElementTimeSeries:
+    """
+    Creates TimeSeries from nested values, which are a Dict of Elements to values.
+    The resulting label of the TimeSeries is the label of the parent_element, followed by the label of the element in
+    the nested_values and the label_suffix.
+    """
+    return {element: _create_time_series(f'{element.label}_{label_suffix}', value, parent_element)
+            for element, value in nested_values.items() if element is not None}
+
+
+def effect_values_to_time_series(label_suffix: str,
+                                 nested_values: EffectValues,
+                                 parent_element: Element) -> Optional[EffectTimeSeries]:
+    """
+    Creates TimeSeries from EffectValues. The resulting label of the TimeSeries is the label of the parent_element,
+    followed by the label of the Effect in the nested_values and the label_suffix.
+    If the key in the EffectValues is None, the alias 'Standart_Effect' is used
+    """
+    nested_values = _as_effect_dict(nested_values)
+    if nested_values is None:
+        return None
+    else:
+        standard_value = nested_values.pop(None, None)
+        transformed_values = nested_values_to_time_series(nested_values, label_suffix, parent_element)
+        if standard_value is not None:
+            transformed_values[None] = _create_time_series(f'Standard_Effect_{label_suffix}', standard_value, parent_element)
+        return transformed_values
 
 
 def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
     """
-    Converts effect values into a dictionary. If a scalar value is provided, it is associated with a standard effect type.
+    Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
 
     Examples
     --------
-    If costs are given without specifying the effect, the standard effect is used (see class Effect):
-      costs = 20                        -> {None: 20}
-      costs = None                      -> no change
-      costs = {effect1: 20, effect2: 0.3} -> no change
+    costs = 20                        -> {None: 20}
+    costs = None                      -> None
+    costs = {effect1: 20, effect2: 0.3} -> {effect1: 20, effect2: 0.3}
 
     Parameters
     ----------
     effect_values : None, int, float, TimeSeries, or dict
-        The effect values to convert can be a scalar, a TimeSeries, or a dictionary with an effectas key
+        The effect values to convert, either a scalar, TimeSeries, or a dictionary.
 
     Returns
     -------
     dict or None
-        Converted values in from of dict with either None or Effect as key. if values is None, None is returned
+        A dictionary with None or Effect as the key, or None if input is None.
     """
-    if isinstance(effect_values, dict):
-        return effect_values
-    elif effect_values is None:
-        return None
-    else:
-        return {None: effect_values}
+    return effect_values if isinstance(effect_values, dict) else {None: effect_values} if effect_values is not None else None
 
 
-def _effect_values_to_ts(label: str, effect_dict: EffectDict, element: Element) -> Optional[EffectTimeSeries]:
-    """
-    Transforms values in a dictionary to instances of TimeSeries.
-
-    Parameters
-    ----------
-    label : str
-        The name of the parameter. (the effect_label gets added)
-    effect_dict : dict
-        A dictionary with effect-value pairs.
-    element : object
-        The owner object where TimeSeries belongs to.
-
-    Returns
-    -------
-    dict
-        A dictionary with Effects (or None {= standard effect}) as keys and TimeSeries instances as values. On
-    """
-    if effect_dict is None:
-        return None
-
-    transformed_dict = {}
-    for effect, values in effect_dict.items():
-        if not isinstance(values, TimeSeries):
-            subname = 'standard' if effect is None else effect.label
-            transformed_dict[effect] = _create_time_series(f"{label}_{subname}", values, element)
-    return transformed_dict
+def effect_values_from_effect_time_series(effect_time_series: EffectTimeSeries) -> Dict[Optional[Effect], Numeric]:
+    return {effect: time_series.active_data for effect, time_series in effect_time_series.items()}
 
 
 class EffectCollection:
@@ -329,13 +330,11 @@ class EffectCollectionModel(ElementModel):
                               name: str,
                               element: Element,
                               target: Literal['operation', 'invest'],
-                              effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
+                              effect_values: EffectDict,
                               factor: Numeric,
                               variable: Optional[Variable] = None) -> None:
-        effect_values_dict = as_effect_dict(effect_values)
-
         # an alle Effects, die einen Wert haben, anhängen:
-        for effect, value in effect_values_dict.items():
+        for effect, value in effect_values.items():
             if effect is None:  # Falls None, dann Standard-effekt nutzen:
                 effect = self.element.standard_effect
             assert effect in self.element.effects, f'Effect {effect.label} was used but not added to model!'
@@ -358,7 +357,7 @@ class EffectCollectionModel(ElementModel):
     def add_share_to_invest(self,
                             name: str,
                             element: Element,
-                            effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
+                            effect_values: EffectDictInvest,
                             factor: Numeric,
                             variable: Optional[Variable] = None) -> None:
         #TODO: Add checks
@@ -367,11 +366,11 @@ class EffectCollectionModel(ElementModel):
     def add_share_to_operation(self,
                                name: str,
                                element: Element,
-                               effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
+                               effect_values: EffectTimeSeries,
                                factor: Numeric,
                                variable: Optional[Variable] = None) -> None:
         # TODO: Add checks
-        self._add_share_to_effects(name, element, 'operation', effect_values, factor, variable)
+        self._add_share_to_effects(name, element, 'operation', effect_values_from_effect_time_series(effect_values), factor, variable)
 
     def add_share_to_penalty(self,
                              name: Optional[str],
@@ -391,12 +390,14 @@ class EffectCollectionModel(ElementModel):
         for origin_effect in self.element.effects:
             name_of_share = f'Share_from_Effect_{origin_effect.label_full}'  # + effectType.label
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
-            for target_effect, factor in origin_effect.specific_share_to_other_effects_operation.items():
+            for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
-                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS, factor, 1)
+                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS,
+                                                time_series.active_data, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
-                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum, factor, 1)
+                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum,
+                                                factor, 1)

@@ -21,7 +21,7 @@ from flixOpt.core import Skalar, TimeSeries
 from flixOpt.elements import Flow
 from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Storage
-from flixOpt.core import TimeSeriesRaw
+from flixOpt.core import TimeSeriesData
 from flixOpt.structure import Element, SystemModel
 from flixOpt.math_modeling import Equation, Variable
 
@@ -372,8 +372,8 @@ class TimeSeriesCollection:
 
     def __init__(self,
                  time_series_list: List[TimeSeries],
-                 addPeakMax_TSraw: Optional[List[TimeSeriesRaw]] = None,
-                 addPeakMin_TSraw: Optional[List[TimeSeriesRaw]] = None):
+                 addPeakMax_TSraw: Optional[List[TimeSeriesData]] = None,
+                 addPeakMin_TSraw: Optional[List[TimeSeriesData]] = None):
         self.time_series_list = time_series_list
         self.addPeakMax_TSraw = addPeakMax_TSraw or []
         self.addPeakMin_TSraw = addPeakMin_TSraw or []
@@ -444,8 +444,8 @@ class TimeSeriesCollection:
     def _checkPeak_TSraw(self, aTSrawlist):
         if aTSrawlist is not None:
             for aTSraw in aTSrawlist:
-                if not isinstance(aTSraw, TimeSeriesRaw):
-                    raise Exception('addPeak_max/min must be list of TimeSeriesRaw-objects!')
+                if not isinstance(aTSraw, TimeSeriesData):
+                    raise Exception('addPeak_max/min must be list of TimeSeriesData-objects!')
 
     def __str__(self) -> str:
         result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'

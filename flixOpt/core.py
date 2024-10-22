@@ -16,16 +16,17 @@ logger = logging.getLogger('flixOpt')
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
 # zeitreihenbezogene Input-Daten:
-Numeric_TS = Union[Skalar, np.ndarray]
+Numeric_TS = Union[Skalar, np.ndarray, 'TimeSeries']
 # Datatype Numeric_TS:
 #   Skalar      --> wird später dann in array ("Zeitreihe" mit length=nrOfTimeIndexe) übersetzt
 #   np.ndarray  --> muss length=nrOfTimeIndexe haben ("Zeitreihe")
-#   TimeSeriesRaw      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
+#   TimeSeriesData      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
-class TimeSeriesRaw:
+class TimeSeriesData:
+    # TODO: Move to Interface.py
     def __init__(self,
-                 value: Union[int, float, np.ndarray],
+                 data: Numeric,
                  agg_group: Optional[str] = None,
                  agg_weight: Optional[float] = None):
         """
@@ -34,18 +35,18 @@ class TimeSeriesRaw:
             EXAMPLE solar:
             you have several solar timeseries. These should not be overweighted
             compared to the remaining timeseries (i.g. heat load, price)!
-            fixed_relative_value_solar1 = TimeSeriesRaw(sol_array_1, type = 'solar')
-            fixed_relative_value_solar2 = TimeSeriesRaw(sol_array_2, type = 'solar')
-            fixed_relative_value_solar3 = TimeSeriesRaw(sol_array_3, type = 'solar')
+            fixed_relative_value_solar1 = TimeSeriesData(sol_array_1, type = 'solar')
+            fixed_relative_value_solar2 = TimeSeriesData(sol_array_2, type = 'solar')
+            fixed_relative_value_solar3 = TimeSeriesData(sol_array_3, type = 'solar')
             --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3
             (instead of standard weight = 1)
 
         Parameters
         ----------
-        value : Union[int, float, np.ndarray]
+        data : Union[int, float, np.ndarray]
             The timeseries data, which can be a scalar, array, or numpy array.
         agg_group : str, optional
-            The group this TimeSeriesRaw is a part of. agg_weight is split between members of a group. Default is None.
+            The group this TimeSeriesData is a part of. agg_weight is split between members of a group. Default is None.
         agg_weight : float, optional
             The weight for calculation_type 'aggregated', should be between 0 and 1. Default is None.
 
@@ -54,18 +55,18 @@ class TimeSeriesRaw:
         Exception
             If both agg_group and agg_weight are set, an exception is raised.
         """
-        self.value = value
+        self.data = data
         self.agg_group = agg_group
         self.agg_weight = agg_weight
         if (agg_group is not None) and (agg_weight is not None):
             raise Exception('Either <agg_group> or explicit <agg_weigth> can be used. Not both!')
 
     def __repr__(self):
-        return f"TimeSeriesRaw(value={self.value}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
+        return f"TimeSeriesData(value={self.data}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
 
 
 class TimeSeries:
-    '''
+    """
     Class for data that applies to time series, stored as vector (np.ndarray) or scalar.
 
     This class represents a vector or scalar value that makes the handling of time series easier.
@@ -76,38 +77,68 @@ class TimeSeries:
     ----------
     label : str
         The label for the time series.
-    TSraw : Optional[TimeSeriesRaw]
-        The raw time series data if provided as cTSraw.
     data : Optional[Numeric]
         The actual data for the time series. Can be None.
-    explicit_active_data : Optional[Numeric]
-        Explicit data to use instead of raw data if provided.
-    active_time_indices : Optional[np.ndarray]
+    aggregated_data : Optional[Numeric]
+        aggregated_data to use instead of data if provided.
+    active_indices : Optional[np.ndarray]
         Indices of the time steps to activate.
     aggregation_weight : float
         Weight for aggregation method, between 0 and 1, normally 1.
-    '''
+    aggregation_group : str
+        Group for calculating the aggregation weigth for aggregation method.
+    """
 
     def __init__(self, label: str, data: Optional[Numeric_TS]):
         self.label: str = label
-        self.active_time_indices = None  # aktuelle time_indices der model
-        self.explicit_active_data: Optional[Numeric] = None  # Shortcut fneeded for aggregation. TODO: Improve this!
-        self.TSraw = None
-
-        if isinstance(data, TimeSeriesRaw):
-            self.data: Optional[Numeric] = self.make_scalar_if_possible(data.value)
-            self.TSraw = data
+        if isinstance(data, TimeSeriesData):
+            self.data = self.make_scalar_if_possible(data.data)
+            self.aggregation_weight, self.aggregation_group = data.agg_weight, data.agg_group
         else:
-            self.data: Optional[Numeric] = self.make_scalar_if_possible(data)
+            self.data = self.make_scalar_if_possible(data)
+            self.aggregation_weight, self.aggregation_group = None, None
 
-        self._aggregation_weight = None
-        self._aggregation_group = None
+        self.active_indices: Optional[Union[range, List[int]]] = None
+        self.aggregated_data: Optional[Numeric] = None
+
+    def activate_indices(self, indices: Optional[Union[range, List[int]]], aggregated_data: Optional[Numeric] = None):
+        self.active_indices = indices
+
+        if aggregated_data is not None:
+            assert len(aggregated_data) == len(self.active_indices) or len(aggregated_data) == 1, \
+                (f'The aggregated_data has the wrong length for TimeSeries {self.label}. '
+                 f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}')
+            self.aggregated_data = self.make_scalar_if_possible(aggregated_data)
+
+    @property
+    def active_data(self) -> Numeric:
+        if self.aggregated_data is not None:  # Aggregated data is always active, if present
+            return self.aggregated_data
+
+        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_indices is None)
+        if indices_not_applicable:
+            return self.data
+        else:
+            return self.data[self.active_indices]
+
+    @property
+    def active_data_vector(self) -> np.ndarray:
+        # Always returns the active data as a vector.
+        return utils.as_vector(self.active_data, len(self.active_indices))
+
+    @property
+    def is_scalar(self) -> bool:
+        return np.isscalar(self.data)
+
+    @property
+    def is_array(self) -> bool:
+        return not self.is_scalar and self.data is not None
 
     def __repr__(self):
         return (f"TimeSeries(label={self.label}, "
                 f"aggregation_weight={self.aggregation_weight}, "
-                f"data={self.data}, active_time_indices={self.active_time_indices}, "
-                f"explicit_active_data={self.explicit_active_data}")
+                f"data={self.data}, active_indices={self.active_indices}, "
+                f"aggregated_data={self.aggregated_data}")
 
     def __str__(self):
         active_data = self.active_data
@@ -126,9 +157,9 @@ class TimeSeries:
         if all_indices_active:
             further_infos.append(f"indices='{all_indices_active}'")
         if self.aggregation_weight is not None:
-            further_infos.append(f"aggregation_weight={self._aggregation_weight}")
+            further_infos.append(f"aggregation_weight={self.aggregation_weight}")
         if self.aggregation_group is not None:
-            further_infos.append(f"aggregation_group= '{self._aggregation_weight}'")
+            further_infos.append(f"aggregation_group= '{self.aggregation_group}'")
         if self.explicit_active_data is not None:
             further_infos.append(f"'Explicit Active Data was used'")
 
@@ -138,39 +169,6 @@ class TimeSeries:
             infos = f"TimeSeries({data_stats})"
 
         return infos
-
-    @property
-    def active_data_vector(self) -> np.ndarray:
-        # Always returns the active data as a vector.
-        return utils.as_vector(self.active_data, len(self.active_time_indices))
-
-    @property
-    def active_data(self) -> Numeric:
-        # wenn explicit_active_data gesetzt wurde:
-        if self.explicit_active_data is not None:
-            return self.explicit_active_data
-
-        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_time_indices is None)
-        if indices_not_applicable:
-            return self.data
-        else:
-            return self.data[self.active_time_indices]
-
-    @property
-    def is_scalar(self) -> bool:
-        return np.isscalar(self.data)
-
-    @property
-    def is_array(self) -> bool:
-        return not self.is_scalar and self.data is not None
-
-    @property
-    def aggregation_weight(self) -> Optional[float]:
-        return None if self.TSraw is None else self.TSraw.agg_weight
-
-    @property
-    def aggregation_group(self) -> Optional[str]:
-        return None if self.TSraw is None else self.TSraw.agg_group
 
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
@@ -195,14 +193,6 @@ class TimeSeries:
         if np.all(data == data[0]):
             return data[0]
         return data
-
-    def activate(self, time_indices, explicit_active_data: Optional = None):
-        self.active_time_indices = time_indices
-
-        if explicit_active_data is not None:
-            assert len(explicit_active_data) == len(self.active_time_indices) or len(explicit_active_data) == 1, \
-                'explicit_active_data has incorrect length!'
-            self.explicit_active_data = self.make_scalar_if_possible(explicit_active_data)
 
 
 def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[Dict]:
@@ -293,6 +283,7 @@ def as_effect_dict_with_ts(name_of_param: str,
     return effect_ts_dict
 
 
+# TODO: Move logging to utils.py
 class CustomFormatter(logging.Formatter):
     # ANSI escape codes for colors
     COLORS = {

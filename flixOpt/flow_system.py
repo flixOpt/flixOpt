@@ -82,6 +82,10 @@ class FlowSystem:
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
+    def transform_to_time_series(self):
+        for element in self.all_elements:
+            element.transform_to_time_series()
+
     def _check_if_element_is_unique(self, element: Element) -> None:
         """
         checks if element or label of element already exists in list
@@ -160,3 +164,8 @@ class FlowSystem:
     @property
     def all_elements(self) -> List[Element]:
         return self.components + self.effect_collection.effects + list(self.all_flows) + list(self.all_buses)
+
+    @property
+    def all_time_series(self) -> List[TimeSeries]:
+        return [ts for element in self.all_elements for ts in element.used_time_series]
+

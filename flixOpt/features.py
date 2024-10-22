@@ -442,7 +442,7 @@ class SegmentModel(ElementModel):
 class MultipleSegmentsModel(ElementModel):
     # TODO: Length...
     def __init__(self, element: Element,
-                 sample_points: Dict[Variable, List[Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]]],
+                 sample_points: Dict[Variable, List[Tuple[Numeric, Numeric]]],
                  can_be_outside_segments: Optional[Union[bool, Variable]],
                  as_time_series: bool = True,
                  label: str = 'MultipleSegments'):
@@ -544,10 +544,10 @@ class ShareAllocationModel(ElementModel):
         self._eq_sum.add_summand(self.sum, -1)
 
         if self._shares_are_time_series:
-            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
-            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
+            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour.active_data, system_model.dt_in_hours)
+            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour.active_data, system_model.dt_in_hours)
             self.sum_TS = create_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, system_model,
-                                             lower_bound=lb_TS, upper_bound=ub_TS)
+                                          lower_bound=lb_TS, upper_bound=ub_TS)
 
             # eq: sum_TS = sum(share_TS_i) # TS
             self._eq_time_series = create_equation(f'{self.label}_time_series', self, system_model)
@@ -561,8 +561,8 @@ class ShareAllocationModel(ElementModel):
                            name_of_share: Optional[str],
                            share_holder: Element,
                            variable: Variable,
-                           factor1: Numeric_TS,
-                           factor2: Numeric_TS):  # if variable = None, then fix Share
+                           factor1: Numeric,
+                           factor2: Numeric):  # if variable = None, then fix Share
         if variable is None:
             raise Exception('add_variable_share() needs variable as input. Use add_constant_share() instead')
         self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
@@ -571,8 +571,8 @@ class ShareAllocationModel(ElementModel):
                            system_model: SystemModel,
                            name_of_share: Optional[str],
                            share_holder: Element,
-                           factor1: Numeric_TS,
-                           factor2: Numeric_TS):
+                           factor1: Numeric,
+                           factor2: Numeric):
         variable = None
         self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
 
@@ -581,18 +581,11 @@ class ShareAllocationModel(ElementModel):
                    name_of_share: Optional[str],
                    share_holder: Element,
                    variable: Optional[Variable],
-                   factor1: Numeric_TS,
-                   factor2: Numeric_TS):
+                   factor1: Numeric,
+                   factor2: Numeric):
         """ if name_of_share, then a proper share is created, which is explicitly published in results.
         Else, its only added to the total of the Effect"""
         # TODO: accept only one factor or accept unlimited factors -> *factors
-        """
-        # Falls TimeSeries, Daten auslesen:
-        if isinstance(factor1, TimeSeries):
-            factor1 = factor1.active_data
-        if isinstance(factor2, TimeSeries):
-            factor2 = factor2.active_data
-        """
         total_factor = np.multiply(factor1, factor2)
 
         # Check to which equation the share should be added
