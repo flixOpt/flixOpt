@@ -358,11 +358,14 @@ class ElementModel:
         return self._label or self.element.label
 
 
-def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> TimeSeries:
+def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> Optional[TimeSeries]:
     """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
-    time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data)
-    element.used_time_series.append(time_series)
-    return time_series
+    if data is None:
+        return None
+    else:
+        time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data)
+        element.used_time_series.append(time_series)
+        return time_series
 
 
 def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
