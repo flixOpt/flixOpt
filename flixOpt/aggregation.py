@@ -32,89 +32,67 @@ if TYPE_CHECKING:
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 logger = logging.getLogger('flixOpt')
 
+
 class Aggregation:
     """
     aggregation organizing class
     """
-
     def __init__(self,
                  name: str,
                  timeseries: pd.DataFrame,
                  hours_per_time_step: Skalar,
                  hours_per_period: Skalar,
-                 hasTSA=False,  # TODO: Remove unused parameter
                  nr_of_typical_periods: int = 8,
                  use_extreme_periods: bool = True,
                  weights: Optional[dict] = None,
-                 addPeakMax: Optional[List[TimeSeries]] = None,
-                 addPeakMin: Optional[List[TimeSeries]] = None
+                 time_series_for_high_peaks: Optional[List[TimeSeries]] = None,
+                 time_series_for_low_peaks: Optional[List[TimeSeries]] = None
                  ):
-
-        """ 
-        Konstruktor für die Klasse EnergySystemModel
-        """
+        self.name = name
+        self.timeseries = copy.deepcopy(timeseries)
+        self.hours_per_time_step = hours_per_time_step
+        self.hours_per_period = hours_per_period
+        self.nr_of_typical_periods = nr_of_typical_periods
+        self.use_extreme_periods = use_extreme_periods
+        self.weights = weights
+        self.time_series_for_high_peaks = time_series_for_high_peaks
+        self.time_series_for_low_peaks = time_series_for_low_peaks
 
         self.results = None
         self.time_for_clustering = None
         self.aggregation: Optional[tsam.TimeSeriesAggregation] = None
 
-        self.name = name
-        self.timeseries = copy.deepcopy(timeseries)
-        self.hours_per_time_step = hours_per_time_step
-        self.hours_per_period = hours_per_period
-        self.hasTSA = hasTSA
-        self.nr_of_typical_periods = nr_of_typical_periods
-        self.use_extreme_periods = use_extreme_periods
-        self.weights = weights
-        self.addPeakMax = addPeakMax
-        self.addPeakMin = addPeakMin
-
-        # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
-        self.extreme_period_method = 'new_cluster_center' if self.use_extreme_periods else 'None'
-        if self.use_extreme_periods and not (self.addPeakMax or self.addPeakMin):   # Check
+        if self.use_extreme_periods and not (self.time_series_for_high_peaks or self.time_series_for_low_peaks):
             raise Exception('addPeakMax or addPeakMin timeseries given if useExtremValues=True!')
 
-        # Initiales Setzen von Zeitreiheninformationen; werden überschrieben, falls Zeitreihenaggregation
-        self.nr_of_time_steps = len(self.timeseries.index)
-        self.nr_of_time_steps_per_period = self.nr_of_time_steps   # TODO: Remove unused parameter
-        self.total_periods = 1      # TODO: Remove unused parameter
+        self.timeseries.index = pd.MultiIndex.from_arrays(
+            [[0] * self.nr_of_time_steps, list(range(self.nr_of_time_steps))],
+            names=['Period', 'TimeStep'])
 
-        # Timeseries Index anpassen, damit gesamter Betrachtungszeitraum als eine lange Periode + entsprechender Zeitschrittanzahl interpretiert wird
-        self.original_timeseries_index = self.timeseries.index  # ursprünglichen Index in Array speichern für späteres Speichern
-        period_index = [0] * self.nr_of_time_steps
-        step_index = list(range(self.nr_of_time_steps))
-        self.timeseries.index = pd.MultiIndex.from_arrays([period_index, step_index],
-                                                          names=['Period', 'TimeStep'])
+    @property
+    def nr_of_time_steps_per_period(self) -> int:
+        return int(self.hours_per_period / self.hours_per_time_step)
 
-        # Setzen der Zeitreihendaten für Modell
-        # werden später überschrieben, falls Zeitreihenaggregation
-        self.typical_periods = [0]
-        self.periods, self.periods_order, self.period_occurrences = [0], [0], [1]
-        self.total_time_steps = list(range(self.nr_of_time_steps))  # gesamte Anzahl an Zeitschritten
-        self.time_steps_per_period = list(range(self.nr_of_time_steps))  # Zeitschritte pro Periode, ohne ZRA = gesamte Anzahl
-        self.inter_period_time_steps = list(range(int(len(self.total_time_steps) / len(self.time_steps_per_period)) + 1))
+    @property
+    def nr_of_time_steps(self) -> int:
+        return len(self.timeseries.index)
 
     def cluster(self) -> None:
 
         """
         Durchführung der Zeitreihenaggregation
         """
-
         start_time = timeit.default_timer()
-
-        # Neu berechnen der nr_of_time_steps_per_period
-        self.nr_of_time_steps_per_period = int(self.hours_per_period / self.hours_per_time_step)
-
         # Erstellen des aggregation objects
         self.aggregation = tsam.TimeSeriesAggregation(self.timeseries,
                                                       noTypicalPeriods=self.nr_of_typical_periods,
                                                       hoursPerPeriod=self.hours_per_period,
                                                       resolution=self.hours_per_time_step,
                                                       clusterMethod='k_means',
-                                                      extremePeriodMethod=self.extreme_period_method,
+                                                      extremePeriodMethod='new_cluster_center' if self.use_extreme_periods else 'None',  # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
                                                       weightDict=self.weights,
-                                                      addPeakMax=self.addPeakMax,
-                                                      addPeakMin=self.addPeakMin
+                                                      addPeakMax=self.time_series_for_high_peaks,
+                                                      addPeakMin=self.time_series_for_low_peaks
                                                       )
 
         self.aggregation.createTypicalPeriods()   # Ausführen der Aggregation/Clustering

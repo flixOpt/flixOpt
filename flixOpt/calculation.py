@@ -29,7 +29,8 @@ class Calculation:
     """
     class for defined way of solving a flow_system optimization
     """
-    def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
+    def __init__(self, name, flow_system: FlowSystem,
+                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
@@ -144,7 +145,8 @@ class AggregatedCalculation(Calculation):
     class for defined way of solving a flow_system optimizatino
     """
 
-    def __init__(self, name: str, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name, flow_system: FlowSystem,
+                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
@@ -155,16 +157,23 @@ class AggregatedCalculation(Calculation):
             flow_system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
-        time_indices : None, list
-            list with indexe, which should be used for calculation. If None, then all timesteps are used.
+        time_indices : List[int] or None
+            list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
         super().__init__(name, flow_system, modeling_language, time_indices)
         self.time_series_for_aggregation = None
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
-    def do_modeling(self, periodLengthInHours, nr_of_typical_periods, use_extreme_periods, fix_storage_flows,
-                    fix_binary_vars_only, percentage_of_period_freedom=0, costs_of_period_freedom=0, addPeakMax=None,
+    def do_modeling(self,
+                    periodLengthInHours,
+                    nr_of_typical_periods,
+                    use_extreme_periods,
+                    fix_storage_flows,
+                    fix_binary_vars_only,
+                    percentage_of_period_freedom=0,
+                    costs_of_period_freedom=0,
+                    addPeakMax=None,
                     addPeakMin=None):
         """
         method of aggregated modeling.
