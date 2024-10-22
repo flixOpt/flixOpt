@@ -54,6 +54,8 @@ class Calculation:
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
 
+        self.flow_system.transform_to_time_series()
+
     def description_of_equations_as_dict(self, system_model: int = 0) -> Dict:
         return {'Components': {comp.label: comp.model.description_of_equations for comp in self.flow_system.components},
                 'Buses': {bus.label: bus.model.description_of_equations for bus in self.flow_system.all_buses},
