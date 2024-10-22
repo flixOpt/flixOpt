@@ -194,35 +194,61 @@ EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Inpu
 EffectValuesInvest = Optional[Union[Skalar, EffectDictInvest]]  # Datatype for User Input
 
 EffectTimeSeries = Dict[Optional['Effect'], TimeSeries]  # Final Internal Data Structure
+ElementTimeSeries = Dict[Optional[Element], TimeSeries]  # Final Internal Data Structure
+
+
+def nested_values_to_time_series(nested_values: Dict[Element, Numeric_TS],
+                                 label_suffix: str,
+                                 parent_element: Element) -> ElementTimeSeries:
+    """
+    Creates TimeSeries from nested values, which are a Dict of Elements to values.
+    The resulting label of the TimeSeries is the label of the parent_element, followed by the label of the element in
+    the nested_values and the label_suffix.
+    """
+    return {element: _create_time_series(f'{element.label}_{label_suffix}', value, parent_element)
+            for element, value in nested_values.items() if element is not None}
+
+
+def effect_values_to_time_series(nested_values: EffectValues,
+                                 label_suffix: str,
+                                 parent_element: Element) -> Optional[EffectTimeSeries]:
+    """
+    Creates TimeSeries from EffectValues. The resulting label of the TimeSeries is the label of the parent_element,
+    followed by the label of the Effect in the nested_values and the label_suffix.
+    If the key in the EffectValues is None, the alias 'Standart_Effect' is used
+    """
+    nested_values = _as_effect_dict(nested_values)
+    if nested_values is None:
+        return None
+    else:
+        standard_value = nested_values.pop(None, None)
+        transformed_values = nested_values_to_time_series(nested_values, label_suffix, parent_element)
+        if standard_value is not None:
+            transformed_values[None] = _create_time_series(f'Standard_Effect_{label_suffix}', standard_value, parent_element)
+        return transformed_values
 
 
 def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
     """
-    Converts effect values into a dictionary. If a scalar value is provided, it is associated with a standard effect type.
+    Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
 
     Examples
     --------
-    If costs are given without specifying the effect, the standard effect is used (see class Effect):
-      costs = 20                        -> {None: 20}
-      costs = None                      -> no change
-      costs = {effect1: 20, effect2: 0.3} -> no change
+    costs = 20                        -> {None: 20}
+    costs = None                      -> None
+    costs = {effect1: 20, effect2: 0.3} -> {effect1: 20, effect2: 0.3}
 
     Parameters
     ----------
     effect_values : None, int, float, TimeSeries, or dict
-        The effect values to convert can be a scalar, a TimeSeries, or a dictionary with an effectas key
+        The effect values to convert, either a scalar, TimeSeries, or a dictionary.
 
     Returns
     -------
     dict or None
-        Converted values in from of dict with either None or Effect as key. if values is None, None is returned
+        A dictionary with None or Effect as the key, or None if input is None.
     """
-    if isinstance(effect_values, dict):
-        return effect_values
-    elif effect_values is None:
-        return None
-    else:
-        return {None: effect_values}
+    return effect_values if isinstance(effect_values, dict) else {None: effect_values} if effect_values is not None else None
 
 
 def _effect_values_to_ts(label: str, effect_dict: EffectDict, element: Element) -> Optional[EffectTimeSeries]:
