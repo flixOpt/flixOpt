@@ -18,7 +18,6 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
     from flixOpt.flow_system import FlowSystem
     from flixOpt.elements import ComponentModel, BusModel
 
-
 logger = logging.getLogger('flixOpt')
 
 
@@ -134,8 +133,8 @@ class SystemModel(MathModel):
     @property
     def infos(self):
         infos = super().infos
-        #infos['str_Eqs'] = self.description_of_equations()
-        #infos['str_Vars'] = self.description_of_variables()
+        # infos['str_Eqs'] = self.description_of_equations()
+        # infos['str_Vars'] = self.description_of_variables()
         infos['main_results'] = self.main_results
         infos.update(self._infos)
         return infos
@@ -225,6 +224,7 @@ class SystemModel(MathModel):
 
 class Element:
     """ Basic Element of flixOpt"""
+
     def __init__(self, label: str):
         if not utils.label_is_valid(label):
             logger.critical(f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
@@ -236,7 +236,7 @@ class Element:
     def _plausibility_checks(self) -> None:
         """ This function is used to do some basic plausibility checks for each Element during initialization """
         raise NotImplementedError(f'Every Element needs a _plausibility_checks() method')
-    
+
     def transform_to_time_series(self) -> None:
         """ This function is used to transform the time series data from the User to proper TimeSeries Objects """
         raise NotImplementedError(f'Every Element needs a transform_to_time_series() method')
@@ -366,7 +366,7 @@ def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element
 
 
 def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
-                     eq_type: Literal['eq', 'ineq', 'objective'] = 'eq') -> Equation:
+                    eq_type: Literal['eq', 'ineq', 'objective'] = 'eq') -> Equation:
     """ Creates an Equation and adds it to the model of the Element """
     eq = Equation(f'{element_model.label_full}_{label}', label, system_model, eq_type)
     element_model.add_equations(eq)
@@ -374,15 +374,15 @@ def create_equation(label: str, element_model: ElementModel, system_model: Syste
 
 
 def create_variable(label: str,
-                       element_model: ElementModel,
-                       length: int,
-                       system_model: SystemModel,
-                       is_binary: bool = False,
-                       value: Optional[Numeric] = None,
-                       lower_bound: Optional[Numeric] = None,
-                       upper_bound: Optional[Numeric] = None,
-                       before_value: Optional[Numeric] = None,
-                       ) -> VariableTS:
+                    element_model: ElementModel,
+                    length: int,
+                    system_model: SystemModel,
+                    is_binary: bool = False,
+                    value: Optional[Numeric] = None,
+                    lower_bound: Optional[Numeric] = None,
+                    upper_bound: Optional[Numeric] = None,
+                    before_value: Optional[Numeric] = None,
+                    ) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
     if length > 1:
