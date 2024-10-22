@@ -515,8 +515,8 @@ class ShareAllocationModel(ElementModel):
                  shares_are_time_series: bool,
                  total_max: Optional[Skalar] = None,
                  total_min: Optional[Skalar] = None,
-                 max_per_hour: Optional[TimeSeries] = None,
-                 min_per_hour: Optional[TimeSeries] = None):
+                 max_per_hour: Optional[Numeric] = None,
+                 min_per_hour: Optional[Numeric] = None):
         super().__init__(element, label)
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, \
@@ -544,8 +544,8 @@ class ShareAllocationModel(ElementModel):
         self._eq_sum.add_summand(self.sum, -1)
 
         if self._shares_are_time_series:
-            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour.active_data, system_model.dt_in_hours)
-            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour.active_data, system_model.dt_in_hours)
+            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
+            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
             self.sum_TS = create_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, system_model,
                                           lower_bound=lb_TS, upper_bound=ub_TS)
 

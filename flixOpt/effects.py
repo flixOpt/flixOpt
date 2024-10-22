@@ -169,11 +169,12 @@ class EffectModel(ElementModel):
         self.invest = ShareAllocationModel(self.element, 'invest', False,
                                            total_max=self.element.maximum_invest,
                                            total_min=self.element.minimum_invest)
-        self.operation = ShareAllocationModel(self.element, 'operation', True,
-                                              total_max=self.element.maximum_operation,
-                                              total_min=self.element.minimum_operation,
-                                              min_per_hour=self.element.minimum_operation_per_hour,
-                                              max_per_hour=self.element.maximum_operation_per_hour)
+        self.operation = ShareAllocationModel(
+            self.element, 'operation', True, total_max=self.element.maximum_operation,
+            total_min=self.element.minimum_operation,
+            min_per_hour=self.element.minimum_operation_per_hour.active_data if self.element.minimum_operation_per_hour is not None else None,
+            max_per_hour=self.element.maximum_operation_per_hour.active_data if self.element.maximum_operation_per_hour is not None else None
+        )
         self.all = ShareAllocationModel(self.element, 'all', False,
                                         total_max=self.element.maximum_total,
                                         total_min=self.element.minimum_total)
