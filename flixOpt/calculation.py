@@ -54,8 +54,6 @@ class Calculation:
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
 
-        self.flow_system.transform_to_time_series()
-
     def description_of_equations_as_dict(self, system_model: int = 0) -> Dict:
         return {'Components': {comp.label: comp.model.description_of_equations for comp in self.flow_system.components},
                 'Buses': {bus.label: bus.model.description_of_equations for bus in self.flow_system.all_buses},
@@ -119,6 +117,11 @@ class FullCalculation(Calculation):
 
     def do_modeling(self) -> SystemModel:
         t_start = timeit.default_timer()
+
+        self.flow_system.transform_to_time_series()
+        for time_series in self.flow_system.all_time_series:
+            time_series.activate_indices(self.time_indices)
+
         self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         self.system_model.do_modeling()
         self.system_model.to_math_model()

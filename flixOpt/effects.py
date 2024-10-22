@@ -93,7 +93,7 @@ class Effect(Element):
         self.is_standard = is_standard
         self.is_objective = is_objective
         self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_operation or {}
-        self.specific_share_to_other_effects_invest: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_invest or {}
+        self.specific_share_to_other_effects_invest: Union[EffectValuesInvest, EffectDictInvest] = specific_share_to_other_effects_invest or {}
         self.minimum_operation = minimum_operation
         self.maximum_operation = maximum_operation
         self.minimum_operation_per_hour: Numeric_TS = minimum_operation_per_hour
@@ -187,7 +187,7 @@ class EffectModel(ElementModel):
         self.all.add_variable_share(system_model, 'invest', self.element, self.invest.sum, 1, 1)
 
 
-EffectDict = Dict[Optional['Effect'], Numeric_TS]
+EffectDict = Dict[Optional['Effect'], Numeric]
 EffectDictInvest = Dict[Optional['Effect'], Skalar]
 
 EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Input
@@ -249,6 +249,10 @@ def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
         A dictionary with None or Effect as the key, or None if input is None.
     """
     return effect_values if isinstance(effect_values, dict) else {None: effect_values} if effect_values is not None else None
+
+
+def effect_values_from_effect_time_series(effect_time_series: EffectTimeSeries) -> Dict[Optional[Effect], Numeric]:
+    return {effect: time_series.active_data for effect, time_series in effect_time_series.items()}
 
 
 class EffectCollection:
@@ -326,13 +330,11 @@ class EffectCollectionModel(ElementModel):
                               name: str,
                               element: Element,
                               target: Literal['operation', 'invest'],
-                              effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
+                              effect_values: EffectDict,
                               factor: Numeric,
                               variable: Optional[Variable] = None) -> None:
-        effect_values_dict = as_effect_dict(effect_values)
-
         # an alle Effects, die einen Wert haben, anhängen:
-        for effect, value in effect_values_dict.items():
+        for effect, value in effect_values.items():
             if effect is None:  # Falls None, dann Standard-effekt nutzen:
                 effect = self.element.standard_effect
             assert effect in self.element.effects, f'Effect {effect.label} was used but not added to model!'
@@ -355,7 +357,7 @@ class EffectCollectionModel(ElementModel):
     def add_share_to_invest(self,
                             name: str,
                             element: Element,
-                            effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
+                            effect_values: EffectDictInvest,
                             factor: Numeric,
                             variable: Optional[Variable] = None) -> None:
         #TODO: Add checks
@@ -364,11 +366,11 @@ class EffectCollectionModel(ElementModel):
     def add_share_to_operation(self,
                                name: str,
                                element: Element,
-                               effect_values: Union[Numeric, Dict[Optional[Effect], Numeric]],
+                               effect_values: EffectTimeSeries,
                                factor: Numeric,
                                variable: Optional[Variable] = None) -> None:
         # TODO: Add checks
-        self._add_share_to_effects(name, element, 'operation', effect_values, factor, variable)
+        self._add_share_to_effects(name, element, 'operation', effect_values_from_effect_time_series(effect_values), factor, variable)
 
     def add_share_to_penalty(self,
                              name: Optional[str],
@@ -388,12 +390,14 @@ class EffectCollectionModel(ElementModel):
         for origin_effect in self.element.effects:
             name_of_share = f'Share_from_Effect_{origin_effect.label_full}'  # + effectType.label
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
-            for target_effect, factor in origin_effect.specific_share_to_other_effects_operation.items():
+            for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
-                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS, factor, 1)
+                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS,
+                                                time_series.active_data, 1)
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
-                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum, factor, 1)
+                target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum,
+                                                factor, 1)
