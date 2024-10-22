@@ -16,9 +16,8 @@ from flixOpt.math_modeling import Variable, VariableTS, Equation
 from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
 from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
-    create_variable
-from flixOpt.effects import EffectValues, _effect_values_to_ts, EffectCollectionModel
+from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable
+from flixOpt.effects import EffectValues, effect_values_to_time_series, EffectCollectionModel
 
 logger = logging.getLogger('flixOpt')
 
@@ -56,6 +55,10 @@ class Component(Element):
     def create_model(self) -> 'ComponentModel':
         self.model = ComponentModel(self)
         return self.model
+
+    def transform_to_time_series(self) -> None:
+        if self.on_off_parameters is not None:
+            self.on_off_parameters.transform_to_time_series(self)
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -130,7 +133,7 @@ class Bus(Element):
         return self.model
 
     def transform_to_time_series(self):
-        self.excess_penalty_per_flow_hour = _create_time_series(f'{self.label_full}_relative_minimum',
+        self.excess_penalty_per_flow_hour = _create_time_series('excess_penalty_per_flow_hour',
                                                                 self.excess_penalty_per_flow_hour, self)
 
     def add_input(self, flow) -> None:
@@ -246,11 +249,12 @@ class Flow(Element):
         return self.model
 
     def transform_to_time_series(self):
-        self.relative_minimum = _create_time_series(f'{self.label_full}_relative_minimum', self.relative_minimum, self)
-        self.relative_maximum = _create_time_series(f'{self.label_full}_relative_maximum', self.relative_maximum, self)
-        self.fixed_relative_value = _create_time_series(f'{self.label_full}_fixed_relative_value', self.fixed_relative_value, self)
-        self.effects_per_flow_hour = _effect_values_to_ts(f'{self.label_full}_effects_per_flow_hour', self.effects_per_flow_hour, self)
-        # TODO: self.on_off_parameters ??
+        self.relative_minimum = _create_time_series(f'relative_minimum', self.relative_minimum, self)
+        self.relative_maximum = _create_time_series(f'relative_maximum', self.relative_maximum, self)
+        self.fixed_relative_value = _create_time_series(f'fixed_relative_value', self.fixed_relative_value, self)
+        self.effects_per_flow_hour = effect_values_to_time_series(f'per_flow_hour', self.effects_per_flow_hour, self)
+        if self.on_off_parameters is not None:
+            self.on_off_parameters.transform_to_time_series(self)
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound

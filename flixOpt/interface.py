@@ -11,7 +11,7 @@ import numpy as np
 
 from flixOpt.core import Numeric, Skalar
 if TYPE_CHECKING:
-    from flixOpt.structure import Effect
+    from flixOpt.structure import Effect, Element
 
 logger = logging.getLogger('flixOpt')
 
@@ -161,6 +161,15 @@ class OnOffParameters:
         self.effects_per_running_hour = as_effect_dict_with_ts('effects_per_running_hour', self.effects_per_running_hour, owner)
     '''
 
+    def transform_to_time_series(self, owner: 'Element'):
+        from flixOpt.effects import effect_values_to_time_series
+        from flixOpt.structure import _create_time_series
+        self.effects_per_switch_on = effect_values_to_time_series('per_switch_on', self.effects_per_switch_on, owner)
+        self.effects_per_running_hour = effect_values_to_time_series('per_running_hour', self.effects_per_running_hour, owner)
+        self.consecutive_on_hours_min = _create_time_series('consecutive_on_hours_min', self.consecutive_on_hours_min, owner)
+        self.consecutive_on_hours_max = _create_time_series('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
+        self.consecutive_off_hours_min = _create_time_series('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
+        self.consecutive_off_hours_max = _create_time_series('consecutive_off_hours_max', self.consecutive_off_hours_max, owner)
 
     @property
     def use_on(self) -> bool:

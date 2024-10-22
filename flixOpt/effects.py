@@ -127,12 +127,12 @@ class Effect(Element):
 
     def transform_to_time_series(self):
         self.minimum_operation_per_hour = _create_time_series(
-            f'{self.label_full}_minimum_operation_per_hour', self.minimum_operation_per_hour, self)
+            'minimum_operation_per_hour', self.minimum_operation_per_hour, self)
         self.maximum_operation_per_hour = _create_time_series(
-            f'{self.label_full}_maximum_operation_per_hour', self.maximum_operation_per_hour, self)
+            'maximum_operation_per_hour', self.maximum_operation_per_hour, self)
 
-        self.specific_share_to_other_effects_operation = _effect_values_to_ts(
-            f'{self.label_full}_specific_share_to_other_effects_operation',
+        self.specific_share_to_other_effects_operation = effect_values_to_time_series(
+            f'specific_share_to_other_effects_operation',
             self.specific_share_to_other_effects_operation, self)
 
     def create_model(self) -> 'EffectModel':
@@ -209,8 +209,8 @@ def nested_values_to_time_series(nested_values: Dict[Element, Numeric_TS],
             for element, value in nested_values.items() if element is not None}
 
 
-def effect_values_to_time_series(nested_values: EffectValues,
-                                 label_suffix: str,
+def effect_values_to_time_series(label_suffix: str,
+                                 nested_values: EffectValues,
                                  parent_element: Element) -> Optional[EffectTimeSeries]:
     """
     Creates TimeSeries from EffectValues. The resulting label of the TimeSeries is the label of the parent_element,
@@ -249,35 +249,6 @@ def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
         A dictionary with None or Effect as the key, or None if input is None.
     """
     return effect_values if isinstance(effect_values, dict) else {None: effect_values} if effect_values is not None else None
-
-
-def _effect_values_to_ts(label: str, effect_dict: EffectDict, element: Element) -> Optional[EffectTimeSeries]:
-    """
-    Transforms values in a dictionary to instances of TimeSeries.
-
-    Parameters
-    ----------
-    label : str
-        The name of the parameter. (the effect_label gets added)
-    effect_dict : dict
-        A dictionary with effect-value pairs.
-    element : object
-        The owner object where TimeSeries belongs to.
-
-    Returns
-    -------
-    dict
-        A dictionary with Effects (or None {= standard effect}) as keys and TimeSeries instances as values. On
-    """
-    if effect_dict is None:
-        return None
-
-    transformed_dict = {}
-    for effect, values in effect_dict.items():
-        if not isinstance(values, TimeSeries):
-            subname = 'standard' if effect is None else effect.label
-            transformed_dict[effect] = _create_time_series(f"{label}_{subname}", values, element)
-    return transformed_dict
 
 
 class EffectCollection:
