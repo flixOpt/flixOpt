@@ -422,7 +422,7 @@ class Summand:
         elif length_of_indices == 1:
             return length_of_factor
         else:
-            raise Exception(f'Variable {self.variable.label_full} (length={length_of_indices}) und '
+            raise Exception(f'Variable {self.variable.label} (length={length_of_indices}) und '
                             f'Faktor (length={length_of_factor}) müssen gleiche Länge haben oder Skalar sein')
 
 
