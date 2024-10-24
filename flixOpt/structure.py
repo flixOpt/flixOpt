@@ -42,6 +42,7 @@ class SystemModel(MathModel):
         self.effect_collection_model = flow_system.effect_collection.create_model(self)
         self.component_models: List['ComponentModel'] = []
         self.bus_models: List['BusModel'] = []
+        self.other_models: List[ElementModel] = []
 
     def do_modeling(self):
         self.effect_collection_model.do_modeling(self)
@@ -165,7 +166,7 @@ class SystemModel(MathModel):
 
     @property
     def sub_models(self) -> List['ElementModel']:
-        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models
+        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models + self.other_models
         sub_models = [sub_model for direct_model in direct_models for sub_model in direct_model.all_sub_models]
         return direct_models + sub_models
 
