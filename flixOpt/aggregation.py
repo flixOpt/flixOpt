@@ -95,37 +95,11 @@ class Aggregation:
         self.clustering_duration_seconds = timeit.default_timer() - start_time   # Zeit messen:
         logger.info(self.describe_clusters())
 
-    @property
-    def index_vectors_of_clusters(self):
-        # TODO: make more performant? using self._index_vectors_of_clusters maybe?
-        ###############
-        # Zuordnung der Indexe erstellen: 
-        # {cluster 0: [index_vector_3, index_vector_7]
-        #  cluster 1: [index_vector_1]
-        #  cluster 2: ...} 
-
-        # Beachte: letzte Periode muss nicht vollgefüllt sein!
-        clusterList = self.tsam.clusterPeriodNoOccur.keys()
-        # Leerer Dict:
-        index_vectors_of_clusters = {cluster: [] for cluster in clusterList}
-        period_len = len(self.tsam.stepIdx)
-        for period in range(len(self.tsam.clusterOrder)):
-            clusterNr = self.tsam.clusterOrder[period]
-
-            periodStartIndex = period * period_len
-            periodEndIndex = min(periodStartIndex + period_len - 1,
-                                 len(self.original_data) - 1)  # Beachtet auch letzte Periode
-            indexVector = np.array(range(periodStartIndex, periodEndIndex + 1))
-
-            index_vectors_of_clusters[clusterNr].append(indexVector)
-
-        return index_vectors_of_clusters
-
     def describe_clusters(self) -> str:
         aVisual = {}
-        for cluster in self.index_vectors_of_clusters.keys():
+        for cluster in self.get_cluster_indices(self.tsam).keys():
             aVisual[cluster] = [str(indexVector[0]) + '...' + str(indexVector[-1]) for indexVector in
-                                self.index_vectors_of_clusters[cluster]]
+                                self.get_cluster_indices(self.tsam)[cluster]]
 
         if self.use_extreme_periods:
             # Zeitreihe rauslöschen:
@@ -151,6 +125,30 @@ class Aggregation:
     @property
     def use_extreme_periods(self):
         return self.time_series_for_high_peaks or self.time_series_for_low_peaks
+
+    @staticmethod
+    def get_cluster_indices(aggregation: tsam.TimeSeriesAggregation) -> Dict[str, List[np.ndarray]]:
+        """
+        Generates a dictionary that maps each cluster to a list of index vectors representing the time steps
+        assigned to that cluster for each period.
+
+        Returns:
+            dict: {cluster_0: [index_vector_3, index_vector_7, ...],
+                   cluster_1: [index_vector_1],
+                   ...}
+        """
+        clusters = aggregation.clusterPeriodNoOccur.keys()
+        index_vectors = {cluster: [] for cluster in clusters}
+
+        period_length = len(aggregation.stepIdx)
+        total_steps = len(aggregation.timeSeries)
+
+        for period, cluster_id in enumerate(aggregation.clusterOrder):
+            start_idx = period * period_length
+            end_idx = np.min([start_idx + period_length, total_steps])
+            index_vectors[cluster_id].append(np.arange(start_idx, end_idx))
+
+        return index_vectors
 
 
 class AggregationModeling(Element):
