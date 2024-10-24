@@ -59,6 +59,7 @@ class Aggregation:
         self.hours_per_time_step = hours_per_time_step
         self.hours_per_period = hours_per_period
         self.nr_of_periods = nr_of_periods
+        self.nr_of_time_steps = len(self.original_data.index)
         self.weights = weights
         self.time_series_for_high_peaks = time_series_for_high_peaks
         self.time_series_for_low_peaks = time_series_for_low_peaks
@@ -70,18 +71,6 @@ class Aggregation:
         self.original_data.index = pd.MultiIndex.from_arrays(
             [[0] * self.nr_of_time_steps, list(range(self.nr_of_time_steps))],
             names=['Period', 'TimeStep'])
-
-    @property
-    def use_extreme_periods(self):
-        return self.time_series_for_high_peaks or self.time_series_for_low_peaks
-
-    @property
-    def nr_of_time_steps_per_period(self) -> int:
-        return int(self.hours_per_period / self.hours_per_time_step)
-
-    @property
-    def nr_of_time_steps(self) -> int:
-        return len(self.original_data.index)
 
     def cluster(self) -> None:
         """
@@ -105,10 +94,6 @@ class Aggregation:
 
         self.clustering_duration_seconds = timeit.default_timer() - start_time   # Zeit messen:
         logger.info(self.describe_clusters())
-
-    @property
-    def results_original_index(self) -> pd.DataFrame:
-        return self.aggregated_data.set_index(self.original_data.index, inplace=False)  # neue DF erstellen
 
     @property
     def index_vectors_of_clusters(self):
@@ -162,6 +147,10 @@ class Aggregation:
                 f'extremePeriods:\n'
                 f'{extremePeriods}\n'
                 f'{"":#^80}')
+
+    @property
+    def use_extreme_periods(self):
+        return self.time_series_for_high_peaks or self.time_series_for_low_peaks
 
 
 class AggregationModeling(Element):
