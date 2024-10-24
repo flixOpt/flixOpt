@@ -60,6 +60,7 @@ class TimeSeriesData:
         self.agg_weight = agg_weight
         if (agg_group is not None) and (agg_weight is not None):
             raise Exception('Either <agg_group> or explicit <agg_weigth> can be used. Not both!')
+        self.label: Optional[str] = None
 
     def __repr__(self):
         return f"TimeSeriesData(value={self.data}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
@@ -94,6 +95,7 @@ class TimeSeries:
         if isinstance(data, TimeSeriesData):
             self.data = self.make_scalar_if_possible(data.data)
             self.aggregation_weight, self.aggregation_group = data.agg_weight, data.agg_group
+            data.label = self.label  # Connecting User_time_series to real Time_series
         else:
             self.data = self.make_scalar_if_possible(data)
             self.aggregation_weight, self.aggregation_group = None, None
