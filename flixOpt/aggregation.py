@@ -126,7 +126,7 @@ class Aggregation:
     def use_extreme_periods(self):
         return self.time_series_for_high_peaks or self.time_series_for_low_peaks
 
-    def plot(self, colormap: str = 'viridis') -> tuple:
+    def plot(self, colormap: str = 'viridis', show: bool = True) -> tuple:
         import matplotlib.pyplot as plt
         # Get the column names from the DataFrame
         column_names = self.original_data.columns
@@ -160,6 +160,8 @@ class Aggregation:
 
         # Adjust layout
         plt.tight_layout()
+        if show:
+            plt.show()
 
         # Return fig, ax for further use
         return fig, ax
@@ -397,3 +399,40 @@ class TimeSeriesCollection:
         else:
             result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
         return result
+
+
+class AggregationParameters:
+    def __init__(self,
+                 hours_per_period: float,
+                 nr_of_periods: int,
+                 fix_storage_flows: bool,
+                 fix_binary_vars_only: bool,
+                 percentage_of_period_freedom: float = 0,
+                 costs_of_period_freedom: float = 0,
+                 time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
+                 time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None
+                 ):
+        self.hours_per_period = hours_per_period
+        self.nr_of_periods = nr_of_periods
+        self.fix_storage_flows = fix_storage_flows
+        self.fix_binary_vars_only = fix_binary_vars_only
+        self.percentage_of_period_freedom = percentage_of_period_freedom
+        self.costs_of_period_freedom = costs_of_period_freedom
+        self.time_series_for_high_peaks: List[TimeSeriesData] = time_series_for_high_peaks or []
+        self.time_series_for_low_peaks: List[TimeSeriesData] = time_series_for_low_peaks or []
+
+    @property
+    def use_extreme_periods(self):
+        return self.time_series_for_high_peaks or self.time_series_for_low_peaks
+
+    @property
+    def labels_for_high_peaks(self) -> List[str]:
+        return [ts.label for ts in self.time_series_for_high_peaks]
+
+    @property
+    def labels_for_low_peaks(self) -> List[str]:
+        return [ts.label for ts in self.time_series_for_low_peaks]
+
+    @property
+    def use_low_peaks(self):
+        return self.time_series_for_low_peaks is not None

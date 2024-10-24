@@ -16,7 +16,7 @@ import numpy as np
 import yaml
 
 from flixOpt import utils
-from flixOpt.aggregation import TimeSeriesCollection
+from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters
 from flixOpt.core import Skalar, Numeric, TimeSeriesData
 from flixOpt.math_modeling import VariableTS
 from flixOpt.structure import SystemModel
@@ -146,6 +146,7 @@ class AggregatedCalculation(Calculation):
     """
 
     def __init__(self, name, flow_system: FlowSystem,
+                 aggregation_parameters: AggregationParameters,
                  modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
@@ -161,19 +162,12 @@ class AggregatedCalculation(Calculation):
             list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
         super().__init__(name, flow_system, modeling_language, time_indices)
+        self.aggregation_parameters = aggregation_parameters
         self.time_series_for_aggregation = None
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
-    def do_modeling(self,
-                    hours_per_period: float,
-                    nr_of_periods: int,
-                    fix_storage_flows: bool,
-                    fix_binary_vars_only: bool,
-                    percentage_of_period_freedom: float = 0,
-                    costs_of_period_freedom: float = 0,
-                    time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
-                    time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None):
+    def do_modeling(self):
         """
         method of aggregated modeling.
         1. Finds typical periods.
@@ -209,11 +203,7 @@ class AggregatedCalculation(Calculation):
             list of data-timeseries. The period with the min-value are
             chosen as an explicitly period.
         """
-
-        time_series_for_high_peaks = [ts.label for ts in
-                                      time_series_for_high_peaks] if time_series_for_high_peaks is not None else None
-        time_series_for_low_peaks = [ts.label for ts in
-                                     time_series_for_low_peaks] if time_series_for_low_peaks is not None else None
+        from flixOpt.aggregation import Aggregation
 
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
             self.flow_system.get_time_data_from_indices(self.time_indices))
@@ -225,10 +215,10 @@ class AggregatedCalculation(Calculation):
         if not dt_min == dt_max:
             raise ValueError(f"Aggregation failed due to inconsistent time step sizes:"
                              f"delta_t varies from {dt_min} to {dt_max} hours.")
-        steps_per_period = hours_per_period / dt_in_hours[0]
+        steps_per_period = self.aggregation_parameters.hours_per_period / dt_in_hours[0]
         if not steps_per_period.is_integer():
-            raise Exception(f"The selected {hours_per_period=} does not match the time step size of "
-                            f"{dt_in_hours[0]} hours). It must be a multiple of {dt_in_hours[0]} hours.")
+            raise Exception(f"The selected {self.aggregation_parameters.hours_per_period=} does not match the time "
+                            f"step size of {dt_in_hours[0]} hours). It must be a multiple of {dt_in_hours[0]} hours.")
 
         logger.info(f'{"":#^80}')
         logger.info(f'{" Aggregating TimeSeries Data ":#^80}')
@@ -238,23 +228,29 @@ class AggregatedCalculation(Calculation):
         import pandas as pd
         original_data = pd.DataFrame(self.time_series_collection.data, index=chosenTimeSeries)
 
-        ##########################################################
-        # ### Aggregation - creation of aggregated timeseries: ###
-        from flixOpt.aggregation import Aggregation
-        aggregation = Aggregation(original_data=original_data,
-                                  hours_per_time_step=dt_min,
-                                  hours_per_period=hours_per_period,
-                                  nr_of_periods=nr_of_periods,
-                                  weights=self.time_series_collection.weights,
-                                  time_series_for_high_peaks=time_series_for_high_peaks,
-                                  time_series_for_low_peaks=time_series_for_low_peaks)
+        # Aggregation - creation of aggregated timeseries:
+        self.aggregation_data = Aggregation(original_data=original_data,
+                                            hours_per_time_step=dt_min,
+                                            hours_per_period=self.aggregation_parameters.hours_per_period,
+                                            nr_of_periods=self.aggregation_parameters.nr_of_periods,
+                                            weights=self.time_series_collection.weights,
+                                            time_series_for_high_peaks=self.aggregation_parameters.labels_for_high_peaks,
+                                            time_series_for_low_peaks=self.aggregation_parameters.labels_for_low_peaks)
 
-        aggregation.cluster()
-        self.aggregation_data = aggregation
+        self.aggregation_data.cluster()
+        self.aggregation_data.plot()
 
-        # ################
-        # ### Modeling ###
+        # Add Equations
+        self._equate_indices()
 
+    def solve(self, solverProps: dict, path='results/', save_results=True):
+        self._define_path_names(path, save_results, nr_of_system_models=1)
+        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
+
+        if save_results:
+            self._save_solve_infos()
+
+    def equate_indices(self):
         aggregationModel = flixAgg.AggregationModeling('aggregation', self.flow_system,
                                                        index_vectors_of_clusters=dataAgg.index_vectors_of_clusters,
                                                        fix_binary_vars_only=fix_binary_vars_only,
@@ -274,33 +270,6 @@ class AggregatedCalculation(Calculation):
                 TS = self.time_series_for_aggregation[i]
                 # todo: agg-Wert für TS:
                 TS_explicit[TS] = dataAgg.results[TS.label_full].values  # nur data-array ohne Zeit
-
-        # ##########################
-        # ## FlowSystem finalizing: ##
-        self.flow_system.finalize()
-
-        self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
-
-        t_m_start = timeit.default_timer()
-        # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices,
-                                   TS_explicit)  # alle Indexe nehmen!
-        self.system_models.append(system_model)
-        # model aktivieren:
-        self.flow_system.activate_model(system_model, self.time_indices)
-        # modellieren:
-        self.flow_system.do_modeling_of_elements()
-        self.flow_system.transform_to_math_model()
-
-        self.durations['modeling'] = round(timeit.default_timer() - t_m_start, 2)
-        return system_model
-
-    def solve(self, solverProps: dict, path='results/', save_results=True):
-        self._define_path_names(path, save_results, nr_of_system_models=1)
-        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
-
-        if save_results:
-            self._save_solve_infos()
 
 
 class SegmentedCalculation(Calculation):
