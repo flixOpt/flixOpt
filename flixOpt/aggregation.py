@@ -126,6 +126,44 @@ class Aggregation:
     def use_extreme_periods(self):
         return self.time_series_for_high_peaks or self.time_series_for_low_peaks
 
+    def plot(self, colormap: str = 'viridis'):
+        import matplotlib.pyplot as plt
+        # Get the column names from the DataFrame
+        column_names = self.original_data.columns
+
+        # Handle colormap
+        if colormap:
+            cmap = plt.get_cmap(colormap)
+        else:
+            cmap = plt.get_cmap('viridis')  # Default colormap if not provided
+
+        # Generate color palette
+        colors = cmap(np.linspace(0, 1, len(column_names)))
+
+        # Create a figure and axis
+        plt.figure(figsize=(10, 6))
+
+        # Plot the original and aggregated data with different line styles
+        for i, col in enumerate(column_names):
+            plt.plot(self.original_data.index, self.original_data[col], label=f'Original - {col}', color=colors[i], linestyle='-')
+            plt.plot(self.aggregated_data.index, self.aggregated_data[col], label=f'Aggregated - {col}', color=colors[i],
+                     linestyle='--')
+
+        # Add title and labels
+        plt.title('Original vs Aggregated Data (dashed = aggregated)')
+        plt.xlabel('Index')
+        plt.ylabel('Value')
+
+        # Add grid
+        plt.grid(True, linestyle='--', alpha=0.7)
+
+        # Add legend
+        plt.legend(loc='best')
+
+        # Display the plot
+        plt.tight_layout()
+        plt.show()
+
     @staticmethod
     def get_cluster_indices(aggregation: tsam.TimeSeriesAggregation) -> Dict[str, List[np.ndarray]]:
         """
