@@ -166,15 +166,14 @@ class AggregatedCalculation(Calculation):
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
     def do_modeling(self,
-                    periodLengthInHours,
-                    nr_of_typical_periods,
-                    use_extreme_periods,
-                    fix_storage_flows,
-                    fix_binary_vars_only,
-                    percentage_of_period_freedom=0,
-                    costs_of_period_freedom=0,
-                    addPeakMax=None,
-                    addPeakMin=None):
+                    hours_per_period: float,
+                    nr_of_periods: int,
+                    fix_storage_flows: bool,
+                    fix_binary_vars_only: bool,
+                    percentage_of_period_freedom: float = 0,
+                    costs_of_period_freedom: float = 0,
+                    time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
+                    time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None):
         """
         method of aggregated modeling.
         1. Finds typical periods.
@@ -182,13 +181,10 @@ class AggregatedCalculation(Calculation):
 
         Parameters
         ----------
-        periodLengthInHours : float
-            length of one period.
-        nr_of_typical_periods : int
+        hours_per_period : float
+            length of one period in hours.
+        nr_of_periods : int
             no of typical periods
-        use_extreme_periods : boolean
-            True, if periods of extreme values should be explicitly chosen
-            Define recognised timeseries in args addPeakMax, addPeakMin!
         fix_storage_flows : boolean
             Defines, wether load- and unload-Flow should be also aggregated or not.
             If all other flows are fixed, it is mathematically not necessary
@@ -206,125 +202,55 @@ class AggregatedCalculation(Calculation):
             costs per "free variable". The default is 0.
             !! Warning: At the moment these costs are allocated to
             operation costs, not to penalty!!
-        useOriginalTimeSeries : boolean.
-            orginal or aggregated timeseries should
-            be chosen for the calculation. default is False.
-        addPeakMax : list of TimeSeriesData
+        time_series_for_high_peaks : list of TimeSeriesData
             list of data-timeseries. The period with the max-value are
-            chosen as a explicitly period.
-        addPeakMin : list of TimeSeriesData
+            chosen as an explicitly period.
+        time_series_for_low_peaks : list of TimeSeriesData
             list of data-timeseries. The period with the min-value are
-            chosen as a explicitly period.
-
-
-        Returns
-        -------
-        system_model : TYPE
-            DESCRIPTION.
-
+            chosen as an explicitly period.
         """
 
-        addPeakMax = addPeakMax or []
-        addPeakMin = addPeakMin or []
-        self.check_if_already_modeled()
+        time_series_for_high_peaks = [ts.label for ts in
+                                      time_series_for_high_peaks] if time_series_for_high_peaks is not None else None
+        time_series_for_low_peaks = [ts.label for ts in
+                                     time_series_for_low_peaks] if time_series_for_low_peaks is not None else None
 
-        self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
-                                          'nr_of_typical_periods': nr_of_typical_periods,
-                                          'use_extreme_periods': use_extreme_periods,
-                                          'fix_storage_flows': fix_storage_flows,
-                                          'fix_binary_vars_only': fix_binary_vars_only,
-                                          'percentage_of_period_freedom': percentage_of_period_freedom,
-                                          'costs_of_period_freedom': costs_of_period_freedom}
-
-        t_start_agg = timeit.default_timer()
-        # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-        self.flow_system.activate_indices_in_time_series(self.time_indices)
-
-        # Zeitdaten generieren:
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
             self.flow_system.get_time_data_from_indices(self.time_indices))
 
-        # check equidistant timesteps:
-        if max(dt_in_hours) - min(dt_in_hours) != 0:
-            raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(
-                min(dt_in_hours)) + ' bis ' + str(max(dt_in_hours)) + ' h')
+        t_start_agg = timeit.default_timer()
+
+        # Validation
+        dt_min, dt_max = np.min(dt_in_hours), np.max(dt_in_hours)
+        if not dt_min == dt_max:
+            raise ValueError(f"Aggregation failed due to inconsistent time step sizes:"
+                             f"delta_t varies from {dt_min} to {dt_max} hours.")
+        steps_per_period = hours_per_period / dt_in_hours[0]
+        if not steps_per_period.is_integer():
+            raise Exception(f"The selected {hours_per_period=} does not match the time step size of "
+                            f"{dt_in_hours[0]} hours). It must be a multiple of {dt_in_hours[0]} hours.")
 
         logger.info(f'{"":#^80}')
-        logger.info(f'{" TimeSeries for aggregation ":#^80}')
+        logger.info(f'{" Aggregating TimeSeries Data ":#^80}')
 
-        ## Daten für Aggregation vorbereiten:
-        # TSlist and TScollection ohne Skalare:
-        self.time_series_for_aggregation = [item for item in self.flow_system.all_time_series_in_elements if item.is_array]
-        self.time_series_collection = TimeSeriesCollection(self.time_series_for_aggregation,
-                                                           addPeakMax_TSraw=addPeakMax, addPeakMin_TSraw=addPeakMin, )
-
-        logger.info(f'{self.time_series_collection}')
+        self.time_series_collection = TimeSeriesCollection([ts for ts in self.flow_system.all_time_series if ts.is_array])
 
         import pandas as pd
-        # seriesDict = {i : self.time_series_for_aggregation[i].active_data_vector for i in range(length(self.time_series_for_aggregation))}
-        df_OriginalData = pd.DataFrame(self.time_series_collection.seriesDict,
-                                       index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
-
-        # Check, if timesteps fit in Period:
-        stepsPerPeriod = periodLengthInHours / self.dt_in_hours[0]
-        if not stepsPerPeriod.is_integer():
-            raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
+        original_data = pd.DataFrame(self.time_series_collection.data, index=chosenTimeSeries)
 
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
-        from flixOpt import aggregation as flixAgg
-        dataAgg = flixAgg.Aggregation('aggregation', timeseries=df_OriginalData,
-                                      hours_per_time_step=self.dt_in_hours[0], hours_per_period=periodLengthInHours,
-                                      hasTSA=False, nr_of_typical_periods=nr_of_typical_periods,
-                                      use_extreme_periods=use_extreme_periods,
-                                      weights=self.time_series_collection.weightDict,
-                                      addPeakMax=self.time_series_collection.addPeak_Max_labels,
-                                      addPeakMin=self.time_series_collection.addPeak_Min_labels)
+        from flixOpt.aggregation import Aggregation
+        aggregation = Aggregation(timeseries=original_data,
+                                  hours_per_time_step=dt_min,
+                                  hours_per_period=hours_per_period,
+                                  nr_of_periods=nr_of_periods,
+                                  weights=self.time_series_collection.weights,
+                                  time_series_for_high_peaks=time_series_for_high_peaks,
+                                  time_series_for_low_peaks=time_series_for_low_peaks)
 
-        dataAgg.cluster()
-        self.aggregation_data = dataAgg
-
-        self._infos['aggregatedProps']['periods_order'] = str(list(dataAgg.aggregation.clusterOrder))
-
-        # aggregation_data.aggregation.clusterPeriodIdx
-        # aggregation_data.aggregation.clusterOrder
-        # aggregation_data.aggregation.clusterPeriodNoOccur
-        # aggregation_data.aggregation.predictOriginalData()
-        # self.periods_order = aggregation.clusterOrder
-        # self.period_occurrences = aggregation.clusterPeriodNoOccur
-
-        # ### Some plot for plausibility check ###
-
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(8, 6))
-        plt.title('aggregated series (dashed = aggregated)')
-        plt.plot(df_OriginalData.values)
-        for label_TS, agg_values in dataAgg.results.items():
-            # aLabel = str(i)
-            # aLabel = self.time_series_for_aggregation[i].label_full
-            plt.plot(agg_values.values, '--', label=label_TS)
-        if len(self.time_series_for_aggregation) < 10:  # wenn nicht zu viele
-            plt.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center')
-        plt.tight_layout()
-        plt.show()
-
-        # ### Some infos as print ###
-
-        logger.info('TS Aggregation:')
-        for i in range(len(self.time_series_for_aggregation)):
-            aLabel = self.time_series_for_aggregation[i].label_full
-            logger.info('TS ' + str(aLabel))
-            logger.info('  max_agg:' + str(max(dataAgg.results[aLabel])))
-            logger.info('  max_orig:' + str(max(df_OriginalData[aLabel])))
-            logger.info('  min_agg:' + str(min(dataAgg.results[aLabel])))
-            logger.info('  min_orig:' + str(min(df_OriginalData[aLabel])))
-            logger.info('  sum_agg:' + str(sum(dataAgg.results[aLabel])))
-            logger.info('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
-
-        logger.info('addpeakmax:')
-        logger.info(self.time_series_collection.addPeak_Max_labels)
-        logger.info('addpeakmin:')
-        logger.info(self.time_series_collection.addPeak_Min_labels)
+        aggregation.cluster()
+        self.aggregation_data = aggregation
 
         # ################
         # ### Modeling ###
