@@ -241,7 +241,7 @@ class AggregatedCalculation(Calculation):
         ##########################################################
         # ### Aggregation - creation of aggregated timeseries: ###
         from flixOpt.aggregation import Aggregation
-        aggregation = Aggregation(timeseries=original_data,
+        aggregation = Aggregation(original_data=original_data,
                                   hours_per_time_step=dt_min,
                                   hours_per_period=hours_per_period,
                                   nr_of_periods=nr_of_periods,

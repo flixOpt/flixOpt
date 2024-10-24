@@ -39,36 +39,41 @@ class Aggregation:
     aggregation organizing class
     """
     def __init__(self,
-                 name: str,
-                 timeseries: pd.DataFrame,
+                 original_data: pd.DataFrame,
                  hours_per_time_step: Skalar,
                  hours_per_period: Skalar,
-                 nr_of_typical_periods: int = 8,
-                 use_extreme_periods: bool = True,
-                 weights: Optional[dict] = None,
-                 time_series_for_high_peaks: Optional[List[TimeSeries]] = None,
-                 time_series_for_low_peaks: Optional[List[TimeSeries]] = None
+                 nr_of_periods: int = 8,
+                 weights: Optional[Dict[str, float]] = None,
+                 time_series_for_high_peaks: Optional[List[str]] = None,
+                 time_series_for_low_peaks: Optional[List[str]] = None
                  ):
-        self.name = name
-        self.timeseries = copy.deepcopy(timeseries)
+        """
+        Write a docstring please
+
+        Parameters
+        ----------
+        timeseries: pd.DataFrame
+            timeseries of the data with a datetime index
+        """
+        self.original_data = copy.deepcopy(original_data)
         self.hours_per_time_step = hours_per_time_step
         self.hours_per_period = hours_per_period
-        self.nr_of_typical_periods = nr_of_typical_periods
-        self.use_extreme_periods = use_extreme_periods
+        self.nr_of_periods = nr_of_periods
         self.weights = weights
         self.time_series_for_high_peaks = time_series_for_high_peaks
         self.time_series_for_low_peaks = time_series_for_low_peaks
 
-        self.results = None
-        self.time_for_clustering = None
-        self.aggregation: Optional[tsam.TimeSeriesAggregation] = None
+        self.aggregated_data: Optional[pd.DataFrame] = None
+        self.clustering_duration_seconds = None
+        self.tsam: Optional[tsam.TimeSeriesAggregation] = None
 
-        if self.use_extreme_periods and not (self.time_series_for_high_peaks or self.time_series_for_low_peaks):
-            raise Exception('addPeakMax or addPeakMin timeseries given if useExtremValues=True!')
-
-        self.timeseries.index = pd.MultiIndex.from_arrays(
+        self.original_data.index = pd.MultiIndex.from_arrays(
             [[0] * self.nr_of_time_steps, list(range(self.nr_of_time_steps))],
             names=['Period', 'TimeStep'])
+
+    @property
+    def use_extreme_periods(self):
+        return self.time_series_for_high_peaks or self.time_series_for_low_peaks
 
     @property
     def nr_of_time_steps_per_period(self) -> int:
@@ -76,17 +81,16 @@ class Aggregation:
 
     @property
     def nr_of_time_steps(self) -> int:
-        return len(self.timeseries.index)
+        return len(self.original_data.index)
 
     def cluster(self) -> None:
-
         """
         Durchführung der Zeitreihenaggregation
         """
         start_time = timeit.default_timer()
         # Erstellen des aggregation objects
-        self.aggregation = tsam.TimeSeriesAggregation(self.timeseries,
-                                                      noTypicalPeriods=self.nr_of_typical_periods,
+        self.tsam = tsam.TimeSeriesAggregation(self.original_data,
+                                                      noTypicalPeriods=self.nr_of_periods,
                                                       hoursPerPeriod=self.hours_per_period,
                                                       resolution=self.hours_per_time_step,
                                                       clusterMethod='k_means',
@@ -96,17 +100,15 @@ class Aggregation:
                                                       addPeakMin=self.time_series_for_low_peaks
                                                       )
 
-        self.aggregation.createTypicalPeriods()   # Ausführen der Aggregation/Clustering
+        self.tsam.createTypicalPeriods()   # Ausführen der Aggregation/Clustering
+        self.aggregated_data = self.tsam.predictOriginalData()
 
-        # ERGEBNISSE:
-        self.results = self.aggregation.predictOriginalData()
-
-        self.time_for_clustering = timeit.default_timer() - start_time   # Zeit messen:
+        self.clustering_duration_seconds = timeit.default_timer() - start_time   # Zeit messen:
         logger.info(self.describe_clusters())
 
     @property
-    def results_original_index(self):
-        return self.results.set_index(self.original_timeseries_index, inplace=False)  # neue DF erstellen
+    def results_original_index(self) -> pd.DataFrame:
+        return self.aggregated_data.set_index(self.original_data.index, inplace=False)  # neue DF erstellen
 
     @property
     def index_vectors_of_clusters(self):
@@ -118,16 +120,16 @@ class Aggregation:
         #  cluster 2: ...} 
 
         # Beachte: letzte Periode muss nicht vollgefüllt sein!
-        clusterList = self.aggregation.clusterPeriodNoOccur.keys()
+        clusterList = self.tsam.clusterPeriodNoOccur.keys()
         # Leerer Dict:
         index_vectors_of_clusters = {cluster: [] for cluster in clusterList}
-        period_len = len(self.aggregation.stepIdx)
-        for period in range(len(self.aggregation.clusterOrder)):
-            clusterNr = self.aggregation.clusterOrder[period]
+        period_len = len(self.tsam.stepIdx)
+        for period in range(len(self.tsam.clusterOrder)):
+            clusterNr = self.tsam.clusterOrder[period]
 
             periodStartIndex = period * period_len
             periodEndIndex = min(periodStartIndex + period_len - 1,
-                                 len(self.timeseries) - 1)  # Beachtet auch letzte Periode
+                                 len(self.original_data) - 1)  # Beachtet auch letzte Periode
             indexVector = np.array(range(periodStartIndex, periodEndIndex + 1))
 
             index_vectors_of_clusters[clusterNr].append(indexVector)
@@ -142,7 +144,7 @@ class Aggregation:
 
         if self.use_extreme_periods:
             # Zeitreihe rauslöschen:
-            extremePeriods = self.aggregation.extremePeriods.copy()
+            extremePeriods = self.tsam.extremePeriods.copy()
             for key, val in extremePeriods.items():
                 del (extremePeriods[key]['profile'])
         else:
@@ -151,9 +153,9 @@ class Aggregation:
         return (f'{"":#^80}\n'
                 f'{" Clustering ":#^80}\n'
                 f'periods_order:\n'
-                f'{self.aggregation.clusterOrder}\n'
+                f'{self.tsam.clusterOrder}\n'
                 f'clusterPeriodNoOccur:\n'
-                f'{self.aggregation.clusterPeriodNoOccur}\n'
+                f'{self.tsam.clusterPeriodNoOccur}\n'
                 f'index_vectors_of_clusters:\n'
                 f'{aVisual}\n'
                 f'{"":#^80}\n'
@@ -337,8 +339,8 @@ class TimeSeriesCollection:
         self.group_weights: Dict[str, float] = {}
         self._unique_labels()
         self._calculate_aggregation_weigths()
-        self.weights: Dict[str, np.ndarray] = {time_series.label: time_series.aggregation_weight for
-                                               time_series in self.time_series_list}
+        self.weights: Dict[str, float] = {time_series.label: time_series.aggregation_weight for
+                                          time_series in self.time_series_list}
         self.data: Dict[str, np.ndarray] = {time_series.label: time_series.active_data for
                                             time_series in self.time_series_list}
 
