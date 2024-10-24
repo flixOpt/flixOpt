@@ -12,6 +12,7 @@ import timeit
 from typing import Optional, List, Dict, Union, TYPE_CHECKING
 import warnings
 import logging
+from collections import Counter
 
 import pandas as pd
 import numpy as np
@@ -330,107 +331,42 @@ class AggregationModeling(Element):
 
 
 class TimeSeriesCollection:
-    '''
-    calculates weights of TimeSeries for being in that collection (depending on)
-    '''
-
-    @property
-    def addPeak_Max_labels(self):
-        if self._addPeakMax_labels == []:
-            return None
-        else:
-            return self._addPeakMax_labels
-
-    @property
-    def addPeak_Min_labels(self):
-        if self._addPeakMin_labels == []:
-            return None
-        else:
-            return self._addPeakMin_labels
-
     def __init__(self,
-                 time_series_list: List[TimeSeries],
-                 addPeakMax_TSraw: Optional[List[TimeSeriesData]] = None,
-                 addPeakMin_TSraw: Optional[List[TimeSeriesData]] = None):
+                 time_series_list: List[TimeSeries]):
         self.time_series_list = time_series_list
-        self.addPeakMax_TSraw = addPeakMax_TSraw or []
-        self.addPeakMin_TSraw = addPeakMin_TSraw or []
-        # i.g.: self.agg_type_count = {'solar': 3, 'price_el' = 2}
-        self.agg_type_count = self._get_agg_type_count()
+        self.group_weights: Dict[str, float] = {}
+        self._unique_labels()
+        self._calculate_aggregation_weigths()
+        self.weights: Dict[str, np.ndarray] = {time_series.label: time_series.aggregation_weight for
+                                               time_series in self.time_series_list}
+        self.data: Dict[str, np.ndarray] = {time_series.label: time_series.active_data for
+                                            time_series in self.time_series_list}
 
-        self._checkPeak_TSraw(addPeakMax_TSraw)
-        self._checkPeak_TSraw(addPeakMin_TSraw)
+        if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
+            logger.info(f'All Aggregation weights were set to 1')
 
-        # these 4 attributes are now filled:
-        self.seriesDict = {}
-        self.weightDict = {}
-        self._addPeakMax_labels = []
-        self._addPeakMin_labels = []
-        self.calculateParametersForTSAM()
+    def _calculate_aggregation_weigths(self):
+        """ Calculates the aggergation weights of all TimeSeries. Necessary to use groups"""
+        groups = [time_series.aggregation_group for time_series in self.time_series_list if
+                  time_series.aggregation_group is not None]
+        group_size = dict(Counter(groups))
+        self.group_weights = {group: 1 / size for group, size in group_size.items()}
+        for time_series in self.time_series_list:
+            time_series.aggregation_weight = self.group_weights.get(time_series.aggregation_group, 1)
 
-    def calculateParametersForTSAM(self):
-        for i in range(len(self.time_series_list)):
-            aTS: TimeSeries
-            aTS = self.time_series_list[i]
-            # check uniqueness of label:
-            if aTS.label_full in self.seriesDict.keys():
-                raise Exception('label of TS \'' + str(aTS.label_full) + '\' exists already!')
-            # add to dict:
-            self.seriesDict[
-                aTS.label_full] = aTS.active_data_vector  # Vektor zuweisen!# TODO: müsste doch active_data sein, damit abhängig von Auswahlzeitraum, oder???
-            self.weightDict[aTS.label_full] = self._getWeight(aTS)  # Wichtung ermitteln!
-            if (aTS.TSraw is not None):
-                if aTS.TSraw in self.addPeakMax_TSraw:
-                    self._addPeakMax_labels.append(aTS.label_full)
-                if aTS.TSraw in self.addPeakMin_TSraw:
-                    self._addPeakMin_labels.append(aTS.label_full)
+    def _unique_labels(self):
+        """ Makes sure every label of the TimeSeries in time_series_list is unique """
+        label_counts = Counter([time_series.label for time_series in self.time_series_list])
+        duplicates = [label for label, count in label_counts.items() if count > 1]
+        assert duplicates == [], "Duplicate TimeSeries labels found: {}.".format(', '.join(duplicates))
 
-    def _get_agg_type_count(self):
-        # count agg_types:
-        from collections import Counter
-
-        TSlistWithAggType = []
-        for TS in self.time_series_list:
-            if self._get_agg_type(TS) is not None:
-                TSlistWithAggType.append(TS)
-        agg_types = (aTS.TSraw.agg_group for aTS in TSlistWithAggType)
-        return Counter(agg_types)
-
-    def _get_agg_type(self, aTS: TimeSeries):
-        if (aTS.TSraw is not None):
-            agg_type = aTS.TSraw.agg_group
-        else:
-            agg_type = None
-        return agg_type
-
-    def _getWeight(self, aTS: TimeSeries):
-        if aTS.TSraw is None:
-            # default:
-            weight = 1
-        elif aTS.TSraw.agg_weight is not None:
-            # explicit:
-            weight = aTS.TSraw.agg_weight
-        elif aTS.TSraw.agg_group is not None:
-            # via agg_group:
-            # i.g. n=3 -> weight=1/3
-            weight = 1 / self.agg_type_count[aTS.TSraw.agg_group]
-        else:
-            weight = 1
-            # raise Exception('TSraw is without weight definition.')
-        return weight
-
-    def _checkPeak_TSraw(self, aTSrawlist):
-        if aTSrawlist is not None:
-            for aTSraw in aTSrawlist:
-                if not isinstance(aTSraw, TimeSeriesData):
-                    raise Exception('addPeak_max/min must be list of TimeSeriesData-objects!')
-
-    def __str__(self) -> str:
+    def description(self) -> str:
+        #TODO:
         result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'
-        for TS in self.time_series_list:
-            result += f' -> {TS.label_full} (weight: {self._getWeight(TS):.4f}; agg_group: {self._get_agg_type(TS)})\n'
-        if len(self.agg_type_count.keys()) > 0:
-            result += f'agg_types: {list(self.agg_type_count.keys())}\n'
+        for time_series in self.time_series_list:
+            result += f' -> {time_series.label} (weight: {time_series.aggregation_weight:.4f}; group: "{time_series.aggregation_group}")\n'
+        if self.group_weights:
+            result += f'Aggregation_Groups: {list(self.group_weights.keys())}\n'
         else:
             result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
         return result
