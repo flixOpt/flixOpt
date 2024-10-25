@@ -166,8 +166,7 @@ class Aggregation:
         # Return fig, ax for further use
         return fig, ax
 
-    @staticmethod
-    def get_cluster_indices(aggregation: tsam.TimeSeriesAggregation) -> Dict[str, List[np.ndarray]]:
+    def get_cluster_indices(self) -> Dict[str, List[np.ndarray]]:
         """
         Generates a dictionary that maps each cluster to a list of index vectors representing the time steps
         assigned to that cluster for each period.
@@ -177,19 +176,55 @@ class Aggregation:
                    cluster_1: [index_vector_1],
                    ...}
         """
-        clusters = aggregation.clusterPeriodNoOccur.keys()
+        clusters = self.tsam.clusterPeriodNoOccur.keys()
         index_vectors = {cluster: [] for cluster in clusters}
 
-        period_length = len(aggregation.stepIdx)
-        total_steps = len(aggregation.timeSeries)
+        period_length = len(self.tsam.stepIdx)
+        total_steps = len(self.tsam.timeSeries)
 
-        for period, cluster_id in enumerate(aggregation.clusterOrder):
+        for period, cluster_id in enumerate(self.tsam.clusterOrder):
             start_idx = period * period_length
             end_idx = np.min([start_idx + period_length, total_steps])
             index_vectors[cluster_id].append(np.arange(start_idx, end_idx))
 
         return index_vectors
 
+    def get_equation_indices(self, fix_first_index_of_period: bool = True) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Generates pairs of indices for the equations by comparing index vectors of the same cluster.
+        If `fix_first_index_of_period` is True, the first index of each period is skipped.
+
+        Args:
+            fix_first_index_of_period (bool): Whether to fix or to skip the first index of each period in the comparison.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: Two arrays of indices.
+        """
+        idx_var1 = []
+        idx_var2 = []
+
+        # Iterate through cluster index vectors
+        for cluster_id, index_vectors in self.get_cluster_indices().items():
+            if len(index_vectors) <= 1:  # Only proceed if cluster has more than one period
+                continue
+
+            # Process the first vector, optionally skip first index
+            first_vector = index_vectors[0]
+            if fix_first_index_of_period:
+                first_vector = first_vector[1:]
+
+            # Compare first vector to others in the cluster
+            for other_vector in index_vectors[1:]:
+                if fix_first_index_of_period:
+                    other_vector = other_vector[1:]
+
+                # Compare elements up to the minimum length of both vectors
+                min_len = min(len(first_vector), len(other_vector))
+                idx_var1.extend(first_vector[:min_len])
+                idx_var2.extend(other_vector[:min_len])
+
+        # Convert lists to numpy arrays
+        return np.array(idx_var1), np.array(idx_var2)
 
 class AggregationModeling(Element):
     # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
