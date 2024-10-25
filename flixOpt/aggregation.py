@@ -9,7 +9,7 @@ Modul zur aggregierten Berechnung eines Energiesystemmodells.
 
 import copy
 import timeit
-from typing import Optional, List, Dict, Union, TYPE_CHECKING
+from typing import Optional, List, Dict, Union, TYPE_CHECKING, Tuple
 import warnings
 import logging
 from collections import Counter
@@ -19,11 +19,11 @@ import numpy as np
 import tsam.timeseriesaggregation as tsam
 
 from flixOpt.core import Skalar, TimeSeries
-from flixOpt.elements import Flow
+from flixOpt.elements import Flow, Component
 from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Storage
 from flixOpt.core import TimeSeriesData
-from flixOpt.structure import Element, SystemModel
+from flixOpt.structure import Element, SystemModel, ElementModel, create_variable, create_equation
 from flixOpt.math_modeling import Equation, Variable
 
 if TYPE_CHECKING:
@@ -226,136 +226,63 @@ class Aggregation:
         # Convert lists to numpy arrays
         return np.array(idx_var1), np.array(idx_var2)
 
-class AggregationModeling(Element):
-    # ModelingElement mit Zusatz-Glg. und Variablen für aggregierte Berechnung
+
+class AggregationModel(ElementModel):
+    """ The AggregationModel interacts directly with the SystemModel, inserting its Variables and Equations there """
     def __init__(self,
-                 label: str,
+                 aggregation_parameters: AggregationParameters,
                  flow_system: FlowSystem,
-                 index_vectors_of_clusters: Dict[int, List[np.ndarray]],
-                 fix_storage_flows: bool = True,
-                 fix_binary_vars_only: bool = True,
-                 elements_to_clusterize: Optional[List] = None,  # TODO: List[Element|
-                 percentage_of_period_freedom=0,
-                 costs_of_period_freedom=0,
-                 **kwargs):
-        '''
+                 aggregation_data: Aggregation,
+                 components_to_clusterize: Optional[List[Component]]):
+        """
         Modeling-Element for "index-equating"-equations
-
-
-        Parameters
-        ----------
-        label : TYPE
-            DESCRIPTION.
-        es : TYPE
-            DESCRIPTION.
-        index_vectors_of_clusters : TYPE
-            DESCRIPTION.
-        fix_storage_flows : TYPE, optional
-            DESCRIPTION. The default is True.
-        fix_binary_vars_only : TYPE, optional
-            DESCRIPTION. The default is True.
-        elements_to_clusterize : TYPE, optional
-            DESCRIPTION. The default is None.
-        percentage_of_period_freedom : TYPE, optional
-            DESCRIPTION. The default is 0.
-        costs_of_period_freedom : TYPE, optional
-            DESCRIPTION. The default is 0.
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
-        '''
+        """
+        super().__init__(Element("Aggregation"), "Model")
         self.flow_system = flow_system
-        self.index_vectors_of_clusters = index_vectors_of_clusters
-        self.fix_storage_flows = fix_storage_flows
-        self.fix_binary_vars_only = fix_binary_vars_only
-        self.elements_to_clusterize = elements_to_clusterize
-
-        self.percentage_of_period_freedom = percentage_of_period_freedom
-        self.costs_of_period_freedom = costs_of_period_freedom
-
-        super().__init__(label, **kwargs)
-        # invest_parameters to attributes:
-
-        self.var_K_list = []
-
-        # self.sub_elements.append(self.featureOn)
-
-    def declare_vars_and_eqs(self, system_model: SystemModel):
-        super().declare_vars_and_eqs(system_model)
+        self.aggregation_parameters = aggregation_parameters
+        self.aggregation_data = aggregation_data
+        self.components_to_clusterize = components_to_clusterize
 
     def do_modeling(self, system_model: SystemModel):
-
-        if self.elements_to_clusterize is None:
-            # Alle:
-            compSet = set(self.flow_system.components)
-            flowSet = self.flow_system.all_flows
+        if self.components_to_clusterize is None:
+            components = self.flow_system.components
         else:
-            # Ausgewählte:
-            compSet = set(self.elements_to_clusterize)
-            flowSet = {flow for flow in self.flow_system.all_flows if flow.comp in self.elements_to_clusterize}
+            components = [component for component in self.components_to_clusterize]
 
-        flow: Flow
+        for component in components:
+            if isinstance(component, Storage) and not self.aggregation_parameters.fix_storage_flows:
+                continue  # Fix Nothing in The Storage
+            all_variables_of_component = component.model.all_variables
+            print(all_variables_of_component.keys())
+            """
+            if 'on' in all_variables_of_component:
+                self.equate_indices(all_vars_of_element['on'], system_model, fix_first_index_of_period=True)
+            if 'switchOn' in all_variables_of_component:
+                self.equate_indices(all_vars_of_element['switchOn'], system_model, fix_first_index_of_period=True)
+            if 'switchOff' in all_variables_of_component:
+                self.equate_indices(all_vars_of_element['switchOff'], system_model, fix_first_index_of_period=True)
 
-        # todo: hier anstelle alle Elemente durchgehen, nicht nur flows und comps:
-        for element in flowSet | compSet:
-            # Wenn StorageFlows nicht gefixt werden sollen und flow ein storage-Flow ist:
-            if (not self.fix_storage_flows) and hasattr(element, 'comp') and (
-            isinstance(element.comp, Storage)):
-                pass  # flow hier nicht fixen!
-            else:
-                all_vars_of_element = element.all_variables_with_sub_elements
-                if 'on' in all_vars_of_element:
-                    self.equate_indices(all_vars_of_element['on'], system_model, fix_first_index_of_period=True)
-                if 'switchOn' in all_vars_of_element:
-                    self.equate_indices(all_vars_of_element['switchOn'], system_model, fix_first_index_of_period=True)
-                if 'switchOff' in all_vars_of_element:
-                    self.equate_indices(all_vars_of_element['switchOff'], system_model, fix_first_index_of_period=True)
+            if not self.fix_binary_vars_only and 'val' in all_vars_of_element:
+                self.equate_indices(all_vars_of_element['val'], system_model, fix_first_index_of_period=True)
 
-                if not self.fix_binary_vars_only and 'val' in all_vars_of_element:
-                    self.equate_indices(all_vars_of_element['val'], system_model, fix_first_index_of_period=True)
-
-    def equate_indices(self, aVar: Variable, system_model, fix_first_index_of_period: bool) -> Equation:
-        aVar: Variable
-        # todo!: idx_var1/2 wird jedes mal gemacht! nicht schick
-
+            """
+    def equate_indices(self, variable: Variable,
+                       indices: Tuple[np.ndarray, np.ndarray],
+                       system_model: SystemModel) -> Equation:
         # Gleichung:
         # eq1: x(p1,t) - x(p3,t) = 0 # wobei p1 und p3 im gleichen Cluster sind und t = 0..N_p
-        idx_var1 = np.array([])
-        idx_var2 = np.array([])
-        for clusterNr in self.index_vectors_of_clusters.keys():
-            listOfIndexVectors = self.index_vectors_of_clusters[clusterNr]
-            # alle Indexvektor-Tupel durchgehen:
-            for i in range(len(listOfIndexVectors) - 1):  # ! Nur wenn cluster mehr als eine Periode enthält:
-                # Falls eine Periode nicht ganz voll (eigl. nur bei letzter Periode möglich)
-                v1 = listOfIndexVectors[0]
-                v2 = listOfIndexVectors[i + 1]
-                if not fix_first_index_of_period:
-                    v1 = v1[1:]  # erstes Element immer weglassen
-                    v2 = v2[1:]
-                minLen = min(len(v1), len(v2))
-                idx_var1 = np.append(idx_var1, v1[:minLen])
-                idx_var2 = np.append(idx_var2, v2[:minLen])
+        length = len(indices[0])
+        assert len(indices[0]) == len(indices[1]), f'The length of the indices must match!!'
 
-        eq = Equation('equalIdx_' + aVar.label_full, self, system_model, eqType='eq')
-        self.model.add_equations(eq)
-        eq.add_summand(aVar, 1, indices_of_variable=idx_var1)
-        eq.add_summand(aVar, -1, indices_of_variable=idx_var2)
+        eq = create_equation(f'Equate_indices_of_{variable.label}', self, system_model)
+        eq.add_summand(variable, 1, indices_of_variable=indices[0])
+        eq.add_summand(variable, -1, indices_of_variable=indices[1])
 
         # Korrektur: (bisher nur für Binärvariablen:)
-        if aVar.is_binary and self.percentage_of_period_freedom > 0:
+        if variable.is_binary and self.aggregation_parameters.percentage_of_period_freedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = Variable('Korr1_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
-                              system_model,
-                              is_binary=True)
-            self.model.add_variables(var_K1)
-            var_K0 = Variable('Korr0_' + aVar.label_full.replace('.', '_'), eq.nr_of_single_equations, self.label_full,
-                              system_model,
-                              is_binary=True)
-            self.model.add_variables(var_K0)
+            var_K1 = create_variable(f'Korr1_{variable.label}', self, length, system_model, is_binary=True)
+            var_K0 = create_variable(f'Korr0_{variable.label}', self, length, system_model, is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
@@ -364,34 +291,32 @@ class AggregationModeling(Element):
             #  On(p1,t) = 0 -> On(p3) can be 1 -> K1=1 (,K0=1)
             eq.add_summand(var_K1, +1)
             eq.add_summand(var_K0, -1)
-            self.var_K_list.append(var_K1)
-            self.var_K_list.append(var_K0)
 
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
-            eq_lock = Equation('lock_K0andK1' + aVar.label_full, self, system_model, eqType='ineq')
-            self.model.add_equations(eq_lock)
+            eq_lock = create_equation(f'lock_K0andK1_{variable.label}', self, system_model, eq_type='ineq')
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
             eq_lock.add_constant(1.1)
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
-            self.noOfCorrections = round(self.percentage_of_period_freedom / 100 * var_K1.length)
-            eq_max = Equation('maxNoOfCorrections_' + aVar.label_full, self, system_model, eqType='ineq')
-            self.model.add_equations(eq_max)
+            eq_max = create_equation(f'Nr_of_Corrections_{variable.label}', self, system_model, eq_type='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
-            eq_max.add_constant(self.noOfCorrections)  # Maximum
+            eq_max.add_constant(self.nr_of_corrections)  # Maximum
         return eq
 
-    def add_share_to_globals(self, effect_collection: 'EffectCollection', system_model):
-        # TODO: BUGFIX
-        # einzelne Stellen korrigierbar machen (aber mit Kosten)
-        if (self.percentage_of_period_freedom > 0) & (self.costs_of_period_freedom != 0):
-            for var_K in self.var_K_list:
-                # todo: Krücke, weil muss eigentlich sowas wie Strafkosten sein!!!
-                effect_collection.objective.add_summand(var_K, self.costs_of_period_freedom, as_sum=True)
+    def add_share_to_globals(self, system_model: SystemModel):
+        # TODO: percentage_of_period_freedom is not used??
+        penalty = self.aggregation_parameters.costs_of_period_freedom
+        if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
+            for label, variable in self.variables.items():
+                system_model.effect_collection_model.add_share_to_penalty(f'Penalty_{label}', self.element, variable, penalty)
+
+    @property
+    def nr_of_corrections(self) -> int:
+        return round(self.aggregation_parameters.percentage_of_period_freedom / 100 * len(self.variables.values()))
 
 
 class TimeSeriesCollection:
@@ -442,6 +367,7 @@ class AggregationParameters:
                  nr_of_periods: int,
                  fix_storage_flows: bool,
                  fix_binary_vars_only: bool,
+                 fix_first_index_of_period: bool = False,
                  percentage_of_period_freedom: float = 0,
                  costs_of_period_freedom: float = 0,
                  time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
@@ -451,6 +377,7 @@ class AggregationParameters:
         self.nr_of_periods = nr_of_periods
         self.fix_storage_flows = fix_storage_flows
         self.fix_binary_vars_only = fix_binary_vars_only
+        self.fix_first_index_of_period = fix_first_index_of_period
         self.percentage_of_period_freedom = percentage_of_period_freedom
         self.costs_of_period_freedom = costs_of_period_freedom
         self.time_series_for_high_peaks: List[TimeSeriesData] = time_series_for_high_peaks or []
