@@ -10,17 +10,21 @@ import logging
 import math
 import pathlib
 import timeit
-from typing import List, Dict, Optional, Literal, Tuple, Union
+from typing import List, Dict, Optional, Literal, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 import yaml
 
 from flixOpt import utils
-from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters
+from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
 from flixOpt.core import Skalar, Numeric, TimeSeriesData
-from flixOpt.math_modeling import VariableTS
+from flixOpt.math_modeling import VariableTS, Variable, Equation
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
+from flixOpt.elements import Component
+from flixOpt.components import Storage
+
+
 
 logger = logging.getLogger('flixOpt')
 
@@ -147,6 +151,7 @@ class AggregatedCalculation(Calculation):
 
     def __init__(self, name, flow_system: FlowSystem,
                  aggregation_parameters: AggregationParameters,
+                 components_to_clusterize: Optional[List[Component]] = None,
                  modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
@@ -163,11 +168,12 @@ class AggregatedCalculation(Calculation):
         """
         super().__init__(name, flow_system, modeling_language, time_indices)
         self.aggregation_parameters = aggregation_parameters
+        self.components_to_clusterize = components_to_clusterize
         self.time_series_for_aggregation = None
         self.aggregation_data = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
-    def do_modeling(self):
+    def do_modeling(self) -> SystemModel:
         """
         method of aggregated modeling.
         1. Finds typical periods.
@@ -203,6 +209,11 @@ class AggregatedCalculation(Calculation):
             list of data-timeseries. The period with the min-value are
             chosen as an explicitly period.
         """
+
+        self.flow_system.transform_to_time_series()
+        for time_series in self.flow_system.all_time_series:
+            time_series.activate_indices(self.time_indices)
+
         from flixOpt.aggregation import Aggregation
 
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
@@ -239,9 +250,23 @@ class AggregatedCalculation(Calculation):
 
         self.aggregation_data.cluster()
         self.aggregation_data.plot()
+        self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
-        # Add Equations
-        self._equate_indices()
+        # Model the System
+        t_start = timeit.default_timer()
+
+        self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
+        self.system_model.do_modeling()
+        #Add Aggregation Model after modeling the rest
+        aggregation_model = AggregationModel(self.aggregation_parameters, self.flow_system, self.aggregation_data,
+                                             self.components_to_clusterize)
+        self.system_model.other_models.append(aggregation_model)
+        aggregation_model.do_modeling(self.system_model)
+
+        self.system_model.to_math_model()
+
+        self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
+        return self.system_model
 
     def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
@@ -249,27 +274,6 @@ class AggregatedCalculation(Calculation):
 
         if save_results:
             self._save_solve_infos()
-
-    def equate_indices(self):
-        aggregationModel = flixAgg.AggregationModeling('aggregation', self.flow_system,
-                                                       index_vectors_of_clusters=dataAgg.index_vectors_of_clusters,
-                                                       fix_binary_vars_only=fix_binary_vars_only,
-                                                       fix_storage_flows=fix_storage_flows, elements_to_clusterize=None,
-                                                       percentage_of_period_freedom=percentage_of_period_freedom,
-                                                       costs_of_period_freedom=costs_of_period_freedom)
-
-        # temporary Modeling-Element for equalizing indices of aggregation:
-        self.flow_system.add_temporary_elements(aggregationModel)
-
-        if fix_binary_vars_only:
-            TS_explicit = None
-        else:
-            # neue (Explizit)-Werte für TS sammeln::
-            TS_explicit = {}
-            for i in range(len(self.time_series_for_aggregation)):
-                TS = self.time_series_for_aggregation[i]
-                # todo: agg-Wert für TS:
-                TS_explicit[TS] = dataAgg.results[TS.label_full].values  # nur data-array ohne Zeit
 
 
 class SegmentedCalculation(Calculation):
