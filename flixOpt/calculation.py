@@ -25,7 +25,6 @@ from flixOpt.elements import Component
 from flixOpt.components import Storage
 
 
-
 logger = logging.getLogger('flixOpt')
 
 
@@ -170,7 +169,7 @@ class AggregatedCalculation(Calculation):
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
         self.time_series_for_aggregation = None
-        self.aggregation_data = None
+        self.aggregation = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
     def do_modeling(self) -> SystemModel:
@@ -240,7 +239,7 @@ class AggregatedCalculation(Calculation):
         original_data = pd.DataFrame(self.time_series_collection.data, index=chosenTimeSeries)
 
         # Aggregation - creation of aggregated timeseries:
-        self.aggregation_data = Aggregation(original_data=original_data,
+        self.aggregation = Aggregation(original_data=original_data,
                                             hours_per_time_step=dt_min,
                                             hours_per_period=self.aggregation_parameters.hours_per_period,
                                             nr_of_periods=self.aggregation_parameters.nr_of_periods,
@@ -248,8 +247,10 @@ class AggregatedCalculation(Calculation):
                                             time_series_for_high_peaks=self.aggregation_parameters.labels_for_high_peaks,
                                             time_series_for_low_peaks=self.aggregation_parameters.labels_for_low_peaks)
 
-        self.aggregation_data.cluster()
-        self.aggregation_data.plot()
+        self.aggregation.cluster()
+        self.aggregation.plot()
+        self.time_series_collection.insert_data(  # Converting it into a dict with labels as keys
+            {col: np.array(values) for col, values in self.aggregation.aggregated_data.to_dict(orient='list').items()})
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
         # Model the System
@@ -258,7 +259,7 @@ class AggregatedCalculation(Calculation):
         self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         self.system_model.do_modeling()
         #Add Aggregation Model after modeling the rest
-        aggregation_model = AggregationModel(self.aggregation_parameters, self.flow_system, self.aggregation_data,
+        aggregation_model = AggregationModel(self.aggregation_parameters, self.flow_system, self.aggregation,
                                              self.components_to_clusterize)
         self.system_model.other_models.append(aggregation_model)
         aggregation_model.do_modeling(self.system_model)
@@ -270,7 +271,7 @@ class AggregatedCalculation(Calculation):
 
     def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
-        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
+        self.system_model.solve(**solverProps, logfile_name=self._paths['log'][0])
 
         if save_results:
             self._save_solve_infos()

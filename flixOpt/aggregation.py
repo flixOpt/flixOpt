@@ -24,7 +24,7 @@ from flixOpt.flow_system import FlowSystem
 from flixOpt.components import Storage
 from flixOpt.core import TimeSeriesData
 from flixOpt.structure import Element, SystemModel, ElementModel, create_variable, create_equation
-from flixOpt.math_modeling import Equation, Variable
+from flixOpt.math_modeling import Equation, Variable, VariableTS
 
 if TYPE_CHECKING:
     from flixOpt.effects import EffectCollection
@@ -93,9 +93,9 @@ class Aggregation:
 
     def describe_clusters(self) -> str:
         aVisual = {}
-        for cluster in self.get_cluster_indices(self.tsam).keys():
+        for cluster in self.get_cluster_indices().keys():
             aVisual[cluster] = [str(indexVector[0]) + '...' + str(indexVector[-1]) for indexVector in
-                                self.get_cluster_indices(self.tsam)[cluster]]
+                                self.get_cluster_indices()[cluster]]
 
         if self.use_extreme_periods:
             # Zeitreihe rauslöschen:
@@ -253,6 +253,12 @@ class TimeSeriesCollection:
         duplicates = [label for label, count in label_counts.items() if count > 1]
         assert duplicates == [], "Duplicate TimeSeries labels found: {}.".format(', '.join(duplicates))
 
+    def insert_data(self, data: Dict[str, np.ndarray]):
+        for time_series in self.time_series_list:
+            if time_series.label in data:
+                time_series.aggregated_data = data[time_series.label]
+                logger.debug(f'Inserted data for {time_series.label}')
+
     def description(self) -> str:
         #TODO:
         result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'
@@ -277,6 +283,50 @@ class AggregationParameters:
                  time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
                  time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None
                  ):
+        """
+        Initializes aggregation parameters for time series data
+
+        Parameters
+        ----------
+        hours_per_period : float
+            Duration of each period in hours.
+        nr_of_periods : int
+            Number of typical periods to use in the aggregation.
+        fix_storage_flows : bool
+            Whether to aggregate storage flows (load/unload); if other flows
+            are fixed, fixing storage flows is usually not required.
+        fix_binary_vars_only : bool
+            Whether to only aggregate binary variables.
+        fix_first_index_of_period : bool, optional
+            Whether to fix the first index within each period (default is False).
+        percentage_of_period_freedom : float, optional
+            Specifies the maximum percentage (0–100) of values within each period
+            that can deviate as "free variables," chosen by the solver (default is 0).
+        costs_of_period_freedom : float, optional
+            The cost associated with each "free variable"; defaults to 0. Added to Penalty
+        time_series_for_high_peaks : list of TimeSeriesData, optional
+            List of time series to use for explicitly selecting periods with high values.
+        time_series_for_low_peaks : list of TimeSeriesData, optional
+            List of time series to use for explicitly selecting periods with low values.
+
+        Attributes
+        ----------
+        time_series_for_high_peaks : list of TimeSeriesData
+            Stores time series with high peaks; can be used to select high-peak periods.
+        time_series_for_low_peaks : list of TimeSeriesData
+            Stores time series with low peaks; can be used to select low-peak periods.
+
+        Properties
+        ----------
+        use_extreme_periods : bool
+            True if high or low peak time series are provided; used to select extreme periods.
+        labels_for_high_peaks : list of str
+            Labels of the time series provided for high peaks.
+        labels_for_low_peaks : list of str
+            Labels of the time series provided for low peaks.
+        use_low_peaks : bool
+            True if any low peak time series are provided; used to check low peak usage.
+        """
         self.hours_per_period = hours_per_period
         self.nr_of_periods = nr_of_periods
         self.fix_storage_flows = fix_storage_flows
@@ -326,23 +376,27 @@ class AggregationModel(ElementModel):
         else:
             components = [component for component in self.components_to_clusterize]
 
+        indices = self.aggregation_data.get_equation_indices()
+
         for component in components:
             if isinstance(component, Storage) and not self.aggregation_parameters.fix_storage_flows:
                 continue  # Fix Nothing in The Storage
+
             all_variables_of_component = component.model.all_variables
-            print(all_variables_of_component.keys())
-            """
-            if 'on' in all_variables_of_component:
-                self.equate_indices(all_vars_of_element['on'], system_model, fix_first_index_of_period=True)
-            if 'switchOn' in all_variables_of_component:
-                self.equate_indices(all_vars_of_element['switchOn'], system_model, fix_first_index_of_period=True)
-            if 'switchOff' in all_variables_of_component:
-                self.equate_indices(all_vars_of_element['switchOff'], system_model, fix_first_index_of_period=True)
+            if self.aggregation_parameters.fix_binary_vars_only:
+                all_relevant_variables = [v for v in all_variables_of_component.values() if
+                                          isinstance(v, VariableTS) and v.is_binary]
+            else:
+                all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
+            for variable in all_relevant_variables:
+                self.equate_indices(variable, indices, system_model)
 
-            if not self.fix_binary_vars_only and 'val' in all_vars_of_element:
-                self.equate_indices(all_vars_of_element['val'], system_model, fix_first_index_of_period=True)
+        penalty = self.aggregation_parameters.costs_of_period_freedom
+        if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
+            for label, variable in self.variables.items():
+                system_model.effect_collection_model.add_share_to_penalty(f'Penalty_{label}', self.element, variable,
+                                                          penalty)
 
-            """
     def equate_indices(self, variable: Variable,
                        indices: Tuple[np.ndarray, np.ndarray],
                        system_model: SystemModel) -> Equation:
@@ -381,16 +435,5 @@ class AggregationModel(ElementModel):
             eq_max = create_equation(f'Nr_of_Corrections_{variable.label}', self, system_model, eq_type='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
-            eq_max.add_constant(self.nr_of_corrections)  # Maximum
+            eq_max.add_constant(round(self.aggregation_parameters.percentage_of_period_freedom / 100 * var_K1.length))  # Maximum
         return eq
-
-    def add_share_to_globals(self, system_model: SystemModel):
-        # TODO: percentage_of_period_freedom is not used??
-        penalty = self.aggregation_parameters.costs_of_period_freedom
-        if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
-            for label, variable in self.variables.items():
-                system_model.effect_collection_model.add_share_to_penalty(f'Penalty_{label}', self.element, variable, penalty)
-
-    @property
-    def nr_of_corrections(self) -> int:
-        return round(self.aggregation_parameters.percentage_of_period_freedom / 100 * len(self.variables.values()))

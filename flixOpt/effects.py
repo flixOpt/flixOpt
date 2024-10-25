@@ -310,7 +310,7 @@ class EffectCollectionModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self._effect_models = {effect: effect.create_model() for effect in self.element.effects}
-        self.penalty = ShareAllocationModel(self.element, 'penalty', True)
+        self.penalty = ShareAllocationModel(self.element, 'penalty', False)
         self.sub_models.extend(list(self._effect_models.values()) + [self.penalty])
         for model in self.sub_models:
             model.do_modeling(system_model)
@@ -383,7 +383,7 @@ class EffectCollectionModel(ElementModel):
         if variable is None:
             self.penalty.add_constant_share(self._system_model, name, share_holder, factor, 1)
         elif isinstance(variable, Variable):
-            self.penalty.add_variable_share(self._system_model, name, share_holder, variable, factor, 1)
+            self.penalty._add_share(self._system_model, name, share_holder, variable, factor, 1, True)
         else:
             raise TypeError
 

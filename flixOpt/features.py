@@ -582,15 +582,18 @@ class ShareAllocationModel(ElementModel):
                    share_holder: Element,
                    variable: Optional[Variable],
                    factor1: Numeric,
-                   factor2: Numeric):
+                   factor2: Numeric,
+                   as_sum: bool = False):
         """ if name_of_share, then a proper share is created, which is explicitly published in results.
         Else, its only added to the total of the Effect"""
         # TODO: accept only one factor or accept unlimited factors -> *factors
         total_factor = np.multiply(factor1, factor2)
 
         # Check to which equation the share should be added
-        if self._shares_are_time_series:
+        if self._shares_are_time_series and not as_sum:
             target_eq = self._eq_time_series
+        elif as_sum:
+            target_eq = self._eq_sum
         else:
             # checking for single value
             assert any([np.issubdtype(type(total_factor), np.integer),
@@ -600,11 +603,12 @@ class ShareAllocationModel(ElementModel):
             target_eq = self._eq_sum
 
         if variable is None:  # constant share
+            total_factor = np.sum(total_factor) if as_sum else total_factor
             target_eq.add_constant(-1 * total_factor)
         elif name_of_share is None:  # variable share
-            target_eq.add_summand(variable, total_factor)
+            target_eq.add_summand(variable, total_factor, as_sum=as_sum)
         else:  # var and eq for publishing share-values in results:
-            new_share = SingleShareModel(share_holder, not self._shares_are_time_series, name_of_share)
+            new_share = SingleShareModel(share_holder, as_sum, name_of_share)
             new_share.do_modeling(system_model)
             new_share.add_summand_to_share(variable, total_factor)
             target_eq.add_summand(new_share.single_share, 1)

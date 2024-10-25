@@ -219,6 +219,7 @@ class SystemModel(MathModel):
     def results(self):
         return {'Components': {model.element.label: model.results() for model in self.component_models},
                 'Effects': self.effect_collection_model.results(),
+                'Others': {model.element.label: model.results() for model in self.other_models},
                 'Objective': self.objective_result
                 }
 
