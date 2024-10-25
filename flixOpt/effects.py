@@ -184,8 +184,8 @@ class EffectModel(ElementModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.all.add_variable_share(system_model, 'operation', self.element, self.operation.sum, 1, 1)
-        self.all.add_variable_share(system_model, 'invest', self.element, self.invest.sum, 1, 1)
+        self.all.add_variable_share(system_model, 'operation', self.element, self.operation.sum)
+        self.all.add_variable_share(system_model, 'invest', self.element, self.invest.sum)
 
 
 EffectDict = Dict[Optional['Effect'], Numeric]
@@ -348,10 +348,11 @@ class EffectCollectionModel(ElementModel):
                 raise ValueError(f'Target {target} not supported!')
 
             name_of_share = f'{element.label_full}__{name}'
+            total_factor = np.multiply(value, factor)
             if variable is None:
-                model.add_constant_share(self._system_model, name_of_share, effect, value, factor)
+                model.add_constant_share(self._system_model, name_of_share, effect, total_factor)
             elif isinstance(variable, Variable):
-                model.add_variable_share(self._system_model, name_of_share, effect, variable, value, factor)
+                model.add_variable_share(self._system_model, name_of_share, effect, variable, total_factor)
             else:
                 raise TypeError
 
@@ -379,13 +380,8 @@ class EffectCollectionModel(ElementModel):
                              variable: Optional[Variable],
                              factor: Numeric,
                              ) -> None:
-        assert variable is not None
-        if variable is None:
-            self.penalty.add_constant_share(self._system_model, name, share_holder, factor, 1)
-        elif isinstance(variable, Variable):
-            self.penalty._add_share(self._system_model, name, share_holder, variable, factor, 1, True)
-        else:
-            raise TypeError
+        assert variable is not None, f'A Varieble must e passed to add a share to penalty! Else its a constant Penalty!'
+        self.penalty.add_variable_share(self._system_model, name, share_holder, variable, factor,  True)
 
     def add_share_between_effects(self):
         for origin_effect in self.element.effects:
@@ -395,10 +391,10 @@ class EffectCollectionModel(ElementModel):
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
                 target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS,
-                                                time_series.active_data, 1)
+                                                time_series.active_data)
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
                 target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum,
-                                                factor, 1)
+                                                factor)
