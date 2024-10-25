@@ -68,10 +68,6 @@ class Aggregation:
         self.clustering_duration_seconds = None
         self.tsam: Optional[tsam.TimeSeriesAggregation] = None
 
-        self.original_data.index = pd.MultiIndex.from_arrays(
-            [[0] * self.nr_of_time_steps, list(range(self.nr_of_time_steps))],
-            names=['Period', 'TimeStep'])
-
     def cluster(self) -> None:
         """
         Durchführung der Zeitreihenaggregation
