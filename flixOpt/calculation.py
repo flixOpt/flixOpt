@@ -15,14 +15,12 @@ from typing import List, Dict, Optional, Literal, Tuple, Union, TYPE_CHECKING
 import numpy as np
 import yaml
 
-from flixOpt import utils
 from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
-from flixOpt.core import Skalar, Numeric, TimeSeriesData
-from flixOpt.math_modeling import VariableTS, Variable, Equation
+from flixOpt.core import TimeSeriesData
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
 from flixOpt.elements import Component
-from flixOpt.components import Storage
+from flixOpt.features import InvestmentModel
 
 
 logger = logging.getLogger('flixOpt')
@@ -34,7 +32,7 @@ class Calculation:
     """
     def __init__(self, name, flow_system: FlowSystem,
                  modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
-                 time_indices: Optional[list[int]] = None):
+                 time_indices: Optional[Union[range, List[int]]] = None):
         """
         Parameters
         ----------
@@ -107,7 +105,6 @@ class Calculation:
                     f'{message:#^80}\n'
                     f'{"":#^80}')
 
-    @property
     def results(self):
         if self._results is None:
             self._results = self.system_model.results()
@@ -152,7 +149,7 @@ class AggregatedCalculation(Calculation):
                  aggregation_parameters: AggregationParameters,
                  components_to_clusterize: Optional[List[Component]] = None,
                  modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
-                 time_indices: Optional[list[int]] = None):
+                 time_indices: Optional[Union[range, List[int]]] = None):
         """
         Class for Optimizing the FLowSystem including:
             1. Aggregating TImeSeriesData via typical periods using tsam.
@@ -251,20 +248,13 @@ class AggregatedCalculation(Calculation):
 
 
 class SegmentedCalculation(Calculation):
-    """
-    class for defined way of solving a flow_system optimizatino
-    """
-
-    @property
-    def results_struct(self):
-        # Wenn noch nicht ermittelt:
-        if self._results_struct is None:
-            self._results_struct = utils.createStructFromDictInDict(self.results)
-        return self._results_struct
-
-    def solve(self, solverProps, segment_length: int, nr_of_used_steps: int, path='results/'):
+    def __init__(self, name, flow_system: FlowSystem,
+                 segment_length: int,
+                 overlap_length: int,
+                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
+                 time_indices: Optional[Union[range, list[int]]] = None):
         """
-        Dividing and Modeling the problem in (overlapped) time-segments.
+        Dividing and Modeling the problem in (overlapping) segments.
         Storage values as result of segment n are overtaken
         to the next segment n+1 for timestep, which is first in segment n+1
 
@@ -272,174 +262,72 @@ class SegmentedCalculation(Calculation):
         are put together to the full timeseries
 
         Because the result of segment n is used in segment n+1, modeling and
-        solving is both done in this method
+        solving is done in one step
 
         Take care:
-        Parameters like invest_parameters, loadfactor etc. does not make sense in
-        segmented modeling, cause they are newly defined in each segment
+        Parameters like invest_parameters, loadfactor etc. do not make sense in
+        segmented modeling, because they are newly defined in each segment.
+        This is not yet explicitly checked for...
 
         Parameters
         ----------
-        solverProps : TYPE
-            DESCRIPTION.
+        name : str
+            name of calculation
+        flow_system : FlowSystem
+            flow_system which should be calculated
         segment_length : int
-            nr Of Timesteps of Segment.
-        nr_of_used_steps : int
-            nr of timesteps used/overtaken in resulting complete timeseries
-            (the timesteps after these are "overlap" and used for better
-            results of chargestate of storages)
-        path : str
-            path for output. The default is 'results/'.
+            The number of time_steps per individual segment (without the overlap)
+        overlap_length : int
+            The number of time_steps that are added to each individual model. Used for better
+            results of storages)
+        modeling_language : 'pyomo', 'cvxpy' (not implemeted yet)
+            choose optimization modeling language
+        time_indices : List[int] or None
+            list with indices, which should be used for calculation. If None, then all timesteps are used.
 
         """
-        self.check_if_already_modeled()
-        self._infos['segmented_properties'] = {'segment_length': segment_length, 'nr_of_used_steps': nr_of_used_steps}
+        super().__init__(name, flow_system, modeling_language, time_indices)
+        self.segment_length = segment_length
+        self.overlap_length = overlap_length
+        self._total_length = len(self.time_indices) if self.time_indices is not None else len(flow_system.time_series)
+        self.number_of_segments = math.ceil(self._total_length / self.segment_length)
+        self.sub_calculations: List[FullCalculation] = []
+
+    def do_modeling_and_solve(self, solverProps: dict, path='results/'):
         logger.info(f'{"":#^80}')
-        logger.info(f'{" segmented Solving ":#^80}')
+        logger.info(f'{" Segmented Solving ":#^80}')
 
-        t_start = timeit.default_timer()
-        self.flow_system.finalize()   # flow_system finalisieren:
+        assert self.segment_length_with_overlap <= self._total_length, \
+            f'{self.segment_length_with_overlap=} cant be greater than the total length {self._total_length}'
 
-        assert len(self.flow_system.all_investments) == 0, 'Invest-Parameters not supported in segmented calculation!'
-        assert nr_of_used_steps <= segment_length
-        assert segment_length <= len(self.time_series), f'{segment_length=} cant be greater than {len(self.time_series)=}'
+        self._define_path_names(path, save_results=True, nr_of_system_models=self.number_of_segments)
 
-        # Anzahl = Letzte Simulation bis zum Ende plus die davor mit Überlappung:
-        nr_of_segments = math.ceil((len(self.time_series)) / nr_of_used_steps)
-        self._infos['segmented_properties']['nr_of_segments'] = nr_of_segments
-        logger.info(f'Indices       : {self.time_indices[0]}...{self.time_indices[-1]}')
-        logger.info(f'Segment Length: {segment_length}')
-        logger.info(f'Used Steps    : {nr_of_used_steps}')
-        logger.info(f'Number of Segments: {nr_of_segments}\n')
+        for i in range(self.number_of_segments):
+            time_indices = self._get_indices(i)
+            logger.info(f'{i}. Segment (flow_system indices {time_indices.start}...{time_indices.stop-1}):')
+            calculation = FullCalculation(f'Segment_{i+1}', self.flow_system, self.modeling_language, time_indices)
+            # TODO: Add Before Values if available
+            self.sub_calculations.append(calculation)
+            calculation.do_modeling()
+            invest_elements = [model.element.label_full for model in calculation.system_model.sub_models
+                               if isinstance(model, InvestmentModel)]
+            if invest_elements:
+                logger.critical(f'Investments are not supported in Segmented Calculation! '
+                                f'Following elements Contain Investments: {invest_elements}')
+            calculation.solve(solverProps, path=path)
 
-        self._define_path_names(path, save_results=True, nr_of_system_models=nr_of_segments)
+        self.durations = {calculation.name: calculation.durations for calculation in self.sub_calculations}
 
-        for i in range(nr_of_segments):
-            start_index_of_segment = i * nr_of_used_steps
-            end_index_of_segment = min(start_index_of_segment + segment_length, len(self.time_indices)) - 1
+    def results(self, individual_results: bool = False) -> dict:
+        if individual_results:
+            return {f'Segment_{i+1}': calculation.results() for i, calculation in enumerate(self.sub_calculations)}
+        else:
+            logger.warning('This is not yet implemented')
 
-            start_index_global = self.time_indices[start_index_of_segment]
-            end_index_global = self.time_indices[end_index_of_segment]  # inklusiv
-            indices_global = self.time_indices[start_index_of_segment:end_index_of_segment + 1]  # inklusive endIndex
+    def _get_indices(self, segment_index: int) -> range:
+        start = segment_index * self.segment_length
+        return range(start, min(start + self.segment_length + self.overlap_length, self._total_length))
 
-            # new real_nr_of_used_steps:
-            if i == max(range(nr_of_segments)):   # if last Segment:
-                nr_of_used_steps = end_index_of_segment - start_index_of_segment + 1
-
-            logger.info(f'{i}. Segment (flow_system indices {start_index_global}...{end_index_global}):')
-
-
-            # Modellierungsbox / TimePeriod-Box bauen:
-            system_model_of_segment = SystemModel(f'{self.name}_seg{i}', self.modeling_language, self.flow_system,
-                                        indices_global)  # alle Indexe nehmen!
-
-            # Startwerte übergeben von Vorgänger-system_model:
-            if i > 0:
-                system_model_of_segment.before_values = self.get_before_values_for_next_segment(nr_of_used_steps - 1)
-                logger.info(f'{" before_values ":#^80}')
-                logger.info(f'{system_model_of_segment.before_values}')
-                logger.info(f'{"":#^80}')
-
-            # model in Energiesystem aktivieren:
-            self.flow_system.activate_model(system_model_of_segment, indices_global)
-
-            # modellieren:
-            t_start_modeling = timeit.default_timer()
-            self.flow_system.do_modeling_of_elements()
-            self.flow_system.transform_to_math_model()
-            self.durations['modeling'] += round(timeit.default_timer() - t_start_modeling, 2)
-            # system_model in Liste hinzufügen:
-            self.system_models.append(system_model_of_segment)
-
-            # Lösen:
-            t_start_solving = timeit.default_timer()
-
-            system_model_of_segment.solve(**solverProps,
-                                logfile_name=self._paths['log'][i])  # keine SolverOutput-Anzeige, da sonst zu viel
-            self.durations['solving'] += round(timeit.default_timer() - t_start_solving, 2)
-            ## results adding:
-            self._add_segment_results(system_model_of_segment, start_index_of_segment, nr_of_used_steps)
-
-        self.durations['model, solve and segmentStuff'] = round(timeit.default_timer() - t_start, 2)
-
-        self._save_solve_infos()
-
-    def _add_segment_results(self, segment, startIndex_calc, realNrOfUsedSteps):
-        # rekursiv aufzurufendes Ergänzen der Dict-Einträge um segment-Werte:
-
-        if (self._results is None):
-            self._results = {}  # leeres Dict als Ausgangszustand
-
-        def append_new_results_to_dict_values(result: Dict, result_to_append: Dict, result_to_append_var: Dict):
-            if result == {}:
-                firstFill = True  # jeweils neuer Dict muss erzeugt werden für globales Dict
-            else:
-                firstFill = False
-
-            for key, val in result_to_append.items():
-                # Wenn val ein Wert ist:
-                if isinstance(val, np.ndarray) or isinstance(val, np.float64) or np.isscalar(val):
-
-                    # Beachte Länge (withEnd z.B. bei Speicherfüllstand)
-                    if key in ['time_series', 'dt_in_hours', 'dt_in_hours_total']:
-                        withEnd = False
-                    elif key in ['time_series_with_end']:
-                        withEnd = True
-                    else:
-                        # Beachte Speicherladezustand und ähnliche Variablen:
-                        aReferedVariable = result_to_append_var[key]
-                        aReferedVariable: VariableTS
-                        withEnd = isinstance(aReferedVariable, VariableTS) \
-                                  and (aReferedVariable.before_value is not None) \
-                                  and aReferedVariable.before_value_is_start_value
-
-                        # nested:
-
-                    def getValueToAppend(val, withEnd):
-                        # wenn skalar, dann Vektor draus machen:
-                        # todo: --> nicht so schön!
-                        if np.isscalar(val):
-                            val = np.array([val])
-
-                        if withEnd:
-                            if firstFill:
-                                aValue = val[0:realNrOfUsedSteps + 1]  # (inklusive WithEnd!)
-                            else:
-                                # erstes Element weglassen, weil das schon vom Vorgängersegment da ist:
-                                aValue = val[1:realNrOfUsedSteps + 1]  # (inklusive WithEnd!)
-                        else:
-                            aValue = val[0:realNrOfUsedSteps]  # (nur die genutzten Steps!)
-                        return aValue
-
-                    aValue = getValueToAppend(val, withEnd)
-
-                    if firstFill:
-                        result[key] = aValue
-                    else:  # erstmaliges Füllen. Array anlegen.
-                        result[key] = np.append(result[key], aValue)  # Anhängen (nur die genutzten Steps!)
-
-                else:
-                    if firstFill: result[key] = {}
-
-                    if (result_to_append_var is not None) and key in result_to_append_var.keys():
-                        resultToAppend_sub = result_to_append_var[key]
-                    else:  # z.B. bei time (da keine Variablen)
-                        resultToAppend_sub = None
-                    append_new_results_to_dict_values(result[key], result_to_append[key],
-                                                      resultToAppend_sub)  # hier rekursiv!
-
-        # rekursiv:
-        append_new_results_to_dict_values(self._results, segment.results, segment.results_var)
-
-        # results füllen:  # ....
-
-    def get_before_values_for_next_segment(self, last_index_of_segment: int) -> Dict[str, Numeric]:
-        # hole Startwert/letzten Wert für nächstes Segment:
-        new_before_values = {}
-
-        for variable in self.system_models[-1].ts_variables:
-            if variable.before_value is not None:
-                index = last_index_of_segment + 1 if variable.before_value_is_start_value else last_index_of_segment
-                assert variable.label_full not in new_before_values.keys(), f' before_value is already set for {variable.label_full}'
-                new_before_values.update({variable.label_full: variable.result[index]})
-        return new_before_values
+    @property
+    def segment_length_with_overlap(self):
+        return self.segment_length + self.overlap_length
