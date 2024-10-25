@@ -308,24 +308,6 @@ class AggregationParameters:
             List of time series to use for explicitly selecting periods with high values.
         time_series_for_low_peaks : list of TimeSeriesData, optional
             List of time series to use for explicitly selecting periods with low values.
-
-        Attributes
-        ----------
-        time_series_for_high_peaks : list of TimeSeriesData
-            Stores time series with high peaks; can be used to select high-peak periods.
-        time_series_for_low_peaks : list of TimeSeriesData
-            Stores time series with low peaks; can be used to select low-peak periods.
-
-        Properties
-        ----------
-        use_extreme_periods : bool
-            True if high or low peak time series are provided; used to select extreme periods.
-        labels_for_high_peaks : list of str
-            Labels of the time series provided for high peaks.
-        labels_for_low_peaks : list of str
-            Labels of the time series provided for low peaks.
-        use_low_peaks : bool
-            True if any low peak time series are provided; used to check low peak usage.
         """
         self.hours_per_period = hours_per_period
         self.nr_of_periods = nr_of_periods

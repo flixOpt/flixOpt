@@ -154,10 +154,19 @@ class AggregatedCalculation(Calculation):
                  modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
+        Class for Optimizing the FLowSystem including:
+            1. Aggregating TImeSeriesData via typical periods using tsam.
+            2. Equalizing variables of typical periods.
         Parameters
         ----------
         name : str
             name of calculation
+        aggregation_parameters : AggregationParameters
+            Parameters for aggregation. See documentation of AggregationParameters class.
+        components_to_clusterize: List[Component] or None
+            List of Components to perform aggregation on. If None, then all components are aggregated.
+            This means, teh variables in the components are equalized to each other, according to the typical periods
+            computed in the DataAggregation
         flow_system : FlowSystem
             flow_system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
@@ -173,42 +182,6 @@ class AggregatedCalculation(Calculation):
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
     def do_modeling(self) -> SystemModel:
-        """
-        method of aggregated modeling.
-        1. Finds typical periods.
-        2. Equalizes variables of typical periods.
-
-        Parameters
-        ----------
-        hours_per_period : float
-            length of one period in hours.
-        nr_of_periods : int
-            no of typical periods
-        fix_storage_flows : boolean
-            Defines, wether load- and unload-Flow should be also aggregated or not.
-            If all other flows are fixed, it is mathematically not necessary
-            to fix them.
-        fix_binary_vars_only : boolean
-            True, if only binary var should be aggregated.
-            Additionally choose, wether orginal or aggregated timeseries should
-            be chosen for the calculation.
-        percentage_of_period_freedom : 0...100
-            Normally timesteps of all periods in one period-collection
-            are all equalized. Here you can choose, which percentage of values
-            can maximally deviate from this and be "free variables". The solver
-            chooses the "free variables".
-        costs_of_period_freedom : float
-            costs per "free variable". The default is 0.
-            !! Warning: At the moment these costs are allocated to
-            operation costs, not to penalty!!
-        time_series_for_high_peaks : list of TimeSeriesData
-            list of data-timeseries. The period with the max-value are
-            chosen as an explicitly period.
-        time_series_for_low_peaks : list of TimeSeriesData
-            list of data-timeseries. The period with the min-value are
-            chosen as an explicitly period.
-        """
-
         self.flow_system.transform_to_time_series()
         for time_series in self.flow_system.all_time_series:
             time_series.activate_indices(self.time_indices)
