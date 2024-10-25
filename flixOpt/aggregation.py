@@ -227,6 +227,87 @@ class Aggregation:
         return np.array(idx_var1), np.array(idx_var2)
 
 
+class TimeSeriesCollection:
+    def __init__(self,
+                 time_series_list: List[TimeSeries]):
+        self.time_series_list = time_series_list
+        self.group_weights: Dict[str, float] = {}
+        self._unique_labels()
+        self._calculate_aggregation_weigths()
+        self.weights: Dict[str, float] = {time_series.label: time_series.aggregation_weight for
+                                          time_series in self.time_series_list}
+        self.data: Dict[str, np.ndarray] = {time_series.label: time_series.active_data for
+                                            time_series in self.time_series_list}
+
+        if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
+            logger.info(f'All Aggregation weights were set to 1')
+
+    def _calculate_aggregation_weigths(self):
+        """ Calculates the aggergation weights of all TimeSeries. Necessary to use groups"""
+        groups = [time_series.aggregation_group for time_series in self.time_series_list if
+                  time_series.aggregation_group is not None]
+        group_size = dict(Counter(groups))
+        self.group_weights = {group: 1 / size for group, size in group_size.items()}
+        for time_series in self.time_series_list:
+            time_series.aggregation_weight = self.group_weights.get(time_series.aggregation_group, 1)
+
+    def _unique_labels(self):
+        """ Makes sure every label of the TimeSeries in time_series_list is unique """
+        label_counts = Counter([time_series.label for time_series in self.time_series_list])
+        duplicates = [label for label, count in label_counts.items() if count > 1]
+        assert duplicates == [], "Duplicate TimeSeries labels found: {}.".format(', '.join(duplicates))
+
+    def description(self) -> str:
+        #TODO:
+        result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'
+        for time_series in self.time_series_list:
+            result += f' -> {time_series.label} (weight: {time_series.aggregation_weight:.4f}; group: "{time_series.aggregation_group}")\n'
+        if self.group_weights:
+            result += f'Aggregation_Groups: {list(self.group_weights.keys())}\n'
+        else:
+            result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
+        return result
+
+
+class AggregationParameters:
+    def __init__(self,
+                 hours_per_period: float,
+                 nr_of_periods: int,
+                 fix_storage_flows: bool,
+                 fix_binary_vars_only: bool,
+                 fix_first_index_of_period: bool = False,
+                 percentage_of_period_freedom: float = 0,
+                 costs_of_period_freedom: float = 0,
+                 time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
+                 time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None
+                 ):
+        self.hours_per_period = hours_per_period
+        self.nr_of_periods = nr_of_periods
+        self.fix_storage_flows = fix_storage_flows
+        self.fix_binary_vars_only = fix_binary_vars_only
+        self.fix_first_index_of_period = fix_first_index_of_period
+        self.percentage_of_period_freedom = percentage_of_period_freedom
+        self.costs_of_period_freedom = costs_of_period_freedom
+        self.time_series_for_high_peaks: List[TimeSeriesData] = time_series_for_high_peaks or []
+        self.time_series_for_low_peaks: List[TimeSeriesData] = time_series_for_low_peaks or []
+
+    @property
+    def use_extreme_periods(self):
+        return self.time_series_for_high_peaks or self.time_series_for_low_peaks
+
+    @property
+    def labels_for_high_peaks(self) -> List[str]:
+        return [ts.label for ts in self.time_series_for_high_peaks]
+
+    @property
+    def labels_for_low_peaks(self) -> List[str]:
+        return [ts.label for ts in self.time_series_for_low_peaks]
+
+    @property
+    def use_low_peaks(self):
+        return self.time_series_for_low_peaks is not None
+
+
 class AggregationModel(ElementModel):
     """ The AggregationModel interacts directly with the SystemModel, inserting its Variables and Equations there """
     def __init__(self,
@@ -317,84 +398,3 @@ class AggregationModel(ElementModel):
     @property
     def nr_of_corrections(self) -> int:
         return round(self.aggregation_parameters.percentage_of_period_freedom / 100 * len(self.variables.values()))
-
-
-class TimeSeriesCollection:
-    def __init__(self,
-                 time_series_list: List[TimeSeries]):
-        self.time_series_list = time_series_list
-        self.group_weights: Dict[str, float] = {}
-        self._unique_labels()
-        self._calculate_aggregation_weigths()
-        self.weights: Dict[str, float] = {time_series.label: time_series.aggregation_weight for
-                                          time_series in self.time_series_list}
-        self.data: Dict[str, np.ndarray] = {time_series.label: time_series.active_data for
-                                            time_series in self.time_series_list}
-
-        if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
-            logger.info(f'All Aggregation weights were set to 1')
-
-    def _calculate_aggregation_weigths(self):
-        """ Calculates the aggergation weights of all TimeSeries. Necessary to use groups"""
-        groups = [time_series.aggregation_group for time_series in self.time_series_list if
-                  time_series.aggregation_group is not None]
-        group_size = dict(Counter(groups))
-        self.group_weights = {group: 1 / size for group, size in group_size.items()}
-        for time_series in self.time_series_list:
-            time_series.aggregation_weight = self.group_weights.get(time_series.aggregation_group, 1)
-
-    def _unique_labels(self):
-        """ Makes sure every label of the TimeSeries in time_series_list is unique """
-        label_counts = Counter([time_series.label for time_series in self.time_series_list])
-        duplicates = [label for label, count in label_counts.items() if count > 1]
-        assert duplicates == [], "Duplicate TimeSeries labels found: {}.".format(', '.join(duplicates))
-
-    def description(self) -> str:
-        #TODO:
-        result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'
-        for time_series in self.time_series_list:
-            result += f' -> {time_series.label} (weight: {time_series.aggregation_weight:.4f}; group: "{time_series.aggregation_group}")\n'
-        if self.group_weights:
-            result += f'Aggregation_Groups: {list(self.group_weights.keys())}\n'
-        else:
-            result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
-        return result
-
-
-class AggregationParameters:
-    def __init__(self,
-                 hours_per_period: float,
-                 nr_of_periods: int,
-                 fix_storage_flows: bool,
-                 fix_binary_vars_only: bool,
-                 fix_first_index_of_period: bool = False,
-                 percentage_of_period_freedom: float = 0,
-                 costs_of_period_freedom: float = 0,
-                 time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
-                 time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None
-                 ):
-        self.hours_per_period = hours_per_period
-        self.nr_of_periods = nr_of_periods
-        self.fix_storage_flows = fix_storage_flows
-        self.fix_binary_vars_only = fix_binary_vars_only
-        self.fix_first_index_of_period = fix_first_index_of_period
-        self.percentage_of_period_freedom = percentage_of_period_freedom
-        self.costs_of_period_freedom = costs_of_period_freedom
-        self.time_series_for_high_peaks: List[TimeSeriesData] = time_series_for_high_peaks or []
-        self.time_series_for_low_peaks: List[TimeSeriesData] = time_series_for_low_peaks or []
-
-    @property
-    def use_extreme_periods(self):
-        return self.time_series_for_high_peaks or self.time_series_for_low_peaks
-
-    @property
-    def labels_for_high_peaks(self) -> List[str]:
-        return [ts.label for ts in self.time_series_for_high_peaks]
-
-    @property
-    def labels_for_low_peaks(self) -> List[str]:
-        return [ts.label for ts in self.time_series_for_low_peaks]
-
-    @property
-    def use_low_peaks(self):
-        return self.time_series_for_low_peaks is not None
