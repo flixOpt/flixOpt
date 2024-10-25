@@ -145,7 +145,7 @@ class FullCalculation(Calculation):
 
 class AggregatedCalculation(Calculation):
     """
-    class for defined way of solving a flow_system optimizatino
+    class for defined way of solving a flow_system optimization
     """
 
     def __init__(self, name, flow_system: FlowSystem,

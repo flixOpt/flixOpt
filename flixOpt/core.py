@@ -112,6 +112,10 @@ class TimeSeries:
                  f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}')
             self.aggregated_data = self.make_scalar_if_possible(aggregated_data)
 
+    def clear_indices_and_aggregated_data(self):
+        self.active_indices = None
+        self.aggregated_data = None
+
     @property
     def active_data(self) -> Numeric:
         if self.aggregated_data is not None:  # Aggregated data is always active, if present

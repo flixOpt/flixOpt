@@ -106,8 +106,7 @@ class LinearConverter(Component):
         for conversion_factor in self.conversion_factors:
             transformed_dict = {}
             for flow, values in conversion_factor.items():
-                if not isinstance(values, TimeSeries):
-                    transformed_dict[flow] = _create_time_series(f"{flow.label}_factor", values, self)
+                transformed_dict[flow] = _create_time_series(f"{flow.label}_factor", values, self)
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
 
