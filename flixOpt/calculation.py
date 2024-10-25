@@ -10,13 +10,13 @@ import logging
 import math
 import pathlib
 import timeit
-from typing import List, Dict, Optional, Literal, Tuple, Union, TYPE_CHECKING
+from typing import List, Dict, Optional, Literal, Union
 
 import numpy as np
 import yaml
 
 from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
-from flixOpt.core import TimeSeriesData
+from flixOpt.core import Numeric
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
 from flixOpt.elements import Component
@@ -152,7 +152,7 @@ class AggregatedCalculation(Calculation):
                  time_indices: Optional[Union[range, List[int]]] = None):
         """
         Class for Optimizing the FLowSystem including:
-            1. Aggregating TImeSeriesData via typical periods using tsam.
+            1. Aggregating TimeSeriesData via typical periods using tsam.
             2. Equalizing variables of typical periods.
         Parameters
         ----------
@@ -319,10 +319,11 @@ class SegmentedCalculation(Calculation):
         self.durations = {calculation.name: calculation.durations for calculation in self.sub_calculations}
 
     def results(self, individual_results: bool = False) -> dict:
+        all_results = {f'Segment_{i+1}': calculation.results() for i, calculation in enumerate(self.sub_calculations)}
         if individual_results:
-            return {f'Segment_{i+1}': calculation.results() for i, calculation in enumerate(self.sub_calculations)}
+            return all_results
         else:
-            logger.warning('This is not yet implemented')
+            return _combine_nested_dicts(self.overlap_length, *list(all_results.values()))
 
     def _get_indices(self, segment_index: int) -> range:
         start = segment_index * self.segment_length
@@ -331,3 +332,82 @@ class SegmentedCalculation(Calculation):
     @property
     def segment_length_with_overlap(self):
         return self.segment_length + self.overlap_length
+
+
+def _remove_none_values(data: Union[List, Dict]) -> Union[List, Dict]:
+    """
+    Recursively removes `None` values from a nested dictionary or list structure.
+
+    Parameters
+    ----------
+    data : Dict[str, Any]
+        A nested dictionary or list that may contain `None` values.
+
+    Returns
+    -------
+    Dict[str, Any]
+        The dictionary or list with all `None` values and empty structures removed.
+
+    Example
+    -------
+    >>> data = {'a': None, 'b': {'c': None, 'd': 5}}
+    >>> _remove_none_values(data)
+    {'b': {'d': 5}}
+    """
+    if isinstance(data, dict):
+        # Recursively process each key in the dictionary
+        return {k: _remove_none_values(v) for k, v in data.items() if
+                v is not None and _remove_none_values(v) is not None}
+    elif isinstance(data, list):
+        # Process lists, if any, by applying the function to each element
+        return [_remove_none_values(item) for item in data if item is not None]
+    else:
+        # Return the item if it's not a dict, list, or None
+        return data
+
+
+def _combine_nested_dicts(trim: int = 0, *dicts: Dict[str, Numeric]) -> Dict[str, Numeric]:
+    """
+    Combines multiple dictionaries with identical structures by stacking their arrays,
+    optionally trimming elements.
+
+    Parameters
+    ----------
+    trim : int, optional
+        Number of elements to trim from the end of each array except the last. Defaults to 0.
+    *dicts : Dict[str, Numeric]
+        Dictionaries with matching structures and arrays as values.
+
+    Returns
+    -------
+    Dict[str, Numeric]
+        A single dictionary with combined arrays at each key, with all `None` values removed.
+
+    Example
+    -------
+    >>> dict1 = {'a': np.array([1, 2, 3]), 'b': {'c': np.array([4, 5, 6])}}
+    >>> dict2 = {'a': np.array([7, 8, 9]), 'b': {'c': np.array([10, 11, 12])}}
+    >>> _combine_nested_dicts(1, dict1, dict2)
+    {'a': array([1, 2, 7, 8, 9]), 'b': {'c': array([4, 5, 10, 11, 12])}}
+    """
+    # Recursive function to traverse and combine arrays
+    def combine_dicts_recursively(key_path, *values):
+        if all(isinstance(value, dict) for value in values):
+            # If all values are dicts, go deeper into each level
+            return {k: combine_dicts_recursively(key_path + [k], *(v[k] for v in values)) for k in values[0].keys()}
+
+        # If the values are arrays, stack them after trimming
+        if all(isinstance(value, np.ndarray) for value in values):
+            trimmed_arrays = [
+                value[:-trim] if isinstance(value, np.ndarray) and idx < len(values) - 1 and trim > 0 and
+                                 value.shape[0] > trim
+                else value
+                for idx, value in enumerate(values)
+            ]
+            return np.concatenate(trimmed_arrays, axis=0)
+
+        # Return None if values aren't arrays (skip integers, floats, etc.)
+        return None
+
+    combined_dict = combine_dicts_recursively([], *dicts)
+    return _remove_none_values(combined_dict)
