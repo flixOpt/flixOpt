@@ -195,6 +195,9 @@ class OnOffModel(ElementModel):
             self.total_on_hours = create_variable('totalOnHours', self, 1, system_model,
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
                                                   upper_bound=self._on_off_parameters.on_hours_total_max)
+            eq_total_on = create_equation('totalOnHours', self, system_model, )
+            eq_total_on.add_summand(self.on, system_model.dt_in_hours, as_sum=True)
+            eq_total_on.add_summand(self.total_on_hours, -1)
 
             self._add_on_constraints(system_model, system_model.indices)
 
