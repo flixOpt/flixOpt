@@ -82,8 +82,9 @@ class Calculation:
                 f'{" Variables of FlowSystem ":#^80}\n\n'
                 f'{yaml.dump(self.description_of_variables_as_dict(system_model))}')
 
-    def _define_path_names(self, path: str, save_results: bool, include_timestamp: bool = True,
-                           nr_of_system_models: int = 1):
+    def _define_path_names(self,
+                           save_results: Union[bool, str, pathlib.Path],
+                           include_timestamp: bool = False):
         """
         Creates the path for saving results and alters the name of the calculation to have a timestamp
         """
@@ -92,12 +93,15 @@ class Calculation:
             self.name = f'{timestamp.strftime("%Y-%m-%d")}_{self.name.replace(" ", "")}'
 
         if save_results:
-            path = pathlib.Path.cwd() / path  # absoluter Pfad:
+            if not isinstance(save_results, (str, pathlib.Path)):
+                save_results = 'results/'  # Standard path for results
+            path = pathlib.Path.cwd() / save_results  # absoluter Pfad:
+
             path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
 
-            self._paths["log"] = [path / f'{self.name}_solver_{i}.log' for i in range(nr_of_system_models)]
+            self._paths["log"] = path / f'{self.name}_solver.log'
             self._paths["data"] = path / f'{self.name}_data.pickle'
-            self._paths["info"] = path / f'{self.name}_solvingInfos.yaml'
+            self._paths["info"] = path / f'{self.name}_info.yaml'
 
     def _save_solve_infos(self):
         message = f' Saved Calculation: {self.name} '
@@ -130,10 +134,10 @@ class FullCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
 
-    def solve(self, solverProps: dict, path='results/', save_results=True):
-        self._define_path_names(path, save_results, nr_of_system_models=1)
+    def solve(self, solverProps: dict, save_results: Union[bool, str, pathlib.Path] = False):
+        self._define_path_names(save_results)
         t_start = timeit.default_timer()
-        self.system_model.solve(**solverProps, logfile_name=self._paths['log'][0])
+        self.system_model.solve(**solverProps, logfile_name=self._paths['log'])
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         if save_results:
@@ -239,9 +243,9 @@ class AggregatedCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
 
-    def solve(self, solverProps: dict, path='results/', save_results=True):
-        self._define_path_names(path, save_results, nr_of_system_models=1)
-        self.system_model.solve(**solverProps, logfile_name=self._paths['log'][0])
+    def solve(self, solverProps: dict, save_results: Union[bool, str, pathlib.Path] = False):
+        self._define_path_names(save_results)
+        self.system_model.solve(**solverProps, logfile_name=self._paths['log'])
 
         if save_results:
             self._save_solve_infos()
@@ -293,14 +297,13 @@ class SegmentedCalculation(Calculation):
         self.number_of_segments = math.ceil(self._total_length / self.segment_length)
         self.sub_calculations: List[FullCalculation] = []
 
-    def do_modeling_and_solve(self, solverProps: dict, path='results/'):
-        logger.info(f'{"":#^80}')
-        logger.info(f'{" Segmented Solving ":#^80}')
-
+        assert segment_length > 2, 'The Segment length must be greater 2, due to unwanted internal side effects'
         assert self.segment_length_with_overlap <= self._total_length, \
             f'{self.segment_length_with_overlap=} cant be greater than the total length {self._total_length}'
 
-        self._define_path_names(path, save_results=True, nr_of_system_models=self.number_of_segments)
+    def do_modeling_and_solve(self, solverProps: dict, save_results: Union[bool, str, pathlib.Path] = True):
+        logger.info(f'{"":#^80}')
+        logger.info(f'{" Segmented Solving ":#^80}')
 
         for i in range(self.number_of_segments):
             time_indices = self._get_indices(i)
@@ -314,7 +317,7 @@ class SegmentedCalculation(Calculation):
             if invest_elements:
                 logger.critical(f'Investments are not supported in Segmented Calculation! '
                                 f'Following elements Contain Investments: {invest_elements}')
-            calculation.solve(solverProps, path=path)
+            calculation.solve(solverProps, save_results)
 
         self.durations = {calculation.name: calculation.durations for calculation in self.sub_calculations}
 
