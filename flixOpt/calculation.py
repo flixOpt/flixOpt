@@ -260,19 +260,14 @@ class SegmentedCalculation(Calculation):
                  time_indices: Optional[Union[range, list[int]]] = None):
         """
         Dividing and Modeling the problem in (overlapping) segments.
-        Storage values as result of segment n are overtaken
-        to the next segment n+1 for timestep, which is first in segment n+1
-
-        Afterwards timesteps of segments (without overlap)
-        are put together to the full timeseries
-
-        Because the result of segment n is used in segment n+1, modeling and
-        solving is done in one step
+        The final values of each Segment are recognized by the following segment, effectively coupling
+        charge_states and flow_rates between segments.
+        Because of this intersection, both modeling and solving is done in one step
 
         Take care:
-        Parameters like invest_parameters, loadfactor etc. do not make sense in
-        segmented modeling, because they are newly defined in each segment.
-        This is not yet explicitly checked for...
+        Parameters like InvestParameters, sum_of_flow_hours and other restrictions over the total time_series
+        don't really work in this Calculation. Lower bounds to such SUMS can lead to weird results.
+        This is NOT yet explicitly checked for...
 
         Parameters
         ----------
@@ -302,7 +297,7 @@ class SegmentedCalculation(Calculation):
         assert self.segment_length_with_overlap <= self._total_length, \
             f'{self.segment_length_with_overlap=} cant be greater than the total length {self._total_length}'
 
-        # String all original start values
+        # Storing all original start values
         self._original_start_values = {
             **{flow: flow.previous_flow_rate for flow in self.flow_system.all_flows},
             **{comp: comp.initial_charge_state for comp in self.flow_system.components if isinstance(comp, Storage)}
