@@ -277,7 +277,7 @@ class Equation:
         logger.debug(f'eq {self.label} .to_math_model()')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
-        self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)
+        constant_vector = self.constant_vector
 
         if math_model.modeling_language == 'pyomo':
             # 1. Constraints:
@@ -287,9 +287,9 @@ class Equation:
                 def linear_sum_pyomo_rule(model, i):
                     lhs = 0
                     aSummand: Summand
-                    for aSummand in self.listOfSummands:
+                    for aSummand in self.summands:
                         lhs += aSummand.math_expression(i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
-                    rhs = self.constant_vector[i]
+                    rhs = constant_vector[i]
                     # Unterscheidung return-value je nach typ:
                     if self.eqType == 'eq':
                         return lhs == rhs
@@ -297,7 +297,7 @@ class Equation:
                         return lhs <= rhs
 
                 # TODO: self._pyomo_comp ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
-                self._pyomo_comp = pyomoEnv.Constraint(range(self.nr_of_single_equations),
+                self._pyomo_comp = pyomoEnv.Constraint(range(self.length),
                                               rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
                 # Register im Pyomo:
                 math_model._pyomo_register(
@@ -308,13 +308,13 @@ class Equation:
             # 2. Zielfunktion:
             elif self.eqType == 'objective':
                 # Anmerkung: nrOfEquation - Check könnte auch weiter vorne schon passieren!
-                if self.nr_of_single_equations > 1:
+                if self.length > 1:
                     raise Exception('Equation muss für objective ein Skalar ergeben!!!')
 
                 # Summierung der Skalare:
                 def linearSumRule_Skalar(model):
                     skalar = 0
-                    for aSummand in self.listOfSummands:
+                    for aSummand in self.summands:
                         skalar += aSummand.math_expression(math_model.modeling_language)  # kein i übergeben, da skalar
                     return skalar
 
