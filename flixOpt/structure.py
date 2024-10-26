@@ -410,7 +410,7 @@ def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]
 def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
                     eq_type: Literal['eq', 'ineq', 'objective'] = 'eq') -> Equation:
     """ Creates an Equation and adds it to the model of the Element """
-    eq = Equation(f'{element_model.label_full}_{label}', label, system_model, eq_type)
+    eq = Equation(f'{element_model.label_full}_{label}', label, eq_type)
     element_model.add_equations(eq)
     return eq
 

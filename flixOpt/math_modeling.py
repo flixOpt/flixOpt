@@ -167,7 +167,6 @@ class Equation:
     def __init__(self,
                  label: str,
                  label_short: str,
-                 math_model: 'MathModel',  #TODO Remove
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         """
         label: full label of the variable
