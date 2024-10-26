@@ -27,23 +27,25 @@ class Variable:
     """
     def __init__(self,
                  label: str,
-                 label_short: str,
                  length: int,
                  math_model: 'MathModel',
+                 label_short: Optional[str] = None,
                  is_binary: bool = False,
-                 value: Optional[Skalar] = None,
-                 lower_bound: Optional[Skalar] = None,
-                 upper_bound: Optional[Skalar] = None):
+                 fixed_value: Optional[Numeric] = None,
+                 lower_bound: Optional[Numeric] = None,
+                 upper_bound: Optional[Numeric] = None):
         """
         label: full label of the variable
         label_short: short label of the variable
+
+        # TODO: Allow for None values in fixed_value. If None, the index gets not fixed!
         """
         self.label = label
-        self.label_short = label_short
+        self.label_short = label_short or label
         self.length = length
         self.math_model = math_model
         self.is_binary = is_binary
-        self.value = value
+        self.fixed_value = fixed_value
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
 
@@ -52,17 +54,15 @@ class Variable:
 
         self._result = None  # Ergebnis-Speicher
 
-        if value is not None:   # Check if value is within bounds, element-wise
-            min_ok = (self.lower_bound is None) or np.all(self.value >= self.lower_bound)
-            max_ok = (self.upper_bound is None) or np.all(self.value <= self.upper_bound)
+        if self.fixed_value is not None:   # Check if value is within bounds, element-wise
+            above = self.lower_bound is None or np.all(np.asarray(self.fixed_value) >= np.asarray(self.lower_bound))
+            below = self.upper_bound is None or np.all(np.asarray(self.fixed_value) <= np.asarray(self.upper_bound))
+            if not (above and below):
+                raise Exception(f'Fixed value of Variable {self.label} not inside set bounds:'
+                                f'\n{self.fixed_value=};\n{self.lower_bound=};\n{self.upper_bound=}')
 
-            if not (min_ok and max_ok):
-                raise Exception(f'Variable.fixed_value {self.label} not inside set bounds:'
-                                f'\n{self.value=};\n{self.lower_bound=};\n{self.upper_bound=}')
-
-            # Set value and mark as fixed
+            # Mark as fixed
             self.fixed = True
-            self.value = utils.as_vector(value, length)
 
         logger.debug('Variable created: ' + self.label)
 
@@ -71,7 +71,7 @@ class Variable:
 
         header = f'Var {bin_type} x {self.length:<6} "{self.label}"'
         if self.fixed:
-            description = f'{header:<40}: fixed={str(self.value)[:max_length_ts]:<10}'
+            description = f'{header:<40}: fixed={str(self.fixed_value)[:max_length_ts]:<10}'
         else:
             description = (f'{header:<40}: min={str(self.lower_bound)[:max_length_ts]:<10}, '
                            f'max={str(self.upper_bound)[:max_length_ts]:<10}')
@@ -92,12 +92,12 @@ class Variable:
 
             lower_bound_vector = utils.as_vector(self.lower_bound, self.length)
             upper_bound_vector = utils.as_vector(self.upper_bound, self.length)
-            value_vector = utils.as_vector(self.value, self.length)
+            fixed_value_vector = utils.as_vector(self.fixed_value, self.length)
             for i in self.indices:
                 # Wenn Vorgabe-Wert vorhanden:
-                if self.fixed and (value_vector[i] != None):
+                if self.fixed and (fixed_value_vector[i] != None):
                     # Fixieren:
-                    self._pyomo_comp[i].value = value_vector[i]
+                    self._pyomo_comp[i].value = fixed_value_vector[i]
                     self._pyomo_comp[i].fix()
                 else:
                     # Boundaries:
@@ -121,11 +121,11 @@ class Variable:
                 values = self._pyomo_comp.get_values().values()  # .values() of dict, because {0:0.1, 1:0.3,...}
                 # choose dataType:
                 if self.is_binary:
-                    dType = np.int8  # geht das vielleicht noch kleiner ???
+                    dtype = np.int8  # geht das vielleicht noch kleiner ???
                 else:
-                    dType = float
+                    dtype = float
                 # transform to np-array (fromiter() is 5-7x faster than np.array(list(...)) )
-                self._result = np.fromiter(values, dtype=dType)
+                self._result = np.fromiter(values, dtype=dtype)
                 # Falls skalar:
                 if len(self._result) == 1:
                     self._result = self._result[0]
@@ -144,16 +144,17 @@ class VariableTS(Variable):
     """
     def __init__(self,
                  label: str,
-                 label_short: str,
                  length: int,
                  math_model: 'MathModel',
+                 label_short: Optional[str] = None,
                  is_binary: bool = False,
-                 value: Optional[Numeric] = None,
+                 fixed_value: Optional[Numeric] = None,
                  lower_bound: Optional[Numeric] = None,
                  upper_bound: Optional[Numeric] = None,
                  previous_values: Optional[Numeric] = None):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        super().__init__(label, label_short, length, math_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
+        super().__init__(label, length, math_model, label_short, is_binary=is_binary, fixed_value=fixed_value,
+                         lower_bound=lower_bound, upper_bound=upper_bound)
         self.previous_values = previous_values
 
 
@@ -447,7 +448,7 @@ class SumOfSummand(Summand):
         self._math_expression = None
         self.length = 1
 
-    def math_expression(self, at_index=0):
+    def math_expression(self, at_index=None):
         # at index doesn't do anything. Can be removed, but induces changes elsewhere (Inherritance)
         if self._math_expression is not None:
             return self._math_expression
