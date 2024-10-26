@@ -9,6 +9,7 @@ import logging
 import re
 import timeit
 from typing import List, Dict, Optional, Union, Literal
+from abc import ABC, abstractmethod
 
 import numpy as np
 from pyomo.contrib import appsi
@@ -777,3 +778,76 @@ class SolverLog:
             logger.warning(f'{" No solver-log parsing implemented for glpk yet! ":#^80}\n')
         else:
             raise Exception('SolverLog.parse_infos() is not defined for solver ' + self.solver_name)
+
+
+class Solver(ABC):
+    """ Abstract class for Solvers """
+    def __init__(self,
+                 mip_gap: float,
+                 time_limit_seconds: int,
+                 solver_output_to_console: bool,
+                 logfile_name: str,
+                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'
+                 ):
+        self.mip_gap = mip_gap
+        self.time_limit_seconds = time_limit_seconds
+        self.solver_output_to_console = solver_output_to_console
+        self.logfile_name = logfile_name
+        self.modeling_language = modeling_language
+
+        self._solver = None
+        self.solver_results = None
+
+    def solve(self, model: pyomoEnv.ConcreteModel):
+        raise NotImplementedError(f' Solving is not possible with this Abstract class')
+
+
+class Gurobi(Solver):
+    def __init__(self,
+                 mip_gap: float,
+                 time_limit_seconds: int,
+                 solver_output_to_console: bool,
+                 logfile_name: str,
+                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'
+                 ):
+        super().__init__(mip_gap, time_limit_seconds, solver_output_to_console, logfile_name, modeling_language)
+        self._solver = pyomoEnv.SolverFactory('gurobi') if self.modeling_language == 'pyomo'
+
+    def solve(self, model: pyomoEnv.ConcreteModel):
+        self.solver_results = self._solver.solve(model, options=self.options, keepfiles=True)
+        return self.solver_results
+
+    @property
+    def options(self) -> Dict:
+        return {"mipgap": self.mip_gap,
+                "TimeLimit": self.time_limit_seconds,
+                'logfile': self.logfile_name,
+                'tee': self.solver_output_to_console}
+
+class Highs(Solver):
+    def __init__(self,
+                 mip_gap: float,
+                 time_limit_seconds: int,
+                 solver_output_to_console: bool,
+                 threads: int,
+                 logfile_name: str,
+                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'
+                 ):
+        super().__init__(mip_gap, time_limit_seconds, solver_output_to_console, logfile_name, modeling_language)
+        self.threads = threads
+        self._solver = appsi.solvers.Highs()
+
+    def solve(self, model: pyomoEnv.ConcreteModel):
+        self.solver_results = self._solver.solve(model)
+        return self.solver_results
+
+    @property
+    def options(self) -> Dict:
+        return {"mip_rel_gap": self.mip_gap,
+                "time_limit": self.time_limit_seconds,
+                "log_file": self.logfile_name,
+                "log_to_console": self.solver_output_to_console,
+                "threads": self.threads,
+                "parallel": "on",
+                "presolve": "on",
+                "output_flag": True}
