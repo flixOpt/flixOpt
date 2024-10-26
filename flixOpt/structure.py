@@ -131,6 +131,69 @@ class SystemModel(MathModel):
                            f'This might distort the results')
         logger.info(f'{" End of Main Results ":#^80}')
 
+    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        return {'Components': {comp.label: comp.model.description_of_variables(structured)
+                               for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_variables(structured)
+                          for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
+                'Others': {model.element.label: model.description_of_variables(structured)
+                           for model in self.other_models}}
+
+    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        return {'Components': {comp.label: comp.model.description_of_equations(structured)
+                               for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_equations(structured)
+                          for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_equations(structured),
+                'Others': {model.element.label: model.description_of_equations(structured)
+                           for model in self.other_models}}
+
+    def results(self):
+        return {'Components': {model.element.label: model.results() for model in self.component_models},
+                'Effects': self.effect_collection_model.results(),
+                'Others': {model.element.label: model.results() for model in self.other_models},
+                'Objective': self.objective_result
+                }
+
+    @property
+    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
+        main_results = {}
+        effect_results = {}
+        main_results['Effects'] = effect_results
+        for effect in self.flow_system.effect_collection.effects:
+            effect_results[f'{effect.label} [{effect.unit}]'] = {
+                'operation': float(effect.model.operation.sum.result),
+                'invest': float(effect.model.invest.sum.result),
+                'sum': float(effect.model.all.sum.result)}
+        main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
+        main_results['Objective'] = self.objective_result
+        if self.solver_name == 'highs':
+            main_results['lower bound'] = self.solver_results.best_objective_bound
+        else:
+            main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
+        buses_with_excess = []
+        main_results['buses with excess'] = buses_with_excess
+        for bus in self.flow_system.all_buses:
+            if bus.with_excess:
+                if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
+                    buses_with_excess.append(bus.label)
+
+        invest_decisions = {'invested': {}, 'not invested': {}}
+        main_results['Invest-Decisions'] = invest_decisions
+        from flixOpt.features import InvestmentModel
+        for sub_model in self.sub_models:
+            if isinstance(sub_model, InvestmentModel):
+                invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
+                if invested_size > 1e-3:
+                    invest_decisions['invested'][sub_model.element.label_full] = invested_size
+                else:
+                    invest_decisions['not invested'][sub_model.element.label_full] = invested_size
+
+        return main_results
+
     @property
     def infos(self) -> Dict:
         infos = super().infos
@@ -178,69 +241,6 @@ class SystemModel(MathModel):
     def eqs(self) -> List[Equation]:
         """ Needed for Mother class """
         return list(self.all_equations.values())
-
-    @property
-    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
-        main_results = {}
-        effect_results = {}
-        main_results['Effects'] = effect_results
-        for effect in self.flow_system.effect_collection.effects:
-            effect_results[f'{effect.label} [{effect.unit}]'] = {
-                'operation': float(effect.model.operation.sum.result),
-                'invest': float(effect.model.invest.sum.result),
-                'sum': float(effect.model.all.sum.result)}
-        main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
-        main_results['Objective'] = self.objective_result
-        if self.solver_name == 'highs':
-            main_results['lower bound'] = self.solver_results.best_objective_bound
-        else:
-            main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
-        buses_with_excess = []
-        main_results['buses with excess'] = buses_with_excess
-        for bus in self.flow_system.all_buses:
-            if bus.with_excess:
-                if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
-                    buses_with_excess.append(bus.label)
-
-        invest_decisions = {'invested': {}, 'not invested': {}}
-        main_results['Invest-Decisions'] = invest_decisions
-        from flixOpt.features import InvestmentModel
-        for sub_model in self.sub_models:
-            if isinstance(sub_model, InvestmentModel):
-                invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
-                if invested_size > 1e-3:
-                    invest_decisions['invested'][sub_model.element.label_full] = invested_size
-                else:
-                    invest_decisions['not invested'][sub_model.element.label_full] = invested_size
-
-        return main_results
-
-    def results(self):
-        return {'Components': {model.element.label: model.results() for model in self.component_models},
-                'Effects': self.effect_collection_model.results(),
-                'Others': {model.element.label: model.results() for model in self.other_models},
-                'Objective': self.objective_result
-                }
-
-    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
-        return {'Components': {comp.label: comp.model.description_of_variables(structured)
-                               for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_variables(structured)
-                          for bus in self.flow_system.all_buses},
-                'Objective': 'MISSING AFTER REWORK',
-                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
-                'Others': {model.element.label: model.description_of_variables(structured)
-                           for model in self.other_models}}
-
-    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
-        return {'Components': {comp.label: comp.model.description_of_equations(structured)
-                               for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_equations(structured)
-                          for bus in self.flow_system.all_buses},
-                'Objective': 'MISSING AFTER REWORK',
-                'Effects': self.flow_system.effect_collection.model.description_of_equations(structured),
-                'Others': {model.element.label: model.description_of_equations(structured)
-                           for model in self.other_models}}
 
 
 class Element:
