@@ -163,24 +163,32 @@ class VariableTS(Variable):
 class Equation:
     """
     Representing a single equation or, with the Variable being a VariableTS, a set of equations
+
     """
     def __init__(self,
                  label: str,
-                 label_short: str,
+                 label_short: Optional[str] = None,
                  eqType: Literal['eq', 'ineq', 'objective'] = 'eq'):
         """
-        label: full label of the variable
-        label_short: short label of the variable
+        Equation of the form: ∑(<summands>) = <constant>        type: 'eq'
+        Equation of the form: ∑(<summands>) <= <constant>       type: 'ineq'
+        Equation of the form: ∑(<summands>) = <constant>        type: 'objective'
+
+        Parameters
+        ----------
+            label: full label of the variable
+            label_short: short label of the variable. If None, the the full label is used
+            eqType: Literal['eq', 'ineq', 'objective']
         """
         self.label = label
-        self.label_short = label_short
-        self.listOfSummands = []
-        self.constant = 0  # rechte Seite
+        self.label_short = label_short or label
+        self.summands: List[SumOfSummand] = []
+        self.parts_of_constant: List[Numeric] = []
+        self.constant: Numeric = 0  # Total of right side
 
-        self.nr_of_single_equations = 1  # Anzahl der Gleichungen
-        self.constant_vector = np.array([0])
-        self.parts_of_constant = []  # liste mit shares von constant
+        self.length = 1  # Anzahl der Gleichungen
         self.eqType = eqType
+
         self._pyomo_comp = None  # z.B. für pyomo : pyomoComponente
 
         logger.debug(f'Equation created: {self.label}')
@@ -191,10 +199,10 @@ class Equation:
                     indices_of_variable: Optional[Union[int, np.ndarray, range, List[int]]] = None,
                     as_sum: bool = False) -> None:
         """
-        Adds a summand to the equation.
+        Adds a summand to the left side of the equation.
 
-        This method creates a summand from the given variable and factor, optionally summing over all indices of the variable.
-        The summand is then added to the list of summands for the equation.
+        This method creates a summand from the given variable and factor, optionally summing over all given indices.
+        The summand is then added to the summands of the equation, which represent the left side.
 
         Parameters:
         -----------
@@ -211,47 +219,59 @@ class Equation:
         -------
         TypeError
             If the provided variable is not an instance of the Variable class.
-        Exception
+        ValueError
             If the variable is None and as_sum is True.
+        ValueError
+            If the length doesnt match the Equation's length.
         """
         # TODO: Functionality to create A Sum of Summand over a specified range of indices? For Limiting stuff per one year...?
         if not isinstance(variable, Variable):
             raise TypeError(f'Error in Equation "{self.label}": no variable given (variable = "{variable}")')
+        if variable is None and as_sum:
+            raise ValueError(f'Error in Equation "{self.label}": Variable can not be None and be summed up!')
+
         if np.isscalar(indices_of_variable):   # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
             indices_of_variable = [indices_of_variable]
 
-        if not as_sum:
-            summand = Summand(variable, factor, indices=indices_of_variable)
-        else:
-            if variable is None:
-                raise Exception(
-                    f'Error in Equation "{self.label}": Variable can not be None if the variable is summed up!')
+        if as_sum:
             summand = SumOfSummand(variable, factor, indices=indices_of_variable)
+        else:
+            summand = Summand(variable, factor, indices=indices_of_variable)
 
-        self._update_nr_of_single_equations(summand.length, summand.variable.label)   # Check Variablen-Länge:
-        self.listOfSummands.append(summand)   # zu Liste hinzufügen:
+        try:
+            self._update_length(summand.length)   # Check Variablen-Länge:
+        except ValueError as e:
+            raise ValueError(f'Length of Summand with variable "{variable.label}" '
+                             f'does not fit equation "{self.label}": {e}')
+        self.summands.append(summand)
 
     def add_constant(self, value: Numeric) -> None:
         """
-          constant value of the right side,
-          if method is executed several times, than values are summed up.
+        Adds a constant value to the rigth side of the equation
 
-          Parameters
-          ----------
-          value : float or array
-              constant-value of equation [A*x = constant] or [A*x <= constant]
+        Parameters
+        ----------
+        value : float or array
+          constant-value of equation [A*x = constant] or [A*x <= constant]
 
-          Returns
-          -------
-          None.
+        Returns
+        -------
+        None.
 
-          """
+        Raises:
+        -------
+        ValueError
+            If the length doesnt match the Equation's length.
+
+        """
         self.constant = np.add(self.constant, value)  # Adding to current constant
         self.parts_of_constant.append(value)   # Adding to parts of constants
 
         length = 1 if np.isscalar(self.constant) else len(self.constant)
-        self._update_nr_of_single_equations(length, 'constant')   # Update
-        self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
+        try:
+            self._update_length(length)
+        except ValueError as e:
+            raise ValueError(f'Length of Constant {value=} does not fit: {e}')
 
     def to_math_model(self, math_model: 'MathModel') -> None:
         logger.debug(f'eq {self.label} .to_math_model()')
@@ -312,8 +332,8 @@ class Equation:
 
             # print i-th equation:
 
-    def description(self, equation_nr: int = 0) -> str:
-        equation_nr = min(equation_nr, self.nr_of_single_equations - 1)
+    def description(self, at_index: int = 0) -> str:
+        equation_nr = min(at_index, self.length - 1)
 
         # Name and index
         if self.eqType == 'objective':
@@ -321,11 +341,11 @@ class Equation:
             index_str = ''
         else:
             name = f'EQ {self.label}'
-            index_str = f'[{equation_nr+1}/{self.nr_of_single_equations}]'
+            index_str = f'[{equation_nr+1}/{self.length}]'
 
         # Summands:
         summand_strings = []
-        for idx, summand in enumerate(self.listOfSummands):
+        for idx, summand in enumerate(self.summands):
             i = 0 if summand.length == 1 else equation_nr
             index = summand.indices[i]
             factor = summand.factor_vec[i]
@@ -350,13 +370,17 @@ class Equation:
         header = f"{name:<{header_width-len(index_str)-1}} {index_str}"
         return f'{header:<{header_width}}: {constant:>8} {sign} {all_summands_string}'
 
-    def _update_nr_of_single_equations(self, length_of_summand: int, label_of_summand: str) -> None:
-        """Checks if the new Summand is compatible with the existing Summands"""
-        if self.nr_of_single_equations == 1:
-            self.nr_of_single_equations = length_of_summand  # first Summand defines length of equation
-            self.constant_vector = utils.as_vector(self.constant, self.nr_of_single_equations)  # Update
-        elif (length_of_summand != 1) & (length_of_summand != self.nr_of_single_equations):
-            raise Exception(f'Variable {label_of_summand} hat eine nicht passende Länge für Gleichung {self.label}')
+    def _update_length(self, new_length: int) -> None:
+        """ Raises ValueError if the length of the new element doesnt match the existing length of the Equation """
+        if self.length == 1:  # First Summands sets length
+            self.length = new_length
+        elif new_length != self.length:
+            raise ValueError(f'The length of the new element {new_length=} doesnt match the existing '
+                             f'length of the Equation {self.length=}!')
+
+    @property
+    def constant_vector(self) -> Numeric:
+        return utils.as_vector(self.constant, self.length)
 
 
 # Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
@@ -627,11 +651,11 @@ class MathModel:
 
     @property
     def nr_of_single_equations(self) -> int:
-        return sum([eq.nr_of_single_equations for eq in self.eqs])
+        return sum([eq.length for eq in self.eqs])
 
     @property
     def nr_of_single_inequations(self) -> int:
-        return sum([eq.nr_of_single_equations for eq in self.ineqs])
+        return sum([eq.length for eq in self.ineqs])
 
     ################################## pyomo
     def _pyomo_register(self, pyomo_comp, label='', old_pyomo_comp_to_overwrite=None) -> None:
