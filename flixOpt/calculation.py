@@ -57,32 +57,6 @@ class Calculation:
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
 
-    def description_of_equations_as_dict(self, system_model: int = 0) -> Dict:
-        return {'Components': {comp.label: comp.model.description_of_equations for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_equations for bus in self.flow_system.all_buses},
-                'Objective': 'MISSING AFTER REWORK',
-                'Effects': self.flow_system.effect_collection.model.description_of_equations}
-
-    def description_of_variables_as_dict(self, system_model: int = 0) -> Dict:
-        return {'Components': {comp.label: comp.model.description_of_variables + [{flow.label: flow.model.description_of_variables
-                                                                         for flow in comp.inputs + comp.outputs}]
-                          for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_variables for bus in self.flow_system.all_buses},
-                'Objective': 'MISSING AFTER REWORK',
-                'Effects': self.flow_system.effect_collection.model.description_of_variables}
-
-    def describe_equations(self, system_model: int = 0) -> str:
-        return (f'\n'
-                f'{"":#^80}\n'
-                f'{" Equations of FlowSystem ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_equations_as_dict(system_model), default_flow_style=False, allow_unicode=True)}')
-
-    def describe_variables(self, system_model: int = 0) -> str:
-        return (f'\n'
-                f'{"":#^80}\n'
-                f'{" Variables of FlowSystem ":#^80}\n\n'
-                f'{yaml.dump(self.description_of_variables_as_dict(system_model))}')
-
     def _define_path_names(self,
                            save_results: Union[bool, str, pathlib.Path],
                            include_timestamp: bool = False):
@@ -105,6 +79,16 @@ class Calculation:
             self._paths["info"] = path / f'{self.name}_info.yaml'
 
     def _save_solve_infos(self):
+        import yaml
+        import pickle
+        with open(self._paths['data'], 'wb') as f:
+            pickle.dump(self.results(), f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        infos = {'Calculation': self.infos, 'Model': self.system_model.infos}
+
+        with open(self._paths['info'], 'w', encoding='utf-8') as f:
+            yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
+                      allow_unicode=True, sort_keys=False)
         message = f' Saved Calculation: {self.name} '
         logger.info(f'{"":#^80}\n'
                     f'{message:#^80}\n'
@@ -114,6 +98,15 @@ class Calculation:
         if self._results is None:
             self._results = self.system_model.results()
         return self._results
+
+    @property
+    def infos(self):
+        return {
+            'Name': self.name,
+            'Number of indices': len(self.time_indices) if self.time_indices else 'all',
+            'Calculation Type': self.__class__.__name__,
+            'Durations': self.durations,
+        }
 
 
 class FullCalculation(Calculation):

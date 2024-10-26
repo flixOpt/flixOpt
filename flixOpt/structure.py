@@ -134,10 +134,9 @@ class SystemModel(MathModel):
     @property
     def infos(self):
         infos = super().infos
-        # infos['str_Eqs'] = self.description_of_equations()
-        # infos['str_Vars'] = self.description_of_variables()
-        infos['main_results'] = self.main_results
-        infos.update(self._infos)
+        infos['Equations'] = self.description_of_equations()
+        infos['Variables'] = self.description_of_variables()
+        infos['Main Results'] = self.main_results
         return infos
 
     @property
@@ -223,6 +222,18 @@ class SystemModel(MathModel):
                 'Objective': self.objective_result
                 }
 
+    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        return {'Components': {comp.label: comp.model.description_of_variables(structured) for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_variables(structured) for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured)}
+
+    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        return {'Components': {comp.label: comp.model.description_of_equations(structured) for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_equations(structured) for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_equations(structured)}
+
 
 class Element:
     """ Basic Element of flixOpt"""
@@ -281,17 +292,31 @@ class ElementModel:
             else:
                 raise Exception(f'Equation "{equation.label}" already exists')
 
-    @property
-    def description_of_variables(self) -> List[str]:
-        if self.all_variables:
-            return [var.description() for var in self.all_variables.values()]
-        return []
+    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, Union[List[str], Dict]], List[str]]:
+        if structured:
+            # Gather descriptions of this model's variables
+            descriptions = {'_self': [var.description() for var in self.variables.values()]}
 
-    @property
-    def description_of_equations(self) -> List[str]:
-        if self.all_equations:
+            # Recursively gather descriptions from sub-models
+            for sub_model in self.sub_models:
+                descriptions[sub_model.label] = sub_model.description_of_variables(structured=structured)
+
+            return descriptions
+        else:
+            return [var.description() for var in self.all_variables.values()]
+
+    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        if structured:
+            # Gather descriptions of this model's variables
+            descriptions = {'_self': [eq.description() for eq in self.eqs.values()]}
+
+            # Recursively gather descriptions from sub-models
+            for sub_model in self.sub_models:
+                descriptions[sub_model.label] = sub_model.description_of_equations(structured=structured)
+
+            return descriptions
+        else:
             return [eq.description() for eq in self.all_equations.values()]
-        return []
 
     @property
     def overview_of_model_size(self) -> Dict[str, int]:
