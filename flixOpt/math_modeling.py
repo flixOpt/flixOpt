@@ -156,9 +156,6 @@ class VariableTS(Variable):
         super().__init__(label, label_short, length, math_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
         self.previous_values = previous_values
 
-# class cInequation(Equation):
-#   def __init__(self, label, owner, math_model):
-#     super().__init__(label, owner, math_model, eqType='ineq')
 
 class Equation:
     """
@@ -383,7 +380,6 @@ class Equation:
         return utils.as_vector(self.constant, self.length)
 
 
-# Beachte: Muss auch funktionieren für den Fall, dass variable.var fixe Werte sind.
 class Summand:
     """
     Part of an equation. Either with a single Variable or a VariableTS
