@@ -182,7 +182,8 @@ class Flow(Element):
                  flow_hours_total_max: Optional[Skalar] = None,
                  flow_hours_total_min: Optional[Skalar] = None,
                  load_factor_min: Optional[Skalar] = None,
-                 load_factor_max: Optional[Skalar] = None):
+                 load_factor_max: Optional[Skalar] = None,
+                 previous_flow_rate: Optional[Numeric] = None):
         """
         Parameters
         ----------
@@ -224,6 +225,8 @@ class Flow(Element):
             (relative_minimum u. relative_maximum are making sense anymore)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
             If the load-profile is just an upper limit, use relative_maximum instead.
+        previous_flow_rate : scalar, array, optional
+            previous flow rate of the component.
         """
         super().__init__(label)
         self.size = size
@@ -238,6 +241,8 @@ class Flow(Element):
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
         self.on_off_parameters = can_be_off
+
+        self.previous_flow_rate = previous_flow_rate
 
         self.bus = bus
         self.comp: Optional[Component] = None
@@ -329,7 +334,8 @@ class FlowModel(ElementModel):
                                          system_model,
                                          lower_bound=lower_bound,
                                          upper_bound=upper_bound,
-                                         value=fixed_flow_rate)
+                                         value=fixed_flow_rate,
+                                         previous_values=self.element.previous_flow_rate)
 
         # OnOff
         if self.element.on_off_parameters is not None:

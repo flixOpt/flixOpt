@@ -191,7 +191,8 @@ class OnOffModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         if self._on_off_parameters.use_on:
             self.on = create_variable('on', self, system_model.nr_of_time_steps,
-                                         system_model, is_binary=True, before_value=0)
+                                      system_model, is_binary=True,
+                                      previous_values=self.previous_on_values)
             self.total_on_hours = create_variable('totalOnHours', self, 1, system_model,
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
                                                   upper_bound=self._on_off_parameters.on_hours_total_max)
@@ -203,7 +204,8 @@ class OnOffModel(ElementModel):
 
         if self._on_off_parameters.use_off:
             self.off = create_variable('off', self, system_model.nr_of_time_steps,
-                                          system_model, is_binary=True)
+                                       system_model, is_binary=True,
+                                       previous_values=1 - self.previous_on_values)
 
             self._add_off_constraints(system_model, system_model.indices)
 
@@ -232,7 +234,7 @@ class OnOffModel(ElementModel):
                                                  system_model.nr_of_time_steps, system_model, is_binary=True)
             self.nr_switch_on = create_variable('nrSwitchOn', self, 1, system_model,
                                                 upper_bound=self._on_off_parameters.switch_on_total_max)
-            self._add_switch_constraints(system_model, system_model.indices)
+            self._add_switch_constraints(system_model)
 
         self._create_shares(system_model)
 
@@ -359,7 +361,7 @@ class OnOffModel(ElementModel):
         eq_first.add_summand(duration_variable, 1, first_index)
         eq_first.add_summand(binary_variable, -1 * system_model.dt_in_hours[first_index], first_index)
 
-    def _add_switch_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+    def _add_switch_constraints(self, system_model: SystemModel):
         assert self.switch_on is not None, f'Switch On Variable of {self.element} must be defined to add constraints'
         assert self.switch_off is not None, f'Switch Off Variable of {self.element} must be defined to add constraints'
         assert self.nr_switch_on is not None, f'Nr of Switch On Variable of {self.element} must be defined to add constraints'
@@ -367,20 +369,18 @@ class OnOffModel(ElementModel):
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1)
         eq_switch = create_equation('Switch', self, system_model)
-        eq_switch.add_summand(self.switch_on, 1, time_indices[1:])  # SwitchOn(t)
-        eq_switch.add_summand(self.switch_off, -1, time_indices[1:])  # SwitchOff(t)
-        eq_switch.add_summand(self.on, -1, time_indices[1:])  # On(t)
-        eq_switch.add_summand(self.on, +1, time_indices[0:-1])  # On(t-1)
+        eq_switch.add_summand(self.switch_on, 1, system_model.indices[1:])  # SwitchOn(t)
+        eq_switch.add_summand(self.switch_off, -1, system_model.indices[1:])  # SwitchOff(t)
+        eq_switch.add_summand(self.on, -1, system_model.indices[1:])  # On(t)
+        eq_switch.add_summand(self.on, +1, system_model.indices[0:-1])  # On(t-1)
 
-        ## Ersten Wert SwitchOn(t=1) bzw. SwitchOff(t=1) festlegen
-        # eq: SwitchOn(t=1)-SwitchOff(t=1) = On(t=1)- ValueBeforeBeginOfTimeSeries;
+        # Initital switch on
+        # eq: SwitchOn(t=0)-SwitchOff(t=0) = On(t=0) - On(t=-1)
         eq_initial_switch = create_equation('Initial_Switch', self, system_model)
-        first_index = time_indices[0]
-        eq_initial_switch.add_summand(self.switch_on, 1, first_index)
-        eq_initial_switch.add_summand(self.switch_off, -1, first_index)
-        eq_initial_switch.add_summand(self.on, -1, first_index)
-        eq_initial_switch.add_constant \
-            (-1 * self.on.before_value)  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
+        eq_initial_switch.add_summand(self.switch_on, 1, indices_of_variable=0)  # SwitchOn(t=0)
+        eq_initial_switch.add_summand(self.switch_off, -1, indices_of_variable=0)  # SwitchOff(t=0)
+        eq_initial_switch.add_summand(self.on, -1, indices_of_variable=0)  # On(t=0)
+        eq_initial_switch.add_constant(-1 * self.on.previous_values[-1])  # On(t-1)
 
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1
@@ -407,6 +407,14 @@ class OnOffModel(ElementModel):
         if effects_per_running_hour is not None:
             effect_collection.add_share_to_operation('running_hour_effects', self.element, effects_per_running_hour,
                                                      system_model.dt_in_hours, self.on)
+
+    @property
+    def previous_on_values(self) -> np.ndarray:
+        # Gather previous values, ignoring empty (None) entries
+        previous_values_of_variables = np.array([
+            var.previous_values for var in self._defining_variables if var.previous_values is not None
+        ])
+        return np.where(np.all(previous_values_of_variables == 0, axis=0), 0, 1).reshape(-1)  # Allways as proper array
 
 
 class SegmentModel(ElementModel):
