@@ -851,3 +851,110 @@ class Highs(Solver):
                 "parallel": "on",
                 "presolve": "on",
                 "output_flag": True}
+
+
+class ModelingLanguage(ABC):
+    @abstractmethod
+    def translate_model(self, model: MathModel):
+        raise NotImplementedError
+
+
+class Pyomo(ModelingLanguage):
+
+    def __init__(self):
+        global pyomoEnv  # als globale Variable
+        import pyomo.environ as pyomoEnv
+        logger.debug('Loaded pyomo modules')
+        # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchläufe immer wieder genutzt wird.
+        self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
+
+    def translate_model(self, model: MathModel):
+        for variable in model.variables:   # Variablen erstellen
+            logger.debug(f'VAR {variable.label} gets translated to Pyomo')
+            self.translate_variable(variable)
+        for eq in model.eqs:   # Gleichungen erstellen
+            logger.debug(f'EQ {eq.label} gets translated to Pyomo')
+            self.translate_equation(eq)
+        for ineq in model.ineqs:   # Ungleichungen erstellen:
+            logger.debug(f'INEQ {ineq.label} gets translated to Pyomo')
+            self.translate_equation(ineq)
+
+    def translate_variable(self, variable: Variable) -> pyomoEnv.ConcreteModel:
+        assert isinstance(variable, Variable), 'Wrong type of variable'
+
+        if variable.is_binary:
+            self._pyomo_comp = pyomoEnv.Var(variable.indices, domain=pyomoEnv.Binary)
+        else:
+            self._pyomo_comp = pyomoEnv.Var(variable.indices, within=pyomoEnv.Reals)
+
+        # Register in pyomo-model:
+        self.model._pyomo_register(self._pyomo_comp, f'var__{variable.label}')
+
+        lower_bound_vector = utils.as_vector(variable.lower_bound, variable.length)
+        upper_bound_vector = utils.as_vector(variable.upper_bound, variable.length)
+        fixed_value_vector = utils.as_vector(variable.fixed_value, variable.length)
+        for i in variable.indices:
+            # Wenn Vorgabe-Wert vorhanden:
+            if variable.fixed and (fixed_value_vector[i] != None):
+                # Fixieren:
+                self._pyomo_comp[i].value = fixed_value_vector[i]
+                self._pyomo_comp[i].fix()
+            else:
+                # Boundaries:
+                self._pyomo_comp[i].setlb(lower_bound_vector[i])  # min
+                self._pyomo_comp[i].setub(upper_bound_vector[i])  # max
+
+    def translate_equation(self, equation: Equation) -> pyomoEnv.ConcreteModel:
+
+        # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
+        constant_vector = equation.constant_vector
+        # 1. Constraints:
+        if equation.eqType in ['eq', 'ineq']:
+
+            # lineare Summierung für i-te Gleichung:
+            def linear_sum_pyomo_rule(model, i):
+                lhs = 0
+                aSummand: Summand
+                for aSummand in equation.summands:
+                    lhs += self._summand_math_expression(aSummand, 1)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
+                rhs = constant_vector[i]
+                # Unterscheidung return-value je nach typ:
+                if equation.eqType == 'eq':
+                    return lhs == rhs
+                elif equation.eqType == 'ineq':
+                    return lhs <= rhs
+
+            self._pyomo_comp = pyomoEnv.Constraint(range(equation.length),
+                                                   rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
+            # Register im Pyomo:
+            self.model._pyomo_register(self._pyomo_comp,f'eq_{equation.label}')
+
+        # 2. Zielfunktion:
+        elif equation.eqType == 'objective':
+            # Anmerkung: nrOfEquation - Check könnte auch weiter vorne schon passieren!
+            if equation.length > 1:
+                raise Exception('Equation muss für objective ein Skalar ergeben!!!')
+
+            # Summierung der Skalare:
+            def linearSumRule_Skalar(model):
+                skalar = 0
+                for aSummand in equation.summands:
+                    skalar += self._summand_math_expression(aSummand)
+                return skalar
+
+            self._pyomo_comp = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
+            # Register im Pyomo:
+            self.model.objective = self._pyomo_comp
+
+        # 3. Undefined:
+        else:
+            raise Exception('equation.eqType= ' + str(equation.eqType) + ' nicht definiert')
+
+    def _summand_math_expression(self, summand: Summand, at_index: int = 0) -> pyomoEnv.Expression:
+        # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
+        if summand.length == 1:
+            return summand.variable._pyomo_comp[summand.indices[0]] * summand.factor_vec[
+                0]  # ignore argument at_index, because Skalar is used for every single equation
+        if len(summand.indices) == 1:
+            return summand.variable._pyomo_comp[summand.indices[0]] * summand.factor_vec[at_index]
+        return summand.variable._pyomo_comp[summand.indices[at_index]] * summand.factor_vec[at_index]
