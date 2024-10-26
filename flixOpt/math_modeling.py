@@ -8,7 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import logging
 import re
 import timeit
-from typing import List, Dict, Optional, Union, Literal
+from typing import List, Dict, Optional, Union, Literal, Any
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -77,38 +77,6 @@ class Variable:
             description = (f'{header:<40}: min={str(self.lower_bound)[:max_length_ts]:<10}, '
                            f'max={str(self.upper_bound)[:max_length_ts]:<10}')
         return description
-
-    def to_math_model(self, math_model: 'MathModel'):
-        self.math_model = math_model
-
-        # TODO: self.var ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
-        if math_model.modeling_language == 'pyomo':
-            if self.is_binary:
-                self._pyomo_comp = pyomoEnv.Var(self.indices, domain=pyomoEnv.Binary)
-            else:
-                self._pyomo_comp = pyomoEnv.Var(self.indices, within=pyomoEnv.Reals)
-
-            # Register in pyomo-model:
-            math_model._pyomo_register(self._pyomo_comp, f'var__{self.label}')
-
-            lower_bound_vector = utils.as_vector(self.lower_bound, self.length)
-            upper_bound_vector = utils.as_vector(self.upper_bound, self.length)
-            fixed_value_vector = utils.as_vector(self.fixed_value, self.length)
-            for i in self.indices:
-                # Wenn Vorgabe-Wert vorhanden:
-                if self.fixed and (fixed_value_vector[i] != None):
-                    # Fixieren:
-                    self._pyomo_comp[i].value = fixed_value_vector[i]
-                    self._pyomo_comp[i].fix()
-                else:
-                    # Boundaries:
-                    self._pyomo_comp[i].setlb(lower_bound_vector[i])  # min
-                    self._pyomo_comp[i].setub(upper_bound_vector[i])  # max
-
-        elif math_model.modeling_language == 'cvxpy':
-            raise NotImplementedError('CVXPY not yet implemented')
-        else:
-            raise NotImplementedError(f'Modeling Language {math_model.modeling_language} not yet implemented')
 
     def reset_result(self):
         self._result = None
@@ -272,65 +240,6 @@ class Equation:
         except ValueError as e:
             raise ValueError(f'Length of Constant {value=} does not fit: {e}')
 
-    def to_math_model(self, math_model: 'MathModel') -> None:
-        logger.debug(f'eq {self.label} .to_math_model()')
-
-        # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
-        constant_vector = self.constant_vector
-
-        if math_model.modeling_language == 'pyomo':
-            # 1. Constraints:
-            if self.eqType in ['eq', 'ineq']:
-
-                # lineare Summierung für i-te Gleichung:
-                def linear_sum_pyomo_rule(model, i):
-                    lhs = 0
-                    aSummand: Summand
-                    for aSummand in self.summands:
-                        lhs += aSummand.math_expression(i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
-                    rhs = constant_vector[i]
-                    # Unterscheidung return-value je nach typ:
-                    if self.eqType == 'eq':
-                        return lhs == rhs
-                    elif self.eqType == 'ineq':
-                        return lhs <= rhs
-
-                # TODO: self._pyomo_comp ist hier einziges Attribut, das math_model-spezifisch ist: --> umbetten in math_model!
-                self._pyomo_comp = pyomoEnv.Constraint(range(self.length),
-                                              rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
-                # Register im Pyomo:
-                math_model._pyomo_register(
-                    self._pyomo_comp,
-                    f'eq_{self.label}'   # in pyomo-Modell mit eindeutigem Namen registrieren
-                )
-
-            # 2. Zielfunktion:
-            elif self.eqType == 'objective':
-                # Anmerkung: nrOfEquation - Check könnte auch weiter vorne schon passieren!
-                if self.length > 1:
-                    raise Exception('Equation muss für objective ein Skalar ergeben!!!')
-
-                # Summierung der Skalare:
-                def linearSumRule_Skalar(model):
-                    skalar = 0
-                    for aSummand in self.summands:
-                        skalar += aSummand.math_expression(math_model.modeling_language)  # kein i übergeben, da skalar
-                    return skalar
-
-                self._pyomo_comp = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
-                # Register im Pyomo:
-                math_model.model.objective = self._pyomo_comp
-
-                # 3. Undefined:
-            else:
-                raise Exception('equation.eqType= ' + str(self.eqType) + ' nicht definiert')
-        elif math_model.modeling_language == 'cvxpy':
-            raise NotImplementedError('CVXPY not yet implemented')
-        else:
-            raise NotImplementedError(f'Modeling Language {math_model.modeling_language} not yet implemented')
-
-            # print i-th equation:
-
     def description(self, at_index: int = 0) -> str:
         equation_nr = min(at_index, self.length - 1)
 
@@ -397,14 +306,6 @@ class Summand:
         self.length = self._check_length()   # Länge ermitteln:
 
         self.factor_vec = utils.as_vector(factor, self.length)   # Faktor als Vektor:
-
-    def math_expression(self, at_index: int = 0):
-        # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
-        if self.length == 1:
-            return self.variable._pyomo_comp[self.indices[0]] * self.factor_vec[0]  # ignore argument at_index, because Skalar is used for every single equation
-        if len(self.indices) == 1:
-            return self.variable._pyomo_comp[self.indices[0]] * self.factor_vec[at_index]
-        return self.variable._pyomo_comp[self.indices[at_index]] * self.factor_vec[at_index]
 
     def _check_length(self):
         """
@@ -479,7 +380,6 @@ class MathModel:
         self.label = label
         self.modeling_language = modeling_language
 
-        self.countComp = 0  # ElementeZähler für Pyomo
         self.epsilon = 1e-5  #
 
         self.solver_name: Optional[str] = None
@@ -526,14 +426,12 @@ class MathModel:
 
     def to_math_model(self) -> None:
         t_start = timeit.default_timer()
-        for variable in self.variables:   # Variablen erstellen
-            variable.to_math_model(self)
-        for eq in self.eqs:   # Gleichungen erstellen
-            eq.to_math_model(self)
-        for ineq in self.ineqs:   # Ungleichungen erstellen:
-            ineq.to_math_model(self)
-
-        self.duration['to_math_model'] = round(timeit.default_timer() - t_start, 2)
+        if self.modeling_language == 'pyomo':
+            self.model = PyomoModel()
+            self.model.translate_model(self)
+        else:
+            raise NotImplementedError('Modeling Language cvxpy is not yet implemented')
+        self.duration['Translation'] = round(timeit.default_timer() - t_start, 2)
 
     def solve(self,
               mip_gap: float,
@@ -577,7 +475,7 @@ class MathModel:
             # logfile_name = "flixSolverLog.log"
             if solver_name == 'highs':
                 solver.highs_options=solver_opt
-                self.solver_results = solver.solve(self.model)
+                self.solver_results = solver.solve(self.model.model)
             else:
                 self.solver_results = solver.solve(self.model, options = solver_opt, tee = solver_output_to_console, keepfiles=True, logfile=logfile_name)
 
@@ -654,44 +552,6 @@ class MathModel:
     @property
     def nr_of_single_inequations(self) -> int:
         return sum([eq.length for eq in self.ineqs])
-
-    ################################## pyomo
-    def _pyomo_register(self, pyomo_comp, label='', old_pyomo_comp_to_overwrite=None) -> None:
-        # neu erstellen
-        if old_pyomo_comp_to_overwrite is None:
-            self.countComp += 1
-            # Komponenten einfach hochzählen, damit eindeutige Namen, d.h. a1_timesteps, a2, a3 ,...
-            # Beispiel:
-            # model.add_component('a1',py_comp) äquivalent zu model.a1 = py_comp
-            self.model.add_component(f'a{self.countComp}__{label}', pyomo_comp)  # a1,a2,a3, ...
-        # altes überschreiben:
-        else:
-            self._pyomo_overwrite_comp(pyomo_comp, old_pyomo_comp_to_overwrite)
-
-    def _pyomo_delete(self, old_pyomo_comp) -> None:
-        # Komponente löschen:
-        name_of_pyomo_comp = self._pyomo_get_internal_name(old_pyomo_comp)
-        additional_comps_to_delete = name_of_pyomo_comp + '_index'  # sowas wird bei manchen Komponenten als Komponente automatisch mit erzeugt.
-        if additional_comps_to_delete in self.model.component_map().keys():   # sonstige zugehörige Variablen löschen:
-            self.model.del_component(additional_comps_to_delete)
-        self.model.del_component(name_of_pyomo_comp)
-
-    def _pyomo_get_internal_name(self, pyomo_comp) -> str:
-        # name of component
-        for key, value in self.model.component_map().iteritems():
-            if pyomo_comp == value:
-                return key
-
-    def _pyomo_get_comp(self, name_of_pyomo_comp: str):
-        return self.model.component_map()[name_of_pyomo_comp]
-
-    def _pyomo_overwrite_comp(self, pyomo_comp, old_py_comp) -> None:
-        # gleichnamige Pyomo-Komponente überschreiben (wenn schon vorhanden, sonst neu)
-        name_of_pyomo_comp = self._pyomo_get_internal_name(old_py_comp)
-        self._pyomo_delete(old_py_comp)   # alles alte löschen:
-        self.model.add_component(name_of_pyomo_comp, pyomo_comp)   # überschreiben:
-
-    ######## Other Modeling Languages
 
     def results(self):
         return {variable.label: variable.result for variable in self.variables}
@@ -798,7 +658,7 @@ class Solver(ABC):
         self._solver = None
         self.solver_results = None
 
-    def solve(self, model: pyomoEnv.ConcreteModel):
+    def solve(self, model: 'pyomoEnv.ConcreteModel'):
         raise NotImplementedError(f' Solving is not possible with this Abstract class')
 
 
@@ -811,9 +671,9 @@ class Gurobi(Solver):
                  modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'
                  ):
         super().__init__(mip_gap, time_limit_seconds, solver_output_to_console, logfile_name, modeling_language)
-        self._solver = pyomoEnv.SolverFactory('gurobi') if self.modeling_language == 'pyomo'
+        self._solver = pyomoEnv.SolverFactory('gurobi')
 
-    def solve(self, model: pyomoEnv.ConcreteModel):
+    def solve(self, model: 'pyomoEnv.ConcreteModel'):
         self.solver_results = self._solver.solve(model, options=self.options, keepfiles=True)
         return self.solver_results
 
@@ -823,6 +683,7 @@ class Gurobi(Solver):
                 "TimeLimit": self.time_limit_seconds,
                 'logfile': self.logfile_name,
                 'tee': self.solver_output_to_console}
+
 
 class Highs(Solver):
     def __init__(self,
@@ -837,7 +698,7 @@ class Highs(Solver):
         self.threads = threads
         self._solver = appsi.solvers.Highs()
 
-    def solve(self, model: pyomoEnv.ConcreteModel):
+    def solve(self, model: 'pyomoEnv.ConcreteModel'):
         self.solver_results = self._solver.solve(model)
         return self.solver_results
 
@@ -859,7 +720,7 @@ class ModelingLanguage(ABC):
         raise NotImplementedError
 
 
-class Pyomo(ModelingLanguage):
+class PyomoModel(ModelingLanguage):
 
     def __init__(self):
         global pyomoEnv  # als globale Variable
@@ -867,6 +728,9 @@ class Pyomo(ModelingLanguage):
         logger.debug('Loaded pyomo modules')
         # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchläufe immer wieder genutzt wird.
         self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
+
+        self.mapping: Dict[Union[Variable, Equation], Any] = {}  # Mapping to Pyomo Units
+        self._counter = 0
 
     def translate_model(self, model: MathModel):
         for variable in model.variables:   # Variablen erstellen
@@ -879,16 +743,17 @@ class Pyomo(ModelingLanguage):
             logger.debug(f'INEQ {ineq.label} gets translated to Pyomo')
             self.translate_equation(ineq)
 
-    def translate_variable(self, variable: Variable) -> pyomoEnv.ConcreteModel:
+    def translate_variable(self, variable: Variable):
         assert isinstance(variable, Variable), 'Wrong type of variable'
 
         if variable.is_binary:
-            self._pyomo_comp = pyomoEnv.Var(variable.indices, domain=pyomoEnv.Binary)
+            pyomo_comp = pyomoEnv.Var(variable.indices, domain=pyomoEnv.Binary)
         else:
-            self._pyomo_comp = pyomoEnv.Var(variable.indices, within=pyomoEnv.Reals)
+            pyomo_comp = pyomoEnv.Var(variable.indices, within=pyomoEnv.Reals)
+        self.mapping[variable] = pyomo_comp
 
         # Register in pyomo-model:
-        self.model._pyomo_register(self._pyomo_comp, f'var__{variable.label}')
+        self._register_pyomo_comp(pyomo_comp, variable)
 
         lower_bound_vector = utils.as_vector(variable.lower_bound, variable.length)
         upper_bound_vector = utils.as_vector(variable.upper_bound, variable.length)
@@ -897,19 +762,20 @@ class Pyomo(ModelingLanguage):
             # Wenn Vorgabe-Wert vorhanden:
             if variable.fixed and (fixed_value_vector[i] != None):
                 # Fixieren:
-                self._pyomo_comp[i].value = fixed_value_vector[i]
-                self._pyomo_comp[i].fix()
+                pyomo_comp[i].value = fixed_value_vector[i]
+                pyomo_comp[i].fix()
             else:
                 # Boundaries:
-                self._pyomo_comp[i].setlb(lower_bound_vector[i])  # min
-                self._pyomo_comp[i].setub(upper_bound_vector[i])  # max
+                pyomo_comp[i].setlb(lower_bound_vector[i])  # min
+                pyomo_comp[i].setub(upper_bound_vector[i])  # max
 
-    def translate_equation(self, equation: Equation) -> pyomoEnv.ConcreteModel:
+    def translate_equation(self, equation: Equation):
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         constant_vector = equation.constant_vector
         # 1. Constraints:
         if equation.eqType in ['eq', 'ineq']:
+            model = self.model
 
             # lineare Summierung für i-te Gleichung:
             def linear_sum_pyomo_rule(model, i):
@@ -924,10 +790,11 @@ class Pyomo(ModelingLanguage):
                 elif equation.eqType == 'ineq':
                     return lhs <= rhs
 
-            self._pyomo_comp = pyomoEnv.Constraint(range(equation.length),
-                                                   rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
+            pyomo_comp = pyomoEnv.Constraint(range(equation.length),
+                                             rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
             # Register im Pyomo:
-            self.model._pyomo_register(self._pyomo_comp,f'eq_{equation.label}')
+            self._register_pyomo_comp(pyomo_comp, equation)
+            self.mapping[equation] = pyomo_comp
 
         # 2. Zielfunktion:
         elif equation.eqType == 'objective':
@@ -942,19 +809,25 @@ class Pyomo(ModelingLanguage):
                     skalar += self._summand_math_expression(aSummand)
                 return skalar
 
-            self._pyomo_comp = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
-            # Register im Pyomo:
-            self.model.objective = self._pyomo_comp
+            self.model.objective = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
+            self.mapping[equation] = self.model.objective
 
         # 3. Undefined:
         else:
             raise Exception('equation.eqType= ' + str(equation.eqType) + ' nicht definiert')
 
-    def _summand_math_expression(self, summand: Summand, at_index: int = 0) -> pyomoEnv.Expression:
+    def _summand_math_expression(self, summand: Summand, at_index: int = 0) -> 'pyomoEnv.Expression':
+        pyomo_variable = self.mapping[summand.variable]
+
         # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
         if summand.length == 1:
-            return summand.variable._pyomo_comp[summand.indices[0]] * summand.factor_vec[
-                0]  # ignore argument at_index, because Skalar is used for every single equation
+            # ignore argument at_index, because Skalar is used for every single equation
+            return pyomo_variable[summand.indices[0]] * summand.factor_vec[0]
         if len(summand.indices) == 1:
-            return summand.variable._pyomo_comp[summand.indices[0]] * summand.factor_vec[at_index]
-        return summand.variable._pyomo_comp[summand.indices[at_index]] * summand.factor_vec[at_index]
+            return pyomo_variable[summand.indices[0]] * summand.factor_vec[at_index]
+        return pyomo_variable[summand.indices[at_index]] * summand.factor_vec[at_index]
+
+    def _register_pyomo_comp(self, pyomo_comp, part: Union[Variable, Equation]) -> None:
+        self._counter += 1  # Komponenten einfach hochzählen, damit eindeutige Namen, d.h. a1_timesteps, a2, a3 ,...
+        self.model.add_component(f'a{self._counter}__{part.label}', pyomo_comp)  # a1,a2,a3, ...
+        self.mapping[part] = pyomo_comp
