@@ -132,7 +132,7 @@ class SystemModel(MathModel):
         logger.info(f'{" End of Main Results ":#^80}')
 
     @property
-    def infos(self):
+    def infos(self) -> Dict:
         infos = super().infos
         infos['Equations'] = self.description_of_equations()
         infos['Variables'] = self.description_of_variables()
@@ -223,16 +223,24 @@ class SystemModel(MathModel):
                 }
 
     def description_of_variables(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
-        return {'Components': {comp.label: comp.model.description_of_variables(structured) for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_variables(structured) for bus in self.flow_system.all_buses},
+        return {'Components': {comp.label: comp.model.description_of_variables(structured)
+                               for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_variables(structured)
+                          for bus in self.flow_system.all_buses},
                 'Objective': 'MISSING AFTER REWORK',
-                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured)}
+                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
+                'Others': {model.element.label: model.description_of_variables(structured)
+                           for model in self.other_models}}
 
     def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
-        return {'Components': {comp.label: comp.model.description_of_equations(structured) for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_equations(structured) for bus in self.flow_system.all_buses},
+        return {'Components': {comp.label: comp.model.description_of_equations(structured)
+                               for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_equations(structured)
+                          for bus in self.flow_system.all_buses},
                 'Objective': 'MISSING AFTER REWORK',
-                'Effects': self.flow_system.effect_collection.model.description_of_equations(structured)}
+                'Effects': self.flow_system.effect_collection.model.description_of_equations(structured),
+                'Others': {model.element.label: model.description_of_equations(structured)
+                           for model in self.other_models}}
 
 
 class Element:
