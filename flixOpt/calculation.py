@@ -376,7 +376,7 @@ class SegmentedCalculation(Calculation):
             start_values_of_this_segment[flow.label_full] = flow.previous_flow_rate
         for comp in self.flow_system.components:
             if isinstance(comp, Storage):
-                comp.initial_charge_state = comp.model.charge_state.result[-1]
+                comp.initial_charge_state = comp.model.charge_state.result[-2]
                 start_values_of_this_segment[comp.label_full] = comp.initial_charge_state
 
         self._transfered_start_values[segment_name] = start_values_of_this_segment
