@@ -20,6 +20,7 @@ from flixOpt.core import Numeric, Skalar
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
 from flixOpt.elements import Component
+from flixOpt.components import Storage
 from flixOpt.features import InvestmentModel
 
 
@@ -301,14 +302,24 @@ class SegmentedCalculation(Calculation):
         assert self.segment_length_with_overlap <= self._total_length, \
             f'{self.segment_length_with_overlap=} cant be greater than the total length {self._total_length}'
 
+        # String all original start values
+        self._original_start_values = {
+            **{flow: flow.previous_flow_rate for flow in self.flow_system.all_flows},
+            **{comp: comp.initial_charge_state for comp in self.flow_system.components if isinstance(comp, Storage)}
+        }
+        self._transfered_start_values: Dict[str, Dict[str, Any]] = {}
+
     def do_modeling_and_solve(self, solverProps: dict, save_results: Union[bool, str, pathlib.Path] = True):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Segmented Solving ":#^80}')
 
         for i in range(self.number_of_segments):
+            name_of_segment = f'Segment_{i+1}'
+            if self.sub_calculations:
+                self._transfer_start_values(name_of_segment)
             time_indices = self._get_indices(i)
-            logger.info(f'{i}. Segment (flow_system indices {time_indices.start}...{time_indices.stop-1}):')
-            calculation = FullCalculation(f'Segment_{i+1}', self.flow_system, self.modeling_language, time_indices)
+            logger.info(f'{name_of_segment}. (flow_system indices {time_indices.start}...{time_indices.stop-1}):')
+            calculation = FullCalculation(name_of_segment, self.flow_system, self.modeling_language, time_indices)
             # TODO: Add Before Values if available
             self.sub_calculations.append(calculation)
             calculation.do_modeling()
@@ -318,6 +329,8 @@ class SegmentedCalculation(Calculation):
                 logger.critical(f'Investments are not supported in Segmented Calculation! '
                                 f'Following elements Contain Investments: {invest_elements}')
             calculation.solve(solverProps, save_results)
+
+        self._reset_start_values()
 
         self.durations = {calculation.name: calculation.durations for calculation in self.sub_calculations}
 
@@ -352,6 +365,30 @@ class SegmentedCalculation(Calculation):
         else:
             return all_results
 
+    def _transfer_start_values(self, segment_name: str):
+        """
+        This function gets the last values of the previous solved segment and
+        inserts them as start values for the nest segment
+        """
+        start_values_of_this_segment = {}
+        for flow in self.flow_system.all_flows:
+            flow.previous_flow_rate = flow.model.flow_rate.result[-1]  #TODO: maybe more values?
+            start_values_of_this_segment[flow.label_full] = flow.previous_flow_rate
+        for comp in self.flow_system.components:
+            if isinstance(comp, Storage):
+                comp.initial_charge_state = comp.model.charge_state.result[-1]
+                start_values_of_this_segment[comp.label_full] = comp.initial_charge_state
+
+        self._transfered_start_values[segment_name] = start_values_of_this_segment
+
+    def _reset_start_values(self):
+        """ This resets the start values of all Elements to its original state"""
+        for flow in self.flow_system.all_flows:
+            flow.previous_flow_rate = self._original_start_values[flow]
+        for comp in self.flow_system.components:
+            if isinstance(comp, Storage):
+                comp.initial_charge_state = self._original_start_values[comp]
+
     def _get_indices(self, segment_index: int) -> range:
         start = segment_index * self.segment_length
         return range(start, min(start + self.segment_length + self.overlap_length, self._total_length))
@@ -359,6 +396,14 @@ class SegmentedCalculation(Calculation):
     @property
     def segment_length_with_overlap(self):
         return self.segment_length + self.overlap_length
+
+    @property
+    def start_values_of_segments(self) -> Dict[str, Dict[str, Any]]:
+        """ Gives an overview of the start values of all Segments """
+        return {
+            self.sub_calculations[0].name: {
+                element.label_full: value for element, value in self._original_start_values.items()},
+            **self._transfered_start_values}
 
 
 def _remove_none_values(d: Dict[Any, Optional[Any]]) -> Dict[Any, Any]:
