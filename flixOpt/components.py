@@ -86,8 +86,8 @@ class LinearConverter(Component):
                     raise Exception(f"segmented_conversion_factors (in {self.label_full}) and variable size "
                                     f"(in flow {flow.label_full}) do not make sense together!")
 
-    def transform_to_time_series(self):
-        super().transform_to_time_series()
+    def transform_data(self):
+        super().transform_data()
         if self.conversion_factors is not None:
             self.conversion_factors = self._transform_conversion_factors()
         else:
@@ -240,8 +240,8 @@ class Storage(Component):
         self.model = StorageModel(self)
         return self.model
 
-    def transform_to_time_series(self) -> None:
-        super().transform_to_time_series()
+    def transform_data(self) -> None:
+        super().transform_data()
         self.relative_minimum_charge_state = _create_time_series('relative_minimum_charge_state', self.relative_minimum_charge_state, self)
         self.relative_maximum_charge_state = _create_time_series('relative_maximum_charge_state', self.relative_maximum_charge_state, self)
         self.eta_charge = _create_time_series('eta_charge', self.eta_charge, self)

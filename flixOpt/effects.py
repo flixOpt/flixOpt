@@ -125,7 +125,7 @@ class Effect(Element):
             assert self not in target_effect.specific_share_to_other_effects_invest.keys(), \
                 f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
 
-    def transform_to_time_series(self):
+    def transform_data(self):
         self.minimum_operation_per_hour = _create_time_series(
             'minimum_operation_per_hour', self.minimum_operation_per_hour, self)
         self.maximum_operation_per_hour = _create_time_series(

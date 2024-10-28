@@ -82,9 +82,9 @@ class FlowSystem:
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def transform_to_time_series(self):
+    def transform_data(self):
         for element in self.all_elements:
-            element.transform_to_time_series()
+            element.transform_data()
 
     def _check_if_element_is_unique(self, element: Element) -> None:
         """

@@ -122,7 +122,7 @@ class FullCalculation(Calculation):
     def do_modeling(self) -> SystemModel:
         t_start = timeit.default_timer()
 
-        self.flow_system.transform_to_time_series()
+        self.flow_system.transform_data()
         for time_series in self.flow_system.all_time_series:
             time_series.activate_indices(self.time_indices)
 
@@ -182,7 +182,7 @@ class AggregatedCalculation(Calculation):
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
     def do_modeling(self) -> SystemModel:
-        self.flow_system.transform_to_time_series()
+        self.flow_system.transform_data()
         for time_series in self.flow_system.all_time_series:
             time_series.activate_indices(self.time_indices)
 

@@ -151,7 +151,7 @@ class OnOffParameters:
         self.force_on = force_on  # Can be set to True if needed, even after creation
         self.force_switch_on = force_switch_on
 
-    def transform_to_time_series(self, owner: 'Element'):
+    def transform_data(self, owner: 'Element'):
         from flixOpt.effects import effect_values_to_time_series
         from flixOpt.structure import _create_time_series
         self.effects_per_switch_on = effect_values_to_time_series('per_switch_on', self.effects_per_switch_on, owner)

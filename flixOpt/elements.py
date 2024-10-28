@@ -56,9 +56,9 @@ class Component(Element):
         self.model = ComponentModel(self)
         return self.model
 
-    def transform_to_time_series(self) -> None:
+    def transform_data(self) -> None:
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_to_time_series(self)
+            self.on_off_parameters.transform_data(self)
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -132,7 +132,7 @@ class Bus(Element):
         self.model = BusModel(self)
         return self.model
 
-    def transform_to_time_series(self):
+    def transform_data(self):
         self.excess_penalty_per_flow_hour = _create_time_series('excess_penalty_per_flow_hour',
                                                                 self.excess_penalty_per_flow_hour, self)
 
@@ -248,13 +248,13 @@ class Flow(Element):
         self.model = FlowModel(self)
         return self.model
 
-    def transform_to_time_series(self):
+    def transform_data(self):
         self.relative_minimum = _create_time_series(f'relative_minimum', self.relative_minimum, self)
         self.relative_maximum = _create_time_series(f'relative_maximum', self.relative_maximum, self)
         self.fixed_relative_value = _create_time_series(f'fixed_relative_value', self.fixed_relative_value, self)
         self.effects_per_flow_hour = effect_values_to_time_series(f'per_flow_hour', self.effects_per_flow_hour, self)
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_to_time_series(self)
+            self.on_off_parameters.transform_data(self)
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
