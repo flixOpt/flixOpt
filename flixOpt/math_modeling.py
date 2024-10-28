@@ -358,8 +358,9 @@ class MathModel:
         self._variables: List[Variable] = []
         self._eqs: List[Equation] = []
         self._ineqs: List[Equation] = []
-        self.result_of_objective = None  # Ergebnis
-        self.duration = {}  # Laufzeiten
+        self.result_of_objective: Optional[float] = None
+
+        self.duration = {}
 
     def add(self, *args: Union[Variable, Equation]) -> None:
         if not isinstance(args, list):
@@ -560,7 +561,7 @@ class Solver(ABC):
         self.objective: Optional[float] = None
         self.best_bound: Optional[float] = None
         self.termination_message: Optional[str] = None
-        self.log = None
+        self.log: Optional[str, SolverLog] = None
 
         self._solver = None
         self._results: Optional[float, str] = None
@@ -599,6 +600,7 @@ class GurobiSolver(Solver):
             self.objective = self._results.objective.expr()
             self.termination_message = self._results['Solver'][0]['Termination message']
             self.best_bound = self._results['Problem'][0]['Lower bound']
+            self.log = SolverLog('gurobi', self.logfile_name)
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
 
@@ -624,6 +626,7 @@ class CplexSolver(Solver):
             self.objective = self._results.objective.expr()
             self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
             self.best_bound = self._results['Problem'][0]['Lower bound']
+            self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for CPLEX solver.')
 
@@ -655,6 +658,7 @@ class HighsSolver(Solver):
             self.objective = modeling_language.model.objective.expr()
             self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
             self.best_bound = self._results.best_objective_bound
+            self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for HIGHS solver.')
 
@@ -679,6 +683,7 @@ class CbcSolver(Solver):
             self.objective = self._results.objective.expr()
             self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
             self.best_bound = self._results['Problem'][0]['Lower bound']
+            self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
 
@@ -695,6 +700,7 @@ class GlpkSolver(Solver):
             self.objective = self._results.objective.expr()
             self.termination_message = self._results['Solver'][0]['Status']
             self.best_bound = self._results['Problem'][0]['Lower bound']
+            self.log = SolverLog('glpk', self.logfile_name)
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
 
