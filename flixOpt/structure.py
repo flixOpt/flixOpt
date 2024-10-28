@@ -11,7 +11,7 @@ import logging
 import numpy as np
 
 from flixOpt import utils
-from flixOpt.math_modeling import MathModel, Variable, Equation, VariableTS
+from flixOpt.math_modeling import MathModel, Variable, Equation, VariableTS, Solver
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -53,55 +53,22 @@ class SystemModel(MathModel):
         for bus_model in self.bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
             bus_model.do_modeling(self)
 
-    def solve(self,
-              mip_gap: float = 0.02,
-              time_limit_seconds: int = 3600,
-              solver_name: str = 'highs',
-              solver_output_to_console: bool = True,
-              excess_threshold: Union[int, float] = 0.1,
-              logfile_name: str = 'solver_log.log',
-              **kwargs):
+    def solve(self, solver: Solver, excess_threshold: Union[int, float] = 0.1):
         """
         Parameters
         ----------
-        mip_gap : TYPE, optional
-            DESCRIPTION. The default is 0.02.
-        time_limit_seconds : TYPE, optional
-            DESCRIPTION. The default is 3600.
-        solver_name : TYPE, optional
-            DESCRIPTION. The default is 'highs'.
-        solver_output_to_console : TYPE, optional
-            DESCRIPTION. The default is True.
+        solver : Solver
+            An Instance of the class Solver. Choose from flixOpt.solvers
         excess_threshold : float, positive!
             threshold for excess: If sum(Excess)>excess_threshold a warning is raised, that an excess occurs
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        main_results_str : TYPE
-            DESCRIPTION.
         """
-
-        # check valid solver options:
-        if len(kwargs) > 0:
-            for key in kwargs.keys():
-                if key not in ['threads']:
-                    raise Exception(
-                        'no allowed arguments for kwargs: ' + str(key) + '(all arguments:' + str(kwargs) + ')')
 
         logger.info(f'{" starting solving ":#^80}')
         logger.info(f'{self.describe()}')
 
-        super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
+        super().solve(solver)
 
-        if solver_name == 'gurobi':
-            termination_message = self.solver_results['Solver'][0]['Termination message']
-        elif solver_name == 'glpk':
-            termination_message = self.solver_results['Solver'][0]['Status']
-        else:
-            termination_message = f'not implemented for solver "{solver_name}" yet'
-        logger.info(f'Termination message: "{termination_message}"')
+        logger.info(f'Termination message: "{self.solver.termination_message}"')
 
         logger.info(f'{" finished solving ":#^80}')
         logger.info(f'{" Main Results ":#^80}')
@@ -155,7 +122,7 @@ class SystemModel(MathModel):
         return {'Components': {model.element.label: model.results() for model in self.component_models},
                 'Effects': self.effect_collection_model.results(),
                 'Others': {model.element.label: model.results() for model in self.other_models},
-                'Objective': self.objective_result
+                'Objective': self.result_of_objective
                 }
 
     @property
@@ -169,11 +136,8 @@ class SystemModel(MathModel):
                 'invest': float(effect.model.invest.sum.result),
                 'sum': float(effect.model.all.sum.result)}
         main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
-        main_results['Objective'] = self.objective_result
-        if self.solver_name == 'highs':
-            main_results['lower bound'] = self.model.solver_results.best_objective_bound
-        else:
-            main_results['lower bound'] = self.model.solver_results['Problem'][0]['Lower bound']
+        main_results['Objective'] = self.result_of_objective
+        main_results['lower bound'] = self.solver.best_bound
         buses_with_excess = []
         main_results['buses with excess'] = buses_with_excess
         for bus in self.flow_system.all_buses:

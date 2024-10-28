@@ -392,6 +392,7 @@ class MathModel:
         self.duration['Translation'] = round(timeit.default_timer() - t_start, 2)
 
     def solve(self, solver: 'Solver') -> None:
+        self.solver = solver
         t_start = timeit.default_timer()
         for variable in self.variables:
             variable.reset_result()  # altes Ergebnis löschen (falls vorhanden)
@@ -401,7 +402,7 @@ class MathModel:
     @property
     def infos(self) -> Dict:
         infos = {}
-        infos['Solver'] = self.solver_name
+        infos['Solver'] = self.solver.__repr__()
 
         info_flixModel = {}
         infos['flixModel'] = info_flixModel
@@ -414,8 +415,8 @@ class MathModel:
         info_flixModel['no vars single'] = self.nr_of_single_variables
         info_flixModel['no vars TS'] = len(self.ts_variables)
 
-        if self.solver_log is not None:
-            infos['solver_log'] = self.solver_log.infos
+        if self.solver.log is not None:
+            infos['solver_log'] = self.solver.log
         return infos
 
     @property
@@ -556,11 +557,24 @@ class Solver(ABC):
         self.solver_output_to_console = solver_output_to_console
         self.logfile_name = logfile_name
 
+        self.result: Optional[float, str] = None
+        self.best_bound: Optional[float, str] = None
+        self.termination_message: Optional[str] = None
+        self.log = None
+
         self._solver = None
-        self.solver_results = None
 
     def solve(self, model: 'pyomoEnv.ConcreteModel'):
         raise NotImplementedError(f' Solving is not possible with this Abstract class')
+
+    def __repr__(self):
+        return (f"{self.__class__.__name__}("
+                f"mip_gap={self.mip_gap}, "
+                f"solver_output_to_console={self.solver_output_to_console}, "
+                f"logfile_name='{self.logfile_name}', "
+                f"result={self.result!r}, "
+                f"best_bound={self.best_bound!r}, "
+                f"termination_message={self.termination_message!r})")
 
 
 class GurobiSolver(Solver):
@@ -576,7 +590,7 @@ class GurobiSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('gurobi')
-            self.solver_results = self._solver.solve(
+            self.result = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap, "TimeLimit": self.time_limit_seconds}
             )
@@ -597,7 +611,7 @@ class CplexSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('cplex')
-            self.solver_results = self._solver.solve(
+            self.result = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap, "timelimit": self.time_limit_seconds}
             )
@@ -628,7 +642,7 @@ class HighsSolver(Solver):
                                           "parallel": "on",
                                           "presolve": "on",
                                           "output_flag": True}
-            self.solver_results = self._solver.solve(modeling_language.model)
+            self.result = self._solver.solve(modeling_language.model)
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for HIGHS solver.')
 
@@ -646,7 +660,7 @@ class CbcSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('cbc')
-            self.solver_results = self._solver.solve(
+            self.result = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"ratio": self.mip_gap, "sec": self.time_limit_seconds}
             )
@@ -658,7 +672,7 @@ class GlpkSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('glpk')
-            self.solver_results = self._solver.solve(
+            self.result = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap}
             )
@@ -683,7 +697,6 @@ class PyomoModel(ModelingLanguage):
         logger.debug('Loaded pyomo modules')
         # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchläufe immer wieder genutzt wird.
         self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
-        self.solver_results = None
 
         self.mapping: Dict[Union[Variable, Equation], Any] = {}  # Mapping to Pyomo Units
         self._counter = 0
