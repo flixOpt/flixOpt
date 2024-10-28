@@ -195,6 +195,9 @@ class OnOffModel(ElementModel):
             self.total_on_hours = create_variable('totalOnHours', self, 1, system_model,
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
                                                   upper_bound=self._on_off_parameters.on_hours_total_max)
+            eq_total_on = create_equation('totalOnHours', self, system_model, )
+            eq_total_on.add_summand(self.on, system_model.dt_in_hours, as_sum=True)
+            eq_total_on.add_summand(self.total_on_hours, -1)
 
             self._add_on_constraints(system_model, system_model.indices)
 
@@ -561,56 +564,61 @@ class ShareAllocationModel(ElementModel):
                            name_of_share: Optional[str],
                            share_holder: Element,
                            variable: Variable,
-                           factor1: Numeric,
-                           factor2: Numeric):  # if variable = None, then fix Share
+                           factor: Numeric = 1,
+                           share_as_sum: bool = False):  # if variable = None, then constant Share
         if variable is None:
             raise Exception('add_variable_share() needs variable as input. Use add_constant_share() instead')
-        self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
+        self._add_share(system_model, name_of_share, share_holder, variable, factor, share_as_sum)
 
     def add_constant_share(self,
                            system_model: SystemModel,
                            name_of_share: Optional[str],
                            share_holder: Element,
-                           factor1: Numeric,
-                           factor2: Numeric):
-        variable = None
-        self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
+                           factor: Numeric = 1,
+                           share_as_sum: bool = False):
+        self._add_share(system_model, name_of_share, share_holder, None, factor, share_as_sum)
 
     def _add_share(self,
                    system_model: SystemModel,
                    name_of_share: Optional[str],
                    share_holder: Element,
                    variable: Optional[Variable],
-                   factor1: Numeric,
-                   factor2: Numeric):
+                   factor: Numeric,
+                   share_as_sum: bool = False):
         """ if name_of_share, then a proper share is created, which is explicitly published in results.
         Else, its only added to the total of the Effect"""
         # TODO: accept only one factor or accept unlimited factors -> *factors
-        total_factor = np.multiply(factor1, factor2)
 
         # Check to which equation the share should be added
         if self._shares_are_time_series:
             target_eq = self._eq_time_series
-        else:
+            convert_to_sum = False
+        elif not share_as_sum:
             # checking for single value
-            assert any([np.issubdtype(type(total_factor), np.integer),
-                        np.issubdtype(type(total_factor), np.floating),
-                        isinstance(total_factor, Skalar)]) or total_factor.shape[0] == 1, \
+            assert any([np.issubdtype(type(factor), np.integer),
+                        np.issubdtype(type(factor), np.floating),
+                        isinstance(factor, Skalar)]) or factor.shape[0] == 1, \
                 f'factor1 und factor2 müssen Skalare sein, da shareSum {self.element.label} skalar ist'
             target_eq = self._eq_sum
+            convert_to_sum = True
+        else:
+            target_eq = self._eq_sum
 
-        if variable is None:  # constant share
-            target_eq.add_constant(-1 * total_factor)
-        elif name_of_share is None:  # variable share
-            target_eq.add_summand(variable, total_factor)
-        else:  # var and eq for publishing share-values in results:
-            new_share = SingleShareModel(share_holder, not self._shares_are_time_series, name_of_share)
+            convert_to_sum_1 = variable.length > 1 if variable is not None else False
+            convert_to_sum_2 = factor.shape[0] > 1 if not np.isscalar(factor) else False
+            convert_to_sum = convert_to_sum_1 or convert_to_sum_2
+            assert share_as_sum == convert_to_sum, f'Share as sum was set, but is not needed'
+
+        if name_of_share is not None:
+            new_share = SingleShareModel(share_holder, convert_to_sum, name_of_share)
             new_share.do_modeling(system_model)
-            new_share.add_summand_to_share(variable, total_factor)
+            new_share.add_summand_to_share(variable, factor)
             target_eq.add_summand(new_share.single_share, 1)
             self.sub_models.append(new_share)
             assert new_share.label_full not in self.shares, f'A Share with the label {new_share.label_full} wis already present in {self.label_full}'
             self.shares[new_share.label_full] = new_share.single_share
+        else:
+            raise Exception(f'Every Share needs a name. This Share doesnt have one')
 
     def results(self):
         return {**{variable.label_short: variable.result for variable in self.variables.values()},
@@ -641,6 +649,8 @@ class SingleShareModel(ElementModel):
         if variable is None:  # if constant share:
             constant_value = np.sum(factor) if self._create_sum_of else factor
             self._equation.add_constant(-1 * constant_value)
+        elif variable.length == 1 and np.isscalar(factor):
+            self._equation.add_summand(variable, factor)
         else:
             self._equation.add_summand(variable, factor, as_sum=self._create_sum_of)
 

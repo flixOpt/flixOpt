@@ -42,6 +42,7 @@ class SystemModel(MathModel):
         self.effect_collection_model = flow_system.effect_collection.create_model(self)
         self.component_models: List['ComponentModel'] = []
         self.bus_models: List['BusModel'] = []
+        self.other_models: List[ElementModel] = []
 
     def do_modeling(self):
         self.effect_collection_model.do_modeling(self)
@@ -165,7 +166,7 @@ class SystemModel(MathModel):
 
     @property
     def sub_models(self) -> List['ElementModel']:
-        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models
+        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models + self.other_models
         sub_models = [sub_model for direct_model in direct_models for sub_model in direct_model.all_sub_models]
         return direct_models + sub_models
 
@@ -218,6 +219,7 @@ class SystemModel(MathModel):
     def results(self):
         return {'Components': {model.element.label: model.results() for model in self.component_models},
                 'Effects': self.effect_collection_model.results(),
+                'Others': {model.element.label: model.results() for model in self.other_models},
                 'Objective': self.objective_result
                 }
 
@@ -237,9 +239,9 @@ class Element:
         """ This function is used to do some basic plausibility checks for each Element during initialization """
         raise NotImplementedError(f'Every Element needs a _plausibility_checks() method')
 
-    def transform_to_time_series(self) -> None:
+    def transform_data(self) -> None:
         """ This function is used to transform the time series data from the User to proper TimeSeries Objects """
-        raise NotImplementedError(f'Every Element needs a transform_to_time_series() method')
+        raise NotImplementedError(f'Every Element needs a transform_data() method')
 
     def create_model(self) -> None:
         raise NotImplementedError(f'Every Element needs a create_model() method')
@@ -358,10 +360,14 @@ class ElementModel:
         return self._label or self.element.label
 
 
-def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> Optional[TimeSeries]:
-    """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
+def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element) -> Optional[TimeSeries]:
+    """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
+    If the data already is a TimeSeries, nothing happens and the TimeSeries gets cleaned and returned"""
     if data is None:
         return None
+    elif isinstance(data, TimeSeries):
+        data.clear_indices_and_aggregated_data()
+        return data
     else:
         time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data)
         element.used_time_series.append(time_series)
@@ -385,16 +391,17 @@ def create_variable(label: str,
                     lower_bound: Optional[Numeric] = None,
                     upper_bound: Optional[Numeric] = None,
                     before_value: Optional[Numeric] = None,
+                    avoid_use_of_variable_ts: bool = False
                     ) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
-    if length > 1:
+    if length > 1 and not avoid_use_of_variable_ts:
         var = VariableTS(variable_label, label, length, system_model,
                          is_binary, value, lower_bound, upper_bound, before_value)
         logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
     else:
         var = Variable(variable_label, label, length, system_model,
                        is_binary, value, lower_bound, upper_bound)
-        logger.debug(f'Created Variable "{variable_label}"')
+        logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var

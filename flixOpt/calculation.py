@@ -10,17 +10,20 @@ import logging
 import math
 import pathlib
 import timeit
-from typing import List, Dict, Optional, Literal, Tuple, Union
+from typing import List, Dict, Optional, Literal, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 import yaml
 
 from flixOpt import utils
-from flixOpt.aggregation import TimeSeriesCollection
+from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
 from flixOpt.core import Skalar, Numeric, TimeSeriesData
-from flixOpt.math_modeling import VariableTS
+from flixOpt.math_modeling import VariableTS, Variable, Equation
 from flixOpt.structure import SystemModel
 from flixOpt.flow_system import FlowSystem
+from flixOpt.elements import Component
+from flixOpt.components import Storage
+
 
 logger = logging.getLogger('flixOpt')
 
@@ -29,7 +32,8 @@ class Calculation:
     """
     class for defined way of solving a flow_system optimization
     """
-    def __init__(self, name, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
+    def __init__(self, name, flow_system: FlowSystem,
+                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
         Parameters
@@ -118,7 +122,7 @@ class FullCalculation(Calculation):
     def do_modeling(self) -> SystemModel:
         t_start = timeit.default_timer()
 
-        self.flow_system.transform_to_time_series()
+        self.flow_system.transform_data()
         for time_series in self.flow_system.all_time_series:
             time_series.activate_indices(self.time_indices)
 
@@ -141,228 +145,106 @@ class FullCalculation(Calculation):
 
 class AggregatedCalculation(Calculation):
     """
-    class for defined way of solving a flow_system optimizatino
+    class for defined way of solving a flow_system optimization
     """
 
-    def __init__(self, name: str, flow_system: FlowSystem, modeling_language: Literal["pyomo", "cvxpy"],
+    def __init__(self, name, flow_system: FlowSystem,
+                 aggregation_parameters: AggregationParameters,
+                 components_to_clusterize: Optional[List[Component]] = None,
+                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
                  time_indices: Optional[list[int]] = None):
         """
+        Class for Optimizing the FLowSystem including:
+            1. Aggregating TImeSeriesData via typical periods using tsam.
+            2. Equalizing variables of typical periods.
         Parameters
         ----------
         name : str
             name of calculation
+        aggregation_parameters : AggregationParameters
+            Parameters for aggregation. See documentation of AggregationParameters class.
+        components_to_clusterize: List[Component] or None
+            List of Components to perform aggregation on. If None, then all components are aggregated.
+            This means, teh variables in the components are equalized to each other, according to the typical periods
+            computed in the DataAggregation
         flow_system : FlowSystem
             flow_system which should be calculated
         modeling_language : 'pyomo','cvxpy' (not implemeted yet)
             choose optimization modeling language
-        time_indices : None, list
-            list with indexe, which should be used for calculation. If None, then all timesteps are used.
+        time_indices : List[int] or None
+            list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
         super().__init__(name, flow_system, modeling_language, time_indices)
+        self.aggregation_parameters = aggregation_parameters
+        self.components_to_clusterize = components_to_clusterize
         self.time_series_for_aggregation = None
-        self.aggregation_data = None
+        self.aggregation = None
         self.time_series_collection: Optional[TimeSeriesCollection] = None
 
-    def do_modeling(self, periodLengthInHours, nr_of_typical_periods, use_extreme_periods, fix_storage_flows,
-                    fix_binary_vars_only, percentage_of_period_freedom=0, costs_of_period_freedom=0, addPeakMax=None,
-                    addPeakMin=None):
-        """
-        method of aggregated modeling.
-        1. Finds typical periods.
-        2. Equalizes variables of typical periods.
+    def do_modeling(self) -> SystemModel:
+        self.flow_system.transform_data()
+        for time_series in self.flow_system.all_time_series:
+            time_series.activate_indices(self.time_indices)
 
-        Parameters
-        ----------
-        periodLengthInHours : float
-            length of one period.
-        nr_of_typical_periods : int
-            no of typical periods
-        use_extreme_periods : boolean
-            True, if periods of extreme values should be explicitly chosen
-            Define recognised timeseries in args addPeakMax, addPeakMin!
-        fix_storage_flows : boolean
-            Defines, wether load- and unload-Flow should be also aggregated or not.
-            If all other flows are fixed, it is mathematically not necessary
-            to fix them.
-        fix_binary_vars_only : boolean
-            True, if only binary var should be aggregated.
-            Additionally choose, wether orginal or aggregated timeseries should
-            be chosen for the calculation.
-        percentage_of_period_freedom : 0...100
-            Normally timesteps of all periods in one period-collection
-            are all equalized. Here you can choose, which percentage of values
-            can maximally deviate from this and be "free variables". The solver
-            chooses the "free variables".
-        costs_of_period_freedom : float
-            costs per "free variable". The default is 0.
-            !! Warning: At the moment these costs are allocated to
-            operation costs, not to penalty!!
-        useOriginalTimeSeries : boolean.
-            orginal or aggregated timeseries should
-            be chosen for the calculation. default is False.
-        addPeakMax : list of TimeSeriesData
-            list of data-timeseries. The period with the max-value are
-            chosen as a explicitly period.
-        addPeakMin : list of TimeSeriesData
-            list of data-timeseries. The period with the min-value are
-            chosen as a explicitly period.
+        from flixOpt.aggregation import Aggregation
 
-
-        Returns
-        -------
-        system_model : TYPE
-            DESCRIPTION.
-
-        """
-
-        addPeakMax = addPeakMax or []
-        addPeakMin = addPeakMin or []
-        self.check_if_already_modeled()
-
-        self._infos['aggregatedProps'] = {'periodLengthInHours': periodLengthInHours,
-                                          'nr_of_typical_periods': nr_of_typical_periods,
-                                          'use_extreme_periods': use_extreme_periods,
-                                          'fix_storage_flows': fix_storage_flows,
-                                          'fix_binary_vars_only': fix_binary_vars_only,
-                                          'percentage_of_period_freedom': percentage_of_period_freedom,
-                                          'costs_of_period_freedom': costs_of_period_freedom}
-
-        t_start_agg = timeit.default_timer()
-        # chosen Indexe aktivieren in TS: (sonst geht Aggregation nicht richtig)
-        self.flow_system.activate_indices_in_time_series(self.time_indices)
-
-        # Zeitdaten generieren:
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
             self.flow_system.get_time_data_from_indices(self.time_indices))
 
-        # check equidistant timesteps:
-        if max(dt_in_hours) - min(dt_in_hours) != 0:
-            raise Exception('!!! Achtung Aggregation geht nicht, da unterschiedliche delta_t von ' + str(
-                min(dt_in_hours)) + ' bis ' + str(max(dt_in_hours)) + ' h')
+        t_start_agg = timeit.default_timer()
+
+        # Validation
+        dt_min, dt_max = np.min(dt_in_hours), np.max(dt_in_hours)
+        if not dt_min == dt_max:
+            raise ValueError(f"Aggregation failed due to inconsistent time step sizes:"
+                             f"delta_t varies from {dt_min} to {dt_max} hours.")
+        steps_per_period = self.aggregation_parameters.hours_per_period / dt_in_hours[0]
+        if not steps_per_period.is_integer():
+            raise Exception(f"The selected {self.aggregation_parameters.hours_per_period=} does not match the time "
+                            f"step size of {dt_in_hours[0]} hours). It must be a multiple of {dt_in_hours[0]} hours.")
 
         logger.info(f'{"":#^80}')
-        logger.info(f'{" TimeSeries for aggregation ":#^80}')
+        logger.info(f'{" Aggregating TimeSeries Data ":#^80}')
 
-        ## Daten für Aggregation vorbereiten:
-        # TSlist and TScollection ohne Skalare:
-        self.time_series_for_aggregation = [item for item in self.flow_system.all_time_series_in_elements if item.is_array]
-        self.time_series_collection = TimeSeriesCollection(self.time_series_for_aggregation,
-                                                           addPeakMax_TSraw=addPeakMax, addPeakMin_TSraw=addPeakMin, )
-
-        logger.info(f'{self.time_series_collection}')
+        self.time_series_collection = TimeSeriesCollection([ts for ts in self.flow_system.all_time_series if ts.is_array])
 
         import pandas as pd
-        # seriesDict = {i : self.time_series_for_aggregation[i].active_data_vector for i in range(length(self.time_series_for_aggregation))}
-        df_OriginalData = pd.DataFrame(self.time_series_collection.seriesDict,
-                                       index=chosenTimeSeries)  # eigentlich wäre TS als column schön, aber TSAM will die ordnen können.
+        original_data = pd.DataFrame(self.time_series_collection.data, index=chosenTimeSeries)
 
-        # Check, if timesteps fit in Period:
-        stepsPerPeriod = periodLengthInHours / self.dt_in_hours[0]
-        if not stepsPerPeriod.is_integer():
-            raise Exception('Fehler! Gewählte Periodenlänge passt nicht zur Zeitschrittweite')
+        # Aggregation - creation of aggregated timeseries:
+        self.aggregation = Aggregation(original_data=original_data,
+                                            hours_per_time_step=dt_min,
+                                            hours_per_period=self.aggregation_parameters.hours_per_period,
+                                            nr_of_periods=self.aggregation_parameters.nr_of_periods,
+                                            weights=self.time_series_collection.weights,
+                                            time_series_for_high_peaks=self.aggregation_parameters.labels_for_high_peaks,
+                                            time_series_for_low_peaks=self.aggregation_parameters.labels_for_low_peaks)
 
-        ##########################################################
-        # ### Aggregation - creation of aggregated timeseries: ###
-        from flixOpt import aggregation as flixAgg
-        dataAgg = flixAgg.Aggregation('aggregation', timeseries=df_OriginalData,
-                                      hours_per_time_step=self.dt_in_hours[0], hours_per_period=periodLengthInHours,
-                                      hasTSA=False, nr_of_typical_periods=nr_of_typical_periods,
-                                      use_extreme_periods=use_extreme_periods,
-                                      weights=self.time_series_collection.weightDict,
-                                      addPeakMax=self.time_series_collection.addPeak_Max_labels,
-                                      addPeakMin=self.time_series_collection.addPeak_Min_labels)
-
-        dataAgg.cluster()
-        self.aggregation_data = dataAgg
-
-        self._infos['aggregatedProps']['periods_order'] = str(list(dataAgg.aggregation.clusterOrder))
-
-        # aggregation_data.aggregation.clusterPeriodIdx
-        # aggregation_data.aggregation.clusterOrder
-        # aggregation_data.aggregation.clusterPeriodNoOccur
-        # aggregation_data.aggregation.predictOriginalData()
-        # self.periods_order = aggregation.clusterOrder
-        # self.period_occurrences = aggregation.clusterPeriodNoOccur
-
-        # ### Some plot for plausibility check ###
-
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(8, 6))
-        plt.title('aggregated series (dashed = aggregated)')
-        plt.plot(df_OriginalData.values)
-        for label_TS, agg_values in dataAgg.results.items():
-            # aLabel = str(i)
-            # aLabel = self.time_series_for_aggregation[i].label_full
-            plt.plot(agg_values.values, '--', label=label_TS)
-        if len(self.time_series_for_aggregation) < 10:  # wenn nicht zu viele
-            plt.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center')
-        plt.tight_layout()
-        plt.show()
-
-        # ### Some infos as print ###
-
-        logger.info('TS Aggregation:')
-        for i in range(len(self.time_series_for_aggregation)):
-            aLabel = self.time_series_for_aggregation[i].label_full
-            logger.info('TS ' + str(aLabel))
-            logger.info('  max_agg:' + str(max(dataAgg.results[aLabel])))
-            logger.info('  max_orig:' + str(max(df_OriginalData[aLabel])))
-            logger.info('  min_agg:' + str(min(dataAgg.results[aLabel])))
-            logger.info('  min_orig:' + str(min(df_OriginalData[aLabel])))
-            logger.info('  sum_agg:' + str(sum(dataAgg.results[aLabel])))
-            logger.info('  sum_orig:' + str(sum(df_OriginalData[aLabel])))
-
-        logger.info('addpeakmax:')
-        logger.info(self.time_series_collection.addPeak_Max_labels)
-        logger.info('addpeakmin:')
-        logger.info(self.time_series_collection.addPeak_Min_labels)
-
-        # ################
-        # ### Modeling ###
-
-        aggregationModel = flixAgg.AggregationModeling('aggregation', self.flow_system,
-                                                       index_vectors_of_clusters=dataAgg.index_vectors_of_clusters,
-                                                       fix_binary_vars_only=fix_binary_vars_only,
-                                                       fix_storage_flows=fix_storage_flows, elements_to_clusterize=None,
-                                                       percentage_of_period_freedom=percentage_of_period_freedom,
-                                                       costs_of_period_freedom=costs_of_period_freedom)
-
-        # temporary Modeling-Element for equalizing indices of aggregation:
-        self.flow_system.add_temporary_elements(aggregationModel)
-
-        if fix_binary_vars_only:
-            TS_explicit = None
-        else:
-            # neue (Explizit)-Werte für TS sammeln::
-            TS_explicit = {}
-            for i in range(len(self.time_series_for_aggregation)):
-                TS = self.time_series_for_aggregation[i]
-                # todo: agg-Wert für TS:
-                TS_explicit[TS] = dataAgg.results[TS.label_full].values  # nur data-array ohne Zeit
-
-        # ##########################
-        # ## FlowSystem finalizing: ##
-        self.flow_system.finalize()
-
+        self.aggregation.cluster()
+        self.aggregation.plot()
+        self.time_series_collection.insert_data(  # Converting it into a dict with labels as keys
+            {col: np.array(values) for col, values in self.aggregation.aggregated_data.to_dict(orient='list').items()})
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
-        t_m_start = timeit.default_timer()
-        # Modellierungsbox / TimePeriod-Box bauen: ! inklusive TS_explicit!!!
-        system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices,
-                                   TS_explicit)  # alle Indexe nehmen!
-        self.system_models.append(system_model)
-        # model aktivieren:
-        self.flow_system.activate_model(system_model, self.time_indices)
-        # modellieren:
-        self.flow_system.do_modeling_of_elements()
-        self.flow_system.transform_to_math_model()
+        # Model the System
+        t_start = timeit.default_timer()
 
-        self.durations['modeling'] = round(timeit.default_timer() - t_m_start, 2)
-        return system_model
+        self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
+        self.system_model.do_modeling()
+        #Add Aggregation Model after modeling the rest
+        aggregation_model = AggregationModel(self.aggregation_parameters, self.flow_system, self.aggregation,
+                                             self.components_to_clusterize)
+        self.system_model.other_models.append(aggregation_model)
+        aggregation_model.do_modeling(self.system_model)
+
+        self.system_model.to_math_model()
+
+        self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
+        return self.system_model
 
     def solve(self, solverProps: dict, path='results/', save_results=True):
         self._define_path_names(path, save_results, nr_of_system_models=1)
-        self.system_models[0].solve(**solverProps, logfile_name=self._paths['log'][0])
+        self.system_model.solve(**solverProps, logfile_name=self._paths['log'][0])
 
         if save_results:
             self._save_solve_infos()

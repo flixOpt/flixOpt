@@ -86,8 +86,8 @@ class LinearConverter(Component):
                     raise Exception(f"segmented_conversion_factors (in {self.label_full}) and variable size "
                                     f"(in flow {flow.label_full}) do not make sense together!")
 
-    def transform_to_time_series(self):
-        super().transform_to_time_series()
+    def transform_data(self):
+        super().transform_data()
         if self.conversion_factors is not None:
             self.conversion_factors = self._transform_conversion_factors()
         else:
@@ -106,8 +106,7 @@ class LinearConverter(Component):
         for conversion_factor in self.conversion_factors:
             transformed_dict = {}
             for flow, values in conversion_factor.items():
-                if not isinstance(values, TimeSeries):
-                    transformed_dict[flow] = _create_time_series(f"{flow.label}_factor", values, self)
+                transformed_dict[flow] = _create_time_series(f"{flow.label}_factor", values, self)
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
 
@@ -202,8 +201,8 @@ class Storage(Component):
         relative_maximum_charge_state : float or TS, optional
             maximum relative charge state. The default is 1.
         initial_charge_state : None, float (0...1), 'lastValueOfSim',  optional
-            storage capacity in Flowhours at the beginning. The default is 0.
-            float: defined capacity at start of first timestep
+            storage charge_state at the beginning. The default is 0.
+            float: defined charge_state at start of first timestep
             None: free to choose by optimizer
             'lastValueOfSim': chargeState0 is equal to chargestate of last timestep ("closed simulation")
         minimal_final_charge_state : float or None, optional
@@ -225,7 +224,7 @@ class Storage(Component):
 
         self.charging = charging
         self.discharging = discharging
-        self.capacity_inFlowHours = capacity_in_flow_hours
+        self.capacity_in_flow_hours = capacity_in_flow_hours
         self.relative_minimum_charge_state: Numeric_TS = relative_minimum_charge_state
         self.relative_maximum_charge_state: Numeric_TS = relative_maximum_charge_state
 
@@ -241,13 +240,15 @@ class Storage(Component):
         self.model = StorageModel(self)
         return self.model
 
-    def transform_to_time_series(self) -> None:
-        super().transform_to_time_series()
+    def transform_data(self) -> None:
+        super().transform_data()
         self.relative_minimum_charge_state = _create_time_series('relative_minimum_charge_state', self.relative_minimum_charge_state, self)
         self.relative_maximum_charge_state = _create_time_series('relative_maximum_charge_state', self.relative_maximum_charge_state, self)
         self.eta_charge = _create_time_series('eta_charge', self.eta_charge, self)
         self.eta_discharge = _create_time_series('eta_discharge', self.eta_discharge, self)
         self.relative_loss_per_hour = _create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, self)
+        if isinstance(self.capacity_in_flow_hours, InvestParameters):
+            self.capacity_in_flow_hours.transform_data()
 
 
 class LinearConverterModel(ComponentModel):
@@ -344,9 +345,9 @@ class StorageModel(ComponentModel):
         eq_charge_state.add_summand(self.element.discharging.model.flow_rate,
                                     1 / self.element.eta_discharge.active_data * system_model.dt_in_hours)
 
-        if isinstance(self.element.capacity_inFlowHours, InvestParameters):
+        if isinstance(self.element.capacity_in_flow_hours, InvestParameters):
             self._investment = InvestmentModel(
-                self.element, self.element.capacity_inFlowHours, self.charge_state,
+                self.element, self.element.capacity_in_flow_hours, self.charge_state,
                 (self.element.relative_minimum_charge_state.active_data,
                  self.element.relative_maximum_charge_state.active_data))
             self.sub_models.append(self._investment)
@@ -389,12 +390,12 @@ class StorageModel(ComponentModel):
 
     @property
     def charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
-        if not isinstance(self.element.capacity_inFlowHours, InvestParameters):
-            return (self.element.relative_minimum_charge_state.active_data * self.element.capacity_inFlowHours,
-                    self.element.relative_maximum_charge_state.active_data * self.element.capacity_inFlowHours)
+        if not isinstance(self.element.capacity_in_flow_hours, InvestParameters):
+            return (self.element.relative_minimum_charge_state.active_data * self.element.capacity_in_flow_hours,
+                    self.element.relative_maximum_charge_state.active_data * self.element.capacity_in_flow_hours)
         else:
-            return (self.element.relative_minimum_charge_state.active_data * self.element.capacity_inFlowHours.minimum_size,
-                    self.element.relative_maximum_charge_state.active_data * self.element.capacity_inFlowHours.maximum_size)
+            return (self.element.relative_minimum_charge_state.active_data * self.element.capacity_in_flow_hours.minimum_size,
+                    self.element.relative_maximum_charge_state.active_data * self.element.capacity_in_flow_hours.maximum_size)
 
 
 class SourceAndSink(Component):

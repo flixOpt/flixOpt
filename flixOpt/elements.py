@@ -56,9 +56,9 @@ class Component(Element):
         self.model = ComponentModel(self)
         return self.model
 
-    def transform_to_time_series(self) -> None:
+    def transform_data(self) -> None:
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_to_time_series(self)
+            self.on_off_parameters.transform_data(self)
 
     def __str__(self):
         # Representing inputs and outputs by their labels
@@ -132,7 +132,7 @@ class Bus(Element):
         self.model = BusModel(self)
         return self.model
 
-    def transform_to_time_series(self):
+    def transform_data(self):
         self.excess_penalty_per_flow_hour = _create_time_series('excess_penalty_per_flow_hour',
                                                                 self.excess_penalty_per_flow_hour, self)
 
@@ -248,13 +248,15 @@ class Flow(Element):
         self.model = FlowModel(self)
         return self.model
 
-    def transform_to_time_series(self):
+    def transform_data(self):
         self.relative_minimum = _create_time_series(f'relative_minimum', self.relative_minimum, self)
         self.relative_maximum = _create_time_series(f'relative_maximum', self.relative_maximum, self)
         self.fixed_relative_value = _create_time_series(f'fixed_relative_value', self.fixed_relative_value, self)
         self.effects_per_flow_hour = effect_values_to_time_series(f'per_flow_hour', self.effects_per_flow_hour, self)
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_to_time_series(self)
+            self.on_off_parameters.transform_data(self)
+        if isinstance(self.size, InvestParameters):
+            self.size.transform_data()
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
@@ -333,18 +335,15 @@ class FlowModel(ElementModel):
         if self.element.on_off_parameters is not None:
             self._on = OnOffModel(self.element, self.element.on_off_parameters,
                                   [self.flow_rate],
-                                  [self.flow_rate_bounds])
+                                  [self.absolute_flow_rate_bounds])
             self._on.do_modeling(system_model)
             self.sub_models.append(self._on)
 
         # Investment
         if isinstance(self.element.size, InvestParameters):
-            relative_bounds = (self.element.relative_minimum,
-                               self.element.relative_maximum) if self.element.fixed_relative_value is None \
-                else (self.element.fixed_relative_value, self.element.fixed_relative_value)
             self._investment = InvestmentModel(self.element, self.element.size,
                                                self.flow_rate,
-                                               relative_bounds,
+                                               self.relative_flow_rate_bounds,
                                                on_variable=self._on.on if self._on is not None else None)
             self._investment.do_modeling(system_model)
             self.sub_models.append(self._investment)
@@ -396,13 +395,20 @@ class FlowModel(ElementModel):
                 eq_load_factor_min.add_constant(-1 * self.element.size * flow_hours_per_size_min)
 
     @property
-    def flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
+    def absolute_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
         if not isinstance(self.element.size, InvestParameters):
             return (self.element.relative_minimum.active_data * self.element.size,
                     self.element.relative_maximum.active_data * self.element.size)
         else:
             return (self.element.relative_minimum.active_data * self.element.size.minimum_size,
                     self.element.relative_maximum.active_data * self.element.size.maximum_size)
+
+    @property
+    def relative_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
+        if self.element.fixed_relative_value is None:
+            return self.element.relative_minimum.active_data, self.element.relative_maximum.active_data
+        else:
+            return self.element.fixed_relative_value.active_data, self.element.fixed_relative_value.active_data
 
 
 class BusModel(ElementModel):
@@ -460,7 +466,7 @@ class ComponentModel(ElementModel):
 
         if self.element.on_off_parameters:
             flow_rates: List[VariableTS] = [flow.model.flow_rate for flow in all_flows]
-            bounds: List[Tuple[Numeric, Numeric]] = [flow.model.flow_rate_bounds for flow in all_flows]
+            bounds: List[Tuple[Numeric, Numeric]] = [flow.model.absolute_flow_rate_bounds for flow in all_flows]
             self._on = OnOffModel(self.element, self.element.on_off_parameters,
                                   flow_rates, bounds)
             self.sub_models.append(self._on)
