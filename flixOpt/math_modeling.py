@@ -348,19 +348,18 @@ class MathModel:
                  modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'):
         self._infos = {}
         self.label = label
-        self.modeling_language = modeling_language
+        self.modeling_language: str = modeling_language
 
         self.epsilon = 1e-5
 
-        self.solver_name: Optional[str] = None
-        self.model = None  # Übergabe später, zumindest für Pyomo notwendig
-        self._variables = []
-        self._eqs = []
-        self._ineqs = []
-        self.objective = None  # objective-Function
-        self.objective_result = None  # Ergebnis
+        self.solver: Optional[Solver] = None
+        self.model: Optional[ModelingLanguage] = None
+
+        self._variables: List[Variable] = []
+        self._eqs: List[Equation] = []
+        self._ineqs: List[Equation] = []
+        self.result_of_objective = None  # Ergebnis
         self.duration = {}  # Laufzeiten
-        self.solver_log = None  # logging und parsen des solver-outputs
 
     def add(self, *args: Union[Variable, Equation]) -> None:
         if not isinstance(args, list):
@@ -392,28 +391,11 @@ class MathModel:
             raise NotImplementedError('Modeling Language cvxpy is not yet implemented')
         self.duration['Translation'] = round(timeit.default_timer() - t_start, 2)
 
-    def solve(self,
-              mip_gap: float,
-              time_limit_seconds: int,
-              solver_name: Literal['highs', 'gurobi', 'cplex', 'glpk', 'cbc'],
-              solver_output_to_console: bool,
-              logfile_name: str,
-              **solver_opt) -> None:
-        self.solver_name = solver_name
+    def solve(self, solver: 'Solver') -> None:
         t_start = timeit.default_timer()
         for variable in self.variables:
             variable.reset_result()  # altes Ergebnis löschen (falls vorhanden)
-        solver_opt = {"mip_rel_gap": mip_gap,
-                      "time_limit": time_limit_seconds,
-                      "log_file": "results/highs.log",
-                      "log_to_console": True,
-                      "threads": 4,
-                      "parallel": "on",
-                      "presolve": "on",
-                      "output_flag": True}
-
-        self.model.solve(self, solver_opt)
-
+        self.model.solve(self, solver)
         self.duration['solve'] = round(timeit.default_timer() - t_start, 2)
 
     @property
@@ -567,16 +549,12 @@ class Solver(ABC):
     """ Abstract class for Solvers """
     def __init__(self,
                  mip_gap: float,
-                 time_limit_seconds: int,
                  solver_output_to_console: bool,
                  logfile_name: str,
-                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'
                  ):
         self.mip_gap = mip_gap
-        self.time_limit_seconds = time_limit_seconds
         self.solver_output_to_console = solver_output_to_console
         self.logfile_name = logfile_name
-        self.modeling_language = modeling_language
 
         self._solver = None
         self.solver_results = None
@@ -585,56 +563,107 @@ class Solver(ABC):
         raise NotImplementedError(f' Solving is not possible with this Abstract class')
 
 
-class Gurobi(Solver):
+class GurobiSolver(Solver):
     def __init__(self,
                  mip_gap: float,
                  time_limit_seconds: int,
                  solver_output_to_console: bool,
                  logfile_name: str,
-                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'
                  ):
-        super().__init__(mip_gap, time_limit_seconds, solver_output_to_console, logfile_name, modeling_language)
-        self._solver = pyomoEnv.SolverFactory('gurobi')
+        super().__init__(mip_gap, solver_output_to_console, logfile_name)
+        self.time_limit_seconds = time_limit_seconds
 
-    def solve(self, model: 'pyomoEnv.ConcreteModel'):
-        self.solver_results = self._solver.solve(model, options=self.options, keepfiles=True)
-        return self.solver_results
+    def solve(self, modeling_language: 'ModelingLanguage'):
+        if isinstance(modeling_language, PyomoModel):
+            self._solver = pyomoEnv.SolverFactory('gurobi')
+            self.solver_results = self._solver.solve(
+                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
+                options={"mipgap": self.mip_gap, "TimeLimit": self.time_limit_seconds}
+            )
+        else:
+            raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
 
-    @property
-    def options(self) -> Dict:
-        return {"mipgap": self.mip_gap,
-                "TimeLimit": self.time_limit_seconds,
-                'logfile': self.logfile_name,
-                'tee': self.solver_output_to_console}
+
+class CplexSolver(Solver):
+    def __init__(self,
+                 mip_gap: float,
+                 time_limit_seconds: int,
+                 solver_output_to_console: bool,
+                 logfile_name: str,
+                 ):
+        super().__init__(mip_gap, solver_output_to_console, logfile_name)
+        self.time_limit_seconds = time_limit_seconds
+
+    def solve(self, modeling_language: 'ModelingLanguage'):
+        if isinstance(modeling_language, PyomoModel):
+            self._solver = pyomoEnv.SolverFactory('cplex')
+            self.solver_results = self._solver.solve(
+                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
+                options={"mipgap": self.mip_gap, "timelimit": self.time_limit_seconds}
+            )
+        else:
+            raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
 
 
-class Highs(Solver):
+class HighsSolver(Solver):
     def __init__(self,
                  mip_gap: float,
                  time_limit_seconds: int,
                  solver_output_to_console: bool,
                  threads: int,
                  logfile_name: str,
-                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'
                  ):
-        super().__init__(mip_gap, time_limit_seconds, solver_output_to_console, logfile_name, modeling_language)
+        super().__init__(mip_gap, solver_output_to_console, logfile_name)
+        self.time_limit_seconds = time_limit_seconds
         self.threads = threads
-        self._solver = appsi.solvers.Highs()
 
-    def solve(self, model: 'pyomoEnv.ConcreteModel'):
-        self.solver_results = self._solver.solve(model)
-        return self.solver_results
+    def solve(self, modeling_language: 'ModelingLanguage'):
+        if isinstance(modeling_language, PyomoModel):
+            self._solver = appsi.solvers.Highs()
+            self._solver.highs_options = {"mip_rel_gap": self.mip_gap,
+                                          "time_limit": self.time_limit_seconds,
+                                          "log_file": "results/highs.log",
+                                          "log_to_console": self.solver_output_to_console,
+                                          "threads": self.threads,
+                                          "parallel": "on",
+                                          "presolve": "on",
+                                          "output_flag": True}
+            self.solver_results = self._solver.solve(modeling_language.model)
+        else:
+            raise NotImplementedError(f'Only Pyomo is implemented for HIGHS solver.')
 
-    @property
-    def options(self) -> Dict:
-        return {"mip_rel_gap": self.mip_gap,
-                "time_limit": self.time_limit_seconds,
-                "log_file": self.logfile_name,
-                "log_to_console": self.solver_output_to_console,
-                "threads": self.threads,
-                "parallel": "on",
-                "presolve": "on",
-                "output_flag": True}
+
+class CbcSolver(Solver):
+    def __init__(self,
+                 mip_gap: float,
+                 time_limit_seconds: int,
+                 solver_output_to_console: bool,
+                 logfile_name: str,
+                 ):
+        super().__init__(mip_gap, solver_output_to_console, logfile_name)
+        self.time_limit_seconds = time_limit_seconds
+
+    def solve(self, modeling_language: 'ModelingLanguage'):
+        if isinstance(modeling_language, PyomoModel):
+            self._solver = pyomoEnv.SolverFactory('cbc')
+            self.solver_results = self._solver.solve(
+                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
+                options={"ratio": self.mip_gap, "sec": self.time_limit_seconds}
+            )
+        else:
+            raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
+
+
+class GlpkSolver(Solver):
+    def solve(self, modeling_language: 'ModelingLanguage'):
+        if isinstance(modeling_language, PyomoModel):
+            self._solver = pyomoEnv.SolverFactory('glpk')
+            self.solver_results = self._solver.solve(
+                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
+                options={"mipgap": self.mip_gap}
+            )
+        else:
+            raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
 
 
 class ModelingLanguage(ABC):
@@ -659,12 +688,12 @@ class PyomoModel(ModelingLanguage):
         self.mapping: Dict[Union[Variable, Equation], Any] = {}  # Mapping to Pyomo Units
         self._counter = 0
 
-    def solve(self, math_model: MathModel, solver_opt: Dict):
+    def solve(self, math_model: MathModel, solver: Solver):
         self.translate_model(math_model)
-        solver = appsi.solvers.Highs()
-        solver.highs_options = solver_opt
-        self.solver_results = solver.solve(self.model)
-        math_model.objective_result = self.model.objective.expr()
+        solver.solve(self)
+
+        # write results
+        math_model.result_of_objective = self.model.objective.expr()
         for variable in math_model.variables:
             raw_results = self.mapping[variable].get_values().values()  # .values() of dict, because {0:0.1, 1:0.3,...}
             if variable.is_binary:
