@@ -192,7 +192,7 @@ class OnOffModel(ElementModel):
         if self._on_off_parameters.use_on:
             self.on = create_variable('on', self, system_model.nr_of_time_steps,
                                       system_model, is_binary=True,
-                                      previous_values=self.previous_on_values)
+                                      previous_values=self._previous_on_values(system_model.epsilon))
             self.total_on_hours = create_variable('totalOnHours', self, 1, system_model,
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
                                                   upper_bound=self._on_off_parameters.on_hours_total_max)
@@ -205,7 +205,7 @@ class OnOffModel(ElementModel):
         if self._on_off_parameters.use_off:
             self.off = create_variable('off', self, system_model.nr_of_time_steps,
                                        system_model, is_binary=True,
-                                       previous_values=1 - self.previous_on_values)
+                                       previous_values=1 - self._previous_on_values(system_model.epsilon))
 
             self._add_off_constraints(system_model, system_model.indices)
 
@@ -408,13 +408,12 @@ class OnOffModel(ElementModel):
             effect_collection.add_share_to_operation('running_hour_effects', self.element, effects_per_running_hour,
                                                      system_model.dt_in_hours, self.on)
 
-    @property
-    def previous_on_values(self) -> np.ndarray:
+    def _previous_on_values(self, epsilon: float = 1e-5) -> np.ndarray:
         # Gather previous values, ignoring empty (None) entries
         previous_values_of_variables = np.array([
             var.previous_values for var in self._defining_variables if var.previous_values is not None
         ])
-        return np.where(np.all(previous_values_of_variables == 0, axis=0), 0, 1).reshape(-1)  # Allways as proper array
+        return np.where(np.all(np.isclose(previous_values_of_variables, 0, atol=epsilon), axis=0), 0, 1).reshape(-1)  # Allways as proper array
 
 
 class SegmentModel(ElementModel):
