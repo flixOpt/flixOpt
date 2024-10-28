@@ -465,6 +465,19 @@ class MathModel:
 
 
 class SolverLog:
+    """
+    Parses and holds solver log information for specific solvers.
+
+    Attributes:
+        solver_name (str): Name of the solver (e.g., 'gurobi', 'cbc').
+        log (str): Content of the log file.
+        presolved_rows (Optional[int]): Number of rows after presolving.
+        presolved_cols (Optional[int]): Number of columns after presolving.
+        presolved_nonzeros (Optional[int]): Number of nonzeros after presolving.
+        presolved_continuous (Optional[int]): Number of continuous variables after presolving.
+        presolved_integer (Optional[int]): Number of integer variables after presolving.
+        presolved_binary (Optional[int]): Number of binary variables after presolving.
+    """
     def __init__(self, solver_name: str, filename: str):
         with open(filename, 'r') as file:
             self.log = file.read()
@@ -548,7 +561,18 @@ class SolverLog:
 
 
 class Solver(ABC):
-    """ Abstract class for Solvers """
+    """
+    Abstract base class for solvers.
+
+    Attributes:
+        mip_gap (float): Solver's mip gap setting. The MIP gap describes the accepted (MILP) objective,
+            and the lower bound, which is the theoretically optimal solution (LP)
+        solver_output_to_console (bool): Whether to display solver output.
+        logfile_name (str): Filename for saving the solver log.
+        objective (Optional[float]): Objective value from the solution.
+        best_bound (Optional[float]): Best bound from the solver.
+        termination_message (Optional[str]): Solver's termination message.
+    """
     def __init__(self,
                  mip_gap: float,
                  solver_output_to_console: bool,
@@ -580,11 +604,19 @@ class Solver(ABC):
 
 
 class GurobiSolver(Solver):
+    """
+    Solver implementation for Gurobi.
+    Also Look in class Solver for more details
+
+    Attributes:
+        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
+        best solution, ignoring the mip_gap.
+    """
     def __init__(self,
-                 mip_gap: float,
-                 time_limit_seconds: int,
-                 solver_output_to_console: bool,
-                 logfile_name: str,
+                 mip_gap: float = 0.01,
+                 time_limit_seconds: int = 300,
+                 logfile_name: str = 'gurobi.log',
+                 solver_output_to_console: bool = True,
                  ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
@@ -606,11 +638,19 @@ class GurobiSolver(Solver):
 
 
 class CplexSolver(Solver):
+    """
+    Solver implementation for CPLEX.
+    Also Look in class Solver for more details
+
+    Attributes:
+        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
+        best solution, ignoring the mip_gap.
+    """
     def __init__(self,
-                 mip_gap: float,
-                 time_limit_seconds: int,
-                 solver_output_to_console: bool,
-                 logfile_name: str,
+                 mip_gap: float = 0.01,
+                 time_limit_seconds: int = 300,
+                 logfile_name: str = 'cplex.log',
+                 solver_output_to_console: bool = True,
                  ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
@@ -632,12 +672,21 @@ class CplexSolver(Solver):
 
 
 class HighsSolver(Solver):
+    """
+    Solver implementation for HIGHS.
+    Also Look in class Solver for more details
+
+    Attributes:
+        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
+        best solution, ignoring the mip_gap.
+        threads (int): Number of threads to use for the solver.
+    """
     def __init__(self,
-                 mip_gap: float,
-                 time_limit_seconds: int,
-                 solver_output_to_console: bool,
-                 threads: int,
-                 logfile_name: str,
+                 mip_gap: float = 0.01,
+                 time_limit_seconds: int = 300,
+                 logfile_name: str = 'highs.log',
+                 solver_output_to_console: bool = True,
+                 threads: int = 4,
                  ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
@@ -664,11 +713,19 @@ class HighsSolver(Solver):
 
 
 class CbcSolver(Solver):
+    """
+    Solver implementation for CBC.
+    Also Look in class Solver for more details
+
+    Attributes:
+        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
+        best solution, ignoring the mip_gap.
+    """
     def __init__(self,
-                 mip_gap: float,
-                 time_limit_seconds: int,
-                 solver_output_to_console: bool,
-                 logfile_name: str,
+                 mip_gap: float = 0.01,
+                 time_limit_seconds: int = 300,
+                 logfile_name: str = 'cbc.log',
+                 solver_output_to_console: bool = True,
                  ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
@@ -689,6 +746,14 @@ class CbcSolver(Solver):
 
 
 class GlpkSolver(Solver):
+    """ Solver implementation for Glpk. Also Look in class Solver for more details """
+    def __init__(self,
+                 mip_gap: float = 0.01,
+                 logfile_name: str = 'glpk.log',
+                 solver_output_to_console: bool = True,
+                 ):
+        super().__init__(mip_gap, solver_output_to_console, logfile_name)
+
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('glpk')
@@ -706,6 +771,12 @@ class GlpkSolver(Solver):
 
 
 class ModelingLanguage(ABC):
+    """
+    Abstract base class for modeling languages.
+
+    Methods:
+        translate_model(model): Translates a math model into a solveable form.
+    """
     @abstractmethod
     def translate_model(self, model: MathModel):
         raise NotImplementedError
@@ -715,6 +786,15 @@ class ModelingLanguage(ABC):
 
 
 class PyomoModel(ModelingLanguage):
+    """
+    Pyomo-based modeling language for constructing and solving optimization models.
+    Translates a MathModel into a PyomoModel.
+
+    Attributes:
+        model: Pyomo model instance.
+        mapping (dict): Maps variables and equations to Pyomo components.
+        _counter (int): Counter for naming Pyomo components.
+    """
 
     def __init__(self):
         global pyomoEnv  # als globale Variable
@@ -843,6 +923,6 @@ class PyomoModel(ModelingLanguage):
         return pyomo_variable[summand.indices[at_index]] * summand.factor_vec[at_index]
 
     def _register_pyomo_comp(self, pyomo_comp, part: Union[Variable, Equation]) -> None:
-        self._counter += 1  # Komponenten einfach hochzählen, damit eindeutige Namen, d.h. a1_timesteps, a2, a3 ,...
-        self.model.add_component(f'a{self._counter}__{part.label}', pyomo_comp)  # a1,a2,a3, ...
+        self._counter += 1  # Counter to guarantee unique names
+        self.model.add_component(f'{part.label}__{self._counter}', pyomo_comp)
         self.mapping[part] = pyomo_comp
