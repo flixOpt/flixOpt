@@ -13,7 +13,6 @@ import timeit
 from typing import List, Dict, Optional, Literal, Union, Any
 
 import numpy as np
-import yaml
 
 from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
 from flixOpt.core import Numeric, Skalar
@@ -22,7 +21,7 @@ from flixOpt.flow_system import FlowSystem
 from flixOpt.elements import Component
 from flixOpt.components import Storage
 from flixOpt.features import InvestmentModel
-from flixOpt.math_modeling import Solver
+from flixOpt.solvers import Solver
 
 
 logger = logging.getLogger('flixOpt')
