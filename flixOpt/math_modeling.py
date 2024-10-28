@@ -557,12 +557,13 @@ class Solver(ABC):
         self.solver_output_to_console = solver_output_to_console
         self.logfile_name = logfile_name
 
-        self.result: Optional[float, str] = None
-        self.best_bound: Optional[float, str] = None
+        self.objective: Optional[float] = None
+        self.best_bound: Optional[float] = None
         self.termination_message: Optional[str] = None
         self.log = None
 
         self._solver = None
+        self._results: Optional[float, str] = None
 
     def solve(self, modeling_language: 'ModelingLanguage'):
         raise NotImplementedError(f' Solving is not possible with this Abstract class')
@@ -572,7 +573,7 @@ class Solver(ABC):
                 f"mip_gap={self.mip_gap}, "
                 f"solver_output_to_console={self.solver_output_to_console}, "
                 f"logfile_name='{self.logfile_name}', "
-                f"result={self.result!r}, "
+                f"objective={self.objective!r}, "
                 f"best_bound={self.best_bound!r}, "
                 f"termination_message={self.termination_message!r})")
 
@@ -590,10 +591,14 @@ class GurobiSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('gurobi')
-            self.result = self._solver.solve(
+            self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap, "TimeLimit": self.time_limit_seconds}
             )
+
+            self.objective = self._results.objective.expr()
+            self.termination_message = self._results['Solver'][0]['Termination message']
+            self.best_bound = self._results['Problem'][0]['Lower bound']
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
 
@@ -611,12 +616,16 @@ class CplexSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('cplex')
-            self.result = self._solver.solve(
+            self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap, "timelimit": self.time_limit_seconds}
             )
+
+            self.objective = self._results.objective.expr()
+            self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
+            self.best_bound = self._results['Problem'][0]['Lower bound']
         else:
-            raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
+            raise NotImplementedError(f'Only Pyomo is implemented for CPLEX solver.')
 
 
 class HighsSolver(Solver):
@@ -642,7 +651,10 @@ class HighsSolver(Solver):
                                           "parallel": "on",
                                           "presolve": "on",
                                           "output_flag": True}
-            self.result = self._solver.solve(modeling_language.model)
+            self._results = self._solver.solve(modeling_language.model)
+            self.objective = modeling_language.model.objective.expr()
+            self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
+            self.best_bound = self._results.best_objective_bound
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for HIGHS solver.')
 
@@ -660,10 +672,13 @@ class CbcSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('cbc')
-            self.result = self._solver.solve(
+            self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"ratio": self.mip_gap, "sec": self.time_limit_seconds}
             )
+            self.objective = self._results.objective.expr()
+            self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
+            self.best_bound = self._results['Problem'][0]['Lower bound']
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
 
@@ -672,10 +687,14 @@ class GlpkSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyomoEnv.SolverFactory('glpk')
-            self.result = self._solver.solve(
+            self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap}
             )
+
+            self.objective = self._results.objective.expr()
+            self.termination_message = self._results['Solver'][0]['Status']
+            self.best_bound = self._results['Problem'][0]['Lower bound']
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
 
