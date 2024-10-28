@@ -564,7 +564,7 @@ class Solver(ABC):
 
         self._solver = None
 
-    def solve(self, model: 'pyomoEnv.ConcreteModel'):
+    def solve(self, modeling_language: 'ModelingLanguage'):
         raise NotImplementedError(f' Solving is not possible with this Abstract class')
 
     def __repr__(self):
