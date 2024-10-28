@@ -247,6 +247,8 @@ class Storage(Component):
         self.eta_charge = _create_time_series('eta_charge', self.eta_charge, self)
         self.eta_discharge = _create_time_series('eta_discharge', self.eta_discharge, self)
         self.relative_loss_per_hour = _create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, self)
+        if isinstance(self.capacity_in_flow_hours, InvestParameters):
+            self.capacity_in_flow_hours.transform_data()
 
 
 class LinearConverterModel(ComponentModel):

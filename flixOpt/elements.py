@@ -255,6 +255,8 @@ class Flow(Element):
         self.effects_per_flow_hour = effect_values_to_time_series(f'per_flow_hour', self.effects_per_flow_hour, self)
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
+        if isinstance(self.size, InvestParameters):
+            self.size.transform_data()
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound

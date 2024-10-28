@@ -12,7 +12,7 @@ import numpy as np
 from flixOpt.core import Numeric, Skalar, Numeric_TS
 if TYPE_CHECKING:
     from flixOpt.structure import Element
-    from flixOpt.effects import EffectTimeSeries, EffectValues
+    from flixOpt.effects import EffectTimeSeries, EffectValues, EffectValuesInvest
 
 logger = logging.getLogger('flixOpt')
 
@@ -67,14 +67,20 @@ class InvestParameters:
             Max nominal value (only if: size_is_fixed = False).
         """
 
-        self.fix_effects = fix_effects
-        self.divest_effects = divest_effects
+        self.fix_effects: EffectValuesInvest = fix_effects
+        self.divest_effects: EffectValuesInvest = divest_effects
         self.fixed_size = fixed_size
         self.optional = optional
-        self.specific_effects = specific_effects
+        self.specific_effects: EffectValuesInvest = specific_effects
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
         self._maximum_size = maximum_size
+    
+    def transform_data(self):
+        from flixOpt.effects import as_effect_dict
+        self.fix_effects = as_effect_dict(self.fix_effects)
+        self.divest_effects = as_effect_dict(self.divest_effects)
+        self.specific_effects = as_effect_dict(self.specific_effects)
 
     @property
     def minimum_size(self):

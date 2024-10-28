@@ -218,7 +218,7 @@ def effect_values_to_time_series(label_suffix: str,
     followed by the label of the Effect in the nested_values and the label_suffix.
     If the key in the EffectValues is None, the alias 'Standart_Effect' is used
     """
-    nested_values = _as_effect_dict(nested_values)
+    nested_values = as_effect_dict(nested_values)
     if nested_values is None:
         return None
     else:
@@ -229,7 +229,7 @@ def effect_values_to_time_series(label_suffix: str,
         return transformed_values
 
 
-def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
+def as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
     """
     Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
 
