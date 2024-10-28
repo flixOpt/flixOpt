@@ -171,9 +171,9 @@ class SystemModel(MathModel):
         main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
         main_results['Objective'] = self.objective_result
         if self.solver_name == 'highs':
-            main_results['lower bound'] = self.solver_results.best_objective_bound
+            main_results['lower bound'] = self.model.solver_results.best_objective_bound
         else:
-            main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
+            main_results['lower bound'] = self.model.solver_results['Problem'][0]['Lower bound']
         buses_with_excess = []
         main_results['buses with excess'] = buses_with_excess
         for bus in self.flow_system.all_buses:
