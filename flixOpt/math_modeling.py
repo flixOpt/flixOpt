@@ -140,7 +140,7 @@ class Variable:
 
 class VariableTS(Variable):
     """
-    # Timeseries-Variable, optional mit Before-Werten
+    # Timeseries-Variable, optionally with previous_values
     """
     def __init__(self,
                  label: str,
@@ -151,22 +151,10 @@ class VariableTS(Variable):
                  value: Optional[Numeric] = None,
                  lower_bound: Optional[Numeric] = None,
                  upper_bound: Optional[Numeric] = None,
-                 before_value: Optional[Numeric] = None,
-                 before_value_is_start_value: bool = False):
+                 previous_values: Optional[Numeric] = None):
         assert length > 1, 'length is one, that seems not right for VariableTS'
         super().__init__(label, label_short, length, math_model, is_binary=is_binary, value=value, lower_bound=lower_bound, upper_bound=upper_bound)
-        self._before_value = before_value
-        self.before_value_is_start_value = before_value_is_start_value
-
-    @property
-    def before_value(self) -> Optional[Numeric]:
-        # Return value if found in before_values, else return stored value
-        return self.math_model.before_values.get(self.label) or self._before_value
-
-    @before_value.setter
-    def before_value(self, value: Numeric):
-        self._before_value = value
-
+        self.previous_values = previous_values
 
 # class cInequation(Equation):
 #   def __init__(self, label, owner, math_model):
@@ -482,7 +470,6 @@ class MathModel:
         self.objective_result = None  # Ergebnis
         self.duration = {}  # Laufzeiten
         self.solver_log = None  # logging und parsen des solver-outputs
-        self.before_values: Dict[str, Numeric] = {}  # before_values, which overwrite inital before values defined in the Elements.
 
         if self.modeling_language == 'pyomo':
             global pyomoEnv  # als globale Variable
