@@ -240,8 +240,10 @@ class AggregatedCalculation(Calculation):
 
     def solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = False):
         self._define_path_names(save_results)
+        t_start = timeit.default_timer()
         solver.logfile_name = self._paths['log']
         self.system_model.solve(solver)
+        self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         if save_results:
             self._save_solve_infos()
