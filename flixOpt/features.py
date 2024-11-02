@@ -211,9 +211,9 @@ class OnOffModel(ElementModel):
 
         if self._on_off_parameters.use_on_hours:
             self.consecutive_on_hours = create_variable('consecutiveOnHours',
-                                                           self, system_model.nr_of_time_steps,
-                                                           system_model, lower_bound=0,
-                                                           upper_bound=self._on_off_parameters.consecutive_on_hours_max)
+                                                        self, system_model.nr_of_time_steps,
+                                                        system_model, lower_bound=0,
+                                                        upper_bound=self._on_off_parameters.consecutive_on_hours_max.active_data)
             self._add_duration_constraints(self.consecutive_on_hours, self.on,
                                            self._on_off_parameters.consecutive_on_hours_min,
                                            system_model, system_model.indices)
@@ -221,7 +221,7 @@ class OnOffModel(ElementModel):
         if self._on_off_parameters.use_off_hours:
             self.consecutive_off_hours = create_variable(
                 'consecutiveOffHours', self, system_model.nr_of_time_steps, system_model,
-                lower_bound=0, upper_bound=self._on_off_parameters.consecutive_off_hours_max)
+                lower_bound=0, upper_bound=self._on_off_parameters.consecutive_off_hours_max.active_data)
 
             self._add_duration_constraints(self.consecutive_off_hours, self.off,
                                            self._on_off_parameters.consecutive_off_hours_min,
@@ -301,7 +301,7 @@ class OnOffModel(ElementModel):
     def _add_duration_constraints(self,
                                   duration_variable: VariableTS,
                                   binary_variable: VariableTS,
-                                  minimum_duration: Optional[Numeric_TS],
+                                  minimum_duration: Optional[TimeSeries],
                                   system_model: SystemModel,
                                   time_indices: Union[list[int], range]):
         """
@@ -349,8 +349,8 @@ class OnOffModel(ElementModel):
             # eq: -onHours(t-1) - minimum_duration * On(t) + minimum_duration*On(t-1) <= 0
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, system_model, eq_type='ineq')
             eq_min_duration.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
-            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration, time_indices[1:])  # on(t)
-            eq_min_duration.add_summand(binary_variable, minimum_duration, time_indices[0:-1])  # on(t-1)
+            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
+            eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
 
         # TODO: Maximum Duration?? Is this not modeled yet?!!
 
