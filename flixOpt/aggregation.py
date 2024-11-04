@@ -275,7 +275,7 @@ class AggregationParameters:
                  hours_per_period: float,
                  nr_of_periods: int,
                  fix_storage_flows: bool,
-                 fix_binary_vars_only: bool,
+                 aggregate_data_and_fix_non_binary_vars: bool,
                  percentage_of_period_freedom: float = 0,
                  penalty_of_period_freedom: float = 0,
                  time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
@@ -293,8 +293,10 @@ class AggregationParameters:
         fix_storage_flows : bool
             Whether to aggregate storage flows (load/unload); if other flows
             are fixed, fixing storage flows is usually not required.
-        fix_binary_vars_only : bool
-            Whether to only aggregate binary variables. This also means that no time_series data is aggregated!
+        aggregate_data_and_fix_non_binary_vars : bool
+            Whether to aggregate all time series data, which allows to fix all time series variables (like flow_rate),
+            or only fix binary variables. If False non time_series data is changed!! If True, the mathematical Problem
+            is simplified even further.
         percentage_of_period_freedom : float, optional
             Specifies the maximum percentage (0–100) of binary values within each period
             that can deviate as "free variables", chosen by the solver (default is 0).
@@ -309,7 +311,7 @@ class AggregationParameters:
         self.hours_per_period = hours_per_period
         self.nr_of_periods = nr_of_periods
         self.fix_storage_flows = fix_storage_flows
-        self.fix_binary_vars_only = fix_binary_vars_only
+        self.aggregate_data_and_fix_non_binary_vars = aggregate_data_and_fix_non_binary_vars
         self.percentage_of_period_freedom = percentage_of_period_freedom
         self.penalty_of_period_freedom = penalty_of_period_freedom
         self.time_series_for_high_peaks: List[TimeSeriesData] = time_series_for_high_peaks or []
@@ -363,11 +365,11 @@ class AggregationModel(ElementModel):
                 continue  # Fix Nothing in The Storage
 
             all_variables_of_component = component.model.all_variables
-            if self.aggregation_parameters.fix_binary_vars_only:
+            if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
+                all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
+            else:
                 all_relevant_variables = [v for v in all_variables_of_component.values() if
                                           isinstance(v, VariableTS) and v.is_binary]
-            else:
-                all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
             for variable in all_relevant_variables:
                 self.equate_indices(variable, indices, system_model)
 
