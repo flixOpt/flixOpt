@@ -13,7 +13,6 @@ import timeit
 from typing import List, Dict, Optional, Literal, Union, Any
 
 import numpy as np
-import yaml
 
 from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
 from flixOpt.core import Numeric, Skalar
@@ -22,6 +21,7 @@ from flixOpt.flow_system import FlowSystem
 from flixOpt.elements import Component
 from flixOpt.components import Storage
 from flixOpt.features import InvestmentModel
+from flixOpt.solvers import Solver
 
 
 logger = logging.getLogger('flixOpt')
@@ -128,10 +128,11 @@ class FullCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
 
-    def solve(self, solverProps: dict, save_results: Union[bool, str, pathlib.Path] = False):
+    def solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = False):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
-        self.system_model.solve(**solverProps, logfile_name=self._paths['log'])
+        solver.logfile_name = self._paths['log']
+        self.system_model.solve(solver)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         if save_results:
@@ -237,9 +238,12 @@ class AggregatedCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
 
-    def solve(self, solverProps: dict, save_results: Union[bool, str, pathlib.Path] = False):
+    def solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = False):
         self._define_path_names(save_results)
-        self.system_model.solve(**solverProps, logfile_name=self._paths['log'])
+        t_start = timeit.default_timer()
+        solver.logfile_name = self._paths['log']
+        self.system_model.solve(solver)
+        self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         if save_results:
             self._save_solve_infos()
@@ -297,7 +301,7 @@ class SegmentedCalculation(Calculation):
         }
         self._transfered_start_values: Dict[str, Dict[str, Any]] = {}
 
-    def do_modeling_and_solve(self, solverProps: dict, save_results: Union[bool, str, pathlib.Path] = True):
+    def do_modeling_and_solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = True):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Segmented Solving ":#^80}')
 
@@ -316,7 +320,7 @@ class SegmentedCalculation(Calculation):
             if invest_elements:
                 logger.critical(f'Investments are not supported in Segmented Calculation! '
                                 f'Following elements Contain Investments: {invest_elements}')
-            calculation.solve(solverProps, save_results)
+            calculation.solve(solver, save_results)
 
         self._reset_start_values()
 
