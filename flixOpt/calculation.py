@@ -218,8 +218,9 @@ class AggregatedCalculation(Calculation):
 
         self.aggregation.cluster()
         self.aggregation.plot()
-        self.time_series_collection.insert_data(  # Converting it into a dict with labels as keys
-            {col: np.array(values) for col, values in self.aggregation.aggregated_data.to_dict(orient='list').items()})
+        if not self.aggregation_parameters.fix_binary_vars_only:
+            self.time_series_collection.insert_data(  # Converting it into a dict with labels as keys
+                {col: np.array(values) for col, values in self.aggregation.aggregated_data.to_dict(orient='list').items()})
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
         # Model the System
