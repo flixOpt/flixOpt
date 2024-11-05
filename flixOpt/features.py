@@ -191,24 +191,29 @@ class OnOffModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         if self._on_off_parameters.use_on:
             self.on = create_variable('on', self, system_model.nr_of_time_steps,
-                                         system_model, is_binary=True, before_value=0)
+                                      system_model, is_binary=True,
+                                      previous_values=self._previous_on_values(system_model.epsilon))
             self.total_on_hours = create_variable('totalOnHours', self, 1, system_model,
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
                                                   upper_bound=self._on_off_parameters.on_hours_total_max)
+            eq_total_on = create_equation('totalOnHours', self, system_model, )
+            eq_total_on.add_summand(self.on, system_model.dt_in_hours, as_sum=True)
+            eq_total_on.add_summand(self.total_on_hours, -1)
 
             self._add_on_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_off:
             self.off = create_variable('off', self, system_model.nr_of_time_steps,
-                                          system_model, is_binary=True)
+                                       system_model, is_binary=True,
+                                       previous_values=1 - self._previous_on_values(system_model.epsilon))
 
             self._add_off_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_on_hours:
             self.consecutive_on_hours = create_variable('consecutiveOnHours',
-                                                           self, system_model.nr_of_time_steps,
-                                                           system_model, lower_bound=0,
-                                                           upper_bound=self._on_off_parameters.consecutive_on_hours_max)
+                                                        self, system_model.nr_of_time_steps,
+                                                        system_model, lower_bound=0,
+                                                        upper_bound=self._on_off_parameters.consecutive_on_hours_max.active_data)
             self._add_duration_constraints(self.consecutive_on_hours, self.on,
                                            self._on_off_parameters.consecutive_on_hours_min,
                                            system_model, system_model.indices)
@@ -216,7 +221,7 @@ class OnOffModel(ElementModel):
         if self._on_off_parameters.use_off_hours:
             self.consecutive_off_hours = create_variable(
                 'consecutiveOffHours', self, system_model.nr_of_time_steps, system_model,
-                lower_bound=0, upper_bound=self._on_off_parameters.consecutive_off_hours_max)
+                lower_bound=0, upper_bound=self._on_off_parameters.consecutive_off_hours_max.active_data)
 
             self._add_duration_constraints(self.consecutive_off_hours, self.off,
                                            self._on_off_parameters.consecutive_off_hours_min,
@@ -229,7 +234,7 @@ class OnOffModel(ElementModel):
                                                  system_model.nr_of_time_steps, system_model, is_binary=True)
             self.nr_switch_on = create_variable('nrSwitchOn', self, 1, system_model,
                                                 upper_bound=self._on_off_parameters.switch_on_total_max)
-            self._add_switch_constraints(system_model, system_model.indices)
+            self._add_switch_constraints(system_model)
 
         self._create_shares(system_model)
 
@@ -296,7 +301,7 @@ class OnOffModel(ElementModel):
     def _add_duration_constraints(self,
                                   duration_variable: VariableTS,
                                   binary_variable: VariableTS,
-                                  minimum_duration: Optional[Numeric_TS],
+                                  minimum_duration: Optional[TimeSeries],
                                   system_model: SystemModel,
                                   time_indices: Union[list[int], range]):
         """
@@ -344,8 +349,8 @@ class OnOffModel(ElementModel):
             # eq: -onHours(t-1) - minimum_duration * On(t) + minimum_duration*On(t-1) <= 0
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, system_model, eq_type='ineq')
             eq_min_duration.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
-            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration, time_indices[1:])  # on(t)
-            eq_min_duration.add_summand(binary_variable, minimum_duration, time_indices[0:-1])  # on(t-1)
+            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
+            eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
 
         # TODO: Maximum Duration?? Is this not modeled yet?!!
 
@@ -356,7 +361,7 @@ class OnOffModel(ElementModel):
         eq_first.add_summand(duration_variable, 1, first_index)
         eq_first.add_summand(binary_variable, -1 * system_model.dt_in_hours[first_index], first_index)
 
-    def _add_switch_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
+    def _add_switch_constraints(self, system_model: SystemModel):
         assert self.switch_on is not None, f'Switch On Variable of {self.element} must be defined to add constraints'
         assert self.switch_off is not None, f'Switch Off Variable of {self.element} must be defined to add constraints'
         assert self.nr_switch_on is not None, f'Nr of Switch On Variable of {self.element} must be defined to add constraints'
@@ -364,20 +369,18 @@ class OnOffModel(ElementModel):
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1)
         eq_switch = create_equation('Switch', self, system_model)
-        eq_switch.add_summand(self.switch_on, 1, time_indices[1:])  # SwitchOn(t)
-        eq_switch.add_summand(self.switch_off, -1, time_indices[1:])  # SwitchOff(t)
-        eq_switch.add_summand(self.on, -1, time_indices[1:])  # On(t)
-        eq_switch.add_summand(self.on, +1, time_indices[0:-1])  # On(t-1)
+        eq_switch.add_summand(self.switch_on, 1, system_model.indices[1:])  # SwitchOn(t)
+        eq_switch.add_summand(self.switch_off, -1, system_model.indices[1:])  # SwitchOff(t)
+        eq_switch.add_summand(self.on, -1, system_model.indices[1:])  # On(t)
+        eq_switch.add_summand(self.on, +1, system_model.indices[0:-1])  # On(t-1)
 
-        ## Ersten Wert SwitchOn(t=1) bzw. SwitchOff(t=1) festlegen
-        # eq: SwitchOn(t=1)-SwitchOff(t=1) = On(t=1)- ValueBeforeBeginOfTimeSeries;
+        # Initital switch on
+        # eq: SwitchOn(t=0)-SwitchOff(t=0) = On(t=0) - On(t=-1)
         eq_initial_switch = create_equation('Initial_Switch', self, system_model)
-        first_index = time_indices[0]
-        eq_initial_switch.add_summand(self.switch_on, 1, first_index)
-        eq_initial_switch.add_summand(self.switch_off, -1, first_index)
-        eq_initial_switch.add_summand(self.on, -1, first_index)
-        eq_initial_switch.add_constant \
-            (-1 * self.on.before_value)  # letztes Element der Before-Werte nutzen,  Anmerkung: wäre besser auf lhs aufgehoben
+        eq_initial_switch.add_summand(self.switch_on, 1, indices_of_variable=0)  # SwitchOn(t=0)
+        eq_initial_switch.add_summand(self.switch_off, -1, indices_of_variable=0)  # SwitchOff(t=0)
+        eq_initial_switch.add_summand(self.on, -1, indices_of_variable=0)  # On(t=0)
+        eq_initial_switch.add_constant(-1 * self.on.previous_values[-1])  # On(t-1)
 
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1
@@ -404,6 +407,13 @@ class OnOffModel(ElementModel):
         if effects_per_running_hour is not None:
             effect_collection.add_share_to_operation('running_hour_effects', self.element, effects_per_running_hour,
                                                      system_model.dt_in_hours, self.on)
+
+    def _previous_on_values(self, epsilon: float = 1e-5) -> np.ndarray:
+        # Gather previous values, ignoring empty (None) entries
+        previous_values_of_variables = np.array([
+            var.previous_values for var in self._defining_variables if var.previous_values is not None
+        ])
+        return np.where(np.all(np.isclose(previous_values_of_variables, 0, atol=epsilon), axis=0), 0, 1).reshape(-1)  # Allways as proper array
 
 
 class SegmentModel(ElementModel):
@@ -515,8 +525,8 @@ class ShareAllocationModel(ElementModel):
                  shares_are_time_series: bool,
                  total_max: Optional[Skalar] = None,
                  total_min: Optional[Skalar] = None,
-                 max_per_hour: Optional[TimeSeries] = None,
-                 min_per_hour: Optional[TimeSeries] = None):
+                 max_per_hour: Optional[Numeric] = None,
+                 min_per_hour: Optional[Numeric] = None):
         super().__init__(element, label)
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, \
@@ -544,8 +554,8 @@ class ShareAllocationModel(ElementModel):
         self._eq_sum.add_summand(self.sum, -1)
 
         if self._shares_are_time_series:
-            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour.active_data, system_model.dt_in_hours)
-            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour.active_data, system_model.dt_in_hours)
+            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
+            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
             self.sum_TS = create_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, system_model,
                                           lower_bound=lb_TS, upper_bound=ub_TS)
 
@@ -561,56 +571,61 @@ class ShareAllocationModel(ElementModel):
                            name_of_share: Optional[str],
                            share_holder: Element,
                            variable: Variable,
-                           factor1: Numeric,
-                           factor2: Numeric):  # if variable = None, then fix Share
+                           factor: Numeric = 1,
+                           share_as_sum: bool = False):  # if variable = None, then constant Share
         if variable is None:
             raise Exception('add_variable_share() needs variable as input. Use add_constant_share() instead')
-        self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
+        self._add_share(system_model, name_of_share, share_holder, variable, factor, share_as_sum)
 
     def add_constant_share(self,
                            system_model: SystemModel,
                            name_of_share: Optional[str],
                            share_holder: Element,
-                           factor1: Numeric,
-                           factor2: Numeric):
-        variable = None
-        self._add_share(system_model, name_of_share, share_holder, variable, factor1, factor2)
+                           factor: Numeric = 1,
+                           share_as_sum: bool = False):
+        self._add_share(system_model, name_of_share, share_holder, None, factor, share_as_sum)
 
     def _add_share(self,
                    system_model: SystemModel,
                    name_of_share: Optional[str],
                    share_holder: Element,
                    variable: Optional[Variable],
-                   factor1: Numeric,
-                   factor2: Numeric):
+                   factor: Numeric,
+                   share_as_sum: bool = False):
         """ if name_of_share, then a proper share is created, which is explicitly published in results.
         Else, its only added to the total of the Effect"""
         # TODO: accept only one factor or accept unlimited factors -> *factors
-        total_factor = np.multiply(factor1, factor2)
 
         # Check to which equation the share should be added
         if self._shares_are_time_series:
             target_eq = self._eq_time_series
-        else:
+            convert_to_sum = False
+        elif not share_as_sum:
             # checking for single value
-            assert any([np.issubdtype(type(total_factor), np.integer),
-                        np.issubdtype(type(total_factor), np.floating),
-                        isinstance(total_factor, Skalar)]) or total_factor.shape[0] == 1, \
+            assert any([np.issubdtype(type(factor), np.integer),
+                        np.issubdtype(type(factor), np.floating),
+                        isinstance(factor, Skalar)]) or factor.shape[0] == 1, \
                 f'factor1 und factor2 müssen Skalare sein, da shareSum {self.element.label} skalar ist'
             target_eq = self._eq_sum
+            convert_to_sum = True
+        else:
+            target_eq = self._eq_sum
 
-        if variable is None:  # constant share
-            target_eq.add_constant(-1 * total_factor)
-        elif name_of_share is None:  # variable share
-            target_eq.add_summand(variable, total_factor)
-        else:  # var and eq for publishing share-values in results:
-            new_share = SingleShareModel(share_holder, not self._shares_are_time_series, name_of_share)
+            convert_to_sum_1 = variable.length > 1 if variable is not None else False
+            convert_to_sum_2 = factor.shape[0] > 1 if not np.isscalar(factor) else False
+            convert_to_sum = convert_to_sum_1 or convert_to_sum_2
+            assert share_as_sum == convert_to_sum, f'Share as sum was set, but is not needed'
+
+        if name_of_share is not None:
+            new_share = SingleShareModel(share_holder, convert_to_sum, name_of_share)
             new_share.do_modeling(system_model)
-            new_share.add_summand_to_share(variable, total_factor)
+            new_share.add_summand_to_share(variable, factor)
             target_eq.add_summand(new_share.single_share, 1)
             self.sub_models.append(new_share)
             assert new_share.label_full not in self.shares, f'A Share with the label {new_share.label_full} wis already present in {self.label_full}'
             self.shares[new_share.label_full] = new_share.single_share
+        else:
+            raise Exception(f'Every Share needs a name. This Share doesnt have one')
 
     def results(self):
         return {**{variable.label_short: variable.result for variable in self.variables.values()},
@@ -628,9 +643,9 @@ class SingleShareModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         if self._create_sum_of:
-            self.single_share = Variable(self._full_name_of_share, self.label, 1, system_model)
+            self.single_share = Variable(self._full_name_of_share, 1, system_model, self.label,)
         else:
-            self.single_share = VariableTS(self._full_name_of_share, self.label, system_model.nr_of_time_steps, system_model)
+            self.single_share = VariableTS(self._full_name_of_share, system_model.nr_of_time_steps, system_model, self.label)
         self.add_variables(self.single_share)
 
         self._equation = create_equation(self._full_name_of_share, self, system_model)
@@ -641,6 +656,8 @@ class SingleShareModel(ElementModel):
         if variable is None:  # if constant share:
             constant_value = np.sum(factor) if self._create_sum_of else factor
             self._equation.add_constant(-1 * constant_value)
+        elif variable.length == 1 and np.isscalar(factor):
+            self._equation.add_summand(variable, factor)
         else:
             self._equation.add_summand(variable, factor, as_sum=self._create_sum_of)
 

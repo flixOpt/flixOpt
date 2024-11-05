@@ -12,5 +12,6 @@ from flixOpt.flow_system import FlowSystem
 from flixOpt.calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 from flixOpt.interface import InvestParameters, OnOffParameters
 from flixOpt.postprocessing import flix_results
+from flixOpt import solvers
 from flixOpt.core import setup_logging, change_logging_level, TimeSeriesData
 setup_logging('INFO')

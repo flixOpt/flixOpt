@@ -11,7 +11,7 @@ import logging
 import numpy as np
 
 from flixOpt import utils
-from flixOpt.math_modeling import MathModel, Variable, Equation, VariableTS
+from flixOpt.math_modeling import MathModel, Variable, Equation, VariableTS, Solver
 from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -42,6 +42,7 @@ class SystemModel(MathModel):
         self.effect_collection_model = flow_system.effect_collection.create_model(self)
         self.component_models: List['ComponentModel'] = []
         self.bus_models: List['BusModel'] = []
+        self.other_models: List[ElementModel] = []
 
     def do_modeling(self):
         self.effect_collection_model.do_modeling(self)
@@ -52,55 +53,22 @@ class SystemModel(MathModel):
         for bus_model in self.bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
             bus_model.do_modeling(self)
 
-    def solve(self,
-              mip_gap: float = 0.02,
-              time_limit_seconds: int = 3600,
-              solver_name: str = 'highs',
-              solver_output_to_console: bool = True,
-              excess_threshold: Union[int, float] = 0.1,
-              logfile_name: str = 'solver_log.log',
-              **kwargs):
+    def solve(self, solver: Solver, excess_threshold: Union[int, float] = 0.1):
         """
         Parameters
         ----------
-        mip_gap : TYPE, optional
-            DESCRIPTION. The default is 0.02.
-        time_limit_seconds : TYPE, optional
-            DESCRIPTION. The default is 3600.
-        solver_name : TYPE, optional
-            DESCRIPTION. The default is 'highs'.
-        solver_output_to_console : TYPE, optional
-            DESCRIPTION. The default is True.
+        solver : Solver
+            An Instance of the class Solver. Choose from flixOpt.solvers
         excess_threshold : float, positive!
             threshold for excess: If sum(Excess)>excess_threshold a warning is raised, that an excess occurs
-        **kwargs : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        main_results_str : TYPE
-            DESCRIPTION.
         """
-
-        # check valid solver options:
-        if len(kwargs) > 0:
-            for key in kwargs.keys():
-                if key not in ['threads']:
-                    raise Exception(
-                        'no allowed arguments for kwargs: ' + str(key) + '(all arguments:' + str(kwargs) + ')')
 
         logger.info(f'{" starting solving ":#^80}')
         logger.info(f'{self.describe()}')
 
-        super().solve(mip_gap, time_limit_seconds, solver_name, solver_output_to_console, logfile_name, **kwargs)
+        super().solve(solver)
 
-        if solver_name == 'gurobi':
-            termination_message = self.solver_results['Solver'][0]['Termination message']
-        elif solver_name == 'glpk':
-            termination_message = self.solver_results['Solver'][0]['Status']
-        else:
-            termination_message = f'not implemented for solver "{solver_name}" yet'
-        logger.info(f'Termination message: "{termination_message}"')
+        logger.info(f'Termination message: "{self.solver.termination_message}"')
 
         logger.info(f'{" finished solving ":#^80}')
         logger.info(f'{" Main Results ":#^80}')
@@ -130,13 +98,72 @@ class SystemModel(MathModel):
                            f'This might distort the results')
         logger.info(f'{" End of Main Results ":#^80}')
 
+    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        return {'Components': {comp.label: comp.model.description_of_variables(structured)
+                               for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_variables(structured)
+                          for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
+                'Others': {model.element.label: model.description_of_variables(structured)
+                           for model in self.other_models}}
+
+    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        return {'Components': {comp.label: comp.model.description_of_equations(structured)
+                               for comp in self.flow_system.components},
+                'Buses': {bus.label: bus.model.description_of_equations(structured)
+                          for bus in self.flow_system.all_buses},
+                'Objective': 'MISSING AFTER REWORK',
+                'Effects': self.flow_system.effect_collection.model.description_of_equations(structured),
+                'Others': {model.element.label: model.description_of_equations(structured)
+                           for model in self.other_models}}
+
+    def results(self):
+        return {'Components': {model.element.label: model.results() for model in self.component_models},
+                'Effects': self.effect_collection_model.results(),
+                'Others': {model.element.label: model.results() for model in self.other_models},
+                'Objective': self.result_of_objective
+                }
+
     @property
-    def infos(self):
+    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
+        main_results = {}
+        effect_results = {}
+        main_results['Effects'] = effect_results
+        for effect in self.flow_system.effect_collection.effects:
+            effect_results[f'{effect.label} [{effect.unit}]'] = {
+                'operation': float(effect.model.operation.sum.result),
+                'invest': float(effect.model.invest.sum.result),
+                'sum': float(effect.model.all.sum.result)}
+        main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
+        main_results['Objective'] = self.result_of_objective
+        main_results['lower bound'] = self.solver.best_bound
+        buses_with_excess = []
+        main_results['buses with excess'] = buses_with_excess
+        for bus in self.flow_system.all_buses:
+            if bus.with_excess:
+                if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
+                    buses_with_excess.append(bus.label)
+
+        invest_decisions = {'invested': {}, 'not invested': {}}
+        main_results['Invest-Decisions'] = invest_decisions
+        from flixOpt.features import InvestmentModel
+        for sub_model in self.sub_models:
+            if isinstance(sub_model, InvestmentModel):
+                invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
+                if invested_size > 1e-3:
+                    invest_decisions['invested'][sub_model.element.label_full] = invested_size
+                else:
+                    invest_decisions['not invested'][sub_model.element.label_full] = invested_size
+
+        return main_results
+
+    @property
+    def infos(self) -> Dict:
         infos = super().infos
-        # infos['str_Eqs'] = self.description_of_equations()
-        # infos['str_Vars'] = self.description_of_variables()
-        infos['main_results'] = self.main_results
-        infos.update(self._infos)
+        infos['Equations'] = self.description_of_equations()
+        infos['Variables'] = self.description_of_variables()
+        infos['Main Results'] = self.main_results
         return infos
 
     @property
@@ -165,7 +192,7 @@ class SystemModel(MathModel):
 
     @property
     def sub_models(self) -> List['ElementModel']:
-        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models
+        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models + self.other_models
         sub_models = [sub_model for direct_model in direct_models for sub_model in direct_model.all_sub_models]
         return direct_models + sub_models
 
@@ -178,48 +205,6 @@ class SystemModel(MathModel):
     def eqs(self) -> List[Equation]:
         """ Needed for Mother class """
         return list(self.all_equations.values())
-
-    @property
-    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
-        main_results = {}
-        effect_results = {}
-        main_results['Effects'] = effect_results
-        for effect in self.flow_system.effect_collection.effects:
-            effect_results[f'{effect.label} [{effect.unit}]'] = {
-                'operation': float(effect.model.operation.sum.result),
-                'invest': float(effect.model.invest.sum.result),
-                'sum': float(effect.model.all.sum.result)}
-        main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
-        main_results['Objective'] = self.objective_result
-        if self.solver_name == 'highs':
-            main_results['lower bound'] = self.solver_results.best_objective_bound
-        else:
-            main_results['lower bound'] = self.solver_results['Problem'][0]['Lower bound']
-        buses_with_excess = []
-        main_results['buses with excess'] = buses_with_excess
-        for bus in self.flow_system.all_buses:
-            if bus.with_excess:
-                if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
-                    buses_with_excess.append(bus.label)
-
-        invest_decisions = {'invested': {}, 'not invested': {}}
-        main_results['Invest-Decisions'] = invest_decisions
-        from flixOpt.features import InvestmentModel
-        for sub_model in self.sub_models:
-            if isinstance(sub_model, InvestmentModel):
-                invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
-                if invested_size > 1e-3:
-                    invest_decisions['invested'][sub_model.element.label_full] = invested_size
-                else:
-                    invest_decisions['not invested'][sub_model.element.label_full] = invested_size
-
-        return main_results
-
-    def results(self):
-        return {'Components': {model.element.label: model.results() for model in self.component_models},
-                'Effects': self.effect_collection_model.results(),
-                'Objective': self.objective_result
-                }
 
 
 class Element:
@@ -237,9 +222,9 @@ class Element:
         """ This function is used to do some basic plausibility checks for each Element during initialization """
         raise NotImplementedError(f'Every Element needs a _plausibility_checks() method')
 
-    def transform_to_time_series(self) -> None:
+    def transform_data(self) -> None:
         """ This function is used to transform the time series data from the User to proper TimeSeries Objects """
-        raise NotImplementedError(f'Every Element needs a transform_to_time_series() method')
+        raise NotImplementedError(f'Every Element needs a transform_data() method')
 
     def create_model(self) -> None:
         raise NotImplementedError(f'Every Element needs a create_model() method')
@@ -279,17 +264,31 @@ class ElementModel:
             else:
                 raise Exception(f'Equation "{equation.label}" already exists')
 
-    @property
-    def description_of_variables(self) -> List[str]:
-        if self.all_variables:
-            return [var.description() for var in self.all_variables.values()]
-        return []
+    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, Union[List[str], Dict]], List[str]]:
+        if structured:
+            # Gather descriptions of this model's variables
+            descriptions = {'_self': [var.description() for var in self.variables.values()]}
 
-    @property
-    def description_of_equations(self) -> List[str]:
-        if self.all_equations:
+            # Recursively gather descriptions from sub-models
+            for sub_model in self.sub_models:
+                descriptions[sub_model.label] = sub_model.description_of_variables(structured=structured)
+
+            return descriptions
+        else:
+            return [var.description() for var in self.all_variables.values()]
+
+    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        if structured:
+            # Gather descriptions of this model's variables
+            descriptions = {'_self': [eq.description() for eq in self.eqs.values()]}
+
+            # Recursively gather descriptions from sub-models
+            for sub_model in self.sub_models:
+                descriptions[sub_model.label] = sub_model.description_of_equations(structured=structured)
+
+            return descriptions
+        else:
             return [eq.description() for eq in self.all_equations.values()]
-        return []
 
     @property
     def overview_of_model_size(self) -> Dict[str, int]:
@@ -358,10 +357,14 @@ class ElementModel:
         return self._label or self.element.label
 
 
-def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element) -> Optional[TimeSeries]:
-    """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element"""
+def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element) -> Optional[TimeSeries]:
+    """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
+    If the data already is a TimeSeries, nothing happens and the TimeSeries gets cleaned and returned"""
     if data is None:
         return None
+    elif isinstance(data, TimeSeries):
+        data.clear_indices_and_aggregated_data()
+        return data
     else:
         time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data)
         element.used_time_series.append(time_series)
@@ -371,7 +374,7 @@ def _create_time_series(label: str, data: Optional[Numeric_TS], element: Element
 def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
                     eq_type: Literal['eq', 'ineq', 'objective'] = 'eq') -> Equation:
     """ Creates an Equation and adds it to the model of the Element """
-    eq = Equation(f'{element_model.label_full}_{label}', label, system_model, eq_type)
+    eq = Equation(f'{element_model.label_full}_{label}', label, eq_type)
     element_model.add_equations(eq)
     return eq
 
@@ -384,17 +387,18 @@ def create_variable(label: str,
                     value: Optional[Numeric] = None,
                     lower_bound: Optional[Numeric] = None,
                     upper_bound: Optional[Numeric] = None,
-                    before_value: Optional[Numeric] = None,
+                    previous_values: Optional[Numeric] = None,
+                    avoid_use_of_variable_ts: bool = False
                     ) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
-    if length > 1:
-        var = VariableTS(variable_label, label, length, system_model,
-                         is_binary, value, lower_bound, upper_bound, before_value)
+    if length > 1 and not avoid_use_of_variable_ts:
+        var = VariableTS(variable_label, length, system_model, label,
+                         is_binary, value, lower_bound, upper_bound, previous_values)
         logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
     else:
-        var = Variable(variable_label, label, length, system_model,
+        var = Variable(variable_label, length, system_model, label,
                        is_binary, value, lower_bound, upper_bound)
-        logger.debug(f'Created Variable "{variable_label}"')
+        logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var

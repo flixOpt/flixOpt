@@ -125,7 +125,7 @@ class Effect(Element):
             assert self not in target_effect.specific_share_to_other_effects_invest.keys(), \
                 f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
 
-    def transform_to_time_series(self):
+    def transform_data(self):
         self.minimum_operation_per_hour = _create_time_series(
             'minimum_operation_per_hour', self.minimum_operation_per_hour, self)
         self.maximum_operation_per_hour = _create_time_series(
@@ -169,11 +169,12 @@ class EffectModel(ElementModel):
         self.invest = ShareAllocationModel(self.element, 'invest', False,
                                            total_max=self.element.maximum_invest,
                                            total_min=self.element.minimum_invest)
-        self.operation = ShareAllocationModel(self.element, 'operation', True,
-                                              total_max=self.element.maximum_operation,
-                                              total_min=self.element.minimum_operation,
-                                              min_per_hour=self.element.minimum_operation_per_hour,
-                                              max_per_hour=self.element.maximum_operation_per_hour)
+        self.operation = ShareAllocationModel(
+            self.element, 'operation', True, total_max=self.element.maximum_operation,
+            total_min=self.element.minimum_operation,
+            min_per_hour=self.element.minimum_operation_per_hour.active_data if self.element.minimum_operation_per_hour is not None else None,
+            max_per_hour=self.element.maximum_operation_per_hour.active_data if self.element.maximum_operation_per_hour is not None else None
+        )
         self.all = ShareAllocationModel(self.element, 'all', False,
                                         total_max=self.element.maximum_total,
                                         total_min=self.element.minimum_total)
@@ -183,8 +184,8 @@ class EffectModel(ElementModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.all.add_variable_share(system_model, 'operation', self.element, self.operation.sum, 1, 1)
-        self.all.add_variable_share(system_model, 'invest', self.element, self.invest.sum, 1, 1)
+        self.all.add_variable_share(system_model, 'operation', self.element, self.operation.sum)
+        self.all.add_variable_share(system_model, 'invest', self.element, self.invest.sum)
 
 
 EffectDict = Dict[Optional['Effect'], Numeric]
@@ -217,7 +218,7 @@ def effect_values_to_time_series(label_suffix: str,
     followed by the label of the Effect in the nested_values and the label_suffix.
     If the key in the EffectValues is None, the alias 'Standart_Effect' is used
     """
-    nested_values = _as_effect_dict(nested_values)
+    nested_values = as_effect_dict(nested_values)
     if nested_values is None:
         return None
     else:
@@ -228,7 +229,7 @@ def effect_values_to_time_series(label_suffix: str,
         return transformed_values
 
 
-def _as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
+def as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
     """
     Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
 
@@ -309,14 +310,14 @@ class EffectCollectionModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self._effect_models = {effect: effect.create_model() for effect in self.element.effects}
-        self.penalty = ShareAllocationModel(self.element, 'penalty', True)
+        self.penalty = ShareAllocationModel(self.element, 'penalty', False)
         self.sub_models.extend(list(self._effect_models.values()) + [self.penalty])
         for model in self.sub_models:
             model.do_modeling(system_model)
 
         self.add_share_between_effects()
 
-        self.objective = Equation('OBJECTIVE', 'OBJECTIVE', system_model, 'objective')
+        self.objective = Equation('OBJECTIVE', 'OBJECTIVE', 'objective')
         self.add_equations(self.objective)
         self.objective.add_summand(self._objective_effect_model.operation.sum, 1)
         self.objective.add_summand(self._objective_effect_model.invest.sum, 1)
@@ -347,10 +348,11 @@ class EffectCollectionModel(ElementModel):
                 raise ValueError(f'Target {target} not supported!')
 
             name_of_share = f'{element.label_full}__{name}'
+            total_factor = np.multiply(value, factor)
             if variable is None:
-                model.add_constant_share(self._system_model, name_of_share, effect, value, factor)
+                model.add_constant_share(self._system_model, name_of_share, effect, total_factor)
             elif isinstance(variable, Variable):
-                model.add_variable_share(self._system_model, name_of_share, effect, variable, value, factor)
+                model.add_variable_share(self._system_model, name_of_share, effect, variable, total_factor)
             else:
                 raise TypeError
 
@@ -378,13 +380,8 @@ class EffectCollectionModel(ElementModel):
                              variable: Optional[Variable],
                              factor: Numeric,
                              ) -> None:
-        assert variable is not None
-        if variable is None:
-            self.penalty.add_constant_share(self._system_model, name, share_holder, factor, 1)
-        elif isinstance(variable, Variable):
-            self.penalty.add_variable_share(self._system_model, name, share_holder, variable, factor, 1)
-        else:
-            raise TypeError
+        assert variable is not None, f'A Varieble must e passed to add a share to penalty! Else its a constant Penalty!'
+        self.penalty.add_variable_share(self._system_model, name, share_holder, variable, factor,  True)
 
     def add_share_between_effects(self):
         for origin_effect in self.element.effects:
@@ -394,10 +391,10 @@ class EffectCollectionModel(ElementModel):
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
                 target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum_TS,
-                                                time_series.active_data, 1)
+                                                time_series.active_data)
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
                 target_model.add_variable_share(self._system_model, name_of_share, origin_effect, origin_model.sum,
-                                                factor, 1)
+                                                factor)
