@@ -185,13 +185,13 @@ class Aggregation:
 
         return index_vectors
 
-    def get_equation_indices(self, fix_first_index_of_period: bool = True) -> Tuple[np.ndarray, np.ndarray]:
+    def get_equation_indices(self, skip_first_index_of_period: bool = True) -> Tuple[np.ndarray, np.ndarray]:
         """
         Generates pairs of indices for the equations by comparing index vectors of the same cluster.
-        If `fix_first_index_of_period` is True, the first index of each period is skipped.
+        If `skip_first_index_of_period` is True, the first index of each period is skipped.
 
         Args:
-            fix_first_index_of_period (bool): Whether to fix or to skip the first index of each period in the comparison.
+            skip_first_index_of_period (bool): Whether to include or skip the first index of each period.
 
         Returns:
             Tuple[np.ndarray, np.ndarray]: Two arrays of indices.
@@ -205,13 +205,11 @@ class Aggregation:
                 continue
 
             # Process the first vector, optionally skip first index
-            first_vector = index_vectors[0]
-            if fix_first_index_of_period:
-                first_vector = first_vector[1:]
+            first_vector = index_vectors[0][1:] if skip_first_index_of_period else index_vectors[0]
 
             # Compare first vector to others in the cluster
             for other_vector in index_vectors[1:]:
-                if fix_first_index_of_period:
+                if skip_first_index_of_period:
                     other_vector = other_vector[1:]
 
                 # Compare elements up to the minimum length of both vectors
@@ -245,7 +243,8 @@ class TimeSeriesCollection:
         group_size = dict(Counter(groups))
         self.group_weights = {group: 1 / size for group, size in group_size.items()}
         for time_series in self.time_series_list:
-            time_series.aggregation_weight = self.group_weights.get(time_series.aggregation_group, 1)
+            time_series.aggregation_weight = self.group_weights.get(time_series.aggregation_group,
+                                                                    time_series.aggregation_weight or 1)
 
     def _unique_labels(self):
         """ Makes sure every label of the TimeSeries in time_series_list is unique """
@@ -276,10 +275,9 @@ class AggregationParameters:
                  hours_per_period: float,
                  nr_of_periods: int,
                  fix_storage_flows: bool,
-                 fix_binary_vars_only: bool,
-                 fix_first_index_of_period: bool = False,
+                 aggregate_data_and_fix_non_binary_vars: bool,
                  percentage_of_period_freedom: float = 0,
-                 costs_of_period_freedom: float = 0,
+                 penalty_of_period_freedom: float = 0,
                  time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
                  time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None
                  ):
@@ -295,15 +293,16 @@ class AggregationParameters:
         fix_storage_flows : bool
             Whether to aggregate storage flows (load/unload); if other flows
             are fixed, fixing storage flows is usually not required.
-        fix_binary_vars_only : bool
-            Whether to only aggregate binary variables.
-        fix_first_index_of_period : bool, optional
-            Whether to fix the first index within each period (default is False).
+        aggregate_data_and_fix_non_binary_vars : bool
+            Whether to aggregate all time series data, which allows to fix all time series variables (like flow_rate),
+            or only fix binary variables. If False non time_series data is changed!! If True, the mathematical Problem
+            is simplified even further.
         percentage_of_period_freedom : float, optional
-            Specifies the maximum percentage (0–100) of values within each period
-            that can deviate as "free variables," chosen by the solver (default is 0).
-        costs_of_period_freedom : float, optional
-            The cost associated with each "free variable"; defaults to 0. Added to Penalty
+            Specifies the maximum percentage (0–100) of binary values within each period
+            that can deviate as "free variables", chosen by the solver (default is 0).
+            This allows binary variables to be 'partly equated' between aggregated periods.
+        penalty_of_period_freedom : float, optional
+            The penalty associated with each "free variable"; defaults to 0. Added to Penalty
         time_series_for_high_peaks : list of TimeSeriesData, optional
             List of time series to use for explicitly selecting periods with high values.
         time_series_for_low_peaks : list of TimeSeriesData, optional
@@ -312,10 +311,9 @@ class AggregationParameters:
         self.hours_per_period = hours_per_period
         self.nr_of_periods = nr_of_periods
         self.fix_storage_flows = fix_storage_flows
-        self.fix_binary_vars_only = fix_binary_vars_only
-        self.fix_first_index_of_period = fix_first_index_of_period
+        self.aggregate_data_and_fix_non_binary_vars = aggregate_data_and_fix_non_binary_vars
         self.percentage_of_period_freedom = percentage_of_period_freedom
-        self.costs_of_period_freedom = costs_of_period_freedom
+        self.penalty_of_period_freedom = penalty_of_period_freedom
         self.time_series_for_high_peaks: List[TimeSeriesData] = time_series_for_high_peaks or []
         self.time_series_for_low_peaks: List[TimeSeriesData] = time_series_for_low_peaks or []
 
@@ -337,7 +335,9 @@ class AggregationParameters:
 
 
 class AggregationModel(ElementModel):
-    """ The AggregationModel interacts directly with the SystemModel, inserting its Variables and Equations there """
+    """ The AggregationModel holds equations and variables related to the Aggregation of a FLowSystem.
+     It creates Equations that equates indices of variables, and introduces penalties related to binary variables, that
+     escape the equation to their related binaries in other periods"""
     def __init__(self,
                  aggregation_parameters: AggregationParameters,
                  flow_system: FlowSystem,
@@ -358,26 +358,26 @@ class AggregationModel(ElementModel):
         else:
             components = [component for component in self.components_to_clusterize]
 
-        indices = self.aggregation_data.get_equation_indices()
+        indices = self.aggregation_data.get_equation_indices(skip_first_index_of_period=True)
 
         for component in components:
             if isinstance(component, Storage) and not self.aggregation_parameters.fix_storage_flows:
                 continue  # Fix Nothing in The Storage
 
             all_variables_of_component = component.model.all_variables
-            if self.aggregation_parameters.fix_binary_vars_only:
+            if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
+                all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
+            else:
                 all_relevant_variables = [v for v in all_variables_of_component.values() if
                                           isinstance(v, VariableTS) and v.is_binary]
-            else:
-                all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
             for variable in all_relevant_variables:
                 self.equate_indices(variable, indices, system_model)
 
-        penalty = self.aggregation_parameters.costs_of_period_freedom
+        penalty = self.aggregation_parameters.penalty_of_period_freedom
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
             for label, variable in self.variables.items():
                 system_model.effect_collection_model.add_share_to_penalty(f'Penalty_{label}', self.element, variable,
-                                                          penalty)
+                                                                          penalty)
 
     def equate_indices(self, variable: Variable,
                        indices: Tuple[np.ndarray, np.ndarray],
