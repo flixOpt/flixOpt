@@ -14,8 +14,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 from pyomo.contrib import appsi
 
-from flixOpt import utils
-from flixOpt.core import Skalar, Numeric
+from . import utils
+from .core import Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 

@@ -9,13 +9,12 @@ from typing import List, Set, Tuple, Dict, Union, Optional
 import logging
 
 import numpy as np
-import yaml  # (für json-Schnipsel-print)
 
-from flixOpt import utils
-from flixOpt.core import TimeSeries
-from flixOpt.structure import Element, SystemModel
-from flixOpt.elements import Bus, Flow, Component
-from flixOpt.effects import Effect, EffectCollection
+from . import utils
+from .core import TimeSeries
+from .structure import Element, SystemModel
+from .elements import Bus, Flow, Component
+from .effects import Effect, EffectCollection
 
 logger = logging.getLogger('flixOpt')
 

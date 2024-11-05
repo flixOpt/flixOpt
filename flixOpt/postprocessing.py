@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt  # für Plots im Postprocessing
 import matplotlib.dates as mdates
 
-from flixOpt import utils
+from . import utils
 
 logger = logging.getLogger('flixOpt')
 
@@ -627,7 +627,7 @@ class flix_results():
 
             # gestapelt:
             if stacked:
-                from flixOpt.plotting import plotStackedSteps
+                from .plotting import plotStackedSteps
                 plotStackedSteps(ax, y)  # legende here automatically
             # normal:
             else:

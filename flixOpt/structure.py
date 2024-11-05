@@ -5,18 +5,18 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-from typing import List, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
 
 import numpy as np
 
-from flixOpt import utils
-from flixOpt.math_modeling import MathModel, Variable, Equation, VariableTS, Solver
-from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from . import utils
+from .math_modeling import MathModel, Variable, Equation, VariableTS, Solver
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.flow_system import FlowSystem
-    from flixOpt.elements import ComponentModel, BusModel
+    from .flow_system import FlowSystem
+    from .elements import ComponentModel, BusModel
 
 logger = logging.getLogger('flixOpt')
 

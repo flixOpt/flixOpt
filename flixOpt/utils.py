@@ -9,10 +9,6 @@ import logging
 from typing import Union, List, Optional, Dict, Literal
 
 import numpy as np
-import math  # für nan
-
-from flixOpt.core import TimeSeriesData
-from flixOpt.core import Numeric, Skalar
 
 logger = logging.getLogger('flixOpt')
 
@@ -46,19 +42,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
         return np.array(value)
 
 
-def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesData],
-                 label: str,
-                 lower_bound: Numeric,
-                 upper_bound: Numeric):
-    if isinstance(value, TimeSeriesData):
-        value = value.data
-    if np.any(value < lower_bound):
-        raise Exception(f'{label} is below its {lower_bound=}!')
-    if np.any(value >= upper_bound):
-        raise Exception(f'{label} is above its {upper_bound=}!')
-
-
-def is_number(number_alias: Union[Skalar, str]):
+def is_number(number_alias: Union[int, float, str]):
     """ Returns True is string is a number. """
     try:
         float(number_alias)
