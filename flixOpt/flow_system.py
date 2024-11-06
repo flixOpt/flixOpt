@@ -4,8 +4,8 @@ Created on Wed Dec 16 12:40:23 2020
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-
-from typing import List, Set, Tuple, Dict, Union, Optional
+import pathlib
+from typing import List, Set, Tuple, Dict, Union, Optional, Literal
 import logging
 
 import numpy as np
@@ -84,6 +84,67 @@ class FlowSystem:
     def transform_data(self):
         for element in self.all_elements:
             element.transform_data()
+
+    def get_network_data(self) -> Tuple[Dict, Dict]:
+        nodes = {comp.label_full: {'label': comp.label,
+                                   'class': 'Bus' if isinstance(comp, Bus) else 'Component',
+                                   'infos': ''}  # component.__str__()}}
+                 for comp in self.components + list(self.all_buses)}
+
+        edges = {flow.label_full: {'label': flow.label,
+                                   'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
+                                   'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
+                                   'infos': ''}  # flow.__str__()}
+                 for flow in self.all_flows}
+
+        return nodes, edges
+
+    def visualize_network(self,
+                          path: Union[bool, str, pathlib.Path] = 'results/network.html',
+                          controls: Union[bool, List[Literal[
+                              'nodes', 'edges', 'layout', 'interaction', 'manipulation',
+                              'physics', 'selection', 'renderer']]] = True,
+                          show: bool = True
+                          ) -> Optional['pyvis.network.Network']:
+        """
+
+        """
+        try:
+            from pyvis.network import Network
+        except ImportError:
+            print("The Network visualization relies on the package 'pyvis'. "
+                  "If it's not installed, the FlowSystem can not be visualized. "
+                  "Please install it using 'pip install pyvis'.")
+            return None
+
+        nodes, edges = self.get_network_data()
+        net = Network(directed=True)
+
+        for id, node in nodes.items():
+            net.add_node(id, label=node['label'], shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
+                         title=node['infos'])
+
+        for id, edge in edges.items():
+            net.add_edge(edge['start'], edge['end'], label=edge['label'], title=edge['infos'],
+                         font={"size": 12, "color": "red"})
+
+        net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
+        if controls:
+            net.show_buttons(filter_=controls)  # Adds UI buttons to control physics settings
+
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+        path = path.resolve().as_posix()
+        net.write_html(path)
+        if show:
+            try:
+                import webbrowser
+                webbrowser.open(f'file://{path}', 2)
+            except Exception:
+                logger.warning(f'Showing the network in the Browser went wrong. Open it manually. '
+                               f'Its saved under {path}')
+
+        return net
 
     def _check_if_element_is_unique(self, element: Element) -> None:
         """
