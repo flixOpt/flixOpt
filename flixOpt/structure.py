@@ -7,6 +7,7 @@ developed by Felix Panitz* and Peter Stange*
 
 from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
+import inspect
 
 import numpy as np
 
@@ -234,7 +235,39 @@ class Element:
         raise NotImplementedError(f'Every Element needs a create_model() method')
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.label}"
+        # Get the constructor arguments and their current values
+        init_signature = inspect.signature(self.__init__)
+        init_args = init_signature.parameters
+
+        # Create a dictionary with argument names and their values
+        args_str = ', '.join(
+            f"{name}={repr(getattr(self, name, None))}"
+            for name in init_args if name != 'self'
+        )
+        return f"{self.__class__.__name__}({args_str})"
+
+    def __str__(self):
+        # Get the constructor arguments and their default values
+        init_signature = inspect.signature(self.__init__)
+        init_params = init_signature.parameters
+
+        # Build a list of attribute=value pairs, excluding defaults
+        details = []
+        for name, param in init_params.items():
+            if name == 'self':
+                continue
+
+            # Include only if it's not the default value
+            value = getattr(self, name, None)
+            default = param.default
+            if default is None and value is not None:
+                details.append(f"{name}={value}")
+            if default is not None and value != default:
+                details.append(f"{name}={value}")
+
+        # Join all relevant parts and format them in the output
+        full_str = ', '.join(details)
+        return f"<{self.__class__.__name__}> {full_str}"
 
     @property
     def label_full(self) -> str:

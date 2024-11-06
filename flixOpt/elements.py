@@ -6,7 +6,8 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import textwrap
-from typing import List, Tuple, Union, Optional, Literal, TYPE_CHECKING
+import inspect
+from typing import List, Tuple, Union, Optional
 import logging
 
 import numpy as np
@@ -60,6 +61,8 @@ class Component(Element):
             self.on_off_parameters.transform_data(self)
 
     def __str__(self):
+        init_signature = inspect.signature(self.__init__)
+        init_args = init_signature.parameters
         # Representing inputs and outputs by their labels
         inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
         outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
@@ -67,9 +70,8 @@ class Component(Element):
         outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.outputs != [] else "outputs=[]"
 
         remaining_data = {
-            key: value for key, value in self.__dict__.items()
-            if value and
-               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
+            key: repr(value)
+            for key, value in self.__dict__.items() if value is not None and key in dict(init_args) and key != "label"
         }
 
         remaining_data_keys = sorted(remaining_data.keys())
