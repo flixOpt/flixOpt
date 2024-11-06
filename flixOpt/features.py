@@ -10,15 +10,15 @@ import logging
 
 import numpy as np
 
-from flixOpt.math_modeling import Variable, VariableTS, Equation
-from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS
-from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.structure import ElementModel, SystemModel, Element, create_equation, create_variable
+from .math_modeling import Variable, VariableTS, Equation
+from .core import TimeSeries, Skalar, Numeric
+from .interface import InvestParameters, OnOffParameters
+from .structure import ElementModel, SystemModel, Element, create_equation, create_variable
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.effects import Effect
-    from flixOpt.elements import Flow
-    from flixOpt.components import Storage
+    from .effects import Effect
+    from .elements import Flow
+    from .components import Storage
 
 
 logger = logging.getLogger('flixOpt')

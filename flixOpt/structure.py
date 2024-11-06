@@ -5,18 +5,18 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-from typing import List, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
 
 import numpy as np
 
-from flixOpt import utils
-from flixOpt.math_modeling import MathModel, Variable, Equation, VariableTS, Solver
-from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from . import utils
+from .math_modeling import MathModel, Variable, Equation, VariableTS, Solver
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.flow_system import FlowSystem
-    from flixOpt.elements import ComponentModel, BusModel
+    from .flow_system import FlowSystem
+    from .elements import ComponentModel, BusModel
 
 logger = logging.getLogger('flixOpt')
 
@@ -206,6 +206,10 @@ class SystemModel(MathModel):
         """ Needed for Mother class """
         return list(self.all_equations.values())
 
+    @property
+    def objective(self) -> Equation:
+        return self.effect_collection_model.objective
+
 
 class Element:
     """ Basic Element of flixOpt"""
@@ -372,7 +376,7 @@ def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]
 
 
 def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
-                    eq_type: Literal['eq', 'ineq', 'objective'] = 'eq') -> Equation:
+                    eq_type: Literal['eq', 'ineq'] = 'eq') -> Equation:
     """ Creates an Equation and adds it to the model of the Element """
     eq = Equation(f'{element_model.label_full}_{label}', label, eq_type)
     element_model.add_equations(eq)

@@ -18,16 +18,13 @@ import pandas as pd
 import numpy as np
 import tsam.timeseriesaggregation as tsam
 
-from flixOpt.core import Skalar, TimeSeries
-from flixOpt.elements import Flow, Component
-from flixOpt.flow_system import FlowSystem
-from flixOpt.components import Storage
-from flixOpt.core import TimeSeriesData
-from flixOpt.structure import Element, SystemModel, ElementModel, create_variable, create_equation
-from flixOpt.math_modeling import Equation, Variable, VariableTS
-
-if TYPE_CHECKING:
-    from flixOpt.effects import EffectCollection
+from .core import Skalar, TimeSeries
+from .elements import Component
+from .flow_system import FlowSystem
+from .components import Storage
+from .core import TimeSeriesData
+from .structure import Element, SystemModel, ElementModel, create_variable, create_equation
+from .math_modeling import Equation, Variable, VariableTS
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)

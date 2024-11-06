@@ -5,19 +5,15 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-from typing import List, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Dict, Union, Optional, Literal
 import logging
 
 import numpy as np
 
-from flixOpt.math_modeling import Variable, Equation
-from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
-from flixOpt.features import ShareAllocationModel
-from flixOpt.structure import Element, ElementModel, SystemModel, _create_time_series
-
-if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.flow_system import FlowSystem
-    from flixOpt.features import ComponentModel, BusModel
+from .math_modeling import Variable, Equation
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from .features import ShareAllocationModel
+from .structure import Element, ElementModel, SystemModel, _create_time_series
 
 
 logger = logging.getLogger('flixOpt')
@@ -318,7 +314,6 @@ class EffectCollectionModel(ElementModel):
         self.add_share_between_effects()
 
         self.objective = Equation('OBJECTIVE', 'OBJECTIVE', 'objective')
-        self.add_equations(self.objective)
         self.objective.add_summand(self._objective_effect_model.operation.sum, 1)
         self.objective.add_summand(self._objective_effect_model.invest.sum, 1)
         self.objective.add_summand(self.penalty.sum, 1)

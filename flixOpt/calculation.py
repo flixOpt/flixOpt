@@ -14,14 +14,14 @@ from typing import List, Dict, Optional, Literal, Union, Any
 
 import numpy as np
 
-from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
-from flixOpt.core import Numeric, Skalar
-from flixOpt.structure import SystemModel
-from flixOpt.flow_system import FlowSystem
-from flixOpt.elements import Component
-from flixOpt.components import Storage
-from flixOpt.features import InvestmentModel
-from flixOpt.solvers import Solver
+from .aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
+from .core import Numeric, Skalar
+from .structure import SystemModel
+from .flow_system import FlowSystem
+from .elements import Component
+from .components import Storage
+from .features import InvestmentModel
+from .solvers import Solver
 
 
 logger = logging.getLogger('flixOpt')
@@ -182,7 +182,7 @@ class AggregatedCalculation(Calculation):
         for time_series in self.flow_system.all_time_series:
             time_series.activate_indices(self.time_indices)
 
-        from flixOpt.aggregation import Aggregation
+        from .aggregation import Aggregation
 
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
             self.flow_system.get_time_data_from_indices(self.time_indices))

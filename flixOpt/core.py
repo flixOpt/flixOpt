@@ -9,7 +9,7 @@ import logging
 
 import numpy as np
 
-from flixOpt import utils
+from . import utils
 
 logger = logging.getLogger('flixOpt')
 

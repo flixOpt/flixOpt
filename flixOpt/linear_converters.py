@@ -6,9 +6,12 @@ developed by Felix Panitz* and Peter Stange*
 """
 import logging
 
-from flixOpt import Flow, utils, OnOffParameters
-from flixOpt.components import LinearConverter
-from flixOpt.core import Numeric_TS
+import numpy as np
+
+from .elements import Flow
+from .interface import OnOffParameters
+from .components import LinearConverter
+from .core import Numeric_TS, TimeSeriesData
 
 logger = logging.getLogger('flixOpt')
 
@@ -41,7 +44,7 @@ class Boiler(LinearConverter):
         self.Q_fu = Q_fu
         self.Q_th = Q_th
 
-        utils.check_bounds(eta, 'eta', 0+1e-10, 1-1e-10)
+        check_bounds(eta, 'eta', 0+1e-10, 1-1e-10)
 
 
 class Power2Heat(LinearConverter):
@@ -72,7 +75,7 @@ class Power2Heat(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        utils.check_bounds(eta, 'eta',                0+1e-10, 1-1e-10)
+        check_bounds(eta, 'eta',                0+1e-10, 1-1e-10)
 
 
 class HeatPump(LinearConverter):
@@ -102,7 +105,7 @@ class HeatPump(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        utils.check_bounds(COP, 'COP',  1 + 1e-10, 20 - 1e-10)
+        check_bounds(COP, 'COP',  1 + 1e-10, 20 - 1e-10)
 
 
 class CoolingTower(LinearConverter):
@@ -134,7 +137,7 @@ class CoolingTower(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        utils.check_bounds(specific_electricity_demand, 'specific_electricity_demand', 0, 1)
+        check_bounds(specific_electricity_demand, 'specific_electricity_demand', 0, 1)
 
 
 class CHP(LinearConverter):
@@ -179,9 +182,9 @@ class CHP(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        utils.check_bounds(eta_th, 'eta_th',                0+1e-10, 1-1e-10)
-        utils.check_bounds(eta_el, 'eta_el',                0+1e-10, 1-1e-10)
-        utils.check_bounds(eta_el+eta_th, 'eta_th+eta_el',  0+1e-10, 1-1e-10)
+        check_bounds(eta_th, 'eta_th',                0+1e-10, 1-1e-10)
+        check_bounds(eta_el, 'eta_el',                0+1e-10, 1-1e-10)
+        check_bounds(eta_el+eta_th, 'eta_th+eta_el',  0+1e-10, 1-1e-10)
 
 
 class HeatPumpWithSource(LinearConverter):
@@ -221,4 +224,21 @@ class HeatPumpWithSource(LinearConverter):
         self.Q_ab = Q_ab
         self.Q_th = Q_th
 
-        utils.check_bounds(COP, 'eta_th', 0 + 1e-10, 20 - 1e-10)
+        check_bounds(COP, 'eta_th', 0 + 1e-10, 20 - 1e-10)
+
+
+def check_bounds(value: Numeric_TS,
+                 label: str,
+                 lower_bound: Numeric_TS,
+                 upper_bound: Numeric_TS):
+    if isinstance(value, TimeSeriesData):
+        value = value.data
+    if isinstance(lower_bound, TimeSeriesData):
+        lower_bound = lower_bound.data
+    if isinstance(upper_bound, TimeSeriesData):
+        upper_bound = upper_bound.data
+    if np.any(value < lower_bound):
+        raise Exception(f'{label} is below its {lower_bound=}!')
+    if np.any(value >= upper_bound):
+        raise Exception(f'{label} is above its {upper_bound=}!')
+    

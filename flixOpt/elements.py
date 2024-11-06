@@ -6,18 +6,17 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import textwrap
-from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Tuple, Union, Optional, Literal, TYPE_CHECKING
 import logging
 
 import numpy as np
 
-from flixOpt import utils
-from flixOpt.math_modeling import Variable, VariableTS, Equation
-from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
-from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable
-from flixOpt.effects import EffectValues, effect_values_to_time_series, EffectCollectionModel
+from .math_modeling import Variable, VariableTS
+from .core import Numeric, Numeric_TS, Skalar
+from .interface import InvestParameters, OnOffParameters
+from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
+from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable
+from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
 
