@@ -881,10 +881,9 @@ class PyomoModel(ModelingLanguage):
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         constant_vector = equation.constant_vector
-        model = self.model
 
-        # lineare Summierung für i-te Gleichung:
         def linear_sum_pyomo_rule(model, i):
+            """ This function is needed for pyomoy internal construction of Constraints."""
             lhs = 0
             aSummand: Summand
             for aSummand in equation.summands:
@@ -907,13 +906,13 @@ class PyomoModel(ModelingLanguage):
         if objective.length != 1:
             raise Exception('Length of Objective must be 0')
 
-        def linearSumRule_Skalar(model):
+        def _rule_linear_sum_skalar(model):
             skalar = 0
             for summand in objective.summands:
                 skalar += self._summand_math_expression(summand)
             return skalar
 
-        self.model.objective = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
+        self.model.objective = pyomoEnv.Objective(rule=_rule_linear_sum_skalar, sense=pyomoEnv.minimize)
         self.mapping[objective] = self.model.objective
 
     def _summand_math_expression(self, summand: Summand, at_index: int = 0) -> 'pyomoEnv.Expression':
