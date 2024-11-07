@@ -441,8 +441,7 @@ def get_object_infos_as_str(obj) -> str:
 
     def format_dict(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
         """
-        Recursively formats a dictionary with its keys replaced by their labels (if applicable).
-        The dictionary will be indented based on the current indentation level.
+        Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
 
         Args:
             d (dict): The dictionary to format.
@@ -452,6 +451,10 @@ def get_object_infos_as_str(obj) -> str:
         Returns:
             str: A string representation of the dictionary with the keys' labels and appropriate indentation.
         """
+        # If the dictionary has a single {None: value} entry, return the value directly
+        if len(d) == 1 and None in d:
+            return str(d[None])
+
         formatted_items = []
         for k, v in d.items():
             key_str = k.label if hasattr(k, 'label') else str(k)
@@ -508,18 +511,18 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
 
     def format_dict(d: Dict) -> Dict[str, Union[Numeric, str, Dict, bool]]:
         """
-        Recursively formats a dictionary with its keys replaced by their labels (if applicable).
-        The dictionary will be indented based on the current indentation level, returning a dict of strings.
+        Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
 
         Args:
             d (dict): The dictionary to format.
-            current_indent_level (int): The current indentation level (default is 1).
-            indent_depth (int): The number of spaces per indent (default is 3).
 
         Returns:
-            dict: A dictionary where the keys are the same as the input dictionary,
-                  and the values are the string representations with proper indentation.
+            dict: A dictionary representation where {None: value} dictionaries are replaced with the value only.
         """
+        # If the dictionary has a single {None: value} entry, return the value directly
+        if len(d) == 1 and None in d:
+            return get_object_infos_as_dict(d[None])
+
         formatted_dict = {}
         for k, v in d.items():
             key_str = k.label if hasattr(k, 'label') else str(k)
