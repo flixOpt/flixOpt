@@ -84,7 +84,7 @@ class Calculation:
         with open(self._paths['data'], 'wb') as f:
             pickle.dump(self.results(), f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        infos = {'Calculation': self.infos, 'Model': self.system_model.infos}
+        infos = {'Calculation': self.infos, 'Model': self.system_model.infos, 'FlowSystem': self.flow_system.infos()}
 
         with open(self._paths['info'], 'w', encoding='utf-8') as f:
             yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
