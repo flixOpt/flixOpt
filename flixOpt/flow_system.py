@@ -85,7 +85,7 @@ class FlowSystem:
         for element in self.all_elements:
             element.transform_data()
 
-    def network_infos(self) -> Tuple[Dict, Dict]:
+    def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
         nodes = {node.label_full: {'label': node.label,
                                    'class': 'Bus' if isinstance(node, Bus) else 'Component',
                                    'infos':  node.__str__()}
