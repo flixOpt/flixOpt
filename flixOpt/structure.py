@@ -472,7 +472,9 @@ def get_object_infos_as_str(obj) -> str:
         # Include only if it's not the default value
         value = getattr(obj, name, None)
         default = param.default
-        if isinstance(value, dict) and value:
+        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
+            pass
+        elif isinstance(value, dict):  # Return dicts as str with custom formating
             value_str = format_dict(value)
             details.append(f"{name}={value_str}")
         elif not np.all(value == default):
