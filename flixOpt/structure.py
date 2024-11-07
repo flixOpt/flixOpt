@@ -480,6 +480,8 @@ def get_object_infos_as_str(obj) -> str:
         elif isinstance(value, dict):  # Return dicts as str with custom formating
             value_str = format_dict(value)
             details.append(f"{name}={value_str}")
+        elif isinstance(value, TimeSeries):
+            details.append(f"{name}={value.active_data}")
         elif not np.all(value == default):
             details.append(f"{name}={value}")
 
@@ -527,6 +529,8 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
                 v_rep = get_object_infos_as_dict(v)
             elif isinstance(v, (int, float, np.ndarray, bool)):
                 v_rep = v
+            elif isinstance(v, TimeSeries):
+                v_rep = v.active_data
             else:
                 v_rep = v
                 logger.warning("Wrong datatype in representation")
@@ -556,6 +560,8 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
                 details[name] = value
             elif isinstance(value, (Element, InvestParameters, OnOffParameters)):
                 details[name] = get_object_infos_as_dict(value)
+            elif isinstance(value, TimeSeries):
+                details[name] = value.active_data
             else:
                 details[name] = str(value)
 
