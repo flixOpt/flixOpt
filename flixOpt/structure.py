@@ -14,7 +14,7 @@ import numpy as np
 
 from . import utils
 from .math_modeling import MathModel, Variable, Equation, VariableTS, Solver
-from .core import TimeSeries, Skalar, Numeric, Numeric_TS
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS, TimeSeriesData
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .flow_system import FlowSystem
@@ -439,6 +439,27 @@ def get_object_infos_as_str(obj) -> str:
              with properly formatted dictionaries, and nested objects' labels.
     """
 
+    def numeric_as_str(item: Union[Numeric, TimeSeries, TimeSeriesData], max_length: int = 100) -> str:
+        """
+        Returns a short oneline string of numeric data.
+        If something else than the expected datatypes is passes, it returns the item aas a str
+        """
+        if isinstance(item, TimeSeries):
+            item = item.active_data
+        elif isinstance(item, TimeSeriesData):
+            item = item.data
+
+        if isinstance(item, np.ndarray):
+            text = str(item).replace('\n', '')
+            if len(text) > max_length:
+                return text[:max_length-3]+'...'
+            else:
+                return text
+        elif isinstance(item, Skalar):
+            return str(item)
+        else:
+            return str(item)
+
     def format_dict(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
         """
         Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
@@ -461,7 +482,7 @@ def get_object_infos_as_str(obj) -> str:
             if isinstance(v, dict):
                 v_str = format_dict(v, current_indent_level + 1)  # Recursively format nested dictionaries
             else:
-                v_str = str(v)
+                v_str = numeric_as_str(v)
             formatted_items.append(f"{key_str}: {v_str}")
         return '{\n' + textwrap.indent(",\n".join(formatted_items), ' ' * current_indent_level * indent_depth) + '}'
 
@@ -483,10 +504,8 @@ def get_object_infos_as_str(obj) -> str:
         elif isinstance(value, dict):  # Return dicts as str with custom formating
             value_str = format_dict(value)
             details.append(f"{name}={value_str}")
-        elif isinstance(value, TimeSeries):
-            details.append(f"{name}={value.active_data}")
         elif not np.all(value == default):
-            details.append(f"{name}={value}")
+            details.append(f"{name}={numeric_as_str(value)}")
 
     # Join all relevant parts and format them in the output
     full_str = ',\n'.join(details)
