@@ -482,4 +482,4 @@ def get_object_infos_as_str(obj) -> str:
 
     # Join all relevant parts and format them in the output
     full_str = ',\n'.join(details)
-    return f"<{obj.__class__.__name__}>\n{textwrap.indent(full_str, ' '*3)}"
+    return f"{obj.__class__.__name__}(\n{textwrap.indent(full_str, ' '*3)})"
