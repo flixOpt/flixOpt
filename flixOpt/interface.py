@@ -8,6 +8,7 @@ import logging
 from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
 from .core import Numeric, Skalar, Numeric_TS
+from .structure import get_object_infos_as_str
 if TYPE_CHECKING:
     from .structure import Element
     from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
@@ -92,17 +93,7 @@ class InvestParameters:
         return f"<{self.__class__.__name__}>: {self.__dict__}"
 
     def __str__(self):
-        details = [
-            f"size={self.fixed_size}" if self.fixed_size else f"size='{self.minimum_size}-{self.maximum_size}'",
-            f"optional" if self.optional else "",
-            f"fix_effects={self.fix_effects}" if self.fix_effects else "",
-            f"specific_effects={self.specific_effects}" if self.specific_effects else "",
-            f"effects_in_segments={self.effects_in_segments}, " if self.effects_in_segments else "",
-            f"divest_effects={self.divest_effects}" if self.divest_effects else ""
-        ]
-        all_relevant_parts = [part for part in details if part != ""]
-        full_str = f"{', '.join(all_relevant_parts)}"
-        return f"<{self.__class__.__name__}>: {full_str}"
+        return get_object_infos_as_str(self)
 
 
 class OnOffParameters:
@@ -164,6 +155,9 @@ class OnOffParameters:
         self.consecutive_on_hours_max = _create_time_series('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
         self.consecutive_off_hours_min = _create_time_series('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
         self.consecutive_off_hours_max = _create_time_series('consecutive_off_hours_max', self.consecutive_off_hours_max, owner)
+
+    def __str__(self):
+        return get_object_infos_as_str(self)
 
     @property
     def use_on(self) -> bool:

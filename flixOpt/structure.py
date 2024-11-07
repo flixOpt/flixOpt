@@ -8,6 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
 import inspect
+import textwrap
 
 import numpy as np
 
@@ -247,27 +248,7 @@ class Element:
         return f"{self.__class__.__name__}({args_str})"
 
     def __str__(self):
-        # Get the constructor arguments and their default values
-        init_signature = inspect.signature(self.__init__)
-        init_params = init_signature.parameters
-
-        # Build a list of attribute=value pairs, excluding defaults
-        details = []
-        for name, param in init_params.items():
-            if name == 'self':
-                continue
-
-            # Include only if it's not the default value
-            value = getattr(self, name, None)
-            default = param.default
-            if default is None and value is not None:
-                details.append(f"{name}={value}")
-            if default is not None and value != default:
-                details.append(f"{name}={value}")
-
-        # Join all relevant parts and format them in the output
-        full_str = ', '.join(details)
-        return f"<{self.__class__.__name__}> {full_str}"
+        return get_object_infos_as_str(self)
 
     @property
     def label_full(self) -> str:
@@ -439,3 +420,28 @@ def create_variable(label: str,
         logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var
+
+
+def get_object_infos_as_str(obj) -> str:
+    # Get the constructor arguments and their default values
+    init_signature = inspect.signature(obj.__init__)
+    init_params = init_signature.parameters
+
+    # Build a list of attribute=value pairs, excluding defaults
+    details = []
+    for name, param in init_params.items():
+        if name == 'self':
+            continue
+
+        # Include only if it's not the default value
+        value = getattr(obj, name, None)
+        default = param.default
+        if isinstance(value, dict) and value:
+            value_str = {k.label if hasattr(k, 'label') else k: v for k, v in value.items()}
+            details.append(f"{name}={value_str}")
+        elif not np.all(value == default):
+            details.append(f"{name}={value}")
+
+    # Join all relevant parts and format them in the output
+    full_str = ',\n'.join(details)
+    return f"<{obj.__class__.__name__}>\n{textwrap.indent(full_str, ' ' * 3)}"
