@@ -486,3 +486,77 @@ def get_object_infos_as_str(obj) -> str:
     # Join all relevant parts and format them in the output
     full_str = ',\n'.join(details)
     return f"{obj.__class__.__name__}(\n{textwrap.indent(full_str, ' '*3)})"
+
+
+def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
+    """
+    Returns a dictionary representation of an object's constructor arguments,
+    excluding default values, and formats dictionaries with nested
+    child class objects, displaying their labels.
+
+    Args:
+        obj: The object whose constructor arguments will be formatted and returned as a dictionary.
+
+    Returns:
+        dict: A dictionary representation of the object's constructor arguments,
+              with properly formatted dictionaries and nested objects' labels.
+    """
+
+    from .interface import InvestParameters, OnOffParameters
+
+    def format_dict(d: Dict) -> Dict[str, Union[Numeric, str, Dict, bool]]:
+        """
+        Recursively formats a dictionary with its keys replaced by their labels (if applicable).
+        The dictionary will be indented based on the current indentation level, returning a dict of strings.
+
+        Args:
+            d (dict): The dictionary to format.
+            current_indent_level (int): The current indentation level (default is 1).
+            indent_depth (int): The number of spaces per indent (default is 3).
+
+        Returns:
+            dict: A dictionary where the keys are the same as the input dictionary,
+                  and the values are the string representations with proper indentation.
+        """
+        formatted_dict = {}
+        for k, v in d.items():
+            key_str = k.label if hasattr(k, 'label') else str(k)
+            if isinstance(v, dict):
+                v_rep = format_dict(v)  # Recursively format nested dictionaries
+            elif isinstance(v, Element):
+                v_rep = get_object_infos_as_dict(v)
+            elif isinstance(v, (int, float, np.ndarray, bool)):
+                v_rep = v
+            else:
+                v_rep = v
+                logger.warning("Wrong datatype in representation")
+            formatted_dict[key_str] = v_rep
+
+        return formatted_dict
+
+    # Get the constructor arguments and their default values
+    init_signature = inspect.signature(obj.__init__)
+    init_params = sorted(init_signature.parameters.items(), key=lambda x: (x[0].lower() != 'label', x[0].lower()))
+
+    # Build a dictionary of attribute=value pairs, excluding defaults
+    details = {}
+    for name, param in init_params:
+        if name == 'self':
+            continue
+
+        # Include only if it's not the default value
+        value = getattr(obj, name, None)
+        default = param.default
+        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
+            continue
+        elif isinstance(value, dict):  # Format dictionaries with custom formatting
+            details[name] = format_dict(value)
+        elif not np.all(value == default):
+            if isinstance(value, (int, float, np.ndarray, bool, type(None))):
+                details[name] = value
+            elif isinstance(value, (Element, InvestParameters, OnOffParameters)):
+                details[name] = get_object_infos_as_dict(value)
+            else:
+                details[name] = str(value)
+
+    return details

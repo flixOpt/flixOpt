@@ -12,7 +12,7 @@ import numpy as np
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel
+from .structure import Element, SystemModel, get_object_infos_as_dict
 from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
 
@@ -98,6 +98,13 @@ class FlowSystem:
                  for flow in self.all_flows}
 
         return nodes, edges
+
+    def infos(self):
+        infos = {'Components': {comp.label: get_object_infos_as_dict(comp) for comp in
+                                sorted(self.components, key=lambda component: component.label.upper())},
+                 'Effects': {effect.label: get_object_infos_as_dict(effect) for effect in
+                             sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper())}}
+        return infos
 
     def visualize_network(self,
                           path: Union[bool, str, pathlib.Path] = 'results/network.html',
