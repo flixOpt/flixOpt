@@ -493,11 +493,12 @@ def get_object_infos_as_str(obj) -> str:
     return f"{obj.__class__.__name__}(\n{textwrap.indent(full_str, ' '*3)})"
 
 
-def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
+def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, dict, bool]]:
     """
     Returns a dictionary representation of an object's constructor arguments,
     excluding default values, and formats dictionaries with nested
     child class objects, displaying their labels.
+    Converts numeric data to python native objects (np.arrays are converted to lists, np.types to int or float)
 
     Args:
         obj: The object whose constructor arguments will be formatted and returned as a dictionary.
@@ -519,10 +520,6 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
         Returns:
             dict: A dictionary representation where {None: value} dictionaries are replaced with the value only.
         """
-        # If the dictionary has a single {None: value} entry, return the value directly
-        if len(d) == 1 and None in d:
-            return get_object_infos_as_dict(d[None])
-
         formatted_dict = {}
         for k, v in d.items():
             key_str = k.label if hasattr(k, 'label') else str(k)
@@ -530,10 +527,10 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
                 v_rep = format_dict(v)  # Recursively format nested dictionaries
             elif isinstance(v, Element):
                 v_rep = get_object_infos_as_dict(v)
-            elif isinstance(v, (int, float, np.ndarray, bool)):
+            elif isinstance(v, bool):
                 v_rep = v
-            elif isinstance(v, TimeSeries):
-                v_rep = v.active_data
+            elif isinstance(v, (int, float, TimeSeries, np.ndarray)):
+                v_rep = to_native_types(v)
             else:
                 v_rep = v
                 logger.warning("Wrong datatype in representation")
@@ -557,15 +554,36 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Numeric, str, dict, bool]]:
         if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
             continue
         elif isinstance(value, dict):  # Format dictionaries with custom formatting
-            details[name] = format_dict(value)
-        elif not np.all(value == default):
-            if isinstance(value, (int, float, np.ndarray, bool, type(None))):
+            if len(value) == 1 and None in value:
+                details[name] = to_native_types(value[None])
+            else:
+                details[name] = format_dict(value)
+        elif not np.all(value == default):  # Only save non-default parameters
+            if isinstance(value, (bool, type(None))):
                 details[name] = value
+            elif isinstance(value, (int, float, TimeSeries, np.ndarray)):
+                details[name] = to_native_types(value)
             elif isinstance(value, (Element, InvestParameters, OnOffParameters)):
                 details[name] = get_object_infos_as_dict(value)
-            elif isinstance(value, TimeSeries):
-                details[name] = value.active_data
-            else:
+            else:  # Convert unexpected types as str
                 details[name] = str(value)
 
     return details
+
+
+def to_native_types(data: Union[int, float, np.ndarray, TimeSeries]) -> Union[Skalar, List[Skalar]]:
+    """Recursively convert all numpy data types in lists or dicts to native Python types."""
+    if isinstance(data, TimeSeries):
+        data = data.active_data
+
+    if isinstance(data, np.ndarray):
+        data = data.tolist()  # Convert the array to a list
+
+    if isinstance(data, list):
+        # Recursively process each item in the list
+        return [to_native_types(item) for item in data]
+
+    elif isinstance(data, (np.generic,)):  # For any numpy scalar types
+        return data.item()  # Convert to native Python scalar
+
+    return data  # Return the item itself if it's already a native type
