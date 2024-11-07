@@ -590,10 +590,13 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, 
     return details
 
 
-def to_native_types(data: Union[int, float, np.ndarray, TimeSeries]) -> Union[Skalar, List[Skalar]]:
+def to_native_types(data: Union[int, float, np.ndarray, TimeSeries, TimeSeriesData]) -> Union[Skalar, List[Skalar]]:
     """Recursively convert all numpy data types in lists or dicts to native Python types."""
     if isinstance(data, TimeSeries):
         data = data.active_data
+
+    if isinstance(data, TimeSeriesData):
+        data = data.data
 
     if isinstance(data, np.ndarray):
         data = data.tolist()  # Convert the array to a list
