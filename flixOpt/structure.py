@@ -250,6 +250,9 @@ class Element:
     def __str__(self):
         return get_object_infos_as_str(self)
 
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
+
     @property
     def label_full(self) -> str:
         return self.label
@@ -461,11 +464,11 @@ def get_object_infos_as_str(obj) -> str:
 
     # Get the constructor arguments and their default values
     init_signature = inspect.signature(obj.__init__)
-    init_params = init_signature.parameters
+    init_params = sorted(init_signature.parameters.items(), key=lambda x: (x[0].lower() != 'label', x[0].lower()))
 
     # Build a list of attribute=value pairs, excluding defaults
     details = []
-    for name, param in init_params.items():
+    for name, param in init_params:
         if name == 'self':
             continue
 
