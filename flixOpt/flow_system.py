@@ -132,7 +132,8 @@ class FlowSystem:
                          title=node['infos'].replace(')', '\n)'))
 
         for id, edge in edges.items():
-            net.add_edge(edge['start'], edge['end'], label=edge['label'], title=edge['infos'],
+            net.add_edge(edge['start'], edge['end'], label=edge['label'],
+                         title=edge['infos'].replace(')', '\n)'),
                          font={"size": 12, "color": "red"})
 
         net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
