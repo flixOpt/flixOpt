@@ -85,16 +85,16 @@ class FlowSystem:
         for element in self.all_elements:
             element.transform_data()
 
-    def get_network_data(self) -> Tuple[Dict, Dict]:
-        nodes = {comp.label_full: {'label': comp.label,
-                                   'class': 'Bus' if isinstance(comp, Bus) else 'Component',
-                                   'infos': ''}  # component.__str__()}}
-                 for comp in self.components + list(self.all_buses)}
+    def network_infos(self) -> Tuple[Dict, Dict]:
+        nodes = {node.label_full: {'label': node.label,
+                                   'class': 'Bus' if isinstance(node, Bus) else 'Component',
+                                   'infos':  node.__str__()}
+                 for node in self.components + list(self.all_buses)}
 
         edges = {flow.label_full: {'label': flow.label,
                                    'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
                                    'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
-                                   'infos': ''}  # flow.__str__()}
+                                   'infos': flow.__str__()}
                  for flow in self.all_flows}
 
         return nodes, edges
@@ -124,12 +124,12 @@ class FlowSystem:
                   "Please install it using 'pip install pyvis'.")
             return None
 
-        nodes, edges = self.get_network_data()
+        nodes, edges = self.network_infos()
         net = Network(directed=True)
 
         for id, node in nodes.items():
             net.add_node(id, label=node['label'], shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
-                         title=node['infos'])
+                         title=node['infos'].replace(')', '\n)'))
 
         for id, edge in edges.items():
             net.add_edge(edge['start'], edge['end'], label=edge['label'], title=edge['infos'],
