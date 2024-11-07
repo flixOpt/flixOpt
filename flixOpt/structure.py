@@ -423,6 +423,42 @@ def create_variable(label: str,
 
 
 def get_object_infos_as_str(obj) -> str:
+    """
+    Returns a string representation of an object's constructor arguments,
+    excluding default values, and formats dictionaries with nested
+    child class objects, displaying their labels.
+
+    Args:
+        obj: The object whose constructor arguments will be formatted and returned as a string.
+
+    Returns:
+        str: A string representation of the object's constructor arguments,
+             with properly formatted dictionaries, and nested objects' labels.
+    """
+
+    def format_dict(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
+        """
+        Recursively formats a dictionary with its keys replaced by their labels (if applicable).
+        The dictionary will be indented based on the current indentation level.
+
+        Args:
+            d (dict): The dictionary to format.
+            current_indent_level (int): The current indentation level (default is 1).
+            indent_depth (int): The number of spaces per indent (default is 3).
+
+        Returns:
+            str: A string representation of the dictionary with the keys' labels and appropriate indentation.
+        """
+        formatted_items = []
+        for k, v in d.items():
+            key_str = k.label if hasattr(k, 'label') else str(k)
+            if isinstance(v, dict):
+                v_str = format_dict(v, current_indent_level + 1)  # Recursively format nested dictionaries
+            else:
+                v_str = str(v)
+            formatted_items.append(f"{key_str}: {v_str}")
+        return '{\n' + textwrap.indent(",\n".join(formatted_items), ' ' * current_indent_level * indent_depth) + '}'
+
     # Get the constructor arguments and their default values
     init_signature = inspect.signature(obj.__init__)
     init_params = init_signature.parameters
@@ -437,11 +473,11 @@ def get_object_infos_as_str(obj) -> str:
         value = getattr(obj, name, None)
         default = param.default
         if isinstance(value, dict) and value:
-            value_str = {k.label if hasattr(k, 'label') else k: v for k, v in value.items()}
+            value_str = format_dict(value)
             details.append(f"{name}={value_str}")
         elif not np.all(value == default):
             details.append(f"{name}={value}")
 
     # Join all relevant parts and format them in the output
     full_str = ',\n'.join(details)
-    return f"<{obj.__class__.__name__}>\n{textwrap.indent(full_str, ' ' * 3)}"
+    return f"<{obj.__class__.__name__}>\n{textwrap.indent(full_str, ' '*3)}"
