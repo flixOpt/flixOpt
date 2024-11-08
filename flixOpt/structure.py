@@ -7,12 +7,14 @@ developed by Felix Panitz* and Peter Stange*
 
 from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING
 import logging
+import inspect
+import textwrap
 
 import numpy as np
 
 from . import utils
 from .math_modeling import MathModel, Variable, Equation, VariableTS, Solver
-from .core import TimeSeries, Skalar, Numeric, Numeric_TS
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS, TimeSeriesData
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .flow_system import FlowSystem
@@ -234,7 +236,22 @@ class Element:
         raise NotImplementedError(f'Every Element needs a create_model() method')
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}> {self.label}"
+        # Get the constructor arguments and their current values
+        init_signature = inspect.signature(self.__init__)
+        init_args = init_signature.parameters
+
+        # Create a dictionary with argument names and their values
+        args_str = ', '.join(
+            f"{name}={repr(getattr(self, name, None))}"
+            for name in init_args if name != 'self'
+        )
+        return f"{self.__class__.__name__}({args_str})"
+
+    def __str__(self):
+        return get_object_infos_as_str(self)
+
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
 
     @property
     def label_full(self) -> str:
@@ -406,3 +423,189 @@ def create_variable(label: str,
         logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var
+
+
+def get_object_infos_as_str(obj) -> str:
+    """
+    Returns a string representation of an object's constructor arguments,
+    excluding default values, and formats dictionaries with nested
+    child class objects, displaying their labels.
+
+    Args:
+        obj: The object whose constructor arguments will be formatted and returned as a string.
+
+    Returns:
+        str: A string representation of the object's constructor arguments,
+             with properly formatted dictionaries, and nested objects' labels.
+    """
+
+    def numeric_as_str(item: Union[Numeric, TimeSeries, TimeSeriesData], max_length: int = 100) -> str:
+        """
+        Returns a short oneline string of numeric data.
+        If something else than the expected datatypes is passes, it returns the item aas a str
+        """
+        if isinstance(item, TimeSeries):
+            item = item.active_data
+        elif isinstance(item, TimeSeriesData):
+            item = item.data
+
+        if isinstance(item, np.ndarray):
+            text = str(item).replace('\n', '')
+            if len(text) > max_length:
+                return text[:max_length-3]+'...'
+            else:
+                return text
+        elif isinstance(item, Skalar):
+            return str(item)
+        else:
+            return str(item)
+
+    def format_dict(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
+        """
+        Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
+
+        Args:
+            d (dict): The dictionary to format.
+            current_indent_level (int): The current indentation level (default is 1).
+            indent_depth (int): The number of spaces per indent (default is 3).
+
+        Returns:
+            str: A string representation of the dictionary with the keys' labels and appropriate indentation.
+        """
+        # If the dictionary has a single {None: value} entry, return the value directly
+        if len(d) == 1 and None in d:
+            return str(d[None])
+
+        formatted_items = []
+        for k, v in d.items():
+            key_str = k.label if hasattr(k, 'label') else str(k)
+            if isinstance(v, dict):
+                v_str = format_dict(v, current_indent_level + 1)  # Recursively format nested dictionaries
+            else:
+                v_str = numeric_as_str(v)
+            formatted_items.append(f"{key_str}: {v_str}")
+        return '{\n' + textwrap.indent(",\n".join(formatted_items), ' ' * current_indent_level * indent_depth) + '}'
+
+    # Get the constructor arguments and their default values
+    init_signature = inspect.signature(obj.__init__)
+    init_params = sorted(init_signature.parameters.items(), key=lambda x: (x[0].lower() != 'label', x[0].lower()))
+
+    # Build a list of attribute=value pairs, excluding defaults
+    details = []
+    for name, param in init_params:
+        if name == 'self':
+            continue
+
+        # Include only if it's not the default value
+        value = getattr(obj, name, None)
+        default = param.default
+        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
+            pass
+        elif isinstance(value, dict):  # Return dicts as str with custom formating
+            value_str = format_dict(value)
+            details.append(f"{name}={value_str}")
+        elif not np.all(value == default):
+            details.append(f"{name}={numeric_as_str(value)}")
+
+    # Join all relevant parts and format them in the output
+    full_str = ',\n'.join(details)
+    return f"{obj.__class__.__name__}(\n{textwrap.indent(full_str, ' '*3)})"
+
+
+def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, dict, bool]]:
+    """
+    Returns a dictionary representation of an object's constructor arguments,
+    excluding default values, and formats dictionaries with nested
+    child class objects, displaying their labels.
+    Converts numeric data to python native objects (np.arrays are converted to lists, np.types to int or float)
+
+    Args:
+        obj: The object whose constructor arguments will be formatted and returned as a dictionary.
+
+    Returns:
+        dict: A dictionary representation of the object's constructor arguments,
+              with properly formatted dictionaries and nested objects' labels.
+    """
+
+    from .interface import InvestParameters, OnOffParameters
+
+    def format_dict(d: Dict) -> Dict[str, Union[Numeric, str, Dict, bool]]:
+        """
+        Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
+
+        Args:
+            d (dict): The dictionary to format.
+
+        Returns:
+            dict: A dictionary representation where {None: value} dictionaries are replaced with the value only.
+        """
+        formatted_dict = {}
+        for k, v in d.items():
+            key_str = k.label if hasattr(k, 'label') else str(k)
+            if isinstance(v, dict):
+                v_rep = format_dict(v)  # Recursively format nested dictionaries
+            elif isinstance(v, Element):
+                v_rep = get_object_infos_as_dict(v)
+            elif isinstance(v, bool):
+                v_rep = v
+            elif isinstance(v, (int, float, TimeSeries, np.ndarray)):
+                v_rep = to_native_types(v)
+            else:
+                v_rep = v
+                logger.warning("Wrong datatype in representation")
+            formatted_dict[key_str] = v_rep
+
+        return formatted_dict
+
+    # Get the constructor arguments and their default values
+    init_signature = inspect.signature(obj.__init__)
+    init_params = sorted(init_signature.parameters.items(), key=lambda x: (x[0].lower() != 'label', x[0].lower()))
+
+    # Build a dictionary of attribute=value pairs, excluding defaults
+    details = {}
+    for name, param in init_params:
+        if name == 'self':
+            continue
+
+        # Include only if it's not the default value
+        value = getattr(obj, name, None)
+        default = param.default
+        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
+            continue
+        elif isinstance(value, dict):  # Format dictionaries with custom formatting
+            if len(value) == 1 and None in value:
+                details[name] = to_native_types(value[None])
+            else:
+                details[name] = format_dict(value)
+        elif not np.all(value == default):  # Only save non-default parameters
+            if isinstance(value, (bool, type(None))):
+                details[name] = value
+            elif isinstance(value, (int, float, TimeSeries, np.ndarray)):
+                details[name] = to_native_types(value)
+            elif isinstance(value, (Element, InvestParameters, OnOffParameters)):
+                details[name] = get_object_infos_as_dict(value)
+            else:  # Convert unexpected types as str
+                details[name] = str(value)
+
+    return details
+
+
+def to_native_types(data: Union[int, float, np.ndarray, TimeSeries, TimeSeriesData]) -> Union[Skalar, List[Skalar]]:
+    """Recursively convert all numpy data types in lists or dicts to native Python types."""
+    if isinstance(data, TimeSeries):
+        data = data.active_data
+
+    if isinstance(data, TimeSeriesData):
+        data = data.data
+
+    if isinstance(data, np.ndarray):
+        data = data.tolist()  # Convert the array to a list
+
+    if isinstance(data, list):
+        # Recursively process each item in the list
+        return [to_native_types(item) for item in data]
+
+    elif isinstance(data, (np.generic,)):  # For any numpy scalar types
+        return data.item()  # Convert to native Python scalar
+
+    return data  # Return the item itself if it's already a native type

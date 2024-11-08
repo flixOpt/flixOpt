@@ -110,49 +110,6 @@ class LinearConverter(Component):
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
 
-    def __str__(self):
-        # Creating a representation for conversion_factors with flow labels and their corresponding values
-        if self.conversion_factors:
-            conversion_factors_rep = []
-            for conversion_factor in self.conversion_factors:
-                conversion_factors_rep.append({flow.__repr__(): value for flow, value in conversion_factor.items()})
-        else:
-            conversion_factors_rep = "None"
-
-        # Representing inputs and outputs by their labels
-        inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
-        outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
-        inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs else "inputs=[]"
-        outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.inputs else "outputs=[]"
-
-        other_relevant_data = (f"conversion_factors={conversion_factors_rep},\n"
-                               f"segmented_conversion_factors={self.segmented_conversion_factors}")
-
-        remaining_data = {
-            key: value for key, value in self.__dict__.items()
-            if value and
-               not isinstance(value, Flow) and
-               key not in ["label", "TS_list", "segmented_conversion_factors", "conversion_factors", "inputs", "outputs"]
-        }
-
-        remaining_data_str = ""
-        for key, value in remaining_data.items():
-            if hasattr(value, '__str__'):
-                remaining_data_str += f"{key}: {value}\n"
-            elif hasattr(value, '__repr__'):
-                remaining_data_str += f"{key}: {repr(value)}\n"
-            else:
-                remaining_data_str += f"{key}: {value}\n"
-
-        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
-                    f"{textwrap.indent(inputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(outputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(other_relevant_data, ' ' * 3)}\n"
-                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
-                    )
-
-        return str_desc
-
     @property
     def degrees_of_freedom(self):
         return len(self.inputs+self.outputs) - len(self.conversion_factors)

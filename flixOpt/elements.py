@@ -6,7 +6,8 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import textwrap
-from typing import List, Tuple, Union, Optional, Literal, TYPE_CHECKING
+import inspect
+from typing import List, Tuple, Union, Optional
 import logging
 
 import numpy as np
@@ -58,39 +59,6 @@ class Component(Element):
     def transform_data(self) -> None:
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
-
-    def __str__(self):
-        # Representing inputs and outputs by their labels
-        inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
-        outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
-        inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs != [] else "inputs=[]"
-        outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.outputs != [] else "outputs=[]"
-
-        remaining_data = {
-            key: value for key, value in self.__dict__.items()
-            if value and
-               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
-        }
-
-        remaining_data_keys = sorted(remaining_data.keys())
-        remaining_data_values = [remaining_data[key] for key in remaining_data_keys]
-
-        remaining_data_str = ""
-        for key, value in zip(remaining_data_keys, remaining_data_values):
-            if hasattr(value, '__str__'):
-                remaining_data_str += f"{key}: {value}\n"
-            elif hasattr(value, '__repr__'):
-                remaining_data_str += f"{key}: {repr(value)}\n"
-            else:
-                remaining_data_str += f"{key}: {value}\n"
-
-        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
-                    f"{textwrap.indent(inputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(outputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
-                    )
-
-        return str_desc
 
     def register_component_in_flows(self) -> None:
         for flow in self.inputs + self.outputs:
@@ -270,23 +238,6 @@ class Flow(Element):
         if self.size == Flow._default_size and self.fixed_relative_value is not None:  #Default Size --> Most likely by accident
             raise Exception('Achtung: Wenn fixed_relative_value genutzt wird, muss zugehöriges size definiert werden, '
                             'da: value = fixed_relative_value * size!')
-
-    def __str__(self):
-        details = [
-            f"bus={self.bus.label if self.bus else 'None'}",
-            f"size={self.size.__str__() if isinstance(self.size, InvestParameters) else self.size}",
-            f"relative_minimum={self.relative_minimum}",
-            f"relative_maximum={self.relative_maximum}",
-            f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
-            f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
-            f"on_off_parameters={self.on_off_parameters.__str__()}" if self.on_off_parameters else "",
-        ]
-
-        all_relevant_parts = [part for part in details if part != ""]
-
-        full_str = f"{', '.join(all_relevant_parts)}"
-
-        return f"<{self.__class__.__name__}> {self.label}: {full_str}"
 
     @property
     def label_full(self) -> str:

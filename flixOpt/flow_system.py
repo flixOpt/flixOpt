@@ -4,15 +4,15 @@ Created on Wed Dec 16 12:40:23 2020
 developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-
-from typing import List, Set, Tuple, Dict, Union, Optional
+import pathlib
+from typing import List, Set, Tuple, Dict, Union, Optional, Literal
 import logging
 
 import numpy as np
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel
+from .structure import Element, SystemModel, get_object_infos_as_dict
 from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
 
@@ -84,6 +84,75 @@ class FlowSystem:
     def transform_data(self):
         for element in self.all_elements:
             element.transform_data()
+
+    def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
+        nodes = {node.label_full: {'label': node.label,
+                                   'class': 'Bus' if isinstance(node, Bus) else 'Component',
+                                   'infos':  node.__str__()}
+                 for node in self.components + list(self.all_buses)}
+
+        edges = {flow.label_full: {'label': flow.label,
+                                   'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
+                                   'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
+                                   'infos': flow.__str__()}
+                 for flow in self.all_flows}
+
+        return nodes, edges
+
+    def infos(self):
+        infos = {'Components': {comp.label: get_object_infos_as_dict(comp) for comp in
+                                sorted(self.components, key=lambda component: component.label.upper())},
+                 'Effects': {effect.label: get_object_infos_as_dict(effect) for effect in
+                             sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper())}}
+        return infos
+
+    def visualize_network(self,
+                          path: Union[bool, str, pathlib.Path] = 'results/network.html',
+                          controls: Union[bool, List[Literal[
+                              'nodes', 'edges', 'layout', 'interaction', 'manipulation',
+                              'physics', 'selection', 'renderer']]] = True,
+                          show: bool = True
+                          ) -> Optional['pyvis.network.Network']:
+        """
+
+        """
+        try:
+            from pyvis.network import Network
+        except ImportError:
+            print("The Network visualization relies on the package 'pyvis'. "
+                  "If it's not installed, the FlowSystem can not be visualized. "
+                  "Please install it using 'pip install pyvis'.")
+            return None
+
+        nodes, edges = self.network_infos()
+        net = Network(directed=True)
+
+        for id, node in nodes.items():
+            net.add_node(id, label=node['label'], shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
+                         title=node['infos'].replace(')', '\n)'))
+
+        for id, edge in edges.items():
+            net.add_edge(edge['start'], edge['end'], label=edge['label'],
+                         title=edge['infos'].replace(')', '\n)'),
+                         font={"size": 12, "color": "red"})
+
+        net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
+        if controls:
+            net.show_buttons(filter_=controls)  # Adds UI buttons to control physics settings
+
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+        path = path.resolve().as_posix()
+        net.write_html(path)
+        if show:
+            try:
+                import webbrowser
+                webbrowser.open(f'file://{path}', 2)
+            except Exception:
+                logger.warning(f'Showing the network in the Browser went wrong. Open it manually. '
+                               f'Its saved under {path}')
+
+        return net
 
     def _check_if_element_is_unique(self, element: Element) -> None:
         """

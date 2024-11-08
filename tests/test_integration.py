@@ -94,6 +94,9 @@ class TestSimple(BaseTest):
 
         time_indices = None
 
+        print(es)
+        es.visualize_network()
+
         aCalc = FullCalculation('Test_Sim', es, 'pyomo', time_indices)
         aCalc.do_modeling()
 
@@ -246,6 +249,9 @@ class TestComplex(BaseTest):
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
+        print(es)
+        es.visualize_network()
+
         aCalc = FullCalculation('Sim1', es, 'pyomo', None)
         aCalc.do_modeling()
 
@@ -288,6 +294,8 @@ class TestComplex(BaseTest):
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
         es.add_components(aSpeicher)
+        print(es)
+        es.visualize_network()
 
         aCalc = FullCalculation('Sim1', es, 'pyomo', None)
         aCalc.do_modeling()
@@ -328,7 +336,7 @@ class TestModelingTypes(BaseTest):
         filename = os.path.join(os.path.dirname(__file__), "ressources", "Zeitreihen2020.csv")
         ts_raw = pd.read_csv(filename, index_col=0).sort_index()
         data = ts_raw['2020-01-01 00:00:00':'2020-12-31 23:45:00']['2020-01-01':'2020-01-03 23:45:00']
-        P_el_Last, Q_th_Last, p_el, gP = data['P_Netz/MW'], data['Q_Netz/MW'], data['Strompr.€/MWh'], data['Gaspr.€/MWh']
+        P_el_Last, Q_th_Last, p_el, gP = data['P_Netz/MW'].values, data['Q_Netz/MW'].values, data['Strompr.€/MWh'].values, data['Gaspr.€/MWh'].values
         aTimeSeries = (datetime.datetime(2020, 1, 1) + np.arange(len(P_el_Last)) * datetime.timedelta(hours=0.25)).astype('datetime64')
 
         Strom, Fernwaerme, Gas, Kohle = Bus('Strom'), Bus('Fernwärme'), Bus('Gas'), Bus('Kohle')
@@ -349,6 +357,9 @@ class TestModelingTypes(BaseTest):
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher)
 
+        print(es)
+        es.visualize_network()
+
         if doFullCalc:
             calc = FullCalculation('fullModel', es, 'pyomo')
             calc.do_modeling()
@@ -367,6 +378,8 @@ class TestModelingTypes(BaseTest):
                                                                time_series_for_low_peaks=[TS_P_el_Last, TS_Q_th_Last],
                                                                time_series_for_high_peaks=[TS_Q_th_Last]))
             calc.do_modeling()
+            print(es)
+            es.visualize_network()
             calc.solve(self.get_solver(), save_results=True)
         else:
             raise Exception("Wrong Modeling Type")
