@@ -83,7 +83,7 @@ class Calculation:
         t_start = timeit.default_timer()
         import yaml
         import json
-        with open(self._paths['data'], 'w') as f:
+        with open(self._paths['data'], 'w', encoding='utf-8') as f:
             json.dump(convert_arrays_to_lists(self.results()), f, indent=4)
 
         nodes_info, edges_info = self.flow_system.network_infos()
