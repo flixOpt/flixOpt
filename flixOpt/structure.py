@@ -414,11 +414,11 @@ def create_variable(label: str,
     """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
     if length > 1 and not avoid_use_of_variable_ts:
-        var = VariableTS(variable_label, length, system_model, label,
+        var = VariableTS(variable_label, length, label,
                          is_binary, value, lower_bound, upper_bound, previous_values)
         logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
     else:
-        var = Variable(variable_label, length, system_model, label,
+        var = Variable(variable_label, length, label,
                        is_binary, value, lower_bound, upper_bound)
         logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)

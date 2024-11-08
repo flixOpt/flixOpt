@@ -643,9 +643,9 @@ class SingleShareModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         if self._create_sum_of:
-            self.single_share = Variable(self._full_name_of_share, 1, system_model, self.label,)
+            self.single_share = Variable(self._full_name_of_share, 1, self.label)
         else:
-            self.single_share = VariableTS(self._full_name_of_share, system_model.nr_of_time_steps, system_model, self.label)
+            self.single_share = VariableTS(self._full_name_of_share, system_model.nr_of_time_steps, self.label)
         self.add_variables(self.single_share)
 
         self._equation = create_equation(self._full_name_of_share, self, system_model)
