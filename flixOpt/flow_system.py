@@ -102,6 +102,8 @@ class FlowSystem:
     def infos(self):
         infos = {'Components': {comp.label: comp.infos() for comp in
                                 sorted(self.components, key=lambda component: component.label.upper())},
+                 'Buses': {bus.label: bus.infos() for bus in
+                           sorted(self.all_buses, key=lambda bus: bus.label.upper())},
                  'Effects': {effect.label: effect.infos() for effect in
                              sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper())}}
         return infos

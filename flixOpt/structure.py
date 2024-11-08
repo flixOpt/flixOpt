@@ -123,6 +123,7 @@ class SystemModel(MathModel):
     def results(self):
         return {'Components': {model.element.label: model.results() for model in self.component_models},
                 'Effects': self.effect_collection_model.results(),
+                'Buses': {model.element.label: model.results() for model in self.bus_models},
                 'Others': {model.element.label: model.results() for model in self.other_models},
                 'Objective': self.result_of_objective
                 }
