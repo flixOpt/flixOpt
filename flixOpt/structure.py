@@ -392,25 +392,17 @@ def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]
         return time_series
 
 
-def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
-                    eq_type: Literal['eq', 'ineq'] = 'eq') -> Equation:
+def create_equation(label: str, element_model: ElementModel, eq_type: Literal['eq', 'ineq'] = 'eq') -> Equation:
     """ Creates an Equation and adds it to the model of the Element """
     eq = Equation(f'{element_model.label_full}_{label}', label, eq_type)
     element_model.add_equations(eq)
     return eq
 
 
-def create_variable(label: str,
-                    element_model: ElementModel,
-                    length: int,
-                    system_model: SystemModel,
-                    is_binary: bool = False,
-                    value: Optional[Numeric] = None,
-                    lower_bound: Optional[Numeric] = None,
-                    upper_bound: Optional[Numeric] = None,
-                    previous_values: Optional[Numeric] = None,
-                    avoid_use_of_variable_ts: bool = False
-                    ) -> VariableTS:
+def create_variable(label: str, element_model: ElementModel, length: int, is_binary: bool = False,
+                    value: Optional[Numeric] = None, lower_bound: Optional[Numeric] = None,
+                    upper_bound: Optional[Numeric] = None, previous_values: Optional[Numeric] = None,
+                    avoid_use_of_variable_ts: bool = False) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
     if length > 1 and not avoid_use_of_variable_ts:

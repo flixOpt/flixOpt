@@ -233,7 +233,7 @@ class LinearConverterModel(ComponentModel):
                 used_inputs: Set = all_input_flows & used_flows
                 used_outputs: Set = all_output_flows & used_flows
 
-                eq_conversion = create_equation(f'conversion_{i}', self, system_model)
+                eq_conversion = create_equation(f'conversion_{i}', self)
                 for flow in used_inputs:
                     factor = conversion_factor[flow].active_data
                     eq_conversion.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
@@ -270,15 +270,15 @@ class StorageModel(ComponentModel):
         super().do_modeling(system_model)
 
         lb, ub = self.charge_state_bounds
-        self.charge_state = create_variable('charge_state', self, system_model.nr_of_time_steps + 1,
-                                               system_model, lower_bound=lb, upper_bound=ub)
+        self.charge_state = create_variable('charge_state', self, system_model.nr_of_time_steps + 1, lower_bound=lb,
+                                            upper_bound=ub)
 
         self.netto_discharge = create_variable('netto_discharge', self, system_model.nr_of_time_steps,
-                                                  system_model, lower_bound=-np.inf)  # negative Werte zulässig!
+                                               lower_bound=-np.inf)  # negative Werte zulässig!
 
         # netto_discharge:
         # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
-        eq_netto = create_equation('netto_discharge', self, system_model, eq_type='eq')
+        eq_netto = create_equation('netto_discharge', self, eq_type='eq')
         eq_netto.add_summand(self.netto_discharge, 1)
         eq_netto.add_summand(self.element.charging.model.flow_rate, 1)
         eq_netto.add_summand(self.element.discharging.model.flow_rate, -1)
@@ -291,7 +291,7 @@ class StorageModel(ComponentModel):
         # - charging(n)     * eta_charge * dt(n)
         # + discharging(n)  * 1 / eta_discharge * dt(n)
         # = 0
-        eq_charge_state = create_equation('charge_state', self, system_model, eq_type='eq')
+        eq_charge_state = create_equation('charge_state', self, eq_type='eq')
         eq_charge_state.add_summand(self.charge_state, 1, indices_charge_state[1:])  # 1:end
         eq_charge_state.add_summand(self.charge_state,
                                     (self.element.relative_loss_per_hour.active_data * system_model.dt_in_hours) - 1,
@@ -318,7 +318,7 @@ class StorageModel(ComponentModel):
         indices_charge_state = range(system_model.indices.start, system_model.indices.stop + 1)  # additional
 
         if self.element.initial_charge_state is not None:
-            eq_initial = create_equation('initial_charge_state', self, system_model, eq_type='eq')
+            eq_initial = create_equation('initial_charge_state', self, eq_type='eq')
             if utils.is_number(self.element.initial_charge_state):
                 # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
                 eq_initial.add_constant(self.element.initial_charge_state)  # chargeState_0 !
@@ -335,13 +335,13 @@ class StorageModel(ComponentModel):
         # Final Charge State
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.element.maximal_final_charge_state is not None:
-            eq_max = create_equation('eq_final_charge_state_max', self, system_model, eq_type='ineq')
+            eq_max = create_equation('eq_final_charge_state_max', self, eq_type='ineq')
             eq_max.add_summand(self.charge_state, 1, indices_charge_state[-1])
             eq_max.add_constant(self.element.maximal_final_charge_state)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.element.minimal_final_charge_state is not None:
-            eq_min = create_equation('eq_charge_state_end_min', self, system_model, eq_type='ineq')
+            eq_min = create_equation('eq_charge_state_end_min', self, eq_type='ineq')
             eq_min.add_summand(self.charge_state, -1, indices_charge_state[-1])
             eq_min.add_constant(- self.element.minimal_final_charge_state)
 

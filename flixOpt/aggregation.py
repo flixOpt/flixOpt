@@ -384,15 +384,15 @@ class AggregationModel(ElementModel):
         length = len(indices[0])
         assert len(indices[0]) == len(indices[1]), f'The length of the indices must match!!'
 
-        eq = create_equation(f'Equate_indices_of_{variable.label}', self, system_model)
+        eq = create_equation(f'Equate_indices_of_{variable.label}', self)
         eq.add_summand(variable, 1, indices_of_variable=indices[0])
         eq.add_summand(variable, -1, indices_of_variable=indices[1])
 
         # Korrektur: (bisher nur für Binärvariablen:)
         if variable.is_binary and self.aggregation_parameters.percentage_of_period_freedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = create_variable(f'Korr1_{variable.label}', self, length, system_model, is_binary=True)
-            var_K0 = create_variable(f'Korr0_{variable.label}', self, length, system_model, is_binary=True)
+            var_K1 = create_variable(f'Korr1_{variable.label}', self, length, is_binary=True)
+            var_K0 = create_variable(f'Korr0_{variable.label}', self, length, is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
@@ -404,14 +404,14 @@ class AggregationModel(ElementModel):
 
             # interlock var_K1 and var_K2:
             # eq: var_K0(t)+var_K1(t) <= 1.1
-            eq_lock = create_equation(f'lock_K0andK1_{variable.label}', self, system_model, eq_type='ineq')
+            eq_lock = create_equation(f'lock_K0andK1_{variable.label}', self, eq_type='ineq')
             eq_lock.add_summand(var_K0, 1)
             eq_lock.add_summand(var_K1, 1)
             eq_lock.add_constant(1.1)
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
-            eq_max = create_equation(f'Nr_of_Corrections_{variable.label}', self, system_model, eq_type='ineq')
+            eq_max = create_equation(f'Nr_of_Corrections_{variable.label}', self, eq_type='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
             eq_max.add_constant(round(self.aggregation_parameters.percentage_of_period_freedom / 100 * var_K1.length))  # Maximum
