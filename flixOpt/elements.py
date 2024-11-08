@@ -5,9 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import textwrap
-import inspect
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional, Dict
 import logging
 
 import numpy as np
@@ -229,6 +227,11 @@ class Flow(Element):
             self.on_off_parameters.transform_data(self)
         if isinstance(self.size, InvestParameters):
             self.size.transform_data()
+
+    def infos(self) -> Dict:
+        infos = super().infos()
+        infos['is_input_in_component'] = self.is_input_in_comp
+        return infos
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
