@@ -22,6 +22,7 @@ from .elements import Component
 from .components import Storage
 from .features import InvestmentModel
 from .solvers import Solver
+from .utils import convert_arrays_to_lists
 
 
 logger = logging.getLogger('flixOpt')
@@ -52,7 +53,7 @@ class Calculation:
         self.time_indices = time_indices
 
         self.system_model: Optional[SystemModel] = None
-        self.durations = {'modeling': 0.0, 'solving': 0.0}  # Dauer der einzelnen Dinge
+        self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}  # Dauer der einzelnen Dinge
 
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
@@ -75,14 +76,15 @@ class Calculation:
             path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
 
             self._paths["log"] = path / f'{self.name}_solver.log'
-            self._paths["data"] = path / f'{self.name}_data.pickle'
+            self._paths["data"] = path / f'{self.name}_data.json'
             self._paths["info"] = path / f'{self.name}_info.yaml'
 
     def _save_solve_infos(self):
+        t_start = timeit.default_timer()
         import yaml
-        import pickle
-        with open(self._paths['data'], 'wb') as f:
-            pickle.dump(self.results(), f, protocol=pickle.HIGHEST_PROTOCOL)
+        import json
+        with open(self._paths['data'], 'w') as f:
+            json.dump(convert_arrays_to_lists(self.results()), f, indent=4)
 
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {'Calculation': self.infos,
@@ -95,6 +97,7 @@ class Calculation:
         with open(self._paths['info'], 'w', encoding='utf-8') as f:
             yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
+        self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
         message = f' Saved Calculation: {self.name} '
         logger.info(f'{"":#^80}\n'
                     f'{message:#^80}\n'
@@ -331,7 +334,9 @@ class SegmentedCalculation(Calculation):
 
         self._reset_start_values()
 
-        self.durations = {calculation.name: calculation.durations for calculation in self.sub_calculations}
+        for calc in self.sub_calculations:
+            for key, value in calc.durations.items():
+                self.durations[key] += value
 
     def results(self,
                 combined_arrays: bool = False,

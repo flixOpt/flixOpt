@@ -90,3 +90,14 @@ def label_is_valid(label: str) -> bool:
     if label.startswith('_') or label.endswith('_') or '__' in label:
         return False
     return True
+
+
+def convert_arrays_to_lists(d: dict) -> dict:
+    """Recursively converts all numpy arrays in a nested dictionary to lists. Does not alter the original dictionary."""
+    d_copy = d.copy()  # Make a copy of the dictionary to avoid modifying in-place
+    for key, value in d_copy.items():
+        if isinstance(value, np.ndarray):
+            d_copy[key] = value.tolist()
+        elif isinstance(value, dict):
+            d_copy[key] = convert_arrays_to_lists(value)
+    return d_copy
