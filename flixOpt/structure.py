@@ -540,8 +540,8 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, 
             key_str = k.label if hasattr(k, 'label') else str(k)
             if isinstance(v, dict):
                 v_rep = format_dict(v)  # Recursively format nested dictionaries
-            elif isinstance(v, Element):
-                v_rep = get_object_infos_as_dict(v)
+            elif isinstance(v, (Element, InvestParameters, OnOffParameters)):
+                v_rep = value.infos()
             elif isinstance(v, bool):
                 v_rep = v
             elif isinstance(v, (int, float, TimeSeries, np.ndarray)):
@@ -558,7 +558,7 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, 
     init_params = sorted(init_signature.parameters.items(), key=lambda x: (x[0].lower() != 'label', x[0].lower()))
 
     # Build a dictionary of attribute=value pairs, excluding defaults
-    details = {}
+    details = {'class': ':'.join([cls.__name__ for cls in obj.__class__.__mro__])}
     for name, param in init_params:
         if name == 'self':
             continue
@@ -579,7 +579,7 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, 
             elif isinstance(value, (int, float, TimeSeries, np.ndarray)):
                 details[name] = to_native_types(value)
             elif isinstance(value, (Element, InvestParameters, OnOffParameters)):
-                details[name] = get_object_infos_as_dict(value)
+                details[name] = value.infos()
             else:  # Convert unexpected types as str
                 details[name] = str(value)
 

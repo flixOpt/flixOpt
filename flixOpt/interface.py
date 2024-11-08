@@ -8,7 +8,7 @@ import logging
 from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
 from .core import Numeric, Skalar, Numeric_TS
-from .structure import get_object_infos_as_str
+from .structure import get_object_infos_as_str, get_object_infos_as_dict
 if TYPE_CHECKING:
     from .structure import Element
     from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
@@ -80,6 +80,9 @@ class InvestParameters:
         self.fix_effects = as_effect_dict(self.fix_effects)
         self.divest_effects = as_effect_dict(self.divest_effects)
         self.specific_effects = as_effect_dict(self.specific_effects)
+
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
 
     @property
     def minimum_size(self):
@@ -155,6 +158,9 @@ class OnOffParameters:
         self.consecutive_on_hours_max = _create_time_series('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
         self.consecutive_off_hours_min = _create_time_series('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
         self.consecutive_off_hours_max = _create_time_series('consecutive_off_hours_max', self.consecutive_off_hours_max, owner)
+
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
 
     def __str__(self):
         return get_object_infos_as_str(self)

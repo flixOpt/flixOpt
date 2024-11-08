@@ -100,9 +100,9 @@ class FlowSystem:
         return nodes, edges
 
     def infos(self):
-        infos = {'Components': {comp.label: get_object_infos_as_dict(comp) for comp in
+        infos = {'Components': {comp.label: comp.infos() for comp in
                                 sorted(self.components, key=lambda component: component.label.upper())},
-                 'Effects': {effect.label: get_object_infos_as_dict(effect) for effect in
+                 'Effects': {effect.label: effect.infos() for effect in
                              sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper())}}
         return infos
 
