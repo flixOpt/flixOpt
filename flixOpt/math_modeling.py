@@ -29,7 +29,6 @@ class Variable:
     def __init__(self,
                  label: str,
                  length: int,
-                 math_model: 'MathModel',
                  label_short: Optional[str] = None,
                  is_binary: bool = False,
                  fixed_value: Optional[Numeric] = None,
@@ -44,7 +43,6 @@ class Variable:
         self.label = label
         self.label_short = label_short or label
         self.length = length
-        self.math_model = math_model
         self.is_binary = is_binary
         self.fixed_value = fixed_value
         self.lower_bound = lower_bound
@@ -89,7 +87,6 @@ class VariableTS(Variable):
     def __init__(self,
                  label: str,
                  length: int,
-                 math_model: 'MathModel',
                  label_short: Optional[str] = None,
                  is_binary: bool = False,
                  fixed_value: Optional[Numeric] = None,
@@ -97,7 +94,7 @@ class VariableTS(Variable):
                  upper_bound: Optional[Numeric] = None,
                  previous_values: Optional[Numeric] = None):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        super().__init__(label, length, math_model, label_short, is_binary=is_binary, fixed_value=fixed_value,
+        super().__init__(label, length, label_short, is_binary=is_binary, fixed_value=fixed_value,
                          lower_bound=lower_bound, upper_bound=upper_bound)
         self.previous_values = previous_values
 
@@ -386,7 +383,7 @@ class MathModel:
                 f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
                 f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
 
-    def to_math_model(self) -> None:
+    def translate_to_modeling_language(self) -> None:
         t_start = timeit.default_timer()
         if self.modeling_language == 'pyomo':
             self.model = PyomoModel()

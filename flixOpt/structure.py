@@ -392,8 +392,7 @@ def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]
         return time_series
 
 
-def create_equation(label: str, element_model: ElementModel, system_model: SystemModel,
-                    eq_type: Literal['eq', 'ineq'] = 'eq') -> Equation:
+def create_equation(label: str, element_model: ElementModel, eq_type: Literal['eq', 'ineq'] = 'eq') -> Equation:
     """ Creates an Equation and adds it to the model of the Element """
     eq = Equation(f'{element_model.label_full}_{label}', label, eq_type)
     element_model.add_equations(eq)
@@ -402,24 +401,21 @@ def create_equation(label: str, element_model: ElementModel, system_model: Syste
 
 def create_variable(label: str,
                     element_model: ElementModel,
-                    length: int,
-                    system_model: SystemModel,
-                    is_binary: bool = False,
-                    value: Optional[Numeric] = None,
+                    length: int, is_binary: bool = False,
+                    fixed_value: Optional[Numeric] = None,
                     lower_bound: Optional[Numeric] = None,
                     upper_bound: Optional[Numeric] = None,
                     previous_values: Optional[Numeric] = None,
-                    avoid_use_of_variable_ts: bool = False
-                    ) -> VariableTS:
+                    avoid_use_of_variable_ts: bool = False) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
     if length > 1 and not avoid_use_of_variable_ts:
-        var = VariableTS(variable_label, length, system_model, label,
-                         is_binary, value, lower_bound, upper_bound, previous_values)
+        var = VariableTS(variable_label, length, label,
+                         is_binary, fixed_value, lower_bound, upper_bound, previous_values)
         logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
     else:
-        var = Variable(variable_label, length, system_model, label,
-                       is_binary, value, lower_bound, upper_bound)
+        var = Variable(variable_label, length, label,
+                       is_binary, fixed_value, lower_bound, upper_bound)
         logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var
