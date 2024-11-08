@@ -280,7 +280,7 @@ class FlowModel(ElementModel):
                 upper_bound = self.element.relative_maximum.active_data * self.element.size
 
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
-        self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps, value=fixed_flow_rate,
+        self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps, fixed_value=fixed_flow_rate,
                                          lower_bound=lower_bound, upper_bound=upper_bound,
                                          previous_values=self.element.previous_flow_rate)
 

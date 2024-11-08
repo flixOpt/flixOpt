@@ -399,19 +399,23 @@ def create_equation(label: str, element_model: ElementModel, eq_type: Literal['e
     return eq
 
 
-def create_variable(label: str, element_model: ElementModel, length: int, is_binary: bool = False,
-                    value: Optional[Numeric] = None, lower_bound: Optional[Numeric] = None,
-                    upper_bound: Optional[Numeric] = None, previous_values: Optional[Numeric] = None,
+def create_variable(label: str,
+                    element_model: ElementModel,
+                    length: int, is_binary: bool = False,
+                    fixed_value: Optional[Numeric] = None,
+                    lower_bound: Optional[Numeric] = None,
+                    upper_bound: Optional[Numeric] = None,
+                    previous_values: Optional[Numeric] = None,
                     avoid_use_of_variable_ts: bool = False) -> VariableTS:
     """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
     if length > 1 and not avoid_use_of_variable_ts:
         var = VariableTS(variable_label, length, label,
-                         is_binary, value, lower_bound, upper_bound, previous_values)
+                         is_binary, fixed_value, lower_bound, upper_bound, previous_values)
         logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
     else:
         var = Variable(variable_label, length, label,
-                       is_binary, value, lower_bound, upper_bound)
+                       is_binary, fixed_value, lower_bound, upper_bound)
         logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var
