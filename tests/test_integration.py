@@ -16,7 +16,7 @@ class BaseTest(unittest.TestCase):
         setup_logging("DEBUG")
 
     def get_solver(self):
-        return solvers.HighsSolver(mip_gap=0.001, time_limit_seconds=3600, solver_output_to_console=False)
+        return solvers.HighsSolver(mip_gap=0.0001, time_limit_seconds=3600, solver_output_to_console=False)
 
     def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.011): # error_range etwas höher als mip_gap, weil unterschiedl. Bezugswerte
         '''
