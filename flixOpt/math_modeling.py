@@ -77,7 +77,7 @@ class Variable:
         return description
 
     def reset_result(self):
-        self._result = None
+        self.result = None
 
 
 class VariableTS(Variable):
