@@ -386,7 +386,7 @@ class MathModel:
                 f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
                 f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
 
-    def to_math_model(self) -> None:
+    def translate_to_modeling_language(self) -> None:
         t_start = timeit.default_timer()
         if self.modeling_language == 'pyomo':
             self.model = PyomoModel()

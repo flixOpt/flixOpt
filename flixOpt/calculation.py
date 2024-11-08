@@ -129,7 +129,7 @@ class FullCalculation(Calculation):
 
         self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         self.system_model.do_modeling()
-        self.system_model.to_math_model()
+        self.system_model.translate_to_modeling_language()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
@@ -240,7 +240,7 @@ class AggregatedCalculation(Calculation):
         self.system_model.other_models.append(aggregation_model)
         aggregation_model.do_modeling(self.system_model)
 
-        self.system_model.to_math_model()
+        self.system_model.translate_to_modeling_language()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
