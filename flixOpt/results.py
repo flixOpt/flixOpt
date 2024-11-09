@@ -68,6 +68,7 @@ class CalculationResults:
             self.effect_results[res.label] = res
 
     def _construct_bus_results(self):
+        """ This has to be called afte _construct_component_results(), as its"""
         bus_results = self.results['Buses']
         bus_infos = self.infos['FlowSystem']['Buses']
         assert bus_results.keys() == bus_infos.keys(), \
@@ -75,10 +76,10 @@ class CalculationResults:
 
         for key in bus_results.keys():
             infos, results = bus_infos[key], bus_results[key]
-            res = BusResults(infos, results)
+            inputs = [flow for flow in self.flow_results().values() if not flow.is_input_in_component]
+            outputs = [flow for flow in self.flow_results().values() if flow.is_input_in_component]
+            res = BusResults(infos, results, inputs, outputs)
             self.bus_results[res.label] = res
-            res.inputs.extend([flow for flow in self.flow_results().values() if not flow.is_input_in_component])
-            res.outputs.extend([flow for flow in self.flow_results().values() if flow.is_input_in_component])
 
     def flow_results(self) -> Dict[str, 'FlowResults']:
         return {flow.label_full: flow
@@ -92,6 +93,7 @@ class FlowResults(ElementResults):
         self.is_input_in_component = self._infos['is_input_in_component']
         self.label_of_component = label_of_component
         self.label_full = f'{label_of_component}__{self.label}'
+        self.variables = self._data
 
 
 class ComponentResults(ElementResults):
@@ -101,22 +103,25 @@ class ComponentResults(ElementResults):
         inputs, outputs = self._create_flow_results()
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
+        self.variables = {key: val for key, val in self._data.items() if key not in self.inputs + self.outputs}
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
         flow_infos = {key: value for key, value in self._infos.items() if
                       isinstance(value, dict) and 'Flow' in value.get('class', '')}
         flow_results = {flow_info['label']: self._data[flow_info['label']] for flow_info in flow_infos.values()}
-        flows = [FlowResults(flow_info, flow_results, self.label) for flow_info, flow_result in zip(flow_infos.values(), flow_results.values())]
+        flows = [FlowResults(flow_info, flow_result, self.label)
+                 for flow_info, flow_result in zip(flow_infos.values(), flow_results.values())]
         inputs = [flow for flow in flows if flow.is_input_in_component]
         outputs = [flow for flow in flows if not flow.is_input_in_component]
         return inputs, outputs
 
 
 class BusResults(ElementResults):
-    def __init__(self, infos: Dict, data: Dict):
+    def __init__(self, infos: Dict, data: Dict, inputs, outputs):
         super().__init__(infos, data)
-        self.inputs = []
-        self.outputs = []
+        self.inputs = inputs
+        self.outputs = outputs
+        self.variables = {key: val for key, val in self._data.items() if key not in self.inputs + self.outputs}
 
 
 class EffectResults(ElementResults):
