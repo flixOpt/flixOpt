@@ -77,6 +77,13 @@ class CalculationResults:
             infos, results = bus_infos[key], bus_results[key]
             res = BusResults(infos, results)
             self.bus_results[res.label] = res
+            res.inputs.extend([flow for flow in self.flow_results().values() if not flow.is_input_in_component])
+            res.outputs.extend([flow for flow in self.flow_results().values() if flow.is_input_in_component])
+
+    def flow_results(self) -> Dict[str, 'FlowResults']:
+        return {flow.label_full: flow
+                for comp in self.component_results.values()
+                for flow in comp.inputs + comp.outputs}
 
 
 class FlowResults(ElementResults):
@@ -106,7 +113,10 @@ class ComponentResults(ElementResults):
 
 
 class BusResults(ElementResults):
-    pass
+    def __init__(self, infos: Dict, data: Dict):
+        super().__init__(infos, data)
+        self.inputs = []
+        self.outputs = []
 
 
 class EffectResults(ElementResults):
