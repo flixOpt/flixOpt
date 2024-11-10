@@ -245,7 +245,7 @@ def heat_map_matplotlib(data: pd.DataFrame,
     ax.set_xticks(np.arange(len(data.columns)) + 0.5)
     ax.set_xticklabels(data.columns, ha='center')
     ax.set_yticks(np.arange(len(data.index)) + 0.5)
-    ax.set_yticklabels(data.index[::-1], va='center')
+    ax.set_yticklabels(data.index, va='center')
 
     # Add labels to the axes
     ax.set_xlabel("Period", ha='center')
