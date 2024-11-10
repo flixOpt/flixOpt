@@ -216,7 +216,6 @@ def with_matplotlib(data: pd.DataFrame,
 
     # Aesthetics
     ax.set_xlabel('Time in h', fontsize=14)
-    ax.set_ylabel('Values', fontsize=14)
     ax.grid(color='lightgrey', linestyle='-', linewidth=0.5)
     ax.legend(
         loc='upper center',  # Place legend at the bottom center
