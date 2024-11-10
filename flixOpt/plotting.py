@@ -14,21 +14,53 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 
-import plotly
-
 logger = logging.getLogger('flixOpt')
 
 
 def with_plotly(data: pd.DataFrame,
                 mode: Literal['bar', 'line'] = 'bar',
-                colorscale: str = 'viridis',
+                colors: Union[List[str], str] = 'viridis',
                 fig: Optional[go.Figure] = None) -> go.Figure:
     """
-    Plot a DataFrame with plotly. Optionally, provide a custom color sequence of px.colors. ...
-    DataFrame is expected to have a time stamp as the index
+    Plot a DataFrame with Plotly, using either stacked bars or stepped lines.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        A DataFrame containing the data to plot, where the index represents
+        time (e.g., hours), and each column represents a separate data series.
+    mode : {'bar', 'line'}, default='bar'
+        The plotting mode. Use 'bar' for stacked bar charts or 'line' for
+        stepped lines.
+    colors : List[str], str, default='viridis'
+        A List of colors (as str) or a name of a colorscale (e.g., 'viridis', 'plasma') to use for
+        coloring the data series.
+    fig : go.Figure, optional
+        A Plotly figure object to plot on. If not provided, a new figure
+        will be created.
+
+    Returns
+    -------
+    go.Figure
+        A Plotly figure object containing the generated plot.
+
+    Notes
+    -----
+    - If `mode` is 'bar', bars are stacked for each data series.
+    - If `mode` is 'line', a stepped line is drawn for each data series.
+    - The legend is positioned below the plot for a cleaner layout when many
+      data series are present.
+
+    Examples
+    --------
+    >>> fig = with_plotly(data, mode='bar', colorscale='plasma')
+    >>> fig.show()
     """
-    colorscale = px.colors.get_colorscale(colorscale)
-    colors = px.colors.sample_colorscale(colorscale, [i / (len(data.columns) - 1) for i in range(len(data.columns))])
+    if isinstance(colors, str):
+        colorscale = px.colors.get_colorscale(colors)
+        colors = px.colors.sample_colorscale(colorscale, [i / (len(data.columns) - 1) for i in range(len(data.columns))])
+    assert len(colors) == len(data.columns), (f'The number of colors does not match the provided data columns. '
+                                              f'{len(colors)=}; {len(colors)=}')
     fig = fig if fig is not None else go.Figure()
 
     if mode == 'bar':
@@ -87,15 +119,57 @@ def with_plotly(data: pd.DataFrame,
 
 def with_matplotlib(data: pd.DataFrame,
                     mode: Literal['bar', 'line'] = 'bar',
-                    colorscale: str = 'viridis',
-                    figsize: Tuple[int, int] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
+                    colors: Union[List[str], str] = 'viridis',
+                    figsize: Tuple[int, int] = (12, 6),
+                    fig: Optional[plt.Figure] = None,
+                    ax: Optional[plt.Axes] = None) -> Tuple[plt.Figure, plt.Axes]:
     """
-    Plot a DataFrame with Matplotlib using stacked bars or lines.
-    Optionally provide a color scale name (e.g., 'viridis') for Matplotlib colormap.
+    Plot a DataFrame with Matplotlib using stacked bars or stepped lines.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        A DataFrame containing the data to plot. The index should represent
+        time (e.g., hours), and each column represents a separate data series.
+    mode : {'bar', 'line'}, default='bar'
+        Plotting mode. Use 'bar' for stacked bar charts or 'line' for stepped lines.
+    colors : List[str], str, default='viridis'
+        A List of colors (as str) or a name of a colorscale (e.g., 'viridis', 'plasma') to use for
+        coloring the data series.
+    figsize: Tuple[int, int], optional
+        Specify the size of the figure
+    fig : plt.Figure, optional
+        A Matplotlib figure object to plot on. If not provided, a new figure
+        will be created.
+    ax : plt.Axes, optional
+        A Matplotlib axes object to plot on. If not provided, a new axes
+        will be created.
+
+    Returns
+    -------
+    Tuple[plt.Figure, plt.Axes]
+        A tuple containing the Matplotlib figure and axes objects used for the plot.
+
+    Notes
+    -----
+    - If `mode` is 'bar', bars are stacked for both positive and negative values.
+      Negative values are stacked separately without extra labels in the legend.
+    - If `mode` is 'line', stepped lines are drawn for each data series.
+    - The legend is placed below the plot to accommodate multiple data series.
+
+    Examples
+    --------
+    >>> fig, ax = with_matplotlib(data, mode='bar', colorscale='plasma')
+    >>> plt.show()
     """
-    fig, ax = plt.subplots(figsize=figsize)
-    cmap = plt.get_cmap(colorscale, len(data.columns))
-    colors = [cmap(i) for i in range(len(data.columns))]
+    if fig is None or ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+
+    if isinstance(colors, str):
+        cmap = plt.get_cmap(colors, len(data.columns))
+        colors = [cmap(i) for i in range(len(data.columns))]
+    assert len(colors) == len(data.columns), (f'The number of colors does not match the provided data columns. '
+                                              f'{len(colors)=}; {len(colors)=}')
 
     if mode == 'bar':
         cumulative_positive = np.zeros(len(data))
