@@ -98,20 +98,35 @@ def with_matplotlib(data: pd.DataFrame,
     colors = [cmap(i) for i in range(len(data.columns))]
 
     if mode == 'bar':
-        cumulative = np.zeros(len(data))
+        cumulative_positive = np.zeros(len(data))
+        cumulative_negative = np.zeros(len(data))
         width = data.index.to_series().diff().dropna().min()  # Minimum time difference
 
         for i, column in enumerate(data.columns):
+            positive_values = np.clip(data[column], 0, None)  # Keep only positive values
+            negative_values = np.clip(data[column], None, 0)  # Keep only negative values
+            # Plot positive bars
             ax.bar(
                 data.index,
-                data[column],
-                bottom=cumulative,
+                positive_values,
+                bottom=cumulative_positive,
                 color=colors[i],
                 label=column,
                 width=width,
                 align='edge'
             )
-            cumulative += data[column].values
+            cumulative_positive += positive_values.values
+            # Plot negative bars
+            ax.bar(
+                data.index,
+                negative_values,
+                bottom=cumulative_negative,
+                color=colors[i],
+                label="",  # No label for negative bars
+                width=width,
+                align='edge'
+            )
+            cumulative_negative += negative_values.values
 
     elif mode == 'line':
         for i, column in enumerate(data.columns):
