@@ -297,92 +297,51 @@ def heat_map_plotly(data: pd.DataFrame,
     return fig
 
 
-def convert_for_heat_map(data: pd.DataFrame,
-                         period: Literal['month', 'day', 'hour'],
-                         steps: Literal['day', 'weekday', 'hour', 'minute']) -> pd.DataFrame:
+def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarray:
     """
-    Converts a DataFrame with a single column and datetime index to a format suitable for plotting a heatmap.
+    Reshapes a 1D numpy array into a 2D array suitable for plotting as a colormap.
+
+    The reshaped array will have the number of rows corresponding to the steps per column
+    (e.g., 24 hours per day) and columns representing time periods (e.g., days or months).
 
     Parameters
     ----------
-    data : pd.DataFrame
-        Input DataFrame with a datetime index and a single column of data to be visualized.
-    period : {'month', 'day', 'hour'}
-        The time period to group the data by, e.g., 'month', 'day', or 'hour'. Will be the x-axis
-    steps : {'day', 'weekday, 'hour', 'minute'}
-        The granularity within each period, such as 'day', 'hour', or 'minute'. Will be the yaxis
+    data_1d : np.ndarray
+        A 1D numpy array with the data to reshape.
+
+    nr_of_steps_per_column : int
+        The number of steps (rows) per column in the resulting 2D array. For example,
+        this could be 24 (for hours) or 31 (for days in a month).
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame reshaped for heatmap plotting, with each period (column) containing values for each time step.
+    np.ndarray
+        The reshaped 2D array. Each internal array corresponds to one column, with the specified number of steps.
+        Each column might represents a time period (e.g., day, month, etc.).
     """
-    df = data.copy()
-    resample_freqs = {'day': 'd', 'weekday': 'w', 'hour': 'h', 'minute': 'min'}
-    df = regularize_time_intervals(df, resample_freqs[steps])
 
-    # Define the period grouping
-    if period == 'month':
-        df['Period'] = df.index.month
-        df['Step'] = df.index.day
-        steps_per_period = 31
-    elif period == 'day':
-        df['Period'] = df.index.day
-        df['Step'] = df.index.hour
-        steps_per_period = 24
-    elif period == 'hour':
-        df['Period'] = df.index.hour
-        df['Step'] = df.index.minute
-        steps_per_period = 60
-    else:
-        raise ValueError("Period must be one of 'month', 'day', or 'hour'")
+    # Step 1: Ensure the input is a 1D array.
+    if data_1d.ndim != 1:
+        raise ValueError("Input must be a 1D array")
 
-    # Pivot the data to create a 2D structure for the heatmap
-    heatmap_data = df.pivot(index='Step', columns='Period', values=data.columns[0])
+    # Step 2: Convert data to float type to allow NaN padding
+    if data_1d.dtype != np.float64:
+        data_1d = data_1d.astype(np.float64)
 
-    # Reindex to ensure each period has the full range of steps
-    heatmap_data = heatmap_data.reindex(range(steps_per_period), fill_value=np.nan)
+    # Step 3: Calculate the number of columns required
+    total_steps = len(data_1d)
+    cols = len(data_1d) // nr_of_steps_per_column  # Base number of columns
 
-    return heatmap_data
+    # If there's a remainder, add an extra column to hold the remaining values
+    if total_steps % nr_of_steps_per_column != 0:
+        cols += 1
 
+    # Step 4: Pad the 1D data to match the required number of rows and columns
+    padded_data = np.pad(data_1d, (0, cols * nr_of_steps_per_column - total_steps), mode='constant',
+                         constant_values=np.nan)
 
-def regularize_time_intervals(df: pd.DataFrame,
-                              freq: Union[Literal['d', 'h', 't', 'auto'], str] = 'auto') -> pd.DataFrame:
-    """
-    Converts a DataFrame with irregular time intervals to regular intervals by detecting the smallest interval.
-    It forwards the last known value until the next available value.
+    # Step 5: Reshape the padded data into a 2D array
+    data_2d = padded_data.reshape(cols, nr_of_steps_per_column)
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input DataFrame with a datetime index and values to be regularized.
-    freq: str or Literal['d', 'h', 't', 'auto']
-        Target frequency of the dataframe. If auto, detects the smallest interval.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame with regular time intervals, where missing values are forward-filled.
-    """
-    # Ensure the index is a DatetimeIndex
-    if not isinstance(df.index, pd.DatetimeIndex):
-        raise ValueError("DataFrame index must be a DatetimeIndex.")
-
-    if freq == 'auto':
-        time_deltas = df.index.to_series().diff().dropna()  # Calculate the time differences between timestamps
-        smallest_interval = time_deltas.min()  # Find the smallest interval (the minimum time delta)
-        if smallest_interval <= pd.Timedelta(minutes=1):
-            freq = 't'  # Minute-level frequency
-        elif smallest_interval <= pd.Timedelta(hours=1):
-            freq = 'h'  # Hour-level frequency
-        elif smallest_interval <= pd.Timedelta(days=1):
-            freq = 'd'  # Day-level frequency
-        else:
-            freq = 'd'  # Default to daily if the smallest interval is larger than a day
-
-    # Resample the DataFrame to the smallest detected frequency and forward fill the values
-    df_regular = df.resample(freq).ffill()
-
-    return df_regular
-
+    return data_2d.T
 
