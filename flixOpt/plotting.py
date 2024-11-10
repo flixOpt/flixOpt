@@ -299,7 +299,7 @@ def heat_map_plotly(data: pd.DataFrame,
 
 def convert_for_heat_map(data: pd.DataFrame,
                          period: Literal['month', 'day', 'hour'],
-                         steps: Literal['day', 'hour', 'minute']) -> pd.DataFrame:
+                         steps: Literal['day', 'weekday', 'hour', 'minute']) -> pd.DataFrame:
     """
     Converts a DataFrame with a single column and datetime index to a format suitable for plotting a heatmap.
 
@@ -308,9 +308,9 @@ def convert_for_heat_map(data: pd.DataFrame,
     data : pd.DataFrame
         Input DataFrame with a datetime index and a single column of data to be visualized.
     period : {'month', 'day', 'hour'}
-        The time period to group the data by, e.g., 'month', 'day', or 'hour'.
-    steps : {'day', 'hour', 'minute'}
-        The granularity within each period, such as 'day', 'hour', or 'minute'.
+        The time period to group the data by, e.g., 'month', 'day', or 'hour'. Will be the x-axis
+    steps : {'day', 'weekday, 'hour', 'minute'}
+        The granularity within each period, such as 'day', 'hour', or 'minute'. Will be the yaxis
 
     Returns
     -------
@@ -318,29 +318,24 @@ def convert_for_heat_map(data: pd.DataFrame,
         A DataFrame reshaped for heatmap plotting, with each period (column) containing values for each time step.
     """
     df = data.copy()
+    resample_freqs = {'day': 'd', 'weekday': 'w', 'hour': 'h', 'minute': 'min'}
+    df = regularize_time_intervals(df, resample_freqs[steps])
 
     # Define the period grouping
     if period == 'month':
         df['Period'] = df.index.month
+        df['Step'] = df.index.day
+        steps_per_period = 31
     elif period == 'day':
         df['Period'] = df.index.day
-    elif period == 'hour':
-        df['Period'] = df.index.hour
-    else:
-        raise ValueError("Period must be one of 'month', 'day', or 'hour'")
-
-    # Define the step grouping within each period
-    if steps == 'day':
-        df['Step'] = df.index.dayofyear
-        steps_per_period = 365
-    elif steps == 'hour':
         df['Step'] = df.index.hour
         steps_per_period = 24
-    elif steps == 'minute':
+    elif period == 'hour':
+        df['Period'] = df.index.hour
         df['Step'] = df.index.minute
         steps_per_period = 60
     else:
-        raise ValueError("Steps must be one of 'day', 'hour', or 'minute'")
+        raise ValueError("Period must be one of 'month', 'day', or 'hour'")
 
     # Pivot the data to create a 2D structure for the heatmap
     heatmap_data = df.pivot(index='Step', columns='Period', values=data.columns[0])
@@ -349,5 +344,45 @@ def convert_for_heat_map(data: pd.DataFrame,
     heatmap_data = heatmap_data.reindex(range(steps_per_period), fill_value=np.nan)
 
     return heatmap_data
+
+
+def regularize_time_intervals(df: pd.DataFrame,
+                              freq: Union[Literal['d', 'h', 't', 'auto'], str] = 'auto') -> pd.DataFrame:
+    """
+    Converts a DataFrame with irregular time intervals to regular intervals by detecting the smallest interval.
+    It forwards the last known value until the next available value.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with a datetime index and values to be regularized.
+    freq: str or Literal['d', 'h', 't', 'auto']
+        Target frequency of the dataframe. If auto, detects the smallest interval.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with regular time intervals, where missing values are forward-filled.
+    """
+    # Ensure the index is a DatetimeIndex
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("DataFrame index must be a DatetimeIndex.")
+
+    if freq == 'auto':
+        time_deltas = df.index.to_series().diff().dropna()  # Calculate the time differences between timestamps
+        smallest_interval = time_deltas.min()  # Find the smallest interval (the minimum time delta)
+        if smallest_interval <= pd.Timedelta(minutes=1):
+            freq = 't'  # Minute-level frequency
+        elif smallest_interval <= pd.Timedelta(hours=1):
+            freq = 'h'  # Hour-level frequency
+        elif smallest_interval <= pd.Timedelta(days=1):
+            freq = 'd'  # Day-level frequency
+        else:
+            freq = 'd'  # Default to daily if the smallest interval is larger than a day
+
+    # Resample the DataFrame to the smallest detected frequency and forward fill the values
+    df_regular = df.resample(freq).ffill()
+
+    return df_regular
 
 
