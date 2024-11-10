@@ -22,7 +22,7 @@ from .elements import Component
 from .components import Storage
 from .features import InvestmentModel
 from .solvers import Solver
-from .utils import convert_arrays_to_lists
+from . import utils as utils
 
 
 logger = logging.getLogger('flixOpt')
@@ -84,7 +84,9 @@ class Calculation:
         import yaml
         import json
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            json.dump(convert_arrays_to_lists(self.results()), f, indent=4)
+            results = utils.convert_arrays_to_lists(self.results())
+            results['Time'] = [date.isoformat() for date in results['Time']]
+            json.dump(results, f, indent=4)
 
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {'Calculation': self.infos,

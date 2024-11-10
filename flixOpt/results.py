@@ -9,8 +9,10 @@ import logging
 import json
 import pathlib
 from typing import Dict, List, Tuple
+import datetime
 
 import yaml
+import numpy as np
 
 logger = logging.getLogger('flixOpt')
 
@@ -40,6 +42,9 @@ class CalculationResults:
         self.effect_results: Dict[str, EffectResults] = {}
         self.bus_results: Dict[str, BusResults] = {}
 
+        self.time = np.array([datetime.datetime.fromisoformat(date) for date in self.results['Time']]).astype('datetime64')
+        self.time_intervals_in_hours = np.array(self.results['Time intervals in hours'])
+
         self._construct_component_results()
         self._construct_bus_results()
         self._construct_effect_results()
@@ -68,7 +73,7 @@ class CalculationResults:
             self.effect_results[res.label] = res
 
     def _construct_bus_results(self):
-        """ This has to be called afte _construct_component_results(), as its"""
+        """ This has to be called after _construct_component_results(), as its using the Flows from the Components"""
         bus_results = self.results['Buses']
         bus_infos = self.infos['FlowSystem']['Buses']
         assert bus_results.keys() == bus_infos.keys(), \

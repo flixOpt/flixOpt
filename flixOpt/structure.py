@@ -125,7 +125,9 @@ class SystemModel(MathModel):
                 'Effects': self.effect_collection_model.results(),
                 'Buses': {model.element.label: model.results() for model in self.bus_models},
                 'Others': {model.element.label: model.results() for model in self.other_models},
-                'Objective': self.result_of_objective
+                'Objective': self.result_of_objective,
+                'Time': self.time_series_with_end,
+                'Time intervals in hours': self.dt_in_hours
                 }
 
     @property
