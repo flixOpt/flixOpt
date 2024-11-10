@@ -228,39 +228,32 @@ def with_matplotlib(data: pd.DataFrame,
     return fig, ax
 
 
-def color_map_matplotlib(data: pd.DataFrame,
-                              nr_of_periods: int,
-                              time_steps_per_period: int,
-                              color_map: str = 'viridis',
-                              xlabel: str = '',
-                              ylabel: str = '',
-                              fontsize: float = 12,
-                              figsize: Tuple[float, float] = (12, 6),
-                              save_as: Optional[str] = None,
-                              fig=None,
-                              ax=None,
-                              **kwargs) -> Tuple[plt.Figure, plt.Axes]:
+def heat_map_matplotlib(data: pd.DataFrame,
+                        color_map: str = 'viridis',
+                        figsize: Tuple[float, float] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
     """ Plot values as a colormap. kwargs are passed to plt.subplots(**kwargs)"""
 
-    color_bar_min, color_bar_max = data.min(), data.max()
+    color_bar_min, color_bar_max = data.min().min(), data.max().max()
 
-    if not fig or not ax:
-        fig, ax = plt.subplots(1, 1, figsize=figsize, **kwargs)
+    # Create the heatmap using Matplotlib
+    fig, ax = plt.subplots(figsize=figsize)
+    cax = ax.pcolormesh(data.values, cmap='viridis')
+    ax.invert_yaxis()
 
-    ax.pcolormesh(
-        range(nr_of_periods + 1),
-        range(time_steps_per_period + 1),
-        data.index,
-        cmap=color_map,
-        vmin=color_bar_min,
-        vmax=color_bar_max,
-        **kwargs,
-    )
-    ax.axis([0, nr_of_periods, 0, time_steps_per_period])
-    ax.set_xlabel(xlabel, fontsize=fontsize)
-    ax.set_ylabel(ylabel, fontsize=fontsize)
-    ax.xaxis.set_label_position("bottom"), ax.xaxis.set_ticks_position("bottom")
+    # Set the ticks for the x and y axes
+    ax.set_xticks(np.arange(len(data.columns)) + 0.5)  # Place ticks at the center of each column
+    ax.set_xticklabels(data.columns, ha='center')  # Center x-tick labels and rotate them
+    ax.set_yticks(np.arange(len(data.index)) + 0.5)  # Place ticks at the center of each row
+    ax.set_yticklabels(data.index[::-1], va='center')  # Reverse the y-axis labels so they start from the top and center them
 
+    # Add labels for x and y axes
+    ax.set_xlabel("Period", fontsize=12, ha='center')
+    ax.set_ylabel("Step", fontsize=12, va='center')
+
+    # Move the x-axis labels to the top of the plot
+    ax.xaxis.set_label_position("top"), ax.xaxis.set_ticks_position("top")
+
+    # Add a colorbar
     sm1 = plt.cm.ScalarMappable(cmap=color_map, norm=plt.Normalize(vmin=color_bar_min, vmax=color_bar_max))
     sm1._A = []
     cb1 = fig.colorbar(sm1, ax=ax, pad=0.12, aspect=15, fraction=0.2, orientation='horizontal')
@@ -269,39 +262,24 @@ def color_map_matplotlib(data: pd.DataFrame,
     cb1.ax.xaxis.set_label_position('top')
 
     fig.tight_layout()
-
-    if save_as:
-        plt.savefig(save_as, dpi='300', bbox_inches="tight")
-
     return fig, ax
 
 
-def color_map_plotly(data: pd.DataFrame,
-                          nr_of_periods: int,
-                          time_steps_per_period: int,
-                          color_map: str = 'Viridis',
-                          xlabel: str = 'period',
-                          ylabel: str = 'period index',
-                          fontsize: float = 12,
-                          figsize: Tuple[float, float] = (1200, 600),
-                          save_as: Optional[str] = None,
-                          show: bool = True,
-                          **kwargs
-                          ) -> go.Figure:
+def heat_map_plotly(data: pd.DataFrame,
+                    color_map: str = 'viridis') -> go.Figure:
     """ Plot values as a color map using Plotly. kwargs are passed to `go.Heatmap`."""
 
     color_bar_min, color_bar_max = data.min().min(), data.max().max()  # Min and max values for color scaling
     # Define the figure
     fig = go.Figure(data=go.Heatmap(
         z=data.values,
-        x=list(range(nr_of_periods)),
-        y=list(range(time_steps_per_period)),
+        x=data.columns,
+        y=data.index,
         colorscale=color_map,
         zmin=color_bar_min,
         zmax=color_bar_max,
         colorbar=dict(
             title=dict(text='Color Bar Label', side='right'),
-            tickfont=dict(size=fontsize),
             orientation='h',
             xref='container',
             yref='container',
@@ -309,23 +287,68 @@ def color_map_plotly(data: pd.DataFrame,
             x=0.5,
             y=0.1
         ),
-        **kwargs
     ))
 
     # Set axis labels and style
-    # Set axis labels and style
     fig.update_layout(
-        xaxis=dict(title=xlabel, tickfont=dict(size=fontsize), side='top'),
-        yaxis=dict(title=ylabel, tickfont=dict(size=fontsize), autorange='reversed'),
-        width=figsize[0],
-        height=figsize[1],
+        xaxis=dict(title='Period', side='top'),
+        yaxis=dict(title='Step', autorange='reversed'),
     )
 
-    # Save as file if specified
-    if save_as:
-        fig.write_image(save_as)
-
-    if show:
-        plotly.offline.plot(fig)
-
     return fig
+
+
+def convert_for_heat_map(data: pd.DataFrame,
+                         period: Literal['month', 'day', 'hour'],
+                         steps: Literal['day', 'hour', 'minute']) -> pd.DataFrame:
+    """
+    Converts a DataFrame with a single column and datetime index to a format suitable for plotting a heatmap.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input DataFrame with a datetime index and a single column of data to be visualized.
+    period : {'month', 'day', 'hour'}
+        The time period to group the data by, e.g., 'month', 'day', or 'hour'.
+    steps : {'day', 'hour', 'minute'}
+        The granularity within each period, such as 'day', 'hour', or 'minute'.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame reshaped for heatmap plotting, with each period (column) containing values for each time step.
+    """
+    df = data.copy()
+
+    # Define the period grouping
+    if period == 'month':
+        df['Period'] = df.index.month
+    elif period == 'day':
+        df['Period'] = df.index.day
+    elif period == 'hour':
+        df['Period'] = df.index.hour
+    else:
+        raise ValueError("Period must be one of 'month', 'day', or 'hour'")
+
+    # Define the step grouping within each period
+    if steps == 'day':
+        df['Step'] = df.index.dayofyear
+        steps_per_period = 365
+    elif steps == 'hour':
+        df['Step'] = df.index.hour
+        steps_per_period = 24
+    elif steps == 'minute':
+        df['Step'] = df.index.minute
+        steps_per_period = 60
+    else:
+        raise ValueError("Steps must be one of 'day', 'hour', or 'minute'")
+
+    # Pivot the data to create a 2D structure for the heatmap
+    heatmap_data = df.pivot(index='Step', columns='Period', values=data.columns[0])
+
+    # Reindex to ensure each period has the full range of steps
+    heatmap_data = heatmap_data.reindex(range(steps_per_period), fill_value=np.nan)
+
+    return heatmap_data
+
+
