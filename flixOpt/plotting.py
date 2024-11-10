@@ -147,7 +147,7 @@ def with_matplotlib(data: pd.DataFrame,
     ax.legend(
         loc='upper center',  # Place legend at the bottom center
         bbox_to_anchor=(0.5, -0.15),  # Adjust the position to fit below plot
-        ncol=(len(data.columns) // 5) + 1,  # Adjust legend to have multiple columns if needed
+        ncol=5,
         frameon=False  # Remove box around legend
     )
     fig.tight_layout()
