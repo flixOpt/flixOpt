@@ -20,34 +20,31 @@ logger = logging.getLogger('flixOpt')
 
 
 def with_plotly(data: pd.DataFrame,
-                mode: Literal['area', 'line', 'bar'] = 'bar',
-                color_sequence=None) -> go.Figure:
+                mode: Literal['bar', 'line'] = 'bar',
+                colorscale: str = 'viridis',
+                fig: Optional[go.Figure] = None) -> go.Figure:
     """
     Plot a DataFrame with plotly. Optionally, provide a custom color sequence of px.colors. ...
     DataFrame is expected to have a time stamp as the index
     """
+    colorscale = px.colors.get_colorscale(colorscale)
+    colors = px.colors.sample_colorscale(colorscale, [i / (len(data.columns) - 1) for i in range(len(data.columns))])
+    fig = fig if fig is not None else go.Figure()
 
-    colors = color_sequence or px.colors.sequential.Turbo
-    fig = go.Figure()
-    if mode == 'area':
-        for i, column in enumerate(data.columns):
-            fig.add_trace(go.Scatter(
-                x=data.index,
-                y=data[column],
-                mode='lines',
-                stackgroup='positive' if data[column].min() >= -1e-5 else 'negative',  # This ensures stacking
-                name=column,
-                line=dict(color=colors[i % len(colors)])
-
-            ))
-    elif mode == 'bar':
+    if mode == 'bar':
         for i, column in enumerate(data.columns):
             fig.add_trace(go.Bar(
                 x=data.index,
                 y=data[column],
                 name=column,
-                marker=dict(color=colors[i % len(colors)])
+                marker=dict(color=colors[i])
             ))
+
+        fig.update_layout(
+            barmode='relative' if mode == 'bar' else None,
+            bargap=0,  # No space between bars
+            bargroupgap=0,  # No space between groups of bars
+        )
     elif mode == 'line':
         for i, column in enumerate(data.columns):
             fig.add_trace(go.Scatter(
@@ -55,14 +52,13 @@ def with_plotly(data: pd.DataFrame,
                 y=data[column],
                 mode='lines',
                 name=column,
-                line=dict(color=colors[i % len(colors)])
+                line=dict(shape='hv', color=colors[i]),
             ))
     else:
-        raise TypeError(f'mode must be either "area" or "bar" or "line"')
+        raise ValueError(f'mode must be either "bar" or "line"')
 
     # Update layout for better aesthetics
     fig.update_layout(
-        barmode='relative' if mode == 'bar' else None,
         yaxis=dict(
             showgrid=True,  # Enable grid lines on the y-axis
             gridcolor='lightgrey',  # Customize grid line color
@@ -76,68 +72,69 @@ def with_plotly(data: pd.DataFrame,
         ),
         plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
         paper_bgcolor='rgba(0,0,0,0)',  # Transparent paper background
-        font=dict(size=14)  # Increase font size for better readability
+        font=dict(size=14),  # Increase font size for better readability
+        legend=dict(
+            orientation="h",  # Horizontal legend
+            yanchor="bottom",
+            y=-0.3,  # Adjusts how far below the plot it appears
+            xanchor="center",
+            x=0.5,
+            title_text=None  # Removes legend title for a cleaner look
+        )
     )
     return fig
 
 
 def with_matplotlib(data: pd.DataFrame,
-                    mode: Literal['area', 'line', 'bar'] = 'bar',
-                    color_sequence: Optional[List[str]] = None,
-                    figsize: Tuple[int, int] = (10, 6),
-                    fig: Optional[plt.Figure] = None,
-                    ax: Optional[plt.Axes] = None) -> Tuple[plt.Figure, plt.Axes]:
+                    mode: Literal['bar', 'line'] = 'bar',
+                    colorscale: str = 'viridis',
+                    figsize: Tuple[int, int] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
     """
-    Plot a DataFrame with Matplotlib. Optionally, provide a custom color sequence.
-    DataFrame is expected to have a timestamp as the index.
+    Plot a DataFrame with Matplotlib using stacked bars or lines.
+    Optionally provide a color scale name (e.g., 'viridis') for Matplotlib colormap.
     """
+    fig, ax = plt.subplots(figsize=figsize)
+    cmap = plt.get_cmap(colorscale, len(data.columns))
+    colors = [cmap(i) for i in range(len(data.columns))]
 
-    # Default color sequence if none provided
-    color_sequence = color_sequence or plt.cm.viridis(np.linspace(0, 1, len(data.columns)))
+    if mode == 'bar':
+        cumulative = np.zeros(len(data))
+        width = data.index.to_series().diff().dropna().min()  # Minimum time difference
 
-    if not fig or not ax:
-        fig, ax = plt.subplots(figsize=figsize)
-
-    if mode == 'area':
-        # Stacked area plot
-        cumulated_data = data.clip(lower=0).cumsum(axis=1)
-        for i, column in enumerate(data.columns):
-            ax.fill_between(
-                data.index,
-                cumulated_data[column] - data[column],  # Bottom line for each layer
-                cumulated_data[column],  # Top line for each layer
-                label=column,
-                color=color_sequence[i % len(color_sequence)]
-            )
-    elif mode == 'bar':
-        # Stacked bar plot
-        bottom = np.zeros(len(data))
         for i, column in enumerate(data.columns):
             ax.bar(
                 data.index,
                 data[column],
-                bottom=bottom,
+                bottom=cumulative,
+                color=colors[i],
                 label=column,
-                color=color_sequence[i % len(color_sequence)]
+                width=width,
+                align='edge'
             )
-            bottom += data[column]
+            cumulative += data[column].values
+
     elif mode == 'line':
-        # Line plot
         for i, column in enumerate(data.columns):
-            ax.plot(
+            ax.step(
                 data.index,
                 data[column],
-                label=column,
-                color=color_sequence[i % len(color_sequence)]
+                where='post',
+                color=colors[i],
+                label=column
             )
     else:
-        raise ValueError("mode must be either 'area', 'bar', or 'line'")
+        raise ValueError(f"mode must be either 'bar' or 'line'")
 
-    # Customizing the plot aesthetics
+    # Aesthetics
     ax.set_xlabel('Time in h', fontsize=14)
     ax.set_ylabel('Values', fontsize=14)
     ax.grid(color='lightgrey', linestyle='-', linewidth=0.5)
-    ax.legend(loc='upper left')
+    ax.legend(
+        loc='upper center',  # Place legend at the bottom center
+        bbox_to_anchor=(0.5, -0.15),  # Adjust the position to fit below plot
+        ncol=(len(data.columns) // 5) + 1,  # Adjust legend to have multiple columns if needed
+        frameon=False  # Remove box around legend
+    )
     fig.tight_layout()
 
     return fig, ax
