@@ -231,35 +231,34 @@ def with_matplotlib(data: pd.DataFrame,
 def heat_map_matplotlib(data: pd.DataFrame,
                         color_map: str = 'viridis',
                         figsize: Tuple[float, float] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
-    """ Plot values as a colormap. kwargs are passed to plt.subplots(**kwargs)"""
+    """ Plot values as a colormap. """
 
+    # Get the min and max values for color normalization
     color_bar_min, color_bar_max = data.min().min(), data.max().max()
 
-    # Create the heatmap using Matplotlib
+    # Create the heatmap plot
     fig, ax = plt.subplots(figsize=figsize)
-    cax = ax.pcolormesh(data.values, cmap='viridis')
-    ax.invert_yaxis()
+    cax = ax.pcolormesh(data.values, cmap=color_map)
+    ax.invert_yaxis()  # Flip the y-axis to start at the top
 
-    # Set the ticks for the x and y axes
-    ax.set_xticks(np.arange(len(data.columns)) + 0.5)  # Place ticks at the center of each column
-    ax.set_xticklabels(data.columns, ha='center')  # Center x-tick labels and rotate them
-    ax.set_yticks(np.arange(len(data.index)) + 0.5)  # Place ticks at the center of each row
-    ax.set_yticklabels(data.index[::-1], va='center')  # Reverse the y-axis labels so they start from the top and center them
+    # Adjust ticks and labels for x and y axes
+    ax.set_xticks(np.arange(len(data.columns)) + 0.5)
+    ax.set_xticklabels(data.columns, ha='center')
+    ax.set_yticks(np.arange(len(data.index)) + 0.5)
+    ax.set_yticklabels(data.index[::-1], va='center')
 
-    # Add labels for x and y axes
-    ax.set_xlabel("Period", fontsize=12, ha='center')
-    ax.set_ylabel("Step", fontsize=12, va='center')
+    # Add labels to the axes
+    ax.set_xlabel("Period", ha='center')
+    ax.set_ylabel("Step", va='center')
 
-    # Move the x-axis labels to the top of the plot
-    ax.xaxis.set_label_position("top"), ax.xaxis.set_ticks_position("top")
+    # Position x-axis labels at the top
+    ax.xaxis.set_label_position("top")
+    ax.xaxis.set_ticks_position("top")
 
-    # Add a colorbar
+    # Add the colorbar
     sm1 = plt.cm.ScalarMappable(cmap=color_map, norm=plt.Normalize(vmin=color_bar_min, vmax=color_bar_max))
     sm1._A = []
     cb1 = fig.colorbar(sm1, ax=ax, pad=0.12, aspect=15, fraction=0.2, orientation='horizontal')
-    cb1.ax.tick_params(labelsize=12)
-    cb1.ax.set_xlabel('Color Bar Label')
-    cb1.ax.xaxis.set_label_position('top')
 
     fig.tight_layout()
     return fig, ax
