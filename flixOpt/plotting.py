@@ -58,7 +58,8 @@ def with_plotly(data: pd.DataFrame,
     """
     if isinstance(colors, str):
         colorscale = px.colors.get_colorscale(colors)
-        colors = px.colors.sample_colorscale(colorscale, [i / (len(data.columns) - 1) for i in range(len(data.columns))])
+        colors = px.colors.sample_colorscale(colorscale,
+                                             [i / (len(data.columns) - 1) for i in range(len(data.columns))])
     assert len(colors) == len(data.columns), (f'The number of colors does not match the provided data columns. '
                                               f'{len(colors)=}; {len(colors)=}')
     fig = fig if fig is not None else go.Figure()
@@ -344,4 +345,3 @@ def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarra
     data_2d = padded_data.reshape(cols, nr_of_steps_per_column)
 
     return data_2d.T
-
