@@ -55,11 +55,10 @@ class TestPlots(unittest.TestCase):
         data = self.get_sample_data(nr_of_columns=1, nr_of_periods=10, time_steps_per_period=24, only_pos_or_neg=False)
 
         # Convert data for heatmap plotting using 'day' as period and 'hour' steps
-        heatmap_data = plotting.convert_for_heat_map(data[['Region 1']], period='day', steps='hour')
-
+        heatmap_data = plotting.reshape_to_2d(data[['Region 1']].values.flatten(), 24)
         # Plotting heatmaps with Plotly and Matplotlib
-        plotly.offline.plot(plotting.heat_map_plotly(heatmap_data))
-        plotting.heat_map_matplotlib(heatmap_data)
+        plotly.offline.plot(plotting.heat_map_plotly(pd.DataFrame(heatmap_data)))
+        plotting.heat_map_matplotlib(pd.DataFrame(pd.DataFrame(heatmap_data)))
         plt.show()
 
 
