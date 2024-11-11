@@ -7,16 +7,14 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import numpy as np
-import datetime
 
 import flixOpt as fx
 
 # Creating Time Series Data
 heat_demand_per_h = np.array([30., 0., 90., 110, 110, 20, 20, 20, 20])
 power_prices = 1 / 1000 * np.array([80., 80., 80., 80, 80, 80, 80, 80, 80])
-time_series = (datetime.datetime(2020, 1, 1) +
-               np.arange(len(heat_demand_per_h)) * datetime.timedelta(hours=1))  # creating timeseries
-time_series = time_series.astype('datetime64')  # needed format for timeseries in flixOpt
+
+time_series = fx.create_datetime_array('2020-01-01', len(heat_demand_per_h))
 
 # define buses for the 3 used medias:
 Strom, Fernwaerme, Gas = fx.Bus(label='Strom'), fx.Bus(label='Fernwärme'), fx.Bus(label='Gas')  # balancing nodes
@@ -53,7 +51,7 @@ storage = fx.Storage(label='Storage',
                                                                 fixed_size=30,
                                                                 optional=False),
                      initial_charge_state=0,  # empty storage at first time step
-                     relative_maximum_charge_state=1 / 100 * np.array([80., 70., 80., 80, 80, 80, 80, 80, 80, 80]),
+                     relative_maximum_charge_state=1 / 100 * np.array([80, 70, 80, 80, 80, 80, 80, 80, 80, 80]),
                      eta_charge=0.9, eta_discharge=1,  # loading efficiency factor, unloading efficiency factor
                      relative_loss_per_hour=0.08,  # 8 %/h; 8 percent of storage loading level is lost every hour
                      prevent_simultaneous_charge_and_discharge=True,  # no parallel loading and unloading at one time
@@ -81,11 +79,27 @@ power_sink = fx.Sink(label='Einspeisung',
 flow_system = fx.FlowSystem(time_series=time_series)
 flow_system.add_elements(costs, CO2, boiler, storage, chp, heat_sink, gas_source, power_sink)
 
+flow_system.visualize_network()  # Get a visual representation of the flow system. Useful for validation.
+
 calculation = fx.FullCalculation(name='Sim1',  # name of calculation
                                  flow_system=flow_system,  # flow_system to calculate
                                  modeling_language='pyomo')  # optimization modeling language (only "pyomo" implemented, yet)
 calculation.do_modeling()  # Translating the Model to be solvable
 calculation.solve(fx.solvers.HighsSolver(), save_results=True)
 
-# # PostProcessing: ##
-#TODO: Adopt fx.results to new structure
+
+# Reloading results from file. Can be done at any time later
+results = fx.results.CalculationResults(calculation.name, 'results')
+
+# Plotting results
+results.plot_operation('Fernwärme', 'area')
+results.plot_operation('Fernwärme', 'bar')
+results.plot_operation('Fernwärme', 'line')
+results.plot_flow_rate('CHP__Q_th', 'line')
+results.plot_flow_rate('CHP__Q_th', 'heatmap')
+results.to_dataframe('Storage')
+print(results.all_results)
+
+
+
+
