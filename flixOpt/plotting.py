@@ -244,8 +244,31 @@ def heat_map_matplotlib(data: pd.DataFrame,
                         color_map: str = 'viridis',
                         figsize: Tuple[float, float] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
     """
-    Plots a Dataframe as a heat map. The columns of the Dataframe will be the x-axis.
-    The index will be on the yaxis. The values will be the displayed 'heat'
+    Plots a DataFrame as a heatmap using Matplotlib. The columns of the DataFrame will be displayed on the x-axis,
+    the index will be displayed on the y-axis, and the values will represent the 'heat' intensity in the plot.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        A DataFrame containing the data to be visualized. The index will be used for the y-axis, and columns will be used for the x-axis.
+        The values in the DataFrame will be represented as colors in the heatmap.
+    color_map : str, optional
+        The colormap to use for the heatmap. Default is 'viridis'. Matplotlib supports various colormaps like 'plasma', 'inferno', 'cividis', etc.
+    figsize : tuple of float, optional
+        The size of the figure to create. Default is (12, 6), which results in a width of 12 inches and a height of 6 inches.
+
+    Returns
+    -------
+    tuple of (plt.Figure, plt.Axes)
+        A tuple containing the Matplotlib `Figure` and `Axes` objects. The `Figure` contains the overall plot, while the `Axes` is the area
+        where the heatmap is drawn. These can be used for further customization or saving the plot to a file.
+
+    Notes
+    -----
+    - The y-axis is flipped so that the first row of the DataFrame is displayed at the top of the plot.
+    - The color scale is normalized based on the minimum and maximum values in the DataFrame.
+    - The x-axis labels (periods) are placed at the top of the plot.
+    - The colorbar is added horizontally at the bottom of the plot, with a label.
     """
 
     # Get the min and max values for color normalization
@@ -280,10 +303,33 @@ def heat_map_matplotlib(data: pd.DataFrame,
 
 
 def heat_map_plotly(data: pd.DataFrame,
-                    color_map: str = 'viridis') -> go.Figure:
+                    color_map: str = 'viridis',
+                    categorical_labels: bool = True) -> go.Figure:
     """
-    Plots a Dataframe as a heat map. The columns of the Dataframe will be the x-axis.
-    The index will be on the yaxis. The values will be the displayed 'heat'
+    Plots a DataFrame as a heatmap using Plotly. The columns of the DataFrame will be mapped to the x-axis,
+    and the index will be displayed on the y-axis. The values in the DataFrame will represent the 'heat' in the plot.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        A DataFrame with the data to be visualized. The index will be used for the y-axis, and columns will be used for the x-axis.
+        The values in the DataFrame will be represented as colors in the heatmap.
+    color_map : str, optional
+        The color scale to use for the heatmap. Default is 'viridis'. Plotly supports various color scales like 'Cividis', 'Inferno', etc.
+    categorical_labels : bool, optional
+        If True, the x and y axes are treated as categorical data (i.e., the index and columns will not be interpreted as continuous data).
+        Default is True. If False, the axes are treated as continuous, which may be useful for time series or numeric data.
+
+    Returns
+    -------
+    go.Figure
+        A Plotly figure object containing the heatmap. This can be further customized and saved
+        or displayed using `fig.show()`.
+
+    Notes
+    -----
+    The color bar is automatically scaled to the minimum and maximum values in the data.
+    The y-axis is reversed to display the first row at the top.
     """
 
     color_bar_min, color_bar_max = data.min().min(), data.max().max()  # Min and max values for color scaling
@@ -308,8 +354,8 @@ def heat_map_plotly(data: pd.DataFrame,
 
     # Set axis labels and style
     fig.update_layout(
-        xaxis=dict(title='Period', side='top', type='category'),
-        yaxis=dict(title='Step', autorange='reversed', type='category')
+        xaxis=dict(title='Period', side='top', type='category' if categorical_labels else None),
+        yaxis=dict(title='Step', autorange='reversed', type='category' if categorical_labels else None)
     )
 
     return fig
@@ -364,10 +410,10 @@ def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarra
     return data_2d.T
 
 
-def reshape_dataframe_to_heatmap(df: pd.DataFrame,
-                                 periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'],
-                                 steps_per_period: Literal['W', 'D', 'h', '15min', 'min'],
-                                 fill: Optional[Literal['ffill', 'bfill']] = None) -> pd.DataFrame:
+def heat_map_data_from_df(df: pd.DataFrame,
+                          periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'],
+                          steps_per_period: Literal['W', 'D', 'h', '15min', 'min'],
+                          fill: Optional[Literal['ffill', 'bfill']] = None) -> pd.DataFrame:
     """
     Reshapes a DataFrame with a DateTime index into a 2D array for heatmap plotting,
     based on a specified sample rate.
