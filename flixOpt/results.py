@@ -85,10 +85,10 @@ class CalculationResults:
         assert bus_results.keys() == bus_infos.keys(), \
             f'Missing Bus or mismatched keys: {bus_results.keys() ^ bus_infos.keys()}'
 
-        for key in bus_results.keys():
-            infos, results = bus_infos[key], bus_results[key]
-            inputs = [flow for flow in self.flow_results().values() if not flow.is_input_in_component]
-            outputs = [flow for flow in self.flow_results().values() if flow.is_input_in_component]
+        for bus_label in bus_results.keys():
+            infos, results = bus_infos[bus_label], bus_results[bus_label]
+            inputs = [flow for flow in self.flow_results().values() if bus_label==flow.bus_label and not flow.is_input_in_component]
+            outputs = [flow for flow in self.flow_results().values() if bus_label==flow.bus_label and flow.is_input_in_component]
             res = BusResults(infos, results, inputs, outputs)
             self.bus_results[res.label] = res
 
@@ -112,7 +112,7 @@ class CalculationResults:
         return pd.DataFrame(data={**inputs, **outputs}, index=self.time)
 
     def plot_operation(self, label: str,
-                       mode: Literal['bar', 'line'] = 'bar',
+                       mode: Literal['bar', 'line', 'area'] = 'bar',
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
                        show: bool = True):
         data = self.to_dataframe(label)
@@ -126,7 +126,8 @@ class FlowResults(ElementResults):
     def __init__(self, infos: Dict, data: Dict, label_of_component: str) -> None:
         super().__init__(infos, data)
         self.is_input_in_component = self._infos['is_input_in_component']
-        self.label_of_component = label_of_component
+        self.component_label = label_of_component
+        self.bus_label = self._infos['bus']['label']
         self.label_full = f'{label_of_component}__{self.label}'
         self.variables = self._data
 
