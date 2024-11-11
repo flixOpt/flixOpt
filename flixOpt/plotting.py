@@ -60,6 +60,7 @@ def with_plotly(data: pd.DataFrame,
     >>> fig = with_plotly(data, mode='bar', colorscale='plasma')
     >>> fig.show()
     """
+    assert mode in ['bar', 'line', 'stacked_line'], f"'mode' must be one of {['bar', 'line', 'stacked_line']}"
     if isinstance(colors, str):
         colorscale = px.colors.get_colorscale(colors)
         colors = px.colors.sample_colorscale(
@@ -136,8 +137,6 @@ def with_plotly(data: pd.DataFrame,
                 name=column,
                 line=dict(shape='hv', color=colors_stacked[column]),
             ))
-    else:
-        raise ValueError(f'mode must be either "bar" or "line"')
 
     # Update layout for better aesthetics
     fig.update_layout(
@@ -218,6 +217,8 @@ def with_matplotlib(data: pd.DataFrame,
     >>> fig, ax = with_matplotlib(data, mode='bar', colorscale='plasma')
     >>> plt.show()
     """
+    assert mode in ['bar', 'line'], f"'mode' must be one of {['bar', 'line']} for matplotlib"
+
     if fig is None or ax is None:
         fig, ax = plt.subplots(figsize=figsize)
 
@@ -267,8 +268,6 @@ def with_matplotlib(data: pd.DataFrame,
                 color=colors[i],
                 label=column
             )
-    else:
-        raise ValueError(f"mode must be either 'bar' or 'line'")
 
     # Aesthetics
     ax.set_xlabel('Time in h', fontsize=14)
@@ -520,6 +519,6 @@ def heat_map_data_from_df(df: pd.DataFrame,
         resampled_data['step'] = resampled_data['step'].apply(lambda x: x.replace('0_Sunday', '7_Sunday') if '0_Sunday' in x else x)
 
     # Pivot the table so periods are columns and steps are indices
-    df_pivoted = resampled_data.pivot(columns='period', index='step', values='value')
+    df_pivoted = resampled_data.pivot(columns='period', index='step', values=df.columns[0])
 
     return df_pivoted
