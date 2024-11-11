@@ -308,8 +308,8 @@ def heat_map_plotly(data: pd.DataFrame,
 
     # Set axis labels and style
     fig.update_layout(
-        xaxis=dict(title='Period', side='top'),
-        yaxis=dict(title='Step', autorange='reversed'),
+        xaxis=dict(title='Period', side='top', type='category'),
+        yaxis=dict(title='Step', autorange='reversed', type='category')
     )
 
     return fig
@@ -400,8 +400,8 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
         ('YS', 'h'): ('%Y', '%j %H:00'),
         ('MS', 'D'): ('%Y-%m', '%d'),  # day of month
         ('MS', 'h'): ('%Y-%m', '%d %H:00'),
-        ('W', 'D'): ('%Y-%W', '%A'),  # week and day of week
-        ('W', 'h'): ('%Y-%W', '%A %H:00'),
+        ('W', 'D'): ('%Y-w%W', '%w_%A'),  # week and day of week (with prefix for proper sorting)
+        ('W', 'h'): ('%Y-w%W', '%w_%A %H:00'),
         ('D', 'h'): ('%Y-%m-%d', '%H:00'),  # Day and hour
         ('D', '15min'): ('%Y-%m-%d', '%H:%MM'),  # Day and hour
         ('h', '15min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
@@ -423,6 +423,8 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
 
     resampled_data['period'] = resampled_data.index.strftime(period_format)
     resampled_data['step'] = resampled_data.index.strftime(step_format)
+    if '%w_%A' in step_format:  # SHift index of strings to ensure proper sorting
+        resampled_data['step'] = resampled_data['step'].apply(lambda x: x.replace('0_Sunday', '7_Sunday') if '0_Sunday' in x else x)
 
     # Pivot the table so periods are columns and steps are indices
     df_pivoted = resampled_data.pivot(columns='period', index='step', values='value')
