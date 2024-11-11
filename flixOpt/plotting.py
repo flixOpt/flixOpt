@@ -40,6 +40,8 @@ def with_plotly(data: pd.DataFrame,
     fig : go.Figure, optional
         A Plotly figure object to plot on. If not provided, a new figure
         will be created.
+    show: bool
+        Wether to show the figure after creation
 
     Returns
     -------
@@ -153,6 +155,8 @@ def with_matplotlib(data: pd.DataFrame,
     ax : plt.Axes, optional
         A Matplotlib axes object to plot on. If not provided, a new axes
         will be created.
+    show: bool
+        Wether to show the figure after creation
 
     Returns
     -------
