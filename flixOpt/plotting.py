@@ -392,27 +392,6 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
         A DataFrame suitable for heatmap plotting, with rows representing steps within each period
         and columns representing each period.
     """
-    # Ensure DataFrame is sorted by time index
-    df = df.sort_index()
-
-    # Resample based on the steps per period, filling any gaps with NaN
-    resampled_data = df.resample(steps_per_period).mean()
-
-    # Apply fill method if specified
-    if fill == 'ffill':
-        resampled_data = resampled_data.ffill()
-    elif fill == 'bfill':
-        resampled_data = resampled_data.bfill()
-
-    # Group data by the larger period (e.g., day, week)
-    grouped = resampled_data.groupby(pd.Grouper(freq=periods))
-
-    # Determine the number of steps per period based on the first group (assumes regular frequency within each period)
-    try:
-        first_period_key, first_period_data = next(iter(grouped))
-        steps_in_period = len(first_period_data)
-    except StopIteration:
-        raise ValueError("No data available for the selected period. Check date range or frequency settings.")
 
     # Define formats for different combinations of `periods` and `steps_per_period`
     formats = {
@@ -428,21 +407,24 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
         ('h', '15min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
         ('h', 'min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
     }
-
     # Select the format based on the `periods` and `steps_per_period` combination
     format_pair = (periods, steps_per_period)
-    period_format, step_format = formats.get(format_pair, (None, None))
+    assert format_pair in formats, f'{format_pair} is not a valid format. Choose from {list(formats.keys())}'
+    period_format, step_format = formats[format_pair]
 
-    # Generate period labels: use date formatting if available, otherwise numeric labels
-    period_labels = ([key.strftime(period_format) for key, _ in grouped] if period_format
-                     else list(range(len(grouped))))
+    df = df.sort_index()  # Ensure DataFrame is sorted by time index
 
-    # Generate step labels: use date formatting if available, otherwise numeric labels
-    step_labels = (longest_group.index.strftime(step_format) if step_format
-                   else list(range(steps_in_period)))
+    resampled_data = df.resample(steps_per_period).mean()  # Resample and fill any gaps with NaN
 
-    # Flatten data to 1D and reshape it
-    data_1d = resampled_data.values.flatten()
-    data_2d = reshape_to_2d(data_1d, steps_in_period)
+    if fill == 'ffill':  # Apply fill method if specified
+        resampled_data = resampled_data.ffill()
+    elif fill == 'bfill':
+        resampled_data = resampled_data.bfill()
 
-    return pd.DataFrame(data_2d, index=step_labels, columns=period_labels)
+    resampled_data['period'] = resampled_data.index.strftime(period_format)
+    resampled_data['step'] = resampled_data.index.strftime(step_format)
+
+    # Pivot the table so periods are columns and steps are indices
+    df_pivoted = resampled_data.pivot(columns='period', index='step', values='value')
+
+    return df_pivoted
