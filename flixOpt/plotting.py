@@ -74,7 +74,7 @@ def with_plotly(data: pd.DataFrame,
                 x=data.index,
                 y=data[column],
                 name=column,
-                marker=dict(color=colors[i])
+                marker=dict(color=colors[i]),
             ))
 
         fig.update_layout(
@@ -243,7 +243,10 @@ def with_matplotlib(data: pd.DataFrame,
 def heat_map_matplotlib(data: pd.DataFrame,
                         color_map: str = 'viridis',
                         figsize: Tuple[float, float] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
-    """ Plot values as a colormap. """
+    """
+    Plots a Dataframe as a heat map. The columns of the Dataframe will be the x-axis.
+    The index will be on the yaxis. The values will be the displayed 'heat'
+    """
 
     # Get the min and max values for color normalization
     color_bar_min, color_bar_max = data.min().min(), data.max().max()
@@ -278,7 +281,10 @@ def heat_map_matplotlib(data: pd.DataFrame,
 
 def heat_map_plotly(data: pd.DataFrame,
                     color_map: str = 'viridis') -> go.Figure:
-    """ Plot values as a color map using Plotly. kwargs are passed to `go.Heatmap`."""
+    """
+    Plots a Dataframe as a heat map. The columns of the Dataframe will be the x-axis.
+    The index will be on the yaxis. The values will be the displayed 'heat'
+    """
 
     color_bar_min, color_bar_max = data.min().min(), data.max().max()  # Min and max values for color scaling
     # Define the figure
@@ -356,3 +362,65 @@ def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarra
     data_2d = padded_data.reshape(cols, nr_of_steps_per_column)
 
     return data_2d.T
+
+
+def reshape_dataframe_to_heatmap(df: pd.DataFrame,
+                                 periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'],
+                                 steps_per_period: Literal['W', 'D', 'h', '15min', 'min'],
+                                 fill: Optional[Literal['ffill', 'bfill']] = None) -> pd.DataFrame:
+    """
+    Reshapes a DataFrame with a DateTime index into a 2D array for heatmap plotting,
+    based on a specified sample rate.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        A DataFrame with a DateTime index containing the data to reshape.
+    periods : str
+        The time interval of each period, such as 'H' (hourly), 'D' (daily), 'W' (weekly), etc.
+        Will the the x-axis of the
+
+    Returns
+    -------
+    np.ndarray
+        A 2D array suitable for heatmap plotting, where each row represents steps within each period
+        and each column represents a time period.
+    """
+    # Ensure DataFrame is sorted by time index
+    df = df.sort_index()
+
+    # Resample based on the sample rate, filling any gaps with NaN
+    resampled_data = df.resample(steps_per_period).mean()
+
+    # Apply fill method if specified
+    if fill == 'ffill':
+        resampled_data = resampled_data.ffill()  # Forward fill
+    elif fill == 'bfill':
+        resampled_data = resampled_data.bfill()  # Backward fill
+
+    # Group data by the larger period (e.g., day, week) and reshape each period
+    grouped = resampled_data.groupby(pd.Grouper(freq=periods))
+
+    # Determine the number of steps per period based on the first group (assumes regular frequency within each period)
+    first_period_key, first_period_data = next(iter(grouped))
+    steps_in_period = len(first_period_data)
+
+    formats = {
+        'min': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},
+        '15min': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},  # 15-minute intervals
+        'h': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},  # Hourly
+        'D': {'period_format': '%Y-%m-%d', 'step_format': '%d'},  # Daily
+        'W': {'period_format': '%Y-%m-%d', 'step_format': '%A'},  # Weekly
+        'MS': {'period_format': '%Y-%m', 'step_format': '%m'},  # Monthly
+        'YS': {'period_format': '%Y'},  # Yearly
+    }
+
+    period_format = formats[periods]['period_format']
+    step_format = formats[steps_per_period]['step_format']
+    period_labels = [key.strftime(period_format) for key, _ in grouped]  # Generate period labels
+    step_labels = first_period_data.index.strftime(step_format)  # Generate step labels
+    # Flatten data to 1D and reshape it
+    data_1d = resampled_data.values.flatten()
+    data_2d = reshape_to_2d(data_1d, steps_in_period)
+
+    return pd.DataFrame(data_2d, index=step_labels, columns=period_labels)
