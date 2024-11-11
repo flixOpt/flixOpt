@@ -5,19 +5,17 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import textwrap
-from typing import List, Set, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Tuple, Union, Optional, Dict
 import logging
 
 import numpy as np
 
-from flixOpt import utils
-from flixOpt.math_modeling import Variable, VariableTS, Equation
-from flixOpt.core import TimeSeries, Numeric, Numeric_TS, Skalar
-from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from flixOpt.structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable
-from flixOpt.effects import EffectValues, effect_values_to_time_series, EffectCollectionModel
+from .math_modeling import Variable, VariableTS
+from .core import Numeric, Numeric_TS, Skalar
+from .interface import InvestParameters, OnOffParameters
+from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
+from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable
+from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
 
@@ -59,39 +57,6 @@ class Component(Element):
     def transform_data(self) -> None:
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
-
-    def __str__(self):
-        # Representing inputs and outputs by their labels
-        inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
-        outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
-        inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs != [] else "inputs=[]"
-        outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.outputs != [] else "outputs=[]"
-
-        remaining_data = {
-            key: value for key, value in self.__dict__.items()
-            if value and
-               not isinstance(value, Flow) and key in self.get_init_args() and key != "label"
-        }
-
-        remaining_data_keys = sorted(remaining_data.keys())
-        remaining_data_values = [remaining_data[key] for key in remaining_data_keys]
-
-        remaining_data_str = ""
-        for key, value in zip(remaining_data_keys, remaining_data_values):
-            if hasattr(value, '__str__'):
-                remaining_data_str += f"{key}: {value}\n"
-            elif hasattr(value, '__repr__'):
-                remaining_data_str += f"{key}: {repr(value)}\n"
-            else:
-                remaining_data_str += f"{key}: {value}\n"
-
-        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
-                    f"{textwrap.indent(inputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(outputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
-                    )
-
-        return str_desc
 
     def register_component_in_flows(self) -> None:
         for flow in self.inputs + self.outputs:
@@ -263,6 +228,11 @@ class Flow(Element):
         if isinstance(self.size, InvestParameters):
             self.size.transform_data()
 
+    def infos(self) -> Dict:
+        infos = super().infos()
+        infos['is_input_in_component'] = self.is_input_in_comp
+        return infos
+
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
         if np.any(self.relative_minimum > self.relative_maximum):
@@ -271,23 +241,6 @@ class Flow(Element):
         if self.size == Flow._default_size and self.fixed_relative_value is not None:  #Default Size --> Most likely by accident
             raise Exception('Achtung: Wenn fixed_relative_value genutzt wird, muss zugehöriges size definiert werden, '
                             'da: value = fixed_relative_value * size!')
-
-    def __str__(self):
-        details = [
-            f"bus={self.bus.label if self.bus else 'None'}",
-            f"size={self.size.__str__() if isinstance(self.size, InvestParameters) else self.size}",
-            f"relative_minimum={self.relative_minimum}",
-            f"relative_maximum={self.relative_maximum}",
-            f"fixed_relative_value={self.fixed_relative_value}" if self.fixed_relative_value else "",
-            f"effects_per_flow_hour={self.effects_per_flow_hour}" if self.effects_per_flow_hour else "",
-            f"on_off_parameters={self.on_off_parameters.__str__()}" if self.on_off_parameters else "",
-        ]
-
-        all_relevant_parts = [part for part in details if part != ""]
-
-        full_str = f"{', '.join(all_relevant_parts)}"
-
-        return f"<{self.__class__.__name__}> {self.label}: {full_str}"
 
     @property
     def label_full(self) -> str:
@@ -330,11 +283,8 @@ class FlowModel(ElementModel):
                 upper_bound = self.element.relative_maximum.active_data * self.element.size
 
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
-        self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
-                                         system_model,
-                                         lower_bound=lower_bound,
-                                         upper_bound=upper_bound,
-                                         value=fixed_flow_rate,
+        self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps, fixed_value=fixed_flow_rate,
+                                         lower_bound=lower_bound, upper_bound=upper_bound,
                                          previous_values=self.element.previous_flow_rate)
 
         # OnOff
@@ -355,10 +305,9 @@ class FlowModel(ElementModel):
             self.sub_models.append(self._investment)
 
         # sumFLowHours
-        self.sum_flow_hours = create_variable('sumFlowHours', self, 1, system_model,
-                                              lower_bound=self.element.flow_hours_total_min,
+        self.sum_flow_hours = create_variable('sumFlowHours', self, 1, lower_bound=self.element.flow_hours_total_min,
                                               upper_bound=self.element.flow_hours_total_max)
-        eq_sum_flow_hours = create_equation('sumFlowHours', self, system_model, 'eq')
+        eq_sum_flow_hours = create_equation('sumFlowHours', self, 'eq')
         eq_sum_flow_hours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
         eq_sum_flow_hours.add_summand(self.sum_flow_hours, -1)
 
@@ -382,7 +331,7 @@ class FlowModel(ElementModel):
         # eq: var_sumFlowHours <= size * dt_tot * load_factor_max
         if self.element.load_factor_max is not None:
             flow_hours_per_size_max = system_model.dt_in_hours_total * self.element.load_factor_max
-            eq_load_factor_max = create_equation('load_factor_max', self, system_model, 'ineq')
+            eq_load_factor_max = create_equation('load_factor_max', self, 'ineq')
             eq_load_factor_max.add_summand(self.sum_flow_hours, 1)
             # if investment:
             if self._investment is not None:
@@ -393,7 +342,7 @@ class FlowModel(ElementModel):
         #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
         if self.element.load_factor_min is not None:
             flow_hours_per_size_min = system_model.dt_in_hours_total * self.element.load_factor_min
-            eq_load_factor_min = create_equation('load_factor_min', self, system_model, 'ineq')
+            eq_load_factor_min = create_equation('load_factor_min', self, 'ineq')
             eq_load_factor_min.add_summand(self.sum_flow_hours, -1)
             if self._investment is not None:
                 eq_load_factor_min.add_summand(self._investment.size, flow_hours_per_size_min)
@@ -427,7 +376,7 @@ class BusModel(ElementModel):
     def do_modeling(self, system_model: SystemModel) -> None:
         self.element: Bus
         # inputs = outputs
-        eq_bus_balance = create_equation('busBalance', self, system_model)
+        eq_bus_balance = create_equation('busBalance', self)
         for flow in self.element.inputs:
             eq_bus_balance.add_summand(flow.model.flow_rate, 1)
         for flow in self.element.outputs:
@@ -436,10 +385,8 @@ class BusModel(ElementModel):
         # Fehlerplus/-minus:
         if self.element.with_excess:
             excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour.active_data)
-            self.excess_input = create_variable('excess_input', self, system_model.nr_of_time_steps,
-                                                   system_model, lower_bound=0)
-            self.excess_output = create_variable('excess_output', self, system_model.nr_of_time_steps,
-                                                    system_model, lower_bound=0)
+            self.excess_input = create_variable('excess_input', self, system_model.nr_of_time_steps, lower_bound=0)
+            self.excess_output = create_variable('excess_output', self, system_model.nr_of_time_steps, lower_bound=0)
 
             eq_bus_balance.add_summand(self.excess_output, -1)
             eq_bus_balance.add_summand(self.excess_input, 1)

@@ -5,19 +5,15 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-from typing import List, Tuple, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Dict, Union, Optional, Literal
 import logging
 
 import numpy as np
 
-from flixOpt.math_modeling import Variable, Equation
-from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
-from flixOpt.features import ShareAllocationModel
-from flixOpt.structure import Element, ElementModel, SystemModel, _create_time_series
-
-if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.flow_system import FlowSystem
-    from flixOpt.features import ComponentModel, BusModel
+from .math_modeling import Variable, Equation
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from .features import ShareAllocationModel
+from .structure import Element, ElementModel, SystemModel, _create_time_series
 
 
 logger = logging.getLogger('flixOpt')
@@ -138,28 +134,6 @@ class Effect(Element):
     def create_model(self) -> 'EffectModel':
         self.model = EffectModel(self)
         return self.model
-
-    def __str__(self):
-        objective = "Objective" if self.is_objective else ""
-        standart = "Standardeffect" if self.is_standard else ""
-        op_sum = f"OperationSum={self.minimum_operation}-{self.maximum_operation}" \
-            if self.minimum_operation is not None or self.maximum_operation is not None else ""
-        inv_sum = f"InvestSum={self.minimum_invest}-{self.maximum_invest}" \
-            if self.minimum_invest is not None or self.maximum_invest is not None else ""
-        tot_sum = f"TotalSum={self.minimum_total}-{self.maximum_total}" \
-            if self.minimum_total is not None or self.maximum_total is not None else ""
-        label_unit = f"{self.label} [{self.unit}]:"
-        desc = f"({self.description})"
-        shares_op = f"Operation Shares={self.specific_share_to_other_effects_operation}" \
-            if self.specific_share_to_other_effects_operation != {} else ""
-        shares_inv = f"Invest Shares={self.specific_share_to_other_effects_invest}" \
-            if self.specific_share_to_other_effects_invest != {} else ""
-
-        all_relevant_parts = [info for info in [objective, tot_sum, inv_sum, op_sum, shares_inv, shares_op, standart, desc ] if info != ""]
-
-        full_str =f"{label_unit} {', '.join(all_relevant_parts)}"
-
-        return f"<{self.__class__.__name__}> {full_str}"
 
 
 class EffectModel(ElementModel):
@@ -318,7 +292,6 @@ class EffectCollectionModel(ElementModel):
         self.add_share_between_effects()
 
         self.objective = Equation('OBJECTIVE', 'OBJECTIVE', 'objective')
-        self.add_equations(self.objective)
         self.objective.add_summand(self._objective_effect_model.operation.sum, 1)
         self.objective.add_summand(self._objective_effect_model.invest.sum, 1)
         self.objective.add_summand(self.penalty.sum, 1)

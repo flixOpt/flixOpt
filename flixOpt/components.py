@@ -10,14 +10,14 @@ import textwrap
 import logging
 from typing import Union, Optional, Literal, List, Dict, Tuple, Set
 
-from flixOpt import utils
-from flixOpt.elements import Flow, _create_time_series
-from flixOpt.core import Skalar, Numeric_TS, TimeSeries, Numeric
-from flixOpt.math_modeling import VariableTS, Equation
-from flixOpt.features import OnOffModel, MultipleSegmentsModel, InvestmentModel
-from flixOpt.structure import SystemModel, create_equation, create_variable
-from flixOpt.elements import Component, ComponentModel
-from flixOpt.interface import InvestParameters, OnOffParameters
+from . import utils
+from .elements import Flow, _create_time_series
+from .core import Skalar, Numeric_TS, TimeSeries, Numeric
+from .math_modeling import VariableTS, Equation
+from .features import OnOffModel, MultipleSegmentsModel, InvestmentModel
+from .structure import SystemModel, create_equation, create_variable
+from .elements import Component, ComponentModel
+from .interface import InvestParameters, OnOffParameters
 
 logger = logging.getLogger('flixOpt')
 
@@ -109,49 +109,6 @@ class LinearConverter(Component):
                 transformed_dict[flow] = _create_time_series(f"{flow.label}_factor", values, self)
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
-
-    def __str__(self):
-        # Creating a representation for conversion_factors with flow labels and their corresponding values
-        if self.conversion_factors:
-            conversion_factors_rep = []
-            for conversion_factor in self.conversion_factors:
-                conversion_factors_rep.append({flow.__repr__(): value for flow, value in conversion_factor.items()})
-        else:
-            conversion_factors_rep = "None"
-
-        # Representing inputs and outputs by their labels
-        inputs_str = ",\n".join([flow.__str__() for flow in self.inputs])
-        outputs_str = ",\n".join([flow.__str__() for flow in self.outputs])
-        inputs_str = f"inputs=\n{textwrap.indent(inputs_str, ' ' * 3)}" if self.inputs else "inputs=[]"
-        outputs_str = f"outputs=\n{textwrap.indent(outputs_str, ' ' * 3)}" if self.inputs else "outputs=[]"
-
-        other_relevant_data = (f"conversion_factors={conversion_factors_rep},\n"
-                               f"segmented_conversion_factors={self.segmented_conversion_factors}")
-
-        remaining_data = {
-            key: value for key, value in self.__dict__.items()
-            if value and
-               not isinstance(value, Flow) and
-               key not in ["label", "TS_list", "segmented_conversion_factors", "conversion_factors", "inputs", "outputs"]
-        }
-
-        remaining_data_str = ""
-        for key, value in remaining_data.items():
-            if hasattr(value, '__str__'):
-                remaining_data_str += f"{key}: {value}\n"
-            elif hasattr(value, '__repr__'):
-                remaining_data_str += f"{key}: {repr(value)}\n"
-            else:
-                remaining_data_str += f"{key}: {value}\n"
-
-        str_desc = (f"<{self.__class__.__name__}> {self.label}:\n"
-                    f"{textwrap.indent(inputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(outputs_str, ' ' * 3)}\n"
-                    f"{textwrap.indent(other_relevant_data, ' ' * 3)}\n"
-                    f"{textwrap.indent(remaining_data_str, ' ' * 3)}"
-                    )
-
-        return str_desc
 
     @property
     def degrees_of_freedom(self):
@@ -276,7 +233,7 @@ class LinearConverterModel(ComponentModel):
                 used_inputs: Set = all_input_flows & used_flows
                 used_outputs: Set = all_output_flows & used_flows
 
-                eq_conversion = create_equation(f'conversion_{i}', self, system_model)
+                eq_conversion = create_equation(f'conversion_{i}', self)
                 for flow in used_inputs:
                     factor = conversion_factor[flow].active_data
                     eq_conversion.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
@@ -313,15 +270,15 @@ class StorageModel(ComponentModel):
         super().do_modeling(system_model)
 
         lb, ub = self.charge_state_bounds
-        self.charge_state = create_variable('charge_state', self, system_model.nr_of_time_steps + 1,
-                                               system_model, lower_bound=lb, upper_bound=ub)
+        self.charge_state = create_variable('charge_state', self, system_model.nr_of_time_steps + 1, lower_bound=lb,
+                                            upper_bound=ub)
 
         self.netto_discharge = create_variable('netto_discharge', self, system_model.nr_of_time_steps,
-                                                  system_model, lower_bound=-np.inf)  # negative Werte zulässig!
+                                               lower_bound=-np.inf)  # negative Werte zulässig!
 
         # netto_discharge:
         # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
-        eq_netto = create_equation('netto_discharge', self, system_model, eq_type='eq')
+        eq_netto = create_equation('netto_discharge', self, eq_type='eq')
         eq_netto.add_summand(self.netto_discharge, 1)
         eq_netto.add_summand(self.element.charging.model.flow_rate, 1)
         eq_netto.add_summand(self.element.discharging.model.flow_rate, -1)
@@ -334,7 +291,7 @@ class StorageModel(ComponentModel):
         # - charging(n)     * eta_charge * dt(n)
         # + discharging(n)  * 1 / eta_discharge * dt(n)
         # = 0
-        eq_charge_state = create_equation('charge_state', self, system_model, eq_type='eq')
+        eq_charge_state = create_equation('charge_state', self, eq_type='eq')
         eq_charge_state.add_summand(self.charge_state, 1, indices_charge_state[1:])  # 1:end
         eq_charge_state.add_summand(self.charge_state,
                                     (self.element.relative_loss_per_hour.active_data * system_model.dt_in_hours) - 1,
@@ -361,7 +318,7 @@ class StorageModel(ComponentModel):
         indices_charge_state = range(system_model.indices.start, system_model.indices.stop + 1)  # additional
 
         if self.element.initial_charge_state is not None:
-            eq_initial = create_equation('initial_charge_state', self, system_model, eq_type='eq')
+            eq_initial = create_equation('initial_charge_state', self, eq_type='eq')
             if utils.is_number(self.element.initial_charge_state):
                 # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
                 eq_initial.add_constant(self.element.initial_charge_state)  # chargeState_0 !
@@ -378,13 +335,13 @@ class StorageModel(ComponentModel):
         # Final Charge State
         # 1: eq:  Q_charge_state(end) <= Q_max
         if self.element.maximal_final_charge_state is not None:
-            eq_max = create_equation('eq_final_charge_state_max', self, system_model, eq_type='ineq')
+            eq_max = create_equation('eq_final_charge_state_max', self, eq_type='ineq')
             eq_max.add_summand(self.charge_state, 1, indices_charge_state[-1])
             eq_max.add_constant(self.element.maximal_final_charge_state)
 
         # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.element.minimal_final_charge_state is not None:
-            eq_min = create_equation('eq_charge_state_end_min', self, system_model, eq_type='ineq')
+            eq_min = create_equation('eq_charge_state_end_min', self, eq_type='ineq')
             eq_min.add_summand(self.charge_state, -1, indices_charge_state[-1])
             eq_min.add_constant(- self.element.minimal_final_charge_state)
 

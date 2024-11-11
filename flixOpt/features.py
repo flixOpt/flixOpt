@@ -10,15 +10,15 @@ import logging
 
 import numpy as np
 
-from flixOpt.math_modeling import Variable, VariableTS, Equation
-from flixOpt.core import TimeSeries, Skalar, Numeric, Numeric_TS
-from flixOpt.interface import InvestParameters, OnOffParameters
-from flixOpt.structure import ElementModel, SystemModel, Element, create_equation, create_variable
+from .math_modeling import Variable, VariableTS, Equation
+from .core import TimeSeries, Skalar, Numeric
+from .interface import InvestParameters, OnOffParameters
+from .structure import ElementModel, SystemModel, Element, create_equation, create_variable
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from flixOpt.effects import Effect
-    from flixOpt.elements import Flow
-    from flixOpt.components import Storage
+    from .effects import Effect
+    from .elements import Flow
+    from .components import Storage
 
 
 logger = logging.getLogger('flixOpt')
@@ -50,16 +50,14 @@ class InvestmentModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         invest_parameters = self._invest_parameters
         if invest_parameters.fixed_size:
-            self.size = create_variable('size', self, 1, system_model,
-                                           value=invest_parameters.fixed_size)
+            self.size = create_variable('size', self, 1, fixed_value=invest_parameters.fixed_size)
         else:
             lower_bound = 0 if invest_parameters.optional else invest_parameters.minimum_size
-            self.size = create_variable('size', self, 1, system_model,
-                                           lower_bound=lower_bound,
-                                           upper_bound=invest_parameters.maximum_size)
+            self.size = create_variable('size', self, 1, lower_bound=lower_bound,
+                                        upper_bound=invest_parameters.maximum_size)
         # Optional
         if invest_parameters.optional:
-            self.is_invested = create_variable('isInvested', self, 1,  system_model, is_binary=True)
+            self.is_invested = create_variable('isInvested', self, 1, is_binary=True)
             self._create_bounds_for_optional_investment(system_model)
 
         # Bounds for defining variable
@@ -107,17 +105,17 @@ class InvestmentModel(ElementModel):
     def _create_bounds_for_optional_investment(self, system_model: SystemModel):
         if self._invest_parameters.fixed_size:
             # eq: investment_size = isInvested * fixed_size
-            eq_is_invested = create_equation('is_invested', self, system_model, 'eq')
+            eq_is_invested = create_equation('is_invested', self, 'eq')
             eq_is_invested.add_summand(self.size, -1)
             eq_is_invested.add_summand(self.is_invested, self._invest_parameters.fixed_size)
         else:
             # eq1: P_invest <= isInvested * investSize_max
-            eq_is_invested_ub = create_equation('is_invested_ub', self, system_model, 'ineq')
+            eq_is_invested_ub = create_equation('is_invested_ub', self, 'ineq')
             eq_is_invested_ub.add_summand(self.size, 1)
             eq_is_invested_ub.add_summand(self.is_invested, np.multiply(-1, self._invest_parameters.maximum_size))
 
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
-            eq_is_invested_lb = create_equation('is_invested_lb', self, system_model, 'ineq')
+            eq_is_invested_lb = create_equation('is_invested_lb', self, 'ineq')
             eq_is_invested_lb.add_summand(self.size, -1)
             eq_is_invested_lb.add_summand(self.is_invested, np.maximum(system_model.epsilon, self._invest_parameters.minimum_size))
 
@@ -127,17 +125,17 @@ class InvestmentModel(ElementModel):
         # fixed relative value
         if np.array_equal(relative_minimum, relative_maximum):
             # TODO: Allow Off? Currently not...
-            eq_fixed = create_equation(f'fixed_{label}', self, system_model)
+            eq_fixed = create_equation(f'fixed_{label}', self)
             eq_fixed.add_summand(self._defining_variable, 1)
             eq_fixed.add_summand(self.size, np.multiply(-1, relative_maximum))
         else:
-            eq_upper = create_equation(f'ub_{label}', self, system_model, 'ineq')
+            eq_upper = create_equation(f'ub_{label}', self, 'ineq')
             # eq: defining_variable(t)  <= size * upper_bound(t)
             eq_upper.add_summand(self._defining_variable, 1)
             eq_upper.add_summand(self.size, np.multiply(-1, relative_maximum))
 
             ## 2. Gleichung: Minimum durch Investmentgröße ##
-            eq_lower = create_equation(f'lb_{label}', self, system_model, 'ineq')
+            eq_lower = create_equation(f'lb_{label}', self, 'ineq')
             if self._on_variable is None:
                 # eq: defining_variable(t) >= investment_size * relative_minimum(t)
                 eq_lower.add_summand(self._defining_variable, -1)
@@ -190,49 +188,44 @@ class OnOffModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         if self._on_off_parameters.use_on:
-            self.on = create_variable('on', self, system_model.nr_of_time_steps,
-                                      system_model, is_binary=True,
+            self.on = create_variable('on', self, system_model.nr_of_time_steps, is_binary=True,
                                       previous_values=self._previous_on_values(system_model.epsilon))
-            self.total_on_hours = create_variable('totalOnHours', self, 1, system_model,
+            self.total_on_hours = create_variable('totalOnHours', self, 1,
                                                   lower_bound=self._on_off_parameters.on_hours_total_min,
                                                   upper_bound=self._on_off_parameters.on_hours_total_max)
-            eq_total_on = create_equation('totalOnHours', self, system_model, )
+            eq_total_on = create_equation('totalOnHours', self)
             eq_total_on.add_summand(self.on, system_model.dt_in_hours, as_sum=True)
             eq_total_on.add_summand(self.total_on_hours, -1)
 
             self._add_on_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_off:
-            self.off = create_variable('off', self, system_model.nr_of_time_steps,
-                                       system_model, is_binary=True,
+            self.off = create_variable('off', self, system_model.nr_of_time_steps, is_binary=True,
                                        previous_values=1 - self._previous_on_values(system_model.epsilon))
 
             self._add_off_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_on_hours:
-            self.consecutive_on_hours = create_variable('consecutiveOnHours',
-                                                        self, system_model.nr_of_time_steps,
-                                                        system_model, lower_bound=0,
+            self.consecutive_on_hours = create_variable('consecutiveOnHours', self, system_model.nr_of_time_steps,
+                                                        lower_bound=0,
                                                         upper_bound=self._on_off_parameters.consecutive_on_hours_max.active_data)
             self._add_duration_constraints(self.consecutive_on_hours, self.on,
                                            self._on_off_parameters.consecutive_on_hours_min,
                                            system_model, system_model.indices)
         # offHours:
         if self._on_off_parameters.use_off_hours:
-            self.consecutive_off_hours = create_variable(
-                'consecutiveOffHours', self, system_model.nr_of_time_steps, system_model,
-                lower_bound=0, upper_bound=self._on_off_parameters.consecutive_off_hours_max.active_data)
+            self.consecutive_off_hours = create_variable('consecutiveOffHours', self, system_model.nr_of_time_steps,
+                                                         lower_bound=0,
+                                                         upper_bound=self._on_off_parameters.consecutive_off_hours_max.active_data)
 
             self._add_duration_constraints(self.consecutive_off_hours, self.off,
                                            self._on_off_parameters.consecutive_off_hours_min,
                                            system_model, system_model.indices)
         # Var SwitchOn
         if self._on_off_parameters.use_switch_on:
-            self.switch_on = create_variable('switchOn', self, system_model.nr_of_time_steps,
-                                                system_model, is_binary=True)
-            self.switch_off = create_variable('switchOff', self,
-                                                 system_model.nr_of_time_steps, system_model, is_binary=True)
-            self.nr_switch_on = create_variable('nrSwitchOn', self, 1, system_model,
+            self.switch_on = create_variable('switchOn', self, system_model.nr_of_time_steps, is_binary=True)
+            self.switch_off = create_variable('switchOff', self, system_model.nr_of_time_steps, is_binary=True)
+            self.nr_switch_on = create_variable('nrSwitchOn', self, 1,
                                                 upper_bound=self._on_off_parameters.switch_on_total_max)
             self._add_switch_constraints(system_model)
 
@@ -249,8 +242,8 @@ class OnOffModel(ElementModel):
         nr_of_defining_variables = len(self._defining_variables)
         assert nr_of_defining_variables > 0, 'Achtung: mindestens 1 Flow notwendig'
 
-        eq_on_1 = create_equation('On_Constraint_1', self, system_model, eq_type='ineq')
-        eq_on_2 = create_equation('On_Constraint_2', self, system_model, eq_type='ineq')
+        eq_on_1 = create_equation('On_Constraint_1', self, eq_type='ineq')
+        eq_on_2 = create_equation('On_Constraint_2', self, eq_type='ineq')
         if nr_of_defining_variables == 1:
             variable = self._defining_variables[0]
             lower_bound, upper_bound = self._defining_bounds[0]
@@ -293,7 +286,7 @@ class OnOffModel(ElementModel):
         assert self.off is not None, f'Off variable of {self.element} must be defined to add constraints'
         # Definition var_off:
         # eq: var_on(t) + var_off(t) = 1
-        eq_off = create_equation('var_off', self, system_model, eq_type='eq')
+        eq_off = create_equation('var_off', self, eq_type='eq')
         eq_off.add_summand(self.off, 1, time_indices)
         eq_off.add_summand(self.on, 1, time_indices)
         eq_off.add_constant(1)
@@ -320,14 +313,14 @@ class OnOffModel(ElementModel):
         # mit Big = dt_in_hours_total
         label_prefix = duration_variable.label
         mega = system_model.dt_in_hours_total
-        constraint_1 = create_equation(f'{label_prefix}_constraint_1', self, system_model, eq_type='ineq')
+        constraint_1 = create_equation(f'{label_prefix}_constraint_1', self, eq_type='ineq')
         constraint_1.add_summand(duration_variable, 1)
         constraint_1.add_summand(binary_variable, -1 * mega)
 
         # 2a) eq: onHours(t) - onHours(t-1) <= dt(t)
         #    on(t)=1 -> ...<= dt(t)
         #    on(t)=0 -> onHours(t-1)>=
-        constraint_2a = create_equation(f'{label_prefix}_constraint_2a', self, system_model, eq_type='ineq')
+        constraint_2a = create_equation(f'{label_prefix}_constraint_2a', self, eq_type='ineq')
         constraint_2a.add_summand(duration_variable, 1, time_indices[1:])  # onHours(t)
         constraint_2a.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
         constraint_2a.add_constant(system_model.dt_in_hours[1:])  # dt(t)
@@ -335,7 +328,7 @@ class OnOffModel(ElementModel):
         # 2b) eq:  onHours(t) - onHours(t-1)             >=  dt(t) - Big*(1-On(t)))
         #    eq: -onHours(t) + onHours(t-1) + On(t)*Big <= -dt(t) + Big
         # with Big = dt_in_hours_total # (Big = maxOnHours, should be usable, too!)
-        constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, system_model, eq_type='ineq')
+        constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, eq_type='ineq')
         constraint_2b.add_summand(duration_variable, -1, time_indices[1:])  # onHours(t)
         constraint_2b.add_summand(duration_variable, 1, time_indices[0:-1])  # onHours(t-1)
         constraint_2b.add_summand(binary_variable, mega, time_indices[1:])  # on(t)
@@ -347,7 +340,7 @@ class OnOffModel(ElementModel):
             # Note: switchOff-step is when: On(t)-On(t-1) == -1
             # eq:  onHours(t-1) >= minOnHours * -1 * [On(t)-On(t-1)]
             # eq: -onHours(t-1) - minimum_duration * On(t) + minimum_duration*On(t-1) <= 0
-            eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, system_model, eq_type='ineq')
+            eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
             eq_min_duration.add_summand(duration_variable, -1, time_indices[0:-1])  # onHours(t-1)
             eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
             eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
@@ -357,7 +350,7 @@ class OnOffModel(ElementModel):
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)
         first_index = time_indices[0]  # only first element
-        eq_first = create_equation(f'{label_prefix}_firstTimeStep', self, system_model)
+        eq_first = create_equation(f'{label_prefix}_firstTimeStep', self)
         eq_first.add_summand(duration_variable, 1, first_index)
         eq_first.add_summand(binary_variable, -1 * system_model.dt_in_hours[first_index], first_index)
 
@@ -368,7 +361,7 @@ class OnOffModel(ElementModel):
         assert self.on is not None, f'On Variable of {self.element} must be defined to add constraints'
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1)
-        eq_switch = create_equation('Switch', self, system_model)
+        eq_switch = create_equation('Switch', self)
         eq_switch.add_summand(self.switch_on, 1, system_model.indices[1:])  # SwitchOn(t)
         eq_switch.add_summand(self.switch_off, -1, system_model.indices[1:])  # SwitchOff(t)
         eq_switch.add_summand(self.on, -1, system_model.indices[1:])  # On(t)
@@ -376,7 +369,7 @@ class OnOffModel(ElementModel):
 
         # Initital switch on
         # eq: SwitchOn(t=0)-SwitchOff(t=0) = On(t=0) - On(t=-1)
-        eq_initial_switch = create_equation('Initial_Switch', self, system_model)
+        eq_initial_switch = create_equation('Initial_Switch', self)
         eq_initial_switch.add_summand(self.switch_on, 1, indices_of_variable=0)  # SwitchOn(t=0)
         eq_initial_switch.add_summand(self.switch_off, -1, indices_of_variable=0)  # SwitchOff(t=0)
         eq_initial_switch.add_summand(self.on, -1, indices_of_variable=0)  # On(t=0)
@@ -384,14 +377,14 @@ class OnOffModel(ElementModel):
 
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1
-        eq_switch_on_or_off = create_equation('Switch_On_or_Off', self, system_model, eq_type='ineq')
+        eq_switch_on_or_off = create_equation('Switch_On_or_Off', self, eq_type='ineq')
         eq_switch_on_or_off.add_summand(self.switch_on, 1)
         eq_switch_on_or_off.add_summand(self.switch_off, 1)
         eq_switch_on_or_off.add_constant(1)
 
         ## Anzahl Starts:
         # eq: nrSwitchOn = sum(SwitchOn(t))
-        eq_nr_switch_on = create_equation('NrSwitchOn', self, system_model)
+        eq_nr_switch_on = create_equation('NrSwitchOn', self)
         eq_nr_switch_on.add_summand(self.nr_switch_on, 1)
         eq_nr_switch_on.add_summand(self.switch_on, -1, as_sum=True)
 
@@ -434,15 +427,12 @@ class SegmentModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         length = system_model.nr_of_time_steps if self._as_time_series else 1
-        self.in_segment = create_variable('inSegment', self,
-                                             length, system_model, is_binary=True)
-        self.lambda0 = create_variable('lambda0', self, length, system_model,
-                                          lower_bound=0, upper_bound=1)  # Wertebereich 0..1
-        self.lambda1 = create_variable('lambda1', self, length, system_model,
-                                          lower_bound=0, upper_bound=1)  # Wertebereich 0..1
+        self.in_segment = create_variable('inSegment', self, length, is_binary=True)
+        self.lambda0 = create_variable('lambda0', self, length, lower_bound=0, upper_bound=1)  # Wertebereich 0..1
+        self.lambda1 = create_variable('lambda1', self, length, lower_bound=0, upper_bound=1)  # Wertebereich 0..1
 
         # eq: -aSegment.onSeg(t) + aSegment.lambda1(t) + aSegment.lambda2(t)  = 0
-        equation = create_equation('inSegment', self, system_model)
+        equation = create_equation('inSegment', self)
 
         equation.add_summand(self.in_segment, -1)
         equation.add_summand(self.lambda0, 1)
@@ -490,7 +480,7 @@ class MultipleSegmentsModel(ElementModel):
         #  eq: - v(t) + (v_0_0 * lambda_0_0 + v_0_1 * lambda_0_1) + (v_1_0 * lambda_1_0 + v_1_1 * lambda_1_1) ... = 0
         #  -> v_0_0, v_0_1 = Stützstellen des Segments 0
         for variable in self._sample_points.keys():
-            lambda_eq = create_equation(f'lambda_{variable.label}', self, system_model)
+            lambda_eq = create_equation(f'lambda_{variable.label}', self)
             lambda_eq.add_summand(variable, -1)
             for segment_model in self._segment_models:
                 lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable][0])
@@ -498,7 +488,7 @@ class MultipleSegmentsModel(ElementModel):
 
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
         # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
-        in_single_segment = create_equation('in_single_Segment', self, system_model)
+        in_single_segment = create_equation('in_single_Segment', self)
         for segment_model in self._segment_models:
             in_single_segment.add_summand(segment_model.in_segment, 1)
 
@@ -508,7 +498,7 @@ class MultipleSegmentsModel(ElementModel):
             in_single_segment.add_summand(self.outside_segments, -1)
         elif self._can_be_outside_segments is True:  # Create Variable
             length = system_model.nr_of_time_steps if self._as_time_series else 1
-            self.outside_segments = create_variable('outside_segments', self, length, system_model, is_binary=True)
+            self.outside_segments = create_variable('outside_segments', self, length, is_binary=True)
             in_single_segment.add_summand(self.outside_segments, -1)
         else:  # Dont allow outside Segments
             in_single_segment.add_constant(1)
@@ -547,20 +537,20 @@ class ShareAllocationModel(ElementModel):
         self._min_per_hour = min_per_hour
 
     def do_modeling(self, system_model: SystemModel):
-        self.sum = create_variable(f'{self.label}_sum', self, 1, system_model,
-                                   lower_bound=self._total_min, upper_bound=self._total_max)
+        self.sum = create_variable(f'{self.label}_sum', self, 1, lower_bound=self._total_min,
+                                   upper_bound=self._total_max)
         # eq: sum = sum(share_i) # skalar
-        self._eq_sum = create_equation(f'{self.label}_sum', self, system_model)
+        self._eq_sum = create_equation(f'{self.label}_sum', self)
         self._eq_sum.add_summand(self.sum, -1)
 
         if self._shares_are_time_series:
             lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
             ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
-            self.sum_TS = create_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, system_model,
+            self.sum_TS = create_variable(f'{self.label}_sum_TS', self, system_model.nr_of_time_steps,
                                           lower_bound=lb_TS, upper_bound=ub_TS)
 
             # eq: sum_TS = sum(share_TS_i) # TS
-            self._eq_time_series = create_equation(f'{self.label}_time_series', self, system_model)
+            self._eq_time_series = create_equation(f'{self.label}_time_series', self)
             self._eq_time_series.add_summand(self.sum_TS, -1)
 
             # eq: sum = sum(sum_TS(t)) # additionaly to self.sum
@@ -643,12 +633,12 @@ class SingleShareModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         if self._create_sum_of:
-            self.single_share = Variable(self._full_name_of_share, 1, system_model, self.label,)
+            self.single_share = Variable(self._full_name_of_share, 1, self.label)
         else:
-            self.single_share = VariableTS(self._full_name_of_share, system_model.nr_of_time_steps, system_model, self.label)
+            self.single_share = VariableTS(self._full_name_of_share, system_model.nr_of_time_steps, self.label)
         self.add_variables(self.single_share)
 
-        self._equation = create_equation(self._full_name_of_share, self, system_model)
+        self._equation = create_equation(self._full_name_of_share, self)
         self._equation.add_summand(self.single_share, -1)
 
     def add_summand_to_share(self, variable: Optional[Variable], factor: Numeric):
@@ -683,7 +673,7 @@ class SegmentedSharesModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         length = system_model.nr_of_time_steps if self._as_tme_series else 1
-        self._shares = {effect: create_variable(f'{effect.label}_segmented', self, length, system_model)
+        self._shares = {effect: create_variable(f'{effect.label}_segmented', self, length)
                         for effect in self._share_segments}
 
         segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
@@ -745,7 +735,7 @@ class PreventSimultaneousUsageModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
-        eq = create_equation('prevent_simultaneous_use', self, system_model, eq_type='ineq')
+        eq = create_equation('prevent_simultaneous_use', self, eq_type='ineq')
         for variable in self._variables:
             eq.add_summand(variable, 1)
         eq.add_constant(1.1)

@@ -7,12 +7,11 @@ developed by Felix Panitz* and Peter Stange*
 import logging
 from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
-import numpy as np
-
-from flixOpt.core import Numeric, Skalar, Numeric_TS
+from .core import Numeric, Skalar, Numeric_TS
+from .structure import get_object_infos_as_str, get_object_infos_as_dict
 if TYPE_CHECKING:
-    from flixOpt.structure import Element
-    from flixOpt.effects import EffectTimeSeries, EffectValues, EffectValuesInvest
+    from .structure import Element
+    from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
 
 logger = logging.getLogger('flixOpt')
 
@@ -77,10 +76,13 @@ class InvestParameters:
         self._maximum_size = maximum_size
     
     def transform_data(self):
-        from flixOpt.effects import as_effect_dict
+        from .effects import as_effect_dict
         self.fix_effects = as_effect_dict(self.fix_effects)
         self.divest_effects = as_effect_dict(self.divest_effects)
         self.specific_effects = as_effect_dict(self.specific_effects)
+
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
 
     @property
     def minimum_size(self):
@@ -94,17 +96,7 @@ class InvestParameters:
         return f"<{self.__class__.__name__}>: {self.__dict__}"
 
     def __str__(self):
-        details = [
-            f"size={self.fixed_size}" if self.fixed_size else f"size='{self.minimum_size}-{self.maximum_size}'",
-            f"optional" if self.optional else "",
-            f"fix_effects={self.fix_effects}" if self.fix_effects else "",
-            f"specific_effects={self.specific_effects}" if self.specific_effects else "",
-            f"effects_in_segments={self.effects_in_segments}, " if self.effects_in_segments else "",
-            f"divest_effects={self.divest_effects}" if self.divest_effects else ""
-        ]
-        all_relevant_parts = [part for part in details if part != ""]
-        full_str = f"{', '.join(all_relevant_parts)}"
-        return f"<{self.__class__.__name__}>: {full_str}"
+        return get_object_infos_as_str(self)
 
 
 class OnOffParameters:
@@ -158,14 +150,20 @@ class OnOffParameters:
         self.force_switch_on = force_switch_on
 
     def transform_data(self, owner: 'Element'):
-        from flixOpt.effects import effect_values_to_time_series
-        from flixOpt.structure import _create_time_series
+        from .effects import effect_values_to_time_series
+        from .structure import _create_time_series
         self.effects_per_switch_on = effect_values_to_time_series('per_switch_on', self.effects_per_switch_on, owner)
         self.effects_per_running_hour = effect_values_to_time_series('per_running_hour', self.effects_per_running_hour, owner)
         self.consecutive_on_hours_min = _create_time_series('consecutive_on_hours_min', self.consecutive_on_hours_min, owner)
         self.consecutive_on_hours_max = _create_time_series('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
         self.consecutive_off_hours_min = _create_time_series('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
         self.consecutive_off_hours_max = _create_time_series('consecutive_off_hours_max', self.consecutive_off_hours_max, owner)
+
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
+
+    def __str__(self):
+        return get_object_infos_as_str(self)
 
     @property
     def use_on(self) -> bool:

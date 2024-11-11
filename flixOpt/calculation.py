@@ -14,14 +14,15 @@ from typing import List, Dict, Optional, Literal, Union, Any
 
 import numpy as np
 
-from flixOpt.aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
-from flixOpt.core import Numeric, Skalar
-from flixOpt.structure import SystemModel
-from flixOpt.flow_system import FlowSystem
-from flixOpt.elements import Component
-from flixOpt.components import Storage
-from flixOpt.features import InvestmentModel
-from flixOpt.solvers import Solver
+from .aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
+from .core import Numeric, Skalar
+from .structure import SystemModel
+from .flow_system import FlowSystem
+from .elements import Component
+from .components import Storage
+from .features import InvestmentModel
+from .solvers import Solver
+from . import utils as utils
 
 
 logger = logging.getLogger('flixOpt')
@@ -52,7 +53,7 @@ class Calculation:
         self.time_indices = time_indices
 
         self.system_model: Optional[SystemModel] = None
-        self.durations = {'modeling': 0.0, 'solving': 0.0}  # Dauer der einzelnen Dinge
+        self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}  # Dauer der einzelnen Dinge
 
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
         self._results = None
@@ -75,20 +76,30 @@ class Calculation:
             path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
 
             self._paths["log"] = path / f'{self.name}_solver.log'
-            self._paths["data"] = path / f'{self.name}_data.pickle'
+            self._paths["data"] = path / f'{self.name}_data.json'
             self._paths["info"] = path / f'{self.name}_info.yaml'
 
     def _save_solve_infos(self):
+        t_start = timeit.default_timer()
         import yaml
-        import pickle
-        with open(self._paths['data'], 'wb') as f:
-            pickle.dump(self.results(), f, protocol=pickle.HIGHEST_PROTOCOL)
+        import json
+        with open(self._paths['data'], 'w', encoding='utf-8') as f:
+            results = utils.convert_arrays_to_lists(self.results())
+            results['Time'] = [date.isoformat() for date in results['Time']]
+            json.dump(results, f, indent=4)
 
-        infos = {'Calculation': self.infos, 'Model': self.system_model.infos}
+        nodes_info, edges_info = self.flow_system.network_infos()
+        infos = {'Calculation': self.infos,
+                 'Model': self.system_model.infos,
+                 'FlowSystem': self.flow_system.infos(),
+                 'Network': {
+                     'Nodes': nodes_info, 'Edges': edges_info}
+                 }
 
         with open(self._paths['info'], 'w', encoding='utf-8') as f:
             yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
+        self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
         message = f' Saved Calculation: {self.name} '
         logger.info(f'{"":#^80}\n'
                     f'{message:#^80}\n'
@@ -123,7 +134,7 @@ class FullCalculation(Calculation):
 
         self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         self.system_model.do_modeling()
-        self.system_model.to_math_model()
+        self.system_model.translate_to_modeling_language()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
@@ -182,7 +193,7 @@ class AggregatedCalculation(Calculation):
         for time_series in self.flow_system.all_time_series:
             time_series.activate_indices(self.time_indices)
 
-        from flixOpt.aggregation import Aggregation
+        from .aggregation import Aggregation
 
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
             self.flow_system.get_time_data_from_indices(self.time_indices))
@@ -234,7 +245,7 @@ class AggregatedCalculation(Calculation):
         self.system_model.other_models.append(aggregation_model)
         aggregation_model.do_modeling(self.system_model)
 
-        self.system_model.to_math_model()
+        self.system_model.translate_to_modeling_language()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
@@ -325,7 +336,9 @@ class SegmentedCalculation(Calculation):
 
         self._reset_start_values()
 
-        self.durations = {calculation.name: calculation.durations for calculation in self.sub_calculations}
+        for calc in self.sub_calculations:
+            for key, value in calc.durations.items():
+                self.durations[key] += value
 
     def results(self,
                 combined_arrays: bool = False,

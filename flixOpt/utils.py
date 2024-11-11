@@ -9,10 +9,6 @@ import logging
 from typing import Union, List, Optional, Dict, Literal
 
 import numpy as np
-import math  # für nan
-
-from flixOpt.core import TimeSeriesData
-from flixOpt.core import Numeric, Skalar
 
 logger = logging.getLogger('flixOpt')
 
@@ -46,19 +42,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
         return np.array(value)
 
 
-def check_bounds(value: Union[int, float, np.ndarray, TimeSeriesData],
-                 label: str,
-                 lower_bound: Numeric,
-                 upper_bound: Numeric):
-    if isinstance(value, TimeSeriesData):
-        value = value.data
-    if np.any(value < lower_bound):
-        raise Exception(f'{label} is below its {lower_bound=}!')
-    if np.any(value >= upper_bound):
-        raise Exception(f'{label} is above its {upper_bound=}!')
-
-
-def is_number(number_alias: Union[Skalar, str]):
+def is_number(number_alias: Union[int, float, str]):
     """ Returns True is string is a number. """
     try:
         float(number_alias)
@@ -106,3 +90,25 @@ def label_is_valid(label: str) -> bool:
     if label.startswith('_') or label.endswith('_') or '__' in label:
         return False
     return True
+
+
+def convert_arrays_to_lists(d: dict) -> dict:
+    """Recursively converts all numpy arrays in a nested dictionary to lists. Does not alter the original dictionary."""
+    d_copy = d.copy()  # Make a copy of the dictionary to avoid modifying in-place
+    for key, value in d_copy.items():
+        if isinstance(value, np.ndarray):
+            d_copy[key] = value.tolist()
+        elif isinstance(value, dict):
+            d_copy[key] = convert_arrays_to_lists(value)
+    return d_copy
+
+
+def convert_numeric_lists_to_arrays(d: dict) -> dict:
+    """Recursively converts all numpy arrays in a nested dictionary to lists. Does not alter the original dictionary."""
+    d_copy = d.copy()  # Make a copy of the dictionary to avoid modifying in-place
+    for key, value in d_copy.items():
+        if isinstance(value, list) and isinstance(value[0], (int, float)):
+            d_copy[key] = np.array(value)
+        elif isinstance(value, dict):
+            d_copy[key] = convert_numeric_lists_to_arrays(value)
+    return d_copy

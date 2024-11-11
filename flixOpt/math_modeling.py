@@ -14,8 +14,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 from pyomo.contrib import appsi
 
-from flixOpt import utils
-from flixOpt.core import Skalar, Numeric
+from . import utils
+from .core import Numeric
 
 pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
@@ -29,7 +29,6 @@ class Variable:
     def __init__(self,
                  label: str,
                  length: int,
-                 math_model: 'MathModel',
                  label_short: Optional[str] = None,
                  is_binary: bool = False,
                  fixed_value: Optional[Numeric] = None,
@@ -44,7 +43,6 @@ class Variable:
         self.label = label
         self.label_short = label_short or label
         self.length = length
-        self.math_model = math_model
         self.is_binary = is_binary
         self.fixed_value = fixed_value
         self.lower_bound = lower_bound
@@ -79,7 +77,7 @@ class Variable:
         return description
 
     def reset_result(self):
-        self._result = None
+        self.result = None
 
 
 class VariableTS(Variable):
@@ -89,7 +87,6 @@ class VariableTS(Variable):
     def __init__(self,
                  label: str,
                  length: int,
-                 math_model: 'MathModel',
                  label_short: Optional[str] = None,
                  is_binary: bool = False,
                  fixed_value: Optional[Numeric] = None,
@@ -97,7 +94,7 @@ class VariableTS(Variable):
                  upper_bound: Optional[Numeric] = None,
                  previous_values: Optional[Numeric] = None):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        super().__init__(label, length, math_model, label_short, is_binary=is_binary, fixed_value=fixed_value,
+        super().__init__(label, length, label_short, is_binary=is_binary, fixed_value=fixed_value,
                          lower_bound=lower_bound, upper_bound=upper_bound)
         self.previous_values = previous_values
 
@@ -358,6 +355,7 @@ class MathModel:
         self._variables: List[Variable] = []
         self._eqs: List[Equation] = []
         self._ineqs: List[Equation] = []
+        self._objective: Optional[Equation] = None
         self.result_of_objective: Optional[float] = None
 
         self.duration = {}
@@ -373,6 +371,8 @@ class MathModel:
                     self._eqs.append(arg)
                 elif arg.eqType == 'ineq':
                     self._ineqs.append(arg)
+                elif arg.eqType == 'objective':
+                    self._objective = arg
                 else:
                     raise Exception(f'{arg} cant be added this way!')
             else:
@@ -383,7 +383,7 @@ class MathModel:
                 f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
                 f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
 
-    def to_math_model(self) -> None:
+    def translate_to_modeling_language(self) -> None:
         t_start = timeit.default_timer()
         if self.modeling_language == 'pyomo':
             self.model = PyomoModel()
@@ -398,7 +398,7 @@ class MathModel:
         for variable in self.variables:
             variable.reset_result()  # altes Ergebnis löschen (falls vorhanden)
         self.model.solve(self, solver)
-        self.duration['solve'] = round(timeit.default_timer() - t_start, 2)
+        self.duration['Solving'] = round(timeit.default_timer() - t_start, 2)
 
     @property
     def infos(self) -> Dict:
@@ -431,6 +431,10 @@ class MathModel:
     @property
     def ineqs(self) -> List[Equation]:
         return self._ineqs
+
+    @property
+    def objective(self) -> Equation:
+        return self._objective
 
     @property
     def ts_variables(self) -> List[VariableTS]:
@@ -781,7 +785,7 @@ class ModelingLanguage(ABC):
     def translate_model(self, model: MathModel):
         raise NotImplementedError
 
-    def solve(self, math_model: MathModel, solver_opt: Dict):
+    def solve(self, math_model: MathModel, solver: Solver):
         raise NotImplementedError
 
 
@@ -800,14 +804,15 @@ class PyomoModel(ModelingLanguage):
         global pyomoEnv  # als globale Variable
         import pyomo.environ as pyomoEnv
         logger.debug('Loaded pyomo modules')
-        # für den Fall pyomo wird EIN Modell erzeugt, das auch für rollierende Durchläufe immer wieder genutzt wird.
+
         self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
 
         self.mapping: Dict[Union[Variable, Equation], Any] = {}  # Mapping to Pyomo Units
         self._counter = 0
 
     def solve(self, math_model: MathModel, solver: Solver):
-        self.translate_model(math_model)
+        if self._counter == 0:
+            raise Exception(f' First, call .translate_model(). Else PyomoModel cant solve()')
         solver.solve(self)
 
         # write results
@@ -837,6 +842,10 @@ class PyomoModel(ModelingLanguage):
             logger.debug(f'INEQ {ineq.label} gets translated to Pyomo')
             self.translate_equation(ineq)
 
+        obj = math_model.objective
+        logger.debug(f'{obj.label} gets translated to Pyomo')
+        self.translate_objective(obj)
+
     def translate_variable(self, variable: Variable):
         assert isinstance(variable, Variable), 'Wrong type of variable'
 
@@ -864,50 +873,44 @@ class PyomoModel(ModelingLanguage):
                 pyomo_comp[i].setub(upper_bound_vector[i])  # max
 
     def translate_equation(self, equation: Equation):
+        if equation.eqType not in ['eq', 'ineq']:
+            raise TypeError(f'Wrong equation type: {equation.eqType}')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         constant_vector = equation.constant_vector
-        # 1. Constraints:
-        if equation.eqType in ['eq', 'ineq']:
-            model = self.model
 
-            # lineare Summierung für i-te Gleichung:
-            def linear_sum_pyomo_rule(model, i):
-                lhs = 0
-                aSummand: Summand
-                for aSummand in equation.summands:
-                    lhs += self._summand_math_expression(aSummand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
-                rhs = constant_vector[i]
-                # Unterscheidung return-value je nach typ:
-                if equation.eqType == 'eq':
-                    return lhs == rhs
-                elif equation.eqType == 'ineq':
-                    return lhs <= rhs
+        def linear_sum_pyomo_rule(model, i):
+            """ This function is needed for pyomoy internal construction of Constraints."""
+            lhs = 0
+            aSummand: Summand
+            for aSummand in equation.summands:
+                lhs += self._summand_math_expression(aSummand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
+            rhs = constant_vector[i]
+            # Unterscheidung return-value je nach typ:
+            if equation.eqType == 'eq':
+                return lhs == rhs
+            elif equation.eqType == 'ineq':
+                return lhs <= rhs
 
-            pyomo_comp = pyomoEnv.Constraint(range(equation.length),
-                                             rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
+        pyomo_comp = pyomoEnv.Constraint(range(equation.length),
+                                         rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
 
-            self._register_pyomo_comp(pyomo_comp, equation)
+        self._register_pyomo_comp(pyomo_comp, equation)
 
-        # 2. Zielfunktion:
-        elif equation.eqType == 'objective':
-            # Anmerkung: nrOfEquation - Check könnte auch weiter vorne schon passieren!
-            if equation.length > 1:
-                raise Exception('Equation muss für objective ein Skalar ergeben!!!')
+    def translate_objective(self, objective: Equation):
+        if not objective.eqType == 'objective':
+            raise TypeError(f'Equation of type {objective.eqType} passed to translate_objective. Must be objective!')
+        if objective.length != 1:
+            raise Exception('Length of Objective must be 0')
 
-            # Summierung der Skalare:
-            def linearSumRule_Skalar(model):
-                skalar = 0
-                for aSummand in equation.summands:
-                    skalar += self._summand_math_expression(aSummand)
-                return skalar
+        def _rule_linear_sum_skalar(model):
+            skalar = 0
+            for summand in objective.summands:
+                skalar += self._summand_math_expression(summand)
+            return skalar
 
-            self.model.objective = pyomoEnv.Objective(rule=linearSumRule_Skalar, sense=pyomoEnv.minimize)
-            self.mapping[equation] = self.model.objective
-
-        # 3. Undefined:
-        else:
-            raise Exception('equation.eqType= ' + str(equation.eqType) + ' nicht definiert')
+        self.model.objective = pyomoEnv.Objective(rule=_rule_linear_sum_skalar, sense=pyomoEnv.minimize)
+        self.mapping[objective] = self.model.objective
 
     def _summand_math_expression(self, summand: Summand, at_index: int = 0) -> 'pyomoEnv.Expression':
         pyomo_variable = self.mapping[summand.variable]

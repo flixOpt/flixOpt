@@ -7,4 +7,4 @@ developed by Felix Panitz* and Peter Stange*
 
 # This module is simply for convenience
 
-from flixOpt.math_modeling import Solver, HighsSolver, GurobiSolver, CbcSolver, CplexSolver, GlpkSolver
+from .math_modeling import Solver, HighsSolver, GurobiSolver, CbcSolver, CplexSolver, GlpkSolver

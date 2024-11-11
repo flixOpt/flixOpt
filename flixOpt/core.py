@@ -6,10 +6,11 @@ developed by Felix Panitz* and Peter Stange*
 """
 from typing import Union, Optional, List, Dict, Any, Literal
 import logging
+import inspect
 
 import numpy as np
 
-from flixOpt import utils
+from . import utils
 
 logger = logging.getLogger('flixOpt')
 
@@ -63,7 +64,19 @@ class TimeSeriesData:
         self.label: Optional[str] = None
 
     def __repr__(self):
-        return f"TimeSeriesData(value={self.data}, agg_group={self.agg_group}, agg_weight={self.agg_weight})"
+        # Get the constructor arguments and their current values
+        init_signature = inspect.signature(self.__init__)
+        init_args = init_signature.parameters
+
+        # Create a dictionary with argument names and their values
+        args_str = ', '.join(
+            f"{name}={repr(getattr(self, name, None))}"
+            for name in init_args if name != 'self'
+        )
+        return f"{self.__class__.__name__}({args_str})"
+
+    def __str__(self):
+        return str(self.data)
 
 
 class TimeSeries:
@@ -141,40 +154,15 @@ class TimeSeries:
         return not self.is_scalar and self.data is not None
 
     def __repr__(self):
-        return (f"TimeSeries(label={self.label}, "
-                f"aggregation_weight={self.aggregation_weight}, "
-                f"data={self.data}, active_indices={self.active_indices}, "
-                f"aggregated_data={self.aggregated_data}")
+        # Retrieve all attributes and their values
+        attrs = vars(self)
+        # Format each attribute as 'key=value'
+        attrs_str = ', '.join(f"{key}={value!r}" for key, value in attrs.items())
+        # Format the output as 'ClassName(attr1=value1, attr2=value2, ...)'
+        return f"{self.__class__.__name__}({attrs_str})"
 
     def __str__(self):
-        active_data = self.active_data
-        if isinstance(active_data, Skalar):
-            data_stats = active_data
-            all_indices_active = None
-        else:
-            data_stats = (f"[min={np.min(active_data):.2f}, max={np.max(active_data):.2f}, "
-                          f"mean={np.mean(active_data):.2f}, std={np.std(active_data):.2f}]")
-            if len(active_data) == len(self.data):
-                all_indices_active = 'all'
-            else:
-                all_indices_active = 'some'
-
-        further_infos = []
-        if all_indices_active:
-            further_infos.append(f"indices='{all_indices_active}'")
-        if self.aggregation_weight is not None:
-            further_infos.append(f"aggregation_weight={self.aggregation_weight}")
-        if self.aggregation_group is not None:
-            further_infos.append(f"aggregation_group= '{self.aggregation_group}'")
-        if self.explicit_active_data is not None:
-            further_infos.append(f"'Explicit Active Data was used'")
-
-        if further_infos:
-            infos = f"TimeSeries(active_data={data_stats}, {', '.join(further_infos)})"
-        else:
-            infos = f"TimeSeries({data_stats})"
-
-        return infos
+        return str(self.active_data)
 
     @staticmethod
     def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
