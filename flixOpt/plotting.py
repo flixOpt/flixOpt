@@ -486,6 +486,14 @@ def heat_map_data_from_df(df: pd.DataFrame,
         ('h', '15min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
         ('h', 'min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
     }
+
+    minimum_time_diff_in_min = df.index.to_series().diff().min().total_seconds() / 60  # Smallest time_diff in minutes
+    time_intervals = {'min': 1, '15min': 15, 'h': 60, 'D': 24 * 60, 'W': 7 * 24 * 60}
+    if time_intervals[steps_per_period] > minimum_time_diff_in_min:
+        new_smallest_interval = time_intervals[steps_per_period]
+        logger.warning(f'To compute the heatmap, the data was aggregated from {minimum_time_diff_in_min:.2f} min to '
+                       f'{time_intervals[steps_per_period]:.2f} min. Mean values are displayed.')
+
     # Select the format based on the `periods` and `steps_per_period` combination
     format_pair = (periods, steps_per_period)
     assert format_pair in formats, f'{format_pair} is not a valid format. Choose from {list(formats.keys())}'
