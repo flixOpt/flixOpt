@@ -371,6 +371,7 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
     """
     Reshapes a DataFrame with a DateTime index into a 2D array for heatmap plotting,
     based on a specified sample rate.
+    If a non-valid combination of periods and steps per period is used, falls back to numerical indices
 
     Parameters
     ----------
@@ -426,22 +427,19 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
         ('D', '15min'): ('%Y-%m-%d', '%H:%MM'),  # Day and hour
         ('h', '15min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
         ('h', 'min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
-        # Default to simple formats for unsupported combinations
-        ('default', 'default'): ('%Y-%m-%d', '%H:%M')
     }
 
     # Select the format based on the `periods` and `steps_per_period` combination
     format_pair = (periods, steps_per_period)
-    period_format, step_format = formats.get(format_pair, formats[('default', 'default')])
+    period_format, step_format = formats.get(format_pair, (None, None))
 
-    # Generate period labels, using fallback if no matching format
-    period_labels = [key.strftime(period_format) if hasattr(key, 'strftime') else str(i)
-                     for i, (key, _) in enumerate(grouped)]
+    # Generate period labels: use date formatting if available, otherwise numeric labels
+    period_labels = ([key.strftime(period_format) for key, _ in grouped] if period_format
+                     else list(range(len(grouped))))
 
-    # Generate step labels, using numerical fallback if no matching format
-    step_labels = (first_period_data.index.strftime(step_format)
-                   if hasattr(first_period_data.index, 'strftime') else
-                   list(range(steps_in_period)))
+    # Generate step labels: use date formatting if available, otherwise numeric labels
+    step_labels = (longest_group.index.strftime(step_format) if step_format
+                   else list(range(steps_in_period)))
 
     # Flatten data to 1D and reshape it
     data_1d = resampled_data.values.flatten()
