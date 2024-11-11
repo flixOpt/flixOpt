@@ -239,3 +239,42 @@ class FlowSystem:
     def all_time_series(self) -> List[TimeSeries]:
         return [ts for element in self.all_elements for ts in element.used_time_series]
 
+
+
+def create_datetime_array(start: str, end: str, freq: Literal['Y', 'M', 'W', 'D', 'h', 'm', 's'] = 'h') -> np.ndarray:
+    """
+    Create a NumPy array with datetime64 values.
+
+    Parameters
+    ----------
+    start : str
+        Start date in 'YYYY-MM-DD' format or a full timestamp (e.g., 'YYYY-MM-DD HH:MM').
+    end : str
+        End date in 'YYYY-MM-DD' format or a full timestamp (e.g., 'YYYY-MM-DD HH:MM').
+    freq : str, optional
+        Frequency for the datetime64 array, such as 'Y' (yearly), 'M' (monthly), 'W' (weekly),
+        'D' (daily), 'h' (hourly), 'm' (minutes), 's' (seconds). Defaults to 'h'.
+
+    Returns
+    -------
+    np.ndarray
+        NumPy array of datetime64 values.
+
+    Examples
+    --------
+    Create daily intervals:
+    >>> create_datetime_array('2023-01-01', '2023-01-05', freq='D')
+    array(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04'], dtype='datetime64[D]')
+
+    Create hourly intervals within a single day:
+    >>> create_datetime_array('2023-01-01T00', '2023-01-01T04', freq='h')
+    array(['2023-01-01T00', '2023-01-01T01', '2023-01-01T02', '2023-01-01T03'], dtype='datetime64[h]')
+
+    Create minute intervals within a single hour:
+    >>> create_datetime_array('2023-01-01T00:00', '2023-01-01T01:00', freq='m')
+    array(['2023-01-01T00:00', '2023-01-01T00:01', ..., '2023-01-01T00:59'], dtype='datetime64[m]')
+    """
+    return np.arange(start, end, dtype=f'datetime64[{freq}]')
+
+
+

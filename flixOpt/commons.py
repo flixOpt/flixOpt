@@ -7,7 +7,7 @@ from .effects import Effect
 from .components import Source, Sink, SourceAndSink, Storage, LinearConverter
 from . import linear_converters
 
-from .flow_system import FlowSystem
+from .flow_system import FlowSystem, create_datetime_array
 from .calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 from . import solvers
 
