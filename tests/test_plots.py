@@ -69,11 +69,11 @@ class TestPlots(unittest.TestCase):
 
     def test_stacked_line_plots(self):
         data = self.get_sample_data(nr_of_columns=10, nr_of_periods=1, time_steps_per_period=24)
-        plotly.offline.plot(plotting.with_plotly(data, 'stacked_line'))
+        plotly.offline.plot(plotting.with_plotly(data, 'area'))
 
         data = self.get_sample_data(nr_of_columns=10, nr_of_periods=5, time_steps_per_period=24,
                                     drop_fraction_of_indices=0.3)
-        plotly.offline.plot(plotting.with_plotly(data, 'stacked_line'))
+        plotly.offline.plot(plotting.with_plotly(data, 'area'))
 
     def test_heat_map_plots(self):
         # Generate single-column data with datetime index for heatmap
