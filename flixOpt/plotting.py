@@ -60,7 +60,7 @@ def with_plotly(data: pd.DataFrame,
     >>> fig = with_plotly(data, mode='bar', colorscale='plasma')
     >>> fig.show()
     """
-    assert mode in ['bar', 'line', 'stacked_line'], f"'mode' must be one of {['bar', 'line', 'stacked_line']}"
+    assert mode in ['bar', 'line', 'area'], f"'mode' must be one of {['bar', 'line', 'area']}"
     if isinstance(colors, str):
         colorscale = px.colors.get_colorscale(colors)
         colors = px.colors.sample_colorscale(
