@@ -61,6 +61,34 @@ class TestPlots(unittest.TestCase):
         plotting.heat_map_matplotlib(pd.DataFrame(pd.DataFrame(heatmap_data)))
         plt.show()
 
+    def test_heat_map_plots_complex(self):
+        date_range = pd.date_range(start="2023-01-01", end="2023-03-21", freq="5min")
+
+        # Generate random data for the DataFrame, simulating some metric (e.g., energy consumption, temperature)
+        data = np.random.rand(len(date_range))
+
+        # Create the DataFrame with a datetime index
+        df = pd.DataFrame(data, index=date_range, columns=["value"])
+
+        # Randomly drop a percentage of rows to create irregular intervals
+        drop_fraction = 0.3  # Fraction of data points to drop (30% in this case)
+        drop_indices = np.random.choice(df.index, int(len(df) * drop_fraction), replace=False)
+        df_irregular = df.drop(drop_indices)
+
+        # Generate single-column data with datetime index for heatmap
+        data = df_irregular
+        # Convert data for heatmap plotting using 'day' as period and 'hour' steps
+        heatmap_data = plotting.heat_map_data_from_df(data, 'MS', 'D')
+        plotly.offline.plot(plotting.heat_map_plotly(heatmap_data))
+        plotting.heat_map_matplotlib(pd.DataFrame(heatmap_data))
+        plt.show()
+
+        heatmap_data = plotting.heat_map_data_from_df(data, 'D', 'h', fill='ffill')
+        # Plotting heatmaps with Plotly and Matplotlib
+        plotly.offline.plot(plotting.heat_map_plotly(pd.DataFrame(heatmap_data)))
+        plotting.heat_map_matplotlib(pd.DataFrame(pd.DataFrame(heatmap_data)))
+        plt.show()
+
 
 if __name__ == '__main__':
     unittest.main()
