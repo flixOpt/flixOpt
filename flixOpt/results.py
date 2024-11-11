@@ -23,9 +23,9 @@ logger = logging.getLogger('flixOpt')
 
 class ElementResults:
     def __init__(self, infos: Dict, data: Dict):
-        self._infos = infos
-        self._data = data
-        self.label = self._infos['label']
+        self.infos = infos
+        self.data = data
+        self.label = self.infos['label']
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.label})'
@@ -150,11 +150,11 @@ class CalculationResults:
 class FlowResults(ElementResults):
     def __init__(self, infos: Dict, data: Dict, label_of_component: str) -> None:
         super().__init__(infos, data)
-        self.is_input_in_component = self._infos['is_input_in_component']
+        self.is_input_in_component = self.infos['is_input_in_component']
         self.component_label = label_of_component
-        self.bus_label = self._infos['bus']['label']
+        self.bus_label = self.infos['bus']['label']
         self.label_full = f'{label_of_component}__{self.label}'
-        self.variables = self._data
+        self.variables = self.data
 
 
 class ComponentResults(ElementResults):
@@ -164,12 +164,12 @@ class ComponentResults(ElementResults):
         inputs, outputs = self._create_flow_results()
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
-        self.variables = {key: val for key, val in self._data.items() if key not in self.inputs + self.outputs}
+        self.variables = {key: val for key, val in self.data.items() if key not in self.inputs + self.outputs}
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
-        flow_infos = {key: value for key, value in self._infos.items() if
+        flow_infos = {key: value for key, value in self.infos.items() if
                       isinstance(value, dict) and 'Flow' in value.get('class', '')}
-        flow_results = {flow_info['label']: self._data[flow_info['label']] for flow_info in flow_infos.values()}
+        flow_results = {flow_info['label']: self.data[flow_info['label']] for flow_info in flow_infos.values()}
         flows = [FlowResults(flow_info, flow_result, self.label)
                  for flow_info, flow_result in zip(flow_infos.values(), flow_results.values())]
         inputs = [flow for flow in flows if flow.is_input_in_component]
@@ -182,7 +182,7 @@ class BusResults(ElementResults):
         super().__init__(infos, data)
         self.inputs = inputs
         self.outputs = outputs
-        self.variables = {key: val for key, val in self._data.items() if key not in self.inputs + self.outputs}
+        self.variables = {key: val for key, val in self.data.items() if key not in self.inputs + self.outputs}
 
 
 class EffectResults(ElementResults):
