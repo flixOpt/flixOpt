@@ -14,4 +14,5 @@ from . import solvers
 from .interface import InvestParameters, OnOffParameters
 from .aggregation import AggregationParameters
 
-from .postprocessing import flix_results
+from . import plotting
+from . import results
