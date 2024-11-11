@@ -121,6 +121,31 @@ class CalculationResults:
         else:
             return plotting.with_matplotlib(data=data, mode=mode, show=show)
 
+    def plot_flow_rate(self,
+                       flow_label: str,
+                       mode: Literal['bar', 'line', 'area', 'heatmap'] = 'area',
+                       heatmap_periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
+                       heatmap_steps_per_period: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
+                       engine: Literal['plotly', 'matplotlib'] = 'plotly',
+                       show: bool = True):
+        data = pd.DataFrame(self.flow_results()[flow_label].variables['flow_rate'], index = self.time)
+
+        if mode == 'heatmap' and not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
+            logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
+
+        if engine == 'plotly' and mode == 'heatmap':
+            heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
+            return plotting.heat_map_plotly(heatmap_data)
+        elif engine == 'plotly':
+                return plotting.with_plotly(data=data, mode=mode, show=show)
+        elif engine == 'matplotlib' and mode == 'heatmap':
+            heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
+            return plotting.heat_map_matplotlib(heatmap_data)
+        elif engine == 'matplotlib':
+            return plotting.with_matplotlib(data=data, mode=mode, show=show)
+        else:
+            raise ValueError(f'Unknown combination: {mode=} and {engine=}')
+
 
 class FlowResults(ElementResults):
     def __init__(self, infos: Dict, data: Dict, label_of_component: str) -> None:
