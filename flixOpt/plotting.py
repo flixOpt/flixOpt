@@ -19,7 +19,7 @@ logger = logging.getLogger('flixOpt')
 
 
 def with_plotly(data: pd.DataFrame,
-                mode: Literal['bar', 'line'] = 'bar',
+                mode: Literal['bar', 'line', 'stacked_line'] = 'bar',
                 colors: Union[List[str], str] = 'viridis',
                 fig: Optional[go.Figure] = None,
                 show: bool = False) -> go.Figure:
@@ -92,6 +92,49 @@ def with_plotly(data: pd.DataFrame,
                 mode='lines',
                 name=column,
                 line=dict(shape='hv', color=colors[i]),
+            ))
+    elif mode == 'stacked_line':
+        # Split columns into positive, negative, and mixed categories
+        positive_columns = list(data.columns[(data >= 0).all()])
+        negative_columns = list(data.columns[(data <= 0).all()])
+        mixed_columns = list(set(data.columns) - set(positive_columns + negative_columns))
+
+        colors_stacked = {column: colors[i] for i, column in enumerate(data.columns)}
+        if mixed_columns:
+            logger.warning(f'Data for plotting stacked lines contains columns with both positive and negative values:'
+                           f' {mixed_columns}. These can not be stacked, and are printed as simple lines')
+
+        y_stack = np.zeros(len(data))  # Initialize the starting point for stacking
+        for column in positive_columns:
+            fig.add_trace(go.Scatter(
+                x=data.index,
+                y=data[column] + y_stack,
+                mode='lines',
+                name=column,
+                line=dict(shape='hv', color=colors_stacked[column]),
+                fill='tonexty',
+            ))
+            y_stack += data[column].values
+
+        y_stack = np.zeros(len(data))  # Initialize the starting point for stacking
+        for column in negative_columns:
+            fig.add_trace(go.Scatter(
+                x=data.index,
+                y=data[column] + y_stack,
+                mode='lines',
+                name=column,
+                line=dict(shape='hv', color=colors_stacked[column]),
+                fill='tonexty',
+            ))
+            y_stack += data[column].values
+
+        for column in mixed_columns:
+            fig.add_trace(go.Scatter(
+                x=data.index,
+                y=data[column],
+                mode='lines',
+                name=column,
+                line=dict(shape='hv', color=colors_stacked[column]),
             ))
     else:
         raise ValueError(f'mode must be either "bar" or "line"')
@@ -200,7 +243,7 @@ def with_matplotlib(data: pd.DataFrame,
                 color=colors[i],
                 label=column,
                 width=width,
-                align='edge'
+                align='center'
             )
             cumulative_positive += positive_values.values
             # Plot negative bars
