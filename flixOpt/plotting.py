@@ -242,7 +242,7 @@ def with_matplotlib(data: pd.DataFrame,
                 color=colors[i],
                 label="",  # No label for negative bars
                 width=width,
-                align='edge'
+                align='center'
             )
             cumulative_negative += negative_values.values
 
