@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
+import plotly.offline
 
 logger = logging.getLogger('flixOpt')
 
@@ -20,7 +21,8 @@ logger = logging.getLogger('flixOpt')
 def with_plotly(data: pd.DataFrame,
                 mode: Literal['bar', 'line'] = 'bar',
                 colors: Union[List[str], str] = 'viridis',
-                fig: Optional[go.Figure] = None) -> go.Figure:
+                fig: Optional[go.Figure] = None,
+                show: bool = False) -> go.Figure:
     """
     Plot a DataFrame with Plotly, using either stacked bars or stepped lines.
 
@@ -58,8 +60,10 @@ def with_plotly(data: pd.DataFrame,
     """
     if isinstance(colors, str):
         colorscale = px.colors.get_colorscale(colors)
-        colors = px.colors.sample_colorscale(colorscale,
-                                             [i / (len(data.columns) - 1) for i in range(len(data.columns))])
+        colors = px.colors.sample_colorscale(
+            colorscale,
+            [i / (len(data.columns) - 1) for i in range(len(data.columns))] if len(data.columns) > 1 else [0])
+
     assert len(colors) == len(data.columns), (f'The number of colors does not match the provided data columns. '
                                               f'{len(colors)=}; {len(colors)=}')
     fig = fig if fig is not None else go.Figure()
@@ -115,6 +119,9 @@ def with_plotly(data: pd.DataFrame,
             title_text=None  # Removes legend title for a cleaner look
         )
     )
+
+    if show:
+        plotly.offline.plot(fig)
     return fig
 
 
@@ -123,7 +130,8 @@ def with_matplotlib(data: pd.DataFrame,
                     colors: Union[List[str], str] = 'viridis',
                     figsize: Tuple[int, int] = (12, 6),
                     fig: Optional[plt.Figure] = None,
-                    ax: Optional[plt.Axes] = None) -> Tuple[plt.Figure, plt.Axes]:
+                    ax: Optional[plt.Axes] = None,
+                    show: bool = False) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plot a DataFrame with Matplotlib using stacked bars or stepped lines.
 
@@ -225,6 +233,9 @@ def with_matplotlib(data: pd.DataFrame,
         frameon=False  # Remove box around legend
     )
     fig.tight_layout()
+
+    if show:
+        plt.show()
 
     return fig, ax
 
