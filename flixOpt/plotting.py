@@ -471,6 +471,8 @@ def heat_map_data_from_df(df: pd.DataFrame,
         A DataFrame suitable for heatmap plotting, with rows representing steps within each period
         and columns representing each period.
     """
+    assert pd.api.types.is_datetime64_any_dtype(df.index), \
+        f'The index of the Dataframe must be datetime to transfrom it properly for a heatmap plot'
 
     # Define formats for different combinations of `periods` and `steps_per_period`
     formats = {
