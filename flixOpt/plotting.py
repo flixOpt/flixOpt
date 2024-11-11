@@ -377,48 +377,67 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
     df : pd.DataFrame
         A DataFrame with a DateTime index containing the data to reshape.
     periods : str
-        The time interval of each period, such as 'H' (hourly), 'D' (daily), 'W' (weekly), etc.
-        Will the the x-axis of the
+        The time interval of each period, such as 'h' (hourly), 'D' (daily), 'W' (weekly), etc.
+    steps_per_period : str
+        The time interval within each period (rows in the heatmap), such as 'h' (hourly), '15min' (15-minute intervals), etc.
+    fill : str, optional
+        Method to fill missing values: 'ffill' for forward fill or 'bfill' for backward fill.
 
     Returns
     -------
-    np.ndarray
-        A 2D array suitable for heatmap plotting, where each row represents steps within each period
-        and each column represents a time period.
+    pd.DataFrame
+        A DataFrame suitable for heatmap plotting, with rows representing steps within each period
+        and columns representing a time period.
     """
     # Ensure DataFrame is sorted by time index
     df = df.sort_index()
 
-    # Resample based on the sample rate, filling any gaps with NaN
+    # Resample based on the steps per period, filling any gaps with NaN
     resampled_data = df.resample(steps_per_period).mean()
 
     # Apply fill method if specified
     if fill == 'ffill':
-        resampled_data = resampled_data.ffill()  # Forward fill
+        resampled_data = resampled_data.ffill()
     elif fill == 'bfill':
-        resampled_data = resampled_data.bfill()  # Backward fill
+        resampled_data = resampled_data.bfill()
 
-    # Group data by the larger period (e.g., day, week) and reshape each period
+    # Group data by the larger period (e.g., day, week)
     grouped = resampled_data.groupby(pd.Grouper(freq=periods))
 
     # Determine the number of steps per period based on the first group (assumes regular frequency within each period)
-    first_period_key, first_period_data = next(iter(grouped))
-    steps_in_period = len(first_period_data)
+    try:
+        first_period_key, first_period_data = next(iter(grouped))
+        steps_in_period = len(first_period_data)
+    except StopIteration:
+        raise ValueError("No data available for the selected period. Check date range or frequency settings.")
 
+    # Set date formatting for period and step labels
     formats = {
         'min': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},
-        '15min': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},  # 15-minute intervals
-        'h': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},  # Hourly
-        'D': {'period_format': '%Y-%m-%d', 'step_format': '%d'},  # Daily
-        'W': {'period_format': '%Y-%m-%d', 'step_format': '%A'},  # Weekly
-        'MS': {'period_format': '%Y-%m', 'step_format': '%m'},  # Monthly
-        'YS': {'period_format': '%Y'},  # Yearly
+        '15min': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},
+        'h': {'period_format': '%Y-%m-%d %H', 'step_format': '%H:%M'},
+        'D': {'period_format': '%Y-%m-%d', 'step_format': '%d'},
+        'W': {'period_format': '%Y-%m-%d', 'step_format': '%A'},
+        'MS': {'period_format': '%Y-%m', 'step_format': '%d'},
+        'YS': {'period_format': '%Y', 'step_format': '%m'},
     }
 
-    period_format = formats[periods]['period_format']
-    step_format = formats[steps_per_period]['step_format']
-    period_labels = [key.strftime(period_format) for key, _ in grouped]  # Generate period labels
-    step_labels = first_period_data.index.strftime(step_format)  # Generate step labels
+    # Determine label formats
+    period_format = formats.get(periods, {}).get('period_format', None)
+    step_format = formats.get(steps_per_period, {}).get('step_format', None)
+
+    # Generate period labels, falling back to numerical if necessary
+    if period_format:
+        period_labels = [key.strftime(period_format) for key, _ in grouped]
+    else:
+        period_labels = list(range(len(grouped)))  # Use numerical labels if no valid date format
+
+    # Generate step labels, falling back to numerical if necessary
+    if step_format:
+        step_labels = first_period_data.index.strftime(step_format)
+    else:
+        step_labels = list(range(steps_in_period))  # Use numerical labels if no valid date format
+
     # Flatten data to 1D and reshape it
     data_1d = resampled_data.values.flatten()
     data_2d = reshape_to_2d(data_1d, steps_in_period)
