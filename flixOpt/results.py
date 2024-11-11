@@ -23,9 +23,9 @@ logger = logging.getLogger('flixOpt')
 
 class ElementResults:
     def __init__(self, infos: Dict, data: Dict):
-        self.infos = infos
-        self.data = data
-        self.label = self.infos['label']
+        self.all_infos = infos
+        self.all_results = data
+        self.label = self.all_infos['label']
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.label})'
@@ -37,27 +37,27 @@ class CalculationResults:
         self._path_results = (pathlib.Path(folder) / f'{calculation_name}_data.json').resolve().as_posix()
 
         with open(self._path_infos, 'rb') as f:
-            self.infos: Dict = yaml.safe_load(f)
+            self.all_infos: Dict = yaml.safe_load(f)
 
         with open(self._path_results, 'rb') as f:
-            self.results: Dict = json.load(f)
-        self.results = utils.convert_numeric_lists_to_arrays(self.results)
+            self.all_results: Dict = json.load(f)
+        self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
 
         self.component_results: Dict[str, ComponentResults] = {}
         self.effect_results: Dict[str, EffectResults] = {}
         self.bus_results: Dict[str, BusResults] = {}
 
-        self.time_with_end = np.array([datetime.datetime.fromisoformat(date) for date in self.results['Time']]).astype('datetime64')
+        self.time_with_end = np.array([datetime.datetime.fromisoformat(date) for date in self.all_results['Time']]).astype('datetime64')
         self.time = self.time_with_end[:-1]
-        self.time_intervals_in_hours = np.array(self.results['Time intervals in hours'])
+        self.time_intervals_in_hours = np.array(self.all_results['Time intervals in hours'])
 
         self._construct_component_results()
         self._construct_bus_results()
         self._construct_effect_results()
 
     def _construct_component_results(self):
-        comp_results = self.results['Components']
-        comp_infos = self.infos['FlowSystem']['Components']
+        comp_results = self.all_results['Components']
+        comp_infos = self.all_infos['FlowSystem']['Components']
         assert comp_results.keys() == comp_infos.keys(), \
             f'Missing Component or mismatched keys: {comp_results.keys() ^ comp_infos.keys()}'
 
@@ -67,8 +67,8 @@ class CalculationResults:
             self.component_results[res.label] = res
 
     def _construct_effect_results(self):
-        effect_results = self.results['Effects']
-        effect_infos = self.infos['FlowSystem']['Effects']
+        effect_results = self.all_results['Effects']
+        effect_infos = self.all_infos['FlowSystem']['Effects']
         effect_infos['penalty'] = {'label': 'Penalty'}
         assert effect_results.keys() == effect_infos.keys(), \
             f'Missing Effect or mismatched keys: {effect_results.keys() ^ effect_infos.keys()}'
@@ -80,8 +80,8 @@ class CalculationResults:
 
     def _construct_bus_results(self):
         """ This has to be called after _construct_component_results(), as its using the Flows from the Components"""
-        bus_results = self.results['Buses']
-        bus_infos = self.infos['FlowSystem']['Buses']
+        bus_results = self.all_results['Buses']
+        bus_infos = self.all_infos['FlowSystem']['Buses']
         assert bus_results.keys() == bus_infos.keys(), \
             f'Missing Bus or mismatched keys: {bus_results.keys() ^ bus_infos.keys()}'
 
@@ -150,11 +150,11 @@ class CalculationResults:
 class FlowResults(ElementResults):
     def __init__(self, infos: Dict, data: Dict, label_of_component: str) -> None:
         super().__init__(infos, data)
-        self.is_input_in_component = self.infos['is_input_in_component']
+        self.is_input_in_component = self.all_infos['is_input_in_component']
         self.component_label = label_of_component
-        self.bus_label = self.infos['bus']['label']
+        self.bus_label = self.all_infos['bus']['label']
         self.label_full = f'{label_of_component}__{self.label}'
-        self.variables = self.data
+        self.variables = self.all_results
 
 
 class ComponentResults(ElementResults):
@@ -164,12 +164,12 @@ class ComponentResults(ElementResults):
         inputs, outputs = self._create_flow_results()
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
-        self.variables = {key: val for key, val in self.data.items() if key not in self.inputs + self.outputs}
+        self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
-        flow_infos = {key: value for key, value in self.infos.items() if
+        flow_infos = {key: value for key, value in self.all_infos.items() if
                       isinstance(value, dict) and 'Flow' in value.get('class', '')}
-        flow_results = {flow_info['label']: self.data[flow_info['label']] for flow_info in flow_infos.values()}
+        flow_results = {flow_info['label']: self.all_results[flow_info['label']] for flow_info in flow_infos.values()}
         flows = [FlowResults(flow_info, flow_result, self.label)
                  for flow_info, flow_result in zip(flow_infos.values(), flow_results.values())]
         inputs = [flow for flow in flows if flow.is_input_in_component]
@@ -182,7 +182,7 @@ class BusResults(ElementResults):
         super().__init__(infos, data)
         self.inputs = inputs
         self.outputs = outputs
-        self.variables = {key: val for key, val in self.data.items() if key not in self.inputs + self.outputs}
+        self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
 
 
 class EffectResults(ElementResults):
