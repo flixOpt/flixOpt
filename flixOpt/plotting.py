@@ -377,9 +377,11 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
     df : pd.DataFrame
         A DataFrame with a DateTime index containing the data to reshape.
     periods : str
-        The time interval of each period, such as 'h' (hourly), 'D' (daily), 'W' (weekly), etc.
+        The time interval of each period (columns of the heatmap),
+        such as 'YS' (year start), 'W' (weekly), 'D' (daily), 'h' (hourly) etc.
     steps_per_period : str
-        The time interval within each period (rows in the heatmap), such as 'h' (hourly), '15min' (15-minute intervals), etc.
+        The time interval within each period (rows in the heatmap),
+        such as 'YS' (year start), 'W' (weekly), 'D' (daily), 'h' (hourly) etc.
     fill : str, optional
         Method to fill missing values: 'ffill' for forward fill or 'bfill' for backward fill.
 
@@ -387,7 +389,7 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
     -------
     pd.DataFrame
         A DataFrame suitable for heatmap plotting, with rows representing steps within each period
-        and columns representing a time period.
+        and columns representing each period.
     """
     # Ensure DataFrame is sorted by time index
     df = df.sort_index()
@@ -411,32 +413,35 @@ def reshape_dataframe_to_heatmap(df: pd.DataFrame,
     except StopIteration:
         raise ValueError("No data available for the selected period. Check date range or frequency settings.")
 
-    # Set date formatting for period and step labels
+    # Define formats for different combinations of `periods` and `steps_per_period`
     formats = {
-        'min': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},
-        '15min': {'period_format': '%Y-%m-%d %H:%M', 'step_format': '%H:%M'},
-        'h': {'period_format': '%Y-%m-%d %H', 'step_format': '%H:%M'},
-        'D': {'period_format': '%Y-%m-%d', 'step_format': '%d'},
-        'W': {'period_format': '%Y-%m-%d', 'step_format': '%A'},
-        'MS': {'period_format': '%Y-%m', 'step_format': '%d'},
-        'YS': {'period_format': '%Y', 'step_format': '%m'},
+        ('YS', 'W'): ('%Y', '%W'),
+        ('YS', 'D'): ('%Y', '%j'),  # day of year
+        ('YS', 'h'): ('%Y', '%j %H:00'),
+        ('MS', 'D'): ('%Y-%m', '%d'),  # day of month
+        ('MS', 'h'): ('%Y-%m', '%d %H:00'),
+        ('W', 'D'): ('%Y-%W', '%A'),  # week and day of week
+        ('W', 'h'): ('%Y-%W', '%A %H:00'),
+        ('D', 'h'): ('%Y-%m-%d', '%H:00'),  # Day and hour
+        ('D', '15min'): ('%Y-%m-%d', '%H:%MM'),  # Day and hour
+        ('h', '15min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
+        ('h', 'min'): ('%Y-%m-%d %H:00', '%M'),  # minute of hour
+        # Default to simple formats for unsupported combinations
+        ('default', 'default'): ('%Y-%m-%d', '%H:%M')
     }
 
-    # Determine label formats
-    period_format = formats.get(periods, {}).get('period_format', None)
-    step_format = formats.get(steps_per_period, {}).get('step_format', None)
+    # Select the format based on the `periods` and `steps_per_period` combination
+    format_pair = (periods, steps_per_period)
+    period_format, step_format = formats.get(format_pair, formats[('default', 'default')])
 
-    # Generate period labels, falling back to numerical if necessary
-    if period_format:
-        period_labels = [key.strftime(period_format) for key, _ in grouped]
-    else:
-        period_labels = list(range(len(grouped)))  # Use numerical labels if no valid date format
+    # Generate period labels, using fallback if no matching format
+    period_labels = [key.strftime(period_format) if hasattr(key, 'strftime') else str(i)
+                     for i, (key, _) in enumerate(grouped)]
 
-    # Generate step labels, falling back to numerical if necessary
-    if step_format:
-        step_labels = first_period_data.index.strftime(step_format)
-    else:
-        step_labels = list(range(steps_in_period))  # Use numerical labels if no valid date format
+    # Generate step labels, using numerical fallback if no matching format
+    step_labels = (first_period_data.index.strftime(step_format)
+                   if hasattr(first_period_data.index, 'strftime') else
+                   list(range(steps_in_period)))
 
     # Flatten data to 1D and reshape it
     data_1d = resampled_data.values.flatten()
