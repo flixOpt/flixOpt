@@ -135,12 +135,12 @@ class CalculationResults:
 
         if engine == 'plotly' and mode == 'heatmap':
             heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-            return plotting.heat_map_plotly(heatmap_data)
+            return plotting.heat_map_plotly(heatmap_data, show=show)
         elif engine == 'plotly':
                 return plotting.with_plotly(data=data, mode=mode, show=show)
         elif engine == 'matplotlib' and mode == 'heatmap':
             heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-            return plotting.heat_map_matplotlib(heatmap_data)
+            return plotting.heat_map_matplotlib(heatmap_data, show=show)
         elif engine == 'matplotlib':
             return plotting.with_matplotlib(data=data, mode=mode, show=show)
         else:

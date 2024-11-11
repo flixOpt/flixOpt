@@ -275,7 +275,8 @@ def with_matplotlib(data: pd.DataFrame,
 
 def heat_map_matplotlib(data: pd.DataFrame,
                         color_map: str = 'viridis',
-                        figsize: Tuple[float, float] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
+                        figsize: Tuple[float, float] = (12, 6),
+                        show: bool = False) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots a DataFrame as a heatmap using Matplotlib. The columns of the DataFrame will be displayed on the x-axis,
     the index will be displayed on the y-axis, and the values will represent the 'heat' intensity in the plot.
@@ -332,12 +333,16 @@ def heat_map_matplotlib(data: pd.DataFrame,
     cb1 = fig.colorbar(sm1, ax=ax, pad=0.12, aspect=15, fraction=0.2, orientation='horizontal')
 
     fig.tight_layout()
+    if show:
+        plt.show()
+
     return fig, ax
 
 
 def heat_map_plotly(data: pd.DataFrame,
                     color_map: str = 'viridis',
-                    categorical_labels: bool = True) -> go.Figure:
+                    categorical_labels: bool = True,
+                    show: bool = False) -> go.Figure:
     """
     Plots a DataFrame as a heatmap using Plotly. The columns of the DataFrame will be mapped to the x-axis,
     and the index will be displayed on the y-axis. The values in the DataFrame will represent the 'heat' in the plot.
@@ -390,6 +395,8 @@ def heat_map_plotly(data: pd.DataFrame,
         xaxis=dict(title='Period', side='top', type='category' if categorical_labels else None),
         yaxis=dict(title='Step', autorange='reversed', type='category' if categorical_labels else None)
     )
+    if show:
+        plotly.offline.plot(fig)
 
     return fig
 
