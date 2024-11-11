@@ -101,3 +101,14 @@ def convert_arrays_to_lists(d: dict) -> dict:
         elif isinstance(value, dict):
             d_copy[key] = convert_arrays_to_lists(value)
     return d_copy
+
+
+def convert_numeric_lists_to_arrays(d: dict) -> dict:
+    """Recursively converts all numpy arrays in a nested dictionary to lists. Does not alter the original dictionary."""
+    d_copy = d.copy()  # Make a copy of the dictionary to avoid modifying in-place
+    for key, value in d_copy.items():
+        if isinstance(value, list) and isinstance(value[0], (int, float)):
+            d_copy[key] = np.array(value)
+        elif isinstance(value, dict):
+            d_copy[key] = convert_numeric_lists_to_arrays(value)
+    return d_copy

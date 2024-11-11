@@ -8,11 +8,15 @@ developed by Felix Panitz* and Peter Stange*
 import logging
 import json
 import pathlib
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Literal, Optional
 import datetime
 
 import yaml
 import numpy as np
+import pandas as pd
+
+from flixOpt import utils
+from flixOpt import plotting
 
 logger = logging.getLogger('flixOpt')
 
@@ -37,12 +41,14 @@ class CalculationResults:
 
         with open(self._path_results, 'rb') as f:
             self.results: Dict = json.load(f)
+        self.results = utils.convert_numeric_lists_to_arrays(self.results)
 
         self.component_results: Dict[str, ComponentResults] = {}
         self.effect_results: Dict[str, EffectResults] = {}
         self.bus_results: Dict[str, BusResults] = {}
 
-        self.time = np.array([datetime.datetime.fromisoformat(date) for date in self.results['Time']]).astype('datetime64')
+        self.time_with_end = np.array([datetime.datetime.fromisoformat(date) for date in self.results['Time']]).astype('datetime64')
+        self.time = self.time_with_end[:-1]
         self.time_intervals_in_hours = np.array(self.results['Time intervals in hours'])
 
         self._construct_component_results()
@@ -90,6 +96,30 @@ class CalculationResults:
         return {flow.label_full: flow
                 for comp in self.component_results.values()
                 for flow in comp.inputs + comp.outputs}
+
+    def to_dataframe(self,
+                     label: str,
+                     input_factor: Optional[Literal[1, -1]] = -1,
+                     output_factor: Optional[Literal[1, -1]] = 1,
+                     variable_name: str = 'flow_rate') -> pd.DataFrame:
+        comp_or_bus = {**self.component_results, **self.bus_results}[label]
+        inputs, outputs = {}, {}
+        if input_factor is not None:
+            inputs = {flow.label_full: (flow.variables[variable_name] * input_factor) for flow in comp_or_bus.inputs}
+        if output_factor is not None:
+            outputs = {flow.label_full: flow.variables[variable_name] * output_factor for flow in comp_or_bus.outputs}
+
+        return pd.DataFrame(data={**inputs, **outputs}, index=self.time)
+
+    def plot_operation(self, label: str,
+                       mode: Literal['bar', 'line'] = 'bar',
+                       engine: Literal['plotly', 'matplotlib'] = 'plotly',
+                       show: bool = True):
+        data = self.to_dataframe(label)
+        if engine == 'plotly':
+            return plotting.with_plotly(data=data, mode=mode, show=show)
+        else:
+            return plotting.with_matplotlib(data=data, mode=mode, show=show)
 
 
 class FlowResults(ElementResults):
