@@ -36,9 +36,9 @@ class TimeSeriesData:
             EXAMPLE solar:
             you have several solar timeseries. These should not be overweighted
             compared to the remaining timeseries (i.g. heat load, price)!
-            fixed_relative_value_solar1 = TimeSeriesData(sol_array_1, type = 'solar')
-            fixed_relative_value_solar2 = TimeSeriesData(sol_array_2, type = 'solar')
-            fixed_relative_value_solar3 = TimeSeriesData(sol_array_3, type = 'solar')
+            fixed_relative_profile_solar1 = TimeSeriesData(sol_array_1, type = 'solar')
+            fixed_relative_profile_solar2 = TimeSeriesData(sol_array_2, type = 'solar')
+            fixed_relative_profile_solar3 = TimeSeriesData(sol_array_3, type = 'solar')
             --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3
             (instead of standard weight = 1)
 

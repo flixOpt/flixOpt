@@ -80,7 +80,7 @@ class TestSimple(BaseTest):
                             initial_charge_state=0,
                             relative_maximum_charge_state=1 / 100 * np.array([80., 70., 80., 80, 80, 80, 80, 80, 80, 80]),
                             eta_charge=0.9, eta_discharge=1, relative_loss_per_hour=0.08, prevent_simultaneous_charge_and_discharge=True)
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=self.Q_th_Last, relative_maximum=max(self.Q_th_Last)))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_profile=self.Q_th_Last, relative_maximum=max(self.Q_th_Last)))
         aGasTarif = Source('Gastarif',
                            source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * self.p_el))
@@ -241,7 +241,7 @@ class TestComplex(BaseTest):
         aSpeicher = Storage('Speicher', charging=Flow('Q_th_load', bus=Fernwaerme, size=1e4), discharging=Flow('Q_th_unload', bus=Fernwaerme, size=1e4),
                             capacity_in_flow_hours=invest_Speicher, initial_charge_state=0, maximal_final_charge_state=10, eta_charge=0.9, eta_discharge=1, relative_loss_per_hour=0.08, prevent_simultaneous_charge_and_discharge=True)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, relative_minimum=0, relative_maximum=max(self.Q_th_Last), fixed_relative_value=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, relative_minimum=0, relative_maximum=max(self.Q_th_Last), fixed_relative_profile=self.Q_th_Last))
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
@@ -286,7 +286,7 @@ class TestComplex(BaseTest):
         invest_Speicher = InvestParameters(fix_effects=0, effects_in_segments=costsInvestsizeSegments, optional=False, specific_effects={costs: 0.01, CO2: 0.01}, minimum_size=0, maximum_size=1000)
         aSpeicher = Storage('Speicher', charging=Flow('Q_th_load', bus=Fernwaerme, size=1e4), discharging=Flow('Q_th_unload', bus=Fernwaerme, size=1e4), capacity_in_flow_hours=invest_Speicher, initial_charge_state=0, maximal_final_charge_state=10, eta_charge=0.9, eta_discharge=1, relative_loss_per_hour=0.08, prevent_simultaneous_charge_and_discharge=True)
 
-        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, relative_minimum=0, relative_maximum=max(self.Q_th_Last), fixed_relative_value=self.Q_th_Last))
+        aWaermeLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, relative_minimum=0, relative_maximum=max(self.Q_th_Last), fixed_relative_profile=self.Q_th_Last))
         aGasTarif = Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}))
         aStromEinspeisung = Sink('Einspeisung', sink=Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last)))
 
@@ -347,7 +347,7 @@ class TestModelingTypes(BaseTest):
         aSpeicher = Storage('Speicher', charging=Flow('Q_th_load', size=137, bus=Fernwaerme), discharging=Flow('Q_th_unload', size=158, bus=Fernwaerme), capacity_in_flow_hours=684, initial_charge_state=137, minimal_final_charge_state=137, maximal_final_charge_state=158, eta_charge=1, eta_discharge=1, relative_loss_per_hour=0.001, prevent_simultaneous_charge_and_discharge=True)
 
         TS_Q_th_Last, TS_P_el_Last = TimeSeriesData(Q_th_Last), TimeSeriesData(P_el_Last, agg_weight=0.7)
-        aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_value=TS_Q_th_Last, relative_maximum=max(TS_Q_th_Last.data))), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, fixed_relative_value=TS_P_el_Last, relative_maximum=max(TS_P_el_Last.data)))
+        aWaermeLast, aStromLast = Sink('Wärmelast', sink=Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_profile=TS_Q_th_Last, relative_maximum=max(TS_Q_th_Last.data))), Sink('Stromlast', sink=Flow('P_el_Last', bus=Strom, size=1, fixed_relative_profile=TS_P_el_Last, relative_maximum=max(TS_P_el_Last.data)))
         aKohleTarif, aGasTarif = Source('Kohletarif', source=Flow('Q_Kohle', bus=Kohle, size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3})), Source('Gastarif', source=Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: gP, CO2: 0.3}))
 
         p_feed_in, p_sell = TimeSeriesData(-(p_el - 0.5), agg_group='p_el'), TimeSeriesData(p_el + 0.5, agg_group='p_el')
