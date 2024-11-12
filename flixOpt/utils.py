@@ -108,8 +108,10 @@ def convert_dictionary(d: Dict[str, Any]) -> Dict[str, Any]:
 def convert_to_native_types(value: Any) -> Any:
     """Identify the type of `value` and apply the appropriate conversion function."""
     from .core import TimeSeries, TimeSeriesData
-    if isinstance(value, (int, float, str, bool, datetime)):
+    if isinstance(value, (int, float, str, bool)):
         return value
+    if isinstance(value, datetime):
+        return value.isoformat()
     elif isinstance(value, (np.floating, np.float_)):
         return float(value)
     elif isinstance(value, (np.integer, np.int_)):
@@ -146,7 +148,6 @@ def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) 
         return convert_list_to_array_if_numeric(d)
     else:
         return d
-
 
 def convert_list_to_array_if_numeric(sequence: Union[List[Any], tuple]) -> Union[np.ndarray, List[Any], tuple]:
     """
