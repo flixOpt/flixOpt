@@ -4,3 +4,5 @@ results/
 .venv/
 venv/
 .DS_Store
+lib/
+temp-plot.html
