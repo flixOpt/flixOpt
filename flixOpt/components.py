@@ -269,7 +269,7 @@ class StorageModel(ComponentModel):
     def do_modeling(self, system_model):
         super().do_modeling(system_model)
 
-        lb, ub = self.charge_state_bounds
+        lb, ub = self.absolute_charge_state_bounds
         self.charge_state = create_variable('charge_state', self, system_model.nr_of_time_steps + 1, lower_bound=lb,
                                             upper_bound=ub)
 
@@ -303,10 +303,8 @@ class StorageModel(ComponentModel):
                                     1 / self.element.eta_discharge.active_data * system_model.dt_in_hours)
 
         if isinstance(self.element.capacity_in_flow_hours, InvestParameters):
-            self._investment = InvestmentModel(
-                self.element, self.element.capacity_in_flow_hours, self.charge_state,
-                (self.element.relative_minimum_charge_state.active_data,
-                 self.element.relative_maximum_charge_state.active_data))
+            self._investment = InvestmentModel(self.element, self.element.capacity_in_flow_hours, self.charge_state,
+                                               self.relative_charge_state_bounds)
             self.sub_models.append(self._investment)
             self._investment.do_modeling(system_model)
 
@@ -346,13 +344,19 @@ class StorageModel(ComponentModel):
             eq_min.add_constant(- self.element.minimal_final_charge_state)
 
     @property
-    def charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
+    def absolute_charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
+        relative_lower_bound, relative_upper_bound = self.relative_charge_state_bounds
         if not isinstance(self.element.capacity_in_flow_hours, InvestParameters):
-            return (self.element.relative_minimum_charge_state.active_data * self.element.capacity_in_flow_hours,
-                    self.element.relative_maximum_charge_state.active_data * self.element.capacity_in_flow_hours)
+            return (relative_lower_bound * self.element.capacity_in_flow_hours,
+                    relative_upper_bound * self.element.capacity_in_flow_hours)
         else:
-            return (self.element.relative_minimum_charge_state.active_data * self.element.capacity_in_flow_hours.minimum_size,
-                    self.element.relative_maximum_charge_state.active_data * self.element.capacity_in_flow_hours.maximum_size)
+            return (relative_lower_bound * self.element.capacity_in_flow_hours.minimum_size,
+                    relative_upper_bound * self.element.capacity_in_flow_hours.maximum_size)
+
+    @property
+    def relative_charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
+        return (self.element.relative_minimum_charge_state.active_data,
+                self.element.relative_maximum_charge_state.active_data)
 
 
 class SourceAndSink(Component):

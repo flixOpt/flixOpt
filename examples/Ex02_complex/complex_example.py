@@ -109,7 +109,8 @@ if __name__ == '__main__':
     # 5.a) Heat demand profile
     Waermelast = fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last',  # Heat sink
                                                    bus=Fernwaerme,  # Linked bus
-                                                   size=1, relative_maximum=max(heat_demand), fixed_relative_value=heat_demand))  # Fixed demand profile
+                                                   size=1,
+                                                   fixed_relative_profile=heat_demand))  # Fixed demand profile
 
     # 5.b) Gas tariff
     Gasbezug = fx.Source('Gastarif', source=fx.Flow('Q_Gas', bus=Gas,  # Gas source

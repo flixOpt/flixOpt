@@ -92,14 +92,11 @@ if __name__ == '__main__':
     # 4. Sinks and Sources
     # Heat Load Profile
     a_waermelast = fx.Sink('Wärmelast',
-                           sink=fx.Flow('Q_th_Last', bus=Fernwaerme, size=1,
-                                        relative_maximum=max(TS_heat_demand.data), fixed_relative_value=TS_heat_demand))
+                           sink=fx.Flow('Q_th_Last', bus=Fernwaerme, size=1,fixed_relative_profile=TS_heat_demand))
 
     # Electricity Feed-in
     a_strom_last = fx.Sink('Stromlast',
-                           sink=fx.Flow('P_el_Last', bus=Strom, size=1,
-                                        relative_maximum=max(TS_electricity_demand.data),
-                                        fixed_relative_value=TS_electricity_demand))
+                           sink=fx.Flow('P_el_Last', bus=Strom, size=1, fixed_relative_profile=TS_electricity_demand))
 
     # Gas Tariff
     a_gas_tarif = fx.Source('Gastarif',
