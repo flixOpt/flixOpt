@@ -14,7 +14,8 @@ from .math_modeling import Variable, VariableTS
 from .core import Numeric, Numeric_TS, Skalar
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable
+from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
+    get_object_infos_as_dict
 from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
@@ -67,6 +68,12 @@ class Component(Element):
             flow.bus.add_output(flow)
         for flow in self.outputs:
             flow.bus.add_input(flow)
+
+    def infos(self):
+        infos = get_object_infos_as_dict(self)
+        infos['inputs'] = [flow.infos() for flow in self.inputs]
+        infos['outputs'] = [flow.infos() for flow in self.outputs]
+        return infos
 
 
 class Bus(Element):
