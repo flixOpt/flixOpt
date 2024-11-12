@@ -30,10 +30,11 @@ class InvestmentModel(ElementModel):
                  invest_parameters: InvestParameters,
                  defining_variable: [VariableTS],
                  relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
+                 fixed_relative_profile: Optional[Numeric] = None,
                  label: str = 'Investment',
                  on_variable: Optional[VariableTS] = None):
         """
-        if relative_bounds are both equal, then its like a fixed relative value
+        If fixed relative profile is used, the relative bounds are ignored
         """
         super().__init__(element, label)
         self.element: Union['Flow', 'Storage'] = element
@@ -45,6 +46,7 @@ class InvestmentModel(ElementModel):
         self._on_variable = on_variable
         self._defining_variable = defining_variable
         self._relative_bounds_of_defining_variable = relative_bounds_of_defining_variable
+        self._fixed_relative_profile = fixed_relative_profile
         self._invest_parameters = invest_parameters
 
     def do_modeling(self, system_model: SystemModel):
@@ -121,14 +123,14 @@ class InvestmentModel(ElementModel):
 
     def _create_bounds_for_defining_variable(self, system_model: SystemModel):
         label = self._defining_variable.label
-        relative_minimum, relative_maximum = self._relative_bounds_of_defining_variable
         # fixed relative value
-        if np.array_equal(relative_minimum, relative_maximum):
+        if self._fixed_relative_profile is not None:
             # TODO: Allow Off? Currently not...
             eq_fixed = create_equation(f'fixed_{label}', self)
             eq_fixed.add_summand(self._defining_variable, 1)
-            eq_fixed.add_summand(self.size, np.multiply(-1, relative_maximum))
+            eq_fixed.add_summand(self.size, np.multiply(-1, self._fixed_relative_profile))
         else:
+            relative_minimum, relative_maximum = self._relative_bounds_of_defining_variable
             eq_upper = create_equation(f'ub_{label}', self, 'ineq')
             # eq: defining_variable(t)  <= size * upper_bound(t)
             eq_upper.add_summand(self._defining_variable, 1)

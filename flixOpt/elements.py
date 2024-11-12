@@ -283,14 +283,15 @@ class FlowModel(ElementModel):
         lower_bound, upper_bound, fixed_flow_rate = 0, None, None  # Standard configuration
         if not isinstance(self.element.size, InvestParameters):
             if self.element.fixed_relative_profile is not None:  # Size is fixed -> flow_rate can be fixed
+                lower_bound, upper_bound = None, None  # Ignoring bounds
                 fixed_flow_rate = self.element.fixed_relative_profile.active_data * self.element.size
-            if self.element.on_off_parameters is None:  # Size is fixed and No On-Variable -> Bounds can be set
+            elif self.element.on_off_parameters is None:  # Size is fixed, no profile and No On-Variable -> Bounds can be set
                 lower_bound = self.element.relative_minimum.active_data * self.element.size
                 upper_bound = self.element.relative_maximum.active_data * self.element.size
 
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
-        self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps, fixed_value=fixed_flow_rate,
-                                         lower_bound=lower_bound, upper_bound=upper_bound,
+        self.flow_rate = create_variable('flow_rate', self, system_model.nr_of_time_steps,
+                                         fixed_value=fixed_flow_rate, lower_bound=lower_bound, upper_bound=upper_bound,
                                          previous_values=self.element.previous_flow_rate)
 
         # OnOff
@@ -306,6 +307,7 @@ class FlowModel(ElementModel):
             self._investment = InvestmentModel(self.element, self.element.size,
                                                self.flow_rate,
                                                self.relative_flow_rate_bounds,
+                                               self.element.fixed_relative_profile,
                                                on_variable=self._on.on if self._on is not None else None)
             self._investment.do_modeling(system_model)
             self.sub_models.append(self._investment)
@@ -357,19 +359,21 @@ class FlowModel(ElementModel):
 
     @property
     def absolute_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
+        relative_lower_bound, relative_upper_bound = self.relative_flow_rate_bounds
         if not isinstance(self.element.size, InvestParameters):
-            return (self.element.relative_minimum.active_data * self.element.size,
-                    self.element.relative_maximum.active_data * self.element.size)
+            return (relative_lower_bound * self.element.size,
+                    relative_upper_bound * self.element.size)
         else:
-            return (self.element.relative_minimum.active_data * self.element.size.minimum_size,
-                    self.element.relative_maximum.active_data * self.element.size.maximum_size)
+            return (relative_lower_bound * self.element.size.minimum_size,
+                    relative_upper_bound * self.element.size.maximum_size)
 
     @property
     def relative_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
         if self.element.fixed_relative_profile is None:
             return self.element.relative_minimum.active_data, self.element.relative_maximum.active_data
         else:
-            return self.element.fixed_relative_profile.active_data, self.element.fixed_relative_profile.active_data
+            return (np.minimum(self.element.fixed_relative_profile.active_data, self.element.relative_minimum.active_data),
+                    np.maximum(self.element.fixed_relative_profile.active_data, self.element.relative_maximum.active_data))
 
 
 class BusModel(ElementModel):
