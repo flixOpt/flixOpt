@@ -175,14 +175,14 @@ class CalculationResults:
         - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
 
         Usage:
-        - Visualize and open the network with default options:
-          >>> self.visualize_network()
+        - Visualize and open the network with default options.
+            self.visualize_network()
 
         - Save the visualization without opening:
-          >>> self.visualize_network(show=False)
+            self.visualize_network(show=False)
 
         - Visualize with custom controls and path:
-          >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+            self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
 
         Notes:
         - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
@@ -234,6 +234,29 @@ class EffectResults(ElementResults):
     pass
 
 
+def extract_single_result(results_data: dict[str, Dict[str, Union[int, float, np.ndarray, dict]]],
+                          keys: List[str]) -> Optional[Union[int, float, np.ndarray]]:
+    """ Goes through a nested dictionary with the given keys. Returns the value if found. Else returns None"""
+    for key in keys:
+        if isinstance(results_data, dict):
+            results_data = results_data.get(key, None)
+        else:
+            return None
+    return results_data
+
+def extract_results(results_data: dict[str, Dict[str, Union[int, float, np.ndarray, dict]]],
+                    keys: List[str],
+                    keep_none: bool = False) -> Dict[str, Union[int, float, np.ndarray]]:
+    """ For each item in a dictionary, goes through its sub dictionaries.
+    Returns the value if found. Else returns None. If specified, removes all None values
+    """
+    data = {kind: extract_single_result(results_data.get(kind, {}), keys) for kind in results_data.keys()}
+    if keep_none:
+        return data
+    else:
+        return {key:value for key, value in data.items() if value is not None}
+
+
 if __name__ == '__main__':
     results = CalculationResults('Sim1', '/Users/felix/Documents/Dokumente - eigene/Neuer Ordner/flixOpt-Fork/examples/Ex02_complex/results')
 
@@ -247,6 +270,15 @@ if __name__ == '__main__':
     fig = results.plot_operation('Fernwärme', 'area', engine='plotly')
     fig = plotting.with_plotly(results.to_dataframe('Wärmelast'), 'line', fig=fig)
     import plotly.offline
+    plotly.offline.plot(fig)
+
+    extract_results(results.all_results['Components'], ['Q_th', 'flow_rate'])
+    extract_single_result(results.all_results['Components'], [ 'Kessel', 'Q_th', 'flow_rate'])
+
+    fig = plotting.with_plotly(
+        pd.DataFrame(extract_results(results.all_results['Components'], ['OnOff', 'on']), index=results.time),
+                               mode='bar')
+    fig.update_layout(barmode='group', bargap=0.2, bargroupgap = 0.1)
     plotly.offline.plot(fig)
 
     print()
