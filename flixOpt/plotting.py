@@ -22,7 +22,8 @@ def with_plotly(data: pd.DataFrame,
                 mode: Literal['bar', 'line', 'area'] = 'area',
                 colors: Union[List[str], str] = 'viridis',
                 fig: Optional[go.Figure] = None,
-                show: bool = False) -> go.Figure:
+                show: bool = False,
+                last_time_interval_h: Union[int, float] = 1) -> go.Figure:
     """
     Plot a DataFrame with Plotly, using either stacked bars or stepped lines.
 
@@ -42,6 +43,8 @@ def with_plotly(data: pd.DataFrame,
         will be created.
     show: bool
         Wether to show the figure after creation
+    last_time_interval_h: int, float
+        Duration of the last time interval. Is needed for area plot. ELse, the last step is not shown properly
 
     Returns
     -------
@@ -95,9 +98,11 @@ def with_plotly(data: pd.DataFrame,
                 line=dict(shape='hv', color=colors[i]),
             ))
     elif mode == 'area':
+        data.loc[data.index[-1] + pd.Timedelta(hours=last_time_interval_h)] = data.iloc[-1]  # Repeating the last value to show as area
+        data[(data > -1e-5) & (data < 1e-5)] = 0  # Preventing issues with plotting
         # Split columns into positive, negative, and mixed categories
-        positive_columns = list(data.columns[(data >= -1e-5).all()])
-        negative_columns = list(data.columns[(data <= 1e-5).all()])
+        positive_columns = list(data.columns[(data >= 0).all()])
+        negative_columns = list(data.columns[(data <= 0).all()])
         mixed_columns = list(set(data.columns) - set(positive_columns + negative_columns))
         if mixed_columns:
             logger.warning(f'Data for plotting stacked lines contains columns with both positive and negative values:'
@@ -122,7 +127,7 @@ def with_plotly(data: pd.DataFrame,
                 y=data[column],
                 mode='lines',
                 name=column,
-                line=dict(shape='hv', color=colors_stacked[column]),
+                line=dict(shape='hv', color=colors_stacked[column], dash="dash"),
             ))
 
     # Update layout for better aesthetics
