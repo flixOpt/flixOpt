@@ -122,6 +122,19 @@ def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) 
     Recursively converts all lists of numeric values in a nested dictionary to numpy arrays.
     Handles nested lists, tuples, and dictionaries. Does not alter the original dictionary.
     """
+
+    def convert_list_to_array_if_numeric(sequence: Union[List[Any], tuple]) -> Union[np.ndarray, List[Any]]:
+        """
+        Converts a list to a numpy array if all elements are numeric.
+        Recursively processes each element.
+        """
+        # Check if all elements are numeric in the list
+        if isinstance(sequence, list) and all(isinstance(item, (int, float)) for item in sequence):
+            return np.array(sequence)
+        else:
+            return[convert_numeric_lists_to_arrays(item) if
+                   isinstance(item, (dict, list, tuple)) else item for item in sequence]
+
     if isinstance(d, dict):
         # Make a copy of the dictionary to avoid modifying the original
         d_copy = {}
@@ -136,15 +149,3 @@ def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) 
         return convert_list_to_array_if_numeric(d)
     else:
         return d
-
-def convert_list_to_array_if_numeric(sequence: Union[List[Any], tuple]) -> Union[np.ndarray, List[Any], tuple]:
-    """
-    Converts a list to a numpy array if all elements are numeric.
-    Preserves tuples and recursively processes each element.
-    """
-    # Check if all elements are numeric in the list
-    if isinstance(sequence, list) and all(isinstance(item, (int, float)) for item in sequence):
-        return np.array(sequence)
-    else:
-        converted_sequence = [convert_numeric_lists_to_arrays(item) if isinstance(item, (dict, list, tuple)) else item for item in sequence]
-        return tuple(converted_sequence) if isinstance(sequence, tuple) else converted_sequence
