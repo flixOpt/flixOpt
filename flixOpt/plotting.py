@@ -23,8 +23,7 @@ def with_plotly(data: pd.DataFrame,
                 mode: Literal['bar', 'line', 'area'] = 'area',
                 colors: Union[List[str], str] = 'viridis',
                 fig: Optional[go.Figure] = None,
-                show: bool = False,
-                last_time_interval_h: Union[int, float] = 1) -> go.Figure:
+                show: bool = False) -> go.Figure:
     """
     Plot a DataFrame with Plotly, using either stacked bars or stepped lines.
 
@@ -44,8 +43,6 @@ def with_plotly(data: pd.DataFrame,
         will be created.
     show: bool
         Wether to show the figure after creation
-    last_time_interval_h: int, float
-        Duration of the last time interval. Is needed for area plot. ELse, the last step is not shown properly
 
     Returns
     -------
@@ -99,7 +96,8 @@ def with_plotly(data: pd.DataFrame,
                 line=dict(shape='hv', color=colors[i]),
             ))
     elif mode == 'area':
-        data.loc[data.index[-1] + pd.Timedelta(hours=last_time_interval_h)] = data.iloc[-1]  # Repeating the last value to show as area
+        median_interval = data.index.to_series().diff().dropna().median()  # median time interval
+        data.loc[data.index[-1] + pd.Timedelta(seconds=median_interval.seconds)] = data.iloc[-1]  # Repeating the last value to show as area
         data[(data > -1e-5) & (data < 1e-5)] = 0  # Preventing issues with plotting
         # Split columns into positive, negative, and mixed categories
         positive_columns = list(data.columns[(data >= 0).all()])
