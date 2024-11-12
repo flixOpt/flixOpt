@@ -93,41 +93,29 @@ def label_is_valid(label: str) -> bool:
     return True
 
 
-def convert_numpy_array(array: np.ndarray) -> List[Any]:
-    """Convert a numpy array to a list with native types."""
-    return [convert_to_native_types(item) for item in array.tolist()]
-
-def convert_list_or_tuple(sequence: Union[List[Any], Tuple]) -> List[Any]:
-    """Convert lists or tuples to lists with native types, preserving tuples."""
-    return [convert_to_native_types(item) for item in sequence]
-
-def convert_dictionary(d: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively convert all items in a dictionary to native types."""
-    return {key: convert_to_native_types(value) for key, value in d.items()}
-
-def convert_to_native_types(value: Any) -> Any:
-    """Identify the type of `value` and apply the appropriate conversion function."""
-    from .core import TimeSeries, TimeSeriesData
-    if isinstance(value, (int, float, str, bool)):
-        return value
-    if isinstance(value, datetime):
-        return value.isoformat()
-    elif isinstance(value, (np.floating, np.float_)):
+def convert_to_native_types(value: Optional[Union[int, float, str, list, tuple, dict, np.ndarray, datetime]]
+                            ) -> Optional[Union[int, float, str, list, dict]]:
+    """ Recursively converts datatypes from a nested structure. Makes types compatible with yaml and json."""
+    if isinstance(value, (np.floating, np.float_)):
         return float(value)
     elif isinstance(value, (np.integer, np.int_)):
         return int(value)
-    if isinstance(value, np.ndarray):
-        return convert_numpy_array(value)
+    elif isinstance(value, np.ndarray):
+        return [convert_to_native_types(item) for item in value.tolist()]
+    elif isinstance(value, (np.generic,)):  # For any numpy scalar types
+        return value.item()
+
+    elif isinstance(value, (int, float, str, bool, type(None))):  # After numpy checks!!!
+        return value
     elif isinstance(value, (list, tuple)):
-        return convert_list_or_tuple(value)
+        return [convert_to_native_types(item) for item in value]
     elif isinstance(value, dict):
-        return convert_dictionary(value)
-    elif isinstance(value, TimeSeries):
-        return convert_to_native_types(value.active_data)
-    elif isinstance(value, TimeSeriesData):
-       return convert_to_native_types(value.data)
+        return {convert_to_native_types(k): convert_to_native_types(v) for k, v in value.items()}
+
+    elif isinstance(value, datetime):
+        return value.isoformat()
     else:
-        raise TypeError(f'Type {type(value)} is not supported yet.')
+        raise TypeError(f'Type {type(value)} is not supported in convert_to_native_types().')
 
 def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) -> Union[Dict[str, Any], List[Any], tuple]:
     """

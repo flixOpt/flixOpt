@@ -516,12 +516,11 @@ def get_object_infos_as_str(obj) -> str:
     return f"{obj.__class__.__name__}(\n{textwrap.indent(full_str, ' '*3)})"
 
 
-def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, dict, bool]]:
+def get_object_infos_as_dict(obj) -> Dict[str, Optional[Union[int, float, str, bool, list, dict]]]:
     """
     Returns a dictionary representation of an object's constructor arguments,
-    excluding default values, and formats dictionaries with nested
-    child class objects, displaying their labels.
-    Converts numeric data to python native objects (np.arrays are converted to lists, np.types to int or float)
+    excluding default values. Formats dictionaries with nested child class objects, displaying their labels.
+    Converts data to python native objects. Further, converts Tuples to Lists.
 
     Args:
         obj: The object whose constructor arguments will be formatted and returned as a dictionary.
@@ -531,85 +530,44 @@ def get_object_infos_as_dict(obj) -> Dict[str, Union[Skalar, List[Skalar], str, 
               with properly formatted dictionaries and nested objects' labels.
     """
 
-    from .interface import InvestParameters, OnOffParameters
+    def format_dict(d: Dict[Any, Any]) -> Dict[str, Optional[Union[int, float, str, bool, Dict, List]]]:
+        """ Recursively converts datatypes in a dictionary. Converts keys to string """
+        return {k.label if hasattr(k, 'label') else str(k): format_item(v) for k, v in d.items()}
 
-    def format_dict(d: Dict) -> Dict[str, Union[Numeric, str, Dict, bool]]:
-        """
-        Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
-
-        Args:
-            d (dict): The dictionary to format.
-
-        Returns:
-            dict: A dictionary representation where {None: value} dictionaries are replaced with the value only.
-        """
-        formatted_dict = {}
-        for k, v in d.items():
-            key_str = k.label if hasattr(k, 'label') else str(k)
-            if isinstance(v, dict):
-                v_rep = format_dict(v)  # Recursively format nested dictionaries
-            elif isinstance(v, (Element, InvestParameters, OnOffParameters)):
-                v_rep = value.infos()
-            elif isinstance(v, bool):
-                v_rep = v
-            elif isinstance(v, (int, float, TimeSeries, np.ndarray)):
-                v_rep = to_native_types(v)
+    def format_item(item: Any) -> Optional[Union[int, float, str, bool, List, Dict]]:
+        """ Convert any item to a format that is usable by json and yaml"""
+        if isinstance(item, (int, float, str, bool, type(None), np.ndarray)):
+            return utils.convert_to_native_types(item)
+        elif isinstance(item, (tuple, list)):
+            return [format_item(i) for i in item]
+        elif isinstance(item, dict):  # Format dictionaries with custom formatting
+            if len(item) == 1 and None in item:
+                return format_item(item[None])
             else:
-                v_rep = v
-                logger.warning("Wrong datatype in representation")
-            formatted_dict[key_str] = v_rep
+                return format_dict(item)
+        elif isinstance(item, TimeSeries):
+            return format_item(item.active_data)
+        elif isinstance(item, TimeSeriesData):
+            return format_item(item.data)
+        elif hasattr(item, 'infos') and callable(getattr(item, 'infos')):
+            return item.infos()
+        else:
+            raise TypeError(f'Unexpected type passed to function format_item(). {type(item)=}; {item=}')
 
-        return formatted_dict
+    init_params = sorted(inspect.signature(obj.__init__).parameters.items(),
+                         key=lambda x: (x[0].lower() != 'label', x[0].lower()))
 
-    # Get the constructor arguments and their default values
-    init_signature = inspect.signature(obj.__init__)
-    init_params = sorted(init_signature.parameters.items(), key=lambda x: (x[0].lower() != 'label', x[0].lower()))
-
-    # Build a dictionary of attribute=value pairs, excluding defaults
+    # Build a dict of attribute=value pairs, excluding defaults
     details = {'class': ':'.join([cls.__name__ for cls in obj.__class__.__mro__])}
     for name, param in init_params:
         if name == 'self':
             continue
-
-        # Include only if it's not the default value
-        value = getattr(obj, name, None)
-        default = param.default
+        value, default = getattr(obj, name, None), param.default
         if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
-            continue
-        elif isinstance(value, dict):  # Format dictionaries with custom formatting
-            if len(value) == 1 and None in value:
-                details[name] = to_native_types(value[None])
-            else:
-                details[name] = format_dict(value)
-        elif not np.all(value == default):  # Only save non-default parameters
-            if isinstance(value, (bool, type(None))):
-                details[name] = value
-            elif isinstance(value, (int, float, TimeSeries, np.ndarray)):
-                details[name] = to_native_types(value)
-            elif isinstance(value, (Element, InvestParameters, OnOffParameters)):
-                details[name] = value.infos()
-            else:  # Convert unexpected types as str
-                details[name] = str(value)
+            pass
+        elif np.all(value == default):  # Ignore default values
+            pass
+        else:
+            details[name] = format_item(value)
 
     return details
-
-
-def to_native_types(data: Union[int, float, np.ndarray, TimeSeries, TimeSeriesData]) -> Union[Skalar, List[Skalar]]:
-    """Recursively convert all numpy data types in lists or dicts to native Python types."""
-    if isinstance(data, TimeSeries):
-        data = data.active_data
-
-    if isinstance(data, TimeSeriesData):
-        data = data.data
-
-    if isinstance(data, np.ndarray):
-        data = data.tolist()  # Convert the array to a list
-
-    if isinstance(data, list):
-        # Recursively process each item in the list
-        return [to_native_types(item) for item in data]
-
-    elif isinstance(data, (np.generic,)):  # For any numpy scalar types
-        return data.item()  # Convert to native Python scalar
-
-    return data  # Return the item itself if it's already a native type
