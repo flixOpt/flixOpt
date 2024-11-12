@@ -119,45 +119,24 @@ class Aggregation:
     def use_extreme_periods(self):
         return self.time_series_for_high_peaks or self.time_series_for_low_peaks
 
-    def plot(self, colormap: str = 'viridis', show: bool = True) -> tuple:
-        import matplotlib.pyplot as plt
-        # Get the column names from the DataFrame
-        column_names = self.original_data.columns
+    def plot(self, colormap: str = 'viridis', show: bool = True) -> 'plotly.Figure':
+        from . import plotting
 
-        # Handle colormap
-        cmap = plt.get_cmap(colormap or 'viridis')  # Use default colormap if not provided
+        df_org = self.original_data.copy().rename(
+            columns={col: f'Original - {col}' for col in self.original_data.columns})
+        df_agg = self.aggregated_data.copy().rename(
+            columns={col: f'Aggregated - {col}' for col in self.aggregated_data.columns})
+        fig = plotting.with_plotly(df_org, 'line', colors=colormap)
+        for trace in fig.data:
+            trace.update(dict(line=dict(dash='dash')))
+        fig = plotting.with_plotly(df_agg, 'line', colors=colormap, show=show, fig=fig)
 
-        # Generate color palette
-        colors = cmap(np.linspace(0, 1, len(column_names)))
-
-        # Create a figure and axis
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        # Plot the original and aggregated data with different line styles
-        for i, col in enumerate(column_names):
-            ax.plot(self.original_data.index, self.original_data[col],
-                    label=f'Original - {col}', color=colors[i], linestyle='-')
-            ax.plot(self.aggregated_data.index, self.aggregated_data[col],
-                    label=f'Aggregated - {col}', color=colors[i], linestyle='--')
-
-        # Add title and labels
-        ax.set_title('Original vs Aggregated Data (dashed = aggregated)')
-        ax.set_xlabel('Index')
-        ax.set_ylabel('Value')
-
-        # Add grid
-        ax.grid(True, linestyle='--', alpha=0.7)
-
-        # Add legend
-        ax.legend(loc='best')
-
-        # Adjust layout
-        plt.tight_layout()
-        if show:
-            plt.show()
-
-        # Return fig, ax for further use
-        return fig, ax
+        fig.update_layout(
+            title='Original vs Aggregated Data (original = ---)',
+            xaxis_title='Index',
+            yaxis_title='Value'
+        )
+        return fig
 
     def get_cluster_indices(self) -> Dict[str, List[np.ndarray]]:
         """

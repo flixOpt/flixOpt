@@ -6,7 +6,8 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import logging
-from typing import Union, List, Optional, Dict, Literal
+from datetime import datetime
+from typing import Union, List, Optional, Dict, Literal, Any, Tuple
 
 import numpy as np
 
@@ -92,23 +93,59 @@ def label_is_valid(label: str) -> bool:
     return True
 
 
-def convert_arrays_to_lists(d: dict) -> dict:
-    """Recursively converts all numpy arrays in a nested dictionary to lists. Does not alter the original dictionary."""
-    d_copy = d.copy()  # Make a copy of the dictionary to avoid modifying in-place
-    for key, value in d_copy.items():
-        if isinstance(value, np.ndarray):
-            d_copy[key] = value.tolist()
-        elif isinstance(value, dict):
-            d_copy[key] = convert_arrays_to_lists(value)
-    return d_copy
+def convert_to_native_types(value: Optional[Union[int, float, str, list, tuple, dict, np.ndarray, datetime]]
+                            ) -> Optional[Union[int, float, str, list, dict]]:
+    """ Recursively converts datatypes from a nested structure. Makes types compatible with yaml and json."""
+    if isinstance(value, (np.floating, np.float_)):
+        return float(value)
+    elif isinstance(value, (np.integer, np.int_)):
+        return int(value)
+    elif isinstance(value, np.ndarray):
+        return [convert_to_native_types(item) for item in value.tolist()]
+    elif isinstance(value, (np.generic,)):  # For any numpy scalar types
+        return value.item()
 
+    elif isinstance(value, (int, float, str, bool, type(None))):  # After numpy checks!!!
+        return value
+    elif isinstance(value, (list, tuple)):
+        return [convert_to_native_types(item) for item in value]
+    elif isinstance(value, dict):
+        return {convert_to_native_types(k): convert_to_native_types(v) for k, v in value.items()}
 
-def convert_numeric_lists_to_arrays(d: dict) -> dict:
-    """Recursively converts all numpy arrays in a nested dictionary to lists. Does not alter the original dictionary."""
-    d_copy = d.copy()  # Make a copy of the dictionary to avoid modifying in-place
-    for key, value in d_copy.items():
-        if isinstance(value, list) and isinstance(value[0], (int, float)):
-            d_copy[key] = np.array(value)
-        elif isinstance(value, dict):
-            d_copy[key] = convert_numeric_lists_to_arrays(value)
-    return d_copy
+    elif isinstance(value, datetime):
+        return value.isoformat()
+    else:
+        raise TypeError(f'Type {type(value)} is not supported in convert_to_native_types().')
+
+def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) -> Union[Dict[str, Any], List[Any], tuple]:
+    """
+    Recursively converts all lists of numeric values in a nested dictionary to numpy arrays.
+    Handles nested lists, tuples, and dictionaries. Does not alter the original dictionary.
+    """
+
+    def convert_list_to_array_if_numeric(sequence: Union[List[Any], tuple]) -> Union[np.ndarray, List[Any]]:
+        """
+        Converts a list to a numpy array if all elements are numeric.
+        Recursively processes each element.
+        """
+        # Check if all elements are numeric in the list
+        if isinstance(sequence, list) and all(isinstance(item, (int, float)) for item in sequence):
+            return np.array(sequence)
+        else:
+            return[convert_numeric_lists_to_arrays(item) if
+                   isinstance(item, (dict, list, tuple)) else item for item in sequence]
+
+    if isinstance(d, dict):
+        # Make a copy of the dictionary to avoid modifying the original
+        d_copy = {}
+        for key, value in d.items():
+            if isinstance(value, (list, tuple)):
+                d_copy[key] = convert_list_to_array_if_numeric(value)
+            elif isinstance(value, dict):
+                d_copy[key] = convert_numeric_lists_to_arrays(value)  # Recursively process nested dictionaries
+        return d_copy
+    elif isinstance(d, (list, tuple)):
+        # If the input itself is a list or tuple, process it as a sequence
+        return convert_list_to_array_if_numeric(d)
+    else:
+        return d

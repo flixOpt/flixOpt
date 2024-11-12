@@ -84,8 +84,7 @@ class Calculation:
         import yaml
         import json
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            results = utils.convert_arrays_to_lists(self.results())
-            results['Time'] = [date.isoformat() for date in results['Time']]
+            results = utils.convert_to_native_types(self.results())
             json.dump(results, f, indent=4)
 
         nodes_info, edges_info = self.flow_system.network_infos()

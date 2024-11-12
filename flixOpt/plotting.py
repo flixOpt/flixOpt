@@ -5,6 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 import logging
+import pathlib
 from typing import Literal, Tuple, Union, Optional, List
 
 import pandas as pd
@@ -95,9 +96,12 @@ def with_plotly(data: pd.DataFrame,
                 line=dict(shape='hv', color=colors[i]),
             ))
     elif mode == 'area':
+        median_interval = data.index.to_series().diff().dropna().median()  # median time interval
+        data.loc[data.index[-1] + pd.Timedelta(seconds=median_interval.seconds)] = data.iloc[-1]  # Repeating the last value to show as area
+        data[(data > -1e-5) & (data < 1e-5)] = 0  # Preventing issues with plotting
         # Split columns into positive, negative, and mixed categories
-        positive_columns = list(data.columns[(data >= -1e-5).all()])
-        negative_columns = list(data.columns[(data <= 1e-5).all()])
+        positive_columns = list(data.columns[(data >= 0).all()])
+        negative_columns = list(data.columns[(data <= 0).all()])
         mixed_columns = list(set(data.columns) - set(positive_columns + negative_columns))
         if mixed_columns:
             logger.warning(f'Data for plotting stacked lines contains columns with both positive and negative values:'
@@ -122,7 +126,7 @@ def with_plotly(data: pd.DataFrame,
                 y=data[column],
                 mode='lines',
                 name=column,
-                line=dict(shape='hv', color=colors_stacked[column]),
+                line=dict(shape='hv', color=colors_stacked[column], dash="dash"),
             ))
 
     # Update layout for better aesthetics
@@ -275,7 +279,8 @@ def with_matplotlib(data: pd.DataFrame,
 
 def heat_map_matplotlib(data: pd.DataFrame,
                         color_map: str = 'viridis',
-                        figsize: Tuple[float, float] = (12, 6)) -> Tuple[plt.Figure, plt.Axes]:
+                        figsize: Tuple[float, float] = (12, 6),
+                        show: bool = False) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots a DataFrame as a heatmap using Matplotlib. The columns of the DataFrame will be displayed on the x-axis,
     the index will be displayed on the y-axis, and the values will represent the 'heat' intensity in the plot.
@@ -332,12 +337,16 @@ def heat_map_matplotlib(data: pd.DataFrame,
     cb1 = fig.colorbar(sm1, ax=ax, pad=0.12, aspect=15, fraction=0.2, orientation='horizontal')
 
     fig.tight_layout()
+    if show:
+        plt.show()
+
     return fig, ax
 
 
 def heat_map_plotly(data: pd.DataFrame,
                     color_map: str = 'viridis',
-                    categorical_labels: bool = True) -> go.Figure:
+                    categorical_labels: bool = True,
+                    show: bool = False) -> go.Figure:
     """
     Plots a DataFrame as a heatmap using Plotly. The columns of the DataFrame will be mapped to the x-axis,
     and the index will be displayed on the y-axis. The values in the DataFrame will represent the 'heat' in the plot.
@@ -390,6 +399,8 @@ def heat_map_plotly(data: pd.DataFrame,
         xaxis=dict(title='Period', side='top', type='category' if categorical_labels else None),
         yaxis=dict(title='Step', autorange='reversed', type='category' if categorical_labels else None)
     )
+    if show:
+        plotly.offline.plot(fig)
 
     return fig
 
@@ -519,3 +530,83 @@ def heat_map_data_from_df(df: pd.DataFrame,
     df_pivoted = resampled_data.pivot(columns='period', index='step', values=df.columns[0])
 
     return df_pivoted
+
+def visualize_network(node_infos: dict,
+                      edge_infos: dict,
+                      path: Union[bool, str, pathlib.Path] = 'results/network.html',
+                      controls: Union[bool, List[Literal[
+                          'nodes', 'edges', 'layout', 'interaction', 'manipulation',
+                          'physics', 'selection', 'renderer']]] = True,
+                      show: bool = True
+                      ) -> Optional['pyvis.network.Network']:
+    """
+    Visualizes the network structure of a FlowSystem using PyVis, using info-dictionaries.
+
+    Parameters:
+    - path (Union[bool, str, pathlib.Path], default='results/network.html'):
+      Path to save the HTML visualization.
+        - `False`: Visualization is created but not saved.
+        - `str` or `Path`: Specifies file path (default: 'results/network.html').
+
+    - controls (Union[bool, List[str]], default=True):
+      UI controls to add to the visualization.
+        - `True`: Enables all available controls.
+        - `List`: Specify controls, e.g., ['nodes', 'layout'].
+        - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
+
+    - show (bool, default=True):
+      Whether to open the visualization in the web browser.
+
+    Returns:
+    - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
+
+    Usage:
+    - Visualize and open the network with default options:
+      >>> self.visualize_network()
+
+    - Save the visualization without opening:
+      >>> self.visualize_network(show=False)
+
+    - Visualize with custom controls and path:
+      >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+
+    Notes:
+    - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
+    - Nodes are styled based on type (e.g., circles for buses, boxes for components) and annotated with node information.
+    """
+    try:
+        from pyvis.network import Network
+    except ImportError:
+        print("The Network visualization relies on the package 'pyvis'. "
+              "If it's not installed, the FlowSystem can not be visualized. "
+              "Please install it using 'pip install pyvis'.")
+        return None
+
+    net = Network(directed=True)
+
+    for id, node in node_infos.items():
+        net.add_node(id, label=node['label'], shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
+                     title=node['infos'].replace(')', '\n)'))
+
+    for id, edge in edge_infos.items():
+        net.add_edge(edge['start'], edge['end'], label=edge['label'],
+                     title=edge['infos'].replace(')', '\n)'),
+                     font={"size": 12, "color": "red"})
+
+    net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
+    if controls:
+        net.show_buttons(filter_=controls)  # Adds UI buttons to control physics settings
+
+    if isinstance(path, str):
+        path = pathlib.Path(path)
+    path = path.resolve().as_posix()
+    net.write_html(path)
+    if show:
+        try:
+            import webbrowser
+            webbrowser.open(f'file://{path}', 2)
+        except Exception:
+            logger.warning(f'Showing the network in the Browser went wrong. Open it manually. '
+                           f'Its saved under {path}')
+
+    return net
