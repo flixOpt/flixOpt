@@ -6,12 +6,8 @@ Developed by Felix Panitz* and Peter Stange*
 """
 
 import pathlib
-import time
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import yaml
 
 import flixOpt as fx
 from flixOpt import OnOffParameters
@@ -35,7 +31,7 @@ keep_extreme_periods = True
 
 # ######################  Data Import  ####################################
 data_import = pd.read_csv(pathlib.Path('Zeitreihen2020.csv'), index_col=0).sort_index()
-filtered_data = data_import['2020-01-01':'2020-01-15 23:45:00']  # Only use data from specific dates
+filtered_data = data_import['2020-01-01':'2020-01-2 23:45:00']  # Only use data from specific dates
 # filtered_data = data_import[0:500]  # Alternatively filter by index
 
 filtered_data = filtered_data.set_index(pd.to_datetime(filtered_data.index))  # Convert index to datetime
@@ -206,185 +202,78 @@ flow_system.add_components(
 )
 
 # ######################  Calculations  ####################################
-
-list_of_calculations = []
+calculations = {'Full': None, 'Segmented': None, 'Aggregated': None}
 # Full Calculation
 if full:
     calculation = fx.FullCalculation('fullModel', flow_system, 'pyomo', None)
     calculation.do_modeling()
     calculation.solve(fx.solvers.HighsSolver())
-    list_of_calculations.append(calculation)
+    calculations['Full'] = calculation
 
 # Segmented Calculation
 if segmented:
     calculation = fx.SegmentedCalculation('segModel', flow_system, segment_length, overlap_length)
     calculation.do_modeling_and_solve(fx.solvers.HighsSolver())
-    list_of_calculations.append(calculation)
+    calculations['Segmented'] = calculation
 
 # Aggregated Calculation
 if aggregated:
     if keep_extreme_periods:
-        aggregation_parameters.time_series_for_high_peaks = [TS_heat_demand],
+        aggregation_parameters.time_series_for_high_peaks = [TS_heat_demand]
         aggregation_parameters.time_series_for_low_peaks = [TS_electricity_demand, TS_heat_demand]
     calculation = fx.AggregatedCalculation(
         'aggModel', flow_system,
         aggregation_parameters= aggregation_parameters)
     calculation.do_modeling()
     calculation.solve(fx.solvers.HighsSolver())
-    list_of_calculations.append(calculation)
+    calculations['Aggregated'] = calculation
 
 
-# Segment Plot
-if calc_segs and calc_full:
-    fig, ax = plt.subplots(figsize=(10, 5))
-    plt.plot(
-        calc_segs.time_series_with_end,
-        calc_segs.results_struct.Speicher.charge_state,
-        '-',
-        label='chargeState (complete)'
-    )
-    for system_model in calc_segs.system_models:
-        plt.plot(
-            system_model.time_series_with_end,
-            system_model.results_struct.Speicher.charge_state,
-            ':',
-            label='chargeState'
-        )
-    plt.legend()
-    plt.grid()
-    plt.show()
+# Compare Results between modeling types
+if full and segmented and aggregated:
+    data = pd.DataFrame({'Full': calculations['Full'].results()['Components']['Speicher']['charge_state'],
+                         'Aggregated': calculations['Aggregated'].results()['Components']['Speicher']['charge_state'],
+                         'Segmented': calculations['Segmented'].results(combined_arrays=True)['Components']['Speicher']['charge_state']},
+                        index = calculations['Full'].system_model.time_series_with_end)
+    fig = fx.plotting.with_plotly(data, 'line')
+    fig.update_layout(title="Compared Charge state of Storage for different Calculation types",
+                      xaxis_title="Time", yaxis_title="Charge state")
+    fig.write_html('results/Charge State.html')
 
-    # Q_th_BHKW Plot
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for system_model in calc_segs.system_models:
-        plt.plot(system_model.time_series, system_model.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
-    plt.plot(calc_full.time_series, calc_full.results_struct.BHKW2.Q_th.val, label='Q_th_BHKW')
-    plt.legend()
-    plt.grid()
-    plt.show()
 
-    # Costs Plot
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for system_model in calc_segs.system_models:
-        plt.plot(
-            system_model.time_series,
-            system_model.results_struct.global_comp.costs.operation.sum_TS,
-            label='costs'
-        )
-    plt.plot(
-        calc_full.time_series,
-        calc_full.results_struct.global_comp.costs.operation.sum_TS,
-        ':',
-        label='costs (full)'
-    )
-    plt.legend()
-    plt.grid()
-    plt.show()
+    data = pd.DataFrame({'Full': calculations['Full'].results()['Components']['BHKW2']['Q_th']['flow_rate'],
+                         'Aggregated': calculations['Aggregated'].results()['Components']['BHKW2']['Q_th']['flow_rate'],
+                         'Segmented': calculations['Segmented'].results(combined_arrays=True)['Components']['BHKW2']['Q_th']['flow_rate']},
+                        index=calculations['Full'].system_model.time_series)
+    fig = fx.plotting.with_plotly(data, 'line')
+    fig.update_layout(title="Compared flow_rate of BHKW2__Q_th for different Calculation types",
+                      xaxis_title="Time", yaxis_title="flow rate")
+    fig.write_html('results/BHKW2 Thermal Power.html')
 
-# Penalty Variables
-print('######### Sum Korr_... (wenn vorhanden) #########')
-if calc_agg:
-    aggregation_element = list(calc_agg.flow_system.other_elements)[0]
-    for var in aggregation_element.model.variables:
-        print(f"{var.label_full}: {sum(var.result())}")
 
-# Time Durations
-print('')
-print('############ Time Durations #####################')
-for a_result in list_of_calcs:
-    print(f"{a_result.label}:")
-    a_result.listOfModbox[0].describe()
-    # print(a_result.infos)
-    # print(a_result.duration)
-    print(f"costs: {a_result.results_struct.global_comp.costs.all.sum}")
+    data = pd.DataFrame({'Full': calculations['Full'].results()['Effects']['costs']['operation']['operation_sum_TS'],
+                         'Aggregated': calculations['Aggregated'].results()['Effects']['costs']['operation']['operation_sum_TS'],
+                         'Segmented':
+                             calculations['Segmented'].results(combined_arrays=True)['Effects']['costs']['operation']['operation_sum_TS']},
+                        index=calculations['Full'].system_model.time_series)
+    fig = fx.plotting.with_plotly(data, 'line')
+    fig.update_layout(title="Compared cost for different Calculation types", xaxis_title="Time", yaxis_title="Costs in €")
+    fig.write_html('results/Operation Costs.html')
 
-# ##########################################################################
-# ######################  Post Processing  ################################
 
-import flixOpt.postprocessing as flix_post
+    data = pd.DataFrame(data.sum()).T
+    fig = fx.plotting.with_plotly(data, 'bar')
+    fig.update_layout(barmode='group',title="Compared Total costs for different Calculation types",
+                      xaxis_title="",yaxis_title="Costs in €")
+    fig.write_html('results/Total Costs.html')
 
-list_of_results = []
+    data = pd.DataFrame({'Full': [calculations['Full'].durations.get(key, 0) for key in calculations['Aggregated'].durations],
+                         'Aggregated': [calculations['Aggregated'].durations.get(key, 0) for key in calculations['Aggregated'].durations],
+                         'Segmented': [calculations['Segmented'].durations.get(key, 0) for key in calculations['Aggregated'].durations]},
+                        index=list(calculations['Aggregated'].durations.keys())).T
+    fig = fx.plotting.with_plotly(data, 'bar')
+    fig.update_layout(title="Compared Durations for different Calculation types",
+                      xaxis_title="Calculation type", yaxis_title="Time in seconds")
+    fig.write_html('results/Speed Comparison.html')
 
-if do_full_calc:
-    full = flix_post.flix_results(calc_full.label)
-    list_of_results.append(full)
-    costs = full.results_struct.global_comp.costs.all.sum
 
-if do_aggregated_calc:
-    agg = flix_post.flix_results(calc_agg.label)
-    list_of_results.append(agg)
-    costs = agg.results_struct.global_comp.costs.all.sum
-
-if do_segmented_calc:
-    seg = flix_post.flix_results(calc_segs.label)
-    list_of_results.append(seg)
-    costs = seg.results_struct.global_comp.costs.all.sum
-
-# ###### Plotting #######
-
-# Overview Plot
-def uebersichts_plot(a_calc):
-    fig, ax = plt.subplots(figsize=(10, 5))
-    plt.title(a_calc.name)
-
-    plot_flow(a_calc, a_calc.results_struct.BHKW2.P_el.val, 'P_el')
-    plot_flow(a_calc, a_calc.results_struct.BHKW2.Q_th.val, 'Q_th_BHKW')
-    plot_flow(a_calc, a_calc.results_struct.Kessel.Q_th.val, 'Q_th_Kessel')
-
-    plot_on(a_calc, a_calc.results_struct.Kessel.Q_th, 'Q_th_Kessel', -5)
-    plot_on(a_calc, a_calc.results_struct.Kessel, 'Kessel', -10)
-    plot_on(a_calc, a_calc.results_struct.BHKW2, 'BHKW ', -15)
-
-    plot_flow(a_calc, a_calc.results_struct.Waermelast.Q_th_Last.val, 'Q_th_Last')
-
-    plt.plot(
-        a_calc.time_series,
-        a_calc.results_struct.global_comp.costs.operation.sum_TS,
-        '--',
-        label='costs (operating)'
-    )
-
-    if hasattr(a_calc.results_struct, 'Speicher'):
-        plt.step(
-            a_calc.time_series,
-            a_calc.results_struct.Speicher.Q_th_unload.val,
-            where='post',
-            label='Speicher_unload'
-        )
-        plt.step(
-            a_calc.time_series,
-            a_calc.results_struct.Speicher.Q_th_load.val,
-            where='post',
-            label='Speicher_load'
-        )
-        plt.plot(
-            a_calc.time_series_with_end,
-            a_calc.results_struct.Speicher.charge_state,
-            label='charge_state'
-        )
-
-    plt.grid(axis='y')
-    plt.legend(loc='center left', bbox_to_anchor=(1., 0.5))
-    plt.show()
-
-# Generate Plots
-for a_result in list_of_results:
-    uebersichts_plot(a_result)
-
-# Component-Specific Plots
-for a_result in list_of_results:
-    # Ensure type hint for better IDE support
-    a_result: flix_post.flix_results
-    a_result.plot_in_and_outs('Fernwaerme', stacked=True)
-
-# Penalty Costs
-print('## Penalty: ##')
-for a_result in list_of_results:
-    print(f"Kosten penalty Sim1: {sum(a_result.results_struct.global_comp.penalty.sum_TS)}")
-
-# Load YAML File
-with open(agg.filename_infos, 'rb') as f:
-    infos = yaml.safe_load(f)
-
-# Periods Order of Aggregated Calculation
-print(f"periods_order of aggregated calc: {infos['calculation']['aggregatedProps']['periods_order']}")
