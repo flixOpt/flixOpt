@@ -6,6 +6,7 @@ developed by Felix Panitz* and Peter Stange*
 """
 
 import logging
+from datetime import datetime
 from typing import Union, List, Optional, Dict, Literal, Any, Tuple
 
 import numpy as np
@@ -107,6 +108,12 @@ def convert_dictionary(d: Dict[str, Any]) -> Dict[str, Any]:
 def convert_to_native_types(value: Any) -> Any:
     """Identify the type of `value` and apply the appropriate conversion function."""
     from .core import TimeSeries, TimeSeriesData
+    if isinstance(value, (int, float, str, bool, datetime)):
+        return value
+    elif isinstance(value, (np.floating, np.float_)):
+        return float(value)
+    elif isinstance(value, (np.integer, np.int_)):
+        return int(value)
     if isinstance(value, np.ndarray):
         return convert_numpy_array(value)
     elif isinstance(value, (list, tuple)):
@@ -117,19 +124,8 @@ def convert_to_native_types(value: Any) -> Any:
         return convert_to_native_types(value.active_data)
     elif isinstance(value, TimeSeriesData):
        return convert_to_native_types(value.data)
-    elif isinstance(value, (np.integer, np.int_)):
-        return int(value)
-    elif isinstance(value, (np.floating, np.float_)):
-        return float(value)
     else:
         raise TypeError(f'Type {type(value)} is not supported yet.')
-
-def convert_arrays_to_lists(d: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Convert all numpy arrays, lists, and tuples in a nested dictionary to lists with native types.
-    """
-    d_copy: Dict[str, Any] = d.copy()
-    return convert_dictionary(d_copy)
 
 def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) -> Union[Dict[str, Any], List[Any], tuple]:
     """
