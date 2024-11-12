@@ -5,11 +5,8 @@ Developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-import datetime
-import os
 import pathlib
 import time
-from typing import Union, List, Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,77 +14,38 @@ import pandas as pd
 import yaml
 
 import flixOpt as fx
-from dirty_test_dir.firsts_tests_new import calculation
-
-# Solver Configuration
-gap_frac = 0.0005
-solver_name = 'cbc'  # Options: 'cbc', 'gurobi', 'glpk'
-solver_props = {
-    'mip_gap': gap_frac,
-    'solver_name': solver_name,
-    'solver_output_to_console': True,
-    'threads': 16
-}
+from flixOpt import OnOffParameters
 
 # Calculation Types
-do_full_calc = True
-do_segmented_calc = True
-do_aggregated_calc = True
+full, segmented, aggregated = True, True, True
 
 # Segmented Properties
-nr_of_used_steps = 96 * 1
-segment_len = nr_of_used_steps + 1 * 96
+segment_length, overlap_length = 96, 1
 
 # Aggregated Properties
-period_length_in_hours = 6
-nr_of_typical_periods = 4
-use_extreme_values = True
-fix_binary_vars_only = False
-fix_storage_flows = True
-percentage_of_period_freedom = 0
-costs_of_period_freedom = 0
+aggregation_parameters = fx.AggregationParameters(
+    hours_per_period=6,
+    nr_of_periods=4,
+    fix_storage_flows=True,
+    aggregate_data_and_fix_non_binary_vars=True,
+    percentage_of_period_freedom=0,
+    penalty_of_period_freedom=0)
+keep_extreme_periods = True
 
-# #########################################################################
+
 # ######################  Data Import  ####################################
+data_import = pd.read_csv(pathlib.Path('Zeitreihen2020.csv'), index_col=0).sort_index()
+filtered_data = data_import['2020-01-01':'2020-01-15 23:45:00']  # Only use data from specific dates
+# filtered_data = data_import[0:500]  # Alternatively filter by index
 
-# Define file path
-filename = os.path.join(os.path.dirname(__file__), "Zeitreihen2020.csv")
+filtered_data = filtered_data.set_index(pd.to_datetime(filtered_data.index))  # Convert index to datetime
+datetime_series = np.array(filtered_data.index).astype('datetime64')  # Extract the datetime for the flowSystem
 
-# Read and preprocess data
-ts_raw = pd.read_csv(filename, index_col=0)
-ts_raw = ts_raw.sort_index()
-
-# Define the time range (edit as needed)
-# Example: ts = ts_raw['2020-01-01':'2020-12-31 23:45:00']
-ts = ts_raw['2020-01-01':'2020-01-15 23:45:00']
-
-# Convert index to datetime
-ts.set_index(pd.to_datetime(ts.index), inplace=True)
-
-# Apply data conversion to native types
-data = convert_numeric_lists_to_arrays(ts.to_dict())
-
-# Convert back to DataFrame
-data = pd.DataFrame.from_dict(data)
-
-# Handle any remaining conversion if necessary
-data = data.applymap(convert_to_native_types)
-
-time_zero = time.time()
-
-# Select a subset of the data (edit as needed)
-# Example: data_sub = data['2020-01-01':'2020-01-07 23:45:00']
-data_sub = data['2020-01-01':'2020-01-15 23:45:00']
-
-# Time Index
-a_time_index = data_sub.index.to_pydatetime()  # Convert to datetime objects
-
-# ################ Bemerkungen: #################
 # Access specific columns
-P_el_Last = data_sub['P_Netz/MW']
-Q_th_Last = data_sub['Q_Netz/MW']
-p_el = data_sub['Strompr.€/MWh']
-gP = data_sub['Gaspr.€/MWh']
+electricity_demand = filtered_data['P_Netz/MW']
+heat_demand = filtered_data['Q_Netz/MW']
+electricity_price = filtered_data['Strompr.€/MWh']
+gas_price = filtered_data['Gaspr.€/MWh']
 
 # Define price bounds
 HG_EK_min = 0
@@ -95,26 +53,19 @@ HG_EK_max = 100000
 HG_VK_min = -100000
 HG_VK_max = 0
 
-# Create TimeSeriesData objects
-TS_Q_th_Last = fx.TimeSeriesData(Q_th_Last)
-TS_P_el_Last = fx.TimeSeriesData(P_el_Last, agg_weight=0.7)
+# Create TimeSeriesData objects, to customize how the Aggregation is performed
+TS_heat_demand = fx.TimeSeriesData(heat_demand)
+TS_electricity_demand = fx.TimeSeriesData(electricity_demand, agg_weight=0.7)
+TS_electricity_price_sell = fx.TimeSeriesData(-(electricity_demand - 0.5), agg_group='p_el')
+TS_electricity_price_buy = fx.TimeSeriesData(electricity_price + 0.5, agg_group='p_el')
 
-# Aggregated TimeSeries
-nr_of_periods = len(P_el_Last)
-a_time_series = datetime.datetime(2020, 1, 1) + np.arange(nr_of_periods) * np.timedelta64(15, 'm')
-
-# ##########################################################################
-# ######################  Model Setup  ####################################
-
-print('#######################################################################')
-print('################### Start of Modeling #################################')
 
 # Bus Definitions
-excess_costs = 1e5  # or set to None if not needed
-Strom = fx.Bus('el', 'Strom', excess_effects_per_flow_hour=excess_costs)
-Fernwaerme = fx.Bus('heat', 'Fernwärme', excess_effects_per_flow_hour=excess_costs)
-Gas = fx.Bus('fuel', 'Gas', excess_effects_per_flow_hour=excess_costs)
-Kohle = fx.Bus('fuel', 'Kohle', excess_effects_per_flow_hour=excess_costs)
+excess_penalty = 1e5  # or set to None if not needed
+Strom = fx.Bus('Strom', excess_penalty_per_flow_hour=excess_penalty)
+Fernwaerme = fx.Bus('Fernwärme', excess_penalty_per_flow_hour=excess_penalty)
+Gas = fx.Bus('Gas', excess_penalty_per_flow_hour=excess_penalty)
+Kohle = fx.Bus('Kohle', excess_penalty_per_flow_hour=excess_penalty)
 
 # Effects
 costs = fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
@@ -124,7 +75,7 @@ PE = fx.Effect('PE', 'kWh_PE', 'Primärenergie')
 # Component Definitions
 
 # 1. Boiler
-a_gaskessel = Boiler(
+a_gaskessel = fx.linear_converters.Boiler(
     'Kessel',
     eta=0.85,
     Q_th=fx.Flow(label='Q_th', bus=Fernwaerme),
@@ -133,28 +84,23 @@ a_gaskessel = Boiler(
         bus=Gas,
         size=95,
         relative_minimum=12 / 95,
-        can_switch_off=True,
-        effects_per_switch_on=1000,
-        values_before_begin=[0]
-    )
-)
+        previous_flow_rate=20,  # Neededto determin wether the FLow was on
+        can_be_off=OnOffParameters(effects_per_switch_on=1000)))
 
 # 2. CHP
-a_kwk = CHP(
+a_kwk = fx.linear_converters.CHP(
     'BHKW2',
     eta_th=0.58,
     eta_el=0.22,
-    effects_per_switch_on=24000,
+    on_off_parameters=fx.OnOffParameters(effects_per_switch_on=24000),
     P_el=fx.Flow('P_el', bus=Strom),
     Q_th=fx.Flow('Q_th', bus=Fernwaerme),
     Q_fu=fx.Flow(
         'Q_fu',
         bus=Kohle,
         size=288,
-        relative_minimum=87 / 288
-    ),
-    on_values_before_begin=[0]
-)
+        relative_minimum=87 / 288,
+        previous_flow_rate=100))
 
 # 3. Storage
 a_speicher = fx.Storage(
@@ -165,8 +111,8 @@ a_speicher = fx.Storage(
     initial_charge_state=137,
     minimal_final_charge_state=137,
     maximal_final_charge_state=158,
-    eta_load=1,
-    eta_unload=1,
+    eta_charge=1,
+    eta_discharge=1,
     relative_loss_per_hour=0.001,
     prevent_simultaneous_charge_and_discharge=True
 )
@@ -180,7 +126,7 @@ a_waermelast = fx.Sink(
         'Q_th_Last',
         bus=Fernwaerme,
         size=1,
-        fixed_relative_value=TS_Q_th_Last
+        fixed_relative_value=TS_heat_demand
     )
 )
 
@@ -191,7 +137,7 @@ a_strom_last = fx.Sink(
         'P_el_Last',
         bus=Strom,
         size=1,
-        fixed_relative_value=TS_P_el_Last
+        fixed_relative_value=TS_electricity_demand
     )
 )
 
@@ -202,7 +148,7 @@ a_gas_tarif = fx.Source(
         'Q_Gas',
         bus=Gas,
         size=1000,
-        effects_per_flow_hour={costs: gP, CO2: 0.3}
+        effects_per_flow_hour={costs: gas_price, CO2: 0.3}
     )
 )
 
@@ -224,7 +170,7 @@ a_strom_einspeisung = fx.Sink(
         'P_el',
         bus=Strom,
         size=1000,
-        effects_per_flow_hour=TS_P_el_Last
+        effects_per_flow_hour=TS_electricity_price_sell
     )
 )
 
@@ -234,39 +180,12 @@ a_strom_tarif = fx.Source(
         'P_el',
         bus=Strom,
         size=1000,
-        effects_per_flow_hour={costs: TS_P_el_Last, CO2: 0.3}
+        effects_per_flow_hour={costs: TS_electricity_price_buy, CO2: 0.3}
     )
 )
 
-# Aggregated TimeSeries Data
-p_feed_in = fx.TimeSeriesData(-(p_el - 0.5), agg_group='p_el')
-p_sell = fx.TimeSeriesData(p_el + 0.5, agg_group='p_el')
-
-a_strom_einspeisung = fx.Sink(
-    'Einspeisung',
-    sink=fx.Flow(
-        'P_el',
-        bus=Strom,
-        size=1000,
-        effects_per_flow_hour=p_feed_in
-    )
-)
-
-a_strom_tarif = fx.Source(
-    'Stromtarif',
-    source=fx.Flow(
-        'P_el',
-        bus=Strom,
-        size=1000,
-        effects_per_flow_hour={costs: p_sell, CO2: 0.3}
-    )
-)
-
-# ##########################################################################
 # ######################  Flow System Setup  ###############################
-
-# Initialize FlowSystem
-flow_system = fx.FlowSystem(a_time_series, last_time_step_hours=None)
+flow_system = fx.FlowSystem(datetime_series, last_time_step_hours=None)
 
 # Add Effects
 flow_system.add_effects(costs, CO2, PE)
@@ -284,44 +203,33 @@ flow_system.add_components(
     a_speicher
 )
 
-# ##########################################################################
 # ######################  Calculations  ####################################
 
-# Initialize Calculation Objects
-calc_full = None
-calc_segs = None
-calc_agg = None
-list_of_calcs = []
-
+list_of_calculations = []
 # Full Calculation
-if do_full_calc:
+if full:
     calculation = fx.FullCalculation('fullModel', flow_system, 'pyomo', None)
     calculation.do_modeling()
-    calculation.solve(fx.solvers.HighsSolver)
-    list_of_calcs.append(calculation)
+    calculation.solve(fx.solvers.HighsSolver())
+    list_of_calculations.append(calculation)
 
 # Segmented Calculation
-if do_segmented_calc:
-    calculation = fx.SegmentedCalculation('segModel', flow_system, 'pyomo', None)
-    calculation.do_modeling_and_solve(fx.solvers.HighsSolver)
-    list_of_calcs.append(calculation)
+if segmented:
+    calculation = fx.SegmentedCalculation('segModel', flow_system, segment_length, overlap_length)
+    calculation.do_modeling_and_solve(fx.solvers.HighsSolver())
+    list_of_calculations.append(calculation)
 
 # Aggregated Calculation
-if do_aggregated_calc:
-    calc_agg = fx.AggregatedCalculation('aggModel', flow_system, 'pyomo')
-    calc_agg.do_modeling(
-        period_length_in_hours,
-        nr_of_typical_periods,
-        use_extreme_values,
-        fix_storage_flows,
-        fix_binary_vars_only,
-        percentage_of_period_freedom=percentage_of_period_freedom,
-        costs_of_period_freedom=costs_of_period_freedom,
-        addPeakMax=[TS_Q_th_Last],
-        addPeakMin=[TS_P_el_Last, TS_Q_th_Last]
-    )
-    calculation.solve(fx.solvers.HighsSolver)
-    list_of_calcs.append(calculation)
+if aggregated:
+    if keep_extreme_periods:
+        aggregation_parameters.time_series_for_high_peaks = [TS_heat_demand],
+        aggregation_parameters.time_series_for_low_peaks = [TS_electricity_demand, TS_heat_demand]
+    calculation = fx.AggregatedCalculation(
+        'aggModel', flow_system,
+        aggregation_parameters= aggregation_parameters)
+    calculation.do_modeling()
+    calculation.solve(fx.solvers.HighsSolver())
+    list_of_calculations.append(calculation)
 
 
 # Segment Plot
