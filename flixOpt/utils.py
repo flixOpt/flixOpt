@@ -93,13 +93,31 @@ def label_is_valid(label: str) -> bool:
 
 
 def convert_arrays_to_lists(d: dict) -> dict:
-    """Recursively converts all numpy arrays in a nested dictionary to lists. Does not alter the original dictionary."""
+    """
+    Recursively converts all numpy arrays in a nested dictionary to lists, ensuring only Python native types are used.
+    Non-native types are converted to int or float. Does not alter the original dictionary.
+    """
+    def ensure_native_type(value):
+        """Convert non-native Python types to int or float if possible."""
+        if isinstance(value, (np.integer, np.int_)):
+            return int(value)
+        elif isinstance(value, (np.floating, np.float_)):
+            return float(value)
+        elif isinstance(value, np.ndarray):
+            # Recursively apply ensure_native_type for each element in the array
+            return [ensure_native_type(item) for item in value]
+        return value  # Return the value as is if it’s a native type
+
     d_copy = d.copy()  # Make a copy of the dictionary to avoid modifying in-place
     for key, value in d_copy.items():
         if isinstance(value, np.ndarray):
-            d_copy[key] = value.tolist()
+            # Convert each element in the array to a native type if necessary
+            d_copy[key] = ensure_native_type(value.tolist())
         elif isinstance(value, dict):
-            d_copy[key] = convert_arrays_to_lists(value)
+            d_copy[key] = convert_arrays_to_lists(value)  # Recursively process nested dictionaries
+        else:
+            d_copy[key] = ensure_native_type(value)  # Ensure other non-native types are converted
+
     return d_copy
 
 
