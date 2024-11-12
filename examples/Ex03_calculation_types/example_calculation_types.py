@@ -126,6 +126,7 @@ a_waermelast = fx.Sink(
         'Q_th_Last',
         bus=Fernwaerme,
         size=1,
+        relative_maximum=max(TS_heat_demand.data),
         fixed_relative_value=TS_heat_demand
     )
 )
@@ -137,6 +138,7 @@ a_strom_last = fx.Sink(
         'P_el_Last',
         bus=Strom,
         size=1,
+        relative_maximum=max(TS_electricity_demand.data),
         fixed_relative_value=TS_electricity_demand
     )
 )
