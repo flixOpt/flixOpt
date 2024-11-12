@@ -1,24 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-This shows how to analyze results from file
+Created on Thu Jun 16 11:19:17 2022
+developed by Felix Panitz* and Peter Stange*
+* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
+
 import pandas as pd
 import plotly.offline
 import flixOpt as fx
 
 if __name__ == '__main__':
-    # load results
+    # --- Load Results ---
     try:
         results = fx.results.CalculationResults('Sim1', folder='results')
     except FileNotFoundError:
         raise FileNotFoundError('Results file was not found. DId you run complex_example.py already?')
 
-    # Basic overview
+    # --- Basic overview ---
     results.visualize_network()
     results.plot_operation('Fernwärme')
     results.plot_operation('Fernwärme', engine='matplotlib')
     results.plot_operation('Fernwärme', 'area')
 
+    # --- Detailed Plots ---
     # In depth plot for individual flow rates ('__' is used as the delimiter between Component and Flow
     results.plot_flow_rate('Wärmelast__Q_th_Last', 'heatmap')
     figs = []
@@ -27,7 +31,7 @@ if __name__ == '__main__':
             fig = results.plot_flow_rate(flow_label, 'heatmap', heatmap_steps_per_period='h', heatmap_periods='D')
 
 
-    # Visualizing an internal variables
+    # --- Plotting internal variables manually ---
     on_data = pd.DataFrame({'BHKW2 On': results.component_results['BHKW2'].variables['Q_th']['OnOff']['on'],
                            'Kessel On': results.component_results['Kessel'].variables['Q_th']['OnOff']['on']},
                            index = results.time)
