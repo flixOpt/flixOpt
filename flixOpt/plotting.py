@@ -5,6 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 import logging
+import pathlib
 from typing import Literal, Tuple, Union, Optional, List
 
 import pandas as pd
@@ -531,3 +532,83 @@ def heat_map_data_from_df(df: pd.DataFrame,
     df_pivoted = resampled_data.pivot(columns='period', index='step', values=df.columns[0])
 
     return df_pivoted
+
+def visualize_network(node_infos: dict,
+                      edge_infos: dict,
+                      path: Union[bool, str, pathlib.Path] = 'results/network.html',
+                      controls: Union[bool, List[Literal[
+                          'nodes', 'edges', 'layout', 'interaction', 'manipulation',
+                          'physics', 'selection', 'renderer']]] = True,
+                      show: bool = True
+                      ) -> Optional['pyvis.network.Network']:
+    """
+    Visualizes the network structure of a FlowSystem using PyVis, using info-dictionaries.
+
+    Parameters:
+    - path (Union[bool, str, pathlib.Path], default='results/network.html'):
+      Path to save the HTML visualization.
+        - `False`: Visualization is created but not saved.
+        - `str` or `Path`: Specifies file path (default: 'results/network.html').
+
+    - controls (Union[bool, List[str]], default=True):
+      UI controls to add to the visualization.
+        - `True`: Enables all available controls.
+        - `List`: Specify controls, e.g., ['nodes', 'layout'].
+        - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
+
+    - show (bool, default=True):
+      Whether to open the visualization in the web browser.
+
+    Returns:
+    - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
+
+    Usage:
+    - Visualize and open the network with default options:
+      >>> self.visualize_network()
+
+    - Save the visualization without opening:
+      >>> self.visualize_network(show=False)
+
+    - Visualize with custom controls and path:
+      >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+
+    Notes:
+    - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
+    - Nodes are styled based on type (e.g., circles for buses, boxes for components) and annotated with node information.
+    """
+    try:
+        from pyvis.network import Network
+    except ImportError:
+        print("The Network visualization relies on the package 'pyvis'. "
+              "If it's not installed, the FlowSystem can not be visualized. "
+              "Please install it using 'pip install pyvis'.")
+        return None
+
+    net = Network(directed=True)
+
+    for id, node in node_infos.items():
+        net.add_node(id, label=node['label'], shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
+                     title=node['infos'].replace(')', '\n)'))
+
+    for id, edge in edge_infos.items():
+        net.add_edge(edge['start'], edge['end'], label=edge['label'],
+                     title=edge['infos'].replace(')', '\n)'),
+                     font={"size": 12, "color": "red"})
+
+    net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
+    if controls:
+        net.show_buttons(filter_=controls)  # Adds UI buttons to control physics settings
+
+    if isinstance(path, str):
+        path = pathlib.Path(path)
+    path = path.resolve().as_posix()
+    net.write_html(path)
+    if show:
+        try:
+            import webbrowser
+            webbrowser.open(f'file://{path}', 2)
+        except Exception:
+            logger.warning(f'Showing the network in the Browser went wrong. Open it manually. '
+                           f'Its saved under {path}')
+
+    return net

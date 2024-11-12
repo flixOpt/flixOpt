@@ -8,7 +8,7 @@ developed by Felix Panitz* and Peter Stange*
 import logging
 import json
 import pathlib
-from typing import Dict, List, Tuple, Literal, Optional
+from typing import Dict, List, Tuple, Literal, Optional, Union
 import datetime
 
 import yaml
@@ -145,6 +145,52 @@ class CalculationResults:
             return plotting.with_matplotlib(data=data, mode=mode, show=show)
         else:
             raise ValueError(f'Unknown combination: {mode=} and {engine=}')
+
+    def visualize_network(self,
+                          path: Union[bool, str, pathlib.Path] = 'results/network.html',
+                          controls: Union[bool, List[Literal[
+                              'nodes', 'edges', 'layout', 'interaction', 'manipulation',
+                              'physics', 'selection', 'renderer']]] = True,
+                          show: bool = True
+                          ) -> Optional['pyvis.network.Network']:
+        """
+        Visualizes the network structure of a FLowSystem using PyVis, saving it as an interactive HTML file.
+
+        Parameters:
+        - path (Union[bool, str, pathlib.Path], default='results/network.html'):
+          Path to save the HTML visualization.
+            - `False`: Visualization is created but not saved.
+            - `str` or `Path`: Specifies file path (default: 'results/network.html').
+
+        - controls (Union[bool, List[str]], default=True):
+          UI controls to add to the visualization.
+            - `True`: Enables all available controls.
+            - `List`: Specify controls, e.g., ['nodes', 'layout'].
+            - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
+
+        - show (bool, default=True):
+          Whether to open the visualization in the web browser.
+
+        Returns:
+        - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
+
+        Usage:
+        - Visualize and open the network with default options:
+          >>> self.visualize_network()
+
+        - Save the visualization without opening:
+          >>> self.visualize_network(show=False)
+
+        - Visualize with custom controls and path:
+          >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+
+        Notes:
+        - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
+        - Nodes are styled based on type (e.g., circles for buses, boxes for components) and annotated with node information.
+        """
+        from . import plotting
+        return plotting.visualize_network(self.all_infos['Network']['Nodes'],
+                                          self.all_infos['Network']['Edges'], path, controls, show)
 
 
 class FlowResults(ElementResults):
