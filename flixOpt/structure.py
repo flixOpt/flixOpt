@@ -5,7 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 
-from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING
+from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING, Any
 import logging
 import inspect
 import textwrap
@@ -427,8 +427,7 @@ def create_variable(label: str,
 def get_object_infos_as_str(obj) -> str:
     """
     Returns a string representation of an object's constructor arguments,
-    excluding default values, and formats dictionaries with nested
-    child class objects, displaying their labels.
+    excluding default values. Formats dictionaries with nested child class objects, displaying their labels.
 
     Args:
         obj: The object whose constructor arguments will be formatted and returned as a string.
@@ -457,9 +456,9 @@ def get_object_infos_as_str(obj) -> str:
         elif isinstance(item, Skalar):
             return str(item)
         else:
-            return str(item)
+            raise TypeError(f' Wrong type passed to function numeric_as_str()')
 
-    def format_dict(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
+    def dict_as_str(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
         """
         Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
 
@@ -477,34 +476,40 @@ def get_object_infos_as_str(obj) -> str:
 
         formatted_items = []
         for k, v in d.items():
-            key_str = k.label if hasattr(k, 'label') else str(k)
+            key_str = k.label if hasattr(k, 'label') else str(k)  # Use labels instead of __str__ if availlable
             if isinstance(v, dict):
-                v_str = format_dict(v, current_indent_level + 1)  # Recursively format nested dictionaries
+                v_str = dict_as_str(v, current_indent_level + 1)  # Recursively format nested dictionaries
             else:
-                v_str = numeric_as_str(v)
+                v_str = item_as_str(v)
             formatted_items.append(f"{key_str}: {v_str}")
         return '{\n' + textwrap.indent(",\n".join(formatted_items), ' ' * current_indent_level * indent_depth) + '}'
 
+    def item_as_str(item: Any, indent_level: int = 1, indent_depth: int = 3) -> str:
+        """ Convert Any item to a string"""
+        if isinstance(item, dict):
+            return dict_as_str(item, indent_level, indent_depth)  # Recursively format nested dictionaries
+        elif isinstance(item, (Numeric, TimeSeries, TimeSeriesData)):
+            return numeric_as_str(item)  # Special formatting for numerical data
+        else:
+            return str(item)  # All others as str
+
     # Get the constructor arguments and their default values
-    init_signature = inspect.signature(obj.__init__)
-    init_params = sorted(init_signature.parameters.items(), key=lambda x: (x[0].lower() != 'label', x[0].lower()))
+    init_params = sorted(inspect.signature(obj.__init__).parameters.items(),
+                         key=lambda x: (x[0].lower() != 'label', x[0].lower()))
 
     # Build a list of attribute=value pairs, excluding defaults
     details = []
     for name, param in init_params:
         if name == 'self':
             continue
+        value, default = getattr(obj, name, None), param.default
 
-        # Include only if it's not the default value
-        value = getattr(obj, name, None)
-        default = param.default
         if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
             pass
-        elif isinstance(value, dict):  # Return dicts as str with custom formating
-            value_str = format_dict(value)
-            details.append(f"{name}={value_str}")
-        elif not np.all(value == default):
-            details.append(f"{name}={numeric_as_str(value)}")
+        elif np.all(value == default):  # Ignore default values
+            pass
+        else:
+            details.append(f"{name}={item_as_str(value)}")  # Formatted numeric-string
 
     # Join all relevant parts and format them in the output
     full_str = ',\n'.join(details)
