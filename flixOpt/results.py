@@ -213,8 +213,7 @@ class ComponentResults(ElementResults):
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
-        flow_infos = {key: value for key, value in self.all_infos.items() if
-                      isinstance(value, dict) and 'Flow' in value.get('class', '')}
+        flow_infos = {flow['label']: flow for flow in self.all_infos['inputs'] + self.all_infos['outputs']}
         flow_results = {flow_info['label']: self.all_results[flow_info['label']] for flow_info in flow_infos.values()}
         flows = [FlowResults(flow_info, flow_result, self.label)
                  for flow_info, flow_result in zip(flow_infos.values(), flow_results.values())]
