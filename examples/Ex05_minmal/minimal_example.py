@@ -1,115 +1,55 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jun 16 11:19:17 2022
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, 
-  Technische Universität Dresden
+Energy System Optimization Example
+Developed by Felix Panitz and Peter Stange
+Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
-
-import datetime
 
 import numpy as np
 
-from flixOpt import *
-from flixOpt.linear_converters import Boiler
+import flixOpt as fx
 
-#####################
-## some timeseries ##
-Q_th_Last = [30., 0., 20.]  # kW; thermal load profile in
-aTimeSeries = datetime.datetime(2020, 1, 1) + np.arange(len(Q_th_Last)) * datetime.timedelta(
-    hours=1)  # creating timeseries
-aTimeSeries = aTimeSeries.astype('datetime64')  # needed format for timeseries in flixOpt
+# --- Thermal Load Profile ---
+thermal_load_profile = np.array([30., 0., 20.])  # Load in f.ex. kW
+datetime_series = fx.create_datetime_array('2020-01-01', 3, 'h')
 
-print('#######################################################################')
-print('################### start of modeling #################################')
+# --- Define Buses ---
+electricity_bus = fx.Bus('Electricity')
+heat_bus = fx.Bus('District Heating')
+fuel_bus = fx.Bus('Natural Gas')
 
-# #####################
-# ## Bus-Definition: ##
-# define buses for the 3 used media:
-Strom = Bus('el', 'Strom')  # balancing node/bus of electricity
-Fernwaerme = Bus('heat', 'Fernwärme')  # balancing node/bus of heat
-Gas = Bus('fuel', 'Gas')  # balancing node/bus of gas
+# --- Define Objective Effect (Cost) ---
+cost_effect = fx.Effect('costs', '€', 'Cost', is_standard=True, is_objective=True)
 
-# ########################
-# ## Effect-Definition: ##
-costs = Effect('costs', '€', 'Kosten',  # name, unit, description
-               is_standard=True,  # standard effect --> shorter input possible (without effect as a key)
-               is_objective=True)  # defining costs as objective of optimiziation
+# --- Define Components ---
+# Boiler with thermal output linked to heat bus and fuel input linked to fuel bus
+boiler = fx.linear_converters.Boiler('Boiler', eta=0.5,
+    Q_th=fx.Flow(label='Thermal Output', bus=heat_bus, size=50),
+    Q_fu=fx.Flow(label='Fuel Input', bus=fuel_bus))
 
-# ###########################
-# ## Component-Definition: ##
+# Heat load (sink) with fixed load profile linked to heat bus
+heat_load = fx.Sink('Heat Demand',
+    sink=fx.Flow(label='Thermal Load', bus=heat_bus, size=1, relative_maximum=max(thermal_load_profile),
+                 fixed_relative_value=thermal_load_profile))
 
-aBoiler = Boiler('Boiler', eta=0.5,  # name, efficiency factor
-                 # defining the output-flow = thermal -flow
-                 Q_th=Flow(label='Q_th',  # name of flow
-                           bus=Fernwaerme,  # define, where flow is linked to (here: Fernwaerme-Bus)
-                           size=50,  # kW; nominal_size of boiler
-                           ),  # defining the input-flow = fuel-flow
-                 Q_fu=Flow(label='Q_fu',  # name of flow
-                           bus=Gas)  # define, where flow is linked to (here: Gas-Bus)
-                 )
+# Gas source with cost effect
+gas_source = fx.Source('Natural Gas Tariff',
+    source=fx.Flow(label='Gas Flow', bus=fuel_bus, size=1000, effects_per_flow_hour=0.04))  # 0.04 €/kWh
 
-# sink of heat load:
-aWaermeLast = Sink('Wärmelast',  # defining input-flow:
-                   sink=Flow('Q_th_Last',  # name
-                             bus=Fernwaerme,  # linked to bus "Fernwaerme"
-                             size=1,  # size
-                             fixed_relative_value=Q_th_Last))  # fixed profile
-# relative fixed values (timeseries) of the flow
-# value = fixed_relative_value * size
+# --- Build Energy System ---
+flow_system = fx.FlowSystem(datetime_series)
+flow_system.add_elements(cost_effect, boiler, heat_load, gas_source)
 
-# source of gas:
-aGasTarif = Source('Gastarif',  # defining output-flow:
-                   source=Flow('Q_Gas',  # name
-                               bus=Gas,  # linked to bus "Gas"
-                               size=1000,  # nominal size, i.e. 1000 kW maximum
-                               # defining effect-shares.
-                               #    Here not only "costs", but also CO2-emissions:
-                               effects_per_flow_hour=0.04))  # 0.04 €/kWh
+# --- Define and Run Calculation ---
+calculation = fx.FullCalculation('Simulation1', flow_system)
+calculation.do_modeling()
 
-# ######################################################
-# ## Build energysystem - Registering of all elements ##
+# Solve and save results
+calculation.solve(fx.solvers.HighsSolver(), save_results=True)
 
-flow_system = FlowSystem(aTimeSeries,
-                         last_time_step_hours=None)  # creating flow_system, (duration of last timestep is like the one before)
-flow_system.add_effects(costs)  # adding defined effects
-flow_system.add_components(aBoiler, aWaermeLast, aGasTarif)  # adding components
+results = fx.results.CalculationResults(calculation.name, folder='results')
+results.plot_operation('District Heating', 'area')
 
-# choose used timeindexe:
-time_indices = None  # all timeindexe are used
+print(calculation.results())
+print(f'Look into .yaml and .json file for results')
 
-# ## modeling the flow_system ##
-
-# 1. create a Calculation 
-aCalc = FullCalculation('Sim1',  # name of calculation
-                        flow_system,  # energysystem to calculate
-                        'pyomo',  # optimization modeling language (only "pyomo" implemented, yet)
-                        time_indices)  # used time steps
-
-# 2. modeling:
-aCalc.do_modeling()  # mathematic modeling of flow_system
-
-# 3. (optional) print Model-Characteristics:
-flow_system.print_model()  # string-output:network structure of model
-flow_system.print_variables()  # string output: variables of model
-flow_system.print_equations()  # string-output: equations of model
-
-# #################
-# ## calculation ##
-
-### some Solver-Inputs: ###
-displaySolverOutput = True  # ausführlicher Solver-Output.
-gapFrac = 0.01  # solver-gap
-timelimit = 3600  # seconds until solver abort
-# choose the solver, you have installed:
-# solver_name = 'glpk' # warning, glpk quickly has numerical problems with binaries (big and epsilon)
-# solver_name = 'gurobi'
-solver_name = 'cbc'
-solverProps = {'mip_gap': gapFrac, 'time_limit_seconds': timelimit, 'solver_name': solver_name,
-               'solver_output_to_console': displaySolverOutput, }
-
-aCalc.solve(solverProps)
-#  results are saved under /results/
-
-# ##### loading results from output-files ######
-aCalc_post = flix_results(aCalc.name)
