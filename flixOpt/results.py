@@ -235,6 +235,18 @@ class EffectResults(ElementResults):
 
 
 if __name__ == '__main__':
-    results = CalculationResults('Sim1', '/Users/felix/Documents/Dokumente - eigene/Neuer Ordner/flixOpt-Fork/examples/Ex01_simple/results')
+    results = CalculationResults('Sim1', '/Users/felix/Documents/Dokumente - eigene/Neuer Ordner/flixOpt-Fork/examples/Ex02_complex/results')
+
+    results.to_dataframe('Kessel')
+    results.plot_flow_rate('Kessel__Q_fu', 'heatmap')
+    plotting.heat_map_plotly(plotting.heat_map_data_from_df(
+        pd.DataFrame(results.component_results['Speicher'].variables['charge_state'], index=results.time_with_end),
+    periods='D', steps_per_period='15min'))
+
+    results.plot_operation('Fernwärme', 'area', engine='plotly')
+    fig = results.plot_operation('Fernwärme', 'area', engine='plotly')
+    fig = plotting.with_plotly(results.to_dataframe('Wärmelast'), 'line', fig=fig)
+    import plotly.offline
+    plotly.offline.plot(fig)
 
     print()
