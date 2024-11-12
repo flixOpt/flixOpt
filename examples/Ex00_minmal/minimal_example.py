@@ -33,8 +33,7 @@ if __name__ == '__main__':
 
     # Heat load component with a fixed thermal demand profile
     heat_load = fx.Sink('Heat Demand',
-        sink=fx.Flow(label='Thermal Load', bus=heat_bus, size=1, relative_maximum=max(thermal_load_profile),
-                     fixed_relative_value=thermal_load_profile))
+        sink=fx.Flow(label='Thermal Load', bus=heat_bus, size=1, fixed_relative_profile=thermal_load_profile))
 
     # Gas source component with cost-effect per flow hour
     gas_source = fx.Source('Natural Gas Tariff',

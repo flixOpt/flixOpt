@@ -60,8 +60,7 @@ if __name__ == '__main__':
     # Heat Demand Sink: Represents a fixed heat demand profile
     heat_sink = fx.Sink(label='Heat Demand',
                         sink=fx.Flow(label='Q_th_Last', bus=Fernwaerme, size=1,
-                                     relative_maximum=max(heat_demand_per_h),
-                                     fixed_relative_value=heat_demand_per_h))
+                                     fixed_relative_profile=heat_demand_per_h))
 
     # Gas Source: Gas tariff source with associated costs and CO2 emissions
     gas_source = fx.Source(label='Gastarif',
