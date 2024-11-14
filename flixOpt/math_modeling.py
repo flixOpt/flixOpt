@@ -411,9 +411,9 @@ class MathModel:
                 raise Exception(f'{arg} cant be added this way!')
 
     def describe(self) -> str:
-        return (f'no of Equations   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
-                f'no of Inequations (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
-                f'no of Variables   (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
+        return (f'No. of Equations   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
+                f'No. of Inequations (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
+                f'No. of Variables   (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
 
     def translate_to_modeling_language(self) -> None:
         t_start = timeit.default_timer()
@@ -434,23 +434,17 @@ class MathModel:
 
     @property
     def infos(self) -> Dict:
-        infos = {}
-        infos['Solver'] = self.solver.__repr__()
-
-        info_flixModel = {}
-        infos['flixModel'] = info_flixModel
-
-        info_flixModel['no of Equations'] = self.nr_of_equations
-        info_flixModel['no of Equations single'] = self.nr_of_single_equations
-        info_flixModel['no of Inequations'] = self.nr_of_inequations
-        info_flixModel['no of Inequations single'] = self.nr_of_single_inequations
-        info_flixModel['no of Variables'] = self.nr_of_variables
-        info_flixModel['no of Variables single'] = self.nr_of_single_variables
-        info_flixModel['no of Variables TS'] = len(self.ts_variables)
-
-        if self.solver.log is not None:
-            infos['solver_log'] = self.solver.log
-        return infos
+        return {'Solver': repr(self.solver),
+                'Model': {
+                    'No. of Eqs.': self.nr_of_equations,
+                    'No. of Eqs. (single)': self.nr_of_single_equations,
+                    'No. of Ineqs.': self.nr_of_inequations,
+                    'No. of Ineqs. (single)': self.nr_of_single_inequations,
+                    'No. of Vars.': self.nr_of_variables,
+                    'No. of Vars. (single)': self.nr_of_single_variables,
+                    'No. of Vars. (TS)': len(self.ts_variables),
+                },
+                'Solver Log': self.solver.log if self.solver.log is not None else None}
 
     @property
     def variables(self) -> List[Variable]:
