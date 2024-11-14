@@ -22,7 +22,7 @@ logger = logging.getLogger('flixOpt')
 
 class Variable:
     """
-    Regular single Variable
+    Variable class
     """
     def __init__(self,
                  label: str,
@@ -80,7 +80,7 @@ class Variable:
 
 class VariableTS(Variable):
     """
-    # Timeseries-Variable, optionally with previous_values
+    Timeseries-Variable, optionally with previous_values. class for Variables that are related by time
     """
     def __init__(self,
                  label: str,
@@ -228,11 +228,16 @@ class _Constraint:
 class Equation(_Constraint):
     """
     Equation of the form: ∑(<summands>) = <constant>
+    Can be the Objective of a MathModel.
 
     Parameters
     ----------
-        label: full label of the variable
-        label_short: short label of the variable. If None, the the full label is used
+    label : str
+        Full label of the variable.
+    label_short : str, optional
+        Short label of the variable. If None, the full label is used.
+    is_objective : bool, optional
+        Indicates if this equation is the objective of the model (default is False).
     """
     def __init__(self, label, label_short=None, is_objective=False):
         super().__init__(label, label_short)
@@ -261,7 +266,7 @@ class Equation(_Constraint):
 
 class Inequation(_Constraint):
     """
-    Equation of the form: ∑(<summands>) <= <constant>
+    Equation of the form: <constant> >= ∑(<summands>)
 
     Parameters
     ----------
@@ -292,7 +297,16 @@ class Inequation(_Constraint):
 
 class Summand:
     """
-    Part of an equation. Either with a single Variable or a VariableTS
+    Represents a part of a Constraint , consisting of a variable (or a time-series variable) and a factor.
+
+    Parameters
+    ----------
+    variable : Variable
+        The variable associated with this summand.
+    factor : Numeric
+        The factor by which the variable is multiplied in the equation.
+    indices : int, np.ndarray, range, List[int], optional
+        Specifies which indices of the variable to use. If None, all indices of the variable are used.
     """
     def __init__(self,
                  variable: Variable,
@@ -344,36 +358,94 @@ class Summand:
 
 class SumOfSummand(Summand):
     """
-    Part of an Equation. Summing up all parts of a regular Summand of a regular Summand
-    'sum(factor[i]*variable[i] for i in all_indexes)'
+    Represents a part of an Equation that sums all components of a regular Summand over specified indices.
+
+    Parameters
+    ----------
+    variable : Variable
+        The variable associated with this summand.
+    factor : Numeric
+        The factor by which the variable is multiplied.
+    indices : int, np.ndarray, range, List[int], optional
+        Specifies which indices of the variable to use for the sum. If None, all indices are summed.
     """
     def __init__(self,
                  variable: Variable,
                  factor: Numeric,
                  indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
         super().__init__(variable, factor, indices)
-
         self.length = 1
 
     def description(self, at_index=0):
-        single_summand_str = super().description(at_index)
-        i = 0 if self.length == 1 else at_index
-        return f"∑({('..+' if i > 0 else '')}{single_summand_str}{('+..' if i < self.length else '')})"
+        index = self.indices[at_index]
+        factor = self.factor_vec[0]
+        factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
+        single_summand_str = f"{factor_str} * {self.variable.label}[{index}]"
+        return f"∑({('..+' if index > 0 else '')}{single_summand_str}{('+..' if index < self.variable.length else '')})"
 
 
 class MathModel:
-    '''
-    Class for equations of the form a_1*x_1 + a_2*x_2 = y
-    x_1 and a_1 can be vectors or scalars.
+    """
+    A mathematical model for defining equations and constraints of the form:
 
-    Model for adding vector variables and scalars:
-    Allowed summands:
-    - var_vec * factor_vec
-    - var_vec * factor
-    - factor
-    - var * factor
-    - var * factor_vec  # Does this make sense? Is this even implemented?
-    '''
+        a1 * x1 + a2 + x2  = y
+        and
+        a1 * x1 + a2 + x2 <= y
+
+    where 'a1', 'a2' and y can be vectors or scalars, while 'x1' and 'x2' are variables with an appropriate length.
+
+
+    This class provides methods to add variables, equations, and inequality constraints to the model and supports
+    translation to a specified modeling language like pyomo.
+
+    The expression 'a1 * x1' is referred to as a 'Summand'. Supported summand formats are:
+    - 'Variable[j] * Factor[i]'     : Multiplication of vector variables and vector factors.
+    - 'Variable[j] * Factor'        : Vector variable with scalar factor.
+    - 'Variable    * Factor'        : Scalar variable with scalar factor.
+    - 'Factor'                      : Scalar constant.
+
+
+    Parameters
+    ----------
+    label : str
+        A descriptive label for the model.
+    modeling_language : {'pyomo', 'cvxpy'}, optional
+        Specifies the modeling language used for translation (default is 'pyomo').
+
+    Attributes
+    ----------
+    label : str
+        The label assigned to the model.
+    modeling_language : str
+        The modeling language to which the model will be translated.
+    epsilon : float
+        Small tolerance value used in model calculations, defaulting to `1e-5`.
+    solver : Optional[Solver]
+        The solver instance assigned to solve the model.
+    model : Optional[ModelingLanguage]
+        The model instance in the specified modeling language.
+    _variables : List[Variable]
+        List of variables added to the model.
+    _constraints : List[Union[Equation, Inequation]]
+        List of equations and inequality constraints in the model.
+    _objective : Optional[Equation]
+        The objective function, if defined as an equation.
+    duration : dict
+        Dictionary tracking the time taken for translation and solving steps.
+
+    Methods
+    -------
+    add(*args)
+        Adds variables, equations, or inequations to the model.
+    describe_size()
+        Provides a summary of the number of equations, inequations, and variables.
+    translate_to_modeling_language()
+        Translates the model to the specified modeling language.
+    solve(solver)
+        Solves the model using the specified solver instance.
+    results()
+        Returns a dictionary of variable results after solving.
+    """
 
     def __init__(self,
                  label: str,
