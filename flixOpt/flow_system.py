@@ -50,14 +50,14 @@ class FlowSystem:
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
-            logger.info(f'Registered new Effect {new_effect.label}')
+            logger.info(f'Registered new Effect: {new_effect.label}')
             self.effect_collection.add_effect(new_effect)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
         new_components = list(args)
         for new_component in new_components:
-            logger.info(f'Registered new Component {new_component.label}')
+            logger.info(f'Registered new Component: {new_component.label}')
             self._check_if_element_is_unique(new_component)  # check if already exists:
             new_component.register_component_in_flows()  # Komponente in Flow registrieren
             new_component.register_flows_in_bus()  # Flows in Bus registrieren:
