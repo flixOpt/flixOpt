@@ -193,7 +193,7 @@ class SystemModel(MathModel):
 
     @property
     def all_inequations(self) -> Dict[str, Equation]:
-        return {name: eq for name, eq in self.all_equations.items() if eq.eq_type == 'ineq'}
+        return {name: eq for name, eq in self.all_equations.items() if eq.kind_of_eq == 'ineq'}
 
     @property
     def sub_models(self) -> List['ElementModel']:
@@ -326,7 +326,7 @@ class ElementModel:
 
     @property
     def ineqs(self) -> Dict[str, Equation]:
-        return {name: eq for name, eq in self.eqs.items() if eq.eq_type == 'ineq'}
+        return {name: eq for name, eq in self.eqs.items() if eq.kind_of_eq == 'ineq'}
 
     @property
     def all_variables(self) -> Dict[str, Variable]:
@@ -355,7 +355,7 @@ class ElementModel:
             for key, value in sub_model.all_equations.items():
                 if key in all_ineqs:
                     raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-                if value.eq_type == 'ineq':
+                if value.kind_of_eq == 'ineq':
                     all_ineqs[key] = value
         return all_ineqs
 

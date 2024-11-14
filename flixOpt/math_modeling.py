@@ -107,7 +107,7 @@ class Equation:
     def __init__(self,
                  label: str,
                  label_short: Optional[str] = None,
-                 eq_type: Literal['eq', 'ineq', 'objective'] = 'eq'):
+                 kind_of_eq: Literal['eq', 'ineq', 'objective'] = 'eq'):
         """
         Equation of the form: ∑(<summands>) = <constant>        type: 'eq'
         Equation of the form: ∑(<summands>) <= <constant>       type: 'ineq'
@@ -117,7 +117,7 @@ class Equation:
         ----------
             label: full label of the variable
             label_short: short label of the variable. If None, the the full label is used
-            eq_type: Literal['eq', 'ineq', 'objective']
+            kind_of_eq: Literal['eq', 'ineq', 'objective']
         """
         self.label = label
         self.label_short = label_short or label
@@ -126,7 +126,7 @@ class Equation:
         self.constant: Numeric = 0  # Total of right side
 
         self.length = 1  # Anzahl der Gleichungen
-        self.eq_type = eq_type
+        self.kind_of_eq = kind_of_eq
 
         self._pyomo_comp = None  # z.B. für pyomo : pyomoComponente
 
@@ -216,7 +216,7 @@ class Equation:
         equation_nr = min(at_index, self.length - 1)
 
         # Name and index
-        if self.eq_type == 'objective':
+        if self.kind_of_eq == 'objective':
             name = 'OBJ'
             index_str = ''
         else:
@@ -242,7 +242,7 @@ class Equation:
 
         # Equation type:
         signs = {'eq': '= ', 'ineq': '=>', 'objective': '= '}
-        sign = signs.get(self.eq_type, '? ')
+        sign = signs.get(self.kind_of_eq, '? ')
 
         constant = self.constant_vector[equation_nr]
 
@@ -367,11 +367,11 @@ class MathModel:
             if isinstance(arg, Variable):
                 self._variables.append(arg)
             elif isinstance(arg, Equation):
-                if arg.eq_type == 'eq':
+                if arg.kind_of_eq == 'eq':
                     self._eqs.append(arg)
-                elif arg.eq_type == 'ineq':
+                elif arg.kind_of_eq == 'ineq':
                     self._ineqs.append(arg)
-                elif arg.eq_type == 'objective':
+                elif arg.kind_of_eq == 'objective':
                     self._objective = arg
                 else:
                     raise Exception(f'{arg} cant be added this way!')
@@ -873,8 +873,8 @@ class PyomoModel(ModelingLanguage):
                 pyomo_comp[i].setub(upper_bound_vector[i])  # max
 
     def translate_equation(self, equation: Equation):
-        if equation.eq_type not in ['eq', 'ineq']:
-            raise TypeError(f'Wrong equation type: {equation.eq_type}')
+        if equation.kind_of_eq not in ['eq', 'ineq']:
+            raise TypeError(f'Wrong equation type: {equation.kind_of_eq}')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         constant_vector = equation.constant_vector
@@ -887,9 +887,9 @@ class PyomoModel(ModelingLanguage):
                 lhs += self._summand_math_expression(aSummand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
             rhs = constant_vector[i]
             # Unterscheidung return-value je nach typ:
-            if equation.eq_type == 'eq':
+            if equation.kind_of_eq == 'eq':
                 return lhs == rhs
-            elif equation.eq_type == 'ineq':
+            elif equation.kind_of_eq == 'ineq':
                 return lhs <= rhs
 
         pyomo_comp = pyomoEnv.Constraint(range(equation.length),
@@ -898,8 +898,8 @@ class PyomoModel(ModelingLanguage):
         self._register_pyomo_comp(pyomo_comp, equation)
 
     def translate_objective(self, objective: Equation):
-        if not objective.eq_type == 'objective':
-            raise TypeError(f'Equation of type {objective.eq_type} passed to translate_objective. Must be objective!')
+        if not objective.kind_of_eq == 'objective':
+            raise TypeError(f'Equation of type {objective.kind_of_eq} passed to translate_objective. Must be objective!')
         if objective.length != 1:
             raise Exception('Length of Objective must be 0')
 
