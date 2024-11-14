@@ -128,8 +128,6 @@ class Equation:
         self.length = 1  # Anzahl der Gleichungen
         self.kind_of_eq = kind_of_eq
 
-        self._pyomo_comp = None  # z.B. für pyomo : pyomoComponente
-
         logger.debug(f'Equation created: {self.label}')
 
     def add_summand(self,
