@@ -482,7 +482,7 @@ def get_object_infos_as_str(obj) -> str:
         elif isinstance(item, Skalar):
             return str(item)
         else:
-            raise TypeError(f' Wrong type passed to function numeric_as_str()')
+            raise TypeError(f' Wrong type passed to function numeric_as_str(): {type(item)}')
 
     def dict_as_str(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
         """
