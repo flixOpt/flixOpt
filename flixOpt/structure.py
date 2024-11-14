@@ -100,22 +100,21 @@ class SystemModel(MathModel):
                            f'This might distort the results')
         logger.info(f'{" End of Main Results ":#^80}')
 
-    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+    def description_of_variables(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
         return {'Components': {comp.label: comp.model.description_of_variables(structured)
                                for comp in self.flow_system.components},
                 'Buses': {bus.label: bus.model.description_of_variables(structured)
                           for bus in self.flow_system.all_buses},
-                'Objective': 'MISSING AFTER REWORK',
                 'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
                 'Others': {model.element.label: model.description_of_variables(structured)
                            for model in self.other_models}}
 
-    def description_of_constraints(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+    def description_of_constraints(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
         return {'Components': {comp.label: comp.model.description_of_constraints(structured)
                                for comp in self.flow_system.components},
                 'Buses': {bus.label: bus.model.description_of_constraints(structured)
                           for bus in self.flow_system.all_buses},
-                'Objective': 'MISSING AFTER REWORK',
+                'Objective': self.objective.description(),
                 'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
                 'Others': {model.element.label: model.description_of_constraints(structured)
                            for model in self.other_models}}

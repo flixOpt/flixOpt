@@ -432,10 +432,13 @@ class MathModel:
         self.model.solve(self, solver)
         self.duration['Solving'] = round(timeit.default_timer() - t_start, 2)
 
+    def results(self) -> Dict[str, Numeric]:
+        return {variable.label: variable.result for variable in self.variables}
+
     @property
     def infos(self) -> Dict:
         return {'Solver': repr(self.solver),
-                'Model': {
+                'Model Size': {
                     'No. of Eqs.': self.nr_of_equations,
                     'No. of Eqs. (single)': self.nr_of_single_equations,
                     'No. of Ineqs.': self.nr_of_inequations,
@@ -493,9 +496,6 @@ class MathModel:
     @property
     def nr_of_single_inequations(self) -> int:
         return sum([eq.length for eq in self.inequations])
-
-    def results(self):
-        return {variable.label: variable.result for variable in self.variables}
 
 
 class SolverLog:
