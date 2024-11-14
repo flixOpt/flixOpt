@@ -99,15 +99,14 @@ class VariableTS(Variable):
         self.previous_values = previous_values
 
 
-class Equation:
+class _Constraint:
     """
-    Representing a single equation or, with the Variable being a VariableTS, a set of equations
+    Abstract Class for Constraints. Use Child classes!
 
     """
     def __init__(self,
                  label: str,
-                 label_short: Optional[str] = None,
-                 kind_of_eq: Literal['eq', 'ineq', 'objective'] = 'eq'):
+                 label_short: Optional[str] = None):
         """
         Equation of the form: ∑(<summands>) = <constant>        type: 'eq'
         Equation of the form: ∑(<summands>) <= <constant>       type: 'ineq'
@@ -117,7 +116,6 @@ class Equation:
         ----------
             label: full label of the variable
             label_short: short label of the variable. If None, the the full label is used
-            kind_of_eq: Literal['eq', 'ineq', 'objective']
         """
         self.label = label
         self.label_short = label_short or label
@@ -126,7 +124,6 @@ class Equation:
         self.constant: Numeric = 0  # Total of right side
 
         self.length = 1  # Anzahl der Gleichungen
-        self.kind_of_eq = kind_of_eq
 
         logger.debug(f'Equation created: {self.label}')
 
@@ -211,42 +208,7 @@ class Equation:
             raise ValueError(f'Length of Constant {value=} does not fit: {e}')
 
     def description(self, at_index: int = 0) -> str:
-        equation_nr = min(at_index, self.length - 1)
-
-        # Name and index
-        if self.kind_of_eq == 'objective':
-            name = 'OBJ'
-            index_str = ''
-        else:
-            name = f'EQ {self.label}'
-            index_str = f'[{equation_nr+1}/{self.length}]'
-
-        # Summands:
-        summand_strings = []
-        for idx, summand in enumerate(self.summands):
-            i = 0 if summand.length == 1 else equation_nr
-            index = summand.indices[i]
-            factor = summand.factor_vec[i]
-            factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
-            single_summand_str = f"{factor_str} * {summand.variable.label}[{index}]"
-
-            if isinstance(summand, SumOfSummand):
-                summand_strings.append(
-                    f"∑({('..+' if i > 0 else '')}{single_summand_str}{('+..' if i < summand.length else '')})")
-            else:
-                summand_strings.append(single_summand_str)
-
-        all_summands_string = ' + '.join(summand_strings)
-
-        # Equation type:
-        signs = {'eq': '= ', 'ineq': '=>', 'objective': '= '}
-        sign = signs.get(self.kind_of_eq, '? ')
-
-        constant = self.constant_vector[equation_nr]
-
-        header_width = 30
-        header = f"{name:<{header_width-len(index_str)-1}} {index_str}"
-        return f'{header:<{header_width}}: {constant:>8} {sign} {all_summands_string}'
+        raise NotImplementedError(f'Not implemented for Abstract class <_Constraint>')
 
     def _update_length(self, new_length: int) -> None:
         """
@@ -265,6 +227,71 @@ class Equation:
         return utils.as_vector(self.constant, self.length)
 
 
+class Equation(_Constraint):
+    """
+    Equation of the form: ∑(<summands>) = <constant>
+
+    Parameters
+    ----------
+        label: full label of the variable
+        label_short: short label of the variable. If None, the the full label is used
+    """
+    def __init__(self, label, label_short=None, is_objective=False):
+        super().__init__(label, label_short)
+        self.is_objective = is_objective
+
+    def description(self, at_index: int = 0) -> str:
+        equation_nr = min(at_index, self.length - 1)
+
+        # Name and index as str
+        if self.is_objective == 'objective':
+            name, index_str = 'OBJ', ''
+        else:
+            name, index_str = f'EQ {self.label}', f'[{equation_nr+1}/{self.length}]'
+
+        # Summands:
+        summand_strings = [summand.description(at_index) for summand in self.summands]
+        all_summands_string = ' + '.join(summand_strings)
+
+        constant = self.constant_vector[equation_nr]
+
+        # String formating
+        header_width = 30
+        header = f"{name:<{header_width-len(index_str)-1}} {index_str}"
+        return f'{header:<{header_width}}: {constant:>8} = {all_summands_string}'
+
+
+class Inequation(_Constraint):
+    """
+    Equation of the form: ∑(<summands>) <= <constant>
+
+    Parameters
+    ----------
+        label: full label of the variable
+        label_short: short label of the variable. If None, the full label is used
+    """
+
+    def __init__(self, label, label_short=None):
+        super().__init__(label, label_short)
+
+    def description(self, at_index: int = 0) -> str:
+        equation_nr = min(at_index, self.length - 1)
+
+        # Name and index as str
+        name, index_str = f'INEQ {self.label}', f'[{equation_nr + 1}/{self.length}]'
+
+        # Summands:
+        summand_strings = [summand.description(at_index) for summand in self.summands]
+        all_summands_string = ' + '.join(summand_strings)
+
+        constant = self.constant_vector[equation_nr]
+
+        # String formating
+        header_width = 30
+        header = f"{name:<{header_width - len(index_str) - 1}} {index_str}"
+        return f'{header:<{header_width}}: {constant:>8} >= {all_summands_string}'
+
+
 class Summand:
     """
     Part of an equation. Either with a single Variable or a VariableTS
@@ -280,6 +307,13 @@ class Summand:
         self.length = self._check_length()   # Länge ermitteln:
 
         self.factor_vec = utils.as_vector(factor, self.length)   # Faktor als Vektor:
+
+    def description(self, at_index=0):
+        i = 0 if self.length == 1 else at_index
+        index = self.indices[i]
+        factor = self.factor_vec[i]
+        factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
+        return f"{factor_str} * {self.variable.label}[{index}]"
 
     def _check_length(self):
         """
@@ -323,6 +357,11 @@ class SumOfSummand(Summand):
 
         self.length = 1
 
+    def description(self, at_index=0):
+        single_summand_str = super().description(at_index)
+        i = 0 if self.length == 1 else at_index
+        return f"∑({('..+' if i > 0 else '')}{single_summand_str}{('+..' if i < self.length else '')})"
+
 
 class MathModel:
     '''
@@ -351,35 +390,30 @@ class MathModel:
         self.model: Optional[ModelingLanguage] = None
 
         self._variables: List[Variable] = []
-        self._eqs: List[Equation] = []
-        self._ineqs: List[Equation] = []
+        self._constraints: List[Union[Equation, Inequation]] = []
         self._objective: Optional[Equation] = None
         self.result_of_objective: Optional[float] = None
 
         self.duration = {}
 
-    def add(self, *args: Union[Variable, Equation]) -> None:
+    def add(self, *args: Union[Variable, Equation, Inequation]) -> None:
         if not isinstance(args, list):
             args = list(args)
         for arg in args:
             if isinstance(arg, Variable):
                 self._variables.append(arg)
-            elif isinstance(arg, Equation):
-                if arg.kind_of_eq == 'eq':
-                    self._eqs.append(arg)
-                elif arg.kind_of_eq == 'ineq':
-                    self._ineqs.append(arg)
-                elif arg.kind_of_eq == 'objective':
+            elif isinstance(arg, (Equation, Inequation)):
+                if isinstance(arg, Equation) and arg.is_objective:
                     self._objective = arg
                 else:
-                    raise Exception(f'{arg} cant be added this way!')
+                    self._constraints.append(arg)
             else:
                 raise Exception(f'{arg} cant be added this way!')
 
     def describe(self) -> str:
-        return (f'no of Eqs   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
-                f'no of InEqs (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
-                f'no of Vars  (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
+        return (f'no of Equations   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
+                f'no of Inequations (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
+                f'no of Variables   (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
 
     def translate_to_modeling_language(self) -> None:
         t_start = timeit.default_timer()
@@ -406,13 +440,13 @@ class MathModel:
         info_flixModel = {}
         infos['flixModel'] = info_flixModel
 
-        info_flixModel['no eqs'] = self.nr_of_equations
-        info_flixModel['no eqs single'] = self.nr_of_single_equations
-        info_flixModel['no inEqs'] = self.nr_of_inequations
-        info_flixModel['no inEqs single'] = self.nr_of_single_inequations
-        info_flixModel['no vars'] = self.nr_of_variables
-        info_flixModel['no vars single'] = self.nr_of_single_variables
-        info_flixModel['no vars TS'] = len(self.ts_variables)
+        info_flixModel['no of Equations'] = self.nr_of_equations
+        info_flixModel['no of Equations single'] = self.nr_of_single_equations
+        info_flixModel['no of Inequations'] = self.nr_of_inequations
+        info_flixModel['no of Inequations single'] = self.nr_of_single_inequations
+        info_flixModel['no of Variables'] = self.nr_of_variables
+        info_flixModel['no of Variables single'] = self.nr_of_single_variables
+        info_flixModel['no of Variables TS'] = len(self.ts_variables)
 
         if self.solver.log is not None:
             infos['solver_log'] = self.solver.log
@@ -423,12 +457,12 @@ class MathModel:
         return self._variables
 
     @property
-    def eqs(self) -> List[Equation]:
-        return self._eqs
+    def equations(self) -> List[Equation]:
+        return [eq for eq in self._constraints if isinstance(eq, Equation)]
 
     @property
-    def ineqs(self) -> List[Equation]:
-        return self._ineqs
+    def inequations(self):
+        return [eq for eq in self._constraints if isinstance(eq, Inequation)]
 
     @property
     def objective(self) -> Equation:
@@ -443,12 +477,16 @@ class MathModel:
         return len(self.variables)
 
     @property
+    def nr_of_constraints(self) -> int:
+        return len(self._constraints)
+
+    @property
     def nr_of_equations(self) -> int:
-        return len(self.eqs)
+        return len(self.equations)
 
     @property
     def nr_of_inequations(self) -> int:
-        return len(self.ineqs)
+        return len(self.inequations)
 
     @property
     def nr_of_single_variables(self) -> int:
@@ -456,11 +494,11 @@ class MathModel:
 
     @property
     def nr_of_single_equations(self) -> int:
-        return sum([eq.length for eq in self.eqs])
+        return sum([eq.length for eq in self.equations])
 
     @property
     def nr_of_single_inequations(self) -> int:
-        return sum([eq.length for eq in self.ineqs])
+        return sum([eq.length for eq in self.inequations])
 
     def results(self):
         return {variable.label: variable.result for variable in self.variables}
@@ -833,12 +871,12 @@ class PyomoModel(ModelingLanguage):
         for variable in math_model.variables:   # Variablen erstellen
             logger.debug(f'VAR {variable.label} gets translated to Pyomo')
             self.translate_variable(variable)
-        for eq in math_model.eqs:   # Gleichungen erstellen
+        for eq in math_model.equations:   # Gleichungen erstellen
             logger.debug(f'EQ {eq.label} gets translated to Pyomo')
             self.translate_equation(eq)
-        for ineq in math_model.ineqs:   # Ungleichungen erstellen:
+        for ineq in math_model.inequations:   # Ungleichungen erstellen:
             logger.debug(f'INEQ {ineq.label} gets translated to Pyomo')
-            self.translate_equation(ineq)
+            self.translate_inequation(ineq)
 
         obj = math_model.objective
         logger.debug(f'{obj.label} gets translated to Pyomo')
@@ -871,8 +909,8 @@ class PyomoModel(ModelingLanguage):
                 pyomo_comp[i].setub(upper_bound_vector[i])  # max
 
     def translate_equation(self, equation: Equation):
-        if equation.kind_of_eq not in ['eq', 'ineq']:
-            raise TypeError(f'Wrong equation type: {equation.kind_of_eq}')
+        if not isinstance(equation, Equation):
+            raise TypeError(f'Wrong Class: {equation.__class__.__name__}')
 
         # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
         constant_vector = equation.constant_vector
@@ -884,20 +922,41 @@ class PyomoModel(ModelingLanguage):
             for aSummand in equation.summands:
                 lhs += self._summand_math_expression(aSummand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
             rhs = constant_vector[i]
-            # Unterscheidung return-value je nach typ:
-            if equation.kind_of_eq == 'eq':
-                return lhs == rhs
-            elif equation.kind_of_eq == 'ineq':
-                return lhs <= rhs
+            return lhs == rhs
 
         pyomo_comp = pyomoEnv.Constraint(range(equation.length),
                                          rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
 
         self._register_pyomo_comp(pyomo_comp, equation)
 
+    def translate_inequation(self, inequation: Inequation):
+        if not isinstance(inequation, Inequation):
+            raise TypeError(f'Wrong Class: {inequation.__class__.__name__}')
+
+        # constant_vector hier erneut erstellen, da Anz. Glg. vorher noch nicht bekannt:
+        constant_vector = inequation.constant_vector
+
+        def linear_sum_pyomo_rule(model, i):
+            """ This function is needed for pyomoy internal construction of Constraints."""
+            lhs = 0
+            aSummand: Summand
+            for aSummand in inequation.summands:
+                lhs += self._summand_math_expression(aSummand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
+            rhs = constant_vector[i]
+
+            return lhs <= rhs
+
+        pyomo_comp = pyomoEnv.Constraint(range(inequation.length),
+                                         rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
+
+        self._register_pyomo_comp(pyomo_comp, inequation)
+
     def translate_objective(self, objective: Equation):
-        if not objective.kind_of_eq == 'objective':
-            raise TypeError(f'Equation of type {objective.kind_of_eq} passed to translate_objective. Must be objective!')
+        if not isinstance(objective, Equation):
+            raise TypeError(f'Class {objective.__class__.__name__} Can not be the objective!')
+        if not objective.is_objective:
+            raise TypeError(f'Objective Equation is not marked as objective, {objective.is_objective=}, '
+                            f'but was sent to translate to objective!')
         if objective.length != 1:
             raise Exception('Length of Objective must be 0')
 
@@ -923,7 +982,7 @@ class PyomoModel(ModelingLanguage):
             return pyomo_variable[summand.indices[0]] * summand.factor_vec[at_index]
         return pyomo_variable[summand.indices[at_index]] * summand.factor_vec[at_index]
 
-    def _register_pyomo_comp(self, pyomo_comp, part: Union[Variable, Equation]) -> None:
+    def _register_pyomo_comp(self, pyomo_comp, part: Union[Variable, Equation, Inequation]) -> None:
         self._counter += 1  # Counter to guarantee unique names
         self.model.add_component(f'{part.label}__{self._counter}', pyomo_comp)
         self.mapping[part] = pyomo_comp

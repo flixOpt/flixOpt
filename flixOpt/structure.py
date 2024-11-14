@@ -13,7 +13,7 @@ import textwrap
 import numpy as np
 
 from . import utils
-from .math_modeling import MathModel, Variable, Equation, VariableTS, Solver
+from .math_modeling import MathModel, Variable, Equation, Inequation, VariableTS, Solver
 from .core import TimeSeries, Skalar, Numeric, Numeric_TS, TimeSeriesData
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -110,14 +110,14 @@ class SystemModel(MathModel):
                 'Others': {model.element.label: model.description_of_variables(structured)
                            for model in self.other_models}}
 
-    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
-        return {'Components': {comp.label: comp.model.description_of_equations(structured)
+    def description_of_constraints(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+        return {'Components': {comp.label: comp.model.description_of_constraints(structured)
                                for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_equations(structured)
+                'Buses': {bus.label: bus.model.description_of_constraints(structured)
                           for bus in self.flow_system.all_buses},
                 'Objective': 'MISSING AFTER REWORK',
-                'Effects': self.flow_system.effect_collection.model.description_of_equations(structured),
-                'Others': {model.element.label: model.description_of_equations(structured)
+                'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
+                'Others': {model.element.label: model.description_of_constraints(structured)
                            for model in self.other_models}}
 
     def results(self):
@@ -166,7 +166,7 @@ class SystemModel(MathModel):
     @property
     def infos(self) -> Dict:
         infos = super().infos
-        infos['Equations'] = self.description_of_equations()
+        infos['Constraints'] = self.description_of_constraints()
         infos['Variables'] = self.description_of_variables()
         infos['Main Results'] = self.main_results
         return infos
@@ -182,18 +182,23 @@ class SystemModel(MathModel):
         return all_vars
 
     @property
-    def all_equations(self) -> Dict[str, Equation]:
-        all_eqs = {}
+    def all_constraints(self) -> Dict[str, Union[Equation, Inequation]]:
+        all_constr = {}
         for model in self.sub_models:
-            for label, equation in model.eqs.items():
-                if label in all_eqs:
-                    raise KeyError(f"Duplicate Equation found in SystemModel: {label=}; {equation=}")
-                all_eqs[label] = equation
-        return all_eqs
+            for label, constr in model.constraints.items():
+                if label in all_constr:
+                    raise KeyError(f"Duplicate Constraint found in SystemModel: {label=}; {constr=}")
+                else:
+                    all_constr[label] = constr
+        return all_constr
 
     @property
-    def all_inequations(self) -> Dict[str, Equation]:
-        return {name: eq for name, eq in self.all_equations.items() if eq.kind_of_eq == 'ineq'}
+    def all_equations(self) -> Dict[str, Equation]:
+        return {key: value for key, value in self.all_constraints.items() if isinstance(value, Equation)}
+
+    @property
+    def all_inequations(self) -> Dict[str, Inequation]:
+        return {key: value for key, value in self.all_constraints.items() if isinstance(value, Inequation)}
 
     @property
     def sub_models(self) -> List['ElementModel']:
@@ -207,9 +212,14 @@ class SystemModel(MathModel):
         return list(self.all_variables.values())
 
     @property
-    def eqs(self) -> List[Equation]:
+    def equations(self) -> List[Equation]:
         """ Needed for Mother class """
         return list(self.all_equations.values())
+
+    @property
+    def inequations(self) -> List[Inequation]:
+        """ Needed for Mother class """
+        return list(self.all_inequations.values())
 
     @property
     def objective(self) -> Equation:
@@ -268,7 +278,7 @@ class ElementModel:
         logger.debug(f'Created {self.__class__.__name__} for {element.label_full}')
         self.element = element
         self.variables = {}
-        self.eqs = {}
+        self.constraints = {}
         self.sub_models = []
         self._label = label
 
@@ -281,12 +291,12 @@ class ElementModel:
             else:
                 raise Exception(f'A Variable with the label "{variable.label}" already exists')
 
-    def add_equations(self, *equations: Equation) -> None:
-        for equation in equations:
-            if equation.label not in self.eqs.keys():
-                self.eqs[equation.label] = equation
+    def add_constraints(self, *constraints: Union[Equation, Inequation]) -> None:
+        for constraint in constraints:
+            if constraint.label not in self.constraints.keys():
+                self.constraints[constraint.label] = constraint
             else:
-                raise Exception(f'Equation "{equation.label}" already exists')
+                raise Exception(f'Constraint "{constraint.label}" already exists')
 
     def description_of_variables(self, structured: bool = True) -> Union[Dict[str, Union[List[str], Dict]], List[str]]:
         if structured:
@@ -301,14 +311,14 @@ class ElementModel:
         else:
             return [var.description() for var in self.all_variables.values()]
 
-    def description_of_equations(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
+    def description_of_constraints(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
         if structured:
             # Gather descriptions of this model's variables
-            descriptions = {'_self': [eq.description() for eq in self.eqs.values()]}
+            descriptions = {'_self': [constr.description() for constr in self.constraints.values()]}
 
             # Recursively gather descriptions from sub-models
             for sub_model in self.sub_models:
-                descriptions[sub_model.label] = sub_model.description_of_equations(structured=structured)
+                descriptions[sub_model.label] = sub_model.description_of_constraints(structured=structured)
 
             return descriptions
         else:
@@ -317,16 +327,20 @@ class ElementModel:
     @property
     def overview_of_model_size(self) -> Dict[str, int]:
         all_vars, all_eqs, all_ineqs = self.all_variables, self.all_equations, self.all_inequations
-        return {'no eqs': len(all_eqs),
-                'no eqs single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
-                'no inEqs': len(all_ineqs),
-                'no inEqs single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
-                'no vars': len(all_vars),
-                'no vars single': sum(var.length for var in all_vars.values())}
+        return {'no of Euations': len(all_eqs),
+                'no of Equations single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
+                'no of Inequations': len(all_ineqs),
+                'no of Inequations single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
+                'no of Variables': len(all_vars),
+                'no of Variables single': sum(var.length for var in all_vars.values())}
 
     @property
-    def ineqs(self) -> Dict[str, Equation]:
-        return {name: eq for name, eq in self.eqs.items() if eq.kind_of_eq == 'ineq'}
+    def inequations(self) -> Dict[str, Inequation]:
+        return {name: ineq for name, ineq in self.constraints.items() if isinstance(ineq, Inequation)}
+
+    @property
+    def equations(self) -> Dict[str, Equation]:
+        return {name: eq for name, eq in self.constraints.items() if isinstance(eq, Equation)}
 
     @property
     def all_variables(self) -> Dict[str, Variable]:
@@ -339,8 +353,18 @@ class ElementModel:
         return all_vars
 
     @property
+    def all_constraints(self) -> Dict[str, Union[Equation, Inequation]]:
+        all_constr = self.constraints.copy()
+        for sub_model in self.sub_models:
+            for key, value in sub_model.all_constraints.items():
+                if key in all_constr:
+                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
+                all_constr[key] = value
+        return all_constr
+
+    @property
     def all_equations(self) -> Dict[str, Equation]:
-        all_eqs = self.eqs.copy()
+        all_eqs = self.equations.copy()
         for sub_model in self.sub_models:
             for key, value in sub_model.all_equations.items():
                 if key in all_eqs:
@@ -349,14 +373,12 @@ class ElementModel:
         return all_eqs
 
     @property
-    def all_inequations(self) -> Dict[str, Equation]:
-        all_ineqs = self.ineqs.copy()
+    def all_inequations(self) -> Dict[str, Inequation]:
+        all_ineqs = self.inequations.copy()
         for sub_model in self.sub_models:
-            for key, value in sub_model.all_equations.items():
+            for key, value in sub_model.all_inequations.items():
                 if key in all_ineqs:
                     raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-                if value.kind_of_eq == 'ineq':
-                    all_ineqs[key] = value
         return all_ineqs
 
     @property
@@ -395,11 +417,16 @@ def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]
         return time_series
 
 
-def create_equation(label: str, element_model: ElementModel, eq_type: Literal['eq', 'ineq'] = 'eq') -> Equation:
+def create_equation(label: str,
+                    element_model: ElementModel,
+                    eq_type: Literal['eq', 'ineq'] = 'eq') -> Union[Equation, Inequation]:
     """ Creates an Equation and adds it to the model of the Element """
-    eq = Equation(f'{element_model.label_full}_{label}', label, eq_type)
-    element_model.add_equations(eq)
-    return eq
+    if eq_type == 'eq':
+        constr = Equation(f'{element_model.label_full}_{label}', label)
+    elif eq_type == 'ineq':
+        constr = Inequation(f'{element_model.label_full}_{label}', label)
+    element_model.add_constraints(constr)
+    return constr
 
 
 def create_variable(label: str,
