@@ -39,11 +39,11 @@ if __name__ == '__main__':
     filtered_data.index = pd.to_datetime(filtered_data.index)
     datetime_series = np.array(filtered_data.index).astype('datetime64')
 
-    # Access specific columns
-    electricity_demand = filtered_data['P_Netz/MW']
-    heat_demand = filtered_data['Q_Netz/MW']
-    electricity_price = filtered_data['Strompr.€/MWh']
-    gas_price = filtered_data['Gaspr.€/MWh']
+    # Access specific columns and convert to 1D-numpy array
+    electricity_demand = filtered_data['P_Netz/MW'].values.flatten()
+    heat_demand = filtered_data['Q_Netz/MW'].values.flatten()
+    electricity_price = filtered_data['Strompr.€/MWh'].values.flatten()
+    gas_price = filtered_data['Gaspr.€/MWh'].values.flatten()
 
     # TimeSeriesData objects
     TS_heat_demand = fx.TimeSeriesData(heat_demand)
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     flow_system.add_effects(costs, CO2, PE)
     flow_system.add_components(a_gaskessel, a_waermelast, a_strom_last, a_gas_tarif, a_kohle_tarif,
                                a_strom_einspeisung, a_strom_tarif, a_kwk, a_speicher)
-
+    flow_system.visualize_network(controls=False)
     # Calculations
     kinds = ['Full', 'Segmented', 'Aggregated']
     calculations: dict = {key: None for key in kinds}
