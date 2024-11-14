@@ -12,12 +12,10 @@ from typing import List, Dict, Optional, Union, Literal, Any
 from abc import ABC, abstractmethod
 
 import numpy as np
-from pyomo.contrib import appsi
+import pyomo.environ as pyo
 
 from . import utils
 from .core import Numeric
-
-pyomoEnv = None  # das ist module, das nur bei Bedarf belegt wird
 
 logger = logging.getLogger('flixOpt')
 
@@ -657,7 +655,7 @@ class GurobiSolver(Solver):
 
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
-            self._solver = pyomoEnv.SolverFactory('gurobi')
+            self._solver = pyo.SolverFactory('gurobi')
             self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap, "TimeLimit": self.time_limit_seconds}
@@ -691,7 +689,7 @@ class CplexSolver(Solver):
 
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
-            self._solver = pyomoEnv.SolverFactory('cplex')
+            self._solver = pyo.SolverFactory('cplex')
             self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap, "timelimit": self.time_limit_seconds}
@@ -728,6 +726,7 @@ class HighsSolver(Solver):
 
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
+            from pyomo.contrib import appsi
             self._solver = appsi.solvers.Highs()
             self._solver.highs_options = {"mip_rel_gap": self.mip_gap,
                                           "time_limit": self.time_limit_seconds,
@@ -766,7 +765,7 @@ class CbcSolver(Solver):
 
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
-            self._solver = pyomoEnv.SolverFactory('cbc')
+            self._solver = pyo.SolverFactory('cbc')
             self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"ratio": self.mip_gap, "sec": self.time_limit_seconds}
@@ -790,7 +789,7 @@ class GlpkSolver(Solver):
 
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
-            self._solver = pyomoEnv.SolverFactory('glpk')
+            self._solver = pyo.SolverFactory('glpk')
             self._results = self._solver.solve(
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"mipgap": self.mip_gap}
@@ -831,11 +830,9 @@ class PyomoModel(ModelingLanguage):
     """
 
     def __init__(self):
-        global pyomoEnv  # als globale Variable
-        import pyomo.environ as pyomoEnv
         logger.debug('Loaded pyomo modules')
 
-        self.model = pyomoEnv.ConcreteModel(name="(Minimalbeispiel)")
+        self.model = pyo.ConcreteModel(name="(Minimalbeispiel)")
 
         self.mapping: Dict[Union[Variable, Equation], Any] = {}  # Mapping to Pyomo Units
         self._counter = 0
@@ -880,9 +877,9 @@ class PyomoModel(ModelingLanguage):
         assert isinstance(variable, Variable), 'Wrong type of variable'
 
         if variable.is_binary:
-            pyomo_comp = pyomoEnv.Var(variable.indices, domain=pyomoEnv.Binary)
+            pyomo_comp = pyo.Var(variable.indices, domain=pyo.Binary)
         else:
-            pyomo_comp = pyomoEnv.Var(variable.indices, within=pyomoEnv.Reals)
+            pyomo_comp = pyo.Var(variable.indices, within=pyo.Reals)
         self.mapping[variable] = pyomo_comp
 
         # Register in pyomo-model:
@@ -918,7 +915,7 @@ class PyomoModel(ModelingLanguage):
             rhs = constant_vector[i]
             return lhs == rhs
 
-        pyomo_comp = pyomoEnv.Constraint(range(equation.length),
+        pyomo_comp = pyo.Constraint(range(equation.length),
                                          rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
 
         self._register_pyomo_comp(pyomo_comp, equation)
@@ -940,7 +937,7 @@ class PyomoModel(ModelingLanguage):
 
             return lhs <= rhs
 
-        pyomo_comp = pyomoEnv.Constraint(range(inequation.length),
+        pyomo_comp = pyo.Constraint(range(inequation.length),
                                          rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
 
         self._register_pyomo_comp(pyomo_comp, inequation)
@@ -960,10 +957,10 @@ class PyomoModel(ModelingLanguage):
                 skalar += self._summand_math_expression(summand)
             return skalar
 
-        self.model.objective = pyomoEnv.Objective(rule=_rule_linear_sum_skalar, sense=pyomoEnv.minimize)
+        self.model.objective = pyo.Objective(rule=_rule_linear_sum_skalar, sense=pyo.minimize)
         self.mapping[objective] = self.model.objective
 
-    def _summand_math_expression(self, summand: Summand, at_index: int = 0) -> 'pyomoEnv.Expression':
+    def _summand_math_expression(self, summand: Summand, at_index: int = 0) -> 'pyo.Expression':
         pyomo_variable = self.mapping[summand.variable]
         if isinstance(summand, SumOfSummand):
             return sum(pyomo_variable[summand.indices[j]] * summand.factor_vec[j] for j in summand.indices)
