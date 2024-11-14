@@ -18,17 +18,18 @@ class BaseTest(unittest.TestCase):
     def get_solver(self):
         return solvers.HighsSolver(mip_gap=0.0001, time_limit_seconds=3600, solver_output_to_console=False)
 
-    def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.011): # error_range etwas höher als mip_gap, weil unterschiedl. Bezugswerte
+    def assertAlmostEqualNumeric(self, actual, desired, err_msg, relative_error_range_in_percent=0.011,
+                                 absolute_tolerance = 1e-9): # error_range etwas höher als mip_gap, weil unterschiedl. Bezugswerte
         '''
         Asserts that actual is almost equal to desired.
         Designed for comparing float and ndarrays. Whith respect to tolerances
         '''
         relative_tol = relative_error_range_in_percent/100
         if isinstance(desired, (int, float)):
-            delta = abs(relative_tol * desired)
+            delta = abs(relative_tol * desired) if desired != 0 else absolute_tolerance
             self.assertAlmostEqual(actual, desired, msg=err_msg, delta=delta)
         else:
-            np.testing.assert_allclose(actual, desired, rtol=relative_tol, atol=1e-9)
+            np.testing.assert_allclose(actual, desired, rtol=relative_tol, atol=absolute_tolerance)
 
 
 class TestSimple(BaseTest):
