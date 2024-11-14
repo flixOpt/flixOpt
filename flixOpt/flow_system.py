@@ -116,7 +116,7 @@ class FlowSystem:
                           show: bool = True
                           ) -> Optional['pyvis.network.Network']:
         """
-        Visualizes the network structure of a FLowSystem using PyVis, saving it as an interactive HTML file.
+        Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.
 
         Parameters:
         - path (Union[bool, str, pathlib.Path], default='results/network.html'):

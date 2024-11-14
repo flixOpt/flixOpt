@@ -553,6 +553,9 @@ def visualize_network(node_infos: dict,
         - `True`: Enables all available controls.
         - `List`: Specify controls, e.g., ['nodes', 'layout'].
         - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
+        You can play with these and generate a Dictionary from it that can be applied to the network returned by this function.
+        network.set_options()
+        https://pyvis.readthedocs.io/en/latest/tutorial.html
 
     - show (bool, default=True):
       Whether to open the visualization in the web browser.
@@ -577,23 +580,30 @@ def visualize_network(node_infos: dict,
     try:
         from pyvis.network import Network
     except ImportError:
-        print("The Network visualization relies on the package 'pyvis'. "
-              "If it's not installed, the FlowSystem can not be visualized. "
-              "Please install it using 'pip install pyvis'.")
+        print("Please install pyvis to visualize the network: 'pip install pyvis'")
         return None
 
-    net = Network(directed=True)
+    net = Network(directed=True, height='100%' if controls is False else '800px', font_color="white")
 
     for id, node in node_infos.items():
-        net.add_node(id, label=node['label'], shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
-                     title=node['infos'].replace(')', '\n)'))
+        net.add_node(id,
+                     label=node['label'],
+                     shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
+                     color={'Bus': '#393E46', 'Component': '#00ADB5'}[node['class']],
+                     title=node['infos'].replace(')', '\n)'),
+                     font={'size': 14})
 
     for id, edge in edge_infos.items():
-        net.add_edge(edge['start'], edge['end'], label=edge['label'],
+        net.add_edge(edge['start'],
+                     edge['end'],
+                     label=edge['label'],
                      title=edge['infos'].replace(')', '\n)'),
-                     font={"size": 12, "color": "red"})
+                     font={"color": "#4D4D4D", "size": 14},
+                     color="#222831")
 
+    # Enhanced physics settings
     net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
+
     if controls:
         net.show_buttons(filter_=controls)  # Adds UI buttons to control physics settings
 
