@@ -66,7 +66,7 @@ class SystemModel(MathModel):
         """
 
         logger.info(f'{" starting solving ":#^80}')
-        logger.info(f'{self.describe()}')
+        logger.info(f'{self.describe_size()}')
 
         super().solve(solver)
 

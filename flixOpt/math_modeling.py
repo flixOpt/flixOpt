@@ -410,7 +410,7 @@ class MathModel:
             else:
                 raise Exception(f'{arg} cant be added this way!')
 
-    def describe(self) -> str:
+    def describe_size(self) -> str:
         return (f'No. of Equations   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
                 f'No. of Inequations (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
                 f'No. of Variables   (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
