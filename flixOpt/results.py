@@ -14,6 +14,7 @@ import datetime
 import yaml
 import numpy as np
 import pandas as pd
+import plotly
 
 from flixOpt import utils
 from flixOpt import plotting
@@ -99,52 +100,81 @@ class CalculationResults:
 
     def to_dataframe(self,
                      label: str,
+                     variable_name: str = 'flow_rate',
                      input_factor: Optional[Literal[1, -1]] = -1,
                      output_factor: Optional[Literal[1, -1]] = 1,
-                     variable_name: str = 'flow_rate') -> pd.DataFrame:
-        comp_or_bus = {**self.component_results, **self.bus_results}[label]
-        inputs, outputs = {}, {}
-        if input_factor is not None:
-            inputs = {flow.label_full: (flow.variables[variable_name] * input_factor) for flow in comp_or_bus.inputs}
-        if output_factor is not None:
-            outputs = {flow.label_full: flow.variables[variable_name] * output_factor for flow in comp_or_bus.outputs}
-
-        return pd.DataFrame(data={**inputs, **outputs}, index=self.time)
-
-    def plot_operation(self, label: str,
-                       mode: Literal['bar', 'line', 'area'] = 'bar',
-                       engine: Literal['plotly', 'matplotlib'] = 'plotly',
-                       show: bool = True):
-        data = self.to_dataframe(label)
-        if engine == 'plotly':
-            return plotting.with_plotly(data=data, mode=mode, show=show)
+                     threshold: Optional[float] = 1e-5,
+                     with_last_time_step: bool = True,
+                     ) -> pd.DataFrame:
+        """
+        Gets results from an Element with the specified label for the specified Variable.
+        The Element can either be a Component or a Bus or a  Flow (full label).
+        Returns a Dataframe with a Datetime index, typically including the last step.
+        """
+        comp_or_bus = {**self.component_results, **self.bus_results}.get(label, None)
+        if comp_or_bus is not None:
+            df = comp_or_bus.to_dataframe(variable_name, input_factor, output_factor,)
         else:
-            return plotting.with_matplotlib(data=data, mode=mode, show=show)
+            flow = self.flow_results().get(label, None)
+            df = flow.to_dataframe(variable_name)
+        if threshold is not None:
+            df = df.loc[:, ((df > threshold) | (df < -1*threshold)).any()]  # Check if any value exceeds the threshold
 
-    def plot_flow_rate(self,
-                       flow_label: str,
+        if with_last_time_step:
+            if len(df) == len(self.time):
+                df.loc[len(df)] = df.iloc[-1]
+            df.index = self.time_with_end
+        elif len(df) == len(self.time_with_end):
+            df.index = self.time_with_end
+        else:
+            df.index = self.time
+
+        return df
+
+    def plot_operation(self,
+                       label: str,
                        mode: Literal['bar', 'line', 'area', 'heatmap'] = 'area',
+                       variable_name: str = 'flow_rate',
                        heatmap_periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
                        heatmap_steps_per_period: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
                        show: bool = True):
-        data = pd.DataFrame(self.flow_results()[flow_label].variables['flow_rate'], index = self.time)
+        data = self.to_dataframe(label, variable_name)
+        title = f'{variable_name.replace("_", " ").title()} of {label}'
+        if engine == 'plotly':
+            if mode == 'heatmap':
+                if not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
+                    logger.warning(
+                        'Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
+                heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
+                return plotting.heat_map_plotly(heatmap_data, show=show, title=title)
+            else:
+                return plotting.with_plotly(data=data, mode=mode, show=show, title=title)
 
-        if mode == 'heatmap' and not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
-            logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
-
-        if engine == 'plotly' and mode == 'heatmap':
-            heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-            return plotting.heat_map_plotly(heatmap_data, show=show)
-        elif engine == 'plotly':
-                return plotting.with_plotly(data=data, mode=mode, show=show)
-        elif engine == 'matplotlib' and mode == 'heatmap':
-            heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-            return plotting.heat_map_matplotlib(heatmap_data, show=show)
         elif engine == 'matplotlib':
-            return plotting.with_matplotlib(data=data, mode=mode, show=show)
+            if mode == 'heatmap':
+                heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
+                return plotting.heat_map_matplotlib(heatmap_data, show=show)
+            else:
+                return plotting.with_matplotlib(data=data, mode=mode, show=show)
         else:
-            raise ValueError(f'Unknown combination: {mode=} and {engine=}')
+            raise ValueError(f'Unknown Engine: {engine=}')
+
+    def plot_storage(self,
+                     label: str,
+                     variable_name: str = 'flow_rate',
+                     mode: Literal['bar', 'line', 'area'] = 'area',
+                     show: bool = True):
+        fig = self.plot_operation(label, mode, variable_name, engine='plotly', show=False)
+        fig.add_trace(plotly.graph_objs.Scatter(
+            x=self.time_with_end,
+            y={**self.component_results, **self.bus_results}[label].variables['charge_state'],
+            mode='lines',
+            name='Charge State',
+        ))
+        if show:
+            plotly.offline.plot(fig)
+        return fig
 
     def visualize_network(self,
                           path: Union[bool, str, pathlib.Path] = 'results/network.html',
@@ -202,6 +232,9 @@ class FlowResults(ElementResults):
         self.label_full = f'{label_of_component}__{self.label}'
         self.variables = self.all_results
 
+    def to_dataframe(self, variable_name: str = 'flow_rate') -> pd.DataFrame:
+        return pd.DataFrame({variable_name: self.variables[variable_name]})
+
 
 class ComponentResults(ElementResults):
 
@@ -221,13 +254,39 @@ class ComponentResults(ElementResults):
         outputs = [flow for flow in flows if not flow.is_input_in_component]
         return inputs, outputs
 
+    def to_dataframe(self,
+                     variable_name: str = 'flow_rate',
+                     input_factor: Optional[Literal[1, -1]] = -1,
+                     output_factor: Optional[Literal[1, -1]] = 1) -> pd.DataFrame:
+        inputs, outputs = {}, {}
+        if input_factor is not None:
+            inputs = {flow.label_full: (flow.variables[variable_name] * input_factor) for flow in self.inputs}
+        if output_factor is not None:
+            outputs = {flow.label_full: flow.variables[variable_name] * output_factor for flow in self.outputs}
+
+        return pd.DataFrame(data={**inputs, **outputs})
+
 
 class BusResults(ElementResults):
-    def __init__(self, infos: Dict, data: Dict, inputs, outputs):
+    def __init__(self, infos: Dict, data: Dict, inputs: List[FlowResults], outputs: List[FlowResults]):
         super().__init__(infos, data)
         self.inputs = inputs
         self.outputs = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
+
+    def to_dataframe(self,
+                     variable_name: str = 'flow_rate',
+                     input_factor: Optional[Literal[1, -1]] = -1,
+                     output_factor: Optional[Literal[1, -1]] = 1) -> pd.DataFrame:
+        inputs, outputs = {}, {}
+        if input_factor is not None:
+            inputs = {flow.label_full: (flow.variables[variable_name] * input_factor) for flow in self.inputs}
+            inputs['Excess Input'] = self.variables['excess_input'] * input_factor
+        if output_factor is not None:
+            outputs = {flow.label_full: flow.variables[variable_name] * output_factor for flow in self.outputs}
+            outputs['Excess Output'] = self.variables['excess_output'] * output_factor
+
+        return pd.DataFrame(data={**inputs, **outputs})
 
 
 class EffectResults(ElementResults):
