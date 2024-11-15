@@ -19,16 +19,16 @@ if __name__ == '__main__':
     # --- Basic overview ---
     results.visualize_network()
     results.plot_operation('Fernwärme')
-    results.plot_operation('Fernwärme', engine='matplotlib')
-    results.plot_operation('Fernwärme', 'area')
+    results.plot_operation('Fernwärme', 'bar')
+    results.plot_operation('Fernwärme', 'bar', engine='matplotlib')
 
     # --- Detailed Plots ---
     # In depth plot for individual flow rates ('__' is used as the delimiter between Component and Flow
-    results.plot_flow_rate('Wärmelast__Q_th_Last', 'heatmap')
+    results.plot_operation('Wärmelast__Q_th_Last', 'heatmap')
     figs = []
     for flow_label in results.flow_results():
         if flow_label.startswith('BHKW2'):
-            fig = results.plot_flow_rate(flow_label, 'heatmap', heatmap_steps_per_period='h', heatmap_periods='D')
+            fig = results.plot_operation(flow_label, 'heatmap', heatmap_steps_per_period='h', heatmap_periods='D')
 
 
     # --- Plotting internal variables manually ---

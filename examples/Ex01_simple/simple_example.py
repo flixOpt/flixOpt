@@ -91,10 +91,11 @@ if __name__ == '__main__':
     # Load the results and plot the operation of the District Heating Bus
     results = fx.results.CalculationResults(calculation.name, folder='results')
     results.plot_operation('Fernwärme', 'area')
+    results.plot_storage('Storage')
     results.plot_operation('Fernwärme', 'bar')
     results.plot_operation('Fernwärme', 'line')
-    results.plot_flow_rate('CHP__Q_th', 'line')
-    results.plot_flow_rate('CHP__Q_th', 'heatmap')
+    results.plot_operation('CHP__Q_th', 'line')
+    results.plot_operation('CHP__Q_th', 'heatmap')
 
     # Convert the results for the storage component to a dataframe and display
     results.to_dataframe('Storage')

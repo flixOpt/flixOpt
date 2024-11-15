@@ -198,7 +198,7 @@ if __name__ == '__main__':
                         index=time_series_used)
     data = pd.DataFrame(data.sum()).T
     fig = fx.plotting.with_plotly(data, 'bar')
-    fig.update_layout(title="Total Cost Comparison", yaxis_title="Costs (€)")
+    fig.update_layout(title="Total Cost Comparison", yaxis_title="Costs (€)", barmode='group')
     fig.write_html('results/Total Costs.html')
 
     duration_data = pd.DataFrame({

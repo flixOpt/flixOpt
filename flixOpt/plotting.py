@@ -22,6 +22,8 @@ logger = logging.getLogger('flixOpt')
 def with_plotly(data: pd.DataFrame,
                 mode: Literal['bar', 'line', 'area'] = 'area',
                 colors: Union[List[str], str] = 'viridis',
+                title: str = '',
+                ylabel: str = '',
                 fig: Optional[go.Figure] = None,
                 show: bool = False) -> go.Figure:
     """
@@ -96,8 +98,6 @@ def with_plotly(data: pd.DataFrame,
                 line=dict(shape='hv', color=colors[i]),
             ))
     elif mode == 'area':
-        median_interval = data.index.to_series().diff().dropna().median()  # median time interval
-        data.loc[data.index[-1] + pd.Timedelta(seconds=median_interval.seconds)] = data.iloc[-1]  # Repeating the last value to show as area
         data[(data > -1e-5) & (data < 1e-5)] = 0  # Preventing issues with plotting
         # Split columns into positive, negative, and mixed categories
         positive_columns = list(data.columns[(data >= 0).all()])
@@ -131,7 +131,9 @@ def with_plotly(data: pd.DataFrame,
 
     # Update layout for better aesthetics
     fig.update_layout(
+        title=title,
         yaxis=dict(
+            title= ylabel,
             showgrid=True,  # Enable grid lines on the y-axis
             gridcolor='lightgrey',  # Customize grid line color
             gridwidth=0.5,  # Customize grid line width
@@ -345,6 +347,9 @@ def heat_map_matplotlib(data: pd.DataFrame,
 
 def heat_map_plotly(data: pd.DataFrame,
                     color_map: str = 'viridis',
+                    title: str = '',
+                    xlabel: str = 'Periods',
+                    ylabel: str = 'Step',
                     categorical_labels: bool = True,
                     show: bool = False) -> go.Figure:
     """
@@ -396,8 +401,9 @@ def heat_map_plotly(data: pd.DataFrame,
 
     # Set axis labels and style
     fig.update_layout(
-        xaxis=dict(title='Period', side='top', type='category' if categorical_labels else None),
-        yaxis=dict(title='Step', autorange='reversed', type='category' if categorical_labels else None)
+        title=title,
+        xaxis=dict(title=xlabel, side='top', type='category' if categorical_labels else None),
+        yaxis=dict(title=ylabel, autorange='reversed', type='category' if categorical_labels else None)
     )
     if show:
         plotly.offline.plot(fig)
