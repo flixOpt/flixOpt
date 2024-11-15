@@ -304,11 +304,11 @@ class FlowModel(ElementModel):
 
         # Investment
         if isinstance(self.element.size, InvestParameters):
-            self._investment = InvestmentModel(self.element, self.element.size,
-                                               self.flow_rate,
-                                               self.relative_flow_rate_bounds,
-                                               self.element.fixed_relative_profile,
-                                               on_variable=self._on.on if self._on is not None else None)
+            self._investment = InvestmentModel(
+                self.element, self.element.size, self.flow_rate, self.relative_flow_rate_bounds,
+                fixed_relative_profile=self.element.fixed_relative_profile.active_data if self.element.fixed_relative_profile is not None else None,
+                on_variable=self._on.on if self._on is not None else None
+            )
             self._investment.do_modeling(system_model)
             self.sub_models.append(self._investment)
 
