@@ -395,6 +395,7 @@ class ElementModel:
 
     @property
     def label_full(self) -> str:
+        #TODO: __ as delimiter?
         return f'{self.element.label_full}_{self._label}' if self._label else self.element.label_full
 
     @property
