@@ -121,7 +121,10 @@ class CalculationResults:
             df = comp_or_bus.to_dataframe(variable_name, input_factor, output_factor,)
         else:
             flow = self.flow_results().get(label, None)
-            df = flow.to_dataframe(variable_name)
+            if flow is not None:
+                df = flow.to_dataframe(variable_name)
+            else:
+                raise ValueError(f'No Data found for {variable_name=}')
         if threshold is not None:
             df = df.loc[:, ((df > threshold) | (df < -1*threshold)).any()]  # Check if any value exceeds the threshold
 
@@ -143,8 +146,11 @@ class CalculationResults:
                        heatmap_periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
                        heatmap_steps_per_period: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
+                       invert: bool = False,
                        show: bool = True):
-        data = self.to_dataframe(label, variable_name)
+        data = self.to_dataframe(label, variable_name,
+                                 input_factor=-1 if not invert else 1,
+                                 output_factor=1 if not invert else -1)
         title = f'{variable_name.replace("_", " ").title()} of {label}'
         if engine == 'plotly':
             if mode == 'heatmap':
@@ -169,8 +175,9 @@ class CalculationResults:
                      label: str,
                      variable_name: str = 'flow_rate',
                      mode: Literal['bar', 'line', 'area'] = 'area',
+                     invert: bool = True,
                      show: bool = True):
-        fig = self.plot_operation(label, mode, variable_name, engine='plotly', show=False)
+        fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False)
         fig.add_trace(plotly.graph_objs.Scatter(
             x=self.time_with_end,
             y={**self.component_results, **self.bus_results}[label].variables['charge_state'],
