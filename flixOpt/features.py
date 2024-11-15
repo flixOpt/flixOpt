@@ -565,8 +565,9 @@ class ShareAllocationModel(ElementModel):
                    variable: Optional[Variable],
                    factor: Numeric,
                    share_as_sum: bool = False):
-        """ if name_of_share, then a proper share is created, which is explicitly published in results.
-        Else, its only added to the total of the Effect"""
+        """
+        Adding a Share to a Share Allocation Model.
+        """
         # TODO: accept only one factor or accept unlimited factors -> *factors
 
         # Check to which equation the share should be added
@@ -605,15 +606,14 @@ class SingleShareModel(ElementModel):
         if variable is not None:
             assert not (variable.length == 1 and share_as_sum), f'A Variable with the length 1 cannot be summed up!'
 
-
         if share_as_sum or (variable is not None and variable.length == 1) or (variable is None and np.isscalar(factor)):
             self.single_share = Variable(self.label_full, 1, self.label_short)
         elif variable is not None:
             self.single_share = VariableTS(self.label_full, variable.length, self.label_short)
         else:
             raise Exception('This case is not yet covered for a SingleShareModel')
-        self.add_variables(self.single_share)
 
+        self.add_variables(self.single_share)
         self.single_equation = create_equation(self.label_full, self)
         self.single_equation.add_summand(self.single_share, -1)
 
