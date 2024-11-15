@@ -135,7 +135,7 @@ if __name__ == '__main__':
     calculation.do_modeling()
 
     # Show variables as str (else, you can find them in the results.yaml file
-    print(calculation.system_model.description_of_equations())
+    print(calculation.system_model.description_of_constraints())
     print(calculation.system_model.description_of_variables())
 
     calculation.solve(fx.solvers.HighsSolver(mip_gap=0.005, time_limit_seconds=30),  # Specify which solver you want to use and specify parameters
