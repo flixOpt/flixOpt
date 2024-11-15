@@ -422,8 +422,8 @@ class BusModel(ElementModel):
 
             fx_collection = system_model.effect_collection_model
 
-            fx_collection.add_share_to_penalty(f'{self.element.label_full}_excess_input', self.element, self.excess_input, excess_penalty)
-            fx_collection.add_share_to_penalty(f'{self.element.label_full}_excess_output', self.element, self.excess_output, excess_penalty)
+            fx_collection.add_share_to_penalty(f'{self.element.label_full}__excess_input', self.element, self.excess_input, excess_penalty)
+            fx_collection.add_share_to_penalty(f'{self.element.label_full}__excess_output', self.element, self.excess_output, excess_penalty)
 
 
 class ComponentModel(ElementModel):
