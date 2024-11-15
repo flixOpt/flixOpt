@@ -630,7 +630,7 @@ class SingleShareModel(ElementModel):
         super().__init__(element, label)
         self.single_share: Optional[Variable] = None
         self._equation: Optional[Equation] = None
-        self._full_name_of_share = f'Share_of__{element.label_full}_{self.label}'
+        self._full_name_of_share = f'Share_from__{element.label_full}__{self.label}'
         self._create_sum_of = create_sum_of
 
     def do_modeling(self, system_model: SystemModel):
