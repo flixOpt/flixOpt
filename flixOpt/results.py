@@ -31,6 +31,11 @@ class ElementResults:
     def __repr__(self):
         return f'{self.__class__.__name__}({self.label})'
 
+    @property
+    def variables_flat(self) -> Dict[str, Union[int, float, np.ndarray]]:
+        return flatten_dict(self.all_results)
+
+
 
 class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
@@ -314,6 +319,35 @@ def extract_results(results_data: dict[str, Dict[str, Union[int, float, np.ndarr
         return data
     else:
         return {key:value for key, value in data.items() if value is not None}
+
+
+def flatten_dict(d, parent_key='', sep='__'):
+    """
+    Recursively flattens a nested dictionary.
+
+    Parameters:
+        d (dict): The dictionary to flatten.
+        parent_key (str): The base key for the current recursion level.
+        sep (str): The separator to use when concatenating keys.
+
+    Returns:
+        dict: A flattened dictionary.
+    """
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k  # Combine parent key and current key
+        if isinstance(v, dict):  # If the value is a nested dictionary, recurse
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:  # Otherwise, just add the key-value pair
+            if new_key not in items:
+                items.append((new_key, v))
+            else:
+                for i in range(100000):
+                    new_key = f"{new_key}_#{i}"
+                    if new_key not in items:
+                        items.append((new_key, v))
+                        break
+    return dict(items)
 
 
 if __name__ == '__main__':
