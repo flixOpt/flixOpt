@@ -130,7 +130,7 @@ class TestComplex(BaseTest):
                                        -2.35107029e+03, -2.38500000e+03, 0.00000000e+00, -1.68897826e-10,
                                        -2.16914486e-12], "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['CO2_Share_from_Effect_CO2'].result),
+        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['CO2_Share_from_Effect_CO2_operation'].result),
                                       258.63729669618675, "costs doesnt match expected value")
         self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['costs_Kessel__Q_th__switch_on_effects'].result),
                                       0.01, "costs doesnt match expected value")
