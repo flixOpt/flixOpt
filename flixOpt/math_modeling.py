@@ -736,7 +736,11 @@ class GurobiSolver(Solver):
             self.objective = self._results.objective.expr()
             self.termination_message = self._results['Solver'][0]['Termination message']
             self.best_bound = self._results['Problem'][0]['Lower bound']
-            self.log = SolverLog('gurobi', self.logfile_name)
+            try:
+                self.log = SolverLog('gurobi', self.logfile_name)
+            except Exception as e:
+                self.log = None
+                logger.warning(f'SolverLog could not be loaded. {e}')
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
 
@@ -870,7 +874,11 @@ class GlpkSolver(Solver):
             self.objective = self._results.objective.expr()
             self.termination_message = self._results['Solver'][0]['Status']
             self.best_bound = self._results['Problem'][0]['Lower bound']
-            self.log = SolverLog('glpk', self.logfile_name)
+            try:
+                self.log = SolverLog('glpk', self.logfile_name)
+            except Exception as e:
+                self.log = None
+                logger.warning(f'SolverLog could not be loaded. {e}')
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
 
