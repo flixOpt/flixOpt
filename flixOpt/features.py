@@ -558,26 +558,7 @@ class ShareAllocationModel(ElementModel):
             # eq: sum = sum(sum_TS(t)) # additionaly to self.sum
             self._eq_sum.add_summand(self.sum_TS, 1, as_sum=True)
 
-    def add_variable_share(self,
-                           system_model: SystemModel,
-                           name_of_share: Optional[str],
-                           share_holder: Element,
-                           variable: Variable,
-                           factor: Numeric = 1,
-                           share_as_sum: bool = False):  # if variable = None, then constant Share
-        if variable is None:
-            raise Exception('add_variable_share() needs variable as input. Use add_constant_share() instead')
-        self._add_share(system_model, name_of_share, share_holder, variable, factor, share_as_sum)
-
-    def add_constant_share(self,
-                           system_model: SystemModel,
-                           name_of_share: Optional[str],
-                           share_holder: Element,
-                           factor: Numeric = 1,
-                           share_as_sum: bool = False):
-        self._add_share(system_model, name_of_share, share_holder, None, factor, share_as_sum)
-
-    def _add_share(self,
+    def add_share(self,
                    system_model: SystemModel,
                    name_of_share: Optional[str],
                    share_holder: Element,
