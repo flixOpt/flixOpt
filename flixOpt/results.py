@@ -368,10 +368,10 @@ class BusResults(ElementResults):
         inputs, outputs = {}, {}
         if input_factor is not None:
             inputs = {flow.label_full: (flow.variables[variable_name] * input_factor) for flow in self.inputs}
-            inputs['Excess Input'] = self.variables['excess_input'] * input_factor
+            inputs['Excess Input'] = self.variables.get('excess_input', 0) * input_factor
         if output_factor is not None:
             outputs = {flow.label_full: flow.variables[variable_name] * output_factor for flow in self.outputs}
-            outputs['Excess Output'] = self.variables['excess_output'] * output_factor
+            outputs['Excess Output'] = self.variables.get('excess_output', 0) * output_factor
 
         return pd.DataFrame(data={**inputs, **outputs})
 
