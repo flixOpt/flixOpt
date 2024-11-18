@@ -30,7 +30,7 @@ class Component(Element):
                  inputs: Optional[List['Flow']] = None,
                  outputs: Optional[List['Flow']] = None,
                  on_off_parameters: Optional[OnOffParameters] = None,
-                 prevent_simultaneous_flows: bool = False):
+                 prevent_simultaneous_flows: Optional[List['Flow']] = None):
         """
         Parameters
         ----------
@@ -42,7 +42,7 @@ class Component(Element):
             Component is On/Off, if all connected Flows are On/Off.
             Induces On-Variable in all FLows!
             See class OnOffParameters.
-        prevent_simultaneous_flows: States if more than one Flow is allowed to be On at once.
+        prevent_simultaneous_flows: Define a Group of Flows. Only one them can be on at a time.
             Induces On-Variable in all FLows!
         """
         super().__init__(label)
@@ -435,8 +435,15 @@ class ComponentModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         """ Initiates all FlowModels """
         all_flows = self.element.inputs + self.element.outputs
-        if self.element.prevent_simultaneous_flows or self.element.on_off_parameters:
+        if self.element.on_off_parameters:
             for flow in all_flows:
+                if flow.on_off_parameters is None:
+                    flow.on_off_parameters = OnOffParameters(force_on=True)
+                else:
+                    flow.on_off_parameters.force_on = True
+
+        if self.element.prevent_simultaneous_flows:
+            for flow in self.element.prevent_simultaneous_flows:
                 if flow.on_off_parameters is None:
                     flow.on_off_parameters = OnOffParameters(force_on=True)
                 else:
@@ -456,7 +463,7 @@ class ComponentModel(ElementModel):
 
         if self.element.prevent_simultaneous_flows:
             # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
-            on_variables = [flow.model._on.on for flow in all_flows]
+            on_variables = [flow.model._on.on for flow in self.element.prevent_simultaneous_flows]
             simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
             self.sub_models.append(simultaneous_use)
             simultaneous_use.do_modeling(system_model)
