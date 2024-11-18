@@ -112,10 +112,34 @@ class CalculationResults:
                      with_last_time_step: bool = True,
                      ) -> pd.DataFrame:
         """
-        Gets results from an Element with the specified label for the specified Variable.
-        The Element can either be a Component or a Bus or a  Flow (full label).
-        Returns a Dataframe with a Datetime index, typically including the last step.
+        Convert results of a specified element to a DataFrame.
+
+        Parameters
+        ----------
+        label : str
+            The label of the element (Component, Bus, or Flow) to retrieve data for.
+        variable_name : str, default='flow_rate'
+            The name of the variable to extract from the element's data.
+        input_factor : Optional[Literal[1, -1]], default=-1
+            Factor to apply to input values.
+        output_factor : Optional[Literal[1, -1]], default=1
+            Factor to apply to output values.
+        threshold : Optional[float], default=1e-5
+            Minimum absolute value for data inclusion in the DataFrame.
+        with_last_time_step : bool, default=True
+            Whether to include the last time step in the DataFrame index.
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame containing the specified variable's data with a datetime index.
+
+        Raises
+        ------
+        ValueError
+            If no data is found for the specified variable.
         """
+
         comp_or_bus = {**self.component_results, **self.bus_results}.get(label, None)
         if comp_or_bus is not None:
             df = comp_or_bus.to_dataframe(variable_name, input_factor, output_factor,)
@@ -149,6 +173,40 @@ class CalculationResults:
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
                        invert: bool = False,
                        show: bool = True):
+        """
+        Plots the operation results for a specified Element using the chosen plotting engine and mode.
+
+        Parameters
+        ----------
+        label : str
+            The label of the element to plot (e.g., a component or bus).
+        mode : {'bar', 'line', 'area', 'heatmap'}, default='area'
+            The type of plot to generate.
+        variable_name : str, default='flow_rate'
+            The variable to plot from the element's data.
+        heatmap_periods : {'YS', 'MS', 'W', 'D', 'h', '15min', 'min'}, default='D'
+            The period for heatmap plotting.
+        heatmap_steps_per_period : {'W', 'D', 'h', '15min', 'min'}, default='h'
+            The steps per period for heatmap plotting.
+        colors : str or List[str], default='viridis'
+            The colors or colorscale to use for the plot.
+        engine : {'plotly', 'matplotlib'}, default='plotly'
+            The plotting engine to use.
+        invert : bool, default=False
+            Whether to invert the input and output factors.
+        show : bool, default=True
+            Whether to display the plot immediately.
+
+        Returns
+        -------
+        Union[go.Figure, Tuple[plt.Figure, plt.Axes]]
+            The generated plot object, either a Plotly figure or a Matplotlib figure and axes.
+
+        Raises
+        ------
+        ValueError
+            If an invalid engine or color configuration is provided for heatmap mode.
+        """
         data = self.to_dataframe(label, variable_name,
                                  input_factor=-1 if not invert else 1,
                                  output_factor=1 if not invert else -1)
@@ -182,6 +240,27 @@ class CalculationResults:
                      mode: Literal['bar', 'line', 'area'] = 'area',
                      invert: bool = True,
                      show: bool = True):
+        """
+        Plots the storage operation results for a specified Storage Element, including its charge state.
+
+        Parameters
+        ----------
+        label : str
+            The label of the Storage to plot
+        variable_name : str, default='flow_rate'
+            The variable to plot from the element's data.
+        mode : {'bar', 'line', 'area'}, default='area'
+            The type of plot to generate.
+        invert : bool, default=True
+            Whether to invert the input and output factors.
+        show : bool, default=True
+            Whether to display the plot immediately.
+
+        Returns
+        -------
+        plotly.graph_objs.Figure
+            The generated Plotly figure object with the storage operation plot.
+        """
         fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False)
         fig.add_trace(plotly.graph_objs.Scatter(
             x=self.time_with_end,
@@ -201,39 +280,26 @@ class CalculationResults:
                           show: bool = True
                           ) -> Optional['pyvis.network.Network']:
         """
-        Visualizes the network structure of a FLowSystem using PyVis, saving it as an interactive HTML file.
+        Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.
 
-        Parameters:
-        - path (Union[bool, str, pathlib.Path], default='results/network.html'):
-          Path to save the HTML visualization.
-            - `False`: Visualization is created but not saved.
-            - `str` or `Path`: Specifies file path (default: 'results/network.html').
+        Parameters
+        ----------
+        path : Union[bool, str, pathlib.Path], default='results/network.html'
+            Path to save the HTML visualization. If False, the visualization is created but not saved.
+        controls : Union[bool, List[str]], default=True
+            UI controls to add to the visualization. True enables all available controls, or specify a list of controls.
+        show : bool, default=True
+            Whether to open the visualization in the web browser.
 
-        - controls (Union[bool, List[str]], default=True):
-          UI controls to add to the visualization.
-            - `True`: Enables all available controls.
-            - `List`: Specify controls, e.g., ['nodes', 'layout'].
-            - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
+        Returns
+        -------
+        Optional[pyvis.network.Network]
+            The Network instance representing the visualization, or None if pyvis is not installed.
 
-        - show (bool, default=True):
-          Whether to open the visualization in the web browser.
-
-        Returns:
-        - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
-
-        Usage:
-        - Visualize and open the network with default options.
-            self.visualize_network()
-
-        - Save the visualization without opening:
-            self.visualize_network(show=False)
-
-        - Visualize with custom controls and path:
-            self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
-
-        Notes:
-        - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
-        - Nodes are styled based on type (e.g., circles for buses, boxes for components) and annotated with node information.
+        Notes
+        -----
+        This function requires pyvis. If not installed, the function prints a warning and returns None.
+        Nodes are styled based on type (e.g., circles for buses, boxes for components) and annotated with node information.
         """
         from . import plotting
         return plotting.visualize_network(self.all_infos['Network']['Nodes'],
