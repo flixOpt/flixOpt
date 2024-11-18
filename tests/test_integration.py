@@ -6,6 +6,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
+import flixOpt.results
 from flixOpt import *
 from flixOpt.linear_converters import Boiler, CHP
 from flixOpt.aggregation import AggregationParameters
@@ -41,7 +42,6 @@ class TestSimple(BaseTest):
         self.p_el = 1 / 1000 * np.array([80., 80., 80., 80, 80, 80, 80, 80, 80])
         self.aTimeSeries = datetime.datetime(2020, 1, 1) + np.arange(len(self.Q_th_Last)) * datetime.timedelta(hours=1)
         self.aTimeSeries = self.aTimeSeries.astype('datetime64')
-        self.max_emissions_per_hour = 1000
 
     def test_model(self):
         calculation = self.model()
@@ -60,7 +60,30 @@ class TestSimple(BaseTest):
                                       [30., 26.66666667, 75., 75., 75., 20., 20., 20., 20.],
                                   "Q_th doesnt match expected value")
 
-    def model(self) -> FullCalculation:
+    def test_from_results(self):
+        calculation = self.model(save_results=True)
+
+        results = flixOpt.results.CalculationResults(calculation.name, 'results')
+
+        # test effect results
+        self.assertAlmostEqualNumeric(results.effect_results['costs'].all_results['all']['all_sum'], 81.88394666666667,
+                                      "costs doesnt match expected value")
+        self.assertAlmostEqualNumeric(results.effect_results['CO2'].all_results['all']['all_sum'], 255.09184,
+                               "CO2 doesnt match expected value")
+        self.assertAlmostEqualNumeric(results.component_results['Boiler'].variables_flat['Q_th__flow_rate'],
+                                      [0, 0, 0, 28.4864, 35, 0, 0, 0, 0],
+                                  "Q_th doesnt match expected value")
+        self.assertAlmostEqualNumeric(results.component_results['CHP_unit'].variables_flat['Q_th__flow_rate'],
+                                      [30., 26.66666667, 75., 75., 75., 20., 20., 20., 20.],
+                                  "Q_th doesnt match expected value")
+
+        df = results.to_dataframe('Fernwärme', with_last_time_step=False)
+        comps = {comp.label: comp for comp in calculation.flow_system.components}
+        self.assertAlmostEqualNumeric(comps['Wärmelast'].sink.model.flow_rate.result,
+                                      df['Wärmelast__Q_th_Last'],
+                                      "Loaded Results and directly used results dont match, or loading didnt work properly")
+
+    def model(self, save_results=False) -> FullCalculation:
         # Define the components and flow_system
         Strom = Bus('Strom')
         Fernwaerme = Bus('Fernwärme')
@@ -68,7 +91,7 @@ class TestSimple(BaseTest):
 
         costs = Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
         CO2 = Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={costs: 0.2},
-                     maximum_operation_per_hour=self.max_emissions_per_hour)
+                     maximum_operation_per_hour=1000)
 
         aBoiler = Boiler('Boiler', eta=0.5,
                          Q_th=Flow('Q_th', bus=Fernwaerme, size=50, relative_minimum=5 / 50, relative_maximum=1, can_be_off=OnOffParameters(force_on=True)),
@@ -101,7 +124,7 @@ class TestSimple(BaseTest):
         aCalc = FullCalculation('Test_Sim', es, 'pyomo', time_indices)
         aCalc.do_modeling()
 
-        aCalc.solve(self.get_solver())
+        aCalc.solve(self.get_solver(), save_results=save_results)
 
         return aCalc
 
