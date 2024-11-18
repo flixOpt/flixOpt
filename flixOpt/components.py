@@ -208,6 +208,139 @@ class Storage(Component):
             self.capacity_in_flow_hours.transform_data()
 
 
+class cTransportation(cBaseComponent):
+    # TODO: automatic on-Value in Flows if loss_abs
+    # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
+    # TODO: investmentsize only on 1 flow
+    # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
+    # TODO: optional: capacities should be recognised for losses
+
+    def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0,
+                 loss_abs=0, isAlwaysOn=True,
+                 avoidFlowInBothDirectionsAtOnce=True, **kwargs):
+        '''
+        pipe/cable/connector between side A and side B
+        losses can be modelled
+        investmentsize is recognised
+        for investment_size use investArgs of in1 and in2-flows.
+        (The investment_size of the both directions (in-flows) is equated)
+
+        (when no flow through it, then loss is still there and has to be
+        covered by one in-flow (gedanklicher Überströmer)
+                         side A ... side B
+        first  direction: in1   -> out1
+        second direction: out2  <- in2
+
+        Parameters
+        ----------
+        label : str
+            name of cTransportation.
+        in1 : cFlow
+            inflow of input at side A
+        out1 : cFlow
+            outflow (of in1) at side B
+        in2 : cFlow, optional
+            optional inflow of side B
+        out2 : cFlow, optional
+            outflow (of in2) at side A
+        loss_rel : float, TS
+            relative loss between in and out, i.g. 0.02 i.e. 2 % loss
+        loss_abs : float, TS
+            absolut loss. is active until on=0 for in-flows
+            example: loss_abs=2 -> 2 kW fix loss on transportation
+
+        ... featureOnVars for Active Transportation:
+        switchOnCosts :
+            #costs of switch rohr on
+        Returns
+        -------
+        None.
+
+        '''
+
+        super().__init__(label)
+
+        self.in1 = in1
+        self.out1 = out1
+        self.in2 = in2
+        self.out2 = out2
+
+        self.inputs.append(in1)
+        self.outputs.append(out1)
+        if in2 is not None:
+            self.inputs.append(in2)
+            self.outputs.append(out2)
+            # check buses:
+            assert in2.bus == out1.bus, 'in2.bus is not equal out1.bus!'
+            assert out2.bus == in1.bus, 'out2.bus is not equal in1.bus!'
+
+        self.loss_rel = cTS_vector('loss_rel', loss_rel, self)  #
+        self.loss_abs = cTS_vector('loss_abs', loss_abs, self)  #
+        self.isAlwaysOn = isAlwaysOn
+        self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
+
+        if self.avoidFlowInBothDirectionsAtOnce and (in2 is not None):
+            self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
+                                                                             [self.in1, self.in2])
+
+    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
+        """
+        Deklarieren von Variablen und Gleichungen
+
+        :param modBox:
+        :return:
+        """
+        super().declareVarsAndEqs(modBox)
+
+    def doModeling(self, modBox, timeIndexe):
+        super().doModeling(modBox, timeIndexe)
+
+        # not both directions at once:
+        if self.avoidFlowInBothDirectionsAtOnce and (
+                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
+
+        # first direction
+        # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
+        self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
+        self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.d_i))
+        self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
+        if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
+            assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
+            self.eq_dir1.addSummand(self.in1.mod.var_on, -1 * self.loss_abs.d_i)
+
+        # second direction:
+        if self.in2 is not None:
+            # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
+            self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
+            self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.d_i)
+            self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
+            if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
+                assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
+                self.eq_dir2.addSummand(self.in2.mod.var_on, -1 * self.loss_abs.d_i)
+
+        # always On (in at least one direction)
+        # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
+        if self.isAlwaysOn:
+            self.eq_alwaysOn = cEquation('alwaysOn', self, modBox, eqType='ineq')
+            self.eq_alwaysOn.addSummand(self.in1.mod.var_on, -1)
+            if (self.in2 is not None): self.eq_alwaysOn.addSummand(self.in2.mod.var_on, -1)
+            self.eq_alwaysOn.addRightSide(-.5)  # wg binärungenauigkeit 0.5 statt 1
+
+        # equate nominal value of second direction
+        if (self.in2 is not None):
+            oneInFlowHasFeatureInvest = (self.in1.featureInvest is not None) or (self.in1.featureInvest is not None)
+            bothInFlowsHaveFeatureInvest = (self.in1.featureInvest is not None) and (self.in1.featureInvest is not None)
+            if oneInFlowHasFeatureInvest:
+                if bothInFlowsHaveFeatureInvest:
+                    # eq: in1.nom_value = in2.nom_value
+                    self.eq_nom_value = cEquation('equalSizeInBothDirections', self, modBox, eqType='eq')
+                    self.eq_nom_value.addSummand(self.in1.featureInvest.mod.var_investmentSize, 1)
+                    self.eq_nom_value.addSummand(self.in2.featureInvest.mod.var_investmentSize, -1)
+                else:
+                    raise Exception(
+                        'define investArgs also for second In-Flow (values can be empty!)')  # TODO: anders lösen (automatisiert)!
+
+
 class LinearConverterModel(ComponentModel):
     def __init__(self, element: LinearConverter):
         super().__init__(element)
