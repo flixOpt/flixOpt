@@ -324,27 +324,9 @@ class TransmissionModel(ComponentModel):
             if self.element.absolute_losses is not None:
                 eq_direction_2.add_summand(self.element.in2.model._on.on, -1 * self.element.absolute_losses.active_data)
 
-        # always On (in at least one direction)
-        # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
-        if self.isAlwaysOn:
-            self.eq_alwaysOn = cEquation('alwaysOn', self, modBox, eqType='ineq')
-            self.eq_alwaysOn.addSummand(self.in1.mod.var_on, -1)
-            if (self.in2 is not None): self.eq_alwaysOn.addSummand(self.in2.mod.var_on, -1)
-            self.eq_alwaysOn.addRightSide(-.5)  # wg binärungenauigkeit 0.5 statt 1
+        #TODO: Simultaneous flows
 
-        # equate nominal value of second direction
-        if (self.in2 is not None):
-            oneInFlowHasFeatureInvest = (self.in1.featureInvest is not None) or (self.in1.featureInvest is not None)
-            bothInFlowsHaveFeatureInvest = (self.in1.featureInvest is not None) and (self.in1.featureInvest is not None)
-            if oneInFlowHasFeatureInvest:
-                if bothInFlowsHaveFeatureInvest:
-                    # eq: in1.nom_value = in2.nom_value
-                    self.eq_nom_value = cEquation('equalSizeInBothDirections', self, modBox, eqType='eq')
-                    self.eq_nom_value.addSummand(self.in1.featureInvest.mod.var_investmentSize, 1)
-                    self.eq_nom_value.addSummand(self.in2.featureInvest.mod.var_investmentSize, -1)
-                else:
-                    raise Exception(
-                        'define investArgs also for second In-Flow (values can be empty!)')  # TODO: anders lösen (automatisiert)!
+        #TODO: Investment
 
 
 class LinearConverterModel(ComponentModel):
