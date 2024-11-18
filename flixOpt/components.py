@@ -183,7 +183,7 @@ class Storage(Component):
         """
         # TODO: fixed_relative_chargeState implementieren
         super().__init__(label, inputs=[charging], outputs=[discharging],
-                         prevent_simultaneous_flows=prevent_simultaneous_charge_and_discharge,
+                         prevent_simultaneous_flows=[charging, discharging] if prevent_simultaneous_charge_and_discharge else None,
                          meta_data=meta_data)
 
         self.charging = charging
