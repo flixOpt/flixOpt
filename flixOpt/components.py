@@ -221,8 +221,8 @@ class Transmission(Component):
                  out1: Flow,
                  in2: Optional[Flow] = None,
                  out2: Optional[Flow] = None,
-                 relative_losses: float = 0,
-                 absolute_losses: float = 0,
+                 relative_losses: Optional[Numeric_TS] = None,
+                 absolute_losses: Optional[Numeric_TS] = None,
                  on_off_parameters: OnOffParameters = None,
                  prevent_simultaneous_flows: bool = True):
         """
@@ -268,51 +268,61 @@ class Transmission(Component):
                          inputs=[flow for flow in (in1, in2) if flow is not None],
                          outputs=[flow for flow in (out1, out2) if flow is not None],
                          on_off_parameters=on_off_parameters,
-                         prevent_simultaneous_flows=True)
+                         prevent_simultaneous_flows=prevent_simultaneous_flows)
         self.in1 = in1
         self.out1 = out1
         self.in2 = in2
         self.out2 = out2
+
+        self.relative_losses = relative_losses
+        self.absolute_losses = absolute_losses
 
     def _plausibility_checks(self):
         # check buses:
         if self.in2 is not None:
             assert self.in2.bus == self.out1.bus, 'in2.bus is not equal out1.bus!'
         if self.out2 is not None:
-        assert self.out2.bus == self.in1.bus, 'out2.bus is not equal in1.bus!'
+            assert self.out2.bus == self.in1.bus, 'out2.bus is not equal in1.bus!'
 
 
 class TransmissionModel(ComponentModel):
 
     def __init__(self, element: Transmission):
         super().__init__(element)
-        self.element: Component = element
+        self.element: Transmission = element
         self._on: Optional[OnOffModel] = None
 
-        # TODO: PreventSimultaneousUseage should only use certain Varibles
+        # TODO: PreventSimultaneousUsage should only use certain Variables
 
     def do_modeling(self, system_model: SystemModel):
         """ Initiates all FlowModels """
+        # Force On Variable if absolute losses are present
+        if (self.element.absolute_losses is not None) and np.any(self.element.absolute_losses.active_data != 0):
+            for flow in self.element.inputs + self.element.outputs:
+                if flow.on_off_parameters is None:
+                    flow.on_off_parameters = OnOffParameters(force_on=True)
+                else:
+                    flow.on_off_parameters.force_on = True
+
         super().do_modeling(system_model)
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
-        self.eq_dir1 = cEquation('transport_dir1', self, modBox, eqType='eq')
-        self.eq_dir1.addSummand(self.in1.mod.var_val, (1 - self.loss_rel.d_i))
-        self.eq_dir1.addSummand(self.out1.mod.var_val, -1)
-        if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
-            assert self.in1.mod.var_on is not None, 'Var on wird benötigt für in1! Set min_rel!'
-            self.eq_dir1.addSummand(self.in1.mod.var_on, -1 * self.loss_abs.d_i)
+        eq_direction_1 = create_equation('direction_1', self, 'eq')
+        efficiency = 1 if self.element.relative_losses is None else (1 - self.element.relative_losses.active_data)
+        eq_direction_1.add_summand(self.element.in1.model.flow_rate, efficiency)
+        eq_direction_1.add_summand(self.element.out1.model.flow_rate, - 1)
+        if self.element.absolute_losses is not None:
+            eq_direction_1.add_summand(self.element.in1.model._on.on, -1 * self.element.absolute_losses.active_data)
 
         # second direction:
-        if self.in2 is not None:
-            # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
-            self.eq_dir2 = cEquation('transport_dir2', self, modBox, eqType='eq')
-            self.eq_dir2.addSummand(self.in2.mod.var_val, 1 - self.loss_rel.d_i)
-            self.eq_dir2.addSummand(self.out2.mod.var_val, -1)
-            if (self.loss_abs.d_i is not None) and np.any(self.loss_abs.d_i != 0):
-                assert self.in2.mod.var_on is not None, 'Var on wird benötigt für in2! Set min_rel!'
-                self.eq_dir2.addSummand(self.in2.mod.var_on, -1 * self.loss_abs.d_i)
+        if self.element.in2 is not None:
+            eq_direction_2 = create_equation('direction_2', self, 'eq')
+            efficiency = 1 if self.element.relative_losses is None else (1 - self.element.relative_losses.active_data)
+            eq_direction_2.add_summand(self.element.in2.model.flow_rate, efficiency)
+            eq_direction_2.add_summand(self.element.out2.model.flow_rate, - 1)
+            if self.element.absolute_losses is not None:
+                eq_direction_2.add_summand(self.element.in2.model._on.on, -1 * self.element.absolute_losses.active_data)
 
         # always On (in at least one direction)
         # eq: in1.on(t) +in2.on(t) >= 1 # TODO: this is some redundant to avoidFlowInBothDirections
