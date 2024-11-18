@@ -226,43 +226,30 @@ class Transmission(Component):
                  on_off_parameters: OnOffParameters = None,
                  prevent_simultaneous_flows_in_both_directions: bool = True):
         """
-        pipe/cable/connector between side A and side B
-        losses can be modelled
-        investmentsize is recognised
-        for investment_size use investArgs of in1 and in2-flows.
-        (The investment_size of the both directions (in-flows) is equated)
-
-        (when no flow through it, then loss is still there and has to be
-        covered by one in-flow (gedanklicher Überströmer)
-                         side A ... side B
-        first  direction: in1   -> out1
-        second direction: out2  <- in2
+        Initializes a Transmission component (Pipe, cable, ...) that models the flows between two sides
+        with potential losses.
 
         Parameters
         ----------
         label : str
-            name of cTransportation.
-        in1 : cFlow
-            inflow of input at side A
-        out1 : cFlow
-            outflow (of in1) at side B
-        in2 : cFlow, optional
-            optional inflow of side B
-        out2 : cFlow, optional
-            outflow (of in2) at side A
-        loss_rel : float, TS
-            relative loss between in and out, i.g. 0.02 i.e. 2 % loss
-        loss_abs : float, TS
-            absolut loss. is active until on=0 for in-flows
-            example: loss_abs=2 -> 2 kW fix loss on transportation
-
-        ... featureOnVars for Active Transportation:
-        switchOnCosts :
-            #costs of switch rohr on
-        Returns
-        -------
-        None.
-
+            The name of the transmission component.
+        in1 : Flow
+            The inflow at side A. Pass InvestmentParameters here.
+        out1 : Flow
+            The outflow at side B.
+        in2 : Optional[Flow], optional
+            The optional inflow at side B.
+            If in1 got Investmentparameters, the size of this Flow will be equal to in1 (with no extra effects!)
+        out2 : Optional[Flow], optional
+            The optional outflow at side A.
+        relative_losses : Optional[Numeric_TS], optional
+            The relative loss between inflow and outflow, e.g., 0.02 for 2% loss.
+        absolute_losses : Optional[Numeric_TS], optional
+            The absolute loss, occur only when the Flow is on. Induces the creation of the ON-Variable
+        on_off_parameters : OnOffParameters, optional
+            Parameters defining the on/off behavior of the component.
+        prevent_simultaneous_flows_in_both_directions : bool, default=True
+            If True, prevents simultaneous flows in both directions.
         """
         super().__init__(label,
                          inputs=[flow for flow in (in1, in2) if flow is not None],
@@ -285,6 +272,11 @@ class Transmission(Component):
         if self.out2 is not None:
             assert self.out2.bus == self.in1.bus, (f'Input 1 and Output 2 do not start/end at the same Bus: '
                                                    f'{self.in1.bus=}, {self.out2.bus=}')
+        # Check Investments
+        for flow in [self.out1, self.in2, self.out2]:
+            if flow is not None and isinstance(flow.size, InvestParameters):
+                raise ValueError(f'Transmission currently does not support separate InvestParameters for Flows. '
+                                 f'Please use Flow in1. The size of in2 is equal to in1. THis is handled internally')
 
     def create_model(self) -> 'TransmissionModel':
         self.model = TransmissionModel(self)
