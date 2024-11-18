@@ -327,7 +327,7 @@ class TransmissionModel(ComponentModel):
             self.create_transmission_equation('direction_2', self.element.in2, self.element.out2)
 
         # equate size of both directions
-        if isinstance(self.element.in1.size, InvestParameters):
+        if isinstance(self.element.in1.size, InvestParameters) and self.element.in2 is not None:
             # eq: in1.size = in2.size
             eq_equal_size = create_equation('equal_size_in_both_directions', self, 'eq')
             eq_equal_size.add_summand(self.element.in1.model._investment.size, 1)
