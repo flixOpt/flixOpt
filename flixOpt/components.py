@@ -208,17 +208,24 @@ class Storage(Component):
             self.capacity_in_flow_hours.transform_data()
 
 
-class cTransportation(cBaseComponent):
+class Transmission(Component):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
     # TODO: investmentsize only on 1 flow
     # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
     # TODO: optional: capacities should be recognised for losses
 
-    def __init__(self, label, in1, out1, in2=None, out2=None, loss_rel=0,
-                 loss_abs=0, isAlwaysOn=True,
-                 avoidFlowInBothDirectionsAtOnce=True, **kwargs):
-        '''
+    def __init__(self,
+                 label: str,
+                 in1: Flow,
+                 out1: Flow,
+                 in2: Optional[Flow] = None,
+                 out2: Optional[Flow] = None,
+                 relative_losses: float = 0,
+                 absolute_losses: float = 0,
+                 on_off_parameters: OnOffParameters = None,
+                 prevent_simultaneous_flows: bool = True):
+        """
         pipe/cable/connector between side A and side B
         losses can be modelled
         investmentsize is recognised
@@ -256,48 +263,37 @@ class cTransportation(cBaseComponent):
         -------
         None.
 
-        '''
-
-        super().__init__(label)
-
+        """
+        super().__init__(label,
+                         inputs=[flow for flow in (in1, in2) if flow is not None],
+                         outputs=[flow for flow in (out1, out2) if flow is not None],
+                         on_off_parameters=on_off_parameters,
+                         prevent_simultaneous_flows=True)
         self.in1 = in1
         self.out1 = out1
         self.in2 = in2
         self.out2 = out2
 
-        self.inputs.append(in1)
-        self.outputs.append(out1)
-        if in2 is not None:
-            self.inputs.append(in2)
-            self.outputs.append(out2)
-            # check buses:
-            assert in2.bus == out1.bus, 'in2.bus is not equal out1.bus!'
-            assert out2.bus == in1.bus, 'out2.bus is not equal in1.bus!'
+    def _plausibility_checks(self):
+        # check buses:
+        if self.in2 is not None:
+            assert self.in2.bus == self.out1.bus, 'in2.bus is not equal out1.bus!'
+        if self.out2 is not None:
+        assert self.out2.bus == self.in1.bus, 'out2.bus is not equal in1.bus!'
 
-        self.loss_rel = cTS_vector('loss_rel', loss_rel, self)  #
-        self.loss_abs = cTS_vector('loss_abs', loss_abs, self)  #
-        self.isAlwaysOn = isAlwaysOn
-        self.avoidFlowInBothDirectionsAtOnce = avoidFlowInBothDirectionsAtOnce
 
-        if self.avoidFlowInBothDirectionsAtOnce and (in2 is not None):
-            self.featureAvoidBothDirectionsAtOnce = cFeatureAvoidFlowsAtOnce('feature_avoidBothDirectionsAtOnce', self,
-                                                                             [self.in1, self.in2])
+class TransmissionModel(ComponentModel):
 
-    def declareVarsAndEqs(self, modBox: cModelBoxOfES):
-        """
-        Deklarieren von Variablen und Gleichungen
+    def __init__(self, element: Transmission):
+        super().__init__(element)
+        self.element: Component = element
+        self._on: Optional[OnOffModel] = None
 
-        :param modBox:
-        :return:
-        """
-        super().declareVarsAndEqs(modBox)
+        # TODO: PreventSimultaneousUseage should only use certain Varibles
 
-    def doModeling(self, modBox, timeIndexe):
-        super().doModeling(modBox, timeIndexe)
-
-        # not both directions at once:
-        if self.avoidFlowInBothDirectionsAtOnce and (
-                self.in2 is not None): self.featureAvoidBothDirectionsAtOnce.doModeling(modBox, timeIndexe)
+    def do_modeling(self, system_model: SystemModel):
+        """ Initiates all FlowModels """
+        super().do_modeling(system_model)
 
         # first direction
         # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
