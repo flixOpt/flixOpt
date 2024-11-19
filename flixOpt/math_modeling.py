@@ -517,7 +517,7 @@ class MathModel:
                     'No. of Vars. (single)': self.nr_of_single_variables,
                     'No. of Vars. (TS)': len(self.ts_variables),
                 },
-                'Solver Log': self.solver.log if self.solver.log is not None else None}
+                'Solver Log': self.solver.log.infos if self.solver.log is not None else None}
 
     @property
     def variables(self) -> List[Variable]:
@@ -595,20 +595,20 @@ class SolverLog:
         self.presolved_continuous = None
         self.presolved_integer = None
         self.presolved_binary = None
+        self.parse_infos()
 
     @property
-    def infos(self):
-        infos = {}
-        aPreInfo = {}
-        infos['presolved'] = aPreInfo
-        aPreInfo['cols'] = self.presolved_cols
-        aPreInfo['continuous'] = self.presolved_continuous
-        aPreInfo['integer'] = self.presolved_integer
-        aPreInfo['binary'] = self.presolved_binary
-        aPreInfo['rows'] = self.presolved_rows
-        aPreInfo['nonzeros'] = self.presolved_nonzeros
-
-        return infos
+    def infos(self) -> Dict[str, Dict[str, int]]:
+        return {
+            'presolved': {
+                'cols': self.presolved_cols,
+                'continuous': self.presolved_continuous,
+                'integer': self.presolved_integer,
+                'binary': self.presolved_binary,
+                'rows': self.presolved_rows,
+                'nonzeros': self.presolved_nonzeros,
+            }
+        }
 
     # Suche infos aus log:
     def parse_infos(self):
@@ -628,10 +628,10 @@ class SolverLog:
             Variable types: 53 continuous, 67 integer (67 binary)
             '''
             # string: Presolved: 131 rows, 120 columns, 339 nonzeros\n
-            match = re.search('Presolved: (\d+) rows, (\d+) columns, (\d+) nonzeros' +
-                              '\\n\\n' +
-                              'Variable types: (\d+) continuous, (\d+) integer \((\d+) binary\)', self.log)
-            if not match is None:
+            match = re.search(r'Presolved: (\d+) rows, (\d+) columns, (\d+) nonzeros\n'
+                              r'Variable types: (\d+) continuous, (\d+) integer \((\d+) binary\)',
+                              self.log)
+            if match:
                 # string: Presolved: 131 rows, 120 columns, 339 nonzeros\n
                 self.presolved_rows = int(match.group(1))
                 self.presolved_cols = int(match.group(2))
