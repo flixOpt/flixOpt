@@ -517,7 +517,7 @@ class MathModel:
                     'No. of Vars. (single)': self.nr_of_single_variables,
                     'No. of Vars. (TS)': len(self.ts_variables),
                 },
-                'Solver Log': self.solver.log.infos if self.solver.log is not None else None}
+                'Solver Log': self.solver.log.infos if isinstance(self.solver.log, SolverLog) else self.solver.log}
 
     @property
     def variables(self) -> List[Variable]:
