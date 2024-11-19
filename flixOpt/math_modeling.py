@@ -733,7 +733,7 @@ class GurobiSolver(Solver):
                 options={"mipgap": self.mip_gap, "TimeLimit": self.time_limit_seconds}
             )
 
-            self.objective = self._results.objective.expr()
+            self.objective = modeling_language.model.objective.expr()
             self.termination_message = self._results['Solver'][0]['Termination message']
             self.best_bound = self._results['Problem'][0]['Lower bound']
             try:
@@ -771,7 +771,7 @@ class CplexSolver(Solver):
                 options={"mipgap": self.mip_gap, "timelimit": self.time_limit_seconds}
             )
 
-            self.objective = self._results.objective.expr()
+            self.objective = modeling_language.model.objective.expr()
             self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
             self.best_bound = self._results['Problem'][0]['Lower bound']
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
@@ -846,7 +846,7 @@ class CbcSolver(Solver):
                 modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
                 options={"ratio": self.mip_gap, "sec": self.time_limit_seconds}
             )
-            self.objective = self._results.objective.expr()
+            self.objective = modeling_language.model.objective.expr()
             self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
             self.best_bound = self._results['Problem'][0]['Lower bound']
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
@@ -871,7 +871,7 @@ class GlpkSolver(Solver):
                 options={"mipgap": self.mip_gap}
             )
 
-            self.objective = self._results.objective.expr()
+            self.objective = modeling_language.model.objective.expr()
             self.termination_message = self._results['Solver'][0]['Status']
             self.best_bound = self._results['Problem'][0]['Lower bound']
             try:
