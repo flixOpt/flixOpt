@@ -60,4 +60,4 @@ if __name__ == '__main__':
     print(calculation.results())
     print(f'Look into .yaml and .json file for results')
 
-# Small cha
+# Small chan
