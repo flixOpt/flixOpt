@@ -644,14 +644,14 @@ class SolverLog:
         elif self.solver_name == 'cbc':
 
             # string: Presolve 1623 (-1079) rows, 1430 (-1078) columns and 4296 (-3306) elements
-            match = re.search('Presolve (\d+) \((-?\d+)\) rows, (\d+) \((-?\d+)\) columns and (\d+)', self.log)
+            match = re.search(r'Presolve (\d+) \((-?\d+)\) rows, (\d+) \((-?\d+)\) columns and (\d+)', self.log)
             if not match is None:
                 self.presolved_rows = int(match.group(1))
                 self.presolved_cols = int(match.group(3))
                 self.presolved_nonzeros = int(match.group(5))
 
             # string: Presolved problem has 862 integers (862 of which binary)
-            match = re.search('Presolved problem has (\d+) integers \((\d+) of which binary\)', self.log)
+            match = re.search(r'Presolved problem has (\d+) integers \((\d+) of which binary\)', self.log)
             if not match is None:
                 self.presolved_integer = int(match.group(1))
                 self.presolved_binary = int(match.group(2))
