@@ -153,31 +153,31 @@ class TestComplex(BaseTest):
                                        -2.35107029e+03, -2.38500000e+03, 0.00000000e+00, -1.68897826e-10,
                                        -2.16914486e-12], "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['CO2_Share_from_Effect_CO2_operation'].result),
+        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['CO2_operation'].result),
                                       258.63729669618675, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['costs_Kessel__Q_th__switch_on_effects'].result),
+        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['Kessel__Q_th__switch_on_effects'].result),
                                       0.01, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['costs_Kessel__running_hour_effects'].result),
+        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['Kessel__running_hour_effects'].result),
                                       -0.0, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['costs_Gastarif__Q_Gas__effects_per_flow_hour'].result),
+        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['Gastarif__Q_Gas__effects_per_flow_hour'].result),
                                       39.09153113079115, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['costs_Einspeisung__P_el__effects_per_flow_hour'].result),
+        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['Einspeisung__P_el__effects_per_flow_hour'].result),
                                       -14196.61245231646, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['costs_KWK__switch_on_effects'].result),
+        self.assertAlmostEqualNumeric(sum(effects['costs'].model.operation.shares['KWK__switch_on_effects'].result),
                                       0.0, "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['costs_Kessel__Q_th__fix_effects'].result,
+        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['Kessel__Q_th__fix_effects'].result,
                                       1000, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['costs_Kessel__Q_th__specific_effects'].result,
+        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['Kessel__Q_th__specific_effects'].result,
                                       500, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['costs_Speicher__specific_effects'].result,
+        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['Speicher__specific_effects'].result,
                                       1, "costs doesnt match expected value")
-        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['costs_Speicher__segmented_effects'].result,
+        self.assertAlmostEqualNumeric(effects['costs'].model.invest.shares['Speicher__segmented_effects'].result,
                                       800, "costs doesnt match expected value")
 
-        self.assertAlmostEqualNumeric(effects['CO2'].model.all.shares['CO2_operation'].result, 1293.1864834809337,
+        self.assertAlmostEqualNumeric(effects['CO2'].model.all.shares['operation'].result, 1293.1864834809337,
                                "CO2 doesnt match expected value")
-        self.assertAlmostEqualNumeric(effects['CO2'].model.all.shares['CO2_invest'].result, 0.9999999999999994,
+        self.assertAlmostEqualNumeric(effects['CO2'].model.all.shares['invest'].result, 0.9999999999999994,
                                       "CO2 doesnt match expected value")
         self.assertAlmostEqualNumeric(comps['Kessel'].Q_th.model.flow_rate.result,
                                       [0, 0, 0, 45, 0, 0, 0, 0, 0],
