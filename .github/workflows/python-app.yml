@@ -31,4 +31,4 @@ jobs:
         pip install -e .
 
     - name: Run tests
-      run: pytest
+      run: pytest -v -p no:warnings --maxfail=1
