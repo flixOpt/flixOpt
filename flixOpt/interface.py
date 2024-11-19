@@ -27,7 +27,7 @@ class InvestParameters:
                  maximum_size: Union[int, float] = 1e9,  # nur wenn size_is_fixed = False
                  optional: bool = True,  # Investition ist weglassbar
                  fix_effects: Optional[Union[Dict, int, float]] = None,
-                 specific_effects: Union[Dict, int, float] = 0,  # costs per Flow-Unit/Storage-Size/...
+                 specific_effects: Optional[Union[Dict, int, float]] = None,  # costs per Flow-Unit/Storage-Size/...
                  effects_in_segments: Optional[Tuple[List[Tuple[Skalar, Skalar]], Dict['Effect', List[Tuple[Skalar, Skalar]]]]] = None,
                  divest_effects: Optional[Union[Dict, int, float]] = None):
         """
