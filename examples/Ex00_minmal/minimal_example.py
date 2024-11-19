@@ -59,3 +59,5 @@ if __name__ == '__main__':
     # Print results to the console. Check Results in file or perform more plotting
     print(calculation.results())
     print(f'Look into .yaml and .json file for results')
+
+# Small cha
