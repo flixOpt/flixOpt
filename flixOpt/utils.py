@@ -136,13 +136,14 @@ def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) 
                    isinstance(item, (dict, list, tuple)) else item for item in sequence]
 
     if isinstance(d, dict):
-        # Make a copy of the dictionary to avoid modifying the original
-        d_copy = {}
+        d_copy = {}  # Reconstruct the dict from ground up to not modify the original dictionary.'
         for key, value in d.items():
             if isinstance(value, (list, tuple)):
                 d_copy[key] = convert_list_to_array_if_numeric(value)
             elif isinstance(value, dict):
                 d_copy[key] = convert_numeric_lists_to_arrays(value)  # Recursively process nested dictionaries
+            else:
+                d_copy[key] = value
         return d_copy
     elif isinstance(d, (list, tuple)):
         # If the input itself is a list or tuple, process it as a sequence
