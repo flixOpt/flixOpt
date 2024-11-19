@@ -308,7 +308,7 @@ class TransmissionModel(ComponentModel):
         # Make sure either None or both in Flows have InvestParameters
         if self.element.in2 is not None:
             if isinstance(self.element.in1.size, InvestParameters) and not isinstance(self.element.in2.size, InvestParameters):
-                self.element.in2.size = InvestParameters(self.element.in2.size)
+                self.element.in2.size = InvestParameters(maximum_size=self.element.in1.size.maximum_size)
 
         super().do_modeling(system_model)
 
@@ -324,7 +324,7 @@ class TransmissionModel(ComponentModel):
             # eq: in1.size = in2.size
             eq_equal_size = create_equation('equal_size_in_both_directions', self, 'eq')
             eq_equal_size.add_summand(self.element.in1.model._investment.size, 1)
-            eq_equal_size.add_summand(self.element.in2.model._investment.size, 1)
+            eq_equal_size.add_summand(self.element.in2.model._investment.size, -1)
 
     def create_transmission_equation(self, name: str, in_flow: Flow, out_flow: Flow) -> Equation:
         """ Creates an Equation for the Transmission efficiency and adds it to the model"""
