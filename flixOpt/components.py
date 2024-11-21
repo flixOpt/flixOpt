@@ -219,44 +219,7 @@ class LinearConverterModel(ComponentModel):
 
         # conversion_factors:
         if self.element.conversion_factors:
-            all_input_flows = set(self.element.inputs)
-            all_output_flows = set(self.element.outputs)
-
-            eq_use_rates = create_equation('use_rates', self, 'eq')
-            eq_use_rates.add_constant(1)
-
-            # für alle linearen Gleichungen:
-            for i, conversion_factor in enumerate(self.element.conversion_factors):
-                # erstelle Gleichung für jedes t:
-                # sum(inputs * factor) = sum(outputs * factor)
-                # left = in1.flow_rate[t] * factor_in1[t] + in2.flow_rate[t] * factor_in2[t] + ...
-                # right = out1.flow_rate[t] * factor_out1[t] + out2.flow_rate[t] * factor_out2[t] + ...
-                # eq: left = right
-                used_flows = set(conversion_factor.keys())
-                used_inputs: Set = all_input_flows & used_flows
-                used_outputs: Set = all_output_flows & used_flows
-
-                use_rate = create_variable(f'conversion_{i}', self,
-                                           system_model.nr_of_time_steps, is_binary=True)
-
-                eq_conversion_upper = create_equation(f'conversion_{i}_ub', self, 'ineq')
-                eq_conversion_lower = create_equation(f'conversion_{i}_lb', self, 'ineq')
-                for flow in used_inputs:
-                    factor = conversion_factor[flow].active_data
-                    eq_conversion_upper.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
-                    eq_conversion_lower.add_summand(flow.model.flow_rate, -1 * factor)
-                for flow in used_outputs:
-                    factor = conversion_factor[flow].active_data
-                    eq_conversion_upper.add_summand(flow.model.flow_rate, -1 * factor)  # output.val[t] * -1 * factor[t]
-                    eq_conversion_lower.add_summand(flow.model.flow_rate, factor)
-
-                eq_conversion_upper.add_summand(use_rate, 1000000)
-                eq_conversion_upper.add_constant(1000000)
-
-                eq_conversion_lower.add_summand(use_rate, 1000000)
-                eq_conversion_lower.add_constant(1000000)
-
-                eq_use_rates.add_summand(use_rate, 1)
+            self._handle_conversion_factors(system_model)
 
         # (linear) segments:
         else:
@@ -269,6 +232,56 @@ class LinearConverterModel(ComponentModel):
             linear_segments = MultipleSegmentsModel(self.element, segments, self._on.on if self._on is not None else None)  # TODO: Add Outside_segments Variable (On)
             linear_segments.do_modeling(system_model)
             self.sub_models.append(linear_segments)
+
+    def _handle_conversion_factors(self, system_model: SystemModel):
+        if len(self.element.conversion_factors) == 1:
+            self._handle_single_conversion_factor('conversion_factor', self.element.conversion_factors[0], system_model, False)
+        else:
+            eq_use_rates = create_equation('use_rates', self, 'eq')
+            eq_use_rates.add_constant(1)
+            for i, conversion_factor in enumerate(self.element.conversion_factors):
+                is_active = self._handle_single_conversion_factor(f'conversion_factor_{i}', conversion_factor, system_model, True)
+                eq_use_rates.add_summand(is_active, 1)
+
+    def _handle_single_conversion_factor(self,
+                                        label:str,
+                                        conversion_factor: Dict[Flow, TimeSeries],
+                                        system_model: SystemModel,
+                                        optional: bool = False) -> Optional[VariableTS]:
+        """ Returns a binary variable that states weather the conversion_factor is active, if optional=True """
+        all_input_flows = set(self.element.inputs)
+        all_output_flows = set(self.element.outputs)
+        used_flows = set(conversion_factor.keys())
+        used_inputs: Set = all_input_flows & used_flows
+        used_outputs: Set = all_output_flows & used_flows
+
+        # erstelle Gleichung für jedes t:
+        # sum(inputs * factor) = sum(outputs * factor)
+        # left = in1.flow_rate[t] * factor_in1[t] + in2.flow_rate[t] * factor_in2[t] + ...
+        # right = out1.flow_rate[t] * factor_out1[t] + out2.flow_rate[t] * factor_out2[t] + ...
+        # eq: left = right
+
+        eq_conversion_upper = create_equation(f'{label}_ub', self, 'ineq')
+        eq_conversion_lower = create_equation(f'{label}_lb', self, 'ineq')
+        for flow in used_inputs:
+            factor = conversion_factor[flow].active_data
+            eq_conversion_upper.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
+            eq_conversion_lower.add_summand(flow.model.flow_rate, -1 * factor)
+        for flow in used_outputs:
+            factor = conversion_factor[flow].active_data
+            eq_conversion_upper.add_summand(flow.model.flow_rate, -1 * factor)  # output.val[t] * -1 * factor[t]
+            eq_conversion_lower.add_summand(flow.model.flow_rate, factor)
+
+        if optional:
+            use_rate = create_variable(label, self, system_model.nr_of_time_steps, is_binary=True)
+
+            eq_conversion_upper.add_summand(use_rate, 1000000)
+            eq_conversion_upper.add_constant(1000000)
+
+            eq_conversion_lower.add_summand(use_rate, 1000000)
+            eq_conversion_lower.add_constant(1000000)
+            return use_rate
+
 
 
 class StorageModel(ComponentModel):
