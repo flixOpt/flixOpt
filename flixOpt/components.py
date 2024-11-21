@@ -222,6 +222,9 @@ class LinearConverterModel(ComponentModel):
             all_input_flows = set(self.element.inputs)
             all_output_flows = set(self.element.outputs)
 
+            eq_use_rates = create_equation('use_rates', self, 'eq')
+            eq_use_rates.add_constant(1)
+
             # für alle linearen Gleichungen:
             for i, conversion_factor in enumerate(self.element.conversion_factors):
                 # erstelle Gleichung für jedes t:
@@ -233,15 +236,27 @@ class LinearConverterModel(ComponentModel):
                 used_inputs: Set = all_input_flows & used_flows
                 used_outputs: Set = all_output_flows & used_flows
 
-                eq_conversion = create_equation(f'conversion_{i}', self)
+                use_rate = create_variable(f'conversion_{i}', self,
+                                           system_model.nr_of_time_steps, is_binary=True)
+
+                eq_conversion_upper = create_equation(f'conversion_{i}_ub', self, 'ineq')
+                eq_conversion_lower = create_equation(f'conversion_{i}_lb', self, 'ineq')
                 for flow in used_inputs:
                     factor = conversion_factor[flow].active_data
-                    eq_conversion.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
+                    eq_conversion_upper.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
+                    eq_conversion_lower.add_summand(flow.model.flow_rate, -1 * factor)
                 for flow in used_outputs:
                     factor = conversion_factor[flow].active_data
-                    eq_conversion.add_summand(flow.model.flow_rate, -1 * factor)  # output.val[t] * -1 * factor[t]
+                    eq_conversion_upper.add_summand(flow.model.flow_rate, -1 * factor)  # output.val[t] * -1 * factor[t]
+                    eq_conversion_lower.add_summand(flow.model.flow_rate, factor)
 
-                eq_conversion.add_constant(0)  # TODO: Is this necessary?
+                eq_conversion_upper.add_summand(use_rate, 1000000)
+                eq_conversion_upper.add_constant(1000000)
+
+                eq_conversion_lower.add_summand(use_rate, 1000000)
+                eq_conversion_lower.add_constant(1000000)
+
+                eq_use_rates.add_summand(use_rate, 1)
 
         # (linear) segments:
         else:
