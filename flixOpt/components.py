@@ -280,6 +280,15 @@ class LinearConverterModel(ComponentModel):
 
             eq_conversion_lower.add_summand(use_rate, 1000000)
             eq_conversion_lower.add_constant(1000000)
+
+            unused_flows: Set = (all_input_flows | all_output_flows) - used_flows
+
+            for flow in unused_flows:
+                eq_restrict_flow_rate = create_equation(f'{label}_restrict_{flow.label}', self, 'ineq')
+                eq_restrict_flow_rate.add_summand(flow.model.flow_rate, 1)
+                eq_restrict_flow_rate.add_summand(use_rate, 1000000)
+                eq_restrict_flow_rate.add_constant(1000000)
+
             return use_rate
 
 
