@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     # Data Import
     data_import = pd.read_csv(pathlib.Path('Zeitreihen2020.csv'), index_col=0).sort_index()
-    filtered_data = data_import['2020-01-01':'2020-01-2 23:45:00']
+    filtered_data = data_import['2020-01-01':'2020-01-15 23:45:00']
     # filtered_data = data_import[0:500]  # Alternatively filter by index
 
     filtered_data.index = pd.to_datetime(filtered_data.index)
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     # 4. Sinks and Sources
     # Heat Load Profile
     a_waermelast = fx.Sink('Wärmelast',
-                           sink=fx.Flow('Q_th_Last', bus=Fernwaerme, size=1,fixed_relative_profile=TS_heat_demand))
+                           sink=fx.Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_profile=TS_heat_demand))
 
     # Electricity Feed-in
     a_strom_last = fx.Sink('Stromlast',

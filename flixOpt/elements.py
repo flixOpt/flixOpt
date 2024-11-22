@@ -174,7 +174,7 @@ class Flow(Element):
         load_factor_min : scalar, optional
             minimal load factor  general: avg Flow per nominalVal/investSize
             (e.g. boiler, kW/kWh=h; solarthermal: kW/m²;
-             def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
+             def: :math:`load_factor:= sumFlowHours/ (size \cdot \Delta t_{tot})`
         load_factor_max : scalar, optional
             maximal load factor (see minimal load factor)
         effects_per_flow_hour : scalar, array, TimeSeriesData, optional
