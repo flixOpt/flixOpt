@@ -360,11 +360,11 @@ class EffectCollectionModel(ElementModel):
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
-                target_model.add_share(self._system_model, f'{origin_effect.label_full}_operation', origin_effect, origin_model.sum_TS,
+                target_model.add_share(self._system_model, f'{origin_effect.label_full}_operation', target_effect, origin_model.sum_TS,
                                                 time_series.active_data)
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
-                target_model.add_share(self._system_model, f'{origin_effect.label_full}_invest', origin_effect, origin_model.sum,
+                target_model.add_share(self._system_model, f'{origin_effect.label_full}_invest', target_effect, origin_model.sum,
                                                 factor)
