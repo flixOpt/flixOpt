@@ -129,7 +129,7 @@ class CoolingTower(LinearConverter):
         **kwargs : see getKwargs() and their description in motherclasses
 
         """
-        super().__init__(label, inputs=[P_el, Q_th],
+        super().__init__(label, inputs=[P_el, Q_th], outputs=[],
                          conversion_factors=[{P_el: 1, Q_th: -specific_electricity_demand}],
                          on_off_parameters=on_off_parameters)
 
