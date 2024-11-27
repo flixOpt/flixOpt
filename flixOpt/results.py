@@ -10,6 +10,7 @@ import json
 import pathlib
 from typing import Dict, List, Tuple, Literal, Optional, Union
 import datetime
+import timeit
 
 import yaml
 import numpy as np
@@ -41,13 +42,16 @@ class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
         self._path_infos = (pathlib.Path(folder) / f'{calculation_name}_info.yaml').resolve().as_posix()
         self._path_results = (pathlib.Path(folder) / f'{calculation_name}_data.json').resolve().as_posix()
-
+        start_time = timeit.default_timer()
         with open(self._path_infos, 'rb') as f:
             self.all_infos: Dict = yaml.safe_load(f)
+        logger.info(f'Loading Infos from .yaml took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
+        start_time = timeit.default_timer()
         with open(self._path_results, 'rb') as f:
             self.all_results: Dict = json.load(f)
         self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
+        logger.info(f'Loading Infos from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
         self.component_results: Dict[str, ComponentResults] = {}
         self.effect_results: Dict[str, EffectResults] = {}

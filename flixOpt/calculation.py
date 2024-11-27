@@ -86,7 +86,9 @@ class Calculation:
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
             results = utils.convert_to_native_types(self.results())
             json.dump(results, f, indent=4)
+        self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
+        t_start = timeit.default_timer()
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {'Calculation': self.infos,
                  'Model': self.system_model.infos,
@@ -98,11 +100,13 @@ class Calculation:
         with open(self._paths['info'], 'w', encoding='utf-8') as f:
             yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
-        self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
+
         message = f' Saved Calculation: {self.name} '
         logger.info(f'{"":#^80}\n'
                     f'{message:#^80}\n'
                     f'{"":#^80}')
+        logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
+        logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
 
     def results(self):
         if self._results is None:
