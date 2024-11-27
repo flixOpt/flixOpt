@@ -30,12 +30,15 @@ class Component(Element):
                  inputs: Optional[List['Flow']] = None,
                  outputs: Optional[List['Flow']] = None,
                  on_off_parameters: Optional[OnOffParameters] = None,
-                 prevent_simultaneous_flows: bool = False):
+                 prevent_simultaneous_flows: bool = False,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             name.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         inputs : input flows.
         outputs : output flows.
         on_off_parameters: Information about on and off state of Component.
@@ -45,7 +48,7 @@ class Component(Element):
         prevent_simultaneous_flows: States if more than one Flow is allowed to be On at once.
             Induces On-Variable in all FLows!
         """
-        super().__init__(label)
+        super().__init__(label, meta_data=meta_data)
         self.inputs: List['Flow'] = inputs or []
         self.outputs: List['Flow'] = outputs or []
         self.on_off_parameters = on_off_parameters
@@ -84,18 +87,21 @@ class Bus(Element):
 
     def __init__(self,
                  label: str,
-                 excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5):
+                 excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             name.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesData
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
         """
-        super().__init__(label)
+        super().__init__(label, meta_data=meta_data)
         self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
@@ -154,12 +160,15 @@ class Flow(Element):
                  flow_hours_total_min: Optional[Skalar] = None,
                  load_factor_min: Optional[Skalar] = None,
                  load_factor_max: Optional[Skalar] = None,
-                 previous_flow_rate: Optional[Numeric] = None):
+                 previous_flow_rate: Optional[Numeric] = None,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             name of flow
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         bus : Bus, optional
             bus to which flow is linked
         relative_minimum : scalar, array, TimeSeriesData, optional
@@ -199,7 +208,7 @@ class Flow(Element):
         previous_flow_rate : scalar, array, optional
             previous flow rate of the component.
         """
-        super().__init__(label)
+        super().__init__(label, meta_data=meta_data)
         self.size = size
         self.relative_minimum = relative_minimum
         self.relative_maximum = relative_maximum

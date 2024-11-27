@@ -5,6 +5,7 @@ developed by Felix Panitz* and Peter Stange*
 * at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
 """
 import logging
+from typing import Optional, Dict
 
 import numpy as np
 
@@ -22,7 +23,8 @@ class Boiler(LinearConverter):
                  eta: Numeric_TS,
                  Q_fu: Flow,
                  Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None):
+                 on_off_parameters: OnOffParameters = None,
+                 meta_data: Optional[Dict] = None):
         """
         constructor for boiler
 
@@ -36,9 +38,11 @@ class Boiler(LinearConverter):
             fuel input-flow
         Q_th : Flow
             thermal output-flow.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
         super().__init__(label, inputs=[Q_fu], outputs=[Q_th], conversion_factors=[{Q_fu: eta, Q_th: 1}],
-                         on_off_parameters=on_off_parameters)
+                         on_off_parameters=on_off_parameters, meta_data=meta_data)
 
         self.eta = eta
         self.Q_fu = Q_fu
@@ -53,7 +57,8 @@ class Power2Heat(LinearConverter):
                  eta: Numeric_TS,
                  P_el: Flow,
                  Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None):
+                 on_off_parameters: OnOffParameters = None,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
@@ -65,11 +70,12 @@ class Power2Heat(LinearConverter):
             electric input-flow
         Q_th : Flow
             thermal output-flow.
-        **kwargs : see mother classes!
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
 
         """
         super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: eta, Q_th: 1}],
-                         on_off_parameters=on_off_parameters)
+                         on_off_parameters=on_off_parameters, meta_data=meta_data)
 
         self.eta = eta
         self.P_el = P_el
@@ -84,7 +90,8 @@ class HeatPump(LinearConverter):
                  COP: Numeric_TS,
                  P_el: Flow,
                  Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None):
+                 on_off_parameters: OnOffParameters = None,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
@@ -96,10 +103,11 @@ class HeatPump(LinearConverter):
             electricity input-flow.
         Q_th : Flow
             thermal output-flow.
-        **kwargs : see motherclasses
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
         super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: COP, Q_th: 1}],
-                         on_off_parameters=on_off_parameters)
+                         on_off_parameters=on_off_parameters, meta_data=meta_data)
 
         self.COP = COP
         self.P_el = P_el
@@ -114,7 +122,8 @@ class CoolingTower(LinearConverter):
                  specific_electricity_demand: Numeric_TS,
                  P_el:Flow,
                  Q_th:Flow,
-                 on_off_parameters: OnOffParameters = None):
+                 on_off_parameters: OnOffParameters = None,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
@@ -126,12 +135,13 @@ class CoolingTower(LinearConverter):
             electricity input-flow.
         Q_th : Flow
             thermal input-flow.
-        **kwargs : see getKwargs() and their description in motherclasses
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
 
         """
         super().__init__(label, inputs=[P_el, Q_th], outputs=[],
                          conversion_factors=[{P_el: 1, Q_th: -specific_electricity_demand}],
-                         on_off_parameters=on_off_parameters)
+                         on_off_parameters=on_off_parameters, meta_data=meta_data)
 
         self.specificElectricityDemand = specific_electricity_demand
         self.P_el = P_el
@@ -148,7 +158,8 @@ class CHP(LinearConverter):
                  Q_fu: Flow,
                  P_el: Flow,
                  Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None):
+                 on_off_parameters: OnOffParameters = None,
+                 meta_data: Optional[Dict] = None):
         """
         constructor of cCHP
 
@@ -166,14 +177,14 @@ class CHP(LinearConverter):
             electricity output-flow.
         Q_th : cFlow
             heat output-flow.
-        **kwargs :
-
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
         heat = {Q_fu: eta_th, Q_th: 1}
         electricity = {Q_fu: eta_el, P_el: 1}
 
         super().__init__(label, inputs=[Q_fu], outputs=[Q_th, P_el], conversion_factors=[heat, electricity],
-                         on_off_parameters=on_off_parameters)
+                         on_off_parameters=on_off_parameters, meta_data=meta_data)
 
         # args to attributes:
         self.eta_th = eta_th
@@ -194,7 +205,8 @@ class HeatPumpWithSource(LinearConverter):
                  P_el: Flow,
                  Q_ab: Flow,
                  Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None):
+                 on_off_parameters: OnOffParameters = None,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
@@ -208,7 +220,8 @@ class HeatPumpWithSource(LinearConverter):
             electricity input-flow.
         Q_th : Flow
             thermal output-flow.
-        **kwargs : see motherclasses
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
 
         # super:
@@ -217,7 +230,7 @@ class HeatPumpWithSource(LinearConverter):
 
         super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
                          conversion_factors=[electricity, heat_source],
-                         on_off_parameters=on_off_parameters)
+                         on_off_parameters=on_off_parameters, meta_data=meta_data)
 
         self.COP = COP
         self.P_el = P_el

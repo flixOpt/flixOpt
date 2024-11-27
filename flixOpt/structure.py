@@ -228,11 +228,20 @@ class SystemModel(MathModel):
 class Element:
     """ Basic Element of flixOpt"""
 
-    def __init__(self, label: str):
+    def __init__(self, label: str, meta_data: Optional[Dict] = None):
+        """
+        Parameters
+        ----------
+        label : str
+            label of the element
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
+        """
         if not utils.label_is_valid(label):
             logger.critical(f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
                             f"Use any other symbol instead")
         self.label = label
+        self.meta_data = meta_data
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 
