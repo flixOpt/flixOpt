@@ -319,6 +319,7 @@ class SegmentedCalculation(Calculation):
     def do_modeling_and_solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = True):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Segmented Solving ":#^80}')
+        self._define_path_names(save_results)
 
         for i in range(self.number_of_segments):
             name_of_segment = f'Segment_{i+1}'
@@ -335,13 +336,16 @@ class SegmentedCalculation(Calculation):
             if invest_elements:
                 logger.critical(f'Investments are not supported in Segmented Calculation! '
                                 f'Following elements Contain Investments: {invest_elements}')
-            calculation.solve(solver, save_results)
+            calculation.solve(solver, save_results=False)
 
         self._reset_start_values()
 
         for calc in self.sub_calculations:
             for key, value in calc.durations.items():
                 self.durations[key] += value
+
+        if save_results:
+            self._save_solve_infos()
 
     def results(self,
                 combined_arrays: bool = False,
@@ -373,6 +377,41 @@ class SegmentedCalculation(Calculation):
             return _combine_nested_scalars(*list(all_results.values()))
         else:
             return all_results
+
+    def _save_solve_infos(self):
+        t_start = timeit.default_timer()
+        import yaml
+        import json
+        with open(self._paths['data'], 'w', encoding='utf-8') as f:
+            results = utils.convert_to_native_types(self.results(combined_arrays=True))
+            json.dump(results, f, indent=4)
+
+        with open(self._paths['data'].parent / f'{self.name}_data_extra.json', 'w', encoding='utf-8') as f:
+            results = {'Individual Results': utils.convert_to_native_types(self.results(individual_results=True)),
+                       'Skalar Results': utils.convert_to_native_types(self.results(combined_scalars=True))}
+            json.dump(results, f, indent=4)
+        self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
+
+        t_start = timeit.default_timer()
+        nodes_info, edges_info = self.flow_system.network_infos()
+        infos = {'Calculation': self.infos,
+                 'Model': self.sub_calculations[0].system_model.infos,
+                 'FlowSystem': self.flow_system.infos(),
+                 'Network': {
+                     'Nodes': nodes_info, 'Edges': edges_info}
+                 }
+
+        with open(self._paths['info'], 'w', encoding='utf-8') as f:
+            yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
+                      allow_unicode=True, sort_keys=False)
+
+        message = f' Saved Calculation: {self.name} '
+        logger.info(f'{"":#^80}\n'
+                    f'{message:#^80}\n'
+                    f'{"":#^80}')
+        logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
+        logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
+
 
     def _transfer_start_values(self, segment_name: str):
         """
