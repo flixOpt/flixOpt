@@ -161,8 +161,8 @@ class EffectModel(ElementModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.all.add_share(system_model, 'operation', self.element, self.operation.sum, 1)
-        self.all.add_share(system_model, 'invest', self.element, self.invest.sum, 1)
+        self.all.add_share(system_model, 'operation', self.operation.sum, 1)
+        self.all.add_share(system_model, 'invest', self.invest.sum, 1)
 
 
 EffectDict = Dict[Optional['Effect'], Numeric]
@@ -325,7 +325,7 @@ class EffectCollectionModel(ElementModel):
 
             name_of_share = f'{element.label_full}__{name}'
             total_factor = np.multiply(value, factor)
-            model.add_share(self._system_model, name_of_share, effect, variable, total_factor)
+            model.add_share(self._system_model, name_of_share, variable, total_factor)
 
     def add_share_to_invest(self,
                             name: str,
@@ -347,12 +347,11 @@ class EffectCollectionModel(ElementModel):
 
     def add_share_to_penalty(self,
                              name: Optional[str],
-                             share_holder: Element,
                              variable: Variable,
                              factor: Numeric,
                              ) -> None:
         assert variable is not None, f'A Variable must be passed to add a share to penalty! Else its a constant Penalty!'
-        self.penalty.add_share(self._system_model, name, share_holder, variable, factor,  True)
+        self.penalty.add_share(self._system_model, name, variable, factor,  True)
 
     def add_share_between_effects(self):
         for origin_effect in self.element.effects:
@@ -360,11 +359,11 @@ class EffectCollectionModel(ElementModel):
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
-                target_model.add_share(self._system_model, f'{origin_effect.label_full}_operation', origin_effect, origin_model.sum_TS,
+                target_model.add_share(self._system_model, f'{origin_effect.label_full}_operation', origin_model.sum_TS,
                                                 time_series.active_data)
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
-                target_model.add_share(self._system_model, f'{origin_effect.label_full}_invest', origin_effect, origin_model.sum,
+                target_model.add_share(self._system_model, f'{origin_effect.label_full}_invest', origin_model.sum,
                                                 factor)

@@ -559,12 +559,11 @@ class ShareAllocationModel(ElementModel):
             self._eq_sum.add_summand(self.sum_TS, 1, as_sum=True)
 
     def add_share(self,
-                   system_model: SystemModel,
-                   name_of_share: str,
-                   share_holder: Element,
-                   variable: Optional[Variable],
-                   factor: Numeric,
-                   share_as_sum: bool = False):
+                  system_model: SystemModel,
+                  name_of_share: str,
+                  variable: Optional[Variable],
+                  factor: Numeric,
+                  share_as_sum: bool = False):
         """
         Adding a Share to a Share Allocation Model.
         """
@@ -576,40 +575,39 @@ class ShareAllocationModel(ElementModel):
         else:
             target_eq = self._eq_time_series
 
-        new_share = SingleShareModel(share_holder,
+        new_share = SingleShareModel(self.element,
+                                     name_of_share,
                                      variable,
                                      factor,
-                                     share_as_sum,
-                                     name_of_share)
+                                     share_as_sum)
         target_eq.add_summand(new_share.single_share, 1)
 
         self.sub_models.append(new_share)
-        assert new_share.label_short not in self.shares, f'A Share with the label {new_share.label_short} wis already present in {self.label_full}'
-        self.shares[new_share.label_short] = new_share.single_share
+        assert new_share.label not in self.shares, f'A Share with the label {new_share.label} was already present in {self.label}'
+        self.shares[new_share.label] = new_share.single_share
 
     def results(self):
         return {**{variable.label_short: variable.result for variable in self.variables.values()},
                 **{'Shares': {variable.label_short: variable.result for variable in self.shares.values()}}}
 
-
 class SingleShareModel(ElementModel):
     """ Holds a Variable and an Equation. Summands can be added to the Equation. Used to publish Shares"""
+
     def __init__(self,
                  element: Element,
+                 name: str,
                  variable: Optional[Variable],
                  factor: Numeric,
-                 share_as_sum: bool,
-                 label_short: str,
-                 label: str = 'Share_from'):
-        super().__init__(element, label)
-        self.label_short = label_short
+                 share_as_sum: bool):
+        super().__init__(element, name)
         if variable is not None:
             assert not (variable.length == 1 and share_as_sum), f'A Variable with the length 1 cannot be summed up!'
 
-        if share_as_sum or (variable is not None and variable.length == 1) or (variable is None and np.isscalar(factor)):
-            self.single_share = Variable(self.label_full, 1, self.label_short)
+        if share_as_sum or (variable is not None and variable.length == 1) or (
+                variable is None and np.isscalar(factor)):
+            self.single_share = Variable(self.label_full, 1, self.label)
         elif variable is not None:
-            self.single_share = VariableTS(self.label_full, variable.length, self.label_short)
+            self.single_share = VariableTS(self.label_full, variable.length, self.label)
         else:
             raise Exception('This case is not yet covered for a SingleShareModel')
 
@@ -622,10 +620,6 @@ class SingleShareModel(ElementModel):
                                               -1 * factor)
         else:
             self.single_equation.add_summand(variable, factor, as_sum=share_as_sum)
-
-    @property
-    def label_full(self) -> str:
-        return f'{super().label_full}__{self.label_short}'
 
 
 class SegmentedSharesModel(ElementModel):
