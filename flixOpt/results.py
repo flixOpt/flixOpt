@@ -137,6 +137,7 @@ class CalculationResults:
         -------
         pd.DataFrame
             A DataFrame containing the specified variable's data with a datetime index.
+            Dataframe is empty (no index), if no values are left after filtering.
 
         Raises
         ------
@@ -155,6 +156,8 @@ class CalculationResults:
                 raise ValueError(f'No Data found for {variable_name=}')
         if threshold is not None:
             df = df.loc[:, ((df > threshold) | (df < -1*threshold)).any()]  # Check if any value exceeds the threshold
+        if df.empty:  # If no values are left, return an empty DataFrame
+            return df
 
         if with_last_time_step:
             if len(df) == len(self.time):
