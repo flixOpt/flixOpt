@@ -2,6 +2,7 @@ import subprocess
 import pytest
 from pathlib import Path
 import os
+import sys
 
 # Path to the examples directory
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
@@ -28,7 +29,7 @@ def test_example_scripts(example_script):
 
         # Run the script
         result = subprocess.run(
-            ["python", example_script.name],
+            [sys.executable, example_script.name],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
