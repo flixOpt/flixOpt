@@ -324,7 +324,7 @@ class Summand:
         i = 0 if self.length == 1 else at_index
         index = self.indices[i]
         factor = self.factor_vec[i]
-        factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
+        factor_str = f"{factor:.6}" if isinstance(factor, (float, np.floating)) else str(factor)
         return f"{factor_str} * {self.variable.label}[{index}]"
 
     def _check_length(self):
