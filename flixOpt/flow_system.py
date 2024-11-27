@@ -30,14 +30,17 @@ class FlowSystem:
           Parameters
           ----------
           time_series : np.ndarray of datetime64
-              timeseries of the data
+              timeseries of the data. Must be in datetime64 format. Don't use precisions below 'us'. !np.datetime64[ns]!
           last_time_step_hours :
               The duration of last time step.
               Storages needs this time-duration for calculation of charge state
               after last time step.
               If None, then last time increment of time_series is used.
         """
-        self.time_series = time_series
+        self.time_series = time_series if isinstance(time_series, np.ndarray) else np.array(time_series)
+        if self.time_series.dtype == np.dtype('datetime64[ns]'):
+            self.time_series = self.time_series.astype('datetime64[us]')
+
         self.last_time_step_hours = self.time_series[-1] - self.time_series[-2] if last_time_step_hours is None else last_time_step_hours
         self.time_series_with_end = np.append(self.time_series, self.time_series[-1] + self.last_time_step_hours)
 
