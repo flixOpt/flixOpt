@@ -96,9 +96,9 @@ def label_is_valid(label: str) -> bool:
 def convert_to_native_types(value: Optional[Union[int, float, str, list, tuple, dict, np.ndarray, datetime]]
                             ) -> Optional[Union[int, float, str, list, dict]]:
     """ Recursively converts datatypes from a nested structure. Makes types compatible with yaml and json."""
-    if isinstance(value, (np.floating, np.float_)):
+    if isinstance(value, np.floating):
         return float(value)
-    elif isinstance(value, (np.integer, np.int_)):
+    elif isinstance(value, np.integer):
         return int(value)
     elif isinstance(value, np.ndarray):
         return [convert_to_native_types(item) for item in value.tolist()]

@@ -479,7 +479,7 @@ def get_object_infos_as_str(obj) -> str:
                 return text[:max_length-3]+'...'
             else:
                 return text
-        elif isinstance(item, Skalar):
+        elif isinstance(item, (Skalar, np.integer, np.floating)):
             return str(item)
         else:
             raise TypeError(f' Wrong type passed to function numeric_as_str(): {type(item)}')
@@ -562,7 +562,7 @@ def get_object_infos_as_dict(obj) -> Dict[str, Optional[Union[int, float, str, b
 
     def format_item(item: Any) -> Optional[Union[int, float, str, bool, List, Dict]]:
         """ Convert any item to a format that is usable by json and yaml"""
-        if isinstance(item, (int, float, str, bool, type(None), np.ndarray)):
+        if isinstance(item, (int, float, str, bool, type(None), np.integer, np.floating, np.ndarray)):
             return utils.convert_to_native_types(item)
         elif isinstance(item, (tuple, list)):
             return [format_item(i) for i in item]
