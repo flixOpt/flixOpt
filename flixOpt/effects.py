@@ -29,6 +29,7 @@ class Effect(Element):
                  label: str,
                  unit: str,
                  description: str,
+                 meta_data: Optional[Dict] = None,
                  is_standard: bool = False,
                  is_objective: bool = False,
                  specific_share_to_other_effects_operation: Optional['EffectValues'] = None,
@@ -50,6 +51,8 @@ class Effect(Element):
             unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
         description : str
             long name
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         is_standard : boolean, optional
             true, if Standard-Effect (for direct input of value without effect (alternatively to dict)) , else false
         is_objective : boolean, optional
@@ -82,7 +85,7 @@ class Effect(Element):
         None.
 
         """
-        super().__init__(label)
+        super().__init__(label, meta_data=meta_data)
         self.label = label
         self.unit = unit
         self.description = description

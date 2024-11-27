@@ -33,12 +33,15 @@ class LinearConverter(Component):
                  outputs: List[Flow],
                  on_off_parameters: OnOffParameters = None,
                  conversion_factors: Optional[List[Dict[Flow, Numeric_TS]]] = None,
-                 segmented_conversion_factors: Optional[Dict[Flow, List[Tuple[Numeric_TS, Numeric_TS]]]] = None):
+                 segmented_conversion_factors: Optional[Dict[Flow, List[Tuple[Numeric_TS, Numeric_TS]]]] = None,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             name.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         inputs : input flows.
         outputs : output flows.
         on_off_parameters: Information about on and off states. See class OnOffParameters.
@@ -53,7 +56,7 @@ class LinearConverter(Component):
             --> "points" can expressed as segment with same begin and end : [(3,3), (4,4)]
 
         """
-        super().__init__(label, inputs, outputs, on_off_parameters)
+        super().__init__(label, inputs, outputs, on_off_parameters, meta_data=meta_data)
         self.conversion_factors = conversion_factors
         self.segmented_conversion_factors = segmented_conversion_factors
         self._plausibility_checks()
@@ -139,7 +142,8 @@ class Storage(Component):
                  eta_charge: Numeric = 1,
                  eta_discharge: Numeric = 1,
                  relative_loss_per_hour: Numeric = 0,
-                 prevent_simultaneous_charge_and_discharge: bool = True):
+                 prevent_simultaneous_charge_and_discharge: bool = True,
+                 meta_data: Optional[Dict] = None):
         """
         constructor of storage
 
@@ -147,6 +151,8 @@ class Storage(Component):
         ----------
         label : str
             description.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         charging : Flow
             ingoing flow.
         discharging : Flow
@@ -177,7 +183,8 @@ class Storage(Component):
         """
         # TODO: fixed_relative_chargeState implementieren
         super().__init__(label, inputs=[charging], outputs=[discharging],
-                         prevent_simultaneous_flows=prevent_simultaneous_charge_and_discharge)
+                         prevent_simultaneous_flows=prevent_simultaneous_charge_and_discharge,
+                         meta_data=meta_data)
 
         self.charging = charging
         self.discharging = discharging
@@ -370,12 +377,15 @@ class SourceAndSink(Component):
                  label: str,
                  source: Flow,
                  sink: Flow,
-                 prevent_simultaneous_flows: bool = True):
+                 prevent_simultaneous_flows: bool = True,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             name of sourceAndSink
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         source : Flow
             output-flow of this component
         sink : Flow
@@ -385,7 +395,8 @@ class SourceAndSink(Component):
             False: inflow and outflow are working independently.
 
         """
-        super().__init__(label, inputs=[sink], outputs=[source], prevent_simultaneous_flows=prevent_simultaneous_flows)
+        super().__init__(label, inputs=[sink], outputs=[source], prevent_simultaneous_flows=prevent_simultaneous_flows,
+                         meta_data=meta_data)
         self.source = source
         self.sink = sink
 
@@ -393,23 +404,27 @@ class SourceAndSink(Component):
 class Source(Component):
     def __init__(self,
                  label: str,
-                 source: Flow):
+                 source: Flow,
+                 meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             name of source
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         source : Flow
             output-flow of source
         """
-        super().__init__(label, outputs=[source])
+        super().__init__(label, outputs=[source], meta_data=meta_data)
         self.source = source
 
 
 class Sink(Component):
     def __init__(self,
                  label: str,
-                 sink: Flow):
+                 sink: Flow,
+                 meta_data: Optional[Dict] = None):
         """
         constructor of sink
 
@@ -417,8 +432,10 @@ class Sink(Component):
         ----------
         label : str
             name of sink.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         sink : Flow
             input-flow of sink
         """
-        super().__init__(label, inputs=[sink])
+        super().__init__(label, inputs=[sink], meta_data=meta_data)
         self.sink = sink
