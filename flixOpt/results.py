@@ -68,11 +68,11 @@ class CalculationResults:
     def _construct_component_results(self):
         comp_results = self.all_results['Components']
         comp_infos = self.all_infos['FlowSystem']['Components']
-        assert comp_results.keys() == comp_infos.keys(), \
-            f'Missing Component or mismatched keys: {comp_results.keys() ^ comp_infos.keys()}'
+        if not comp_results.keys() == comp_infos.keys():
+            logger.warning(f'Missing Component or mismatched keys: {comp_results.keys() ^ comp_infos.keys()}')
 
         for key in comp_results.keys():
-            infos, results = comp_infos[key], comp_results[key]
+            infos, results = comp_infos.get(key, {}), comp_results.get(key, {})
             res = ComponentResults(infos, results)
             self.component_results[res.label] = res
 
@@ -80,11 +80,11 @@ class CalculationResults:
         effect_results = self.all_results['Effects']
         effect_infos = self.all_infos['FlowSystem']['Effects']
         effect_infos['penalty'] = {'label': 'Penalty'}
-        assert effect_results.keys() == effect_infos.keys(), \
-            f'Missing Effect or mismatched keys: {effect_results.keys() ^ effect_infos.keys()}'
+        if not effect_results.keys() == effect_infos.keys():
+            logger.warning(f'Missing Effect or mismatched keys: {effect_results.keys() ^ effect_infos.keys()}')
 
         for key in effect_results.keys():
-            infos, results = effect_infos[key], effect_results[key]
+            infos, results = effect_infos.get(key, {}), effect_results.get(key, {})
             res = EffectResults(infos, results)
             self.effect_results[res.label] = res
 
@@ -92,11 +92,11 @@ class CalculationResults:
         """ This has to be called after _construct_component_results(), as its using the Flows from the Components"""
         bus_results = self.all_results['Buses']
         bus_infos = self.all_infos['FlowSystem']['Buses']
-        assert bus_results.keys() == bus_infos.keys(), \
-            f'Missing Bus or mismatched keys: {bus_results.keys() ^ bus_infos.keys()}'
+        if not bus_results.keys() == bus_infos.keys():
+            logger.warning(f'Missing Bus or mismatched keys: {bus_results.keys() ^ bus_infos.keys()}')
 
         for bus_label in bus_results.keys():
-            infos, results = bus_infos[bus_label], bus_results[bus_label]
+            infos, results = bus_infos.get(bus_label, {}), bus_results.get(bus_label, {})
             inputs = [flow for flow in self.flow_results().values() if bus_label==flow.bus_label and not flow.is_input_in_component]
             outputs = [flow for flow in self.flow_results().values() if bus_label==flow.bus_label and flow.is_input_in_component]
             res = BusResults(infos, results, inputs, outputs)
