@@ -24,9 +24,9 @@ logger = logging.getLogger('flixOpt')
 
 
 class ElementResults:
-    def __init__(self, infos: Dict, data: Dict):
+    def __init__(self, infos: Dict, results: Dict):
         self.all_infos = infos
-        self.all_results = data
+        self.all_results = results
         self.label = self.all_infos['label']
 
     def __repr__(self):
@@ -40,18 +40,25 @@ class ElementResults:
 
 class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
-        self._path_infos = (pathlib.Path(folder) / f'{calculation_name}_info.yaml').resolve().as_posix()
-        self._path_results = (pathlib.Path(folder) / f'{calculation_name}_data.json').resolve().as_posix()
+        self._path_infos = (pathlib.Path(folder) / f'{calculation_name}_infos.yaml').resolve().as_posix()
+        self._path_data = (pathlib.Path(folder) / f'{calculation_name}_data.json').resolve().as_posix()
+        self._path_results = (pathlib.Path(folder) / f'{calculation_name}_results.json').resolve().as_posix()
+
         start_time = timeit.default_timer()
         with open(self._path_infos, 'rb') as f:
-            self.all_infos: Dict = yaml.safe_load(f)
-        logger.info(f'Loading Infos from .yaml took {(timeit.default_timer() - start_time):>8.2f} seconds')
+            self.calculation_infos: Dict = yaml.safe_load(f)
+        logger.info(f'Loading Calculation Infos from .yaml took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
         start_time = timeit.default_timer()
         with open(self._path_results, 'rb') as f:
             self.all_results: Dict = json.load(f)
         self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
-        logger.info(f'Loading Infos from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
+        logger.info(f'Loading results from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
+
+        with open(self._path_data, 'rb') as f:
+            self.all_data: Dict = json.load(f)
+        self.all_data = utils.convert_numeric_lists_to_arrays(self.all_data)
+        logger.info(f'Loading data from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
         self.component_results: Dict[str, ComponentResults] = {}
         self.effect_results: Dict[str, EffectResults] = {}
@@ -67,7 +74,7 @@ class CalculationResults:
 
     def _construct_component_results(self):
         comp_results = self.all_results['Components']
-        comp_infos = self.all_infos['FlowSystem']['Components']
+        comp_infos = self.all_data['Components']
         if not comp_results.keys() == comp_infos.keys():
             logger.warning(f'Missing Component or mismatched keys: {comp_results.keys() ^ comp_infos.keys()}')
 
@@ -78,7 +85,7 @@ class CalculationResults:
 
     def _construct_effect_results(self):
         effect_results = self.all_results['Effects']
-        effect_infos = self.all_infos['FlowSystem']['Effects']
+        effect_infos = self.all_data['Effects']
         effect_infos['penalty'] = {'label': 'Penalty'}
         if not effect_results.keys() == effect_infos.keys():
             logger.warning(f'Missing Effect or mismatched keys: {effect_results.keys() ^ effect_infos.keys()}')
@@ -91,7 +98,7 @@ class CalculationResults:
     def _construct_bus_results(self):
         """ This has to be called after _construct_component_results(), as its using the Flows from the Components"""
         bus_results = self.all_results['Buses']
-        bus_infos = self.all_infos['FlowSystem']['Buses']
+        bus_infos = self.all_data['Buses']
         if not bus_results.keys() == bus_infos.keys():
             logger.warning(f'Missing Bus or mismatched keys: {bus_results.keys() ^ bus_infos.keys()}')
 
@@ -309,13 +316,13 @@ class CalculationResults:
         Nodes are styled based on type (e.g., circles for buses, boxes for components) and annotated with node information.
         """
         from . import plotting
-        return plotting.visualize_network(self.all_infos['Network']['Nodes'],
-                                          self.all_infos['Network']['Edges'], path, controls, show)
+        return plotting.visualize_network(self.calculation_infos['Network']['Nodes'],
+                                          self.calculation_infos['Network']['Edges'], path, controls, show)
 
 
 class FlowResults(ElementResults):
-    def __init__(self, infos: Dict, data: Dict, label_of_component: str) -> None:
-        super().__init__(infos, data)
+    def __init__(self, infos: Dict, results: Dict, label_of_component: str) -> None:
+        super().__init__(infos, results)
         self.is_input_in_component = self.all_infos['is_input_in_component']
         self.component_label = label_of_component
         self.bus_label = self.all_infos['bus']['label']
@@ -328,8 +335,8 @@ class FlowResults(ElementResults):
 
 class ComponentResults(ElementResults):
 
-    def __init__(self, infos: Dict, data: Dict):
-        super().__init__(infos, data)
+    def __init__(self, infos: Dict, results: Dict):
+        super().__init__(infos, results)
         inputs, outputs = self._create_flow_results()
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
@@ -358,8 +365,8 @@ class ComponentResults(ElementResults):
 
 
 class BusResults(ElementResults):
-    def __init__(self, infos: Dict, data: Dict, inputs: List[FlowResults], outputs: List[FlowResults]):
-        super().__init__(infos, data)
+    def __init__(self, infos: Dict, results: Dict, inputs: List[FlowResults], outputs: List[FlowResults]):
+        super().__init__(infos, results)
         self.inputs = inputs
         self.outputs = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
