@@ -77,27 +77,33 @@ class Calculation:
 
             self._paths["log"] = path / f'{self.name}_solver.log'
             self._paths["data"] = path / f'{self.name}_data.json'
-            self._paths["info"] = path / f'{self.name}_info.yaml'
+            self._paths["results"] = path / f'{self.name}_results.json'
+            self._paths["infos"] = path / f'{self.name}_infos.yaml'
 
     def _save_solve_infos(self):
-        t_start = timeit.default_timer()
         import yaml
         import json
-        with open(self._paths['data'], 'w', encoding='utf-8') as f:
+
+        t_start = timeit.default_timer()
+        with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = utils.convert_to_native_types(self.results())
             json.dump(results, f, indent=4)
+
+        with open(self._paths['data'], 'w', encoding='utf-8') as f:
+            data = utils.convert_to_native_types(self.flow_system.infos())
+            json.dump(data, f, indent=4)
+
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
         t_start = timeit.default_timer()
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {'Calculation': self.infos,
                  'Model': self.system_model.infos,
-                 'FlowSystem': self.flow_system.infos(),
                  'Network': {
                      'Nodes': nodes_info, 'Edges': edges_info}
                  }
 
-        with open(self._paths['info'], 'w', encoding='utf-8') as f:
+        with open(self._paths['infos'], 'w', encoding='utf-8') as f:
             yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
 
