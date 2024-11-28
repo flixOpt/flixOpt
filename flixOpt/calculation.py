@@ -385,14 +385,19 @@ class SegmentedCalculation(Calculation):
             return all_results
 
     def _save_solve_infos(self):
-        t_start = timeit.default_timer()
         import yaml
         import json
-        with open(self._paths['data'], 'w', encoding='utf-8') as f:
+
+        t_start = timeit.default_timer()
+        with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = utils.convert_to_native_types(self.results(combined_arrays=True))
             json.dump(results, f, indent=4)
 
-        with open(self._paths['data'].parent / f'{self.name}_data_extra.json', 'w', encoding='utf-8') as f:
+        with open(self._paths['data'], 'w', encoding='utf-8') as f:
+            data = utils.convert_to_native_types(self.flow_system.infos())
+            json.dump(data, f, indent=4)
+
+        with open(self._paths['results'].parent / f'{self.name}_results_extra.json', 'w', encoding='utf-8') as f:
             results = {'Individual Results': utils.convert_to_native_types(self.results(individual_results=True)),
                        'Skalar Results': utils.convert_to_native_types(self.results(combined_scalars=True))}
             json.dump(results, f, indent=4)
@@ -402,12 +407,11 @@ class SegmentedCalculation(Calculation):
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {'Calculation': self.infos,
                  'Model': self.sub_calculations[0].system_model.infos,
-                 'FlowSystem': self.flow_system.infos(),
                  'Network': {
                      'Nodes': nodes_info, 'Edges': edges_info}
                  }
 
-        with open(self._paths['info'], 'w', encoding='utf-8') as f:
+        with open(self._paths['infos'], 'w', encoding='utf-8') as f:
             yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
                       allow_unicode=True, sort_keys=False)
 
