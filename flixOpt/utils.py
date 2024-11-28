@@ -125,11 +125,16 @@ def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) 
 
     def convert_list_to_array_if_numeric(sequence: Union[List[Any], tuple]) -> Union[np.ndarray, List[Any]]:
         """
-        Converts a list to a numpy array if all elements are numeric.
+        Converts a Sequence to a numpy array if all elements are numeric.
         Recursively processes each element.
+        Does not alter the original sequence.
+        Returns an empty list if the sequence is empty.
         """
+        # Check if the list is empty
+        if len(sequence) == 0:
+            return []
         # Check if all elements are numeric in the list
-        if isinstance(sequence, list) and all(isinstance(item, (int, float)) for item in sequence):
+        elif isinstance(sequence, list) and all(isinstance(item, (int, float)) for item in sequence):
             return np.array(sequence)
         else:
             return[convert_numeric_lists_to_arrays(item) if
