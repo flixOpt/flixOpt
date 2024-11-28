@@ -7,7 +7,7 @@ def read_requirements(file_path):
 setup(
     name='flixOpt',
     version='0.2.0',
-    python_requires='>=3.9, <3.12',
+    python_requires='>=3.10, <3.13',
     author='Felix Bumann, Felix Panitz, Peter Stange',
     author_email='felixbumann387@gmail.com, baumbude@googlemail.com, peter.stange@tu-dresden.de',
     maintainer='Professur für Gebäudeenergietechnik und Wärmeversorgung (GEWV), TU Dresden',
@@ -19,7 +19,6 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
