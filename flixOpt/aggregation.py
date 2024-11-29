@@ -352,7 +352,7 @@ class AggregationModel(ElementModel):
         penalty = self.aggregation_parameters.penalty_of_period_freedom
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
             for label, variable in self.variables.items():
-                system_model.effect_collection_model.add_share_to_penalty(f'Penalty_{label}', self.element, variable,
+                system_model.effect_collection_model.add_share_to_penalty(f'Aggregation_penalty__{label}', variable,
                                                                           penalty)
 
     def equate_indices(self, variable: Variable,
