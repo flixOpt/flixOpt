@@ -55,6 +55,7 @@ class CalculationResults:
         self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
         logger.info(f'Loading results from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
+        start_time = timeit.default_timer()
         with open(self._path_data, 'rb') as f:
             self.all_data: Dict = json.load(f)
         self.all_data = utils.convert_numeric_lists_to_arrays(self.all_data)
