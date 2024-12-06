@@ -4,7 +4,7 @@ from .core import setup_logging, change_logging_level, TimeSeriesData
 
 from .elements import Flow, Bus
 from .effects import Effect
-from .components import Source, Sink, SourceAndSink, Storage, LinearConverter
+from .components import Source, Sink, SourceAndSink, Storage, LinearConverter, Transmission
 from . import linear_converters
 
 from .flow_system import FlowSystem, create_datetime_array
