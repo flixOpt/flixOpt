@@ -236,16 +236,16 @@ class CalculationResults:
         if engine == 'plotly':
             if mode == 'heatmap':
                 heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-                return plotting.heat_map_plotly(heatmap_data, show=show, title=title)
+                return plotting.heat_map_plotly(heatmap_data, show=show, title=title, color_map=colors)
             else:
-                return plotting.with_plotly(data=data, mode=mode, show=show, title=title)
+                return plotting.with_plotly(data=data, mode=mode, show=show, title=title, colors=colors)
 
         elif engine == 'matplotlib':
             if mode == 'heatmap':
                 heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-                return plotting.heat_map_matplotlib(heatmap_data, show=show)
+                return plotting.heat_map_matplotlib(heatmap_data, show=show, color_map=colors)
             else:
-                return plotting.with_matplotlib(data=data, mode=mode, show=show)
+                return plotting.with_matplotlib(data=data, mode=mode, show=show, colors=colors)
         else:
             raise ValueError(f'Unknown Engine: {engine=}')
 
@@ -253,6 +253,7 @@ class CalculationResults:
                      label: str,
                      variable_name: str = 'flow_rate',
                      mode: Literal['bar', 'line', 'area'] = 'area',
+                     colors: Union[str, List[str]] = 'viridis',
                      invert: bool = True,
                      show: bool = True):
         """
@@ -266,6 +267,8 @@ class CalculationResults:
             The variable to plot from the element's data.
         mode : {'bar', 'line', 'area'}, default='area'
             The type of plot to generate.
+        colors : str or List[str], default='viridis'
+            The colors or colorscale to use for the plot.
         invert : bool, default=True
             Whether to invert the input and output factors.
         show : bool, default=True
@@ -276,7 +279,7 @@ class CalculationResults:
         plotly.graph_objs.Figure
             The generated Plotly figure object with the storage operation plot.
         """
-        fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False)
+        fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False, colors=colors)
         fig.add_trace(plotly.graph_objs.Scatter(
             x=self.time_with_end,
             y={**self.component_results, **self.bus_results}[label].variables['charge_state'],
