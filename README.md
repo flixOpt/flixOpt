@@ -22,9 +22,9 @@ Install this package via pip in to your environment: `pip install git+https://gi
     * flows
     * invest costs and invest size
   * effects 
-    * various effects, i.g. costs, CO2 emissions, primary energy, area demand etc.
-    * effects coupleable, i.g. specific costs of CO2-emissions
-    * constraints, i.g. max sum of CO2 emissions
+    * various effects, e.g. costs, CO2 emissions, primary energy, area demand etc.
+    * effects coupleable, e.g. specific costs of CO2-emissions
+    * constraints, e.g. max sum of CO2 emissions
     * simply switch effect, which should be minimized (optimization target)
   * others
     * non-equidistant timesteps possible
