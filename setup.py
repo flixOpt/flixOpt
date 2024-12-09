@@ -10,7 +10,7 @@ setup(
     python_requires='>=3.10, <3.13',
     author='Felix Bumann, Felix Panitz, Peter Stange',
     author_email='felixbumann387@gmail.com, baumbude@googlemail.com, peter.stange@tu-dresden.de',
-    maintainer='Professur für Gebäudeenergietechnik und Wärmeversorgung (GEWV), TU Dresden',
+    maintainer='Chair of Building Energy Systems and Heat Supply, TU Dresden',
     maintainer_email='peter.stange@tu-dresden.de',
     description='Vector based energy and material flow optimization framework in python.',
     long_description=open('README.md').read(),
