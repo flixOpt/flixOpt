@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Dec 16 12:40:23 2020
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the features of the flixOpt framework.
+Features extend the functionality of Elements.
 """
 
 from typing import List, Tuple, Dict, Union, Optional, TYPE_CHECKING

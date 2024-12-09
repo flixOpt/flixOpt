@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Created on Tue Nov 17 14:09:02 2020
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the mathematical core of the flixOpt framework.
+THe module is designed to be used by other modules than flixOpt itself.
+It holds all necessary classes and functions to create a mathematical model, consisting of Varaibles and constraints,
+and translate it into a ModelingLanguage like Pyomo, and the solve it through a solver.
+Multiple solvers are supported.
 """
 
 import logging

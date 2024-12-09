@@ -1,4 +1,6 @@
-# -*- coding: utf-8 -*-
+"""
+This module makes the commonly used classes and functions available in the flixOpt framework.
+"""
 
 from .core import setup_logging, change_logging_level, TimeSeriesData
 

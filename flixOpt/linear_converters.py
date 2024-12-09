@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Sep 10 13:45:12 2020
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This Module contains high-level classes to easily model a FlowSystem.
 """
+
 import logging
 from typing import Optional, Dict
 

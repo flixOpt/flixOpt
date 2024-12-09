@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """
-Created on Tue Sep  6 15:25:43 2022
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains classes to collect Parameters for the Investment and OnOff decisions.
+These are tightly connected to features.py
 """
+
 import logging
 from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 

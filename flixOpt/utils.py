@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Nov 12 13:13:31 2020
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains several utility functions used throughout the flixOpt framework.
 """
 
 import logging

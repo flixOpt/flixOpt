@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Dec 16 12:40:23 2020
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the FlowSystem class, which is used to collect instances of many other classes by the end User.
 """
+
 import pathlib
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal
 import logging

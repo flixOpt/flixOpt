@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Mar 31 22:51:38 2021
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the core functionality of the flixOpt framework.
+It provides Datatypes, logging functionality, and some functions to transform data structures.
 """
+
 from typing import Union, Optional, List, Dict, Any, Literal
 import logging
 import inspect
