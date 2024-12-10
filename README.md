@@ -29,6 +29,10 @@ Install this package via pip in to your environment: `pip install git+https://gi
   * others
     * non-equidistant timesteps possible
     * investment and flow-on/off variables in one model
+## Sample Example
+![sample_example](https://github.com/user-attachments/assets/fa0e12fa-2853-4f51-a9e2-804abbefe20c)
+
+
 ## Performance issues
 You can choose between three calculation modes:
   * **full** -> exact and slow
