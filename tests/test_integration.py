@@ -8,8 +8,11 @@ import pandas as pd
 
 import flixOpt.results
 from flixOpt import *
+from flixOpt.components import Transmission
 from flixOpt.linear_converters import Boiler, CHP
 from flixOpt.aggregation import AggregationParameters
+
+np.random.seed(45)
 
 
 class BaseTest(unittest.TestCase):
@@ -127,6 +130,119 @@ class TestSimple(BaseTest):
         aCalc.solve(self.get_solver(), save_results=save_results)
 
         return aCalc
+
+
+class TestComponents(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.Q_th_Last = np.array([np.random.random() for _ in range(10)])*180
+        self.p_el = (np.array([np.random.random() for _ in range(10)])+0.5)/1.5 * 50
+        self.datetime_array = datetime.datetime(2020, 1, 1) + np.arange(len(self.Q_th_Last)) * datetime.timedelta(hours=1)
+        self.datetime_array = self.datetime_array.astype('datetime64')
+
+    def create_basic_elements(self):
+        self.busses = {label: Bus(label) for label in ['Strom', 'Fernwärme', 'Gas']}
+        self.effects = {'Costs': Effect('Costs', '€', 'Kosten', is_standard=True, is_objective=True)}
+        self.components = {'Wärmelast': Sink('Wärmelast',
+                                             sink=Flow('Q_th_Last',
+                                                       bus=self.busses['Fernwärme'],
+                                                       size=1,
+                                                       fixed_relative_profile=self.Q_th_Last)),
+                           'Gastarif': Source('Gastarif',
+                                              source=Flow('Q_Gas', bus=self.busses['Gas'], size=1000,
+                                                          effects_per_flow_hour=0.04)),
+                           'Einspeisung': Sink('Einspeisung', sink=Flow('P_el',
+                                                                        bus=self.busses['Strom'],
+                                                                        effects_per_flow_hour=-1 * self.p_el))
+                           }
+
+    def test_transmission_basic(self):
+        self.create_basic_elements()
+        flow_system = FlowSystem(self.datetime_array, last_time_step_hours=None)
+        flow_system.add_elements(*(list(self.effects.values()) + list(self.components.values())))
+        extra_bus = Bus('Wärme lokal')
+        boiler = Boiler('Boiler', eta=0.5,
+                        Q_th=Flow('Q_th',bus=extra_bus),
+                        Q_fu=Flow('Q_fu', bus=self.busses['Gas']))
+
+        transmission = Transmission('Rohr',
+                                    relative_losses=0.2, absolute_losses=20,
+                                    in1=Flow('Rohr1', extra_bus, size=InvestParameters(specific_effects=5, maximum_size=1e6)),
+                                    out1=Flow('Rohr2', self.busses['Fernwärme'], size=1000))
+
+        flow_system.add_elements(transmission, boiler)
+        calculation = FullCalculation('Test_Sim', flow_system)
+        calculation.do_modeling()
+        calculation.solve(self.get_solver())
+        print(calculation.results())
+        self.assertAlmostEqualNumeric(transmission.in1.model._on.on.result,
+                                      np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+                                      'On does not work properly')
+
+        self.assertAlmostEqualNumeric(transmission.in1.model.flow_rate.result * 0.8 - 20,
+                                      transmission.out1.model.flow_rate.result,
+                                      f'Losses are not computed correctly')
+
+    def test_transmission_advanced(self):
+        self.create_basic_elements()
+        flow_system = FlowSystem(self.datetime_array, last_time_step_hours=None)
+        flow_system.add_elements(*(list(self.effects.values()) + list(self.components.values())))
+        extra_bus = Bus('Wärme lokal')
+
+        boiler = Boiler('Boiler_Standard', eta=0.9,
+                        Q_th=Flow('Q_th',bus=self.busses['Fernwärme'], relative_maximum=np.array([0,0,0,1,1,1,1,1,1,1])),
+                        Q_fu=Flow('Q_fu', bus=self.busses['Gas']))
+
+        boiler2 = Boiler('Boiler_backup', eta=0.4,
+                        Q_th=Flow('Q_th', bus=extra_bus),
+                        Q_fu=Flow('Q_fu', bus=self.busses['Gas']))
+
+        last2 = Sink('Wärmelast2', sink=Flow('Q_th_Last',
+                                            bus=extra_bus,
+                                            size=1,
+                                            fixed_relative_profile=self.Q_th_Last*np.array([0,0,0,0,0,1,1,1,1,1])))
+
+        transmission = Transmission('Rohr',
+                                    relative_losses=0.2, absolute_losses=20,
+                                    in1=Flow('Rohr1a', bus=extra_bus, size=InvestParameters(specific_effects=5, maximum_size=1000)),
+                                    out1=Flow('Rohr1b', self.busses['Fernwärme'], size=1000),
+                                    in2 =Flow('Rohr2a', self.busses['Fernwärme'], size=1000),
+                                    out2=Flow('Rohr2b', bus=extra_bus, size=1000))
+
+        flow_system.add_elements(transmission, boiler, boiler2, last2)
+        calculation = FullCalculation('Test_Transmission', flow_system)
+        calculation.do_modeling()
+        calculation.solve(self.get_solver(), save_results=True)
+        results = flixOpt.results.CalculationResults(calculation.name, 'results')
+
+        self.assertAlmostEqualNumeric(transmission.in1.model._on.on.result,
+                                      np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]),
+                                      'On does not work properly')
+
+        self.assertAlmostEqualNumeric(results.to_dataframe('Rohr', with_last_time_step=False)['Rohr__Rohr1b'].values,
+                                      transmission.out1.model.flow_rate.result,
+                                      f'Flow rate of Rohr__Rohr1b is not correct')
+
+        self.assertAlmostEqualNumeric(transmission.in1.model.flow_rate.result * 0.8
+                                      - np.array([20 if val > 0.1 else 0 for val in transmission.in1.model.flow_rate.result]),
+                                      transmission.out1.model.flow_rate.result,
+                                      f'Losses are not computed correctly')
+
+        self.assertAlmostEqualNumeric(transmission.in1.model._investment.size.result,
+                                      transmission.in2.model._investment.size.result,
+                                      f'THe Investments are not equated correctly')
+
+
+
+    def tearDown(self):
+        self.busses = None
+        self.effects = None
+        self.components = None
+        self.datetime_array = None
+        self.Q_th_Last = None
+        self.p_el = None
+        self.datetime_array = None
+
 
 
 class TestComplex(BaseTest):

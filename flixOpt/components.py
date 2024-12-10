@@ -183,7 +183,7 @@ class Storage(Component):
         """
         # TODO: fixed_relative_chargeState implementieren
         super().__init__(label, inputs=[charging], outputs=[discharging],
-                         prevent_simultaneous_flows=prevent_simultaneous_charge_and_discharge,
+                         prevent_simultaneous_flows=[charging, discharging] if prevent_simultaneous_charge_and_discharge else None,
                          meta_data=meta_data)
 
         self.charging = charging
@@ -213,6 +213,137 @@ class Storage(Component):
         self.relative_loss_per_hour = _create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, self)
         if isinstance(self.capacity_in_flow_hours, InvestParameters):
             self.capacity_in_flow_hours.transform_data()
+
+
+class Transmission(Component):
+    # TODO: automatic on-Value in Flows if loss_abs
+    # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
+    # TODO: investmentsize only on 1 flow
+    # TODO: automatic investArgs for both in-flows (or alternatively both out-flows!)
+    # TODO: optional: capacities should be recognised for losses
+
+    def __init__(self,
+                 label: str,
+                 in1: Flow,
+                 out1: Flow,
+                 in2: Optional[Flow] = None,
+                 out2: Optional[Flow] = None,
+                 relative_losses: Optional[Numeric_TS] = None,
+                 absolute_losses: Optional[Numeric_TS] = None,
+                 on_off_parameters: OnOffParameters = None,
+                 prevent_simultaneous_flows_in_both_directions: bool = True):
+        """
+        Initializes a Transmission component (Pipe, cable, ...) that models the flows between two sides
+        with potential losses.
+
+        Parameters
+        ----------
+        label : str
+            The name of the transmission component.
+        in1 : Flow
+            The inflow at side A. Pass InvestmentParameters here.
+        out1 : Flow
+            The outflow at side B.
+        in2 : Optional[Flow], optional
+            The optional inflow at side B.
+            If in1 got Investmentparameters, the size of this Flow will be equal to in1 (with no extra effects!)
+        out2 : Optional[Flow], optional
+            The optional outflow at side A.
+        relative_losses : Optional[Numeric_TS], optional
+            The relative loss between inflow and outflow, e.g., 0.02 for 2% loss.
+        absolute_losses : Optional[Numeric_TS], optional
+            The absolute loss, occur only when the Flow is on. Induces the creation of the ON-Variable
+        on_off_parameters : OnOffParameters, optional
+            Parameters defining the on/off behavior of the component.
+        prevent_simultaneous_flows_in_both_directions : bool, default=True
+            If True, prevents simultaneous flows in both directions.
+        """
+        super().__init__(label,
+                         inputs=[flow for flow in (in1, in2) if flow is not None],
+                         outputs=[flow for flow in (out1, out2) if flow is not None],
+                         on_off_parameters=on_off_parameters,
+                         prevent_simultaneous_flows=None if in2 is None or prevent_simultaneous_flows_in_both_directions is False else [in1, in2])
+        self.in1 = in1
+        self.out1 = out1
+        self.in2 = in2
+        self.out2 = out2
+
+        self.relative_losses = relative_losses
+        self.absolute_losses = absolute_losses
+
+    def _plausibility_checks(self):
+        # check buses:
+        if self.in2 is not None:
+            assert self.in2.bus == self.out1.bus, (f'Output 1 and Input 2 do not start/end at the same Bus: '
+                                                   f'{self.out1.bus=}, {self.in2.bus=}')
+        if self.out2 is not None:
+            assert self.out2.bus == self.in1.bus, (f'Input 1 and Output 2 do not start/end at the same Bus: '
+                                                   f'{self.in1.bus=}, {self.out2.bus=}')
+        # Check Investments
+        for flow in [self.out1, self.in2, self.out2]:
+            if flow is not None and isinstance(flow.size, InvestParameters):
+                raise ValueError(f'Transmission currently does not support separate InvestParameters for Flows. '
+                                 f'Please use Flow in1. The size of in2 is equal to in1. THis is handled internally')
+
+    def create_model(self) -> 'TransmissionModel':
+        self.model = TransmissionModel(self)
+        return self.model
+
+    def transform_data(self) -> None:
+        super().transform_data()
+        self.relative_losses = _create_time_series('relative_losses', self.relative_losses, self)
+        self.absolute_losses = _create_time_series('absolute_losses', self.absolute_losses, self)
+
+
+class TransmissionModel(ComponentModel):
+
+    def __init__(self, element: Transmission):
+        super().__init__(element)
+        self.element: Transmission = element
+        self._on: Optional[OnOffModel] = None
+
+    def do_modeling(self, system_model: SystemModel):
+        """ Initiates all FlowModels """
+        # Force On Variable if absolute losses are present
+        if (self.element.absolute_losses is not None) and np.any(self.element.absolute_losses.active_data != 0):
+            for flow in self.element.inputs + self.element.outputs:
+                if flow.on_off_parameters is None:
+                    flow.on_off_parameters = OnOffParameters(force_on=True)
+                else:
+                    flow.on_off_parameters.force_on = True
+
+        # Make sure either None or both in Flows have InvestParameters
+        if self.element.in2 is not None:
+            if isinstance(self.element.in1.size, InvestParameters) and not isinstance(self.element.in2.size, InvestParameters):
+                self.element.in2.size = InvestParameters(maximum_size=self.element.in1.size.maximum_size)
+
+        super().do_modeling(system_model)
+
+        # first direction
+        self.create_transmission_equation('direction_1', self.element.in1, self.element.out1)
+
+        # second direction:
+        if self.element.in2 is not None:
+            self.create_transmission_equation('direction_2', self.element.in2, self.element.out2)
+
+        # equate size of both directions
+        if isinstance(self.element.in1.size, InvestParameters) and self.element.in2 is not None:
+            # eq: in1.size = in2.size
+            eq_equal_size = create_equation('equal_size_in_both_directions', self, 'eq')
+            eq_equal_size.add_summand(self.element.in1.model._investment.size, 1)
+            eq_equal_size.add_summand(self.element.in2.model._investment.size, -1)
+
+    def create_transmission_equation(self, name: str, in_flow: Flow, out_flow: Flow) -> Equation:
+        """ Creates an Equation for the Transmission efficiency and adds it to the model"""
+        # first direction
+        # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
+        eq_transmission = create_equation(name, self, 'eq')
+        efficiency = 1 if self.element.relative_losses is None else (1 - self.element.relative_losses.active_data)
+        eq_transmission.add_summand(in_flow.model.flow_rate, efficiency)
+        eq_transmission.add_summand(out_flow.model.flow_rate, - 1)
+        if self.element.absolute_losses is not None:
+            eq_transmission.add_summand(in_flow.model._on.on, -1 * self.element.absolute_losses.active_data)
+        return eq_transmission
 
 
 class LinearConverterModel(ComponentModel):

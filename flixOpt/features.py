@@ -281,8 +281,12 @@ class OnOffModel(ElementModel):
             eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
 
         if np.max(upper_bound) > 1000:
-            logger.warning(f'!!! ACHTUNG in {self.element.label_full}  Binärdefinition mit großem Max-Wert ('
-                           f'{np.max(upper_bound)}). Ggf. falsche Ergebnisse !!!')
+            logger.warning(
+                f'In "{self.element.label_full}", a binary definition was created with a big upper bound '
+                f'({np.max(upper_bound)}). This can lead to wrong results regarding the on and off variables. '
+                f'Avoid this warning by reducing the size of {self.element.label_full}. '
+                f'If its a Component, you might need to adjust the sizes of all of its flows.e'
+                f'If you use InvestParameters, reduce the maximum size.')
 
     def _add_off_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
         assert self.off is not None, f'Off variable of {self.element} must be defined to add constraints'
