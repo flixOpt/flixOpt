@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Dec 16 12:40:23 2020
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the effects of the flixOpt framework.
+Furthermore, it contains the EffectCollection, which is used to collect all effects of a system.
+Different Datatypes are used to represent the effects with assigned values by the user,
+which are then transformed into the internal data structure.
 """
 
 from typing import List, Dict, Union, Optional, Literal

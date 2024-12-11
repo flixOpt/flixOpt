@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-Created on Fri Sep  4 11:26:10 2020
-Developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This script demonstrates how to use the different calcualtion types in the flixOPt framework
+to model the same energy system. THe Results will be compared to each other.
 """
 
 import pathlib

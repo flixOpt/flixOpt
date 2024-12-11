@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Created on Fri Mar 26 09:43:09 2021
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the plotting functionality of the flixOpt framework.
+It provides high level functions to plot data with plotly and matplotlib.
+It's meant to be used in results.py, but is designed to be used by the end user as well.
 """
+
 import logging
 import pathlib
 from typing import Literal, Tuple, Union, Optional, List

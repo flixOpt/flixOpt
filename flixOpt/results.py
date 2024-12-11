@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
 """
-Created on Tue Jun 14 16:05:50 2022
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the Results functionality of the flixOpt framework.
+It provides high level functions to analyze the results of a calculation.
+It leverages the plotting.py module to plot the results.
+The results can also be analyzed without this module, as the results are stored in a widely supported format.
 """
 
 import logging

@@ -2,6 +2,7 @@
 results/
 .idea/
 .venv/
+~/.venv
 venv/
 .DS_Store
 lib/

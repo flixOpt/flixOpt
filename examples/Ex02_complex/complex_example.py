@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Jun 16 11:19:17 2022
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This script shows how to use the flixOpt framework to model a more complex energy system.
 """
 
 import numpy as np

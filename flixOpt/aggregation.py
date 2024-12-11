@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-Created on Fri Nov 26 10:23:49 2021
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
-
-Modul zur aggregierten Berechnung eines Energiesystemmodells.
+This module contains the Aggregation functionality for the flixOpt framework.
+Through this, aggregating TimeSeriesData is possible.
 """
 
 import copy

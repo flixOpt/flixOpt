@@ -1,8 +1,11 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Dec 16 12:40:23 2020
-developed by Felix Panitz* and Peter Stange*
-* at Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This module contains the Calculation functionality for the flixOpt framework.
+It is used to calculate a SystemModel for a given FlowSystem through a solver.
+There are three different Calculation types:
+    1. FullCalculation: Calculates the SystemModel for the full FlowSystem
+    2. AggregatedCalculation: Calculates the SystemModel for the full FlowSystem, but aggregates the TimeSeriesData.
+        This simplifies the mathematical model and usually speeds up the solving process.
+    3. SegmentedCalculation: Solves a SystemModel for each individual Segment of the FlowSystem.
 """
 
 import datetime
