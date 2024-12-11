@@ -1,8 +1,5 @@
-# -*- coding: utf-8 -*-
 """
-Energy System Optimization Example
-Developed by Felix Panitz and Peter Stange
-Chair of Building Energy Systems and Heat Supply, Technische Universität Dresden
+This script shows how to use the flixOpt framework to model a super minimalistic energy system.
 """
 
 import numpy as np

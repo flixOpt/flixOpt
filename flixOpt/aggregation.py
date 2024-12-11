@@ -1,6 +1,6 @@
 """
 This module contains the Aggregation functionality for the flixOpt framework.
-THrough this, aggregating TimeSeriesData is possible.
+Through this, aggregating TimeSeriesData is possible.
 """
 
 import copy
