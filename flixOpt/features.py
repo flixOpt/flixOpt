@@ -50,7 +50,8 @@ class InvestmentModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         invest_parameters = self._invest_parameters
         if invest_parameters.fixed_size:
-            self.size = create_variable('size', self, 1, fixed_value=invest_parameters.fixed_size)
+            self.size = create_variable('size', self, 1,
+                                        fixed_value=invest_parameters.fixed_size if not invest_parameters.optional else None)
         else:
             lower_bound = 0 if invest_parameters.optional else invest_parameters.minimum_size
             self.size = create_variable('size', self, 1, lower_bound=lower_bound,
