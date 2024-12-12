@@ -206,7 +206,7 @@ class OnOffModel(ElementModel):
 
             self._add_off_constraints(system_model, system_model.indices)
 
-        if self._on_off_parameters.use_on_hours:
+        if self._on_off_parameters.use_consecutive_on_hours:
             self.consecutive_on_hours = create_variable('consecutiveOnHours', self, system_model.nr_of_time_steps,
                                                         lower_bound=0,
                                                         upper_bound=self._on_off_parameters.consecutive_on_hours_max.active_data)
@@ -214,7 +214,7 @@ class OnOffModel(ElementModel):
                                            self._on_off_parameters.consecutive_on_hours_min,
                                            system_model, system_model.indices)
         # offHours:
-        if self._on_off_parameters.use_off_hours:
+        if self._on_off_parameters.use_consecutive_off_hours:
             upper_bound = self._on_off_parameters.consecutive_off_hours_max.active_data if self._on_off_parameters.consecutive_off_hours_max is not None else system_model.dt_in_hours_total
             self.consecutive_off_hours = create_variable('consecutiveOffHours', self, system_model.nr_of_time_steps,
                                                          lower_bound=0,
