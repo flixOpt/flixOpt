@@ -338,7 +338,7 @@ class OnOffModel(ElementModel):
         constraint_2b.add_summand(duration_variable, -1, time_indices[1:])  # onHours(t)
         constraint_2b.add_summand(duration_variable, 1, time_indices[0:-1])  # onHours(t-1)
         constraint_2b.add_summand(binary_variable, mega, time_indices[1:])  # on(t)
-        constraint_2b.add_constant(-1 + system_model.dt_in_hours[1:] + mega)  # dt(t)
+        constraint_2b.add_constant(-1 * system_model.dt_in_hours[1:] + mega)  # dt(t)
 
         # 3) check minimum_duration before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
