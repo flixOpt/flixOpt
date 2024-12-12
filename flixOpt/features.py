@@ -364,19 +364,19 @@ class OnOffModel(ElementModel):
         assert binary_variable is not None, f'Duration Variable of {self.element} must be defined to add constraints'
         # TODO: Einfachere Variante von Peter umsetzen!
 
-        # 1) duration(t) - On(t) * BIG <= 0
+        # 1) eq: duration(t) - On(t) * BIG <= 0
         constraint_1 = create_equation(f'{label_prefix}_constraint_1', self, eq_type='ineq')
         constraint_1.add_summand(duration_variable, 1)
         constraint_1.add_summand(binary_variable, -1 * mega)
 
-        # 2a) duration(t) - duration(t-1) <= dt(t)
+        # 2a) eq: duration(t) - duration(t-1) <= dt(t)
         constraint_2a = create_equation(f'{label_prefix}_constraint_2a', self, eq_type='ineq')
         constraint_2a.add_summand(duration_variable, 1, time_indices[1:])  # duration(t)
         constraint_2a.add_summand(duration_variable, -1, time_indices[0:-1])  # duration(t-1)
         constraint_2a.add_constant(system_model.dt_in_hours[1:])  # dt(t)
 
-        # 2b) dt(t) - BIG * ( 1-On(t) ) <= duration(t) - duration(t-1)
-        #     -duration(t) + duration(t-1) + On(t) * BIG <= -dt(t) + BIG
+        # 2b) eq: dt(t) - BIG * ( 1-On(t) ) <= duration(t) - duration(t-1)
+        # eq: -duration(t) + duration(t-1) + On(t) * BIG <= -dt(t) + BIG
         # TODO: Use maximum duration instead of BIG
         constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, eq_type='ineq')
         constraint_2b.add_summand(duration_variable, -1, time_indices[1:])  # duration(t)
@@ -387,8 +387,8 @@ class OnOffModel(ElementModel):
         # 3) check minimum_duration before switchOff-step
         # (last on-time period of timeseries is not checked and can be shorter)
         if minimum_duration is not None:
-            # minimum_duration * -1 * [On(t)-On(t-1)] <= duration(t-1)
-            # -duration(t - 1) - minimum_duration * On(t) + minimum_duration * On(t - 1) <= 0
+            # eq: minimum_duration * -1 * [On(t)-On(t-1)] <= duration(t-1)
+            # eq: -duration(t - 1) - minimum_duration * On(t) + minimum_duration * On(t - 1) <= 0
             # Note: switchOff-step is when: On(t)-On(t-1) == -1
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
             eq_min_duration.add_summand(duration_variable, -1, time_indices[0:-1])  # duration(t-1)
@@ -396,7 +396,7 @@ class OnOffModel(ElementModel):
             eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
 
         # 4) first index:
-        # duration(t=0)= dt(0) * On(0)
+        # eq: duration(t=0)= dt(0) * On(0)
         first_index = time_indices[0]  # only first element
         eq_first = create_equation(f'{label_prefix}_firstTimeStep', self)
         eq_first.add_summand(duration_variable, 1, first_index)
