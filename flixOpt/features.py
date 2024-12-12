@@ -244,7 +244,7 @@ class OnOffModel(ElementModel):
             variable = self._defining_variables[0]
             lower_bound, upper_bound = self._defining_bounds[0]
             #### Bedingung 1) ####
-            # eq: On(t) * max(epsilon, lower_bound) <= -1 * Q_th(t)
+            # eq: On(t) * max(epsilon, lower_bound) <= Q_th(t)
             eq_on_1.add_summand(variable, -1, time_indices)
             eq_on_1.add_summand(self.on, np.maximum(system_model.epsilon, lower_bound), time_indices)
 
