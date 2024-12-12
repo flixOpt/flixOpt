@@ -349,8 +349,6 @@ class OnOffModel(ElementModel):
             eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
             eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
 
-        # TODO: Maximum Duration?? Is this not modeled yet?!!
-
         # 4) first index:
         #    eq: onHours(t=0)= dt(0) * On(0)
         first_index = time_indices[0]  # only first element
