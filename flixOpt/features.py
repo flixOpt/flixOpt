@@ -322,7 +322,7 @@ class OnOffModel(ElementModel):
 
         Example:
             binary_variable: [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, ...]
-            duration_variable: [0, 0, 1, 2, 3, 4, 0, 1, 2, 3, 0, ...]
+            duration_variable: [0, 0, 1, 2, 3, 4, 0, 1, 2, 3, 0, ...] (only if dt_in_hours=1)
 
             Here, duration_variable increments while binary_variable is 1. Minimum and maximum durations
             can be enforced to constrain how long the activity remains active.
