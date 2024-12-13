@@ -322,9 +322,9 @@ class OnOffModel(ElementModel):
 
         Example:
             binary_variable: [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, ...]
-            duration_variable: [0, 0, 1, 2, 3, 4, 0, 1, 2, 3, 0, ...] (only if dt_in_hours=1)
+            duration_in_hours: [0, 0, 1, 2, 3, 4, 0, 1, 2, 3, 0, ...] (only if dt_in_hours=1)
 
-            Here, duration_variable increments while binary_variable is 1. Minimum and maximum durations
+            Here, duration_in_hours increments while binary_variable is 1. Minimum and maximum durations
             can be enforced to constrain how long the activity remains active.
 
         Notes:
@@ -336,12 +336,12 @@ class OnOffModel(ElementModel):
             AssertionError: If the binary_variable is None, indicating the duration constraints cannot be applied.
 
         """
-        duration_variable = create_variable(
+        duration_in_hours = create_variable(
             variable_label, self, system_model.nr_of_time_steps,
             lower_bound=0,
             upper_bound=maximum_duration.active_data if maximum_duration is not None else system_model.dt_in_hours_total
         )
-        label_prefix = duration_variable.label
+        label_prefix = duration_in_hours.label
         mega = system_model.dt_in_hours_total
 
         assert binary_variable is not None, f'Duration Variable of {self.element} must be defined to add constraints'
@@ -349,21 +349,21 @@ class OnOffModel(ElementModel):
 
         # 1) eq: duration(t) - On(t) * BIG <= 0
         constraint_1 = create_equation(f'{label_prefix}_constraint_1', self, eq_type='ineq')
-        constraint_1.add_summand(duration_variable, 1)
+        constraint_1.add_summand(duration_in_hours, 1)
         constraint_1.add_summand(binary_variable, -1 * mega)
 
         # 2a) eq: duration(t) - duration(t-1) <= dt(t)
         constraint_2a = create_equation(f'{label_prefix}_constraint_2a', self, eq_type='ineq')
-        constraint_2a.add_summand(duration_variable, 1, time_indices[1:])  # duration(t)
-        constraint_2a.add_summand(duration_variable, -1, time_indices[0:-1])  # duration(t-1)
+        constraint_2a.add_summand(duration_in_hours, 1, time_indices[1:])  # duration(t)
+        constraint_2a.add_summand(duration_in_hours, -1, time_indices[0:-1])  # duration(t-1)
         constraint_2a.add_constant(system_model.dt_in_hours[1:])  # dt(t)
 
         # 2b) eq: dt(t) - BIG * ( 1-On(t) ) <= duration(t) - duration(t-1)
         # eq: -duration(t) + duration(t-1) + On(t) * BIG <= -dt(t) + BIG
         # TODO: Use maximum duration instead of BIG
         constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, eq_type='ineq')
-        constraint_2b.add_summand(duration_variable, -1, time_indices[1:])  # duration(t)
-        constraint_2b.add_summand(duration_variable, 1, time_indices[0:-1])  # duration(t-1)
+        constraint_2b.add_summand(duration_in_hours, -1, time_indices[1:])  # duration(t)
+        constraint_2b.add_summand(duration_in_hours, 1, time_indices[0:-1])  # duration(t-1)
         constraint_2b.add_summand(binary_variable, mega, time_indices[1:])  # on(t)
         constraint_2b.add_constant(-1 * system_model.dt_in_hours[1:] + mega)  # dt(t)
 
@@ -374,7 +374,7 @@ class OnOffModel(ElementModel):
             # eq: -duration(t - 1) - minimum_duration * On(t) + minimum_duration * On(t - 1) <= 0
             # Note: switchOff-step is when: On(t)-On(t-1) == -1
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
-            eq_min_duration.add_summand(duration_variable, -1, time_indices[0:-1])  # duration(t-1)
+            eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # duration(t-1)
             eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
             eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
 
@@ -382,10 +382,10 @@ class OnOffModel(ElementModel):
         # eq: duration(t=0)= dt(0) * On(0)
         first_index = time_indices[0]  # only first element
         eq_first = create_equation(f'{label_prefix}_firstTimeStep', self)
-        eq_first.add_summand(duration_variable, 1, first_index)
+        eq_first.add_summand(duration_in_hours, 1, first_index)
         eq_first.add_summand(binary_variable, -1 * system_model.dt_in_hours[first_index], first_index)
 
-        return duration_variable
+        return duration_in_hours
 
     def _add_switch_constraints(self, system_model: SystemModel):
         assert self.switch_on is not None, f'Switch On Variable of {self.element} must be defined to add constraints'
