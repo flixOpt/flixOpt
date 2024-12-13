@@ -207,13 +207,13 @@ class OnOffModel(ElementModel):
             self._add_off_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_consecutive_on_hours:
-            self.consecutive_on_hours = self._add_duration_constraints(
+            self.consecutive_on_hours = self._get_duration_in_hours(
                 'consecutiveOnHours', self.on,
                 self._on_off_parameters.consecutive_on_hours_min, self._on_off_parameters.consecutive_on_hours_max,
                 system_model, system_model.indices)
         # offHours:
         if self._on_off_parameters.use_consecutive_off_hours:
-            self.consecutive_off_hours = self._add_duration_constraints(
+            self.consecutive_off_hours = self._get_duration_in_hours(
                 'consecutiveOffHours', self.off,
                 self._on_off_parameters.consecutive_off_hours_min, self._on_off_parameters.consecutive_off_hours_max,
                 system_model, system_model.indices)
@@ -291,7 +291,7 @@ class OnOffModel(ElementModel):
         eq_off.add_summand(self.on, 1, time_indices)
         eq_off.add_constant(1)
 
-    def _add_duration_constraints(self,
+    def _get_duration_in_hours(self,
                                   variable_label: str,
                                   binary_variable: VariableTS,
                                   minimum_duration: Optional[TimeSeries],
@@ -299,7 +299,8 @@ class OnOffModel(ElementModel):
                                   system_model: SystemModel,
                                   time_indices: Union[list[int], range]) -> VariableTS:
         """
-        Adds constraints to a time-series variable to enforce duration limits based on binary activity.
+        creates duration variable and adds constraints to a time-series variable to enforce duration limits based on
+        binary activity.
 
         Parameters:
             variable_label (str):
