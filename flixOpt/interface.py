@@ -170,20 +170,20 @@ class OnOffParameters:
         return (any(param is not None for param in [self.effects_per_running_hour,
                                                     self.on_hours_total_min,
                                                     self.on_hours_total_max])
-                or self.force_on or self.use_switch_on or self.use_on_hours or self.use_off_hours or self.use_off)
+                or self.force_on or self.use_switch_on or self.use_consecutive_on_hours or self.use_consecutive_off_hours or self.use_off)
 
     @property
     def use_off(self) -> bool:
         """Determines wether the OFF Variable is needed or not"""
-        return self.use_off_hours
+        return self.use_consecutive_off_hours
 
     @property
-    def use_on_hours(self) -> bool:
+    def use_consecutive_on_hours(self) -> bool:
         """Determines wether a Variable for consecutive off hours is needed or not"""
         return any(param is not None for param in [self.consecutive_on_hours_min, self.consecutive_on_hours_max])
 
     @property
-    def use_off_hours(self) -> bool:
+    def use_consecutive_off_hours(self) -> bool:
         """Determines wether a Variable for consecutive off hours is needed or not"""
         return any(param is not None for param in [self.consecutive_off_hours_min, self.consecutive_off_hours_max])
 
