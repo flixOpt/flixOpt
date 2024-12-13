@@ -332,23 +332,6 @@ class OnOffModel(ElementModel):
               (e.g., `1 - binary_variable`).
             - Constraints ensure the duration variable properly resets or increments based on activity.
 
-        Constraints added:
-            1. Duration resets to 0 when the binary variable is 0:
-                duration(t) <= On(t) * BIG
-                (BIG = dt_in_hours_total, a large constant)
-
-            2. Increment logic:
-                a) duration(t) - duration(t-1) <= dt(t)
-                   Ensures correct increments during active periods.
-                b) -duration(t) + duration(t-1) + On(t) * BIG <= -1*dt(t) + BIG
-                   Handles state transitions between active and inactive.
-
-            3. Minimum duration enforcement (if provided):
-                Ensures the activity stays active for at least the minimum duration before switching off.
-
-            4. First time step initialization:
-                duration(t=0) = dt(0) * On(0)
-
         Raises:
             AssertionError: If the binary_variable is None, indicating the duration constraints cannot be applied.
 
