@@ -178,7 +178,9 @@ def with_matplotlib(data: pd.DataFrame,
                     figsize: Tuple[int, int] = (12, 6),
                     fig: Optional[plt.Figure] = None,
                     ax: Optional[plt.Axes] = None,
-                    show: bool = False) -> Tuple[plt.Figure, plt.Axes]:
+                    show: bool = False,
+                    path: Optional[Union[str, pathlib.Path]] = None
+                    ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plot a DataFrame with Matplotlib using stacked bars or stepped lines.
 
@@ -201,7 +203,9 @@ def with_matplotlib(data: pd.DataFrame,
         A Matplotlib axes object to plot on. If not provided, a new axes
         will be created.
     show: bool
-        Wether to show the figure after creation
+        Wether to show the figure after creation.
+    path: Union[str, pathlib.Path]
+        Path to save the figure to.
 
     Returns
     -------
@@ -285,6 +289,8 @@ def with_matplotlib(data: pd.DataFrame,
 
     if show:
         plt.show()
+    if path is not None:
+        fig.savefig(path, dpi=300)
 
     return fig, ax
 
@@ -292,7 +298,8 @@ def with_matplotlib(data: pd.DataFrame,
 def heat_map_matplotlib(data: pd.DataFrame,
                         color_map: str = 'viridis',
                         figsize: Tuple[float, float] = (12, 6),
-                        show: bool = False) -> Tuple[plt.Figure, plt.Axes]:
+                        show: bool = False,
+                        path: Optional[Union[str, pathlib.Path]] = None) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots a DataFrame as a heatmap using Matplotlib. The columns of the DataFrame will be displayed on the x-axis,
     the index will be displayed on the y-axis, and the values will represent the 'heat' intensity in the plot.
@@ -306,6 +313,10 @@ def heat_map_matplotlib(data: pd.DataFrame,
         The colormap to use for the heatmap. Default is 'viridis'. Matplotlib supports various colormaps like 'plasma', 'inferno', 'cividis', etc.
     figsize : tuple of float, optional
         The size of the figure to create. Default is (12, 6), which results in a width of 12 inches and a height of 6 inches.
+    show: bool
+        Wether to show the figure after creation.
+    path: Union[str, pathlib.Path]
+        Path to save the figure to.
 
     Returns
     -------
@@ -351,6 +362,8 @@ def heat_map_matplotlib(data: pd.DataFrame,
     fig.tight_layout()
     if show:
         plt.show()
+    if path is not None:
+        fig.savefig(path, dpi=300)
 
     return fig, ax
 
