@@ -40,9 +40,11 @@ class ElementResults:
 
 class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
-        self._path_infos = (pathlib.Path(folder) / f'{calculation_name}_infos.yaml').resolve().as_posix()
-        self._path_data = (pathlib.Path(folder) / f'{calculation_name}_data.json').resolve().as_posix()
-        self._path_results = (pathlib.Path(folder) / f'{calculation_name}_results.json').resolve().as_posix()
+        self.name = calculation_name
+        self.folder = pathlib.Path(folder)
+        self._path_infos = (self.folder / f'{calculation_name}_infos.yaml').resolve().as_posix()
+        self._path_data = (self.folder / f'{calculation_name}_data.json').resolve().as_posix()
+        self._path_results = (self.folder / f'{calculation_name}_results.json').resolve().as_posix()
 
         start_time = timeit.default_timer()
         with open(self._path_infos, 'rb') as f:
