@@ -288,27 +288,75 @@ def as_effect_dict_with_ts(name_of_param: str,
     return effect_ts_dict
 
 
-def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+
+class MultilineFormatter(logging.Formatter):
+    """
+    Custom Formatter that adds timestamps and indents subsequent lines of multiline log messages.
+    """
+
+    def format(self, record):
+        # Format the initial message (first line)
+        base_message = super().format(record)
+
+        # Split the message into lines
+        lines = base_message.splitlines()
+
+        # If the message is empty, return an appropriate placeholder
+        if not lines:
+            return super().format(record)  # Or return a custom placeholder if needed
+
+
+        # Prepare the log prefix (timestamp + log level)
+        timestamp = self.formatTime(record, self.datefmt)
+        log_level = record.levelname.ljust(8)  # Align log levels for consistency
+        log_prefix = f"{timestamp} | {log_level} |"
+
+        # Format all lines
+        first_line = [f'{log_prefix} {lines[0]}']
+        if len(lines) > 1:
+            lines = first_line + [f"{log_prefix} {line}" for line in lines[1:]]
+        else:
+            lines = first_line
+
+        return "\n".join(lines)
+
+def _get_logging_handler(log_file: Optional[str] = None) -> logging.Handler:
+    """Returns a logging handler for the given log file."""
+    if log_file is None:
+        # RichHandler for console output
+        console = Console(width=120)
+        rich_handler = RichHandler(
+            console=console,
+            rich_tracebacks=True,
+            omit_repeated_times=True,
+            show_path=False,
+            log_time_format="%Y-%m-%d %H:%M:%S",
+        )
+        rich_handler.setFormatter(logging.Formatter("%(message)s"))  # Simplified formatting
+
+        return rich_handler
+    else:
+        # FileHandler for file output
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(MultilineFormatter(
+            fmt="%(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        return file_handler
+
+
+def setup_logging(default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO',
+                  log_file: Optional[str] = 'flixOpt.log'):
     """Setup logging configuration"""
     logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
-    logging_level = get_logging_level_by_name(level_name)
-    logger.setLevel(logging_level)
-
+    logger.setLevel(get_logging_level_by_name(default_level))
     # Clear existing handlers
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # Configure the RichHandler with the custom console
-    c_handler = RichHandler(console=Console(width=120),
-                            rich_tracebacks=True,
-                            omit_repeated_times=True,
-                            show_path=False,
-                            log_time_format="%Y-%m-%d %H:%M:%S")
-    c_handler.setLevel(logging_level)
-
-    c_handler.setFormatter(logging.Formatter("%(message)s"))
-
-    logger.addHandler(c_handler)
+    logger.addHandler(_get_logging_handler())
+    if log_file is not None:
+        logger.addHandler(_get_logging_handler(log_file))
 
     return logger
 
