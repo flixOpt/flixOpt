@@ -187,7 +187,7 @@ class CalculationResults:
                        heatmap_steps_per_period: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
                        colors: Union[str, List[str]] = 'viridis',
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
-                       invert: bool = False,
+                       invert: bool = True,
                        show: bool = True,
                        save: bool = False,
                        path: Union[str, pathlib.Path, Literal['auto']] = 'auto'
