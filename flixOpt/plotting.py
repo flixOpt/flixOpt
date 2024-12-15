@@ -46,7 +46,11 @@ def with_plotly(data: pd.DataFrame,
         A Plotly figure object to plot on. If not provided, a new figure
         will be created.
     show: bool
-        Wether to show the figure after creation
+        Wether to show the figure after creation. (This includes saving the figure)
+    save: bool
+        Wether to save the figure after creation (without showing)
+    path: Union[str, pathlib.Path]
+        Path to save the figure.
 
     Returns
     -------
@@ -374,6 +378,12 @@ def heat_map_plotly(data: pd.DataFrame,
     categorical_labels : bool, optional
         If True, the x and y axes are treated as categorical data (i.e., the index and columns will not be interpreted as continuous data).
         Default is True. If False, the axes are treated as continuous, which may be useful for time series or numeric data.
+    show: bool
+        Wether to show the figure after creation. (This includes saving the figure)
+    save: bool
+        Wether to save the figure after creation (without showing)
+    path: Union[str, pathlib.Path]
+        Path to save the figure.
 
     Returns
     -------
