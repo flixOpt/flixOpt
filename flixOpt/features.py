@@ -24,7 +24,8 @@ logger = logging.getLogger('flixOpt')
 
 class InvestmentModel(ElementModel):
     """Class for modeling an investment"""
-    def __init__(self, element: Union['Flow', 'Storage'],
+    def __init__(self,
+                 element: Union['Flow', 'Storage'],
                  invest_parameters: InvestParameters,
                  defining_variable: [VariableTS],
                  relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
@@ -160,7 +161,8 @@ class OnOffModel(ElementModel):
     Class for modeling the on and off state of a variable
     If defining_bounds are given, creates sufficient lower bounds
     """
-    def __init__(self, element: Element,
+    def __init__(self,
+                 element: Element,
                  on_off_parameters: OnOffParameters,
                  defining_variables: List[VariableTS],
                  defining_bounds: List[Tuple[Numeric, Numeric]],
@@ -188,17 +190,17 @@ class OnOffModel(ElementModel):
         assert len(defining_variables) == len(defining_bounds), f'Every defining Variable needs bounds to Model OnOff'
 
     def do_modeling(self, system_model: SystemModel):
-        if self._on_off_parameters.use_on:
-            self.on = create_variable('on', self, system_model.nr_of_time_steps, is_binary=True,
-                                      previous_values=self._previous_on_values(Config.EPSILON))
-            self.total_on_hours = create_variable('totalOnHours', self, 1,
-                                                  lower_bound=self._on_off_parameters.on_hours_total_min,
-                                                  upper_bound=self._on_off_parameters.on_hours_total_max)
-            eq_total_on = create_equation('totalOnHours', self)
-            eq_total_on.add_summand(self.on, system_model.dt_in_hours, as_sum=True)
-            eq_total_on.add_summand(self.total_on_hours, -1)
+        self.on = create_variable('on', self, system_model.nr_of_time_steps, is_binary=True,
+                                  previous_values=self._previous_on_values(Config.EPSILON))
 
-            self._add_on_constraints(system_model, system_model.indices)
+        self.total_on_hours = create_variable('totalOnHours', self, 1,
+                                              lower_bound=self._on_off_parameters.on_hours_total_min,
+                                              upper_bound=self._on_off_parameters.on_hours_total_max)
+        eq_total_on = create_equation('totalOnHours', self)
+        eq_total_on.add_summand(self.on, system_model.dt_in_hours, as_sum=True)
+        eq_total_on.add_summand(self.total_on_hours, -1)
+
+        self._add_on_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_off:
             self.off = create_variable('off', self, system_model.nr_of_time_steps, is_binary=True,
@@ -211,13 +213,13 @@ class OnOffModel(ElementModel):
                 'consecutiveOnHours', self.on,
                 self._on_off_parameters.consecutive_on_hours_min, self._on_off_parameters.consecutive_on_hours_max,
                 system_model, system_model.indices)
-        # offHours:
+
         if self._on_off_parameters.use_consecutive_off_hours:
             self.consecutive_off_hours = self._get_duration_in_hours(
                 'consecutiveOffHours', self.off,
                 self._on_off_parameters.consecutive_off_hours_min, self._on_off_parameters.consecutive_off_hours_max,
                 system_model, system_model.indices)
-        # Var SwitchOn
+
         if self._on_off_parameters.use_switch_on:
             self.switch_on = create_variable('switchOn', self, system_model.nr_of_time_steps, is_binary=True)
             self.switch_off = create_variable('switchOff', self, system_model.nr_of_time_steps, is_binary=True)

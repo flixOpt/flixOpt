@@ -108,9 +108,19 @@ class OnOffParameters:
                  consecutive_off_hours_min: Optional[Numeric] = None,
                  consecutive_off_hours_max: Optional[Numeric] = None,
                  switch_on_total_max: Optional[int] = None,
-                 force_on: bool = False,
                  force_switch_on: bool = False):
         """
+        on_off_parameters class for modeling on and off state of an Element.
+        If no parameters are given, the default is to create a binary variable for the on state
+        without further constraints or effects and a variable for the total on hours.
+
+        Parameters
+        ----------
+        effects_per_switch_on : scalar, array, TimeSeriesData, optional
+            cost of one switch from off (var_on=0) to on (var_on=1),
+            unit i.g. in Euro
+        effects_per_running_hour : scalar or TS, optional
+            costs for operating, i.g. in € per hour
         on_hours_total_min : scalar, optional
             min. overall sum of operating hours.
         on_hours_total_max : scalar, optional
@@ -125,13 +135,10 @@ class OnOffParameters:
             (last off-time period of timeseries is not checked and can be shorter)
         consecutive_off_hours_max : scalar, optional
             max sum of non-operating hours in one piece
-        effects_per_switch_on : scalar, array, TimeSeriesData, optional
-            cost of one switch from off (var_on=0) to on (var_on=1),
-            unit i.g. in Euro
         switch_on_total_max : integer, optional
             max nr of switchOn operations
-        effects_per_running_hour : scalar or TS, optional
-            costs for operating, i.g. in € per hour
+        force_switch_on : bool
+            force creation of switch on variable, even if there is no switch_on_total_max
         """
         # self.flows_defining_on = flows_defining_on
         # self.on_values_before_begin = on_values_before_begin
@@ -144,7 +151,6 @@ class OnOffParameters:
         self.consecutive_off_hours_min: Numeric_TS = consecutive_off_hours_min  # TimeSeries
         self.consecutive_off_hours_max: Numeric_TS = consecutive_off_hours_max  # TimeSeries
         self.switch_on_total_max = switch_on_total_max
-        self.force_on = force_on  # Can be set to True if needed, even after creation
         self.force_switch_on = force_switch_on
 
     def transform_data(self, owner: 'Element'):
@@ -162,14 +168,6 @@ class OnOffParameters:
 
     def __str__(self):
         return get_object_infos_as_str(self)
-
-    @property
-    def use_on(self) -> bool:
-        """Determines wether the ON Variable is needed or not"""
-        return (any(param is not None for param in [self.effects_per_running_hour,
-                                                    self.on_hours_total_min,
-                                                    self.on_hours_total_max])
-                or self.force_on or self.use_switch_on or self.use_consecutive_on_hours or self.use_consecutive_off_hours or self.use_off)
 
     @property
     def use_off(self) -> bool:

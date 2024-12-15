@@ -97,9 +97,9 @@ class TestSimple(BaseTest):
                      maximum_operation_per_hour=1000)
 
         aBoiler = Boiler('Boiler', eta=0.5,
-                         Q_th=Flow('Q_th', bus=Fernwaerme, size=50, relative_minimum=5 / 50, relative_maximum=1, can_be_off=OnOffParameters(force_on=True)),
+                         Q_th=Flow('Q_th', bus=Fernwaerme, size=50, relative_minimum=5 / 50, relative_maximum=1, can_be_off=OnOffParameters()),
                          Q_fu=Flow('Q_fu', bus=Gas))
-        aKWK = CHP('CHP_unit', eta_th=0.5, eta_el=0.4, P_el=Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60, can_be_off=OnOffParameters(force_on=True)),
+        aKWK = CHP('CHP_unit', eta_th=0.5, eta_el=0.4, P_el=Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60, can_be_off=OnOffParameters()),
                    Q_th=Flow('Q_th', bus=Fernwaerme), Q_fu=Flow('Q_fu', bus=Gas))
         aSpeicher = Storage('Speicher', charging=Flow('Q_th_load', bus=Fernwaerme, size=1e4),
                             discharging=Flow('Q_th_unload', bus=Fernwaerme, size=1e4),

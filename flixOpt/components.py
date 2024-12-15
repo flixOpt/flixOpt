@@ -305,9 +305,7 @@ class TransmissionModel(ComponentModel):
         if (self.element.absolute_losses is not None) and np.any(self.element.absolute_losses.active_data != 0):
             for flow in self.element.inputs + self.element.outputs:
                 if flow.on_off_parameters is None:
-                    flow.on_off_parameters = OnOffParameters(force_on=True)
-                else:
-                    flow.on_off_parameters.force_on = True
+                    flow.on_off_parameters = OnOffParameters()
 
         # Make sure either None or both in Flows have InvestParameters
         if self.element.in2 is not None:
