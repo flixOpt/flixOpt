@@ -42,6 +42,10 @@ def with_plotly(data: pd.DataFrame,
     colors : List[str], str, default='viridis'
         A List of colors (as str) or a name of a colorscale (e.g., 'viridis', 'plasma') to use for
         coloring the data series.
+    title: str
+        The title of the plot.
+    ylabel: str
+        The label for the y-axis.
     fig : go.Figure, optional
         A Plotly figure object to plot on. If not provided, a new figure
         will be created.
