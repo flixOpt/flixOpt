@@ -440,16 +440,12 @@ class ComponentModel(ElementModel):
         if self.element.on_off_parameters:
             for flow in all_flows:
                 if flow.on_off_parameters is None:
-                    flow.on_off_parameters = OnOffParameters(force_on=True)
-                else:
-                    flow.on_off_parameters.force_on = True
+                    flow.on_off_parameters = OnOffParameters()
 
         if self.element.prevent_simultaneous_flows:
             for flow in self.element.prevent_simultaneous_flows:
                 if flow.on_off_parameters is None:
-                    flow.on_off_parameters = OnOffParameters(force_on=True)
-                else:
-                    flow.on_off_parameters.force_on = True
+                    flow.on_off_parameters = OnOffParameters()
 
         self.sub_models.extend([flow.create_model() for flow in all_flows])
         for sub_model in self.sub_models:
