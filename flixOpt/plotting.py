@@ -25,7 +25,9 @@ def with_plotly(data: pd.DataFrame,
                 title: str = '',
                 ylabel: str = '',
                 fig: Optional[go.Figure] = None,
-                show: bool = False) -> go.Figure:
+                show: bool = False,
+                save: bool = False,
+                path: Union[str, pathlib.Path] = 'temp-plot.html') -> go.Figure:
     """
     Plot a DataFrame with Plotly, using either stacked bars or stepped lines.
 
@@ -40,11 +42,19 @@ def with_plotly(data: pd.DataFrame,
     colors : List[str], str, default='viridis'
         A List of colors (as str) or a name of a colorscale (e.g., 'viridis', 'plasma') to use for
         coloring the data series.
+    title: str
+        The title of the plot.
+    ylabel: str
+        The label for the y-axis.
     fig : go.Figure, optional
         A Plotly figure object to plot on. If not provided, a new figure
         will be created.
     show: bool
-        Wether to show the figure after creation
+        Wether to show the figure after creation. (This includes saving the figure)
+    save: bool
+        Wether to save the figure after creation (without showing)
+    path: Union[str, pathlib.Path]
+        Path to save the figure.
 
     Returns
     -------
@@ -157,8 +167,12 @@ def with_plotly(data: pd.DataFrame,
         )
     )
 
+    if isinstance(path, pathlib.Path):
+        path = path.resolve().as_posix()
     if show:
-        plotly.offline.plot(fig)
+        plotly.offline.plot(fig, filename=path)
+    elif save:  # If show, the file is saved anyway
+        fig.write_html(path)
     return fig
 
 
@@ -168,7 +182,9 @@ def with_matplotlib(data: pd.DataFrame,
                     figsize: Tuple[int, int] = (12, 6),
                     fig: Optional[plt.Figure] = None,
                     ax: Optional[plt.Axes] = None,
-                    show: bool = False) -> Tuple[plt.Figure, plt.Axes]:
+                    show: bool = False,
+                    path: Optional[Union[str, pathlib.Path]] = None
+                    ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plot a DataFrame with Matplotlib using stacked bars or stepped lines.
 
@@ -191,7 +207,9 @@ def with_matplotlib(data: pd.DataFrame,
         A Matplotlib axes object to plot on. If not provided, a new axes
         will be created.
     show: bool
-        Wether to show the figure after creation
+        Wether to show the figure after creation.
+    path: Union[str, pathlib.Path]
+        Path to save the figure to.
 
     Returns
     -------
@@ -275,6 +293,8 @@ def with_matplotlib(data: pd.DataFrame,
 
     if show:
         plt.show()
+    if path is not None:
+        fig.savefig(path, dpi=300)
 
     return fig, ax
 
@@ -282,7 +302,8 @@ def with_matplotlib(data: pd.DataFrame,
 def heat_map_matplotlib(data: pd.DataFrame,
                         color_map: str = 'viridis',
                         figsize: Tuple[float, float] = (12, 6),
-                        show: bool = False) -> Tuple[plt.Figure, plt.Axes]:
+                        show: bool = False,
+                        path: Optional[Union[str, pathlib.Path]] = None) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots a DataFrame as a heatmap using Matplotlib. The columns of the DataFrame will be displayed on the x-axis,
     the index will be displayed on the y-axis, and the values will represent the 'heat' intensity in the plot.
@@ -296,6 +317,10 @@ def heat_map_matplotlib(data: pd.DataFrame,
         The colormap to use for the heatmap. Default is 'viridis'. Matplotlib supports various colormaps like 'plasma', 'inferno', 'cividis', etc.
     figsize : tuple of float, optional
         The size of the figure to create. Default is (12, 6), which results in a width of 12 inches and a height of 6 inches.
+    show: bool
+        Wether to show the figure after creation.
+    path: Union[str, pathlib.Path]
+        Path to save the figure to.
 
     Returns
     -------
@@ -341,6 +366,8 @@ def heat_map_matplotlib(data: pd.DataFrame,
     fig.tight_layout()
     if show:
         plt.show()
+    if path is not None:
+        fig.savefig(path, dpi=300)
 
     return fig, ax
 
@@ -351,7 +378,9 @@ def heat_map_plotly(data: pd.DataFrame,
                     xlabel: str = 'Periods',
                     ylabel: str = 'Step',
                     categorical_labels: bool = True,
-                    show: bool = False) -> go.Figure:
+                    show: bool = False,
+                    save: bool = False,
+                    path: Union[str, pathlib.Path] = 'temp-plot.html') -> go.Figure:
     """
     Plots a DataFrame as a heatmap using Plotly. The columns of the DataFrame will be mapped to the x-axis,
     and the index will be displayed on the y-axis. The values in the DataFrame will represent the 'heat' in the plot.
@@ -366,6 +395,12 @@ def heat_map_plotly(data: pd.DataFrame,
     categorical_labels : bool, optional
         If True, the x and y axes are treated as categorical data (i.e., the index and columns will not be interpreted as continuous data).
         Default is True. If False, the axes are treated as continuous, which may be useful for time series or numeric data.
+    show: bool
+        Wether to show the figure after creation. (This includes saving the figure)
+    save: bool
+        Wether to save the figure after creation (without showing)
+    path: Union[str, pathlib.Path]
+        Path to save the figure.
 
     Returns
     -------
@@ -405,8 +440,13 @@ def heat_map_plotly(data: pd.DataFrame,
         xaxis=dict(title=xlabel, side='top', type='category' if categorical_labels else None),
         yaxis=dict(title=ylabel, autorange='reversed', type='category' if categorical_labels else None)
     )
+
+    if isinstance(path, pathlib.Path):
+        path = path.resolve().as_posix()
     if show:
-        plotly.offline.plot(fig)
+        plotly.offline.plot(fig, filename=path)
+    elif save:  # If show, the file is saved anyway
+        fig.write_html(path)
 
     return fig
 

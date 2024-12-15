@@ -37,12 +37,13 @@ class ElementResults:
         return flatten_dict(self.all_results)
 
 
-
 class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
-        self._path_infos = (pathlib.Path(folder) / f'{calculation_name}_infos.yaml').resolve().as_posix()
-        self._path_data = (pathlib.Path(folder) / f'{calculation_name}_data.json').resolve().as_posix()
-        self._path_results = (pathlib.Path(folder) / f'{calculation_name}_results.json').resolve().as_posix()
+        self.name = calculation_name
+        self.folder = pathlib.Path(folder)
+        self._path_infos = (self.folder / f'{calculation_name}_infos.yaml').resolve().as_posix()
+        self._path_data = (self.folder / f'{calculation_name}_data.json').resolve().as_posix()
+        self._path_results = (self.folder / f'{calculation_name}_results.json').resolve().as_posix()
 
         start_time = timeit.default_timer()
         with open(self._path_infos, 'rb') as f:
@@ -186,8 +187,11 @@ class CalculationResults:
                        heatmap_steps_per_period: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
                        colors: Union[str, List[str]] = 'viridis',
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
-                       invert: bool = False,
-                       show: bool = True):
+                       invert: bool = True,
+                       show: bool = True,
+                       save: bool = False,
+                       path: Union[str, pathlib.Path, Literal['auto']] = 'auto'
+                       ) -> Union['go.Figure', Tuple['plt.Figure', 'plt.Axes']]:
         """
         Plots the operation results for a specified Element using the chosen plotting engine and mode.
 
@@ -210,7 +214,11 @@ class CalculationResults:
         invert : bool, default=False
             Whether to invert the input and output factors.
         show : bool, default=True
-            Whether to display the plot immediately.
+            Whether to display the plot immediately. (This includes saving the plot to file when engine='plotly')
+        save : bool, default=False
+            Whether to save the plot to a file.
+        path : Union[str, pathlib.Path, Literal['auto']], default='auto'
+            The path to save the plot to. If 'auto', the plot is saved to an automatically named file.
 
         Returns
         -------
@@ -222,9 +230,7 @@ class CalculationResults:
         ValueError
             If an invalid engine or color configuration is provided for heatmap mode.
         """
-        data = self.to_dataframe(label, variable_name,
-                                 input_factor=-1 if not invert else 1,
-                                 output_factor=1 if not invert else -1)
+
         if mode == 'heatmap' and not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
             logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
         if mode == 'heatmap' and not isinstance(colors, str):
@@ -232,20 +238,51 @@ class CalculationResults:
                              f'Try "Turbo", "Hot", or "Viridis" instead.')
 
         title = f'{variable_name.replace("_", " ").title()} of {label}'
+        if path == 'auto':
+            file_suffix = 'html' if engine == 'plotly' else 'png'
+            if mode == 'heatmap':
+                path = self.folder / f'{title} ({mode} {heatmap_periods}-{heatmap_steps_per_period}).{file_suffix}'
+            else:
+                path = self.folder / f'{title} ({mode}).{file_suffix}'
+
+        data = self.to_dataframe(label, variable_name,
+                                 input_factor=-1 if not invert else 1,
+                                 output_factor=1 if not invert else -1)
+        if mode == 'heatmap':
+            heatmap_data = plotting.heat_map_data_from_df(data,
+                                                          heatmap_periods,
+                                                          heatmap_steps_per_period,
+                                                          'ffill')
 
         if engine == 'plotly':
             if mode == 'heatmap':
-                heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-                return plotting.heat_map_plotly(heatmap_data, show=show, title=title, color_map=colors)
+                return plotting.heat_map_plotly(heatmap_data,
+                                                title=title,
+                                                color_map=colors,
+                                                show=show,
+                                                save=save,
+                                                path=path)
             else:
-                return plotting.with_plotly(data=data, mode=mode, show=show, title=title, colors=colors)
+                return plotting.with_plotly(data=data,
+                                            mode=mode,
+                                            show=show,
+                                            title=title,
+                                            colors=colors,
+                                            save=save,
+                                            path=path)
 
         elif engine == 'matplotlib':
             if mode == 'heatmap':
-                heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-                return plotting.heat_map_matplotlib(heatmap_data, show=show, color_map=colors)
+                return plotting.heat_map_matplotlib(heatmap_data,
+                                                    color_map=colors,
+                                                    show=show,
+                                                    path=path if save else None)
             else:
-                return plotting.with_matplotlib(data=data, mode=mode, show=show, colors=colors)
+                return plotting.with_matplotlib(data=data,
+                                                mode=mode,
+                                                colors=colors,
+                                                show=show,
+                                                path=path if save else None)
         else:
             raise ValueError(f'Unknown Engine: {engine=}')
 
@@ -255,7 +292,10 @@ class CalculationResults:
                      mode: Literal['bar', 'line', 'area'] = 'area',
                      colors: Union[str, List[str]] = 'viridis',
                      invert: bool = True,
-                     show: bool = True):
+                     show: bool = True,
+                     save: bool = False,
+                     path: Union[str, pathlib.Path, Literal['auto']] = 'auto'
+                     ):
         """
         Plots the storage operation results for a specified Storage Element, including its charge state.
 
@@ -272,22 +312,37 @@ class CalculationResults:
         invert : bool, default=True
             Whether to invert the input and output factors.
         show : bool, default=True
-            Whether to display the plot immediately.
+            Whether to display the plot immediately. (This includes saving the plot to file when engine='plotly')
+        save : bool, default=False
+            Whether to save the plot to a file.
+        path : Union[str, pathlib.Path, Literal['auto']], default='auto'
+            The path to save the plot to. If 'auto', the plot is saved to an automatically named file.
 
         Returns
         -------
         plotly.graph_objs.Figure
             The generated Plotly figure object with the storage operation plot.
         """
-        fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False, colors=colors)
+        fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False, colors=colors,
+                                  save=False)
         fig.add_trace(plotly.graph_objs.Scatter(
             x=self.time_with_end,
             y={**self.component_results, **self.bus_results}[label].variables['charge_state'],
             mode='lines',
             name='Charge State',
         ))
+
+        title = f'{variable_name.replace("_", " ").title()} and Charge State of {label}'
+        fig.update_layout(title=title)
+
+        if path == 'auto':
+            path = self.folder / f'{title} ({mode}).html'
+            path = path.resolve().as_posix()
         if show:
-            plotly.offline.plot(fig)
+            plotly.offline.plot(fig, filename=path)
+        elif save:  # If show, the file is saved anyway
+            fig.write_html(path)
+
         return fig
 
     def visualize_network(self,
