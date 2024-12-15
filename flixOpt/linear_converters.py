@@ -249,7 +249,7 @@ def check_bounds(value: Numeric_TS,
     if isinstance(upper_bound, TimeSeriesData):
         upper_bound = upper_bound.data
     if np.any(value < lower_bound):
-        raise Exception(f'{label} is below its {lower_bound=}!')
+        logger.warning(f'{label} is below its {lower_bound=}!')
     if np.any(value >= upper_bound):
-        raise Exception(f'{label} is above its {upper_bound=}!')
+        logger.warning(f'{label} is above its {upper_bound=}!')
     
