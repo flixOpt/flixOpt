@@ -733,8 +733,14 @@ class GurobiSolver(Solver):
             )
 
             self.objective = modeling_language.model.objective.expr()
-            self.termination_message = self._results['Solver'][0]['Termination message']
-            self.best_bound = self._results['Problem'][0]['Lower bound']
+            self.termination_message = self._results.solver.termination_message
+            self.best_bound = self._results.problem.lower_bound
+
+            from pyomo.opt import SolverStatus, TerminationCondition
+            if not (self._results.solver.status == SolverStatus.ok and
+                    self._results.solver.termination_condition == TerminationCondition.optimal):
+                logger.warning(f'Solver ended with status {self._results.solver.status} and '
+                               f'termination condition {self._results.solver.termination_condition}')
             try:
                 self.log = SolverLog('gurobi', self.logfile_name)
             except Exception as e:
