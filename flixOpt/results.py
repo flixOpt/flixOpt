@@ -213,7 +213,7 @@ class CalculationResults:
         invert : bool, default=False
             Whether to invert the input and output factors.
         show : bool, default=True
-            Whether to display the plot immediately. (This includes saving the plot to file when plotly is used)
+            Whether to display the plot immediately. (This includes saving the plot to file when engine='plotly')
         save : bool, default=False
             Whether to save the plot to a file.
         path : Union[str, pathlib.Path, Literal['auto']], default='auto'
@@ -269,13 +269,15 @@ class CalculationResults:
         elif engine == 'matplotlib':
             if mode == 'heatmap':
                 return plotting.heat_map_matplotlib(heatmap_data,
+                                                    color_map=colors,
                                                     show=show,
-                                                    color_map=colors)
+                                                    path=path if save else None)
             else:
                 return plotting.with_matplotlib(data=data,
                                                 mode=mode,
+                                                colors=colors,
                                                 show=show,
-                                                colors=colors)
+                                                path=path if save else None)
         else:
             raise ValueError(f'Unknown Engine: {engine=}')
 
