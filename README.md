@@ -31,7 +31,7 @@ pip install git+https://github.com/flixOpt/flixOpt.git
     - **Flow**: A Flow represents a stream of matter or energy. In an Energy-System, it could be electricity [kW]
     - **Bus**: A Bus represents a balancing node in the Energy-System, typically connecting a demand to a supply.
     - **Component**: A Component is a physical entity that consumes or produces matter or energy. It can also transform matter or energy into other kinds of matter or energy.
-    - **Effect**: Flows and Components can have Effects, related to their usage (or size). Common effects are costs, CO2 emissions, primary energy or area demand. One Effect is used as the optimization target.
+    - **Effect**: Flows and Components can have Effects, related to their usage (or size). Common effects are *costs*, *CO2-emissions*, *primary-energy-demand* or *area-demand*. One Effect is used as the optimization target. The others can be constrained.
   - To simplify the modeling process, may high-level **Components** (CHP, Boiler, Heat Pump, Cooling Tower, Storage, etc.) are availlable.
 
 ### 🎛️ ...with low-level control
@@ -86,16 +86,17 @@ flixOpt offers three calculation modes, tailored to different performance and ac
 
 ## 🏗️ Architecture
 
+- **Minimal coupling to Pyomo**
+  - Included independent module is used to organize variables and equations, independently of a specific modeling language.
+  - While currently only working with [Pyomo](http://www.pyomo.org/), flixOpt is designed to work with different modeling languages with minor modifications ([cvxpy](https://www.cvxpy.org)).
+
+- **File-based Post-Processing Unit**
+  - Results are saved to .json and .yaml files for easy access and analysis anytime.
+  - Internal plotting functions utilizing matplotlib, plotly and pandas simplify results visualization and reporting.
+
 - **OOP**  
   - utilizing the Python object-oriented programming paradigm, flixOpt classes are designed to be easily extensible and customizable.
 
-- **Reliance on Pyomo**  
-  - Included independent module is used to organize variables and equations, independently of a specific modeling language.
-  - While currently only working with [Pyomo](http://www.pyomo.org/), flixOpt is designed to work with different modeling languages with minor modifications.
-
-- **Post-Processing Unit**
-  - Internal plotting functions utilizing matplotlib, plotly and pandas simplify results visualization and reporting.
-  - Results are saved to .json and .yaml files for easy access and analysis anytime.
 
 ![Architecture Diagram](/pics/architecture_flixOpt.png)
 
