@@ -46,7 +46,7 @@ class Boiler(LinearConverter):
         self.Q_fu = Q_fu
         self.Q_th = Q_th
 
-        check_bounds(eta, 'eta', 0+1e-10, 1-1e-10)
+        check_bounds(eta, 'eta', 0, 1)
 
 
 class Power2Heat(LinearConverter):
@@ -79,7 +79,7 @@ class Power2Heat(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(eta, 'eta',                0+1e-10, 1-1e-10)
+        check_bounds(eta, 'eta', 0, 1)
 
 
 class HeatPump(LinearConverter):
@@ -111,7 +111,7 @@ class HeatPump(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(COP, 'COP',  1 + 1e-10, 20 - 1e-10)
+        check_bounds(COP, 'COP', 1, 20)
 
 
 class CoolingTower(LinearConverter):
@@ -191,9 +191,9 @@ class CHP(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(eta_th, 'eta_th',                0+1e-10, 1-1e-10)
-        check_bounds(eta_el, 'eta_el',                0+1e-10, 1-1e-10)
-        check_bounds(eta_el+eta_th, 'eta_th+eta_el',  0+1e-10, 1-1e-10)
+        check_bounds(eta_th, 'eta_th',0 , 1)
+        check_bounds(eta_el, 'eta_el', 0 , 1)
+        check_bounds(eta_el+eta_th, 'eta_th+eta_el', 0 , 1)
 
 
 class HeatPumpWithSource(LinearConverter):
@@ -235,7 +235,7 @@ class HeatPumpWithSource(LinearConverter):
         self.Q_ab = Q_ab
         self.Q_th = Q_th
 
-        check_bounds(COP, 'eta_th', 0 + 1e-10, 20 - 1e-10)
+        check_bounds(COP, 'eta_th', 1, 20)
 
 
 def check_bounds(value: Numeric_TS,
