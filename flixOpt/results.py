@@ -238,7 +238,11 @@ class CalculationResults:
 
         title = f'{variable_name.replace("_", " ").title()} of {label}'
         if path == 'auto':
-            path = pathlib.Path(f'{title}.html')
+            file_suffix = 'html' if engine == 'plotly' else 'png'
+            if mode == 'heatmap':
+                path = pathlib.Path(f'{title} ({mode} {heatmap_periods}-{heatmap_steps_per_period}).{file_suffix}')
+            else:
+                path = pathlib.Path(f'{title} ({mode}).{file_suffix}')
 
         data = self.to_dataframe(label, variable_name,
                                  input_factor=-1 if not invert else 1,
