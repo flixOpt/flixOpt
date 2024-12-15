@@ -74,6 +74,8 @@ def with_plotly(data: pd.DataFrame,
     >>> fig.show()
     """
     assert mode in ['bar', 'line', 'area'], f"'mode' must be one of {['bar', 'line', 'area']}"
+    if data.empty:
+        return go.Figure()
     if isinstance(colors, str):
         colorscale = px.colors.get_colorscale(colors)
         colors = px.colors.sample_colorscale(
