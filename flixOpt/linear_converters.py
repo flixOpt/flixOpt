@@ -242,14 +242,32 @@ def check_bounds(value: Numeric_TS,
                  label: str,
                  lower_bound: Numeric_TS,
                  upper_bound: Numeric_TS):
+    """
+    Check if the value is within the bounds. The bounds are exclusive.
+    If not, log a warning.
+    Parameters
+    ----------
+    value: Numeric_TS
+        The value to check.
+    label: str
+        The label of the value.
+    lower_bound: Numeric_TS
+        The lower bound.
+    upper_bound: Numeric_TS
+        The upper bound.
+
+    Returns
+    -------
+
+    """
     if isinstance(value, TimeSeriesData):
         value = value.data
     if isinstance(lower_bound, TimeSeriesData):
         lower_bound = lower_bound.data
     if isinstance(upper_bound, TimeSeriesData):
         upper_bound = upper_bound.data
-    if not np.all(value >= lower_bound):
-        logger.warning(f"{label} is below the lower bound: {lower_bound}.")
-    if not np.all(value <= upper_bound):
-        logger.warning(f"{label} exceeds the upper bound: {upper_bound}.")
+    if not np.all(value > lower_bound):
+        logger.warning(f"{label} is equal orbelow the lower bound: {lower_bound}.")
+    if not np.all(value < upper_bound):
+        logger.warning(f"{label} exceeds or matches the upper bound: {upper_bound}.")
     
