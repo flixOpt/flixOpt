@@ -25,7 +25,9 @@ def with_plotly(data: pd.DataFrame,
                 title: str = '',
                 ylabel: str = '',
                 fig: Optional[go.Figure] = None,
-                show: bool = False) -> go.Figure:
+                show: bool = False,
+                save: bool = False,
+                path: Union[str, pathlib.Path] = 'temp-plot.html') -> go.Figure:
     """
     Plot a DataFrame with Plotly, using either stacked bars or stepped lines.
 
@@ -157,8 +159,12 @@ def with_plotly(data: pd.DataFrame,
         )
     )
 
+    if isinstance(path, pathlib.Path):
+        path = path.resolve().as_posix()
     if show:
-        plotly.offline.plot(fig)
+        plotly.offline.plot(fig, filename=path)
+    elif save:  # If show, the file is saved anyway
+        fig.write_html(path)
     return fig
 
 
@@ -351,7 +357,9 @@ def heat_map_plotly(data: pd.DataFrame,
                     xlabel: str = 'Periods',
                     ylabel: str = 'Step',
                     categorical_labels: bool = True,
-                    show: bool = False) -> go.Figure:
+                    show: bool = False,
+                    save: bool = False,
+                    path: Union[str, pathlib.Path] = 'temp-plot.html') -> go.Figure:
     """
     Plots a DataFrame as a heatmap using Plotly. The columns of the DataFrame will be mapped to the x-axis,
     and the index will be displayed on the y-axis. The values in the DataFrame will represent the 'heat' in the plot.
@@ -405,8 +413,13 @@ def heat_map_plotly(data: pd.DataFrame,
         xaxis=dict(title=xlabel, side='top', type='category' if categorical_labels else None),
         yaxis=dict(title=ylabel, autorange='reversed', type='category' if categorical_labels else None)
     )
+
+    if isinstance(path, pathlib.Path):
+        path = path.resolve().as_posix()
     if show:
-        plotly.offline.plot(fig)
+        plotly.offline.plot(fig, filename=path)
+    elif save:  # If show, the file is saved anyway
+        fig.write_html(path)
 
     return fig
 
