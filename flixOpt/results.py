@@ -37,7 +37,6 @@ class ElementResults:
         return flatten_dict(self.all_results)
 
 
-
 class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
         self.name = calculation_name
@@ -242,9 +241,9 @@ class CalculationResults:
         if path == 'auto':
             file_suffix = 'html' if engine == 'plotly' else 'png'
             if mode == 'heatmap':
-                path = pathlib.Path(f'{title} ({mode} {heatmap_periods}-{heatmap_steps_per_period}).{file_suffix}')
+                path = self.folder / f'{title} ({mode} {heatmap_periods}-{heatmap_steps_per_period}).{file_suffix}'
             else:
-                path = pathlib.Path(f'{title} ({mode}).{file_suffix}')
+                path = self.folder / f'{title} ({mode}).{file_suffix}'
 
         data = self.to_dataframe(label, variable_name,
                                  input_factor=-1 if not invert else 1,
