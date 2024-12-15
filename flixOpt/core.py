@@ -8,6 +8,8 @@ import logging
 import inspect
 
 import numpy as np
+from rich.logging import RichHandler
+from rich.console import Console
 
 from . import utils
 
@@ -286,37 +288,6 @@ def as_effect_dict_with_ts(name_of_param: str,
     return effect_ts_dict
 
 
-# TODO: Move logging to utils.py
-class CustomFormatter(logging.Formatter):
-    # ANSI escape codes for colors
-    COLORS = {
-        'DEBUG': '\033[96m',    # Cyan
-        'INFO': '\033[92m',     # Green
-        'WARNING': '\033[93m',  # Yellow
-        'ERROR': '\033[91m',    # Red
-        'CRITICAL': '\033[91m\033[1m',  # Bold Red
-    }
-    RESET = '\033[0m'
-
-    def format(self, record):
-        log_color = self.COLORS.get(record.levelname, self.RESET)
-        original_message = record.getMessage()
-        message_lines = original_message.split('\n')
-
-        # Create a formatted message for each line separately
-        formatted_lines = []
-        for line in message_lines:
-            temp_record = logging.LogRecord(
-                record.name, record.levelno, record.pathname, record.lineno,
-                line, record.args, record.exc_info, record.funcName, record.stack_info
-            )
-            formatted_line = super().format(temp_record)
-            formatted_lines.append(f"{log_color}{formatted_line}{self.RESET}")
-
-        formatted_message = '\n'.join(formatted_lines)
-        return formatted_message
-
-
 def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
     """Setup logging configuration"""
     logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
@@ -327,15 +298,16 @@ def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRIT
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # Create console handler
-    c_handler = logging.StreamHandler()
+    # Configure the RichHandler with the custom console
+    c_handler = RichHandler(console=Console(width=120),
+                            rich_tracebacks=True,
+                            omit_repeated_times=True,
+                            show_path=False,
+                            log_time_format="%Y-%m-%d %H:%M:%S")
     c_handler.setLevel(logging_level)
 
-    # Create a clean and aligned formatter
-    log_format = '%(asctime)s - %(levelname)-8s : %(message)s'
-    date_format = '%Y-%m-%d %H:%M:%S'
-    c_format = CustomFormatter(log_format, datefmt=date_format)
-    c_handler.setFormatter(c_format)
+    c_handler.setFormatter(logging.Formatter("%(message)s"))
+
     logger.addHandler(c_handler)
 
     return logger
