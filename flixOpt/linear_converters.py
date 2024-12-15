@@ -46,7 +46,7 @@ class Boiler(LinearConverter):
         self.Q_fu = Q_fu
         self.Q_th = Q_th
 
-        check_bounds(eta, 'eta', 0+1e-10, 1-1e-10)
+        check_bounds(eta, 'eta', self.label_full, 0, 1)
 
 
 class Power2Heat(LinearConverter):
@@ -79,7 +79,7 @@ class Power2Heat(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(eta, 'eta',                0+1e-10, 1-1e-10)
+        check_bounds(eta, 'eta', self.label_full, 0, 1)
 
 
 class HeatPump(LinearConverter):
@@ -111,7 +111,7 @@ class HeatPump(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(COP, 'COP',  1 + 1e-10, 20 - 1e-10)
+        check_bounds(COP, 'COP', self.label_full, 1, 20)
 
 
 class CoolingTower(LinearConverter):
@@ -145,7 +145,7 @@ class CoolingTower(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(specific_electricity_demand, 'specific_electricity_demand', 0, 1)
+        check_bounds(specific_electricity_demand, 'specific_electricity_demand', self.label_full, 0, 1)
 
 
 class CHP(LinearConverter):
@@ -191,9 +191,9 @@ class CHP(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(eta_th, 'eta_th',                0+1e-10, 1-1e-10)
-        check_bounds(eta_el, 'eta_el',                0+1e-10, 1-1e-10)
-        check_bounds(eta_el+eta_th, 'eta_th+eta_el',  0+1e-10, 1-1e-10)
+        check_bounds(eta_th, 'eta_th', self.label_full,0 , 1)
+        check_bounds(eta_el, 'eta_el', self.label_full, 0 , 1)
+        check_bounds(eta_el+eta_th, 'eta_th+eta_el', self.label_full, 0 , 1)
 
 
 class HeatPumpWithSource(LinearConverter):
@@ -235,21 +235,43 @@ class HeatPumpWithSource(LinearConverter):
         self.Q_ab = Q_ab
         self.Q_th = Q_th
 
-        check_bounds(COP, 'eta_th', 0 + 1e-10, 20 - 1e-10)
+        check_bounds(COP, 'eta_th', self.label_full, 1, 20)
 
 
 def check_bounds(value: Numeric_TS,
-                 label: str,
+                 parameter_label: str,
+                 element_label: str,
                  lower_bound: Numeric_TS,
                  upper_bound: Numeric_TS):
+    """
+    Check if the value is within the bounds. The bounds are exclusive.
+    If not, log a warning.
+    Parameters
+    ----------
+    value: Numeric_TS
+        The value to check.
+    parameter_label: str
+        The label of the value.
+    element_label: str
+        The label of the element.
+    lower_bound: Numeric_TS
+        The lower bound.
+    upper_bound: Numeric_TS
+        The upper bound.
+
+    Returns
+    -------
+
+    """
     if isinstance(value, TimeSeriesData):
         value = value.data
     if isinstance(lower_bound, TimeSeriesData):
         lower_bound = lower_bound.data
     if isinstance(upper_bound, TimeSeriesData):
         upper_bound = upper_bound.data
-    if np.any(value < lower_bound):
-        raise Exception(f'{label} is below its {lower_bound=}!')
-    if np.any(value >= upper_bound):
-        raise Exception(f'{label} is above its {upper_bound=}!')
-    
+    if not np.all(value > lower_bound):
+        logger.warning(f"'{element_label}.{parameter_label}' is equal or below the common lower bound {lower_bound}."
+                       f"    {parameter_label}.min={np.min(value)};    {parameter_label}={value}")
+    if not np.all(value < upper_bound):
+        logger.warning(f"'{element_label}.{parameter_label}' exceeds or matches the common upper bound {upper_bound}."
+                       f"    {parameter_label}.max={np.max(value)};    {parameter_label}={value}")
