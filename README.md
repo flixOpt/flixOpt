@@ -15,10 +15,11 @@ Although flixOpt is in its early stages, it is fully functional and ready for ex
 ## 📦 Installation
 
 Install flixOpt directly into your environment using pip:
+`pip install git+https://github.com/flixOpt/flixOpt.git`
 
-```bash
-pip install git+https://github.com/flixOpt/flixOpt.git
-```
+You can also install flixOpt with additional dependencies for visualizing network graphs using pyvis:
+`pip install "flixOpt[visualization] @ git+https://github.com/flixOpt/flixOpt.git"`
+
 ---
 
 ## 🌟 Key Features and Concepts
