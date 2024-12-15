@@ -80,7 +80,7 @@ class SystemModel(MathModel):
 
         logger.info(
             # f'{"SUM":<15}: ...todo...\n'
-            f'{"penalty":<17}: {self.main_results["penalty"]:>10.2f}\n'
+            f'{"Penalty":<17}: {self.main_results["penalty"]:>10.2f}\n'
             f'{"":-^80}\n'
             f'{"Objective":<17}: {self.main_results["Objective"]:>10.2f}\n'
             f'{"":-^80}')
@@ -91,7 +91,7 @@ class SystemModel(MathModel):
                                           key_format="<30", indent=2, sort_by='value'))
 
         for bus in self.main_results['buses with excess']:
-            logger.warning(f'Excess in Bus {bus}!')
+            logger.warning(f'A penalty occurred in Bus "{bus}"!')
 
         if self.main_results["penalty"] > 10:
             logger.warning(f'A total penalty of {self.main_results["penalty"]} occurred.'
