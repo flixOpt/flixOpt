@@ -187,7 +187,10 @@ class CalculationResults:
                        colors: Union[str, List[str]] = 'viridis',
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
                        invert: bool = False,
-                       show: bool = True):
+                       show: bool = True,
+                       save: bool = False,
+                       path: Union[str, pathlib.Path, Literal['auto']] = 'auto'
+                       ) -> Union['go.Figure', Tuple['plt.Figure', 'plt.Axes']]:
         """
         Plots the operation results for a specified Element using the chosen plotting engine and mode.
 
@@ -210,7 +213,11 @@ class CalculationResults:
         invert : bool, default=False
             Whether to invert the input and output factors.
         show : bool, default=True
-            Whether to display the plot immediately.
+            Whether to display the plot immediately. (This includes saving the plot to file when plotly is used)
+        save : bool, default=False
+            Whether to save the plot to a file.
+        path : Union[str, pathlib.Path, Literal['auto']], default='auto'
+            The path to save the plot to. If 'auto', the plot is saved to an automatically named file.
 
         Returns
         -------
@@ -232,20 +239,41 @@ class CalculationResults:
                              f'Try "Turbo", "Hot", or "Viridis" instead.')
 
         title = f'{variable_name.replace("_", " ").title()} of {label}'
+        if path == 'auto':
+            path = pathlib.Path(f'{title}.html')
 
         if engine == 'plotly':
             if mode == 'heatmap':
                 heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-                return plotting.heat_map_plotly(heatmap_data, show=show, title=title, color_map=colors)
+                return plotting.heat_map_plotly(heatmap_data,
+                                                title=title,
+                                                color_map=colors,
+                                                show=show,
+                                                save=save,
+                                                path=path)
             else:
-                return plotting.with_plotly(data=data, mode=mode, show=show, title=title, colors=colors)
+                return plotting.with_plotly(data=data,
+                                            mode=mode,
+                                            show=show,
+                                            title=title,
+                                            colors=colors,
+                                            save=save,
+                                            path=path)
 
         elif engine == 'matplotlib':
             if mode == 'heatmap':
-                heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
-                return plotting.heat_map_matplotlib(heatmap_data, show=show, color_map=colors)
+                heatmap_data = plotting.heat_map_data_from_df(data,
+                                                              heatmap_periods,
+                                                              heatmap_steps_per_period,
+                                                              'ffill')
+                return plotting.heat_map_matplotlib(heatmap_data,
+                                                    show=show,
+                                                    color_map=colors)
             else:
-                return plotting.with_matplotlib(data=data, mode=mode, show=show, colors=colors)
+                return plotting.with_matplotlib(data=data,
+                                                mode=mode,
+                                                show=show,
+                                                colors=colors)
         else:
             raise ValueError(f'Unknown Engine: {engine=}')
 
