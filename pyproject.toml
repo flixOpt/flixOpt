@@ -32,14 +32,24 @@ classifiers = [
 dependencies = [
     "matplotlib >= 3.5.2",
     "numpy >= 1.21.5, < 2",
-    "pandas >= 2, < 3",
-    "plotly >= 5.15",
-    "Pyomo >= 6.4.2",
     "PyYAML >= 6.0",
-    "tsam >= 2.3.1",
-    "highspy >= 1.5.3",
-    "tomli >= 2.0.1"
+    "Pyomo >= 6.4.2",
+    "tsam >= 2.3.1",  # Used for time series aggregation
+    "highspy >= 1.5.3",  # Default solver
+    "pyvis == 0.3.1",  # Used for cisulaizing the FLowSystem
+    "pandas >= 2, < 3",  # Used in post-processing
+    "plotly >= 5.15",  # Used in post-processing
+    "tomli >= 2.0.1"  # TOML parser (only needed until python 3.11)
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest"
+]
+
+[project.urls]
+homepage = "https://tu-dresden.de/ing/maschinenwesen/iet/gewv/forschung/forschungsprojekte/flixopt"
+repository = "https://github.com/flixOpt/flixOpt"
 
 [tool.setuptools.packages.find]
 where = ["."]
