@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flixOpt"
+version = "0.2.0"
+description = "Vector based energy and material flow optimization framework in Python."
+readme = "README.md"
+requires-python = ">=3.10, <3.13"
+license = { text = "MIT License" }
+authors = [
+    { name = "Felix Bumann", email = "felixbumann387@gmail.com" },
+    { name = "Felix Panitz", email = "baumbude@googlemail.com" },
+    { name = "Peter Stange", email = "peter.stange@tu-dresden.de" }
+]
+maintainers = [
+    { name = "Chair of Building Energy Systems and Heat Supply, TU Dresden", email = "peter.stange@tu-dresden.de" }
+]
+keywords = ["optimization", "energy systems", "numerical analysis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics :: Numerical Analysis :: Optimization",
+    "Topic :: Software Development :: Libraries :: Python"
+]
+dependencies = [
+    "matplotlib >= 3.5.2",
+    "numpy >= 1.21.5, < 2",
+    "pandas >= 2, < 3",
+    "plotly >= 5.15",
+    "Pyomo >= 6.4.2",
+    "PyYAML >= 6.0",
+    "tsam >= 2.3.1",
+    "highspy >= 1.5.3",
+    "tomli >= 2.0.1"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests", "docs", "examples", "examples.*", "Tutorials", ".git", ".vscode", "build", ".venv", "venv/"]
