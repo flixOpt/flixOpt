@@ -802,8 +802,6 @@ class HighsSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             from pyomo.contrib import appsi
-            import sys
-            import io
             self._solver = appsi.solvers.Highs()
             self._solver.highs_options = {"mip_rel_gap": self.mip_gap,
                                           "time_limit": self.time_limit_seconds,
@@ -818,7 +816,9 @@ class HighsSolver(Solver):
             self._results = self._solver.solve(modeling_language.model)  # HiGHS writes logs to stdout/stderr, so we capture them here
 
             self.objective = modeling_language.model.objective.expr()
-            self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
+            self.termination_message: Optional[str] = self._results.termination_condition.name
+            if not self.termination_message == 'optimal':
+                logger.warning(f'Solution is not optimal. Termination Message: "{self.termination_message}"')
             self.best_bound = self._results.best_objective_bound
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:
