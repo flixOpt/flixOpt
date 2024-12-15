@@ -1,9 +1,9 @@
 """
 This script shows how to use the flixOpt framework to model a more complex energy system.
 """
-
 import numpy as np
 import pandas as pd
+from rich import print  # Used for pretty printing
 import flixOpt as fx
 
 if __name__ == '__main__':

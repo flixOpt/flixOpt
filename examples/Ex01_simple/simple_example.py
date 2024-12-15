@@ -1,8 +1,8 @@
 """
 THis script shows how to use the flixOpt framework to model a simple energy system.
 """
-
 import numpy as np
+from rich import print  # Used for pretty printing
 import flixOpt as fx
 
 if __name__ == '__main__':
