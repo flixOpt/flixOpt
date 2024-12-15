@@ -30,14 +30,13 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python"
 ]
 dependencies = [
-    "matplotlib >= 3.5.2",
     "numpy >= 1.21.5, < 2",
     "PyYAML >= 6.0",
     "Pyomo >= 6.4.2",
     "tsam >= 2.3.1",  # Used for time series aggregation
     "highspy >= 1.5.3",  # Default solver
-    "pyvis == 0.3.1",  # Used for cisulaizing the FLowSystem
     "pandas >= 2, < 3",  # Used in post-processing
+    "matplotlib >= 3.5.2",  # Used in post-processing
     "plotly >= 5.15",  # Used in post-processing
     "tomli >= 2.0.1"  # TOML parser (only needed until python 3.11)
 ]
@@ -45,6 +44,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest"
+]
+
+visualization = [
+    "pyvis == 0.3.1",  # Used for visualizing the FLowSystem
 ]
 
 [project.urls]
