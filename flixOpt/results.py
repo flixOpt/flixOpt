@@ -292,7 +292,10 @@ class CalculationResults:
                      mode: Literal['bar', 'line', 'area'] = 'area',
                      colors: Union[str, List[str]] = 'viridis',
                      invert: bool = True,
-                     show: bool = True):
+                     show: bool = True,
+                     save: bool = False,
+                     path: Union[str, pathlib.Path, Literal['auto']] = 'auto'
+                     ):
         """
         Plots the storage operation results for a specified Storage Element, including its charge state.
 
@@ -309,22 +312,37 @@ class CalculationResults:
         invert : bool, default=True
             Whether to invert the input and output factors.
         show : bool, default=True
-            Whether to display the plot immediately.
+            Whether to display the plot immediately. (This includes saving the plot to file when engine='plotly')
+        save : bool, default=False
+            Whether to save the plot to a file.
+        path : Union[str, pathlib.Path, Literal['auto']], default='auto'
+            The path to save the plot to. If 'auto', the plot is saved to an automatically named file.
 
         Returns
         -------
         plotly.graph_objs.Figure
             The generated Plotly figure object with the storage operation plot.
         """
-        fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False, colors=colors)
+        fig = self.plot_operation(label, mode, variable_name, invert=invert, engine='plotly', show=False, colors=colors,
+                                  save=False)
         fig.add_trace(plotly.graph_objs.Scatter(
             x=self.time_with_end,
             y={**self.component_results, **self.bus_results}[label].variables['charge_state'],
             mode='lines',
             name='Charge State',
         ))
+
+        title = f'{variable_name.replace("_", " ").title()} and Charge State of {label}'
+        fig.update_layout(title=title)
+
+        if path == 'auto':
+            path = self.folder / f'{title} ({mode}).html'
+            path = path.resolve().as_posix()
         if show:
-            plotly.offline.plot(fig)
+            plotly.offline.plot(fig, filename=path)
+        elif save:  # If show, the file is saved anyway
+            fig.write_html(path)
+
         return fig
 
     def visualize_network(self,
