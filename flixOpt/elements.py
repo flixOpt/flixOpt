@@ -8,7 +8,7 @@ import logging
 import numpy as np
 
 from .math_modeling import Variable, VariableTS
-from .core import Numeric, Numeric_TS, Skalar
+from .core import Numeric, Numeric_TS, Skalar, Config
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
 from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
@@ -138,16 +138,14 @@ class Connection:
 
 
 class Flow(Element):
-    '''
+    """
     flows are inputs and outputs of components
-    '''
-
-    _default_size = 1e9  # Großer Gültigkeitsbereich als Standard
+    """
 
     def __init__(self,
                  label: str,
                  bus: Bus,
-                 size: Union[Skalar, InvestParameters] = _default_size,
+                 size: Optional[Union[Skalar, InvestParameters]] = None,
                  fixed_relative_profile: Optional[Numeric_TS] = None,
                  relative_minimum: Numeric_TS = 0,
                  relative_maximum: Numeric_TS = 1,
@@ -168,15 +166,13 @@ class Flow(Element):
             used to store more information about the element. Is not used internally, but saved in the results
         bus : Bus, optional
             bus to which flow is linked
+        size : scalar, InvestmentParameters, optional
+            size of the flow. If InvestmentParameters is used, size is optimized.
+            If size is None, a default value is used.
         relative_minimum : scalar, array, TimeSeriesData, optional
             min value is relative_minimum multiplied by size
         relative_maximum : scalar, array, TimeSeriesData, optional
             max value is relative_maximum multiplied by size. If size = max then relative_maximum=1
-        size : scalar. None if is a nominal value is a opt-variable, optional
-            nominal value/ invest size (linked to relative_minimum, relative_maximum and others).
-            i.g. kW, area, volume, pieces,
-            möglichst immer so stark wie möglich einschränken
-            (wg. Rechenzeit bzw. Binär-Ungenauigkeits-Problem!)
         load_factor_min : scalar, optional
             minimal load factor  general: avg Flow per nominalVal/investSize
             (e.g. boiler, kW/kWh=h; solarthermal: kW/m²;
@@ -206,7 +202,7 @@ class Flow(Element):
             previous flow rate of the component.
         """
         super().__init__(label, meta_data=meta_data)
-        self.size = size
+        self.size = size or Config.BIG_M  # Default size
         self.relative_minimum = relative_minimum
         self.relative_maximum = relative_maximum
         self.fixed_relative_profile = fixed_relative_profile
@@ -250,7 +246,7 @@ class Flow(Element):
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
 
-        if self.size == Flow._default_size and self.fixed_relative_profile is not None:  #Default Size --> Most likely by accident
+        if self.size == Config.BIG_M and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
             raise Exception('Achtung: Wenn fixed_relative_profile genutzt wird, muss zugehöriges size definiert werden, '
                             'da: value = fixed_relative_profile * size!')
 
