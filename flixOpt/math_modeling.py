@@ -455,8 +455,6 @@ class MathModel:
         self.label = label
         self.modeling_language: str = modeling_language
 
-        self.epsilon = 1e-5
-
         self.solver: Optional[Solver] = None
         self.model: Optional[ModelingLanguage] = None
 

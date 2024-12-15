@@ -23,6 +23,16 @@ Numeric_TS = Union[Skalar, np.ndarray, 'TimeSeries']
 #   TimeSeriesData      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
+class Config:
+    """
+    Configuration class for global settings.
+    The values are used as defaults in several classes. They can be overwritten by the user.
+    Use with care, and make sure to adjust them in the beginning of the script.
+    """
+    BIG_M: Union[int, float] = 1e7
+    EPSILON: Union[int, float] = 1e-5
+
+
 class TimeSeriesData:
     # TODO: Move to Interface.py
     def __init__(self,

@@ -6,7 +6,7 @@ These are tightly connected to features.py
 import logging
 from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
-from .core import Numeric, Skalar, Numeric_TS
+from .core import Numeric, Skalar, Numeric_TS, Config
 from .structure import get_object_infos_as_str, get_object_infos_as_dict
 if TYPE_CHECKING:
     from .structure import Element
@@ -22,8 +22,8 @@ class InvestParameters:
 
     def __init__(self,
                  fixed_size: Optional[Union[int, float]] = None,
-                 minimum_size: Union[int, float] = 0,  # nur wenn size_is_fixed = False
-                 maximum_size: Union[int, float] = 1e9,  # nur wenn size_is_fixed = False
+                 minimum_size: Union[int, float] = 0,  # TODO: Use EPSILON?
+                 maximum_size: Optional[Union[int, float]] = None,
                  optional: bool = True,  # Investition ist weglassbar
                  fix_effects: Optional[Union[Dict, int, float]] = None,
                  specific_effects: Optional[Union[Dict, int, float]] = None,  # costs per Flow-Unit/Storage-Size/...
@@ -61,10 +61,9 @@ class InvestParameters:
             (Args 'specific_effects' and 'fix_effects' can be used in parallel to InvestsizeSegments)
         minimum_size : scalar
             Min nominal value (only if: size_is_fixed = False).
-        maximum_size : scalar
+        maximum_size : scalar, Optional
             Max nominal value (only if: size_is_fixed = False).
         """
-
         self.fix_effects: EffectValuesInvest = fix_effects
         self.divest_effects: EffectValuesInvest = divest_effects
         self.fixed_size = fixed_size
@@ -72,7 +71,7 @@ class InvestParameters:
         self.specific_effects: EffectValuesInvest = specific_effects
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
-        self._maximum_size = maximum_size
+        self._maximum_size = maximum_size or Config.BIG_M  # default maximum
     
     def transform_data(self):
         from .effects import as_effect_dict
