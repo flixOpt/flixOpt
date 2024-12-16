@@ -39,10 +39,10 @@ if __name__ == '__main__':
     datetime_series = np.array(filtered_data.index).astype('datetime64')
 
     # Access specific columns and convert to 1D-numpy array
-    electricity_demand = filtered_data['P_Netz/MW'].values.flatten()
-    heat_demand = filtered_data['Q_Netz/MW'].values.flatten()
-    electricity_price = filtered_data['Strompr.€/MWh'].values.flatten()
-    gas_price = filtered_data['Gaspr.€/MWh'].values.flatten()
+    electricity_demand = filtered_data['P_Netz/MW'].to_numpy()
+    heat_demand = filtered_data['Q_Netz/MW'].to_numpy()
+    electricity_price = filtered_data['Strompr.€/MWh'].to_numpy()
+    gas_price = filtered_data['Gaspr.€/MWh'].to_numpy()
 
     # TimeSeriesData objects
     TS_heat_demand = fx.TimeSeriesData(heat_demand)
