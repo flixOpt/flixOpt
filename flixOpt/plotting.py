@@ -628,7 +628,7 @@ def visualize_network(node_infos: dict,
     try:
         from pyvis.network import Network
     except ImportError:
-        print("Please install pyvis to visualize the network: 'pip install pyvis'")
+        logger.warning("Please install pyvis to visualize the network: 'pip install pyvis'")
         return None
 
     net = Network(directed=True, height='100%' if controls is False else '800px', font_color="white")
