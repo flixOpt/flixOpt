@@ -8,6 +8,7 @@ from typing import List, Union, Dict
 
 import numpy as np
 import pandas as pd
+from rich.pretty import pprint  # Used for pretty printing
 
 import flixOpt as fx
 
@@ -148,7 +149,7 @@ if __name__ == '__main__':
         calculation.solve(fx.solvers.HighsSolver())
         calculations['Aggregated'] = calculation
         results['Aggregated'] = calculations['Aggregated'].results()
-
+    pprint(results)
 
     def extract_result(results_data: dict[str, dict], keys: List[str]) -> Dict[str,Union[int, float, np.ndarray]]:
         """

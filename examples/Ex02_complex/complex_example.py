@@ -3,7 +3,7 @@ This script shows how to use the flixOpt framework to model a more complex energ
 """
 import numpy as np
 import pandas as pd
-from rich import print  # Used for pretty printing
+from rich.pretty import pprint  # Used for pretty printing
 import flixOpt as fx
 
 if __name__ == '__main__':
@@ -125,15 +125,15 @@ if __name__ == '__main__':
     flow_system.add_elements(Costs, CO2, PE, Gaskessel, Waermelast, Gasbezug, Stromverkauf, aSpeicher)
     flow_system.add_elements(aKWK2) if use_chp_with_segments else flow_system.add_components(aKWK)
 
-    print(flow_system)  # Get a string representation of the FlowSystem
+    pprint(flow_system)  # Get a string representation of the FlowSystem
 
     # --- Solve FlowSystem ---
     calculation = fx.FullCalculation('Sim1', flow_system, 'pyomo', time_indices)
     calculation.do_modeling()
 
     # Show variables as str (else, you can find them in the results.yaml file
-    print(calculation.system_model.description_of_constraints())
-    print(calculation.system_model.description_of_variables())
+    pprint(calculation.system_model.description_of_constraints())
+    pprint(calculation.system_model.description_of_variables())
 
     calculation.solve(fx.solvers.HighsSolver(mip_gap=0.005, time_limit_seconds=30),  # Specify which solver you want to use and specify parameters
                       save_results='results')  # If and where to save results
