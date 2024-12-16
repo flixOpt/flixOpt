@@ -311,11 +311,11 @@ class MultilineFormater(logging.Formatter):
 class ColoredMultilineFormater(MultilineFormater):
     # ANSI escape codes for colors
     COLORS = {
-        'DEBUG': '\033[96m',    # Cyan
-        'INFO': '\033[92m',     # Green
-        'WARNING': '\033[93m',  # Yellow
-        'ERROR': '\033[91m',    # Red
-        'CRITICAL': '\033[91m\033[1m',  # Bold Red
+        'DEBUG': '\033[32m',  # Green
+        'INFO': '\033[34m',  # Blue
+        'WARNING': '\033[33m',  # Yellow
+        'ERROR': '\033[31m',  # Red
+        'CRITICAL': '\033[1m\033[31m',  # Bold Red
     }
     RESET = '\033[0m'
 
