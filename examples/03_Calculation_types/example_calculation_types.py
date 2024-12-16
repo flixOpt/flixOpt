@@ -74,8 +74,8 @@ if __name__ == '__main__':
     # 2. CHP
     a_kwk = fx.linear_converters.CHP('BHKW2', eta_th=0.58, eta_el=0.22,
                                      on_off_parameters=fx.OnOffParameters(effects_per_switch_on=24000),
-                                     P_el=fx.Flow('P_el', bus=Strom),
-                                     Q_th=fx.Flow('Q_th', bus=Fernwaerme),
+                                     P_el=fx.Flow('P_el', bus=Strom, size=200),
+                                     Q_th=fx.Flow('Q_th', bus=Fernwaerme, size=200),
                                      Q_fu=fx.Flow('Q_fu', bus=Kohle, size=288, relative_minimum=87 / 288,
                                                   previous_flow_rate=100)
     )
