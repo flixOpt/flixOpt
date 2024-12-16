@@ -733,13 +733,27 @@ class GurobiSolver(Solver):
             )
 
             self.objective = modeling_language.model.objective.expr()
-            self.termination_message = self._results['Solver'][0]['Termination message']
-            self.best_bound = self._results['Problem'][0]['Lower bound']
+            self.termination_message = self._results.solver.termination_message
+            self.best_bound = self._results.problem.lower_bound
+
+            from pyomo.opt import SolverStatus, TerminationCondition
+            if not (self._results.solver.status == SolverStatus.ok and
+                    self._results.solver.termination_condition == TerminationCondition.optimal):
+                logger.warning(f'Solver ended with status {self._results.solver.status} and '
+                               f'termination condition {self._results.solver.termination_condition}')
             try:
                 self.log = SolverLog('gurobi', self.logfile_name)
             except Exception as e:
                 self.log = None
                 logger.warning(f'SolverLog could not be loaded. {e}')
+
+            try:
+                import gurobi_logtools
+                self.log = gurobi_logtools.get_dataframe([str(self.logfile_name)]).T.to_dict()[0]
+            except ImportError:
+                logger.info(f'Evaluationg the gurobi log after the solve was not possible, due to a missing dependency '
+                            f'"gurobi_logtools". For further details of the solving process, '
+                            f'install the dependency via "pip install gurobi_logtools".')
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
 
@@ -802,8 +816,6 @@ class HighsSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             from pyomo.contrib import appsi
-            import sys
-            import io
             self._solver = appsi.solvers.Highs()
             self._solver.highs_options = {"mip_rel_gap": self.mip_gap,
                                           "time_limit": self.time_limit_seconds,
@@ -818,7 +830,9 @@ class HighsSolver(Solver):
             self._results = self._solver.solve(modeling_language.model)  # HiGHS writes logs to stdout/stderr, so we capture them here
 
             self.objective = modeling_language.model.objective.expr()
-            self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
+            self.termination_message: Optional[str] = self._results.termination_condition.name
+            if not self.termination_message == 'optimal':
+                logger.warning(f'Solution is not optimal. Termination Message: "{self.termination_message}"')
             self.best_bound = self._results.best_objective_bound
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:

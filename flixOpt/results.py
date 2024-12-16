@@ -526,5 +526,3 @@ if __name__ == '__main__':
                                mode='bar')
     fig.update_layout(barmode='group', bargap=0.2, bargroupgap = 0.1)
     plotly.offline.plot(fig)
-
-    print()
