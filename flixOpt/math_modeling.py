@@ -746,6 +746,14 @@ class GurobiSolver(Solver):
             except Exception as e:
                 self.log = None
                 logger.warning(f'SolverLog could not be loaded. {e}')
+
+            try:
+                import gurobi_logtools
+                self.log = gurobi_logtools.get_dataframe([str(self.logfile_name)]).T.to_dict()[0]
+            except ImportError:
+                logger.info(f'Evaluationg the gurobi log after the solve was not possible, due to a missing dependency '
+                            f'"gurobi_logtools". For further details of the solving process, '
+                            f'install the dependency via "pip install gurobi_logtools".')
         else:
             raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
 
