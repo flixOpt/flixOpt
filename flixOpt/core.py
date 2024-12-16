@@ -8,6 +8,8 @@ import logging
 import inspect
 
 import numpy as np
+from rich.logging import RichHandler
+from rich.console import Console
 
 from . import utils
 
@@ -286,57 +288,95 @@ def as_effect_dict_with_ts(name_of_param: str,
     return effect_ts_dict
 
 
-# TODO: Move logging to utils.py
-class CustomFormatter(logging.Formatter):
+class MultilineFormater(logging.Formatter):
+
+    def format(self, record):
+        message_lines = record.getMessage().split('\n')
+
+        # Prepare the log prefix (timestamp + log level)
+        timestamp = self.formatTime(record, self.datefmt)
+        log_level = record.levelname.ljust(8)  # Align log levels for consistency
+        log_prefix = f"{timestamp} | {log_level} |"
+
+        # Format all lines
+        first_line = [f'{log_prefix} {message_lines[0]}']
+        if len(message_lines) > 1:
+            lines = first_line + [f"{log_prefix} {line}" for line in message_lines[1:]]
+        else:
+            lines = first_line
+
+        return '\n'.join(lines)
+
+
+class ColoredMultilineFormater(MultilineFormater):
     # ANSI escape codes for colors
     COLORS = {
-        'DEBUG': '\033[96m',    # Cyan
-        'INFO': '\033[92m',     # Green
-        'WARNING': '\033[93m',  # Yellow
-        'ERROR': '\033[91m',    # Red
-        'CRITICAL': '\033[91m\033[1m',  # Bold Red
+        'DEBUG': '\033[32m',  # Green
+        'INFO': '\033[34m',  # Blue
+        'WARNING': '\033[33m',  # Yellow
+        'ERROR': '\033[31m',  # Red
+        'CRITICAL': '\033[1m\033[31m',  # Bold Red
     }
     RESET = '\033[0m'
 
     def format(self, record):
+        lines = super().format(record).splitlines()
         log_color = self.COLORS.get(record.levelname, self.RESET)
-        original_message = record.getMessage()
-        message_lines = original_message.split('\n')
 
         # Create a formatted message for each line separately
         formatted_lines = []
-        for line in message_lines:
-            temp_record = logging.LogRecord(
-                record.name, record.levelno, record.pathname, record.lineno,
-                line, record.args, record.exc_info, record.funcName, record.stack_info
-            )
-            formatted_line = super().format(temp_record)
-            formatted_lines.append(f"{log_color}{formatted_line}{self.RESET}")
+        for line in lines:
+            formatted_lines.append(f"{log_color}{line}{self.RESET}")
 
-        formatted_message = '\n'.join(formatted_lines)
-        return formatted_message
+        return '\n'.join(formatted_lines)
 
 
-def setup_logging(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+def _get_logging_handler(log_file: Optional[str] = None,
+                         use_rich_handler: bool = False) -> logging.Handler:
+    """Returns a logging handler for the given log file."""
+    if use_rich_handler and log_file is None:
+        # RichHandler for console output
+        console = Console(width=120)
+        rich_handler = RichHandler(
+            console=console,
+            rich_tracebacks=True,
+            omit_repeated_times=True,
+            show_path=False,
+            log_time_format="%Y-%m-%d %H:%M:%S",
+        )
+        rich_handler.setFormatter(logging.Formatter("%(message)s"))  # Simplified formatting
+
+        return rich_handler
+    elif log_file is None:
+        # Regular Logger with custom formating enabled
+        file_handler = logging.StreamHandler()
+        file_handler.setFormatter(ColoredMultilineFormater(
+            fmt="%(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        return file_handler
+    else:
+        # FileHandler for file output
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(MultilineFormater(
+            fmt="%(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        return file_handler
+
+def setup_logging(default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO',
+                  log_file: Optional[str] = 'flixOpt.log',
+                  use_rich_handler: bool = False):
     """Setup logging configuration"""
     logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
-    logging_level = get_logging_level_by_name(level_name)
-    logger.setLevel(logging_level)
-
+    logger.setLevel(get_logging_level_by_name(default_level))
     # Clear existing handlers
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # Create console handler
-    c_handler = logging.StreamHandler()
-    c_handler.setLevel(logging_level)
-
-    # Create a clean and aligned formatter
-    log_format = '%(asctime)s - %(levelname)-8s : %(message)s'
-    date_format = '%Y-%m-%d %H:%M:%S'
-    c_format = CustomFormatter(log_format, datefmt=date_format)
-    c_handler.setFormatter(c_format)
-    logger.addHandler(c_handler)
+    logger.addHandler(_get_logging_handler(use_rich_handler=use_rich_handler))
+    if log_file is not None:
+        logger.addHandler(_get_logging_handler(log_file, use_rich_handler=False))
 
     return logger
 
