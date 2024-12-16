@@ -276,7 +276,7 @@ class OnOffModel(ElementModel):
             upper_bound = absolute_maximum / nr_of_defining_variables
             eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
 
-        if np.max(upper_bound) > Config.BIG_M:
+        if np.max(upper_bound) > Config.BIG_BINARY_BOUND:
             logger.warning(
                 f'In "{self.element.label_full}", a binary definition was created with a big upper bound '
                 f'({np.max(upper_bound)}). This can lead to wrong results regarding the on and off variables. '
