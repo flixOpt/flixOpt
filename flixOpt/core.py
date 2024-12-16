@@ -366,7 +366,7 @@ def _get_logging_handler(log_file: Optional[str] = None,
 
 def setup_logging(default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO',
                   log_file: Optional[str] = 'flixOpt.log',
-                  use_rich_handler: bool = True):
+                  use_rich_handler: bool = False):
     """Setup logging configuration"""
     logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
     logger.setLevel(get_logging_level_by_name(default_level))
