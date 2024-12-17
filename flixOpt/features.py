@@ -205,7 +205,7 @@ class OnOffModel(ElementModel):
         if self._on_off_parameters.use_off:
             self.off = create_variable(
                 'off', self, system_model.nr_of_time_steps, is_binary=True,
-                previous_values=(1 - self.on.previous_values) if self.on.previous_values is not None else None)
+                previous_values=1-self.on.previous_values)
 
             self._add_off_constraints(system_model, system_model.indices)
 
