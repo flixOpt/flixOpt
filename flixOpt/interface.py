@@ -16,9 +16,9 @@ logger = logging.getLogger('flixOpt')
 
 
 class InvestParameters:
-    '''
+    """
     collects arguments for invest-stuff
-    '''
+    """
 
     def __init__(self,
                  fixed_size: Optional[Union[int, float]] = None,

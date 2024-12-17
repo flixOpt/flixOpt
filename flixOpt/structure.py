@@ -22,9 +22,9 @@ logger = logging.getLogger('flixOpt')
 
 
 class SystemModel(MathModel):
-    '''
+    """
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
-    '''
+    """
 
     def __init__(self,
                  label: str,

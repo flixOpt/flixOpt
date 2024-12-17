@@ -614,18 +614,18 @@ class SolverLog:
         if self.solver_name == 'gurobi':
 
             # string-Schnipsel 1:
-            '''
+            """
             Optimize a model with 285 rows, 292 columns and 878 nonzeros
             Model fingerprint: 0x1756ffd1
             Variable types: 202 continuous, 90 integer (90 binary)        
-            '''
+            """
             # string-Schnipsel 2:
-            '''
+            """
             Presolve removed 154 rows and 172 columns
             Presolve time: 0.00s
             Presolved: 131 rows, 120 columns, 339 nonzeros
             Variable types: 53 continuous, 67 integer (67 binary)
-            '''
+            """
             # string: Presolved: 131 rows, 120 columns, 339 nonzeros\n
             match = re.search(r'Presolved: (\d+) rows, (\d+) columns, (\d+) nonzeros\n'
                               r'Variable types: (\d+) continuous, (\d+) integer \((\d+) binary\)',
