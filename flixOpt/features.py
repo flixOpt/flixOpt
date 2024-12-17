@@ -395,6 +395,12 @@ class OnOffModel(ElementModel):
             eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
             eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
 
+            first_step_min: Skalar = minimum_duration.active_data[0] if minimum_duration.is_array else minimum_duration.active_data
+            if duration_in_hours.previous_values < first_step_min:
+                eq_min_duration_inital = create_equation(f'{label_prefix}_minimum_duration_inital', self, eq_type='eq')
+                eq_min_duration_inital.add_summand(binary_variable, 1, time_indices[0])
+                eq_min_duration_inital.add_constant(1)
+
         # 4) first index:
         # eq: duration(t=0)= dt(0) * On(0)
         first_index = time_indices[0]  # only first element
