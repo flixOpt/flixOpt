@@ -32,7 +32,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
         return np.ones(length) * value
 
     if len(value) != length:   # Wenn Vektor nicht richtige Länge
-        raise Exception(f'error in changing to {length=}; vector has already {length=}')
+        raise Exception(f'error in changing to {length=}; vector has already {len(value)=}')
 
     if isinstance(value, np.ndarray):
         return value
