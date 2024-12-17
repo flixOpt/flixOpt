@@ -67,6 +67,9 @@ We recommend installing flixOpt with additional dependencies for visualizing net
 ## 🖥️ Usage Example
 ![Usage Example](https://github.com/user-attachments/assets/fa0e12fa-2853-4f51-a9e2-804abbefe20c)
 
+**Plotting examples**:
+![flixOpt plotting](/pics/flixOpt_plotting.jpg)
+
 ## ⚙️ Calculation Modes
 
 flixOpt offers three calculation modes, tailored to different performance and accuracy needs:
@@ -94,10 +97,6 @@ flixOpt offers three calculation modes, tailored to different performance and ac
 - **File-based Post-Processing Unit**
   - Results are saved to .json and .yaml files for easy access and analysis anytime.
   - Internal plotting functions utilizing matplotlib, plotly and pandas simplify results visualization and reporting.
-
-- **OOP**  
-  - utilizing the Python object-oriented programming paradigm, flixOpt classes are designed to be easily extensible and customizable.
-
 
 ![Architecture Diagram](/pics/architecture_flixOpt.png)
 
