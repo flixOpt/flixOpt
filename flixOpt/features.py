@@ -440,21 +440,30 @@ class OnOffModel(ElementModel):
 
     def _previous_on_values(self, epsilon: float = 1e-5) -> np.ndarray:
         """
-        Returns the previous values of the variables that are defined by this model.
-        ---
+        Returns the previous 'on' states of defining variables as a binary array.
+
         Parameters:
-        epsilon: float
-            The tolerance for equality of two values.
-        ---
+        ----------
+        epsilon : float, optional
+            Tolerance for equality to determine "off" state, default is 1e-5.
+
         Returns:
+        -------
         np.ndarray
-            An array of 0 and 1 representing the previous on state of the defining variable(s)
-            If no previous are available, it returns "array([0])"
+            A binary array (0 and 1) indicating the previous on/off states of the variables.
+            Returns `array([0])` if no previous values are available.
         """
-        previous_values_of_variables = np.array([
-            var.previous_values for var in self._defining_variables if var.previous_values is not None
-        ])
-        return np.where(np.all(np.isclose(previous_values_of_variables, 0, atol=epsilon), axis=0), 0, 1).reshape(-1)  # Allways as proper array
+        previous_values = [var.previous_values for var in self._defining_variables
+                           if var.previous_values is not None]
+
+        if not previous_values:
+            return np.array([0])
+        else:  # Convert to 2D-array and compute binary on/off states
+            previous_values = np.array(previous_values)
+            if previous_values.ndim > 1:
+                return np.any(~np.isclose(previous_values, 0, atol=epsilon), axis=0).astype(int)
+            else:
+                return (~np.isclose(previous_values, 0, atol=epsilon)).astype(int)
 
 
 class SegmentModel(ElementModel):
