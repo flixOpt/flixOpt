@@ -340,9 +340,8 @@ class OnOffModel(ElementModel):
             AssertionError: If the binary_variable is None, indicating the duration constraints cannot be applied.
 
         """
-        previous_values = np.sum(
-            self.extract_from_last_zero(binary_variable.previous_values) * system_model.dt_in_hours[0]
-        )
+        previous_values: Skalar = self.get_consecutive_duration(binary_variable.previous_values,
+                                                                system_model.dt_in_hours[0])
         mega = system_model.dt_in_hours_total + previous_values
 
         if maximum_duration is not None:
@@ -486,29 +485,34 @@ class OnOffModel(ElementModel):
             else:
                 return (~np.isclose(previous_values, 0, atol=epsilon)).astype(int)
 
-
     @classmethod
-    def extract_from_last_zero(cls, binary_array: np.ndarray) -> np.ndarray:
+    def get_consecutive_duration(cls, binary_values: Union[int, np.ndarray], dt_in_hours: Skalar) -> Skalar:
         """
-        Extracts the portion of a binary array starting from the last occurrence of `0`
+        Returns the current consecutive duration in hours, computed from binary values.
 
-        Parameters:
+        Parameters
         ----------
-        binary_array : np.ndarray
-            A 1D binary array (containing only 0s and 1s).
+        binary_values : int, np.ndarray
+            An int or 1D binary array containing only `0`s and `1`s.
+        dt_in_hours : int, float
+            The duration of each time step in hours.
 
-        Returns:
+        Returns
         -------
         np.ndarray
-            The sub-array starting with the last `0`. If no `0` exists, returns the full array.
+            The duration of the binary variable in hours.
         """
-        # Find the index of the last `0`
-        last_zero_index = np.where(binary_array == 0)[0]
+        if isinstance(binary_values, (int, float, np.integer, np.floating)):
+            return binary_values * dt_in_hours
 
-        if last_zero_index.size == 0:  # If no `0` exists, return the entire array
-            return binary_array
-        else:  # Extract the portion of the array after the last `0`
-            return binary_array[last_zero_index[-1]:]
+        # Find the index of the last occurrence of `0` in a 1D-array
+        zero_indices = np.where(binary_values == 0)[0]
+
+        if zero_indices.size == 0:  # If no `0` exists, return the entire array
+            return np.sum(binary_values * dt_in_hours)
+        else:
+            return np.sum(binary_values[zero_indices[-1]:] * dt_in_hours)
+
 
 class SegmentModel(ElementModel):
     """Class for modeling a linear segment of one or more variables in parallel"""
