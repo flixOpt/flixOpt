@@ -203,8 +203,9 @@ class OnOffModel(ElementModel):
         self._add_on_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_off:
-            self.off = create_variable('off', self, system_model.nr_of_time_steps, is_binary=True,
-                                       previous_values=1 - self._previous_on_values(Config.EPSILON))
+            self.off = create_variable(
+                'off', self, system_model.nr_of_time_steps, is_binary=True,
+                previous_values=(1 - self.on.previous_values) if self.on.previous_values is not None else None)
 
             self._add_off_constraints(system_model, system_model.indices)
 
@@ -438,7 +439,18 @@ class OnOffModel(ElementModel):
                                                      system_model.dt_in_hours, self.on)
 
     def _previous_on_values(self, epsilon: float = 1e-5) -> np.ndarray:
-        # Gather previous values, ignoring empty (None) entries
+        """
+        Returns the previous values of the variables that are defined by this model.
+        ---
+        Parameters:
+        epsilon: float
+            The tolerance for equality of two values.
+        ---
+        Returns:
+        np.ndarray
+            An array of 0 and 1 representing the previous on state of the defining variable(s)
+            If no previous are available, it returns "array([0])"
+        """
         previous_values_of_variables = np.array([
             var.previous_values for var in self._defining_variables if var.previous_values is not None
         ])
