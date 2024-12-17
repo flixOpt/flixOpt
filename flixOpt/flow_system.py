@@ -279,28 +279,24 @@ def create_datetime_array(start: str,
     >>> create_datetime_array('2023-01-01T00:00', end='2023-01-01T01:00', freq='m')
     array(['2023-01-01T00:00', '2023-01-01T00:01', ..., '2023-01-01T00:59'], dtype='datetime64[m]')
     """
-    # Parse frequency to allow numeric intervals like '15m', '2h', etc.
-    import re
-    match = re.match(r"(\d+)([YMWDhms])", freq)
-    if match:
-        step_size = int(match.group(1))
-        unit = match.group(2)
-    else:
-        # Default to a step size of 1 for unit-only frequencies (e.g., 'h', 'm')
-        step_size = 1
-        unit = freq
+    # Parse the frequency and interval
+    unit = freq[-1]  # Get the time unit (e.g., 'h', 'm', 's')
+    interval = int(freq[:-1]) if freq[:-1].isdigit() else 1  # Default to interval=1 if not specified
+    step_size = np.timedelta64(interval, unit)  # Create the timedelta step size
 
-    # Create the datetime64 range based on the parsed frequency
-    dtype = f'datetime64[{unit}]'
-    if end:
-        array = np.arange(np.datetime64(start), np.datetime64(end), step_size, dtype=dtype)
-    elif steps:
-        array = np.arange(np.datetime64(start), np.datetime64(start) + steps * np.timedelta64(step_size, unit),
-                          dtype=dtype)
-    else:
+    # Convert the start time to a datetime64 object
+    start_dt = np.datetime64(start)
+
+    # Generate the array based on the parameters
+    if end:  # If `end` is specified, create a range from start to end
+        end_dt = np.datetime64(end)
+        return np.arange(start_dt, end_dt, step_size)
+
+    elif steps:  # If `steps` is specified, create a range with the given number of steps
+        return np.array([start_dt + i * step_size for i in range(steps)], dtype='datetime64')
+
+    else:  # If neither `steps` nor `end` is provided, raise an error
         raise ValueError("Either `steps` or `end` must be provided.")
-
-    return array
 
 
 
