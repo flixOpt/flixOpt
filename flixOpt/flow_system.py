@@ -110,7 +110,7 @@ class FlowSystem:
         return infos
 
     def visualize_network(self,
-                          path: Union[bool, str, pathlib.Path] = 'results/network.html',
+                          path: Union[bool, str, pathlib.Path] = 'flow_system.html',
                           controls: Union[bool, List[Literal[
                               'nodes', 'edges', 'layout', 'interaction', 'manipulation',
                               'physics', 'selection', 'renderer']]] = True,
@@ -120,10 +120,10 @@ class FlowSystem:
         Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.
 
         Parameters:
-        - path (Union[bool, str, pathlib.Path], default='results/network.html'):
+        - path (Union[bool, str, pathlib.Path], default='flow_system.html'):
           Path to save the HTML visualization.
             - `False`: Visualization is created but not saved.
-            - `str` or `Path`: Specifies file path (default: 'results/network.html').
+            - `str` or `Path`: Specifies file path (default: 'flow_system.html').
 
         - controls (Union[bool, List[str]], default=True):
           UI controls to add to the visualization.
