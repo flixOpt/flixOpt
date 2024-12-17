@@ -73,11 +73,11 @@ class TestMinimal(BaseTest):
         )
         return self.flow_system
 
-    def test_01_solve_and_load(self):
+    def test_solve_and_load(self):
         flow_system = self.create_model(self.datetime_array)
         results = self.solve_and_load(flow_system)
 
-    def test_02_results(self):
+    def test_results(self):
         flow_system = self.create_model(self.datetime_array)
         results = self.solve_and_load(flow_system)
 
@@ -97,7 +97,7 @@ class TestMinimal(BaseTest):
                         rtol=self.mip_gap, atol=1e-10)
 
 class TestInvestment(BaseTest):
-    def test_01_fixed_size(self):
+    def test_fixed_size(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
                 'Boiler', 0.5,
@@ -117,7 +117,7 @@ class TestInvestment(BaseTest):
                         1, rtol=self.mip_gap, atol=1e-10,
                         err_msg='"Boiler__Q_th__Investment_size" does not have the right value')
 
-    def test_02_optimize_size(self):
+    def test_optimize_size(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
             'Boiler', 0.5,
@@ -137,7 +137,7 @@ class TestInvestment(BaseTest):
                         1, rtol=self.mip_gap, atol=1e-10,
                         err_msg='"Boiler__Q_th__IsInvested" does not have the right value')
 
-    def test_03_restrict_size(self):
+    def test_size_bounds(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
             'Boiler', 0.5,
@@ -157,7 +157,7 @@ class TestInvestment(BaseTest):
                         1, rtol=self.mip_gap, atol=1e-10,
                         err_msg='"Boiler__Q_th__IsInvested" does not have the right value')
 
-    def test_04_optional_invest(self):
+    def test_optional_invest(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
             'Boiler', 0.5,
@@ -192,7 +192,7 @@ class TestInvestment(BaseTest):
 
 
 class TestOnOff(BaseTest):
-    def test_01_on(self):
+    def test_on(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
                 'Boiler', 0.5,
@@ -213,7 +213,7 @@ class TestOnOff(BaseTest):
                         [0, 10, 20, 0, 10], rtol=self.mip_gap, atol=1e-10,
                         err_msg='"Boiler__Q_th__flow_rate" does not have the right value')
 
-    def test_02_off(self):
+    def test_off(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
                 'Boiler', 0.5,
@@ -237,7 +237,7 @@ class TestOnOff(BaseTest):
                         [0, 10, 20, 0, 10], rtol=self.mip_gap, atol=1e-10,
                         err_msg='"Boiler__Q_th__flow_rate" does not have the right value')
 
-    def test_03_switch_on_off(self):
+    def test_switch_on_off(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
                 'Boiler', 0.5,
