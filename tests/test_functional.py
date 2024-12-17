@@ -97,7 +97,6 @@ class TestMinimal(BaseTest):
                         rtol=self.mip_gap, atol=1e-10)
 
 class TestInvestment(BaseTest):
-
     def test_01_fixed_size(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
@@ -137,6 +136,133 @@ class TestInvestment(BaseTest):
         assert_allclose(boiler.Q_th.model._investment.is_invested.result,
                         1, rtol=self.mip_gap, atol=1e-10,
                         err_msg='"Boiler__Q_th__IsInvested" does not have the right value')
+
+    def test_03_restrict_size(self):
+        self.flow_system = self.create_model(self.datetime_array)
+        self.flow_system.add_elements(fx.linear_converters.Boiler(
+            'Boiler', 0.5,
+            Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+            Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'),
+                         size=fx.InvestParameters(minimum_size=40, fix_effects=10, specific_effects=1))))
+
+        self.solve_and_load(self.flow_system)
+        boiler = self.get_element('Boiler')
+        costs = self.get_element('costs')
+        assert_allclose(costs.model.all.sum.result, 80 + 40 * 1 + 10, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='The total costs does not have the right value')
+        assert_allclose(boiler.Q_th.model._investment.size.result,
+                        40, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__Investment_size" does not have the right value')
+        assert_allclose(boiler.Q_th.model._investment.is_invested.result,
+                        1, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__IsInvested" does not have the right value')
+
+    def test_04_optional_invest(self):
+        self.flow_system = self.create_model(self.datetime_array)
+        self.flow_system.add_elements(fx.linear_converters.Boiler(
+            'Boiler', 0.5,
+            Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+            Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'),
+                         size=fx.InvestParameters(optional=True, minimum_size=40, fix_effects=10, specific_effects=1))),
+            fx.linear_converters.Boiler(
+                'Boiler_optional', 0.5,
+                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'),
+                             size=fx.InvestParameters(optional=True, minimum_size=50, fix_effects=10, specific_effects=1))))
+
+        self.solve_and_load(self.flow_system)
+        boiler = self.get_element('Boiler')
+        boiler_optional = self.get_element('Boiler_optional')
+        costs = self.get_element('costs')
+        assert_allclose(costs.model.all.sum.result, 80 + 40 * 1 + 10, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='The total costs does not have the right value')
+        assert_allclose(boiler.Q_th.model._investment.size.result,
+                        40, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__Investment_size" does not have the right value')
+        assert_allclose(boiler.Q_th.model._investment.is_invested.result,
+                        1, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__IsInvested" does not have the right value')
+
+        assert_allclose(boiler_optional.Q_th.model._investment.size.result,
+                        0, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__Investment_size" does not have the right value')
+        assert_allclose(boiler_optional.Q_th.model._investment.is_invested.result,
+                        0, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__IsInvested" does not have the right value')
+
+
+class TestOnOff(BaseTest):
+    def test_01_on(self):
+        self.flow_system = self.create_model(self.datetime_array)
+        self.flow_system.add_elements(fx.linear_converters.Boiler(
+                'Boiler', 0.5,
+                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'),
+                             size=100, can_be_off=fx.OnOffParameters())))
+
+        self.solve_and_load(self.flow_system)
+        boiler = self.get_element('Boiler')
+        costs = self.get_element('costs')
+        assert_allclose(costs.model.all.sum.result, 80, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='The total costs does not have the right value')
+
+        assert_allclose(boiler.Q_th.model._on.on.result,
+                        [0, 1, 1, 0, 1], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__on" does not have the right value')
+        assert_allclose(boiler.Q_th.model.flow_rate.result,
+                        [0, 10, 20, 0, 10], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__flow_rate" does not have the right value')
+
+    def test_02_off(self):
+        self.flow_system = self.create_model(self.datetime_array)
+        self.flow_system.add_elements(fx.linear_converters.Boiler(
+                'Boiler', 0.5,
+                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'),
+                             size=100, can_be_off=fx.OnOffParameters(consecutive_off_hours_max=100))))
+
+        self.solve_and_load(self.flow_system)
+        boiler = self.get_element('Boiler')
+        costs = self.get_element('costs')
+        assert_allclose(costs.model.all.sum.result, 80, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='The total costs does not have the right value')
+
+        assert_allclose(boiler.Q_th.model._on.on.result,
+                        [0, 1, 1, 0, 1], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__on" does not have the right value')
+        assert_allclose(boiler.Q_th.model._on.off.result,
+                        1 - boiler.Q_th.model._on.on.result, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__off" does not have the right value')
+        assert_allclose(boiler.Q_th.model.flow_rate.result,
+                        [0, 10, 20, 0, 10], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__flow_rate" does not have the right value')
+
+    def test_03_switch_on_off(self):
+        self.flow_system = self.create_model(self.datetime_array)
+        self.flow_system.add_elements(fx.linear_converters.Boiler(
+                'Boiler', 0.5,
+                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'),
+                             size=100, can_be_off=fx.OnOffParameters(force_switch_on=True))))
+
+        self.solve_and_load(self.flow_system)
+        boiler = self.get_element('Boiler')
+        costs = self.get_element('costs')
+        assert_allclose(costs.model.all.sum.result, 80, rtol=self.mip_gap, atol=1e-10,
+                        err_msg='The total costs does not have the right value')
+
+        assert_allclose(boiler.Q_th.model._on.on.result,
+                        [0, 1, 1, 0, 1], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__on" does not have the right value')
+        assert_allclose(boiler.Q_th.model._on.switch_on.result,
+                        [0, 1, 0, 0, 1], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__switch_on" does not have the right value')
+        assert_allclose(boiler.Q_th.model._on.switch_off.result,
+                        [0, 0, 0, 1, 0], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__switch_on" does not have the right value')
+        assert_allclose(boiler.Q_th.model.flow_rate.result,
+                        [0, 10, 20, 0, 10], rtol=self.mip_gap, atol=1e-10,
+                        err_msg='"Boiler__Q_th__flow_rate" does not have the right value')
 
     def test_03_restrict_size(self):
         self.flow_system = self.create_model(self.datetime_array)
