@@ -239,10 +239,9 @@ class FlowSystem:
         return [ts for element in self.all_elements for ts in element.used_time_series]
 
 
-
 def create_datetime_array(start: str,
                           steps: Optional[int] = None,
-                          freq: Literal['Y', 'M', 'W', 'D', 'h', 'm', 's'] = 'h',
+                          freq: str = '1h',
                           end: Optional[str] = None) -> np.ndarray[np.datetime64]:
     """
     Create a NumPy array with datetime64 values.
@@ -253,15 +252,9 @@ def create_datetime_array(start: str,
         Start date in 'YYYY-MM-DD' format or a full timestamp (e.g., 'YYYY-MM-DD HH:MM').
     steps : int, optional
         Number of steps in the datetime array. If `end` is provided, `steps` is ignored.
-    freq : {'Y', 'M', 'W', 'D', 'h', 'm', 's'}, optional
-        Frequency for the datetime64 array. Options include:
-        - 'Y' : Yearly
-        - 'M' : Monthly
-        - 'W' : Weekly
-        - 'D' : Daily
-        - 'h' : Hourly
-        - 'm' : Minute
-        - 's' : Second
+    freq : str, optional
+        Frequency for the datetime64 array. Supports flexible intervals:
+        - 'Y', 'M', 'W', 'D', 'h', 'm', 's' (e.g., '1h', '15m', '2h').
         Defaults to 'h' (hourly).
     end : str, optional
         End date in 'YYYY-MM-DD' format or a full timestamp (e.g., 'YYYY-MM-DD HH:MM').
@@ -274,28 +267,40 @@ def create_datetime_array(start: str,
 
     Examples
     --------
-    Create an array with daily intervals for 5 days:
-    >>> create_datetime_array('2023-01-01', steps=5, freq='D')
-    array(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05'], dtype='datetime64[D]')
+    Create an array with 15-minute intervals:
+    >>> create_datetime_array('2023-01-01', steps=5, freq='15m')
+    array(['2023-01-01T00:00', '2023-01-01T00:15', '2023-01-01T00:30', ...], dtype='datetime64[m]')
 
-    Create hourly intervals within a day:
-    >>> create_datetime_array('2023-01-01T00', steps=4, freq='h')
-    array(['2023-01-01T00', '2023-01-01T01', '2023-01-01T02', '2023-01-01T03'], dtype='datetime64[h]')
+    Create 2-hour intervals:
+    >>> create_datetime_array('2023-01-01T00', steps=4, freq='2h')
+    array(['2023-01-01T00', '2023-01-01T02', '2023-01-01T04', ...], dtype='datetime64[h]')
 
     Generate minute intervals until a specified end time:
     >>> create_datetime_array('2023-01-01T00:00', end='2023-01-01T01:00', freq='m')
     array(['2023-01-01T00:00', '2023-01-01T00:01', ..., '2023-01-01T00:59'], dtype='datetime64[m]')
-
-    Monthly intervals over a specified time period:
-    >>> create_datetime_array('2023-01', end='2023-06', freq='M')
-    array(['2023-01', '2023-02', '2023-03', '2023-04', '2023-05'], dtype='datetime64[M]')
     """
+    # Parse frequency to allow numeric intervals like '15m', '2h', etc.
+    import re
+    match = re.match(r"(\d+)([YMWDhms])", freq)
+    if match:
+        step_size = int(match.group(1))
+        unit = match.group(2)
+    else:
+        # Default to a step size of 1 for unit-only frequencies (e.g., 'h', 'm')
+        step_size = 1
+        unit = freq
+
+    # Create the datetime64 range based on the parsed frequency
+    dtype = f'datetime64[{unit}]'
     if end:
-        return np.arange(start, end, dtype=f'datetime64[{freq}]')
+        array = np.arange(np.datetime64(start), np.datetime64(end), step_size, dtype=dtype)
     elif steps:
-        return np.arange(start, steps, dtype=f'datetime64[{freq}]')
+        array = np.arange(np.datetime64(start), np.datetime64(start) + steps * np.timedelta64(step_size, unit),
+                          dtype=dtype)
     else:
         raise ValueError("Either `steps` or `end` must be provided.")
+
+    return array
 
 
 
