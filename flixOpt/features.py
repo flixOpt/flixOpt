@@ -340,16 +340,18 @@ class OnOffModel(ElementModel):
             AssertionError: If the binary_variable is None, indicating the duration constraints cannot be applied.
 
         """
+        previous_values = np.sum(
+            self.extract_from_last_zero(binary_variable.previous_values) * system_model.dt_in_hours[0]
+        )
+        mega = system_model.dt_in_hours_total + previous_values
+
         duration_in_hours = create_variable(
             variable_label, self, system_model.nr_of_time_steps,
             lower_bound=0,
-            upper_bound=maximum_duration.active_data if maximum_duration is not None else system_model.dt_in_hours_total,
-            previous_values=np.array([np.sum(
-                self.extract_from_last_zero(binary_variable.previous_values) * system_model.dt_in_hours[0]
-            )]).astype(int)
+            upper_bound=maximum_duration.active_data if maximum_duration is not None else mega,
+            previous_values=previous_values
         )
         label_prefix = duration_in_hours.label
-        mega = system_model.dt_in_hours_total
 
         assert binary_variable is not None, f'Duration Variable of {self.element} must be defined to add constraints'
         # TODO: Einfachere Variante von Peter umsetzen!
@@ -390,9 +392,9 @@ class OnOffModel(ElementModel):
         first_index = time_indices[0]  # only first element
         eq_first = create_equation(f'{label_prefix}_initial', self)
         eq_first.add_summand(duration_in_hours, 1, first_index)
-        eq_first.add_summand(
-            binary_variable,
-            -1 * (system_model.dt_in_hours[first_index] + duration_in_hours.previous_values), first_index)
+        eq_first.add_summand(binary_variable,
+                             -1 * (system_model.dt_in_hours[first_index] + duration_in_hours.previous_values),
+                             first_index)
 
         return duration_in_hours
 
