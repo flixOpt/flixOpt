@@ -345,6 +345,14 @@ class OnOffModel(ElementModel):
         )
         mega = system_model.dt_in_hours_total + previous_values
 
+        if maximum_duration is not None:
+            first_step_max: Skalar = maximum_duration.active_data[0] if maximum_duration.is_array else maximum_duration.active_data
+            if previous_values + system_model.dt_in_hours[0] > first_step_max:
+                logger.warning(f'The maximum duration of "{variable_label}" is set to {maximum_duration.active_data}h, '
+                               f'but the consecutive_duration previous to this model is {previous_values}h. '
+                               f'This forces "{binary_variable.label} = 0" in the first time step '
+                               f'(dt={system_model.dt_in_hours[0]}h)!')
+
         duration_in_hours = create_variable(
             variable_label, self, system_model.nr_of_time_steps,
             lower_bound=0,
