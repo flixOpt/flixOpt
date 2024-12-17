@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-Created on Tue Feb 16 09:16:58 2021
-
-@author: Panitz
+This module bundles all common functionality of flixOpt and sets up the logging
 """
 
-
+from .commons import *
+setup_logging('INFO', use_rich_handler=False)
