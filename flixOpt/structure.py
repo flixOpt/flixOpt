@@ -127,6 +127,17 @@ class SystemModel(MathModel):
                 'Time intervals in hours': self.dt_in_hours
                 }
 
+    def to_tex_md(self) -> str:
+        components = '\n'.join([f'{model.to_tex_md(3)}' for model in self.component_models])
+        effects = '\n'.join([f'{model.to_tex_md(3)}' for model in self.effect_collection_model.sub_models])
+        buses = '\n'.join([f'{model.to_tex_md(3)}' for model in self.bus_models])
+        others = '\n'.join([f'{model.to_tex_md(3)}' for model in self.other_models])
+        return (f"# Math Model {self.label}\n"
+                f"## Components\n{components}\n"
+                f"## Effects\n{effects}\n"
+                f"## Buses\n{buses}\n"
+                f"## Others\n{others}\n")
+
     @property
     def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
         main_results = {}
@@ -329,6 +340,20 @@ class ElementModel:
             return descriptions
         else:
             return [eq.description() for eq in self.all_equations.values()]
+
+    def to_tex_md(self, level: int = 1) -> Dict[str, str]:
+        title = f'{"#"*level} {self.label}'
+        constraints = '\n\n'.join([f'{constr.label_short}: ${constr.to_tex()}$'
+                                   for constr in self.constraints.values()])
+        variables = '\n\n'.join([f'${var.to_tex(with_bounds=True)}$'
+                                 for var in self.variables.values()])
+        tex_md = f'{title}\n\n{constraints}\n\n{variables}\n'
+
+        # Recursively gather descriptions from sub-models
+        for sub_model in self.sub_models:
+            tex_md += sub_model.to_tex_md(level + 1)
+
+        return tex_md
 
     @property
     def overview_of_model_size(self) -> Dict[str, int]:
