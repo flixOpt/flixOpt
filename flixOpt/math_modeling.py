@@ -78,6 +78,41 @@ class Variable:
     def reset_result(self):
         self.result = None
 
+    def to_tex(self, with_bounds: bool = False) -> str:
+        """
+        Export the variable to LaTeX code.
+
+        Returns:
+        --------
+        str
+            A LaTeX representation of the variable.
+        """
+        main = r'\text{' + self.label_short + '}'
+        suffix = r'_\text{' + self.label.replace(self.label_short, '').strip('_') + '}'
+        upper_suffix = r'^\text{b}' if self.is_binary else ''
+        name = main+suffix+upper_suffix
+        if with_bounds and self.fixed_value is not None:
+            return f'{name} = {self.fixed_value}'
+        elif with_bounds:
+            if self.fixed_value is not None:
+                return f'{name} = {self.fixed_value[0] if isinstance(self.fixed_value, np.ndarray) else self.fixed_value}'
+            else:
+                if self.is_binary:
+                    lb = self.lower_bound if self.lower_bound is not None else '0'
+                    ub = self.upper_bound if self.upper_bound is not None else '1'
+                else:
+                    lb = self.lower_bound if self.lower_bound is not None else '-\infty'
+                    ub = self.upper_bound if self.upper_bound is not None else '+\infty'
+                lb = lb[0] if isinstance(lb, np.ndarray) else lb
+                ub = ub[0] if isinstance(ub, np.ndarray) else ub
+
+                return f'{lb} \leq {name} \leq {ub}'
+        else:
+            return name
+
+    @property
+    def is_directly_constrained(self):
+        return any([self.lower_bound is not None, self.upper_bound is not None, self.fixed_value is not None])
 
 class VariableTS(Variable):
     """
@@ -264,6 +299,27 @@ class Equation(_Constraint):
         header = f"{name:<{header_width-len(index_str)-1}} {index_str}"
         return f'{header:<{header_width}}: {constant:>8} = {all_summands_string}'
 
+    def to_tex(self, at_index: int = 0) -> str:
+        """
+        Export the equation to LaTeX code.
+
+        Parameters:
+        -----------
+        at_index : int, optional
+            The index of the equation to export (default is 0).
+
+        Returns:
+        --------
+        str
+            A LaTeX representation of the equation.
+        """
+        equation_nr = min(at_index, self.length - 1)
+        summand_strings = [summand.to_tex(at_index) for summand in self.summands]
+        all_summands_string = ' + '.join(summand_strings).replace('+ -', '-')
+        constant = self.constant_vector[equation_nr]
+
+        return f"{all_summands_string} = {constant}"
+
 
 class Inequation(_Constraint):
     """
@@ -294,6 +350,27 @@ class Inequation(_Constraint):
         header_width = 30
         header = f"{name:<{header_width - len(index_str) - 1}} {index_str}"
         return f'{header:<{header_width}}: {constant:>8} >= {all_summands_string}'
+
+    def to_tex(self, at_index: int = 0) -> str:
+        """
+        Export the equation to LaTeX code.
+
+        Parameters:
+        -----------
+        at_index : int, optional
+            The index of the equation to export (default is 0).
+
+        Returns:
+        --------
+        str
+            A LaTeX representation of the equation.
+        """
+        equation_nr = min(at_index, self.length - 1)
+        summand_strings = [summand.to_tex(at_index) for summand in self.summands]
+        all_summands_string = ' + '.join(summand_strings).replace('+ -', '-')
+        constant = self.constant_vector[equation_nr]
+
+        return f"{all_summands_string} \\leq {constant}"
 
 
 class Summand:
@@ -355,6 +432,26 @@ class Summand:
         else:
             raise Exception(f'Variable {self.variable.label} (length={length_of_indices}) und '
                             f'Faktor (length={length_of_factor}) müssen gleiche Länge haben oder Skalar sein')
+
+    def to_tex(self, at_index=0) -> str:
+        """
+        Export the summand to LaTeX code.
+
+        Parameters:
+        -----------
+        at_index : int, optional
+            The index of the summand to export (default is 0).
+
+        Returns:
+        --------
+        str
+            A LaTeX representation of the summand.
+        """
+        i = 0 if self.length == 1 else at_index
+        index = self.indices[i]
+        factor = self.factor_vec[i]
+        factor_str = f"{factor:.6}" if isinstance(factor, (float, np.floating)) else str(factor)
+        return f"{factor_str} \cdot {self.variable.to_tex()}[{index}]"
 
 
 class SumOfSummand(Summand):
@@ -503,6 +600,16 @@ class MathModel:
 
     def results(self) -> Dict[str, Numeric]:
         return {variable.label: variable.result for variable in self.variables}
+
+    def to_tex_md(self) -> str:
+        variables = '\n'.join([f'${variable.to_tex()}$' for variable in sorted(self.variables, key=lambda x: x.label)])
+        equations = '\n'.join([f'${constraint.to_tex()}$' for constraint in sorted(self.equations, key=lambda x: x.label)])
+        inequations = '\n'.join([f'${constraint.to_tex()}$' for constraint in sorted(self.inequations, key=lambda x: x.label)])
+        return (f"# Math Model {self.label}\n"
+                f"## Variables\n{variables}\n"
+                f"## Constraints\n"
+                f"### Equations\n{equations}\n"
+                f"### Inequations\n{inequations}\n")
 
     @property
     def infos(self) -> Dict:
