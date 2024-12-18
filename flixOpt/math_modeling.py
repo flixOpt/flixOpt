@@ -101,12 +101,12 @@ class Variable:
                     lb = self.lower_bound if self.lower_bound is not None else '0'
                     ub = self.upper_bound if self.upper_bound is not None else '1'
                 else:
-                    lb = self.lower_bound if self.lower_bound is not None else '-\infty'
-                    ub = self.upper_bound if self.upper_bound is not None else '+\infty'
+                    lb = self.lower_bound if self.lower_bound is not None else r'-\infty'
+                    ub = self.upper_bound if self.upper_bound is not None else r'+\infty'
                 lb = lb[0] if isinstance(lb, np.ndarray) else lb
                 ub = ub[0] if isinstance(ub, np.ndarray) else ub
 
-                return f'{lb} \leq {name} \leq {ub}'
+                return rf'{lb} \leq {name} \leq {ub}'
         else:
             return name
 
@@ -451,7 +451,7 @@ class Summand:
         index = self.indices[i]
         factor = self.factor_vec[i]
         factor_str = f"{factor:.6}" if isinstance(factor, (float, np.floating)) else str(factor)
-        return f"{factor_str} \cdot {self.variable.to_tex()}[{index}]"
+        return rf'{factor_str} \cdot {self.variable.to_tex()}[{index}]'
 
 
 class SumOfSummand(Summand):
