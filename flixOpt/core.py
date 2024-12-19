@@ -25,50 +25,6 @@ Numeric_TS = Union[Skalar, np.ndarray, 'TimeSeries']
 #   TimeSeriesData      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
 
 
-class Config:
-    """
-    Configuration class for global settings.
-    The values are used as defaults in several classes.
-    They can be overwritten by the user via the .update() - method.
-    Use with care, and make sure to adjust them in the beginning of the script.
-    """
-    BIG_M: Union[int, float] = 1e7
-    EPSILON: Union[int, float] = 1e-5
-    OFFSET_TO_BIG_M: Union[int, float] = 100
-    BIG_BINARY_BOUND: Union[int, float] = BIG_M / OFFSET_TO_BIG_M
-
-    @classmethod
-    def update(cls, big_m: Optional[int] = None,
-               epsilon: Optional[float] = None,
-               offset_to_big_m: Optional[int] = None,
-               big_binary_bound: Optional[int] = None) -> None:
-        """
-        Update the configuration with the given values.
-        -----
-        Parameters
-        -----------
-        big_m: int, optional
-            The value of the big M constant. Defaults to 1e7.
-        epsilon: float, optional
-            The value of the epsilon constant. Defaults to 1e-5.
-        offset_to_big_m: int, optional
-            The value of the offset to big M constant for the big binary bound. Defaults to 100.
-        big_binary_bound: int, optional
-            The value of the big binary bound. Defaults to the value of big M minus the offset to big M.
-            Use either this or the offset!
-        """
-        if big_binary_bound is not None and offset_to_big_m is not None:
-            raise ValueError(f'Either use "offset_to_big_m" or set the "big_binary_bound" directly. Not Both')
-        if big_m is not None:
-            cls.BIG_M = big_m
-        if epsilon is not None:
-            cls.EPSILON = epsilon
-        if big_binary_bound is not None:
-            cls.BIG_BINARY_BOUND = big_binary_bound
-        if offset_to_big_m is not None:
-            cls.BIG_BINARY_BOUND = cls.BIG_M / offset_to_big_m
-
-
 class TimeSeriesData:
     # TODO: Move to Interface.py
     def __init__(self,

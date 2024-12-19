@@ -6,7 +6,8 @@ These are tightly connected to features.py
 import logging
 from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
-from .core import Numeric, Skalar, Numeric_TS, Config
+from .core import Numeric, Skalar, Numeric_TS
+from .config import CONFIG
 from .structure import get_object_infos_as_str, get_object_infos_as_dict
 if TYPE_CHECKING:
     from .structure import Element
@@ -71,7 +72,7 @@ class InvestParameters:
         self.specific_effects: EffectValuesInvest = specific_effects
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
-        self._maximum_size = maximum_size or Config.BIG_M  # default maximum
+        self._maximum_size = maximum_size or CONFIG['modeling']['BIG']  # default maximum
     
     def transform_data(self):
         from .effects import as_effect_dict

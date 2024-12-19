@@ -9,7 +9,8 @@ import logging
 import numpy as np
 
 from .math_modeling import Variable, VariableTS, Equation
-from .core import TimeSeries, Skalar, Numeric, Config
+from .core import TimeSeries, Skalar, Numeric
+from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .structure import ElementModel, SystemModel, Element, create_equation, create_variable
 
@@ -119,7 +120,7 @@ class InvestmentModel(ElementModel):
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
             eq_is_invested_lb = create_equation('is_invested_lb', self, 'ineq')
             eq_is_invested_lb.add_summand(self.size, -1)
-            eq_is_invested_lb.add_summand(self.is_invested, np.maximum(Config.EPSILON, self._invest_parameters.minimum_size))
+            eq_is_invested_lb.add_summand(self.is_invested, np.maximum(CONFIG['modeling']['EPSILON'], self._invest_parameters.minimum_size))
 
     def _create_bounds_for_defining_variable(self, system_model: SystemModel):
         label = self._defining_variable.label
@@ -191,7 +192,7 @@ class OnOffModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self.on = create_variable('on', self, system_model.nr_of_time_steps, is_binary=True,
-                                  previous_values=self._previous_on_values(Config.EPSILON))
+                                  previous_values=self._previous_on_values(CONFIG['modeling']['EPSILON']))
 
         self.total_on_hours = create_variable('totalOnHours', self, 1,
                                               lower_bound=self._on_off_parameters.on_hours_total_min,
@@ -204,7 +205,7 @@ class OnOffModel(ElementModel):
 
         if self._on_off_parameters.use_off:
             self.off = create_variable('off', self, system_model.nr_of_time_steps, is_binary=True,
-                                       previous_values=1 - self._previous_on_values(Config.EPSILON))
+                                       previous_values=1 - self._previous_on_values(CONFIG['modeling']['EPSILON']))
 
             self._add_off_constraints(system_model, system_model.indices)
 
@@ -248,7 +249,7 @@ class OnOffModel(ElementModel):
             #### Bedingung 1) ####
             # eq: On(t) * max(epsilon, lower_bound) <= Q_th(t)
             eq_on_1.add_summand(variable, -1, time_indices)
-            eq_on_1.add_summand(self.on, np.maximum(Config.EPSILON, lower_bound), time_indices)
+            eq_on_1.add_summand(self.on, np.maximum(CONFIG['modeling']['EPSILON'], lower_bound), time_indices)
 
             #### Bedingung 2) ####
             # eq: Q_th(t) <= Q_th_max * On(t)
@@ -261,7 +262,7 @@ class OnOffModel(ElementModel):
             # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
             for variable in self._defining_variables:
                 eq_on_1.add_summand(variable, -1, time_indices)
-            eq_on_1.add_summand(self.on, Config.EPSILON, time_indices)
+            eq_on_1.add_summand(self.on, CONFIG['modeling']['EPSILON'], time_indices)
 
             #### Bedingung 2) ####
             ## sum(alle Leistung) >0 -> On = 1 | On=0 -> sum(Leistung)=0
@@ -276,7 +277,7 @@ class OnOffModel(ElementModel):
             upper_bound = absolute_maximum / nr_of_defining_variables
             eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
 
-        if np.max(upper_bound) > Config.BIG_BINARY_BOUND:
+        if np.max(upper_bound) > CONFIG['modeling']['BIG_BINARY_BOUND']:
             logger.warning(
                 f'In "{self.element.label_full}", a binary definition was created with a big upper bound '
                 f'({np.max(upper_bound)}). This can lead to wrong results regarding the on and off variables. '
