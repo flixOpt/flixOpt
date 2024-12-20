@@ -11,9 +11,9 @@ import logging
 import numpy as np
 
 from .math_modeling import Variable, Equation
-from .core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict, Commodity
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
 from .features import ShareAllocationModel
-from .structure import Element, ElementModel, SystemModel, _create_time_series
+from .structure import Commodity, Element, ElementModel, SystemModel, _create_time_series
 
 
 logger = logging.getLogger('flixOpt')

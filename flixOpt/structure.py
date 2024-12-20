@@ -21,6 +21,29 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 logger = logging.getLogger('flixOpt')
 
 
+class Commodity:
+    """
+    Class for commodity objects.
+    """
+    def __init__(self, unit: str, label: Optional[str] = None, description: Optional[str] = None):
+        """
+        Parameters
+        ----------
+        unit : str
+            The unit of the commodity.
+        label : str, optional
+            The label of the commodity.
+        description : str, optional
+            A description of the commodity.
+        """
+        self.unit = unit
+        self.label = label
+        self.description = description
+
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
+
+
 class SystemModel(MathModel):
     """
     Hier kommen die ModellingLanguage-spezifischen Sachen rein

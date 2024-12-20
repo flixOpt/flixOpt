@@ -9,8 +9,8 @@ import logging
 import numpy as np
 
 from . import utils
-from .core import TimeSeries, Commodity
-from .structure import Element, SystemModel, get_object_infos_as_dict
+from .core import TimeSeries
+from .structure import Element, SystemModel, Commodity
 from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
 
