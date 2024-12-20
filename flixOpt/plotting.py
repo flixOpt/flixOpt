@@ -651,7 +651,7 @@ def visualize_network(node_infos: dict,
                      color="#222831")
 
     # Enhanced physics settings
-    net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
+    net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.05, gravity=-10000)
 
     if controls:
         net.show_buttons(filter_=controls)  # Adds UI buttons to control physics settings
