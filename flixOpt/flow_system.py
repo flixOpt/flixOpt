@@ -47,7 +47,7 @@ class FlowSystem:
         # defaults:
         self.components: List[Component] = []
         self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
-        self.commodities: Dict[str, Commodity] = {}
+        self.commodities: List[Commodity] = []
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
@@ -64,6 +64,8 @@ class FlowSystem:
             self._check_if_element_is_unique(new_component)  # check if already exists:
             new_component.register_component_in_flows()  # Komponente in Flow registrieren
             new_component.register_flows_in_bus()  # Flows in Bus registrieren:
+            for commodity in new_component.commodities:
+                self.add_commodity(commodity)
         self.components.extend(new_components)  # Add to existing list of components
 
     def add_elements(self, *args: Element) -> None:
@@ -86,7 +88,8 @@ class FlowSystem:
 
     def add_commodity(self, commodity: Commodity) -> Commodity:
         """
-        Add a new commodity to the flow system.
+        Add a new commodity to the flow system and returns it.
+        If a commodity with the same label already exists, it is not added again.
 
         Parameters
         ----------
@@ -96,12 +99,17 @@ class FlowSystem:
         Returns
         -------
         Commodity
-            The newly created commodity.
+            The added commodity or, if a similar commodity already exists, the existing commodity.
         """
-        if commodity.label in self.commodities and self.commodities[commodity.label] != commodity:
-            raise Exception(f'Another commodity with label {commodity.label} already exists! Use another name!')
-        self.commodities[commodity.label] = commodity
-        return commodity
+        matching_commodity = next(
+            (existing_commodity for existing_commodity in self.commodities if commodity == existing_commodity),
+            None  # Default value if no match is found
+        )
+        if matching_commodity is not None:
+            return commodity
+        else:
+            self.commodities.append(commodity)
+            return commodity
 
     def transform_data(self):
         for element in self.all_elements:
@@ -128,7 +136,7 @@ class FlowSystem:
                            sorted(self.all_buses, key=lambda bus: bus.label.upper())},
                  'Effects': {effect.label: effect.infos() for effect in
                              sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper())},
-                 'Commodities': {commodity.label: commodity.infos() for commodity in self.commodities.values()}}
+                 'Commodities': [commodity.infos() for commodity in self.commodities]}
         return infos
 
     def visualize_network(self,

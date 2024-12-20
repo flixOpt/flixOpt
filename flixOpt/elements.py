@@ -78,6 +78,16 @@ class Component(Element):
         infos['outputs'] = [flow.infos() for flow in self.outputs]
         return infos
 
+    @property
+    def commodities(self) -> List[Commodity]:
+        """
+        Returns a list of all commodities of the component, including the commodity of its Flows
+        """
+        flow_commodities = [flow.commodity for flow in self.inputs + self.outputs if flow.commodity is not None]
+        if self.commodity is not None:
+            return flow_commodities + [self.commodity]
+        return flow_commodities
+
 
 class Bus(Element):
     """

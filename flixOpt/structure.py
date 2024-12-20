@@ -4,6 +4,7 @@ These classes are not directly used by the end user, but are used by other modul
 """
 
 from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING, Any
+from dataclasses import dataclass
 import logging
 import inspect
 import textwrap
@@ -20,29 +21,34 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 
 logger = logging.getLogger('flixOpt')
 
-
+@dataclass(frozen=True)  # Make the dataclass immutable and hashable by default
 class Commodity:
     """
-    Class for commodity objects.
+    Represents a commodity with its unit, label, and description.
+
+    Parameters
+    ----------
+    unit : str
+        The unit of the commodity.
+    label : str, optional
+        The label of the commodity.
+    description : str, optional
+        A description of the commodity.
     """
-    def __init__(self, unit: str, label: Optional[str] = None, description: Optional[str] = None):
-        """
-        Parameters
-        ----------
-        unit : str
-            The unit of the commodity.
-        label : str, optional
-            The label of the commodity.
-        description : str, optional
-            A description of the commodity.
-        """
-        self.unit = unit
-        self.label = label
-        self.description = description
+    unit: str
+    label: Optional[str] = None
+    description: Optional[str] = None
 
     def infos(self) -> Dict:
-        return get_object_infos_as_dict(self)
+        """
+        Returns a dictionary of the object's attributes.
 
+        Returns
+        -------
+        Dict
+            A dictionary containing the object's attributes.
+        """
+        return get_object_infos_as_dict(self)
 
 class SystemModel(MathModel):
     """
