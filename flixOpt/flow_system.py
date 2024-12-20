@@ -9,7 +9,7 @@ import logging
 import numpy as np
 
 from . import utils
-from .core import TimeSeries
+from .core import TimeSeries, Commodity
 from .structure import Element, SystemModel, get_object_infos_as_dict
 from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
@@ -47,6 +47,7 @@ class FlowSystem:
         # defaults:
         self.components: List[Component] = []
         self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
+        self.commodities: Dict[str, Commodity] = {}
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
@@ -81,6 +82,31 @@ class FlowSystem:
                 self.add_effects(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
+
+    def add_commodity(self, label: str, unit: str, description: str = '') -> Commodity:
+        """
+        Add a new commodity to the flow system.
+
+        Parameters
+        ----------
+        label : str
+            The label of the commodity.
+        unit : str
+            The unit of the commodity.
+        description : str
+            A description of the commodity.
+
+        Returns
+        -------
+        Commodity
+            The newly created commodity.
+        """
+        if label in self.commodities:
+            logger.critical(f'Commodity with label {label} already exists! Using existing commodity instead.')
+            return self.commodities[label]
+        new_commodity = Commodity(label, unit, description)
+        self.commodities[new_commodity.label] = new_commodity
+        return new_commodity
 
     def transform_data(self):
         for element in self.all_elements:
