@@ -1,8 +1,10 @@
 import os
-from typing import Optional, Union, TypedDict, Literal
+from typing import Optional, TypedDict, Literal
 import logging
 
 import yaml
+from rich.logging import RichHandler
+from rich.console import Console
 
 logger = logging.getLogger('flixOpt')
 
@@ -76,3 +78,114 @@ def load_config(config_file: Optional[str] = None) -> ConfigSchema:
 
 # Load the configuration and make it globally accessible
 CONFIG: ConfigSchema = load_config()
+
+
+class MultilineFormater(logging.Formatter):
+
+    def format(self, record):
+        message_lines = record.getMessage().split('\n')
+
+        # Prepare the log prefix (timestamp + log level)
+        timestamp = self.formatTime(record, self.datefmt)
+        log_level = record.levelname.ljust(8)  # Align log levels for consistency
+        log_prefix = f"{timestamp} | {log_level} |"
+
+        # Format all lines
+        first_line = [f'{log_prefix} {message_lines[0]}']
+        if len(message_lines) > 1:
+            lines = first_line + [f"{log_prefix} {line}" for line in message_lines[1:]]
+        else:
+            lines = first_line
+
+        return '\n'.join(lines)
+
+
+class ColoredMultilineFormater(MultilineFormater):
+    # ANSI escape codes for colors
+    COLORS = {
+        'DEBUG': '\033[32m',  # Green
+        'INFO': '\033[34m',  # Blue
+        'WARNING': '\033[33m',  # Yellow
+        'ERROR': '\033[31m',  # Red
+        'CRITICAL': '\033[1m\033[31m',  # Bold Red
+    }
+    RESET = '\033[0m'
+
+    def format(self, record):
+        lines = super().format(record).splitlines()
+        log_color = self.COLORS.get(record.levelname, self.RESET)
+
+        # Create a formatted message for each line separately
+        formatted_lines = []
+        for line in lines:
+            formatted_lines.append(f"{log_color}{line}{self.RESET}")
+
+        return '\n'.join(formatted_lines)
+
+
+def _get_logging_handler(log_file: Optional[str] = None,
+                         use_rich_handler: bool = False) -> logging.Handler:
+    """Returns a logging handler for the given log file."""
+    if use_rich_handler and log_file is None:
+        # RichHandler for console output
+        console = Console(width=120)
+        rich_handler = RichHandler(
+            console=console,
+            rich_tracebacks=True,
+            omit_repeated_times=True,
+            show_path=False,
+            log_time_format="%Y-%m-%d %H:%M:%S",
+        )
+        rich_handler.setFormatter(logging.Formatter("%(message)s"))  # Simplified formatting
+
+        return rich_handler
+    elif log_file is None:
+        # Regular Logger with custom formating enabled
+        file_handler = logging.StreamHandler()
+        file_handler.setFormatter(ColoredMultilineFormater(
+            fmt="%(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        return file_handler
+    else:
+        # FileHandler for file output
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(MultilineFormater(
+            fmt="%(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        return file_handler
+
+
+def setup_logging(default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO',
+                  log_file: Optional[str] = 'flixOpt.log',
+                  use_rich_handler: bool = False):
+    """Setup logging configuration"""
+    logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
+    logger.setLevel(get_logging_level_by_name(default_level))
+    # Clear existing handlers
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    logger.addHandler(_get_logging_handler(use_rich_handler=use_rich_handler))
+    if log_file is not None:
+        logger.addHandler(_get_logging_handler(log_file, use_rich_handler=False))
+
+    return logger
+
+
+def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) -> int:
+    possible_logging_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    if level_name.upper() not in possible_logging_levels:
+        raise ValueError(f'Invalid logging level {level_name}')
+    else:
+        logging_level = getattr(logging, level_name.upper(), logging.WARNING)
+        return logging_level
+
+
+def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+    logger = logging.getLogger('flixOpt')
+    logging_level = get_logging_level_by_name(level_name)
+    logger.setLevel(logging_level)
+    for handler in logger.handlers:
+        handler.setLevel(logging_level)

@@ -2,8 +2,8 @@
 This module makes the commonly used classes and functions available in the flixOpt framework.
 """
 
-from .core import setup_logging, change_logging_level, TimeSeriesData
-from .config import CONFIG
+from .core import TimeSeriesData
+from .config import CONFIG, change_logging_level, setup_logging
 
 from .elements import Flow, Bus
 from .effects import Effect

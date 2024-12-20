@@ -3,13 +3,11 @@ This module contains the core functionality of the flixOpt framework.
 It provides Datatypes, logging functionality, and some functions to transform data structures.
 """
 
-from typing import Union, Optional, List, Dict, Any, Literal
+from typing import Union, Optional, List, Dict, Any
 import logging
 import inspect
 
 import numpy as np
-from rich.logging import RichHandler
-from rich.console import Console
 
 from . import utils
 
@@ -17,13 +15,6 @@ logger = logging.getLogger('flixOpt')
 
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
-# zeitreihenbezogene Input-Daten:
-Numeric_TS = Union[Skalar, np.ndarray, 'TimeSeries']
-# Datatype Numeric_TS:
-#   Skalar      --> wird später dann in array ("Zeitreihe" mit length=nrOfTimeIndexe) übersetzt
-#   np.ndarray  --> muss length=nrOfTimeIndexe haben ("Zeitreihe")
-#   TimeSeriesData      --> wie obige aber zusätzliche Übergabe aggWeight (für Aggregation)
-
 
 class TimeSeriesData:
     # TODO: Move to Interface.py
@@ -78,6 +69,9 @@ class TimeSeriesData:
 
     def __str__(self):
         return str(self.data)
+
+
+Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesData]  # TODO: This is not really correct throughozt the codebase. Sometimes its used for TimeSeries aswell?
 
 
 class TimeSeries:
@@ -276,113 +270,3 @@ def as_effect_dict_with_ts(name_of_param: str,
     effect_dict = as_effect_dict(effect_values)
     effect_ts_dict = effect_values_to_ts(name_of_param, effect_dict, owner)
     return effect_ts_dict
-
-
-class MultilineFormater(logging.Formatter):
-
-    def format(self, record):
-        message_lines = record.getMessage().split('\n')
-
-        # Prepare the log prefix (timestamp + log level)
-        timestamp = self.formatTime(record, self.datefmt)
-        log_level = record.levelname.ljust(8)  # Align log levels for consistency
-        log_prefix = f"{timestamp} | {log_level} |"
-
-        # Format all lines
-        first_line = [f'{log_prefix} {message_lines[0]}']
-        if len(message_lines) > 1:
-            lines = first_line + [f"{log_prefix} {line}" for line in message_lines[1:]]
-        else:
-            lines = first_line
-
-        return '\n'.join(lines)
-
-
-class ColoredMultilineFormater(MultilineFormater):
-    # ANSI escape codes for colors
-    COLORS = {
-        'DEBUG': '\033[32m',  # Green
-        'INFO': '\033[34m',  # Blue
-        'WARNING': '\033[33m',  # Yellow
-        'ERROR': '\033[31m',  # Red
-        'CRITICAL': '\033[1m\033[31m',  # Bold Red
-    }
-    RESET = '\033[0m'
-
-    def format(self, record):
-        lines = super().format(record).splitlines()
-        log_color = self.COLORS.get(record.levelname, self.RESET)
-
-        # Create a formatted message for each line separately
-        formatted_lines = []
-        for line in lines:
-            formatted_lines.append(f"{log_color}{line}{self.RESET}")
-
-        return '\n'.join(formatted_lines)
-
-
-def _get_logging_handler(log_file: Optional[str] = None,
-                         use_rich_handler: bool = False) -> logging.Handler:
-    """Returns a logging handler for the given log file."""
-    if use_rich_handler and log_file is None:
-        # RichHandler for console output
-        console = Console(width=120)
-        rich_handler = RichHandler(
-            console=console,
-            rich_tracebacks=True,
-            omit_repeated_times=True,
-            show_path=False,
-            log_time_format="%Y-%m-%d %H:%M:%S",
-        )
-        rich_handler.setFormatter(logging.Formatter("%(message)s"))  # Simplified formatting
-
-        return rich_handler
-    elif log_file is None:
-        # Regular Logger with custom formating enabled
-        file_handler = logging.StreamHandler()
-        file_handler.setFormatter(ColoredMultilineFormater(
-            fmt="%(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        ))
-        return file_handler
-    else:
-        # FileHandler for file output
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(MultilineFormater(
-            fmt="%(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        ))
-        return file_handler
-
-def setup_logging(default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO',
-                  log_file: Optional[str] = 'flixOpt.log',
-                  use_rich_handler: bool = False):
-    """Setup logging configuration"""
-    logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
-    logger.setLevel(get_logging_level_by_name(default_level))
-    # Clear existing handlers
-    if logger.hasHandlers():
-        logger.handlers.clear()
-
-    logger.addHandler(_get_logging_handler(use_rich_handler=use_rich_handler))
-    if log_file is not None:
-        logger.addHandler(_get_logging_handler(log_file, use_rich_handler=False))
-
-    return logger
-
-
-def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) -> int:
-    possible_logging_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    if level_name.upper() not in possible_logging_levels:
-        raise ValueError(f'Invalid logging level {level_name}')
-    else:
-        logging_level = getattr(logging, level_name.upper(), logging.WARNING)
-        return logging_level
-
-
-def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
-    logger = logging.getLogger('flixOpt')
-    logging_level = get_logging_level_by_name(level_name)
-    logger.setLevel(logging_level)
-    for handler in logger.handlers:
-        handler.setLevel(logging_level)
