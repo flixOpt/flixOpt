@@ -3,7 +3,7 @@ This module makes the commonly used classes and functions available in the flixO
 """
 
 from .core import TimeSeriesData
-from .config import CONFIG, change_logging_level, setup_logging
+from .config import CONFIG, load_config, change_logging_level, setup_logging
 
 from .elements import Flow, Bus
 from .effects import Effect
