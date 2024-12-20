@@ -27,7 +27,7 @@ class Effect(Element):
 
     def __init__(self,
                  label: str,
-                 commodity: Commodity,
+                 commodity: str,
                  meta_data: Optional[Dict] = None,
                  is_standard: bool = False,
                  is_objective: bool = False,
@@ -80,7 +80,7 @@ class Effect(Element):
         None.
 
         """
-        super().__init__(label, commodity = commodity, meta_data=meta_data)
+        super().__init__(label, commodity=commodity, meta_data=meta_data)
         self.is_standard = is_standard
         self.is_objective = is_objective
         self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_operation or {}

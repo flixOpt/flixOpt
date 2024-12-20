@@ -47,14 +47,13 @@ class FlowSystem:
         # defaults:
         self.components: List[Component] = []
         self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
-        self.commodities: List[Commodity] = []
+        self.commodities: Dict[str, Commodity] = {}
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
             logger.info(f'Registered new Effect: {new_effect.label}')
             self.effect_collection.add_effect(new_effect)
-            self.add_commodity(new_effect.commodity)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
@@ -67,7 +66,10 @@ class FlowSystem:
             for commodity in new_component.commodities + [flow.bus.commodity
                                                           for flow in new_component.inputs + new_component.outputs
                                                           if flow.bus.commodity is not None]:
-                self.add_commodity(commodity)
+                if commodity not in self.commodities:
+                    logger.critical(
+                        f'Commodity with the label "{commodity}" was not found. Please add it to the commodities of '
+                        f'the FlowSystem before adding "{new_component.label_full}".')
 
         self.components.extend(new_components)  # Add to existing list of components
 
@@ -89,30 +91,16 @@ class FlowSystem:
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def add_commodity(self, commodity: Commodity) -> Commodity:
+    def add_commodities(self, *commodities: Commodity) -> None:
         """
-        Add a new commodity to the flow system and returns it.
+        Add new commodities to the flow system.
         If a commodity with the same label already exists, it is not added again.
-
-        Parameters
-        ----------
-        commodity : Commodity
-            The commodity to add.
-
-        Returns
-        -------
-        Commodity
-            The added commodity or, if a similar commodity already exists, the existing commodity.
         """
-        matching_commodity = next(
-            (existing_commodity for existing_commodity in self.commodities if commodity == existing_commodity),
-            None  # Default value if no match is found
-        )
-        if matching_commodity is not None:
-            return commodity
-        else:
-            self.commodities.append(commodity)
-            return commodity
+        for commodity in list(commodities):
+            if commodity.label in self.commodities:
+                logger.critical(f'Commodity with the label "{commodity.label}" is already present in the FlowSystem. '
+                                f'Old commodity will be overwritten.')
+            self.commodities[commodity.label] = commodity
 
     def transform_data(self):
         for element in self.all_elements:
