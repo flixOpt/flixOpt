@@ -28,7 +28,7 @@ class Component(Element):
                  outputs: Optional[List['Flow']] = None,
                  on_off_parameters: Optional[OnOffParameters] = None,
                  prevent_simultaneous_flows: Optional[List['Flow']] = None,
-                 commodity: Optional[Commodity] = None,
+                 commodity: Optional[str] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
@@ -43,8 +43,8 @@ class Component(Element):
             See class OnOffParameters.
         prevent_simultaneous_flows: Define a Group of Flows. Only one them can be on at a time.
             Induces On-Variable in all FLows!
-        commodity : Optional[Commodity]
-            The commodity of the Flow.
+        commodity : str
+            Name of the commodity of the element.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
@@ -98,7 +98,7 @@ class Bus(Element):
     def __init__(self,
                  label: str,
                  excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5,
-                 commodity: Optional[Commodity] = None,
+                 commodity: Optional[str] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
@@ -109,8 +109,8 @@ class Bus(Element):
             excess costs / penalty costs (bus balance compensation)
             (none/ 0 -> no penalty). The default is 1e5.
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
-        commodity : Optional[Commodity]
-            The commodity of the Bus.
+        commodity : str
+            Name of the commodity of the element.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
@@ -172,7 +172,7 @@ class Flow(Element):
                  load_factor_min: Optional[Skalar] = None,
                  load_factor_max: Optional[Skalar] = None,
                  previous_flow_rate: Optional[Numeric] = None,
-                 commodity: Optional[Commodity] = None,
+                 commodity: Optional[str] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
@@ -217,8 +217,8 @@ class Flow(Element):
             If the load-profile is just an upper limit, use relative_maximum instead.
         previous_flow_rate : scalar, array, optional
             previous flow rate of the component.
-        commodity : Optional[Commodity]
-            The commodity of the Flow.
+        commodity : str
+            Name of the commodity of the element.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """

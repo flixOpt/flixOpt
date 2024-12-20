@@ -46,8 +46,8 @@ class Effect(Element):
         ----------
         label : str
             name
-        commodity : Commodity
-            The commodity of the effect.
+        commodity : str
+            Name of the commodity of the effect.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         is_standard : boolean, optional

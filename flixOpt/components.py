@@ -140,7 +140,7 @@ class Storage(Component):
                  eta_discharge: Numeric = 1,
                  relative_loss_per_hour: Numeric = 0,
                  prevent_simultaneous_charge_and_discharge: bool = True,
-                 commodity: Optional[Commodity] = None,
+                 commodity: Optional[str] = None,
                  meta_data: Optional[Dict] = None):
         """
         constructor of storage
@@ -176,8 +176,8 @@ class Storage(Component):
             loss per chargeState-Unit per hour. The default is 0.
         prevent_simultaneous_charge_and_discharge : boolean, optional
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
-        commodity : Optional[Commodity]
-            The commodity in the Storage.
+        commodity : str
+            Name of the commodity of the element.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
@@ -232,7 +232,6 @@ class Transmission(Component):
                  absolute_losses: Optional[Numeric_TS] = None,
                  on_off_parameters: OnOffParameters = None,
                  prevent_simultaneous_flows_in_both_directions: bool = True,
-                 commodity: Optional[Commodity] = None,
                  meta_data: Optional[Dict] = None):
         """
         Initializes a Transmission component (Pipe, cable, ...) that models the flows between two sides
@@ -259,8 +258,6 @@ class Transmission(Component):
             Parameters defining the on/off behavior of the component.
         prevent_simultaneous_flows_in_both_directions : bool, default=True
             If True, prevents simultaneous flows in both directions.
-        commodity : Optional[Commodity]
-            The commodity of the Transmission.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
@@ -269,7 +266,7 @@ class Transmission(Component):
                          outputs=[flow for flow in (out1, out2) if flow is not None],
                          on_off_parameters=on_off_parameters,
                          prevent_simultaneous_flows=None if in2 is None or prevent_simultaneous_flows_in_both_directions is False else [in1, in2],
-                         commodity=commodity, meta_data=meta_data)
+                         meta_data=meta_data)
         self.in1 = in1
         self.out1 = out1
         self.in2 = in2

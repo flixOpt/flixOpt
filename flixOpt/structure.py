@@ -255,14 +255,14 @@ class SystemModel(MathModel):
 class Element:
     """ Basic Element of flixOpt"""
 
-    def __init__(self, label: str, commodity: Optional[Commodity] = None, meta_data: Optional[Dict] = None):
+    def __init__(self, label: str, commodity: Optional[str] = None, meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             label of the element
-        commodity : Optional[Commodity]
-            The commodity of the element.
+        commodity : str
+            Name of the commodity of the element.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
