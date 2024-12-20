@@ -83,30 +83,24 @@ class FlowSystem:
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def add_commodity(self, label: str, unit: str, description: str = '') -> Commodity:
+    def add_commodity(self, commodity: Commodity) -> Commodity:
         """
         Add a new commodity to the flow system.
 
         Parameters
         ----------
-        label : str
-            The label of the commodity.
-        unit : str
-            The unit of the commodity.
-        description : str
-            A description of the commodity.
+        commodity : Commodity
+            The commodity to add.
 
         Returns
         -------
         Commodity
             The newly created commodity.
         """
-        if label in self.commodities:
-            logger.critical(f'Commodity with label {label} already exists! Using existing commodity instead.')
-            return self.commodities[label]
-        new_commodity = Commodity(label, unit, description)
-        self.commodities[new_commodity.label] = new_commodity
-        return new_commodity
+        if commodity.label in self.commodities and self.commodities[commodity.label] != commodity:
+            raise Exception(f'Another commodity with label {commodity.label} already exists! Use another name!')
+        self.commodities[commodity.label] = commodity
+        return commodity
 
     def transform_data(self):
         for element in self.all_elements:
