@@ -28,15 +28,15 @@ class Commodity:
 
     Parameters
     ----------
+    label : str
+        The label of the commodity.
     unit : str
         The unit of the commodity.
-    label : str, optional
-        The label of the commodity.
     description : str, optional
         A description of the commodity.
     """
+    label: str
     unit: str
-    label: Optional[str] = None
     description: Optional[str] = None
 
     def infos(self) -> Dict:
