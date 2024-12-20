@@ -203,7 +203,7 @@ class Flow(Element):
             previous flow rate of the component.
         """
         super().__init__(label, meta_data=meta_data)
-        self.size = size or CONFIG['modeling']['BIG']  # Default size
+        self.size = size or CONFIG.modeling.BIG  # Default size
         self.relative_minimum = relative_minimum
         self.relative_maximum = relative_maximum
         self.fixed_relative_profile = fixed_relative_profile
@@ -247,7 +247,7 @@ class Flow(Element):
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
 
-        if self.size == CONFIG['modeling']['BIG'] and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
+        if self.size == CONFIG.modeling.BIG and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
             raise Exception('Achtung: Wenn fixed_relative_profile genutzt wird, muss zugehöriges size definiert werden, '
                             'da: value = fixed_relative_profile * size!')
 

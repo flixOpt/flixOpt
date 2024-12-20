@@ -1,6 +1,7 @@
 import os
-from typing import Optional, TypedDict, Literal
+from typing import Optional, Literal, Annotated
 import logging
+from dataclasses import dataclass, is_dataclass, fields
 
 import yaml
 from rich.logging import RichHandler
@@ -27,19 +28,55 @@ def merge_configs(defaults: dict, overrides: dict) -> dict:
     return defaults
 
 
-class LoggingConfig(TypedDict):
-    level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    file: str
-    rich: bool
+def from_dict(cls, data: dict):
+    """
+    Recursively initialize a dataclass from a dictionary.
+    """
+    if not is_dataclass(cls):
+        raise TypeError(f"{cls} must be a dataclass")
+
+    # Build kwargs for the dataclass constructor
+    kwargs = {}
+    for field in fields(cls):
+        field_name = field.name
+        field_type = field.type
+        field_value = data.get(field_name)
+
+        # If the field type is a dataclass and the value is a dict, recursively initialize
+        if is_dataclass(field_type) and isinstance(field_value, dict):
+            kwargs[field_name] = from_dict(field_type, field_value)
+        else:
+            kwargs[field_name] = field_value  # Pass as-is if no special handling is needed
+
+    return cls(**kwargs)
 
 
-class ModelingConfig(TypedDict):
-    BIG: int
-    EPSILON: float
-    BIG_BINARY_BOUND: int
+@dataclass()
+class ValidatedConfig:
+    def __setattr__(self, name, value):
+        if field := self.__dataclass_fields__.get(name):
+            if metadata := getattr(field.type, '__metadata__', None):
+                assert metadata[0](value), f'Invalid value passed to {name!r}: {value=}'
+        super().__setattr__(name, value)
 
 
-class ConfigSchema(TypedDict):
+@dataclass
+class LoggingConfig(ValidatedConfig):
+    level: Annotated[Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], lambda level: level in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']]
+    file: Annotated[str, lambda file: isinstance(file, str)]
+    rich: Annotated[bool, lambda rich: isinstance(rich, bool)]
+
+
+@dataclass
+class ModelingConfig(ValidatedConfig):
+    BIG: Annotated[int, lambda x: isinstance(x, int)]
+    EPSILON: Annotated[float, lambda x: isinstance(x, float)]
+    BIG_BINARY_BOUND: Annotated[int, lambda x: isinstance(x, int)]
+
+
+@dataclass
+class ConfigSchema(ValidatedConfig):
+    config_name: Annotated[str, lambda x: isinstance(x, str)]
     logging: LoggingConfig
     modeling: ModelingConfig
 
@@ -59,7 +96,7 @@ def load_config(config_file: Optional[str] = None) -> ConfigSchema:
         config = yaml.safe_load(file)
 
     if config_file is None:
-        return ConfigSchema(**config)
+        return from_dict(ConfigSchema,config)
 
     # If the user provides a custom config, merge it with the defaults
     elif not os.path.exists(config_file):
@@ -70,9 +107,9 @@ def load_config(config_file: Optional[str] = None) -> ConfigSchema:
             config = merge_configs(config, user_config)
             logger.info(f"Loaded user config from {config_file}")
         try:
-            return ConfigSchema(**config)
-        except TypeError as e:
-            logger.critical(f'Invalid config file: {e}. \nPlease check your config file "{config_file}" and try again.')
+            return from_dict(ConfigSchema,config)
+        except AssertionError as e:
+            logger.critical(f'Invalid config file: {e}. \nPlease check your config file "{config_file}" and try again, or use the default config.')
             raise e
 
 

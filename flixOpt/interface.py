@@ -72,7 +72,7 @@ class InvestParameters:
         self.specific_effects: EffectValuesInvest = specific_effects
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
-        self._maximum_size = maximum_size or CONFIG['modeling']['BIG']  # default maximum
+        self._maximum_size = maximum_size or CONFIG.modeling.BIG  # default maximum
     
     def transform_data(self):
         from .effects import as_effect_dict
