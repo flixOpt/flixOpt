@@ -114,7 +114,7 @@ class Bus(Element):
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
-        super().__init__(label, meta_data=meta_data)
+        super().__init__(label, commodity=commodity, meta_data=meta_data)
         self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
