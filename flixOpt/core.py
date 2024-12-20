@@ -325,20 +325,21 @@ class Commodity:
     """
     Class for commodity objects.
     """
-    def __init__(self, label: str, unit: str, description: str):
+    def __init__(self, unit: str, label: Optional[str] = None, description: Optional[str] = None):
         """
         Parameters
         ----------
-        label : str
-            The label of the commodity.
         unit : str
             The unit of the commodity.
-        description : str
+        label : str, optional
+            The label of the commodity.
+        description : str, optional
             A description of the commodity.
         """
-        self.label = label
         self.unit = unit
+        self.label = label
         self.description = description
+
 
 class MultilineFormater(logging.Formatter):
 
