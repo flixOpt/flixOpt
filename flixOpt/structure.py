@@ -133,7 +133,7 @@ class SystemModel(MathModel):
         effect_results = {}
         main_results['Effects'] = effect_results
         for effect in self.flow_system.effect_collection.effects:
-            effect_results[f'{effect.label} [{effect.unit}]'] = {
+            effect_results[f'{effect.label} [{effect.commodity.unit}]'] = {
                 'operation': float(effect.model.operation.sum.result),
                 'invest': float(effect.model.invest.sum.result),
                 'sum': float(effect.model.all.sum.result)}

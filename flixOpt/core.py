@@ -340,6 +340,9 @@ class Commodity:
         self.label = label
         self.description = description
 
+    def infos(self):
+        return {'unit': self.unit, 'label': self.label, 'description': self.description}
+
 
 class MultilineFormater(logging.Formatter):
 
