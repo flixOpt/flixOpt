@@ -11,7 +11,7 @@ import logging
 import numpy as np
 
 from .math_modeling import Variable, Equation
-from .core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from .core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict, Commodity
 from .features import ShareAllocationModel
 from .structure import Element, ElementModel, SystemModel, _create_time_series
 
@@ -27,8 +27,7 @@ class Effect(Element):
 
     def __init__(self,
                  label: str,
-                 unit: str,
-                 description: str,
+                 commodity: Commodity,
                  meta_data: Optional[Dict] = None,
                  is_standard: bool = False,
                  is_objective: bool = False,
@@ -47,10 +46,8 @@ class Effect(Element):
         ----------
         label : str
             name
-        unit : str
-            unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
-        description : str
-            long name
+        commodity : Commodity
+            The commodity of the effect.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         is_standard : boolean, optional
@@ -87,8 +84,7 @@ class Effect(Element):
         """
         super().__init__(label, meta_data=meta_data)
         self.label = label
-        self.unit = unit
-        self.description = description
+        self.commodity = commodity
         self.is_standard = is_standard
         self.is_objective = is_objective
         self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_operation or {}

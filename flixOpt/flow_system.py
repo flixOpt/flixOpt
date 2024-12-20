@@ -54,6 +54,7 @@ class FlowSystem:
         for new_effect in list(args):
             logger.info(f'Registered new Effect: {new_effect.label}')
             self.effect_collection.add_effect(new_effect)
+            self.add_commodity(new_effect.commodity)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
