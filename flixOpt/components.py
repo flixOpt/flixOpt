@@ -12,7 +12,7 @@ from .elements import Flow, _create_time_series
 from .core import Skalar, Numeric_TS, TimeSeries, Numeric
 from .math_modeling import VariableTS, Equation
 from .features import OnOffModel, MultipleSegmentsModel, InvestmentModel
-from .structure import SystemModel, create_equation, create_variable
+from .structure import SystemModel, create_equation, create_variable, Commodity
 from .elements import Component, ComponentModel
 from .interface import InvestParameters, OnOffParameters
 
@@ -37,8 +37,6 @@ class LinearConverter(Component):
         ----------
         label : str
             name.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
         inputs : input flows.
         outputs : output flows.
         on_off_parameters: Information about on and off states. See class OnOffParameters.
@@ -51,6 +49,8 @@ class LinearConverter(Component):
             Either 'segmented_conversion_factors' or 'conversion_factors' can be used!
             --> "gaps" can be expressed by a segment not starting at the end of the prior segment : [(1,3), (4,5)]
             --> "points" can expressed as segment with same begin and end : [(3,3), (4,4)]
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
 
         """
         super().__init__(label, inputs, outputs, on_off_parameters, meta_data=meta_data)
@@ -140,6 +140,7 @@ class Storage(Component):
                  eta_discharge: Numeric = 1,
                  relative_loss_per_hour: Numeric = 0,
                  prevent_simultaneous_charge_and_discharge: bool = True,
+                 commodity: Optional[Commodity] = None,
                  meta_data: Optional[Dict] = None):
         """
         constructor of storage
@@ -148,8 +149,6 @@ class Storage(Component):
         ----------
         label : str
             description.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
         charging : Flow
             ingoing flow.
         discharging : Flow
@@ -177,11 +176,15 @@ class Storage(Component):
             loss per chargeState-Unit per hour. The default is 0.
         prevent_simultaneous_charge_and_discharge : boolean, optional
             should simultaneously Loading and Unloading be avoided? (Attention, Performance maybe becomes worse with avoidInAndOutAtOnce=True). The default is True.
+        commodity : Optional[Commodity]
+            The commodity in the Storage.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
         # TODO: fixed_relative_chargeState implementieren
         super().__init__(label, inputs=[charging], outputs=[discharging],
                          prevent_simultaneous_flows=[charging, discharging] if prevent_simultaneous_charge_and_discharge else None,
-                         meta_data=meta_data)
+                         commodity=commodity, meta_data=meta_data)
 
         self.charging = charging
         self.discharging = discharging
@@ -228,7 +231,9 @@ class Transmission(Component):
                  relative_losses: Optional[Numeric_TS] = None,
                  absolute_losses: Optional[Numeric_TS] = None,
                  on_off_parameters: OnOffParameters = None,
-                 prevent_simultaneous_flows_in_both_directions: bool = True):
+                 prevent_simultaneous_flows_in_both_directions: bool = True,
+                 commodity: Optional[Commodity] = None,
+                 meta_data: Optional[Dict] = None):
         """
         Initializes a Transmission component (Pipe, cable, ...) that models the flows between two sides
         with potential losses.
@@ -254,12 +259,17 @@ class Transmission(Component):
             Parameters defining the on/off behavior of the component.
         prevent_simultaneous_flows_in_both_directions : bool, default=True
             If True, prevents simultaneous flows in both directions.
+        commodity : Optional[Commodity]
+            The commodity of the Transmission.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
         super().__init__(label,
                          inputs=[flow for flow in (in1, in2) if flow is not None],
                          outputs=[flow for flow in (out1, out2) if flow is not None],
                          on_off_parameters=on_off_parameters,
-                         prevent_simultaneous_flows=None if in2 is None or prevent_simultaneous_flows_in_both_directions is False else [in1, in2])
+                         prevent_simultaneous_flows=None if in2 is None or prevent_simultaneous_flows_in_both_directions is False else [in1, in2],
+                         commodity=commodity, meta_data=meta_data)
         self.in1 = in1
         self.out1 = out1
         self.in2 = in2
