@@ -74,17 +74,13 @@ class Effect(Element):
             min sum of effect (invest+operation).
         maximum_total : scalar, optional
             max sum of effect (invest+operation).
-        **kwargs : TYPE
-            DESCRIPTION.
 
         Returns
         -------
         None.
 
         """
-        super().__init__(label, meta_data=meta_data)
-        self.label = label
-        self.commodity = commodity
+        super().__init__(label, commodity = commodity, meta_data=meta_data)
         self.is_standard = is_standard
         self.is_objective = is_objective
         self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_operation or {}

@@ -12,7 +12,7 @@ from .core import Numeric, Numeric_TS, Skalar, Config
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
 from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
-    get_object_infos_as_dict
+    get_object_infos_as_dict, Commodity
 from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
@@ -28,14 +28,13 @@ class Component(Element):
                  outputs: Optional[List['Flow']] = None,
                  on_off_parameters: Optional[OnOffParameters] = None,
                  prevent_simultaneous_flows: Optional[List['Flow']] = None,
+                 commodity: Optional[Commodity] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
         label : str
             name.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
         inputs : input flows.
         outputs : output flows.
         on_off_parameters: Information about on and off state of Component.
@@ -44,8 +43,12 @@ class Component(Element):
             See class OnOffParameters.
         prevent_simultaneous_flows: Define a Group of Flows. Only one them can be on at a time.
             Induces On-Variable in all FLows!
+        commodity : Optional[Commodity]
+            The commodity of the Flow.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
-        super().__init__(label, meta_data=meta_data)
+        super().__init__(label, commodity=commodity, meta_data=meta_data)
         self.inputs: List['Flow'] = inputs or []
         self.outputs: List['Flow'] = outputs or []
         self.on_off_parameters = on_off_parameters
@@ -156,6 +159,7 @@ class Flow(Element):
                  load_factor_min: Optional[Skalar] = None,
                  load_factor_max: Optional[Skalar] = None,
                  previous_flow_rate: Optional[Numeric] = None,
+                 commodity: Optional[Commodity] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
@@ -200,8 +204,12 @@ class Flow(Element):
             If the load-profile is just an upper limit, use relative_maximum instead.
         previous_flow_rate : scalar, array, optional
             previous flow rate of the component.
+        commodity : Optional[Commodity]
+            The commodity of the Flow.
+        meta_data : Optional[Dict]
+            used to store more information about the element. Is not used internally, but saved in the results
         """
-        super().__init__(label, meta_data=meta_data)
+        super().__init__(label, commodity=commodity, meta_data=meta_data)
         self.size = size or Config.BIG_M  # Default size
         self.relative_minimum = relative_minimum
         self.relative_maximum = relative_maximum
