@@ -321,6 +321,24 @@ def as_effect_dict_with_ts(name_of_param: str,
     effect_ts_dict = effect_values_to_ts(name_of_param, effect_dict, owner)
     return effect_ts_dict
 
+class Commodity:
+    """
+    Class for commodity objects.
+    """
+    def __init__(self, label: str, unit: str, description: str):
+        """
+        Parameters
+        ----------
+        label : str
+            The label of the commodity.
+        unit : str
+            The unit of the commodity.
+        description : str
+            A description of the commodity.
+        """
+        self.label = label
+        self.unit = unit
+        self.description = description
 
 class MultilineFormater(logging.Formatter):
 
