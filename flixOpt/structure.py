@@ -34,10 +34,13 @@ class Commodity:
         The unit of the commodity.
     description : str, optional
         A description of the commodity.
+    color : str, optional
+        The color of the commodity used for plotting. Use Hex-Codes (#RRGGBB or #RRGGBBAA).
     """
     label: str
     unit: str
     description: Optional[str] = None
+    color: Optional[str] = None
 
     def infos(self) -> Dict:
         """
