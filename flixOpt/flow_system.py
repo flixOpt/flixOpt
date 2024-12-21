@@ -23,7 +23,8 @@ class FlowSystem:
     """
     def __init__(self,
                  time_series: np.ndarray[np.datetime64],
-                 last_time_step_hours: Optional[Union[int, float]] = None):
+                 last_time_step_hours: Optional[Union[int, float]] = None,
+                 use_default_comodities: bool = True):
         """
           Parameters
           ----------
@@ -47,7 +48,16 @@ class FlowSystem:
         # defaults:
         self.components: List[Component] = []
         self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
-        self.commodities: Dict[str, Commodity] = {}
+        self.commodities: Dict[str, Commodity] = {
+            'default': Commodity('default', 'None', description='THe default commodity', color='#222831')
+        }
+        if use_default_comodities:
+            self.commodities.update({
+                'electricity': Commodity('electricity', 'MWh', 'Electricity', color='#00A0E9'),
+                'heat': Commodity('heat', 'MWh', 'Heat', color='#FFA500'),
+                'fuel': Commodity('fuel', 'MWh', 'Fuel', color='#A52A2A'),
+                'money': Commodity('money', '€', 'Money', color='#228B22'),
+            })
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
