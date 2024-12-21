@@ -123,12 +123,14 @@ class FlowSystem:
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
         nodes = {node.label_full: {'label': node.label,
                                    'class': 'Bus' if isinstance(node, Bus) else 'Component',
+                                   'color': self.commodities.get(node.commodity, self.commodities['default']).color,
                                    'infos':  node.__str__()}
                  for node in self.components + list(self.all_buses)}
 
         edges = {flow.label_full: {'label': flow.label,
                                    'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
                                    'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
+                                   'color': self.commodities.get(flow.commodity, self.commodities['default']).color,
                                    'infos': flow.__str__()}
                  for flow in self.all_flows}
 

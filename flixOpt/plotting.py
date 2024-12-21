@@ -637,7 +637,7 @@ def visualize_network(node_infos: dict,
         net.add_node(id,
                      label=node['label'],
                      shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
-                     color={'Bus': '#393E46', 'Component': '#00ADB5'}[node['class']],
+                     color=node['color'] if node['color'] is not None else '#222831',
                      title=node['infos'].replace(')', '\n)'),
                      font={'size': 14})
 
@@ -647,7 +647,7 @@ def visualize_network(node_infos: dict,
                      label=edge['label'],
                      title=edge['infos'].replace(')', '\n)'),
                      font={"color": "#4D4D4D", "size": 14},
-                     color="#222831")
+                     color=edge['color'] if edge['color'] is not None else '#222831')
 
     # Enhanced physics settings
     net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
