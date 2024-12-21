@@ -143,7 +143,7 @@ class FlowSystem:
                            sorted(self.all_buses, key=lambda bus: bus.label.upper())},
                  'Effects': {effect.label: effect.infos() for effect in
                              sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper())},
-                 'Commodities': [commodity.infos() for commodity in self.commodities]}
+                 'Commodities': {commodity.label: commodity.infos() for commodity in self.commodities.values()}}
         return infos
 
     def visualize_network(self,
