@@ -54,6 +54,10 @@ class FlowSystem:
         for new_effect in list(args):
             logger.info(f'Registered new Effect: {new_effect.label}')
             self.effect_collection.add_effect(new_effect)
+            if new_effect.commodity not in self.commodities:
+                raise ValueError(
+                    f'Commodity with the label "{new_effect.commodity}" was not found. Please add it to '
+                    f'the commodities of the FlowSystem before adding "{new_effect.label_full}".')
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
@@ -67,7 +71,7 @@ class FlowSystem:
                                                           for flow in new_component.inputs + new_component.outputs
                                                           if flow.bus.commodity is not None]:
                 if commodity not in self.commodities:
-                    logger.critical(
+                    raise ValueError(
                         f'Commodity with the label "{commodity}" was not found. Please add it to the commodities of '
                         f'the FlowSystem before adding "{new_component.label_full}".')
 
