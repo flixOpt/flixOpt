@@ -16,6 +16,7 @@ import yaml
 import numpy as np
 import pandas as pd
 import plotly
+import plotly.express as px
 
 from flixOpt import utils
 from flixOpt import plotting
@@ -28,6 +29,8 @@ class ElementResults:
         self.all_infos = infos
         self.all_results = results
         self.label = self.all_infos['label']
+        self.commodity = self.all_infos.get('commodity', None)
+        self._color = self.all_infos.get('meta_data', {}).get('color', None)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.label})'
@@ -35,6 +38,14 @@ class ElementResults:
     @property
     def variables_flat(self) -> Dict[str, Union[int, float, np.ndarray]]:
         return flatten_dict(self.all_results)
+
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, value):
+        self._color = value
 
 
 class CalculationResults:
@@ -74,6 +85,8 @@ class CalculationResults:
         self._construct_bus_results()
         self._construct_effect_results()
 
+        self.set_colors()
+
     def _construct_component_results(self):
         comp_results = self.all_results['Components']
         comp_infos = self.all_data['Components']
@@ -110,6 +123,16 @@ class CalculationResults:
             outputs = [flow for flow in self.flow_results().values() if bus_label==flow.bus_label and flow.is_input_in_component]
             res = BusResults(infos, results, inputs, outputs)
             self.bus_results[res.label] = res
+
+    def set_colors(self, colors: str = 'viridis'):
+        colors = px.colors.sample_colorscale(
+            px.colors.get_colorscale(colors),
+            [i / (len(self.component_results) - 1) for i in range(len(self.component_results))])
+
+        for i, comp in enumerate(self.component_results.values()):
+            if comp.color is None:
+                comp.color = colors[i]
+
 
     def flow_results(self) -> Dict[str, 'FlowResults']:
         return {flow.label_full: flow
@@ -406,6 +429,8 @@ class ComponentResults(ElementResults):
         flow_results = {flow_info['label']: self.all_results[flow_info['label']] for flow_info in flow_infos.values()}
         flows = [FlowResults(flow_info, flow_result, self.label)
                  for flow_info, flow_result in zip(flow_infos.values(), flow_results.values())]
+        for flow in flows:
+            flow.color = self.color
         inputs = [flow for flow in flows if flow.is_input_in_component]
         outputs = [flow for flow in flows if not flow.is_input_in_component]
         return inputs, outputs
@@ -421,6 +446,16 @@ class ComponentResults(ElementResults):
             outputs = {flow.label_full: flow.variables[variable_name] * output_factor for flow in self.outputs}
 
         return pd.DataFrame(data={**inputs, **outputs})
+
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, value):
+        self._color = value
+        for flow in self.inputs + self.outputs:
+            flow.color = value
 
 
 class BusResults(ElementResults):
