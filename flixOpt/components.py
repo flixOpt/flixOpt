@@ -91,24 +91,17 @@ class LinearConverter(Component):
         if self.conversion_factors is not None:
             self.conversion_factors = self._transform_conversion_factors()
         else:
-            segmented_conversion_factors = {}
-            for flow, segments in self.segmented_conversion_factors.items():
-                segmented_conversion_factors[flow] = [
-                    (_create_time_series('Stuetzstelle', segment[0], self),
-                     _create_time_series('Stuetzstelle', segment[1], self)
-                     ) for segment in segments
-                ]
-            self.segmented_conversion_factors = segmented_conversion_factors
+            self.segmented_conversion_factors = {flow: [segment.transform_data(self) for segment in segments]
+                                                 for flow, segments in self.segmented_conversion_factors.items()
+            }
 
     def _transform_conversion_factors(self) -> List[Dict[Flow, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
-        list_of_conversion_factors = []
-        for conversion_factor in self.conversion_factors:
-            transformed_dict = {}
-            for flow, values in conversion_factor.items():
-                transformed_dict[flow] = _create_time_series(f"{flow.label}_factor", values, self)
-            list_of_conversion_factors.append(transformed_dict)
-        return list_of_conversion_factors
+        return [
+            {flow: _create_time_series(f"{flow.label}_factor", values, self) for flow, values in
+             conversion_factor.items()}
+            for conversion_factor in self.conversion_factors
+        ]
 
     @property
     def degrees_of_freedom(self):
