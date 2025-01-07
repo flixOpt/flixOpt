@@ -234,7 +234,7 @@ class Flow(Element):
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
         if isinstance(self.size, InvestParameters):
-            self.size.transform_data()
+            self.size.transform_data(self)
 
     def infos(self) -> Dict:
         infos = super().infos()
