@@ -19,9 +19,9 @@ class Segment:
         self.start = start
         self.end = end
         if not isinstance(start, Numeric_TS):
-            raise TypeError(f"Wrong type for Start of Segment: Is {type(start)}, but needs to be {get_args(Numeric_TS)}")
+            raise TypeError(f"Wrong type for Start of Segment: {type(start)=}, but needs to be {get_args(Numeric_TS)}")
         if not isinstance(end, Numeric_TS):
-            raise TypeError(f"Wrong type for End of Segment: Is {type(end)}, but needs to be {get_args(Numeric_TS)}")
+            raise TypeError(f"Wrong type for End of Segment: {type(end)=}, but needs to be {get_args(Numeric_TS)}")
 
     def transform_data(self, owner: Element):
         self.start = _create_time_series('Segment start', self.start, owner)
@@ -41,9 +41,9 @@ class SegmentScalar(Segment):
     def __init__(self, start: Skalar, end: Skalar):
         super().__init__(start, end)
         if not isinstance(start, Skalar):
-            raise TypeError(f"Wrong type for Start of Segment: Is {type(start)}, but needs to be {get_args(Skalar)}")
+            raise TypeError(f"Wrong type for Start of Segment: {type(start)=}, but needs to be {get_args(Skalar)}")
         if not isinstance(end, Skalar):
-            raise TypeError(f"Wrong type for End of Segment: Is {type(end)}, but needs to be {get_args(Skalar)}")
+            raise TypeError(f"Wrong type for End of Segment: {type(end)=}, but needs to be {get_args(Skalar)}")
 
 
 class InvestParameters:
