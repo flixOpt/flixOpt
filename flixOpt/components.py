@@ -91,9 +91,8 @@ class LinearConverter(Component):
         if self.conversion_factors is not None:
             self.conversion_factors = self._transform_conversion_factors()
         else:
-            self.segmented_conversion_factors = {flow: [segment.transform_data(self) for segment in segments]
-                                                 for flow, segments in self.segmented_conversion_factors.items()
-            }
+            for segment in [segment for segments in self.segmented_conversion_factors.values() for segment in segments]:
+                segment.transform_data(self)
 
     def _transform_conversion_factors(self) -> List[Dict[Flow, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
@@ -373,8 +372,8 @@ class LinearConverterModel(ComponentModel):
         else:
             #TODO: Improve Inclusion of OnOffParameters. Instead of creating a Binary in every flow, the binary could only be part of the Segment itself
             segments = {
-                flow.model.flow_rate: [(ts1.active_data, ts2.active_data)
-                                       for ts1, ts2 in self.element.segmented_conversion_factors[flow]]
+                flow.model.flow_rate: [(segment.start.active_data, segment.end.active_data)
+                                       for segment in self.element.segmented_conversion_factors[flow]]
                 for flow in self.element.inputs + self.element.outputs
             }
             linear_segments = MultipleSegmentsModel(self.element, segments, self._on.on if self._on is not None else None)  # TODO: Add Outside_segments Variable (On)

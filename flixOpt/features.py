@@ -521,8 +521,8 @@ class MultipleSegmentsModel(ElementModel):
             lambda_eq = create_equation(f'lambda_{variable.label}', self)
             lambda_eq.add_summand(variable, -1)
             for segment_model in self._segment_models:
-                lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable].start)
-                lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable].end)
+                lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable].start.active_data)
+                lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable].end.active_data)
 
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
         # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
@@ -682,7 +682,7 @@ class SegmentedSharesModel(ElementModel):
         self._shares = {effect: create_variable(f'{effect.label}_segmented', self, length)
                         for effect in self._share_segments}
 
-        segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
+        segments: Dict[Variable, List[SegmentScalar]] = {
             **{self._shares[effect]: segment for effect, segment in self._share_segments.items()},
             **{self._variable_segments[0]: self._variable_segments[1]}
         }
