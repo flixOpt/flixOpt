@@ -100,12 +100,6 @@ class InvestParameters:
         self.fix_effects = as_effect_dict(self.fix_effects)
         self.divest_effects = as_effect_dict(self.divest_effects)
         self.specific_effects = as_effect_dict(self.specific_effects)
-        if self.effects_in_segments is not None:
-            self.effects_in_segments = tuple([
-                [segment.transform_data(owner) for segment in self.effects_in_segments[0]],
-                {effect: [segment.transform_data(owner) for segment in segments]
-                 for effect, segments in self.effects_in_segments[1].items()}]
-            )
 
     def infos(self) -> Dict:
         return get_object_infos_as_dict(self)
