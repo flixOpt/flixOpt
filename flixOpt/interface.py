@@ -37,6 +37,15 @@ class Segment:
         return get_object_infos_as_str(self)
 
 
+class SegmentScalar(Segment):
+    def __init__(self, start: Skalar, end: Skalar):
+        super().__init__(start, end)
+        if not isinstance(start, Skalar):
+            raise TypeError(f"Wrong type for Start of Segment: Is {type(start)}, but needs to be {get_args(Skalar)}")
+        if not isinstance(end, Skalar):
+            raise TypeError(f"Wrong type for End of Segment: Is {type(end)}, but needs to be {get_args(Skalar)}")
+
+
 class InvestParameters:
     """
     collects arguments for invest-stuff
@@ -49,7 +58,7 @@ class InvestParameters:
                  optional: bool = True,  # Investition ist weglassbar
                  fix_effects: Optional[Union[Dict, int, float]] = None,
                  specific_effects: Optional[Union[Dict, int, float]] = None,  # costs per Flow-Unit/Storage-Size/...
-                 effects_in_segments: Optional[Tuple[List[Segment], Dict['Effect', List[Segment]]]] = None,
+                 effects_in_segments: Optional[Tuple[List[SegmentScalar], Dict['Effect', List[SegmentScalar]]]] = None,
                  divest_effects: Optional[Union[Dict, int, float]] = None):
         """
         Parameters

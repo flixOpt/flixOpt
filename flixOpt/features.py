@@ -10,7 +10,7 @@ import numpy as np
 
 from .math_modeling import Variable, VariableTS, Equation
 from .core import TimeSeries, Skalar, Numeric, Config
-from .interface import InvestParameters, OnOffParameters
+from .interface import InvestParameters, OnOffParameters, Segment, SegmentScalar
 from .structure import ElementModel, SystemModel, Element, create_equation, create_variable
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -449,7 +449,7 @@ class SegmentModel(ElementModel):
     """Class for modeling a linear segment of one or more variables in parallel"""
     def __init__(self, element: Element,
                  segment_index: Union[int, str],
-                 sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]],
+                 sample_points: Dict[Variable, Segment],
                  as_time_series: bool = True):
         super().__init__(element, f'Segment_{segment_index}')
         self.element = element
@@ -478,7 +478,7 @@ class SegmentModel(ElementModel):
 class MultipleSegmentsModel(ElementModel):
     # TODO: Length...
     def __init__(self, element: Element,
-                 sample_points: Dict[Variable, List[Tuple[Numeric, Numeric]]],
+                 sample_points: Dict[Variable, List[Segment]],
                  can_be_outside_segments: Optional[Union[bool, Variable]],
                  as_time_series: bool = True,
                  label: str = 'MultipleSegments'):
@@ -498,7 +498,9 @@ class MultipleSegmentsModel(ElementModel):
         self._segment_models: List[SegmentModel] = []
 
     def do_modeling(self, system_model: SystemModel):
-        restructured_variables_with_segments: List[Dict[Variable, Tuple[Numeric, Numeric]]] = [
+        # Restructure the sample points to a list of dictionaries, one for each Segment per variable.
+        # Each dictionary contains every variables with its corresponding Segment at this position
+        restructured_variables_with_segments: List[Dict[Variable, Segment]] = [
             {key: values[i] for key, values in self._sample_points.items()}
             for i in range(self._nr_of_segments)
         ]
@@ -519,8 +521,8 @@ class MultipleSegmentsModel(ElementModel):
             lambda_eq = create_equation(f'lambda_{variable.label}', self)
             lambda_eq.add_summand(variable, -1)
             for segment_model in self._segment_models:
-                lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable][0])
-                lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable][1])
+                lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable].start)
+                lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable].end)
 
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
         # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
@@ -660,8 +662,8 @@ class SegmentedSharesModel(ElementModel):
     #TODO: Length...
     def __init__(self,
                  element: Element,
-                 variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
-                 share_segments: Dict['Effect', List[Tuple[Skalar, Skalar]]],
+                 variable_segments: Tuple[Variable, List[Segment]],
+                 share_segments: Dict['Effect', List[SegmentScalar]],
                  can_be_outside_segments: Optional[Union[bool, Variable]],
                  label: str = 'SegmentedShares'):
         super().__init__(element, label)

@@ -13,7 +13,7 @@ from .flow_system import FlowSystem, create_datetime_array
 from .calculation import FullCalculation, SegmentedCalculation, AggregatedCalculation
 from . import solvers
 
-from .interface import InvestParameters, OnOffParameters
+from .interface import InvestParameters, OnOffParameters, Segment, SegmentScalar
 from .aggregation import AggregationParameters
 
 from . import plotting
