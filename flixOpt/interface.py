@@ -4,15 +4,37 @@ These are tightly connected to features.py
 """
 
 import logging
-from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
+from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING, get_args
 
 from .core import Numeric, Skalar, Numeric_TS, Config
-from .structure import get_object_infos_as_str, get_object_infos_as_dict
+from .structure import Element, get_object_infos_as_str, get_object_infos_as_dict, _create_time_series
 if TYPE_CHECKING:
-    from .structure import Element
     from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
 
 logger = logging.getLogger('flixOpt')
+
+
+class Segment:
+    def __init__(self, start: Numeric_TS, end: Numeric_TS):
+        self.start = start
+        self.end = end
+        if not isinstance(start, Numeric_TS):
+            raise TypeError(f"Wrong type for Start of Segment: Is {type(start)}, but needs to be {get_args(Numeric_TS)}")
+        if not isinstance(end, Numeric_TS):
+            raise TypeError(f"Wrong type for End of Segment: Is {type(end)}, but needs to be {get_args(Numeric_TS)}")
+
+    def transform_data(self, owner: Element):
+        self.start = _create_time_series('Segment start', self.start, owner)
+        self.end = _create_time_series('Segment end', self.end, owner)
+
+    def infos(self) -> Dict:
+        return get_object_infos_as_dict(self)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}>: {self.__dict__}"
+
+    def __str__(self):
+        return get_object_infos_as_str(self)
 
 
 class InvestParameters:
@@ -27,7 +49,7 @@ class InvestParameters:
                  optional: bool = True,  # Investition ist weglassbar
                  fix_effects: Optional[Union[Dict, int, float]] = None,
                  specific_effects: Optional[Union[Dict, int, float]] = None,  # costs per Flow-Unit/Storage-Size/...
-                 effects_in_segments: Optional[Tuple[List[Tuple[Skalar, Skalar]], Dict['Effect', List[Tuple[Skalar, Skalar]]]]] = None,
+                 effects_in_segments: Optional[Tuple[List[Segment], Dict['Effect', List[Segment]]]] = None,
                  divest_effects: Optional[Union[Dict, int, float]] = None):
         """
         Parameters

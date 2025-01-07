@@ -2,10 +2,10 @@
 This module contains the basic components of the flixOpt framework.
 """
 
-import numpy as np
-import textwrap
 import logging
 from typing import Union, Optional, Literal, List, Dict, Tuple, Set
+
+import numpy as np
 
 from . import utils
 from .elements import Flow, _create_time_series
@@ -14,14 +14,14 @@ from .math_modeling import VariableTS, Equation
 from .features import OnOffModel, MultipleSegmentsModel, InvestmentModel
 from .structure import SystemModel, create_equation, create_variable
 from .elements import Component, ComponentModel
-from .interface import InvestParameters, OnOffParameters
+from .interface import InvestParameters, OnOffParameters, Segment
 
 logger = logging.getLogger('flixOpt')
 
 
 class LinearConverter(Component):
     """
-    Converts one FLow into another via linear conversion factors
+    Links Flows via linear conversion factors
     """
 
     def __init__(self,
@@ -30,7 +30,7 @@ class LinearConverter(Component):
                  outputs: List[Flow],
                  on_off_parameters: OnOffParameters = None,
                  conversion_factors: Optional[List[Dict[Flow, Numeric_TS]]] = None,
-                 segmented_conversion_factors: Optional[Dict[Flow, List[Tuple[Numeric_TS, Numeric_TS]]]] = None,
+                 segmented_conversion_factors: Optional[Dict[Flow, List[Segment]]] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
