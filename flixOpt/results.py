@@ -29,7 +29,7 @@ class ElementResults:
         self.all_infos = infos
         self.all_results = results
         self.label = self.all_infos['label']
-        self.commodity = self.all_infos.get('commodity', None)
+        self.commodity = self.all_infos.get('commodity', 'default')
         self._color = self.all_infos.get('meta_data', {}).get('color', None)
 
     def __repr__(self):
@@ -271,6 +271,15 @@ class CalculationResults:
         data = self.to_dataframe(label, variable_name,
                                  input_factor=-1 if not invert else 1,
                                  output_factor=1 if not invert else -1)
+        if label in self.component_results:
+            comp = self.component_results[label]
+            colors = [self.all_data['Commodities'][flow.commodity].get('color', '#222831')
+                      for flow in comp.inputs + comp.outputs if flow.label_full in data.columns]
+        else:
+            comp = self.bus_results[label]
+            colors = [flow.color for flow in comp.inputs + comp.outputs if flow.label_full in data.columns]
+
+
         if mode == 'heatmap':
             heatmap_data = plotting.heat_map_data_from_df(data,
                                                           heatmap_periods,
