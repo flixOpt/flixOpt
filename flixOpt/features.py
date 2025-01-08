@@ -521,8 +521,14 @@ class MultipleSegmentsModel(ElementModel):
             lambda_eq = create_equation(f'lambda_{variable.label}', self)
             lambda_eq.add_summand(variable, -1)
             for segment_model in self._segment_models:
-                lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable].start.active_data)
-                lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable].end.active_data)
+                lambda_eq.add_summand(
+                    segment_model.lambda0,
+                    segment_model.sample_points[variable].start.active_data
+                    if self._as_time_series else segment_model.sample_points[variable].start)
+                lambda_eq.add_summand(
+                    segment_model.lambda1,
+                    segment_model.sample_points[variable].end.active_data
+                    if self._as_time_series else segment_model.sample_points[variable].end)
 
         # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
         # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
