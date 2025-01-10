@@ -145,11 +145,11 @@ class Flow(Element):
     def __init__(self,
                  label: str,
                  bus: Bus,
-                 size: Optional[Union[Skalar, InvestParameters]] = None,
+                 size: Union[Skalar, InvestParameters] = None,
                  fixed_relative_profile: Optional[Numeric_TS] = None,
                  relative_minimum: Numeric_TS = 0,
                  relative_maximum: Numeric_TS = 1,
-                 effects_per_flow_hour: Optional[EffectValues] = None,
+                 effects_per_flow_hour: EffectValues = None,
                  can_be_off: Optional[OnOffParameters] = None,
                  flow_hours_total_max: Optional[Skalar] = None,
                  flow_hours_total_min: Optional[Skalar] = None,
@@ -210,7 +210,7 @@ class Flow(Element):
         self.load_factor_min = load_factor_min
         self.load_factor_max = load_factor_max
         # self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
-        self.effects_per_flow_hour = effects_per_flow_hour
+        self.effects_per_flow_hour = effects_per_flow_hour if effects_per_flow_hour is not None else {}
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
         self.on_off_parameters = can_be_off
