@@ -247,8 +247,9 @@ class Flow(Element):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
 
         if self.size == Config.BIG_M and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
-            raise Exception('Achtung: Wenn fixed_relative_profile genutzt wird, muss zugehöriges size definiert werden, '
-                            'da: value = fixed_relative_profile * size!')
+            logger.warning(f'Flow "{self.label}" has no size assigned, but a "fixed_relative_profile". '
+                           f'The default size is {Config.BIG_M}. As "flow_rate = size * fixed_relative_profile", '
+                           f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.')
 
     @property
     def label_full(self) -> str:
@@ -328,7 +329,7 @@ class FlowModel(ElementModel):
 
     def _create_shares(self, system_model: SystemModel):
         # Arbeitskosten:
-        if self.element.effects_per_flow_hour is not None:
+        if self.element.effects_per_flow_hour != {}:
             system_model.effect_collection_model.add_share_to_operation(
                 name='effects_per_flow_hour',
                 element=self.element,
