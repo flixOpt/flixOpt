@@ -86,11 +86,9 @@ class CONFIG:
     """
     A configuration class that stores global configuration values as class attributes.
     """
-
-    # Default configuration attributes
-    logging: LoggingConfig = None
-    modeling: ModelingConfig = None
     config_name: str = None
+    modeling: ModelingConfig = None
+    logging: LoggingConfig = None
 
     @classmethod
     def load_config(cls, user_config_file: Optional[str] = None):
