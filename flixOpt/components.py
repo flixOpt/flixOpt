@@ -29,8 +29,8 @@ class LinearConverter(Component):
                  inputs: List[Flow],
                  outputs: List[Flow],
                  on_off_parameters: OnOffParameters = None,
-                 conversion_factors: Optional[List[Dict[Flow, Numeric_TS]]] = None,
-                 segmented_conversion_factors: Optional[Dict[Flow, List[Tuple[Numeric_TS, Numeric_TS]]]] = None,
+                 conversion_factors: List[Dict[Flow, Numeric_TS]] = None,
+                 segmented_conversion_factors: Dict[Flow, List[Tuple[Numeric_TS, Numeric_TS]]] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
@@ -54,8 +54,8 @@ class LinearConverter(Component):
 
         """
         super().__init__(label, inputs, outputs, on_off_parameters, meta_data=meta_data)
-        self.conversion_factors = conversion_factors
-        self.segmented_conversion_factors = segmented_conversion_factors
+        self.conversion_factors = conversion_factors or []
+        self.segmented_conversion_factors = segmented_conversion_factors or {}
         self._plausibility_checks()
 
     def create_model(self) -> 'LinearConverterModel':
@@ -63,12 +63,12 @@ class LinearConverter(Component):
         return self.model
 
     def _plausibility_checks(self) -> None:
-        if self.conversion_factors is None and self.segmented_conversion_factors is None:
+        if not self.conversion_factors and not self.segmented_conversion_factors:
             raise Exception('Either conversion_factors or segmented_conversion_factors must be defined!')
-        if self.conversion_factors is not None and self.segmented_conversion_factors is not None:
+        if self.conversion_factors and self.segmented_conversion_factors:
             raise Exception('Only one of conversion_factors or segmented_conversion_factors can be defined, not both!')
 
-        if self.conversion_factors is not None:
+        if self.conversion_factors:
             if self.degrees_of_freedom <= 0:
                 raise Exception(
                     f"Too Many conversion_factors_specified. Care that you use less conversion_factors "
@@ -80,7 +80,7 @@ class LinearConverter(Component):
                     if flow not in (self.inputs + self.outputs):
                         raise Exception(f'{self.label}: Flow {flow.label} in conversion_factors '
                                         f'is not in inputs/outputs')
-        if self.segmented_conversion_factors is not None:
+        if self.segmented_conversion_factors:
             for flow in (self.inputs + self.outputs):
                 if isinstance(flow.size, InvestParameters) and flow.size.fixed_size is None:
                     raise Exception(f"segmented_conversion_factors (in {self.label_full}) and variable size "
@@ -88,7 +88,7 @@ class LinearConverter(Component):
 
     def transform_data(self):
         super().transform_data()
-        if self.conversion_factors is not None:
+        if self.conversion_factors:
             self.conversion_factors = self._transform_conversion_factors()
         else:
             segmented_conversion_factors = {}

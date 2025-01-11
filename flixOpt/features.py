@@ -74,7 +74,7 @@ class InvestmentModel(ElementModel):
 
         # fix_effects:
         fix_effects = invest_parameters.fix_effects
-        if fix_effects is not None and fix_effects != 0:
+        if fix_effects != {}:
             if invest_parameters.optional:  # share: + isInvested * fix_effects
                 variable_is_invested = self.is_invested
             else:
@@ -83,7 +83,7 @@ class InvestmentModel(ElementModel):
 
         # divest_effects:
         divest_effects = invest_parameters.divest_effects
-        if divest_effects is not None and divest_effects != 0:
+        if divest_effects != {}:
             if invest_parameters.optional:  # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
                 effect_collection.add_share_to_invest('divest_effects', self.element, divest_effects, 1, None)
@@ -93,7 +93,7 @@ class InvestmentModel(ElementModel):
 
         # # specific_effects:
         specific_effects = invest_parameters.specific_effects
-        if specific_effects is not None:
+        if specific_effects != {}:
             # share: + investment_size (=var)   * specific_effects
             effect_collection.add_share_to_invest(f'specific_effects', self.element, specific_effects, 1, self.size)
         # segmented Effects
@@ -429,12 +429,12 @@ class OnOffModel(ElementModel):
         # Anfahrkosten:
         effect_collection = system_model.effect_collection_model
         effects_per_switch_on = self._on_off_parameters.effects_per_switch_on
-        if effects_per_switch_on is not None:
+        if effects_per_switch_on != {}:
             effect_collection.add_share_to_operation('switch_on_effects', self.element, effects_per_switch_on, 1, self.switch_on)
 
         # Betriebskosten:
         effects_per_running_hour = self._on_off_parameters.effects_per_running_hour
-        if effects_per_running_hour is not None:
+        if effects_per_running_hour != {}:
             effect_collection.add_share_to_operation('running_hour_effects', self.element, effects_per_running_hour,
                                                      system_model.dt_in_hours, self.on)
 
