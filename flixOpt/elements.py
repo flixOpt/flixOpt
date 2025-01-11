@@ -8,7 +8,8 @@ import logging
 import numpy as np
 
 from .math_modeling import Variable, VariableTS
-from .core import Numeric, Numeric_TS, Skalar, Config
+from .core import Numeric, Numeric_TS, Skalar
+from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
 from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
@@ -202,7 +203,7 @@ class Flow(Element):
             previous flow rate of the component.
         """
         super().__init__(label, meta_data=meta_data)
-        self.size = size or Config.BIG_M  # Default size
+        self.size = size or CONFIG.modeling.BIG  # Default size
         self.relative_minimum = relative_minimum
         self.relative_maximum = relative_maximum
         self.fixed_relative_profile = fixed_relative_profile
@@ -245,8 +246,8 @@ class Flow(Element):
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
-
-        if self.size == Config.BIG_M and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
+            
+        if self.size == CONFIG.modeling.BIG and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
             logger.warning(f'Flow "{self.label}" has no size assigned, but a "fixed_relative_profile". '
                            f'The default size is {Config.BIG_M}. As "flow_rate = size * fixed_relative_profile", '
                            f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.')
