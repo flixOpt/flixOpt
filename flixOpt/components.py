@@ -9,7 +9,7 @@ from typing import Union, Optional, Literal, List, Dict, Tuple, Set
 
 from . import utils
 from .elements import Flow, _create_time_series
-from .core import Skalar, Numeric_TS, TimeSeries, Numeric
+from .core import Skalar, Numeric, Numeric_TS, TimeSeries
 from .math_modeling import VariableTS, Equation
 from .features import OnOffModel, MultipleSegmentsModel, InvestmentModel
 from .structure import SystemModel, create_equation, create_variable

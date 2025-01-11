@@ -13,6 +13,7 @@ import numpy as np
 from . import utils
 from .math_modeling import MathModel, Variable, Equation, Inequation, VariableTS, Solver
 from .core import TimeSeries, Skalar, Numeric, Numeric_TS, TimeSeriesData
+from .config import CONFIG
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .flow_system import FlowSystem
@@ -166,6 +167,7 @@ class SystemModel(MathModel):
         infos['Constraints'] = self.description_of_constraints()
         infos['Variables'] = self.description_of_variables()
         infos['Main Results'] = self.main_results
+        infos['Config'] = CONFIG.to_dict()
         return infos
 
     @property
