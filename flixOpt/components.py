@@ -88,7 +88,7 @@ class LinearConverter(Component):
 
     def transform_data(self):
         super().transform_data()
-        if self.conversion_factors is not None:
+        if self.conversion_factors:
             self.conversion_factors = self._transform_conversion_factors()
         else:
             segmented_conversion_factors = {}
