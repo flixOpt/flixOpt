@@ -58,3 +58,6 @@ repository = "https://github.com/flixOpt/flixOpt"
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["tests", "docs", "examples", "examples.*", "Tutorials", ".git", ".vscode", "build", ".venv", "venv/"]
+
+[tool.setuptools.package-data]
+"flixOpt" = ["config.yaml"]
