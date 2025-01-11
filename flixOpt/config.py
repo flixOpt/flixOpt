@@ -117,6 +117,10 @@ class CONFIG:
         cls.modeling = config_data.modeling
         cls.config_name = config_data.config_name
 
+        setup_logging(default_level=cls.logging.level,
+                      log_file=cls.logging.file,
+                      use_rich_handler=cls.logging.rich)
+
     @classmethod
     def to_dict(cls):
         """
