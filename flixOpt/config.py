@@ -28,7 +28,7 @@ def merge_configs(defaults: dict, overrides: dict) -> dict:
     return defaults
 
 
-def from_dict(cls, data: dict):
+def dataclass_from_dict(cls, data: dict):
     """
     Recursively initialize a dataclass from a dictionary.
     """
@@ -44,7 +44,7 @@ def from_dict(cls, data: dict):
 
         # If the field type is a dataclass and the value is a dict, recursively initialize
         if is_dataclass(field_type) and isinstance(field_value, dict):
-            kwargs[field_name] = from_dict(field_type, field_value)
+            kwargs[field_name] = dataclass_from_dict(field_type, field_value)
         else:
             kwargs[field_name] = field_value  # Pass as-is if no special handling is needed
 
@@ -81,40 +81,38 @@ class ConfigSchema(ValidatedConfig):
     modeling: ModelingConfig
 
 
-def load_config(config_file: Optional[str] = None) -> ConfigSchema:
-    """
-    Load the configuration, merging user-provided config with defaults.
+class CONFIG(ConfigSchema):
+    _default_config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+    _instance = None
 
-    :param config_file: Path to the user's config file (optional).
-    :return: Configuration dictionary.
-    """
-    # Path to the default package config
-    default_config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+    @classmethod
+    def load_config(cls, config_file: Optional[str] = None):
+        """
+        Load the configuration, merging user-provided config with defaults.
 
-    # Load the default config
-    with open(default_config_path, "r") as file:
-        config = yaml.safe_load(file)
+        :param config_file: Path to the user's config file (optional).
+        :return: Configuration dictionary.
+        """
+        # Load the default config
+        with open(cls._default_config_path, "r") as file:
+            config = yaml.safe_load(file)
 
-    if config_file is None:
-        return from_dict(ConfigSchema,config)
+        if config_file is None:
+            cls._instance = dataclass_from_dict(ConfigSchema, config)
+        elif not os.path.exists(config_file):          # If the user provides a custom config, merge it with the defaults
+            logger.error(f"No user config file found at {config_file}. Default config will be used.")
+        else:
+            with open(config_file, "r") as user_file:
+                user_config = yaml.safe_load(user_file)
+                config = merge_configs(config, user_config)
+                logger.info(f"Loaded user config from {config_file}")
+            try:
+                cls._instance =  dataclass_from_dict(ConfigSchema, config)
+            except AssertionError as e:
+                logger.critical(
+                    f'Invalid config file: {e}. \nPlease check your config file "{config_file}" and try again, or use the default config.')
+                raise e
 
-    # If the user provides a custom config, merge it with the defaults
-    elif not os.path.exists(config_file):
-        logger.error(f"No user config file found at {config_file}. Default config will be used.")
-    else:
-        with open(config_file, "r") as user_file:
-            user_config = yaml.safe_load(user_file)
-            config = merge_configs(config, user_config)
-            logger.info(f"Loaded user config from {config_file}")
-        try:
-            return from_dict(ConfigSchema,config)
-        except AssertionError as e:
-            logger.critical(f'Invalid config file: {e}. \nPlease check your config file "{config_file}" and try again, or use the default config.')
-            raise e
-
-
-# Load the configuration and make it globally accessible
-CONFIG: ConfigSchema = load_config()
 
 
 class MultilineFormater(logging.Formatter):
