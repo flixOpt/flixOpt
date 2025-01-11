@@ -1,4 +1,5 @@
 import os
+import types
 from typing import Optional, Literal, Annotated
 import logging
 from dataclasses import dataclass, is_dataclass, fields
@@ -28,7 +29,7 @@ def merge_configs(defaults: dict, overrides: dict) -> dict:
     return defaults
 
 
-def dataclass_from_dict(cls, data: dict):
+def dataclass_from_dict_with_validation(cls, data: dict):
     """
     Recursively initialize a dataclass from a dictionary.
     """
@@ -44,7 +45,7 @@ def dataclass_from_dict(cls, data: dict):
 
         # If the field type is a dataclass and the value is a dict, recursively initialize
         if is_dataclass(field_type) and isinstance(field_value, dict):
-            kwargs[field_name] = dataclass_from_dict(field_type, field_value)
+            kwargs[field_name] = dataclass_from_dict_with_validation(field_type, field_value)
         else:
             kwargs[field_name] = field_value  # Pass as-is if no special handling is needed
 
@@ -81,38 +82,57 @@ class ConfigSchema(ValidatedConfig):
     modeling: ModelingConfig
 
 
-class CONFIG(ConfigSchema):
-    _default_config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
-    _instance = None
+class CONFIG:
+    """
+    A configuration class that stores global configuration values as class attributes.
+    """
+
+    # Default configuration attributes
+    logging: LoggingConfig = None
+    modeling: ModelingConfig = None
+    config_name: str = None
 
     @classmethod
-    def load_config(cls, config_file: Optional[str] = None):
+    def load_config(cls, user_config_file: Optional[str] = None):
         """
-        Load the configuration, merging user-provided config with defaults.
-
-        :param config_file: Path to the user's config file (optional).
-        :return: Configuration dictionary.
+        Initialize configuration using defaults or user-specified file.
         """
-        # Load the default config
-        with open(cls._default_config_path, "r") as file:
-            config = yaml.safe_load(file)
+        # Default config file
+        default_config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
 
-        if config_file is None:
-            cls._instance = dataclass_from_dict(ConfigSchema, config)
-        elif not os.path.exists(config_file):          # If the user provides a custom config, merge it with the defaults
-            logger.error(f"No user config file found at {config_file}. Default config will be used.")
+        if user_config_file is None:
+            with open(default_config_path, "r") as file:
+                new_config = yaml.safe_load(file)
+        elif not os.path.exists(user_config_file):
+            raise FileNotFoundError(f"Config file not found: {user_config_file}")
         else:
-            with open(config_file, "r") as user_file:
-                user_config = yaml.safe_load(user_file)
-                config = merge_configs(config, user_config)
-                logger.info(f"Loaded user config from {config_file}")
-            try:
-                cls._instance =  dataclass_from_dict(ConfigSchema, config)
-            except AssertionError as e:
-                logger.critical(
-                    f'Invalid config file: {e}. \nPlease check your config file "{config_file}" and try again, or use the default config.')
-                raise e
+            with open(user_config_file, "r") as user_file:
+                new_config = yaml.safe_load(user_file)
 
+        # Convert the merged config to ConfigSchema
+        config_data = dataclass_from_dict_with_validation(ConfigSchema, new_config)
+
+        # Store the configuration in the class as class attributes
+        cls.logging = config_data.logging
+        cls.modeling = config_data.modeling
+        cls.config_name = config_data.config_name
+
+    @classmethod
+    def to_dict(cls):
+        """
+        Convert the configuration class into a dictionary for JSON serialization.
+        Handles dataclasses and simple types like str, int, etc.
+        """
+        config_dict = {}
+        for attribute, value in cls.__dict__.items():
+            # Only consider attributes (not methods, etc.)
+            if not attribute.startswith("_") and not isinstance(value, (types.FunctionType, types.MethodType)) and not isinstance(value, classmethod):
+                if is_dataclass(value):
+                    config_dict[attribute] = value.__dict__
+                else:  # Assuming only basic types here!
+                    config_dict[attribute] = value
+
+        return config_dict
 
 
 class MultilineFormater(logging.Formatter):
