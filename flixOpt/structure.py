@@ -13,6 +13,7 @@ import numpy as np
 from . import utils
 from .math_modeling import MathModel, Variable, Equation, Inequation, VariableTS, Solver
 from .core import TimeSeries, Skalar, Numeric, Numeric_TS, TimeSeriesData
+from .config import CONFIG
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .flow_system import FlowSystem
@@ -166,6 +167,7 @@ class SystemModel(MathModel):
         infos['Constraints'] = self.description_of_constraints()
         infos['Variables'] = self.description_of_variables()
         infos['Main Results'] = self.main_results
+        infos['Config'] = CONFIG.to_dict()
         return infos
 
     @property
@@ -226,7 +228,7 @@ class SystemModel(MathModel):
 class Element:
     """ Basic Element of flixOpt"""
 
-    def __init__(self, label: str, meta_data: Optional[Dict] = None):
+    def __init__(self, label: str, meta_data: Dict = None):
         """
         Parameters
         ----------
@@ -239,7 +241,7 @@ class Element:
             logger.critical(f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
                             f"Use any other symbol instead")
         self.label = label
-        self.meta_data = meta_data
+        self.meta_data = meta_data if meta_data is not None else {}
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 

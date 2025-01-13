@@ -581,7 +581,7 @@ def heat_map_data_from_df(df: pd.DataFrame,
 
 def visualize_network(node_infos: dict,
                       edge_infos: dict,
-                      path: Union[bool, str, pathlib.Path] = 'results/network.html',
+                      path: Optional[Union[str, pathlib.Path]] = None,
                       controls: Union[bool, List[Literal[
                           'nodes', 'edges', 'layout', 'interaction', 'manipulation',
                           'physics', 'selection', 'renderer']]] = True,
@@ -607,6 +607,7 @@ def visualize_network(node_infos: dict,
 
     - show (bool, default=True):
       Whether to open the visualization in the web browser.
+      The calculation must be saved to show it. If no path is given, it defaults to 'network.html'.
 
     Returns:
     - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
@@ -650,15 +651,19 @@ def visualize_network(node_infos: dict,
                      color="#222831")
 
     # Enhanced physics settings
-    net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.2)
+    net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.05, gravity=-10000)
 
     if controls:
         net.show_buttons(filter_=controls)  # Adds UI buttons to control physics settings
+    if not show and not path:
+        return net
+    elif path:
+        path = pathlib.Path(path).resolve().as_posix() if isinstance(path, str) else path.resolve().as_posix()
+        net.write_html(path)
+    elif show:
+        path = pathlib.Path('network.html').resolve().as_posix()
+        net.write_html(path)
 
-    if isinstance(path, str):
-        path = pathlib.Path(path)
-    path = path.resolve().as_posix()
-    net.write_html(path)
     if show:
         try:
             import webbrowser
@@ -666,5 +671,3 @@ def visualize_network(node_infos: dict,
         except Exception:
             logger.warning(f'Showing the network in the Browser went wrong. Open it manually. '
                            f'Its saved under {path}')
-
-    return net

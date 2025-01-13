@@ -6,7 +6,8 @@ These are tightly connected to features.py
 import logging
 from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
-from .core import Numeric, Skalar, Numeric_TS, Config
+from .core import Numeric, Skalar, Numeric_TS
+from .config import CONFIG
 from .structure import get_object_infos_as_str, get_object_infos_as_dict
 if TYPE_CHECKING:
     from .structure import Element
@@ -25,10 +26,10 @@ class InvestParameters:
                  minimum_size: Union[int, float] = 0,  # TODO: Use EPSILON?
                  maximum_size: Optional[Union[int, float]] = None,
                  optional: bool = True,  # Investition ist weglassbar
-                 fix_effects: Optional[Union[Dict, int, float]] = None,
-                 specific_effects: Optional[Union[Dict, int, float]] = None,  # costs per Flow-Unit/Storage-Size/...
+                 fix_effects: Union[Dict, int, float] = None,
+                 specific_effects: Union[Dict, int, float] = None,  # costs per Flow-Unit/Storage-Size/...
                  effects_in_segments: Optional[Tuple[List[Tuple[Skalar, Skalar]], Dict['Effect', List[Tuple[Skalar, Skalar]]]]] = None,
-                 divest_effects: Optional[Union[Dict, int, float]] = None):
+                 divest_effects: Union[Dict, int, float] = None):
         """
         Parameters
         ----------
@@ -64,14 +65,14 @@ class InvestParameters:
         maximum_size : scalar, Optional
             Max nominal value (only if: size_is_fixed = False).
         """
-        self.fix_effects: EffectValuesInvest = fix_effects
-        self.divest_effects: EffectValuesInvest = divest_effects
+        self.fix_effects: EffectValuesInvest = fix_effects or {}
+        self.divest_effects: EffectValuesInvest = divest_effects or {}
         self.fixed_size = fixed_size
         self.optional = optional
-        self.specific_effects: EffectValuesInvest = specific_effects
+        self.specific_effects: EffectValuesInvest = specific_effects or {}
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
-        self._maximum_size = maximum_size or Config.BIG_M  # default maximum
+        self._maximum_size = maximum_size or CONFIG.modeling.BIG  # default maximum
     
     def transform_data(self):
         from .effects import as_effect_dict
@@ -99,8 +100,8 @@ class InvestParameters:
 
 class OnOffParameters:
     def __init__(self,
-                 effects_per_switch_on: Optional[Union[Dict, Numeric]] = None,
-                 effects_per_running_hour: Optional[Union[Dict, Numeric]] = None,
+                 effects_per_switch_on: Union[Dict, Numeric] = None,
+                 effects_per_running_hour: Union[Dict, Numeric] = None,
                  on_hours_total_min: Optional[int] = None,
                  on_hours_total_max: Optional[int] = None,
                  consecutive_on_hours_min: Optional[Numeric] = None,
@@ -140,18 +141,16 @@ class OnOffParameters:
         force_switch_on : bool
             force creation of switch on variable, even if there is no switch_on_total_max
         """
-        # self.flows_defining_on = flows_defining_on
-        # self.on_values_before_begin = on_values_before_begin
-        self.effects_per_switch_on: Union[EffectValues, EffectTimeSeries] = effects_per_switch_on
-        self.effects_per_running_hour: Union[EffectValues, EffectTimeSeries] = effects_per_running_hour
-        self.on_hours_total_min = on_hours_total_min  # scalar
-        self.on_hours_total_max = on_hours_total_max  # scalar
-        self.consecutive_on_hours_min: Numeric_TS = consecutive_on_hours_min  # TimeSeries
-        self.consecutive_on_hours_max: Numeric_TS = consecutive_on_hours_max  # TimeSeries
-        self.consecutive_off_hours_min: Numeric_TS = consecutive_off_hours_min  # TimeSeries
-        self.consecutive_off_hours_max: Numeric_TS = consecutive_off_hours_max  # TimeSeries
-        self.switch_on_total_max = switch_on_total_max
-        self.force_switch_on = force_switch_on
+        self.effects_per_switch_on: Union[EffectValues, EffectTimeSeries] = effects_per_switch_on or {}
+        self.effects_per_running_hour: Union[EffectValues, EffectTimeSeries] = effects_per_running_hour or {}
+        self.on_hours_total_min: Skalar = on_hours_total_min
+        self.on_hours_total_max: Skalar = on_hours_total_max
+        self.consecutive_on_hours_min: Numeric_TS = consecutive_on_hours_min
+        self.consecutive_on_hours_max: Numeric_TS = consecutive_on_hours_max
+        self.consecutive_off_hours_min: Numeric_TS = consecutive_off_hours_min
+        self.consecutive_off_hours_max: Numeric_TS = consecutive_off_hours_max
+        self.switch_on_total_max: Skalar = switch_on_total_max
+        self.force_switch_on: bool = force_switch_on
 
     def transform_data(self, owner: 'Element'):
         from .effects import effect_values_to_time_series
