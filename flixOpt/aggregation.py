@@ -36,9 +36,9 @@ class Aggregation:
                  hours_per_time_step: Skalar,
                  hours_per_period: Skalar,
                  nr_of_periods: int = 8,
-                 weights: Optional[Dict[str, float]] = None,
-                 time_series_for_high_peaks: Optional[List[str]] = None,
-                 time_series_for_low_peaks: Optional[List[str]] = None
+                 weights: Dict[str, float] = None,
+                 time_series_for_high_peaks: List[str] = None,
+                 time_series_for_low_peaks: List[str] = None
                  ):
         """
         Write a docstring please
@@ -53,9 +53,9 @@ class Aggregation:
         self.hours_per_period = hours_per_period
         self.nr_of_periods = nr_of_periods
         self.nr_of_time_steps = len(self.original_data.index)
-        self.weights = weights
-        self.time_series_for_high_peaks = time_series_for_high_peaks
-        self.time_series_for_low_peaks = time_series_for_low_peaks
+        self.weights = weights or {}
+        self.time_series_for_high_peaks = time_series_for_high_peaks or []
+        self.time_series_for_low_peaks = time_series_for_low_peaks or []
 
         self.aggregated_data: Optional[pd.DataFrame] = None
         self.clustering_duration_seconds = None
@@ -250,8 +250,8 @@ class AggregationParameters:
                  aggregate_data_and_fix_non_binary_vars: bool,
                  percentage_of_period_freedom: float = 0,
                  penalty_of_period_freedom: float = 0,
-                 time_series_for_high_peaks: Optional[List[TimeSeriesData]] = None,
-                 time_series_for_low_peaks: Optional[List[TimeSeriesData]] = None
+                 time_series_for_high_peaks: List[TimeSeriesData] = None,
+                 time_series_for_low_peaks: List[TimeSeriesData] = None
                  ):
         """
         Initializes aggregation parameters for time series data
@@ -275,9 +275,9 @@ class AggregationParameters:
             This allows binary variables to be 'partly equated' between aggregated periods.
         penalty_of_period_freedom : float, optional
             The penalty associated with each "free variable"; defaults to 0. Added to Penalty
-        time_series_for_high_peaks : list of TimeSeriesData, optional
+        time_series_for_high_peaks : list of TimeSeriesData
             List of time series to use for explicitly selecting periods with high values.
-        time_series_for_low_peaks : list of TimeSeriesData, optional
+        time_series_for_low_peaks : list of TimeSeriesData
             List of time series to use for explicitly selecting periods with low values.
         """
         self.hours_per_period = hours_per_period
@@ -325,7 +325,7 @@ class AggregationModel(ElementModel):
         self.components_to_clusterize = components_to_clusterize
 
     def do_modeling(self, system_model: SystemModel):
-        if self.components_to_clusterize is None:
+        if not self.components_to_clusterize:
             components = self.flow_system.components
         else:
             components = [component for component in self.components_to_clusterize]

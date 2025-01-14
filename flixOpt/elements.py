@@ -8,7 +8,8 @@ import logging
 import numpy as np
 
 from .math_modeling import Variable, VariableTS
-from .core import Numeric, Numeric_TS, Skalar, Config
+from .core import Numeric, Numeric_TS, Skalar
+from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
 from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
@@ -145,11 +146,11 @@ class Flow(Element):
     def __init__(self,
                  label: str,
                  bus: Bus,
-                 size: Optional[Union[Skalar, InvestParameters]] = None,
+                 size: Union[Skalar, InvestParameters] = None,
                  fixed_relative_profile: Optional[Numeric_TS] = None,
                  relative_minimum: Numeric_TS = 0,
                  relative_maximum: Numeric_TS = 1,
-                 effects_per_flow_hour: Optional[EffectValues] = None,
+                 effects_per_flow_hour: EffectValues = None,
                  can_be_off: Optional[OnOffParameters] = None,
                  flow_hours_total_max: Optional[Skalar] = None,
                  flow_hours_total_min: Optional[Skalar] = None,
@@ -202,7 +203,7 @@ class Flow(Element):
             previous flow rate of the component.
         """
         super().__init__(label, meta_data=meta_data)
-        self.size = size or Config.BIG_M  # Default size
+        self.size = size or CONFIG.modeling.BIG  # Default size
         self.relative_minimum = relative_minimum
         self.relative_maximum = relative_maximum
         self.fixed_relative_profile = fixed_relative_profile
@@ -210,7 +211,7 @@ class Flow(Element):
         self.load_factor_min = load_factor_min
         self.load_factor_max = load_factor_max
         # self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
-        self.effects_per_flow_hour = effects_per_flow_hour
+        self.effects_per_flow_hour = effects_per_flow_hour if effects_per_flow_hour is not None else {}
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
         self.on_off_parameters = can_be_off
@@ -245,10 +246,11 @@ class Flow(Element):
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
-
-        if self.size == Config.BIG_M and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
-            raise Exception('Achtung: Wenn fixed_relative_profile genutzt wird, muss zugehöriges size definiert werden, '
-                            'da: value = fixed_relative_profile * size!')
+            
+        if self.size == CONFIG.modeling.BIG and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
+            logger.warning(f'Flow "{self.label}" has no size assigned, but a "fixed_relative_profile". '
+                           f'The default size is {Config.BIG_M}. As "flow_rate = size * fixed_relative_profile", '
+                           f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.')
 
     @property
     def label_full(self) -> str:
@@ -328,7 +330,7 @@ class FlowModel(ElementModel):
 
     def _create_shares(self, system_model: SystemModel):
         # Arbeitskosten:
-        if self.element.effects_per_flow_hour is not None:
+        if self.element.effects_per_flow_hour != {}:
             system_model.effect_collection_model.add_share_to_operation(
                 name='effects_per_flow_hour',
                 element=self.element,

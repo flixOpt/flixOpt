@@ -17,7 +17,7 @@ np.random.seed(45)
 
 class BaseTest(unittest.TestCase):
     def setUp(self):
-        setup_logging("DEBUG")
+        change_logging_level("DEBUG")
 
     def get_solver(self):
         return solvers.HighsSolver(mip_gap=0.0001, time_limit_seconds=3600, solver_output_to_console=False)

@@ -8,7 +8,7 @@
 
 flixOpt was developed by [TU Dresden](https://github.com/gewv-tu-dresden) as part of the SMARTBIOGRID project, funded by the German Federal Ministry for Economic Affairs and Energy (FKZ: 03KB159B). Building on the Matlab-based flixOptMat framework (developed in the FAKS project), flixOpt also incorporates concepts from [oemof/solph](https://github.com/oemof/oemof-solph). 
 
-Although flixOpt is in its early stages, it is fully functional and ready for experimentation. Feedback and collaboration are highly encouraged to help shape its future.
+Although flixOpt is in its early stages, it is fully functional and ready for experimentation. It is used for investment and operation decisions by energy providing companys as well as research institutions. Feedback and collaboration are highly encouraged to help shape its future.
 
 ---
 

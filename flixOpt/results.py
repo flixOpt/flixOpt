@@ -155,14 +155,17 @@ class CalculationResults:
         """
 
         comp_or_bus = {**self.component_results, **self.bus_results}.get(label, None)
-        if comp_or_bus is not None:
-            df = comp_or_bus.to_dataframe(variable_name, input_factor, output_factor,)
+        flow = self.flow_results().get(label, None)
+
+        if comp_or_bus is not None and flow is not None:
+            raise Exception(f'{label=} matches both a Flow and a Component/Bus. That is an internal Error!')
+        elif comp_or_bus is not None:
+            df = comp_or_bus.to_dataframe(variable_name, input_factor, output_factor)
+        elif flow is not None:
+            df = flow.to_dataframe(variable_name)
         else:
-            flow = self.flow_results().get(label, None)
-            if flow is not None:
-                df = flow.to_dataframe(variable_name)
-            else:
-                raise ValueError(f'No Data found for {variable_name=}')
+            raise ValueError(f'No Element found with {label=}')
+
         if threshold is not None:
             df = df.loc[:, ((df > threshold) | (df < -1*threshold)).any()]  # Check if any value exceeds the threshold
         if df.empty:  # If no values are left, return an empty DataFrame

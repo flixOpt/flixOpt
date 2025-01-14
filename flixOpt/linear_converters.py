@@ -127,7 +127,7 @@ class CoolingTower(LinearConverter):
         ----------
         label : str
             name of cooling tower.
-        specificElectricityDemand : float or TS
+        specific_electricity_demand : float or TS
             auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
         P_el : Flow
             electricity input-flow.
@@ -141,7 +141,7 @@ class CoolingTower(LinearConverter):
                          conversion_factors=[{P_el: 1, Q_th: -specific_electricity_demand}],
                          on_off_parameters=on_off_parameters, meta_data=meta_data)
 
-        self.specificElectricityDemand = specific_electricity_demand
+        self.specific_electricity_demand = specific_electricity_demand
         self.P_el = P_el
         self.Q_th = Q_th
 
