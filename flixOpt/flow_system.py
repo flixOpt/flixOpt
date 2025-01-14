@@ -5,12 +5,14 @@ This module contains the FlowSystem class, which is used to collect instances of
 import pathlib
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal
 import logging
+from io import StringIO
 
 import numpy as np
+from rich.console import Console
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel, get_object_infos_as_dict
+from .structure import Element, SystemModel, get_str_representation, copy_and_convert_datatypes
 from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
 
@@ -100,12 +102,12 @@ class FlowSystem:
 
         return nodes, edges
 
-    def infos(self):
-        infos = {'Components': {comp.label: comp.infos() for comp in
+    def infos(self, use_numpy=True) -> Dict:
+        infos = {'Components': {comp.label: comp.infos(use_numpy) for comp in
                                 sorted(self.components.values(), key=lambda component: component.label.upper())},
-                 'Buses': {bus.label: bus.infos() for bus in
+                 'Buses': {bus.label: bus.infos(use_numpy) for bus in
                            sorted(self.buses.values(), key=lambda bus: bus.label.upper())},
-                 'Effects': {effect.label: effect.infos() for effect in
+                 'Effects': {effect.label: effect.infos(use_numpy) for effect in
                              sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper())}}
         return infos
 
@@ -216,11 +218,7 @@ class FlowSystem:
         return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
 
     def __str__(self):
-        components = '\n'.join(component.__str__() for component in
-                               sorted(self.components.values(), key=lambda component: component.label.upper()))
-        effects = '\n'.join(effect.__str__() for effect in
-                            sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper()))
-        return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
+        return get_str_representation(self.infos())
 
     @property
     def flows(self) -> Dict[str, Flow]:
@@ -298,6 +296,3 @@ def create_datetime_array(start: str,
 
     else:  # If neither `steps` nor `end` is provided, raise an error
         raise ValueError("Either `steps` or `end` must be provided.")
-
-
-
