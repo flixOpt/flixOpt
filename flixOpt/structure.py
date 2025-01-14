@@ -484,25 +484,58 @@ def create_variable(label: str,
     return var
 
 
-def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
+def copy_and_convert_datatypes(data: Any,
+                               use_numpy: bool = True,
+                               use_element_label: bool = False) -> Any:
     """
-    This function converts values in a nested data structure into json compatible types (except numpy if wanted).
+    Converts values in a nested data structure into JSON-compatible types while preserving or transforming numpy arrays
+    and custom `Element` objects based on the specified options.
+
+    The function handles various data types and transforms them into a consistent, readable format:
+    - Primitive types (`int`, `float`, `str`, `bool`, `None`) are returned as-is.
+    - Numpy scalars are converted to their corresponding Python scalar types.
+    - Collections (`list`, `tuple`, `set`, `dict`) are recursively processed to ensure all elements are compatible.
+    - Numpy arrays are preserved or converted to lists, depending on `use_numpy`.
+    - Custom `Element` objects can be represented either by their `label` or their initialization parameters as a dictionary.
+    - Timestamps (`datetime`) are converted to ISO 8601 strings.
+
+    Parameters
+    ----------
+    data : Any
+        The input data to process, which may be deeply nested and contain a mix of types.
+    use_numpy : bool, optional
+        If `True`, numeric numpy arrays (`np.ndarray`) are preserved as-is. If `False`, they are converted to lists.
+        Default is `True`.
+    use_element_label : bool, optional
+        If `True`, `Element` objects are represented by their `label`. If `False`, they are converted into a dictionary
+        based on their initialization parameters. Default is `False`.
+
     Returns
     -------
     Any
-        A possibly deeply nested structure containing the following types:
-        - int
-        - float
-        - str
-        - bool
-        - None
-        - list
-        - dict
-        - (np.ndarray if use_numpy=True)
+        A transformed version of the input data, containing only JSON-compatible types:
+        - `int`, `float`, `str`, `bool`, `None`
+        - `list`, `dict`
+        - `np.ndarray` (if `use_numpy=True`. This is NOT JSON-compatible)
+
     Raises
     ------
     TypeError
         If the data cannot be converted to the specified types.
+
+    Examples
+    --------
+    >>> copy_and_convert_datatypes({"a": np.array([1, 2, 3]), "b": Element(label="example")})
+    {'a': array([1, 2, 3]), 'b': {'class': 'Element', 'label': 'example'}}
+
+    >>> copy_and_convert_datatypes({"a": np.array([1, 2, 3]), "b": Element(label="example")}, use_numpy=False)
+    {'a': [1, 2, 3], 'b': {'class': 'Element', 'label': 'example'}}
+
+    Notes
+    -----
+    - The function gracefully handles unexpected types by issuing a warning and returning a deep copy of the data.
+    - Empty collections (lists, dictionaries) and default parameter values in `Element` objects are omitted from the output.
+    - Numpy arrays with non-numeric data types are automatically converted to lists.
     """
     if isinstance(data, (int, float, str, bool, type(None))):
         return data
@@ -519,7 +552,7 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
     elif isinstance(data, (tuple, set)):
         return copy_and_convert_datatypes([item for item in data])
     elif isinstance(data, dict):
-        return {copy_and_convert_datatypes(key): copy_and_convert_datatypes(value) for key, value in data.items()}
+        return {copy_and_convert_datatypes(key, use_element_label=True): copy_and_convert_datatypes(value) for key, value in data.items()}
     elif isinstance(data, list):  # Shorten arrays/lists to be readable
         if all([isinstance(value, (int, float)) for value in data]):
             return np.array([item for item in data])
@@ -541,24 +574,12 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
     elif isinstance(data, TimeSeriesData):
         return copy_and_convert_datatypes(data.data)
 
-    elif isinstance(data, Element):
-        init_params = sorted(inspect.signature(data.__init__).parameters.items(),
-                             key=lambda x: (x[0].lower() != 'label', x[0].lower()))
-        # Build a dict of attribute=value pairs, excluding defaults
-        details = {'class': ':'.join([cls.__name__ for cls in data.__class__.__mro__])}
-        for name, param in init_params:
-            if name == 'self':
-                continue
-            value, default = getattr(data, name, None), param.default
-            # Ignore default values and empty dicts and list
-            if np.all(value == default) or (isinstance(value, (dict, list)) and not value):
-                pass
-            else:
-                details[name] = copy_and_convert_datatypes(value)
-        return details
+    elif isinstance(data, Interface):
+        if use_element_label and isinstance(data, Element):
+            return data.label
+        return data.infos()
     else:
-        logger.warning(f'copy_and_convert() did get an unexpected item of type "{type(data)}": {data=}')
-        return deepcopy(data)
+        raise TypeError(f'copy_and_convert_datatypes() did get unexpected data of type "{type(data)}": {data=}')
 
 def get_str_representation(data: Any, array_length: int = 50, precision: int = 2) -> str:
     """
@@ -606,59 +627,3 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
         console = Console(file=output_buffer, width=1000)  # Adjust width as needed
         console.print(Pretty(formatted_data, expand_all=True, indent_guides=True))
         return output_buffer.getvalue()
-
-def get_object_infos_as_dict(obj) -> Dict[str, Optional[Union[int, float, str, bool, list, dict]]]:
-    """
-    Returns a dictionary representation of an object's constructor arguments,
-    excluding default values. Formats dictionaries with nested child class objects, displaying their labels.
-    Converts data to python native objects. Further, converts Tuples to Lists.
-
-    Args:
-        obj: The object whose constructor arguments will be formatted and returned as a dictionary.
-
-    Returns:
-        dict: A dictionary representation of the object's constructor arguments,
-              with properly formatted dictionaries and nested objects' labels.
-    """
-
-    def format_dict(d: Dict[Any, Any]) -> Dict[str, Optional[Union[int, float, str, bool, Dict, List]]]:
-        """ Recursively converts datatypes in a dictionary. Converts keys to string """
-        return {k.label if hasattr(k, 'label') else str(k): format_item(v) for k, v in d.items()}
-
-    def format_item(item: Any) -> Optional[Union[int, float, str, bool, List, Dict]]:
-        """ Convert any item to a format that is usable by json and yaml"""
-        if isinstance(item, (int, float, str, bool, type(None), np.integer, np.floating, np.ndarray)):
-            return utils.convert_to_native_types(item)
-        elif isinstance(item, (tuple, list)):
-            return [format_item(i) for i in item]
-        elif isinstance(item, dict):  # Format dictionaries with custom formatting
-            if len(item) == 1 and None in item:
-                return format_item(item[None])
-            else:
-                return format_dict(item)
-        elif isinstance(item, TimeSeries):
-            return format_item(item.active_data)
-        elif isinstance(item, TimeSeriesData):
-            return format_item(item.data)
-        elif hasattr(item, 'infos') and callable(getattr(item, 'infos')):
-            return item.infos()
-        else:
-            raise TypeError(f'Unexpected type passed to function format_item(). {type(item)=}; {item=}')
-
-    init_params = sorted(inspect.signature(obj.__init__).parameters.items(),
-                         key=lambda x: (x[0].lower() != 'label', x[0].lower()))
-
-    # Build a dict of attribute=value pairs, excluding defaults
-    details = {'class': ':'.join([cls.__name__ for cls in obj.__class__.__mro__])}
-    for name, param in init_params:
-        if name == 'self':
-            continue
-        value, default = getattr(obj, name, None), param.default
-        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
-            pass
-        elif np.all(value == default):  # Ignore default values
-            pass
-        else:
-            details[name] = format_item(value)
-
-    return details

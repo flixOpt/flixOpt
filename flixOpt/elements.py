@@ -12,8 +12,7 @@ from .core import Numeric, Numeric_TS, Skalar
 from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
-    get_object_infos_as_dict
+from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
 from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
@@ -71,9 +70,11 @@ class Component(Element):
             flow.bus.add_input(flow)
 
     def infos(self):
-        infos = get_object_infos_as_dict(self)
-        infos['inputs'] = [flow.infos() for flow in self.inputs]
-        infos['outputs'] = [flow.infos() for flow in self.outputs]
+        infos = super().infos()
+        if 'inputs' not in infos:
+         infos['inputs'] = copy_and_convert_datatypes(self.inputs)
+        if 'outputs' not in infos:
+            infos['outputs'] = copy_and_convert_datatypes(self.outputs)
         return infos
 
 
