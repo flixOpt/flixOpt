@@ -26,6 +26,20 @@ from .structure import (
 logger = logging.getLogger('flixOpt')
 
 
+class Medium:
+    def __init__(self,
+                 label: str,
+                 unit: str,
+                 color: str,
+                 categories: Optional[List[str]] = None,
+                 description: Optional[str] = None):
+        self.label = label
+        self.unit = unit
+        self.color = color
+        self.categories = categories or []
+        self.description = description
+
+
 class Component(Element):
     """
     basic component class for all components
@@ -96,8 +110,11 @@ class Bus(Element):
     """
 
     def __init__(
-        self, label: str, excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5, meta_data: Optional[Dict] = None
-    ):
+            self,
+            label: str,
+            medium: Optional[Medium] = None,
+            excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5,
+            meta_data: Optional[Dict] = None):
         """
         Parameters
         ----------
@@ -111,6 +128,7 @@ class Bus(Element):
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
         """
         super().__init__(label, meta_data=meta_data)
+        self.medium = medium
         self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
@@ -233,6 +251,7 @@ class Flow(Element):
         self.previous_flow_rate = previous_flow_rate
 
         self.bus = bus
+        self.medium = bus.medium
         self.comp: Optional[Component] = None
 
         self._plausibility_checks()
