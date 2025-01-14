@@ -90,13 +90,13 @@ class FlowSystem:
         nodes = {node.label_full: {'label': node.label,
                                    'class': 'Bus' if isinstance(node, Bus) else 'Component',
                                    'infos':  node.__str__()}
-                 for node in list(self.components.values()) + list(self.all_buses.values())}
+                 for node in list(self.components.values()) + list(self.buses.values())}
 
         edges = {flow.label_full: {'label': flow.label,
                                    'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
                                    'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
                                    'infos': flow.__str__()}
-                 for flow in self.all_flows.values()}
+                 for flow in self.flows.values()}
 
         return nodes, edges
 
@@ -104,7 +104,7 @@ class FlowSystem:
         infos = {'Components': {comp.label: comp.infos() for comp in
                                 sorted(self.components.values(), key=lambda component: component.label.upper())},
                  'Buses': {bus.label: bus.infos() for bus in
-                           sorted(self.all_buses.values(), key=lambda bus: bus.label.upper())},
+                           sorted(self.buses.values(), key=lambda bus: bus.label.upper())},
                  'Effects': {effect.label: effect.infos() for effect in
                              sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper())}}
         return infos
@@ -223,17 +223,17 @@ class FlowSystem:
         return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
 
     @property
-    def all_flows(self) -> Dict[str, Flow]:
+    def flows(self) -> Dict[str, Flow]:
         set_of_flows = {flow for comp in self.components.values() for flow in comp.inputs + comp.outputs}
         return {flow.label_full: flow for flow in set_of_flows}
 
     @property
-    def all_buses(self) -> Dict[str, Bus]:
-        return {flow.bus.label: flow.bus for flow in self.all_flows.values()}
+    def buses(self) -> Dict[str, Bus]:
+        return {flow.bus.label: flow.bus for flow in self.flows.values()}
 
     @property
     def all_elements(self) -> Dict[str, Element]:
-        return {**self.components, **self.effect_collection.effects, **self.all_flows, **self.all_buses}
+        return {**self.components, **self.effect_collection.effects, **self.flows, **self.buses}
 
     @property
     def all_time_series(self) -> List[TimeSeries]:
