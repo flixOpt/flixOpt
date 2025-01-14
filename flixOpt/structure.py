@@ -4,11 +4,14 @@ These classes are not directly used by the end user, but are used by other modul
 """
 
 from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING, Any
+from copy import deepcopy
 import logging
 import inspect
-import textwrap
+from io import StringIO
 
 import numpy as np
+from rich.console import Console
+from rich.pretty import Pretty
 
 from . import utils
 from .math_modeling import MathModel, Variable, Equation, Inequation, VariableTS, Solver
@@ -269,7 +272,7 @@ class Element:
         return f"{self.__class__.__name__}({args_str})"
 
     def __str__(self):
-        return get_object_infos_as_str(self)
+        return get_str_representation(self.infos())
 
     def infos(self) -> Dict:
         return get_object_infos_as_dict(self)
@@ -459,97 +462,120 @@ def create_variable(label: str,
     return var
 
 
-def get_object_infos_as_str(obj) -> str:
+def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
     """
-    Returns a string representation of an object's constructor arguments,
-    excluding default values. Formats dictionaries with nested child class objects, displaying their labels.
+    This function converts values in a nested datastructure into python native types (except (numpy if wanted).
+    It also converts tuples and Sets to lists, as they are not writable to json
+    Returns
+    -------
+    Any
+        A possibly deeply nested structure containing the following types:
+        - int
+        - float
+        - str
+        - bool
+        - None
+        - list
+        - dict
+        - np.ndarray if 'use_numpy' is True
+    Raises
+    ------
+    TypeError
+        If the data cannot be converted to the specified types.
+    """
+    if isinstance(data, (int, float, str, bool, type(None))):
+        return data
+    elif isinstance(data, np.integer):
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+    elif isinstance(data, (tuple, set)):
+        return copy_and_convert_datatypes([item for item in data])
+    elif isinstance(data, dict):
+        return {copy_and_convert_datatypes(key): copy_and_convert_datatypes(value) for key, value in data.items()}
+    elif isinstance(data, list):  # Shorten arrays/lists to be readable
+        if all([isinstance(value, (int, float)) for value in data]):
+            return np.array([item for item in data])
+        else:
+            return [copy_and_convert_datatypes(item) for item in data]
+    elif isinstance(data, np.ndarray):
+        if use_numpy and not np.issubdtype(data.dtype, np.number):
+            logger.warning(f'An np.array with non-numeric content was found: {data=}.'
+                           f'It will be converted to a list instead')
+            return copy_and_convert_datatypes(data.tolist())
+        elif use_numpy:
+            return data
+        else:
+            return copy_and_convert_datatypes(data.tolist())
+    elif isinstance(data, TimeSeries):
+        return copy_and_convert_datatypes(data.active_data)
+    elif isinstance(data, TimeSeriesData):
+        return copy_and_convert_datatypes(data.data)
+    elif isinstance(data, Element):
+        init_params = sorted(inspect.signature(data.__init__).parameters.items(),
+                             key=lambda x: (x[0].lower() != 'label', x[0].lower()))
+        # Build a dict of attribute=value pairs, excluding defaults
+        details = {'class': ':'.join([cls.__name__ for cls in data.__class__.__mro__])}
+        for name, param in init_params:
+            if name == 'self':
+                continue
+            value, default = getattr(data, name, None), param.default
+            # Ignore default values and empty dicts and list
+            if np.all(value == default) or (isinstance(value, (dict, list)) and not value):
+                pass
+            else:
+                details[name] = copy_and_convert_datatypes(value)
+        return details
+    else:
+        logger.warning(f'copy_and_convert() did get an unexpected item of type "{type(data)}": {data=}')
+        return deepcopy(data)
+
+def get_str_representation(data: Any, array_length: int = 50, precision: int = 2) -> str:
+    """
+    Generate a string representation of deeply nested data using `rich.print`.
+    NumPy arrays are shortened to the specified length and converted to strings.
 
     Args:
-        obj: The object whose constructor arguments will be formatted and returned as a string.
+        data (Any): The data to format and represent.
+        array_length (int): Maximum length of NumPy arrays to display. Longer arrays are truncated.
 
     Returns:
-        str: A string representation of the object's constructor arguments,
-             with properly formatted dictionaries, and nested objects' labels.
+        str: The formatted string representation of the data.
     """
 
-    def numeric_as_str(item: Union[Numeric, TimeSeries, TimeSeriesData], max_length: int = 100) -> str:
-        """
-        Returns a short oneline string of numeric data.
-        If something else than the expected datatypes is passes, it returns the item aas a str
-        """
-        if isinstance(item, TimeSeries):
-            item = item.active_data
-        elif isinstance(item, TimeSeriesData):
-            item = item.data
-
-        if isinstance(item, np.ndarray):
-            text = str(item).replace('\n', '')
-            if len(text) > max_length:
-                return text[:max_length-3]+'...'
-            else:
-                return text
-        elif isinstance(item, (Skalar, np.integer, np.floating)):
-            return str(item)
+    def format_np_array_if_found(value: Any) -> Any:
+        """Recursively processes the data, formatting NumPy arrays."""
+        if isinstance(value, (int, float, str, bool, type(None))):
+            return value
+        elif isinstance(value, np.ndarray):
+            return shorten_np_array(value)
+        elif isinstance(value, dict):
+            return {format_np_array_if_found(k): format_np_array_if_found(v) for k, v in value.items()}
+        elif isinstance(value, (list, tuple, set)):
+            return [format_np_array_if_found(v) for v in value]
         else:
-            raise TypeError(f' Wrong type passed to function numeric_as_str(): {type(item)}')
+            logger.warning(f'Unexpected value found when trying to format numpy array numpy array: {type(value)=}; {value=}')
+            return value
 
-    def dict_as_str(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
-        """
-        Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
-
-        Args:
-            d (dict): The dictionary to format.
-            current_indent_level (int): The current indentation level (default is 1).
-            indent_depth (int): The number of spaces per indent (default is 3).
-
-        Returns:
-            str: A string representation of the dictionary with the keys' labels and appropriate indentation.
-        """
-        # If the dictionary has a single {None: value} entry, return the value directly
-        if len(d) == 1 and None in d:
-            return str(d[None])
-
-        formatted_items = []
-        for k, v in d.items():
-            key_str = k.label if hasattr(k, 'label') else str(k)  # Use labels instead of __str__ if availlable
-            if isinstance(v, dict):
-                v_str = dict_as_str(v, current_indent_level + 1)  # Recursively format nested dictionaries
-            else:
-                v_str = item_as_str(v)
-            formatted_items.append(f"{key_str}: {v_str}")
-        return '{\n' + textwrap.indent(",\n".join(formatted_items), ' ' * current_indent_level * indent_depth) + '}'
-
-    def item_as_str(item: Any, indent_level: int = 1, indent_depth: int = 3) -> str:
-        """ Convert Any item to a string"""
-        if isinstance(item, dict):
-            return dict_as_str(item, indent_level, indent_depth)  # Recursively format nested dictionaries
-        elif isinstance(item, (Numeric, TimeSeries, TimeSeriesData)):
-            return numeric_as_str(item)  # Special formatting for numerical data
+    def shorten_np_array(arr: np.ndarray) -> str:
+        """Shortens NumPy arrays if they exceed the specified length."""
+        if arr.size > array_length:  # Calculate basic statistics
+            return (f"Array (min={np.min(arr):.2f}, max={np.max(arr):.2f}, mean={np.mean(arr):.2f}, "
+                    f"median={np.median(arr):.2f}, std={np.std(arr):.2f}, length={len(arr)})")
         else:
-            return str(item)  # All others as str
+            return np.array2string(arr[:array_length],
+                                        precision=precision,
+                                        max_line_width=1000,
+                                        separator=', ')
 
-    # Get the constructor arguments and their default values
-    init_params = sorted(inspect.signature(obj.__init__).parameters.items(),
-                         key=lambda x: (x[0].lower() != 'label', x[0].lower()))
+    # Process the data to handle NumPy arrays
+    formatted_data = format_np_array_if_found(copy_and_convert_datatypes(data, use_numpy=True))
 
-    # Build a list of attribute=value pairs, excluding defaults
-    details = []
-    for name, param in init_params:
-        if name == 'self':
-            continue
-        value, default = getattr(obj, name, None), param.default
-
-        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
-            pass
-        elif np.all(value == default):  # Ignore default values
-            pass
-        else:
-            details.append(f"{name}={item_as_str(value)}")  # Formatted numeric-string
-
-    # Join all relevant parts and format them in the output
-    full_str = ',\n'.join(details)
-    return f"{obj.__class__.__name__}(\n{textwrap.indent(full_str, ' '*3)})"
-
+    # Use Rich to format and print the data
+    with StringIO() as output_buffer:
+        console = Console(file=output_buffer, width=1000)  # Adjust width as needed
+        console.print(Pretty(formatted_data, expand_all=True, indent_guides=True))
+        return output_buffer.getvalue()
 
 def get_object_infos_as_dict(obj) -> Dict[str, Optional[Union[int, float, str, bool, list, dict]]]:
     """

@@ -8,7 +8,7 @@ from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
 from .core import Numeric, Skalar, Numeric_TS
 from .config import CONFIG
-from .structure import get_object_infos_as_str, get_object_infos_as_dict
+from .structure import get_str_representation, get_object_infos_as_dict
 if TYPE_CHECKING:
     from .structure import Element
     from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
@@ -73,7 +73,7 @@ class InvestParameters:
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
         self._maximum_size = maximum_size or CONFIG.modeling.BIG  # default maximum
-    
+
     def transform_data(self):
         from .effects import as_effect_dict
         self.fix_effects = as_effect_dict(self.fix_effects)
@@ -95,7 +95,7 @@ class InvestParameters:
         return f"<{self.__class__.__name__}>: {self.__dict__}"
 
     def __str__(self):
-        return get_object_infos_as_str(self)
+        return get_str_representation(self.infos())
 
 
 class OnOffParameters:
@@ -166,7 +166,7 @@ class OnOffParameters:
         return get_object_infos_as_dict(self)
 
     def __str__(self):
-        return get_object_infos_as_str(self)
+        return get_str_representation(self.infos())
 
     @property
     def use_off(self) -> bool:
