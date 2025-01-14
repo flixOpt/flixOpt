@@ -357,6 +357,8 @@ class OnOffModel(ElementModel):
         constraint_1.add_summand(binary_variable, -1 * mega)
 
         # 2a) eq: duration(t) - duration(t-1) <= dt(t)
+        #    on(t)=1 -> duration(t) - duration(t-1) <= dt(t)
+        #    on(t)=0 -> duration(t-1) >= negat. value
         constraint_2a = create_equation(f'{label_prefix}_constraint_2a', self, eq_type='ineq')
         constraint_2a.add_summand(duration_in_hours, 1, time_indices[1:])  # duration(t)
         constraint_2a.add_summand(duration_in_hours, -1, time_indices[0:-1])  # duration(t-1)
@@ -364,6 +366,10 @@ class OnOffModel(ElementModel):
 
         # 2b) eq: dt(t) - BIG * ( 1-On(t) ) <= duration(t) - duration(t-1)
         # eq: -duration(t) + duration(t-1) + On(t) * BIG <= -dt(t) + BIG
+        # with BIG = dt_in_hours_total.
+        #   on(t)=1 -> duration(t)- duration(t-1) >= dt(t)
+        #   on(t)=0 -> duration(t)- duration(t-1) >= negat. value
+
         # TODO: Use maximum duration instead of BIG
         constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, eq_type='ineq')
         constraint_2b.add_summand(duration_in_hours, -1, time_indices[1:])  # duration(t)
