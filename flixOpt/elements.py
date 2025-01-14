@@ -52,6 +52,8 @@ class Component(Element):
         self.on_off_parameters = on_off_parameters
         self.prevent_simultaneous_flows: List['Flow'] = prevent_simultaneous_flows or []
 
+        self.flows: Dict[str, Flow] = {flow.label: flow for flow in self.inputs + self.outputs}
+
     def create_model(self) -> 'ComponentModel':
         self.model = ComponentModel(self)
         return self.model

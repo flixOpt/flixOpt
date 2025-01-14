@@ -47,8 +47,8 @@ class SystemModel(MathModel):
 
     def do_modeling(self):
         self.effect_collection_model.do_modeling(self)
-        self.component_models = [component.create_model() for component in self.flow_system.components]
-        self.bus_models = [bus.create_model() for bus in self.flow_system.all_buses]
+        self.component_models = [component.create_model() for component in self.flow_system.components.values()]
+        self.bus_models = [bus.create_model() for bus in self.flow_system.all_buses.values()]
         for component_model in self.component_models:
             component_model.do_modeling(self)
         for bus_model in self.bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
@@ -100,19 +100,19 @@ class SystemModel(MathModel):
         logger.info(f'{" End of Main Results ":#^80}')
 
     def description_of_variables(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {'Components': {comp.label: comp.model.description_of_variables(structured)
-                               for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_variables(structured)
-                          for bus in self.flow_system.all_buses},
+        return {'Components': {label: comp.model.description_of_variables(structured)
+                               for label, comp in self.flow_system.components.items()},
+                'Buses': {label: bus.model.description_of_variables(structured)
+                          for label,bus in self.flow_system.all_buses.items()},
                 'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
                 'Others': {model.element.label: model.description_of_variables(structured)
                            for model in self.other_models}}
 
     def description_of_constraints(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {'Components': {comp.label: comp.model.description_of_constraints(structured)
-                               for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_constraints(structured)
-                          for bus in self.flow_system.all_buses},
+        return {'Components': {label: comp.model.description_of_constraints(structured)
+                               for label, comp in self.flow_system.components.items()},
+                'Buses': {label: bus.model.description_of_constraints(structured)
+                          for label, bus in self.flow_system.all_buses.items()},
                 'Objective': self.objective.description(),
                 'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
                 'Others': {model.element.label: model.description_of_constraints(structured)
@@ -133,7 +133,7 @@ class SystemModel(MathModel):
         main_results = {}
         effect_results = {}
         main_results['Effects'] = effect_results
-        for effect in self.flow_system.effect_collection.effects:
+        for effect in self.flow_system.effect_collection.effects.values():
             effect_results[f'{effect.label} [{effect.unit}]'] = {
                 'operation': float(effect.model.operation.sum.result),
                 'invest': float(effect.model.invest.sum.result),
@@ -143,7 +143,7 @@ class SystemModel(MathModel):
         main_results['lower bound'] = self.solver.best_bound
         buses_with_excess = []
         main_results['buses with excess'] = buses_with_excess
-        for bus in self.flow_system.all_buses:
+        for bus in self.flow_system.all_buses.values():
             if bus.with_excess:
                 if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
                     buses_with_excess.append(bus.label)
