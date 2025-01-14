@@ -7,6 +7,7 @@ The results can also be analyzed without this module, as the results are stored 
 
 import logging
 import json
+import zipfile
 import pathlib
 from typing import Dict, List, Tuple, Literal, Optional, Union
 import datetime
@@ -42,8 +43,7 @@ class CalculationResults:
         self.name = calculation_name
         self.folder = pathlib.Path(folder)
         self._path_infos = (self.folder / f'{calculation_name}_infos.yaml').resolve().as_posix()
-        self._path_data = (self.folder / f'{calculation_name}_data.json').resolve().as_posix()
-        self._path_results = (self.folder / f'{calculation_name}_results.json').resolve().as_posix()
+        self._path_data = (self.folder / f'{calculation_name}_data.zip').resolve().as_posix()
 
         start_time = timeit.default_timer()
         with open(self._path_infos, 'rb') as f:
@@ -51,14 +51,12 @@ class CalculationResults:
         logger.info(f'Loading Calculation Infos from .yaml took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
         start_time = timeit.default_timer()
-        with open(self._path_results, 'rb') as f:
-            self.all_results: Dict = json.load(f)
+        with zipfile.ZipFile(self._path_data, 'r') as zipf:
+            with zipf.open('results.json', 'r') as f:
+                self.all_results: Dict = json.load(f)
+            with zipf.open('data.json', 'r') as f:
+                self.all_data: Dict = json.load(f)
         self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
-        logger.info(f'Loading results from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
-
-        start_time = timeit.default_timer()
-        with open(self._path_data, 'rb') as f:
-            self.all_data: Dict = json.load(f)
         self.all_data = utils.convert_numeric_lists_to_arrays(self.all_data)
         logger.info(f'Loading data from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
