@@ -8,6 +8,7 @@ from copy import deepcopy
 import logging
 import inspect
 from io import StringIO
+from datetime import datetime
 
 import numpy as np
 from rich.console import Console
@@ -464,8 +465,7 @@ def create_variable(label: str,
 
 def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
     """
-    This function converts values in a nested datastructure into python native types (except (numpy if wanted).
-    It also converts tuples and Sets to lists, as they are not writable to json
+    This function converts values in a nested data structure into json compatible types (except numpy if wanted).
     Returns
     -------
     Any
@@ -477,7 +477,7 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
         - None
         - list
         - dict
-        - np.ndarray if 'use_numpy' is True
+        - (np.ndarray if use_numpy=True)
     Raises
     ------
     TypeError
@@ -485,10 +485,16 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
     """
     if isinstance(data, (int, float, str, bool, type(None))):
         return data
+    elif isinstance(data, datetime):
+        return data.isoformat()
+
     elif isinstance(data, np.integer):
         return int(data)
     elif isinstance(data, np.floating):
         return float(data)
+    elif isinstance(data, (np.generic,)):  # For any numpy scalar types
+        return data.item()
+
     elif isinstance(data, (tuple, set)):
         return copy_and_convert_datatypes([item for item in data])
     elif isinstance(data, dict):
@@ -498,19 +504,22 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True) -> Any:
             return np.array([item for item in data])
         else:
             return [copy_and_convert_datatypes(item) for item in data]
+
     elif isinstance(data, np.ndarray):
         if use_numpy and not np.issubdtype(data.dtype, np.number):
-            logger.warning(f'An np.array with non-numeric content was found: {data=}.'
+            logger.critical(f'An np.array with non-numeric content was found: {data=}.'
                            f'It will be converted to a list instead')
             return copy_and_convert_datatypes(data.tolist())
         elif use_numpy:
             return data
         else:
             return copy_and_convert_datatypes(data.tolist())
+
     elif isinstance(data, TimeSeries):
         return copy_and_convert_datatypes(data.active_data)
     elif isinstance(data, TimeSeriesData):
         return copy_and_convert_datatypes(data.data)
+
     elif isinstance(data, Element):
         init_params = sorted(inspect.signature(data.__init__).parameters.items(),
                              key=lambda x: (x[0].lower() != 'label', x[0].lower()))

@@ -84,7 +84,7 @@ def apply_formating(data_dict: Dict[str, Union[int, float]],
 
 
 def label_is_valid(label: str) -> bool:
-    """ Function to make shure '__' is reserved for internal splitting of labels"""
+    """ Function to make sure '__' is reserved for internal splitting of labels"""
     if label.startswith('_') or label.endswith('_') or '__' in label:
         return False
     return True
