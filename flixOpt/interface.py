@@ -8,15 +8,15 @@ from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
 
 from .core import Numeric, Skalar, Numeric_TS
 from .config import CONFIG
-from .structure import get_str_representation, get_object_infos_as_dict
+from .structure import Interface, Element
+
 if TYPE_CHECKING:
-    from .structure import Element
     from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
 
 logger = logging.getLogger('flixOpt')
 
 
-class InvestParameters:
+class InvestParameters(Interface):
     """
     collects arguments for invest-stuff
     """
@@ -80,9 +80,6 @@ class InvestParameters:
         self.divest_effects = as_effect_dict(self.divest_effects)
         self.specific_effects = as_effect_dict(self.specific_effects)
 
-    def infos(self) -> Dict:
-        return get_object_infos_as_dict(self)
-
     @property
     def minimum_size(self):
         return self.fixed_size or self._minimum_size
@@ -91,14 +88,8 @@ class InvestParameters:
     def maximum_size(self):
         return self.fixed_size or self._maximum_size
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}>: {self.__dict__}"
 
-    def __str__(self):
-        return get_str_representation(self.infos())
-
-
-class OnOffParameters:
+class OnOffParameters(Interface):
     def __init__(self,
                  effects_per_switch_on: Union[Dict, Numeric] = None,
                  effects_per_running_hour: Union[Dict, Numeric] = None,
@@ -161,12 +152,6 @@ class OnOffParameters:
         self.consecutive_on_hours_max = _create_time_series('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
         self.consecutive_off_hours_min = _create_time_series('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
         self.consecutive_off_hours_max = _create_time_series('consecutive_off_hours_max', self.consecutive_off_hours_max, owner)
-
-    def infos(self) -> Dict:
-        return get_object_infos_as_dict(self)
-
-    def __str__(self):
-        return get_str_representation(self.infos())
 
     @property
     def use_off(self) -> bool:

@@ -229,7 +229,46 @@ class SystemModel(MathModel):
         return self.effect_collection_model.objective
 
 
-class Element:
+class Interface:
+    """
+    This class is used to collect arguments about a Model.
+    """
+
+    def transform_data(self):
+        raise NotImplementedError(f'Every Interface needs a transform_data() method')
+
+    def infos(self) -> Dict:
+        init_params = sorted(inspect.signature(self.__init__).parameters.items(),
+                             key=lambda x: x[0].lower())
+        # Build a dict of attribute=value pairs, excluding defaults
+        details = {'class': ':'.join([cls.__name__ for cls in self.__class__.__mro__])}
+        for name, param in init_params:
+            if name == 'self':
+                continue
+            value, default = getattr(self, name, None), param.default
+            # Ignore default values and empty dicts and list
+            if np.all(value == default) or (isinstance(value, (dict, list)) and not value):
+                continue
+            details[name] = copy_and_convert_datatypes(value, use_numpy=True)
+        return details
+
+    def __repr__(self):
+        # Get the constructor arguments and their current values
+        init_signature = inspect.signature(self.__init__)
+        init_args = init_signature.parameters
+
+        # Create a dictionary with argument names and their values
+        args_str = ', '.join(
+            f"{name}={repr(getattr(self, name, None))}"
+            for name in init_args if name != 'self'
+        )
+        return f"{self.__class__.__name__}({args_str})"
+
+    def __str__(self):
+        return get_str_representation(self.infos())
+
+
+class Element(Interface):
     """ Basic Element of flixOpt"""
 
     def __init__(self, label: str, meta_data: Dict = None):
@@ -259,24 +298,6 @@ class Element:
 
     def create_model(self) -> None:
         raise NotImplementedError(f'Every Element needs a create_model() method')
-
-    def __repr__(self):
-        # Get the constructor arguments and their current values
-        init_signature = inspect.signature(self.__init__)
-        init_args = init_signature.parameters
-
-        # Create a dictionary with argument names and their values
-        args_str = ', '.join(
-            f"{name}={repr(getattr(self, name, None))}"
-            for name in init_args if name != 'self'
-        )
-        return f"{self.__class__.__name__}({args_str})"
-
-    def __str__(self):
-        return get_str_representation(self.infos())
-
-    def infos(self) -> Dict:
-        return get_object_infos_as_dict(self)
 
     @property
     def label_full(self) -> str:
