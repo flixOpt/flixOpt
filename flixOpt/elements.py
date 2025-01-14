@@ -69,8 +69,8 @@ class Component(Element):
         for flow in self.outputs:
             flow.bus.add_input(flow)
 
-    def infos(self):
-        infos = super().infos()
+    def infos(self, use_numpy=True) -> Dict:
+        infos = super().infos(use_numpy)
         if 'inputs' not in infos:
          infos['inputs'] = copy_and_convert_datatypes(self.inputs)
         if 'outputs' not in infos:
@@ -238,8 +238,8 @@ class Flow(Element):
         if isinstance(self.size, InvestParameters):
             self.size.transform_data()
 
-    def infos(self) -> Dict:
-        infos = super().infos()
+    def infos(self, use_numpy=True) -> Dict:
+        infos = super().infos(use_numpy)
         infos['is_input_in_component'] = self.is_input_in_comp
         return infos
 

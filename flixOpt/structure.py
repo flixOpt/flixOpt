@@ -237,7 +237,7 @@ class Interface:
     def transform_data(self):
         raise NotImplementedError(f'Every Interface needs a transform_data() method')
 
-    def infos(self) -> Dict:
+    def infos(self, use_numpy=True) -> Dict:
         init_params = sorted(inspect.signature(self.__init__).parameters.items(),
                              key=lambda x: x[0].lower())
         # Build a dict of attribute=value pairs, excluding defaults
@@ -249,7 +249,7 @@ class Interface:
             # Ignore default values and empty dicts and list
             if np.all(value == default) or (isinstance(value, (dict, list)) and not value):
                 continue
-            details[name] = copy_and_convert_datatypes(value, use_numpy=True)
+            details[name] = copy_and_convert_datatypes(value, use_numpy)
         return details
 
     def __repr__(self):
@@ -550,34 +550,35 @@ def copy_and_convert_datatypes(data: Any,
         return data.item()
 
     elif isinstance(data, (tuple, set)):
-        return copy_and_convert_datatypes([item for item in data])
+        return copy_and_convert_datatypes([item for item in data], use_numpy)
     elif isinstance(data, dict):
-        return {copy_and_convert_datatypes(key, use_element_label=True): copy_and_convert_datatypes(value) for key, value in data.items()}
+        return {copy_and_convert_datatypes(key, use_numpy, use_element_label=True):
+                    copy_and_convert_datatypes(value, use_numpy) for key, value in data.items()}
     elif isinstance(data, list):  # Shorten arrays/lists to be readable
-        if all([isinstance(value, (int, float)) for value in data]):
+        if use_numpy and all([isinstance(value, (int, float)) for value in data]):
             return np.array([item for item in data])
         else:
-            return [copy_and_convert_datatypes(item) for item in data]
+            return [copy_and_convert_datatypes(item, use_numpy) for item in data]
 
     elif isinstance(data, np.ndarray):
-        if use_numpy and not np.issubdtype(data.dtype, np.number):
-            logger.critical(f'An np.array with non-numeric content was found: {data=}.'
-                           f'It will be converted to a list instead')
-            return copy_and_convert_datatypes(data.tolist())
-        elif use_numpy:
+        if not use_numpy:
+            return copy_and_convert_datatypes(data.tolist(), use_numpy)
+        elif use_numpy and np.issubdtype(data.dtype, np.number):
             return data
         else:
-            return copy_and_convert_datatypes(data.tolist())
+            logger.critical(f'An np.array with non-numeric content was found: {data=}.'
+                           f'It will be converted to a list instead')
+            return copy_and_convert_datatypes(data.tolist(), use_numpy)
 
     elif isinstance(data, TimeSeries):
-        return copy_and_convert_datatypes(data.active_data)
+        return copy_and_convert_datatypes(data.active_data, use_numpy)
     elif isinstance(data, TimeSeriesData):
-        return copy_and_convert_datatypes(data.data)
+        return copy_and_convert_datatypes(data.data, use_numpy)
 
     elif isinstance(data, Interface):
         if use_element_label and isinstance(data, Element):
             return data.label
-        return data.infos()
+        return data.infos(use_numpy)
     else:
         raise TypeError(f'copy_and_convert_datatypes() did get unexpected data of type "{type(data)}": {data=}')
 
