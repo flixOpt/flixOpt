@@ -370,7 +370,6 @@ class OnOffModel(ElementModel):
         #   on(t)=1 -> duration(t)- duration(t-1) >= dt(t)
         #   on(t)=0 -> duration(t)- duration(t-1) >= negat. value
 
-        # TODO: Use maximum duration instead of BIG
         constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, eq_type='ineq')
         constraint_2b.add_summand(duration_in_hours, -1, time_indices[1:])  # duration(t)
         constraint_2b.add_summand(duration_in_hours, 1, time_indices[0:-1])  # duration(t-1)
@@ -378,15 +377,18 @@ class OnOffModel(ElementModel):
         constraint_2b.add_constant(-1 * system_model.dt_in_hours[1:] + mega)  # dt(t)
 
         # 3) check minimum_duration before switchOff-step
-        # (last on-time period of timeseries is not checked and can be shorter)
+
         if minimum_duration is not None:
-            # eq: minimum_duration * -1 * [On(t)-On(t-1)] <= duration(t-1)
-            # eq: -duration(t - 1) - minimum_duration * On(t) + minimum_duration * On(t - 1) <= 0
-            # Note: switchOff-step is when: On(t)-On(t-1) == -1
+            # Note: switchOff-step is when: On(t+1)-On(t) == -1
+            # Note: (last on-time period (with last timestep of period t=n) is not checked and can be shorter)
+            # Note: (history/previous values before t=1 are not recognised!)
+            # eq: duration(t) >= minimum_duration(t) * -1 * [On(t+1)-On(t)] for t=1..(n-1)
+            # eq: -duration(t) - minimum_duration (t) * On(t+1) + minimum_duration * On(t) <= 0
+            minimum_duration_used = minimum_duration.active_data[0:-1] # only checked for t=1...(n-1)
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
-            eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # duration(t-1)
-            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
-            eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
+            eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # -duration(t)
+            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration_used, time_indices[1:])  # - minimum_duration (t) * On(t+1)
+            eq_min_duration.add_summand(binary_variable, minimum_duration_used, time_indices[0:-1])  # minimum_duration * On(t)
 
         # 4) first index:
         # eq: duration(t=0)= dt(0) * On(0)
