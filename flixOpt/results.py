@@ -226,7 +226,7 @@ class CalculationResults:
         variable_name: str = 'flow_rate',
         heatmap_periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
         heatmap_steps_per_period: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
-        colors: Union[str, List[str]] = 'viridis',
+        colors: Optional[Union[str, List[str]]] = None,
         engine: Literal['plotly', 'matplotlib'] = 'plotly',
         invert: bool = True,
         show: bool = True,
@@ -271,17 +271,9 @@ class CalculationResults:
         ValueError
             If an invalid engine or color configuration is provided for heatmap mode.
         """
+        assert engine in ['plotly', 'matplotlib'], f'Engine {engine} not supported.'
 
-        if mode == 'heatmap' and not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
-            logger.warning(
-                'Heat map plotting with irregular time intervals in time series can lead to unwanted effects'
-            )
-        if mode == 'heatmap' and not isinstance(colors, str):
-            raise ValueError(
-                f'For a heatmap, you need to pass the colors as a valid name of a colormap, not {colors=}.'
-                f'Try "Turbo", "Hot", or "Viridis" instead.'
-            )
-
+        assert mode in ['bar', 'line', 'area', 'heatmap'], f'Mode {mode} not supported.'
         title = f'{variable_name.replace("_", " ").title()} of {label}'
         if path == 'auto':
             file_suffix = 'html' if engine == 'plotly' else 'png'
@@ -294,29 +286,40 @@ class CalculationResults:
             label, variable_name, input_factor=-1 if not invert else 1, output_factor=1 if not invert else -1
         )
         if mode == 'heatmap':
-            heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
+            if not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
+                logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
+                if colors is None:
+                    colors = 'viridis'
+                if not isinstance(colors, str):
+                    raise ValueError(f'For a heatmap, you need to pass the colors as a valid name of a colormap, not '
+                                     f'{colors=}. Try "Turbo", "Hot", or "Viridis" instead.')
 
-        if engine == 'plotly':
-            if mode == 'heatmap':
+            heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
+            if engine == 'plotly':
                 return plotting.heat_map_plotly(
                     heatmap_data, title=title, color_map=colors, show=show, save=save, path=path
                 )
             else:
-                return plotting.with_plotly(
-                    data=data, mode=mode, show=show, title=title, colors=colors, save=save, path=path
-                )
+                return plotting.heat_map_matplotlib(heatmap_data,
+                                                    color_map=colors,
+                                                    show=show,
+                                                    path=path if save else None)
 
-        elif engine == 'matplotlib':
-            if mode == 'heatmap':
-                return plotting.heat_map_matplotlib(
-                    heatmap_data, color_map=colors, show=show, path=path if save else None
-                )
-            else:
-                return plotting.with_matplotlib(
-                    data=data, mode=mode, colors=colors, show=show, path=path if save else None
-                )
         else:
-            raise ValueError(f'Unknown Engine: {engine=}')
+            if engine == 'plotly':
+                return plotting.with_plotly(data=data,
+                                            mode=mode,
+                                            show=show,
+                                            title=title,
+                                            colors=colors,
+                                            save=save,
+                                            path=path)
+            else:
+                return plotting.with_matplotlib(data=data,
+                                                mode=mode,
+                                                colors=colors,
+                                                show=show,
+                                                path=path if save else None)
 
     def plot_storage(
         self,
