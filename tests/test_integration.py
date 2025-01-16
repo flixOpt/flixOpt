@@ -367,7 +367,7 @@ class TestComplex(BaseTest):
         aGaskessel = Boiler('Kessel', eta=0.5, on_off_parameters=OnOffParameters(effects_per_running_hour={costs: 0, CO2: 1000}),
                             Q_th=Flow('Q_th', bus=Fernwaerme, load_factor_max=1.0, load_factor_min=0.1, relative_minimum=5 / 50, relative_maximum=1, previous_flow_rate=50,
                                       size=InvestParameters(fix_effects=1000, fixed_size=50, optional=False, specific_effects={costs: 10, PE: 2}),
-                                      can_be_off=OnOffParameters(on_hours_total_min=0, on_hours_total_max=1000, consecutive_on_hours_max=10, consecutive_off_hours_max=10, effects_per_switch_on=0.01, switch_on_total_max=1000),
+                                      can_be_off=OnOffParameters(on_hours_total_min=0, on_hours_total_max=1000, consecutive_on_hours_max=10, consecutive_on_hours_min =1,consecutive_off_hours_max=10, effects_per_switch_on=0.01, switch_on_total_max=1000),
                                       flow_hours_total_max=1e6),
                             Q_fu=Flow('Q_fu', bus=Gas, size=200, relative_minimum=0, relative_maximum=1))
 
