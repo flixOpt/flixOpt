@@ -91,6 +91,7 @@ class Medium:
             The color of the medium. Defaults to the color of the first category, or 'unknown' if no category is specified.
         categories : List[str], optional
             The categories of the medium. Used for validation purposes.
+            It's recommended to use the default categories from "MediumCategories".
         description : str, optional
             A description of the medium.
         """

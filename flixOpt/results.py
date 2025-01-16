@@ -458,6 +458,10 @@ class CalculationResults:
     def change_colors(self, colors: Dict[str, str]):
         """
         Change the colors of Elements. This will affect all plots.
+        For compatability with both plotly and matplotlib, we advise to use hex-color-codes.
+        You can find helpful tools to convert color-codes under:
+        https://htmlcolorcodes.com
+        https://www.rapidtables.com/web/color/RGB_Color.html
 
         Parameters
         ----------
