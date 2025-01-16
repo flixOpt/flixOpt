@@ -431,16 +431,16 @@ class CalculationResults:
             self.calculation_infos['Network']['Nodes'], self.calculation_infos['Network']['Edges'], path, controls, show
         )
 
-    def get_colors(self) -> Dict[str, str]:
+    @property
+    def colors(self) -> Dict[str, str]:
         """Returns a dictionary of colors for all elements in the flow system."""
         return {**{label: flow.color for label, flow in self.flow_results().items()},
                 **{label: bus.color for label, bus in self.bus_results.items()},
                 **{label: comp.color for label, comp in self.component_results.items()}}
 
     def _assign_colors(self, labels: List[str], element_label: str) -> List[str]:
-        all_colors = self.get_colors()
         if element_label in self.component_results:
-            return [all_colors[label] for label in labels]
+            return [self.colors[label] for label in labels]
         elif element_label in self.bus_results:
             flow_results = self.flow_results()
             try:
@@ -449,9 +449,9 @@ class CalculationResults:
                 logger.warning(f'When trying to retrive colors for plotting, not all component colors could be '
                                f'retrieved for the bus plot. Using default colors.')
                 return [self.default_color] * len(labels)
-            return [all_colors[label] for label in comp_labels]
+            return [self.colors[label] for label in comp_labels]
         elif element_label in self.flow_results():
-            return [all_colors[element_label]]
+            return [self.colors[element_label]]
         else:
             logger.error(f'Element {element_label=} not found')
 
@@ -475,7 +475,7 @@ class CalculationResults:
         for label, color in colors.items():
             previous_color = all_elements[label].color
             all_elements[label].color = color
-            logger.debug(f'Set color for {label=} from {previous_color=} to {color=}')
+            logger.debug(f'Changed color of {label=} from "{previous_color}" to "{color}"')
 
 
 class FlowResults(ElementResults):
