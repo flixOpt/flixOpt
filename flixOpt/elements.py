@@ -147,6 +147,8 @@ class Bus(Element):
         ----------
         label : str
             name.
+        medium : Medium
+            The medium of the bus. This is used to validate flows connected to the bus.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesData
@@ -179,11 +181,11 @@ class Bus(Element):
 
     def _assign_medium(self, flow: 'Flow') -> None:
         """
-        Checks if the medium of the flow is compatible with the medium of the bus.
+        Assigns the bus.medium to the flow.medium.
+        Tries to ensure that the medium of the flow is compatible with the medium of the bus.
         If not, a logger warning is raised.
-        assigns the bus.medium to the flow.medium
         """
-        if flow.medium_category is None:
+        if flow.medium_category is None or self.medium is None:
             pass
         elif flow.medium_category in self.medium.categories:
             pass
