@@ -8,7 +8,7 @@
 
 flixOpt was developed by [TU Dresden](https://github.com/gewv-tu-dresden) as part of the SMARTBIOGRID project, funded by the German Federal Ministry for Economic Affairs and Energy (FKZ: 03KB159B). Building on the Matlab-based flixOptMat framework (developed in the FAKS project), flixOpt also incorporates concepts from [oemof/solph](https://github.com/oemof/oemof-solph). 
 
-Although flixOpt is in its early stages, it is fully functional and ready for experimentation. Feedback and collaboration are highly encouraged to help shape its future.
+Although flixOpt is in its early stages, it is fully functional and ready for experimentation. It is used for investment and operation decisions by energy providing companys as well as research institutions. Feedback and collaboration are highly encouraged to help shape its future.
 
 ---
 
@@ -33,7 +33,7 @@ We recommend installing flixOpt with additional dependencies for visualizing net
     - **Bus**: A Bus represents a balancing node in the Energy-System, typically connecting a demand to a supply.
     - **Component**: A Component is a physical entity that consumes or produces matter or energy. It can also transform matter or energy into other kinds of matter or energy.
     - **Effect**: Flows and Components can have Effects, related to their usage (or size). Common effects are *costs*, *CO2-emissions*, *primary-energy-demand* or *area-demand*. One Effect is used as the optimization target. The others can be constrained.
-  - To simplify the modeling process, may high-level **Components** (CHP, Boiler, Heat Pump, Cooling Tower, Storage, etc.) are availlable.
+  - To simplify the modeling process, high-level **Components** (CHP, Boiler, Heat Pump, Cooling Tower, Storage, etc.) are availlable.
 
 ### 🎛️ ...with low-level control
 - **Segmented Linear Correlations**  

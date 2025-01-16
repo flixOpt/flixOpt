@@ -9,7 +9,8 @@ import logging
 import numpy as np
 
 from .math_modeling import Variable, VariableTS, Equation
-from .core import TimeSeries, Skalar, Numeric, Config
+from .core import TimeSeries, Skalar, Numeric
+from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .structure import ElementModel, SystemModel, Element, create_equation, create_variable
 
@@ -73,7 +74,7 @@ class InvestmentModel(ElementModel):
 
         # fix_effects:
         fix_effects = invest_parameters.fix_effects
-        if fix_effects is not None and fix_effects != 0:
+        if fix_effects != {}:
             if invest_parameters.optional:  # share: + isInvested * fix_effects
                 variable_is_invested = self.is_invested
             else:
@@ -82,7 +83,7 @@ class InvestmentModel(ElementModel):
 
         # divest_effects:
         divest_effects = invest_parameters.divest_effects
-        if divest_effects is not None and divest_effects != 0:
+        if divest_effects != {}:
             if invest_parameters.optional:  # share: [divest_effects - isInvested * divest_effects]
                 # 1. part of share [+ divest_effects]:
                 effect_collection.add_share_to_invest('divest_effects', self.element, divest_effects, 1, None)
@@ -92,7 +93,7 @@ class InvestmentModel(ElementModel):
 
         # # specific_effects:
         specific_effects = invest_parameters.specific_effects
-        if specific_effects is not None:
+        if specific_effects != {}:
             # share: + investment_size (=var)   * specific_effects
             effect_collection.add_share_to_invest(f'specific_effects', self.element, specific_effects, 1, self.size)
         # segmented Effects
@@ -119,7 +120,7 @@ class InvestmentModel(ElementModel):
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
             eq_is_invested_lb = create_equation('is_invested_lb', self, 'ineq')
             eq_is_invested_lb.add_summand(self.size, -1)
-            eq_is_invested_lb.add_summand(self.is_invested, np.maximum(Config.EPSILON, self._invest_parameters.minimum_size))
+            eq_is_invested_lb.add_summand(self.is_invested, np.maximum(CONFIG.modeling.EPSILON, self._invest_parameters.minimum_size))
 
     def _create_bounds_for_defining_variable(self, system_model: SystemModel):
         label = self._defining_variable.label
@@ -191,7 +192,7 @@ class OnOffModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self.on = create_variable('on', self, system_model.nr_of_time_steps, is_binary=True,
-                                  previous_values=self._previous_on_values(Config.EPSILON))
+                                  previous_values=self._previous_on_values(CONFIG.modeling.EPSILON))
 
         self.total_on_hours = create_variable('totalOnHours', self, 1,
                                               lower_bound=self._on_off_parameters.on_hours_total_min,
@@ -203,9 +204,8 @@ class OnOffModel(ElementModel):
         self._add_on_constraints(system_model, system_model.indices)
 
         if self._on_off_parameters.use_off:
-            self.off = create_variable(
-                'off', self, system_model.nr_of_time_steps, is_binary=True,
-                previous_values=1-self.on.previous_values)
+            self.off = create_variable('off', self, system_model.nr_of_time_steps, is_binary=True,
+                                       previous_values=1 - self._previous_on_values(CONFIG.modeling.EPSILON))
 
             self._add_off_constraints(system_model, system_model.indices)
 
@@ -249,7 +249,7 @@ class OnOffModel(ElementModel):
             #### Bedingung 1) ####
             # eq: On(t) * max(epsilon, lower_bound) <= Q_th(t)
             eq_on_1.add_summand(variable, -1, time_indices)
-            eq_on_1.add_summand(self.on, np.maximum(Config.EPSILON, lower_bound), time_indices)
+            eq_on_1.add_summand(self.on, np.maximum(CONFIG.modeling.EPSILON, lower_bound), time_indices)
 
             #### Bedingung 2) ####
             # eq: Q_th(t) <= Q_th_max * On(t)
@@ -262,7 +262,7 @@ class OnOffModel(ElementModel):
             # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
             for variable in self._defining_variables:
                 eq_on_1.add_summand(variable, -1, time_indices)
-            eq_on_1.add_summand(self.on, Config.EPSILON, time_indices)
+            eq_on_1.add_summand(self.on, CONFIG.modeling.EPSILON, time_indices)
 
             #### Bedingung 2) ####
             ## sum(alle Leistung) >0 -> On = 1 | On=0 -> sum(Leistung)=0
@@ -277,7 +277,7 @@ class OnOffModel(ElementModel):
             upper_bound = absolute_maximum / nr_of_defining_variables
             eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
 
-        if np.max(upper_bound) > Config.BIG_BINARY_BOUND:
+        if np.max(upper_bound) > CONFIG.modeling.BIG_BINARY_BOUND:
             logger.warning(
                 f'In "{self.element.label_full}", a binary definition was created with a big upper bound '
                 f'({np.max(upper_bound)}). This can lead to wrong results regarding the on and off variables. '
@@ -304,6 +304,8 @@ class OnOffModel(ElementModel):
         """
         creates duration variable and adds constraints to a time-series variable to enforce duration limits based on
         binary activity.
+        The minimum duration in the last time step is not restricted.
+        Previous values before t=0 are not recognised!
 
         Parameters:
             variable_label (str):
@@ -369,6 +371,8 @@ class OnOffModel(ElementModel):
         constraint_1.add_summand(binary_variable, -1 * mega)
 
         # 2a) eq: duration(t) - duration(t-1) <= dt(t)
+        #    on(t)=1 -> duration(t) - duration(t-1) <= dt(t)
+        #    on(t)=0 -> duration(t-1) >= negat. value
         constraint_2a = create_equation(f'{label_prefix}_constraint_2a', self, eq_type='ineq')
         constraint_2a.add_summand(duration_in_hours, 1, time_indices[1:])  # duration(t)
         constraint_2a.add_summand(duration_in_hours, -1, time_indices[0:-1])  # duration(t-1)
@@ -376,7 +380,10 @@ class OnOffModel(ElementModel):
 
         # 2b) eq: dt(t) - BIG * ( 1-On(t) ) <= duration(t) - duration(t-1)
         # eq: -duration(t) + duration(t-1) + On(t) * BIG <= -dt(t) + BIG
-        # TODO: Use maximum duration instead of BIG
+        # with BIG = dt_in_hours_total.
+        #   on(t)=1 -> duration(t)- duration(t-1) >= dt(t)
+        #   on(t)=0 -> duration(t)- duration(t-1) >= negat. value
+
         constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, eq_type='ineq')
         constraint_2b.add_summand(duration_in_hours, -1, time_indices[1:])  # duration(t)
         constraint_2b.add_summand(duration_in_hours, 1, time_indices[0:-1])  # duration(t-1)
@@ -384,15 +391,18 @@ class OnOffModel(ElementModel):
         constraint_2b.add_constant(-1 * system_model.dt_in_hours[1:] + mega)  # dt(t)
 
         # 3) check minimum_duration before switchOff-step
-        # (last on-time period of timeseries is not checked and can be shorter)
+
         if minimum_duration is not None:
-            # eq: minimum_duration * -1 * [On(t)-On(t-1)] <= duration(t-1)
-            # eq: -duration(t - 1) - minimum_duration * On(t) + minimum_duration * On(t - 1) <= 0
-            # Note: switchOff-step is when: On(t)-On(t-1) == -1
+            # Note: switchOff-step is when: On(t) - On(t+1) == 1
+            # Note: (last on-time period (with last timestep of period t=n) is not checked and can be shorter)
+            # Note: (previous values before t=1 are not recognised!)
+            # eq: duration(t) >= minimum_duration(t) * [On(t) - On(t+1)] for t=1..(n-1)
+            # eq: -duration(t) + minimum_duration(t) * On(t) - minimum_duration(t) * On(t+1) <= 0
+            minimum_duration_used = minimum_duration.active_data[0:-1] # only checked for t=1...(n-1)
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
-            eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # duration(t-1)
-            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration.active_data, time_indices[1:])  # on(t)
-            eq_min_duration.add_summand(binary_variable, minimum_duration.active_data, time_indices[0:-1])  # on(t-1)
+            eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # -duration(t)
+            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration_used, time_indices[1:])  # - minimum_duration (t) * On(t+1)
+            eq_min_duration.add_summand(binary_variable, minimum_duration_used, time_indices[0:-1])  # minimum_duration * On(t)
 
             first_step_min: Skalar = minimum_duration.active_data[0] if minimum_duration.is_array else minimum_duration.active_data
             if duration_in_hours.previous_values < first_step_min:
@@ -449,12 +459,12 @@ class OnOffModel(ElementModel):
         # Anfahrkosten:
         effect_collection = system_model.effect_collection_model
         effects_per_switch_on = self._on_off_parameters.effects_per_switch_on
-        if effects_per_switch_on is not None:
+        if effects_per_switch_on != {}:
             effect_collection.add_share_to_operation('switch_on_effects', self.element, effects_per_switch_on, 1, self.switch_on)
 
         # Betriebskosten:
         effects_per_running_hour = self._on_off_parameters.effects_per_running_hour
-        if effects_per_running_hour is not None:
+        if effects_per_running_hour != {}:
             effect_collection.add_share_to_operation('running_hour_effects', self.element, effects_per_running_hour,
                                                      system_model.dt_in_hours, self.on)
 
