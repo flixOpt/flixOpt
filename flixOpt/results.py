@@ -7,6 +7,7 @@ The results can also be analyzed without this module, as the results are stored 
 
 import logging
 import json
+import os
 import zipfile
 import pathlib
 from typing import Dict, List, Tuple, Literal, Optional, Union
@@ -42,23 +43,40 @@ class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
         self.name = calculation_name
         self.folder = pathlib.Path(folder)
-        self._path_infos = (self.folder / f'{calculation_name}_infos.yaml').resolve().as_posix()
-        self._path_data = (self.folder / f'{calculation_name}_data.zip').resolve().as_posix()
+        self._paths = {'infos':(self.folder / f'{calculation_name}_infos.yaml').resolve().as_posix(),
+                       'zip':(self.folder / f'{calculation_name}_data.zip').resolve().as_posix(),
+                       'data':(self.folder / f'{calculation_name}_data.json').resolve().as_posix(),
+                       'results':(self.folder / f'{calculation_name}_results.json').resolve().as_posix()}
 
         start_time = timeit.default_timer()
-        with open(self._path_infos, 'rb') as f:
+        with open(self._paths['infos'], 'rb') as f:
             self.calculation_infos: Dict = yaml.safe_load(f)
         logger.info(f'Loading Calculation Infos from .yaml took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
-        start_time = timeit.default_timer()
-        with zipfile.ZipFile(self._path_data, 'r') as zipf:
-            with zipf.open('results.json', 'r') as f:
+        if not os.path.exists(self._paths['zip']):
+            logger.warning(f'No .zip file found for calculation "{calculation_name}". Trying to load results from '
+                           f'.json files instead. Using a .zip was newly introduced to flixOpt in "v1.1.0".')
+            start_time = timeit.default_timer()
+            with open(self._paths['results'], 'rb') as f:
                 self.all_results: Dict = json.load(f)
-            with zipf.open('data.json', 'r') as f:
+            self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
+            logger.info(f'Loading results from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
+
+            start_time = timeit.default_timer()
+            with open(self._paths['data'], 'rb') as f:
                 self.all_data: Dict = json.load(f)
-        self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
-        self.all_data = utils.convert_numeric_lists_to_arrays(self.all_data)
-        logger.info(f'Loading data from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
+            self.all_data = utils.convert_numeric_lists_to_arrays(self.all_data)
+            logger.info(f'Loading data from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
+        else:
+            start_time = timeit.default_timer()
+            with zipfile.ZipFile(self._paths['zip'], 'r') as zipf:
+                with zipf.open('results.json', 'r') as f:
+                    self.all_results: Dict = json.load(f)
+                with zipf.open('data.json', 'r') as f:
+                    self.all_data: Dict = json.load(f)
+            self.all_results = utils.convert_numeric_lists_to_arrays(self.all_results)
+            self.all_data = utils.convert_numeric_lists_to_arrays(self.all_data)
+            logger.info(f'Loading data from .json took {(timeit.default_timer() - start_time):>8.2f} seconds')
 
         self.component_results: Dict[str, ComponentResults] = {}
         self.effect_results: Dict[str, EffectResults] = {}
