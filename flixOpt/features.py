@@ -386,7 +386,10 @@ class OnOffModel(ElementModel):
             # Note: (previous values before t=1 are not recognised!)
             # eq: duration(t) >= minimum_duration(t) * [On(t) - On(t+1)] for t=1..(n-1)
             # eq: -duration(t) + minimum_duration(t) * On(t) - minimum_duration(t) * On(t+1) <= 0
-            minimum_duration_used = minimum_duration.active_data[0:-1] # only checked for t=1...(n-1)
+            if minimum_duration.is_scalar:
+                minimum_duration_used = minimum_duration.active_data
+            else:
+                minimum_duration_used = minimum_duration.active_data[0:-1]  # only checked for t=1...(n-1)
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
             eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # -duration(t)
             eq_min_duration.add_summand(binary_variable, -1 * minimum_duration_used, time_indices[1:])  # - minimum_duration (t) * On(t+1)
