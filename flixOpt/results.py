@@ -34,6 +34,7 @@ class ElementResults:
         self.all_infos = infos
         self.all_results = results
         self.label = self.all_infos['label']
+        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.label})'
@@ -439,7 +440,6 @@ class FlowResults(ElementResults):
         self.bus_label = self.all_infos['bus']['label']
         self.label_full = f'{label_of_component}__{self.label}'
         self.variables = self.all_results
-        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def to_dataframe(self, variable_name: str = 'flow_rate') -> pd.DataFrame:
         return pd.DataFrame({variable_name: self.variables[variable_name]})
@@ -452,7 +452,6 @@ class ComponentResults(ElementResults):
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
-        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
         flow_infos = {flow['label']: flow for flow in self.all_infos['inputs'] + self.all_infos['outputs']}
@@ -486,7 +485,6 @@ class BusResults(ElementResults):
         self.inputs = inputs
         self.outputs = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
-        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def to_dataframe(
         self,
