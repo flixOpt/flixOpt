@@ -29,12 +29,12 @@ logger = logging.getLogger('flixOpt')
 class Medium:
     category_heat = 'heat'
     category_electricity = 'electricity'
-    category_gas = 'gas'
+    category_fuel = 'fuel'
 
     def __init__(self,
                  label: str,
                  unit: str,
-                 color: str,
+                 color: Optional[str] = None,
                  categories: Optional[List[str]] = None,
                  description: Optional[str] = None):
         """
@@ -59,6 +59,9 @@ class Medium:
         self.color = color
         self.categories: List[str] = categories or []
         self.description = description
+
+    def infos(self) -> str:
+        infos = get_object_infos_as_dict(self)
 
 
 class Component(Element):
@@ -209,6 +212,7 @@ class Flow(Element):
         load_factor_min: Optional[Skalar] = None,
         load_factor_max: Optional[Skalar] = None,
         previous_flow_rate: Optional[Numeric] = None,
+        medium_category: Optional[str] = None,
         meta_data: Optional[Dict] = None,
     ):
         r"""
@@ -272,11 +276,11 @@ class Flow(Element):
         self.previous_flow_rate = previous_flow_rate
 
         self.bus = bus
-        self.medium = bus.medium
+        self.medium_category = medium_category
+        self.medium = self._assign_medium()
         self.comp: Optional[Component] = None
 
         self._plausibility_checks()
-        self._assign_medium()
 
     def create_model(self) -> 'FlowModel':
         self.model = FlowModel(self)
@@ -311,22 +315,21 @@ class Flow(Element):
                 f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.'
             )
 
-    def _assign_medium(self) -> None:
+    def _assign_medium(self) -> Medium:
         """
         Checks if the medium of the flow is compatible with the medium of the bus.
         If not, a logger warning is raised.
         """
-        if self.medium is None:
-            self.medium = self.bus.medium
-        elif self.bus.medium is None:
+        if self.medium_category is None:
             pass
-        elif set(self.medium.categories).intersection(set(self.medium.categories)):
+        elif self.medium_category in self.medium.categories:
             pass
         else:
             logger.warning(
                 f'Flow {self.label} has a medium {self.medium.label} which is not compatible with its connected Bus '
                 f'{self.bus.label} and its medium {self.bus.medium.label}. This might lead to inconsistent plotting regarding '
                 f'units and colors.')
+        return self.bus.medium
 
     @property
     def label_full(self) -> str:
