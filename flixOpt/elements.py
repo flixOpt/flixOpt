@@ -86,11 +86,13 @@ class Component(Element):
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
 
-    def register_component_in_flows(self) -> None:
+    def connect_elements(self) -> None:
+        """
+        Connects components, flows and buses to each other.
+        """
         for flow in self.inputs + self.outputs:
             flow.comp = self
-
-    def register_flows_in_bus(self) -> None:
+        # Register flows in buses
         for flow in self.inputs:
             flow.bus.add_output(flow)
         for flow in self.outputs:
