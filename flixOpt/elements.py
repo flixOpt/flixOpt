@@ -26,13 +26,58 @@ from .structure import (
 logger = logging.getLogger('flixOpt')
 
 
+class MediumCategories:
+    """
+    A centralized class to define standard medium categories.
+    """
+    heat = 'heat'
+    electricity = 'electricity'
+    fuel = 'fuel'
+
+
+class MediumColors:
+    """
+    A centralized class to define default colors for medium categories.
+    Change values before creating new mediums!
+    """
+    colors = {
+        MediumCategories.heat: '#FFA500',        # Orange for heat
+        MediumCategories.electricity: '#00A0E9', # Blue for electricity
+        MediumCategories.fuel: '#A52A2A',        # Brown for fuel
+        'unknown': '#B2B2B2'                     # Grey for unknown
+    }
+
+    @classmethod
+    def get_color(cls, category: str) -> str:
+        """
+        Returns the color associated with a category.
+
+        Parameters
+        ----------
+        category : str
+            The category for which to retrieve the color.
+
+        Returns
+        -------
+        str
+            The color code (hex format).
+        """
+        return cls.colors.get(category, cls.colors['unknown'])
+
+
 class Medium:
-    def __init__(self,
-                 label: str,
-                 unit: str,
-                 color: Optional[str] = None,
-                 categories: Optional[List[str]] = None,
-                 description: Optional[str] = None):
+    """
+    Represents a medium with attributes such as label, unit, color, and categories.
+    """
+
+    def __init__(
+        self,
+        label: str,
+        unit: str,
+        color: Optional[str] = None,
+        categories: Optional[List[str]] = None,
+        description: Optional[str] = None,
+    ):
         """
         Creates a new Medium object.
 
@@ -42,28 +87,36 @@ class Medium:
             The label of the medium.
         unit : str
             The unit of the medium.
-        color : str
-            The color of the medium.
-        categories : list of str
-            The categories of the medium. This is used to validate the compatibility of flows and buses. If not
-            specified, no validation is performed.
+        color : str, optional
+            The color of the medium. Defaults to the color of the first category, or 'unknown' if no category is specified.
+        categories : List[str], optional
+            The categories of the medium. Used for validation purposes.
         description : str, optional
             A description of the medium.
         """
         self.label = label
         self.unit = unit
-        self.color = color
         self.categories: List[str] = categories or []
+        self.color = color or self._get_default_color()
         self.description = description
+
+    def _get_default_color(self) -> str:
+        """
+        Determines the default color for the medium based on its categories.
+
+        Returns
+        -------
+        str
+            The default color of the medium.
+        """
+        if self.categories:
+            # Use the first category's color as default
+            return MediumColors.get_color(self.categories[0])
+        return MediumColors.get_color('unknown')
 
     def infos(self):
         return get_object_infos_as_dict(self)
 
-
-class MediumCategories:
-    heat = 'heat'
-    electricity = 'electricity'
-    fuel = 'fuel'
 
 class Component(Element):
     """
