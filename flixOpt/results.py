@@ -45,6 +45,7 @@ class ElementResults:
 
 class CalculationResults:
     default_color = '#B2B2B2'
+    default_color_map = 'viridis'
 
     def __init__(self, calculation_name: str, folder: str) -> None:
         self.name = calculation_name
@@ -289,7 +290,7 @@ class CalculationResults:
             if not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
                 logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
                 if colors is None:
-                    colors = 'viridis'
+                    colors = self.default_color_map
                 if not isinstance(colors, str):
                     raise ValueError(f'For a heatmap, you need to pass the colors as a valid name of a colormap, not '
                                      f'{colors=}. Try "Turbo", "Hot", or "Viridis" instead.')
