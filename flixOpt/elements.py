@@ -238,14 +238,14 @@ class Bus(Element):
         Tries to ensure that the medium of the flow is compatible with the medium of the bus.
         If not, a logger warning is raised.
         """
-        if flow.medium_category is None or self.medium is None:
+        if flow.medium is None or self.medium is None:
             pass
-        elif flow.medium_category in self.medium.categories:
+        elif flow.medium in self.medium.categories:
             pass
         else:
             logger.warning(
                 f'Flow "{flow.label_full}" is not compatible with its connected Bus "{self.label_full}" and its medium '
-                f'"{self.medium.label}", according to medium categories: {flow.medium_category=}, '
+                f'"{self.medium.label}", according to medium categories: {flow.medium=}, '
                 f'bus.medium.categories={self.medium.categories}. This might be the cause of connecting a Flow to the '
                 f'wrong bus. Further, this might lead to inconsistent plotting regarding units and colors '
                 f'(which doesnt interfere with the calculation itself!).')
@@ -289,7 +289,7 @@ class Flow(Element):
         load_factor_min: Optional[Skalar] = None,
         load_factor_max: Optional[Skalar] = None,
         previous_flow_rate: Optional[Numeric] = None,
-        medium_category: Optional[str] = None,
+        medium: Optional[str] = None,
         meta_data: Optional[Dict] = None,
     ):
         r"""
@@ -335,6 +335,10 @@ class Flow(Element):
             If the load-profile is just an upper limit, use relative_maximum instead.
         previous_flow_rate : scalar, array, optional
             previous flow rate of the component.
+        medium : str, optional
+            The medium category of the flow. Used for validation purposes.
+        meta_data : Dict, optional
+            Additional metadata for the flow.
         """
         super().__init__(label, meta_data=meta_data)
         self.size = size or CONFIG.modeling.BIG  # Default size
@@ -353,8 +357,7 @@ class Flow(Element):
         self.previous_flow_rate = previous_flow_rate
 
         self.bus = bus
-        self.medium_category = medium_category
-        self.medium: Optional[Medium] = None
+        self.medium: Optional[Medium, str] = medium
         self.comp: Optional[Component] = None
 
         self._plausibility_checks()

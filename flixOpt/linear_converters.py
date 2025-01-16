@@ -354,7 +354,7 @@ def assign_medium_category(flow: Flow, medium_category: str) -> None:
     -------
     None
     """
-    if flow.medium_category is not None:
+    if flow.medium is not None:
         logger.warning(f'Flow {flow.label} already has a medium category assigned ({flow.medium_category}). '
                        f'The new medium category {medium_category} will be ignored.')
     else:
