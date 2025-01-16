@@ -19,7 +19,8 @@ if __name__ == '__main__':
     # --- Define Energy Buses ---
     # These represent nodes, where the used medias are balanced (electricity, heat, and gas)
     # Medias are used to validating connections, and to define colors for plotting.
-    Strom = fx.Bus(label='Strom')
+    Strom = fx.Bus(label='Strom',
+                   medium=fx.Medium('electricity', 'kWh', categories=[fx.MediumCategories.electricity]))
     Fernwaerme = fx.Bus(label='Fernwärme',
                         medium=fx.Medium('heat', 'kWh', categories=[fx.MediumCategories.heat]))
     Gas = fx.Bus(label='Gas',
@@ -120,6 +121,9 @@ if __name__ == '__main__':
     results.plot_operation('CHP__Q_th', 'line')
     results.plot_operation('CHP__Q_th', 'heatmap')
 
-    # Convert the results for the storage component to a dataframe and display
-    results.to_dataframe('Storage')
+    # Convert the results for the storage component to a dataframe, save and display
+    df = results.to_dataframe('Storage')
+    df.to_csv('results/Storage.csv')
+    print(df)
+
     pprint(results.all_results)
