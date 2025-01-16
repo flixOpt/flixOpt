@@ -250,8 +250,9 @@ class CalculationResults:
             The period for heatmap plotting.
         heatmap_steps_per_period : {'W', 'D', 'h', '15min', 'min'}, default='h'
             The steps per period for heatmap plotting.
-        colors : str or List[str], default='viridis'
-            The colors or colorscale to use for the plot.
+        colors : str or List[str], optional
+            The colors or colorscale to use for the plot. If not provided, the colors are automatically generated,
+            using the ElementResults.color attribute. Bus plots are colored according to the connected Component.
         engine : {'plotly', 'matplotlib'}, default='plotly'
             The plotting engine to use.
         invert : bool, default=False
@@ -309,7 +310,7 @@ class CalculationResults:
 
         else:
             if colors is None:
-                colors = self._get_colors(data.columns, label)
+                colors = self._assign_colors(data.columns, label)
                 if all([color == self.default_color for color in colors]):
                     colors = self.default_color_map
 
@@ -430,14 +431,14 @@ class CalculationResults:
             self.calculation_infos['Network']['Nodes'], self.calculation_infos['Network']['Edges'], path, controls, show
         )
 
-    def colors(self) -> Dict[str, str]:
+    def get_colors(self) -> Dict[str, str]:
         """Returns a dictionary of colors for all elements in the flow system."""
         return {**{label: flow.color for label, flow in self.flow_results().items()},
                 **{label: bus.color for label, bus in self.bus_results.items()},
                 **{label: comp.color for label, comp in self.component_results.items()}}
 
-    def _get_colors(self, labels: List[str], element_label: str) -> List[str]:
-        all_colors = self.colors()
+    def _assign_colors(self, labels: List[str], element_label: str) -> List[str]:
+        all_colors = self.get_colors()
         if element_label in self.component_results:
             return [all_colors[label] for label in labels]
         elif element_label in self.bus_results:
@@ -453,6 +454,28 @@ class CalculationResults:
             return [all_colors[element_label]]
         else:
             logger.error(f'Element {element_label=} not found')
+
+    def change_colors(self, colors: Dict[str, str]):
+        """
+        Change the colors of Elements. This will affect all plots.
+
+        Parameters
+        ----------
+        colors : Dict[str, str]
+            The mapping between elements and colors.
+
+        Returns
+        -------
+        None
+        """
+        all_elements = {**self.flow_results(),
+                        **self.bus_results,
+                        **self.component_results}
+
+        for label, color in colors.items():
+            previous_color = all_elements[label].color
+            all_elements[label].color = color
+            logger.debug(f'Set color for {label=} from {previous_color=} to {color=}')
 
 
 class FlowResults(ElementResults):
