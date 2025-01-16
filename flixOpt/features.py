@@ -304,6 +304,8 @@ class OnOffModel(ElementModel):
         """
         creates duration variable and adds constraints to a time-series variable to enforce duration limits based on
         binary activity.
+        The minimum duration in the last time step is not restricted.
+        Previous values before t=0 are not recognised!
 
         Parameters:
             variable_label (str):
@@ -379,11 +381,11 @@ class OnOffModel(ElementModel):
         # 3) check minimum_duration before switchOff-step
 
         if minimum_duration is not None:
-            # Note: switchOff-step is when: On(t+1)-On(t) == -1
+            # Note: switchOff-step is when: On(t) - On(t+1) == 1
             # Note: (last on-time period (with last timestep of period t=n) is not checked and can be shorter)
-            # Note: (history/previous values before t=1 are not recognised!)
-            # eq: duration(t) >= minimum_duration(t) * -1 * [On(t+1)-On(t)] for t=1..(n-1)
-            # eq: -duration(t) - minimum_duration (t) * On(t+1) + minimum_duration * On(t) <= 0
+            # Note: (previous values before t=1 are not recognised!)
+            # eq: duration(t) >= minimum_duration(t) * [On(t) - On(t+1)] for t=1..(n-1)
+            # eq: -duration(t) + minimum_duration(t) * On(t) - minimum_duration(t) * On(t+1) <= 0
             minimum_duration_used = minimum_duration.active_data[0:-1] # only checked for t=1...(n-1)
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
             eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # -duration(t)
