@@ -167,26 +167,9 @@ class Bus(Element):
 
     def add_input(self, flow: 'Flow') -> None:
         self.inputs.append(flow)
-        self._assign_medium(flow)
 
     def add_output(self, flow: 'Flow') -> None:
         self.outputs.append(flow)
-        self._assign_medium(flow)
-
-    def _assign_medium(self, flow: 'Flow') -> None:
-        """
-        Checks if the medium of the flow is compatible with the medium of the bus.
-        If not, a logger warning is raised.
-        """
-        if flow.medium is None:
-            flow.medium = self.medium
-        elif set(flow.medium.categories).intersection(set(self.medium.categories)):
-            pass
-        else:
-            logger.warning(
-                f'Flow {flow.label} has a medium {flow.medium.label} which is not compatible with its connected Bus '
-                f'{self.label} and its medium {self.medium.label}. This might lead to inconsistent plotting regarding '
-                f'units and colors.')
 
     def _plausibility_checks(self) -> None:
         if self.excess_penalty_per_flow_hour == 0:
@@ -293,6 +276,7 @@ class Flow(Element):
         self.comp: Optional[Component] = None
 
         self._plausibility_checks()
+        self._assign_medium()
 
     def create_model(self) -> 'FlowModel':
         self.model = FlowModel(self)
@@ -326,6 +310,23 @@ class Flow(Element):
                 f'The default size is {CONFIG.modeling.BIG}. As "flow_rate = size * fixed_relative_profile", '
                 f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.'
             )
+
+    def _assign_medium(self) -> None:
+        """
+        Checks if the medium of the flow is compatible with the medium of the bus.
+        If not, a logger warning is raised.
+        """
+        if self.medium is None:
+            self.medium = self.bus.medium
+        elif self.bus.medium is None:
+            pass
+        elif set(self.medium.categories).intersection(set(self.medium.categories)):
+            pass
+        else:
+            logger.warning(
+                f'Flow {self.label} has a medium {self.medium.label} which is not compatible with its connected Bus '
+                f'{self.bus.label} and its medium {self.bus.medium.label}. This might lead to inconsistent plotting regarding '
+                f'units and colors.')
 
     @property
     def label_full(self) -> str:
