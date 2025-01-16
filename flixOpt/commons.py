@@ -5,7 +5,7 @@ This module makes the commonly used classes and functions available in the flixO
 from .core import TimeSeriesData
 from .config import CONFIG, change_logging_level
 
-from .elements import Flow, Bus
+from .elements import Flow, Bus, Medium
 from .effects import Effect
 from .components import Source, Sink, SourceAndSink, Storage, LinearConverter, Transmission
 from . import linear_converters
