@@ -498,6 +498,8 @@ class ComponentResults(ElementResults):
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
+        if self.all_infos.get('meta_data', {}).get('color') is not None:
+            self.color = self.all_infos['meta_data']['color']
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
         flow_infos = {flow['label']: flow for flow in self.all_infos['inputs'] + self.all_infos['outputs']}
