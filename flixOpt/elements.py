@@ -27,16 +27,37 @@ logger = logging.getLogger('flixOpt')
 
 
 class Medium:
+    category_heat = 'heat'
+    category_electricity = 'electricity'
+    category_gas = 'gas'
+
     def __init__(self,
                  label: str,
                  unit: str,
                  color: str,
                  categories: Optional[List[str]] = None,
                  description: Optional[str] = None):
+        """
+        Creates a new Medium object.
+
+        Parameters
+        ----------
+        label : str
+            The label of the medium.
+        unit : str
+            The unit of the medium.
+        color : str
+            The color of the medium.
+        categories : list of str
+            The categories of the medium. This is used to validate the compatibility of flows and buses. If not
+            specified, no validation is performed.
+        description : str, optional
+            A description of the medium.
+        """
         self.label = label
         self.unit = unit
         self.color = color
-        self.categories = categories or []
+        self.categories: List[str] = categories or []
         self.description = description
 
 
