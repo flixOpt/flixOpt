@@ -14,6 +14,8 @@ from .components import (
     Transmission,
 )
 from .config import CONFIG, change_logging_level
+
+from .elements import Flow, Bus, Medium
 from .core import TimeSeriesData
 from .effects import Effect
 from .elements import Bus, Flow
@@ -25,6 +27,7 @@ __all__ = [
     'CONFIG',
     'change_logging_level',
     'Flow',
+    'Medium'
     'Bus',
     'Effect',
     'Source',
