@@ -41,16 +41,17 @@ class MediumColors:
     Change values before creating new mediums!
     """
     colors = {
-        MediumCategories.heat: '#FFA500',        # Orange for heat
-        MediumCategories.electricity: '#00A0E9', # Blue for electricity
-        MediumCategories.fuel: '#A52A2A',        # Brown for fuel
-        'unknown': '#B2B2B2'                     # Grey for unknown
+        MediumCategories.heat: 'orange',
+        MediumCategories.electricity: 'steelblue',
+        MediumCategories.fuel: 'brown',
     }
 
+    default = 'gray'
+
     @classmethod
-    def get_color(cls, category: str) -> str:
+    def get_color(cls, category: str = '') -> str:
         """
-        Returns the color associated with a category.
+        Returns the color associated with a category. Returns default color if category is not found.
 
         Parameters
         ----------
@@ -62,7 +63,7 @@ class MediumColors:
         str
             The color code (hex format).
         """
-        return cls.colors.get(category, cls.colors['unknown'])
+        return cls.colors.get(category, cls.default)
 
 
 class Medium:

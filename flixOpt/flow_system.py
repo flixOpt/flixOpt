@@ -26,7 +26,7 @@ class FlowSystem:
     """
     A FlowSystem organizes the high level Elements (Components & Effects).
     """
-    default_color = MediumColors.colors['unknown']
+    default_color = MediumColors.default
     def __init__(self,
                  time_series: np.ndarray[np.datetime64],
                  last_time_step_hours: Optional[Union[int, float]] = None,
