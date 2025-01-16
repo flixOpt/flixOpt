@@ -6,12 +6,18 @@ import pandas as pd
 import plotly.offline
 import flixOpt as fx
 
+use_custom_colors = True
+
 if __name__ == '__main__':
     # --- Load Results ---
     try:
         results = fx.results.CalculationResults('Sim1', folder='results')
     except FileNotFoundError:
-        raise FileNotFoundError('Results file was not found. DId you run complex_example.py already?')
+        raise FileNotFoundError('Results file was not found. Did you run complex_example.py already?')
+
+    # --- You can change colors for plotting ---
+    if use_custom_colors:
+        results.change_colors({'Kessel': '#C6563E', 'BHKW2': '#C69A3E', 'Speicher': 'royalblue', 'Wärmelast': 'gray'})
 
     # --- Basic overview ---
     results.visualize_network()
@@ -22,10 +28,9 @@ if __name__ == '__main__':
     # --- Detailed Plots ---
     # In depth plot for individual flow rates ('__' is used as the delimiter between Component and Flow
     results.plot_operation('Wärmelast__Q_th_Last', 'heatmap')
-    figs = []
-    for flow_label in results.flow_results():
-        if flow_label.startswith('BHKW2'):
-            fig = results.plot_operation(flow_label, 'heatmap', heatmap_steps_per_period='h', heatmap_periods='D')
+
+    for flow in results.component_results['BHKW2'].flows:
+        fig = results.plot_operation(flow.label_full, 'heatmap', heatmap_steps_per_period='h', heatmap_periods='D')
 
 
     # --- Plotting internal variables manually ---
