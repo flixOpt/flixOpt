@@ -44,6 +44,8 @@ class ElementResults:
 
 
 class CalculationResults:
+    default_color = '#B2B2B2'
+
     def __init__(self, calculation_name: str, folder: str) -> None:
         self.name = calculation_name
         self.folder = pathlib.Path(folder)
@@ -418,6 +420,12 @@ class CalculationResults:
             self.calculation_infos['Network']['Nodes'], self.calculation_infos['Network']['Edges'], path, controls, show
         )
 
+    def colors(self) -> Dict[str, str]:
+        """Returns a dictionary of colors for all elements in the flow system."""
+        return {**{label: flow.color for label, flow in self.flow_results().items()},
+                **{label: bus.color for label, bus in self.bus_results.items()},
+                **{label: comp.color for label, comp in self.component_results.items()}}
+
 
 class FlowResults(ElementResults):
     def __init__(self, infos: Dict, results: Dict, label_of_component: str) -> None:
@@ -427,6 +435,7 @@ class FlowResults(ElementResults):
         self.bus_label = self.all_infos['bus']['label']
         self.label_full = f'{label_of_component}__{self.label}'
         self.variables = self.all_results
+        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def to_dataframe(self, variable_name: str = 'flow_rate') -> pd.DataFrame:
         return pd.DataFrame({variable_name: self.variables[variable_name]})
@@ -439,6 +448,7 @@ class ComponentResults(ElementResults):
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
+        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
         flow_infos = {flow['label']: flow for flow in self.all_infos['inputs'] + self.all_infos['outputs']}
@@ -472,6 +482,7 @@ class BusResults(ElementResults):
         self.inputs = inputs
         self.outputs = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
+        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def to_dataframe(
         self,
