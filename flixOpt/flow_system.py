@@ -11,8 +11,9 @@ import numpy as np
 
 from . import utils
 from .core import TimeSeries
+from .structure import Element, SystemModel, get_object_infos_as_dict
+from .elements import Bus, Flow, Component, MediumColors
 from .effects import Effect, EffectCollection
-from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
 if TYPE_CHECKING:
@@ -25,12 +26,11 @@ class FlowSystem:
     """
     A FlowSystem organizes the high level Elements (Components & Effects).
     """
-
-    def __init__(
-        self,
-        time_series: np.ndarray[np.datetime64],
-        last_time_step_hours: Optional[Union[int, float]] = None,
-        previous_dt_in_hours: Optional[Union[int, float, np.ndarray]] = None,
+    default_color = MediumColors.colors['unknown']
+    def __init__(self,
+                 time_series: np.ndarray[np.datetime64],
+                 last_time_step_hours: Optional[Union[int, float]] = None,
+                 previous_dt_in_hours: Optional[Union[int, float, np.ndarray]] = None,
     ):
         """
         Parameters
@@ -107,10 +107,12 @@ class FlowSystem:
             element.transform_data()
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
+        colors = self.colors()
         nodes = {
             node.label_full: {
                 'label': node.label,
                 'class': 'Bus' if isinstance(node, Bus) else 'Component',
+                'color': colors[node.label_full],
                 'infos': node.__str__(),
             }
             for node in list(self.components.values()) + list(self.buses.values())
@@ -119,6 +121,7 @@ class FlowSystem:
         edges = {
             flow.label_full: {
                 'label': flow.label,
+                'color': colors[flow.label_full],
                 'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
                 'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
                 'infos': flow.__str__(),
@@ -291,6 +294,12 @@ class FlowSystem:
     def all_time_series(self) -> List[TimeSeries]:
         return [ts for element in self.all_elements.values() for ts in element.used_time_series]
 
+    def colors(self) -> Dict[str, str]:
+        """Returns a dictionary of colors for all elements in the flow system."""
+        return {element.label_full: element.medium.color
+        if (isinstance(element, (Bus, Flow)) and element.medium is not None)
+        else self.default_color
+                for element in self.all_elements}
 
 def create_datetime_array(
     start: str, steps: Optional[int] = None, freq: str = '1h', end: Optional[str] = None
