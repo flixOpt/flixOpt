@@ -60,8 +60,8 @@ class FlowSystem:
         for new_component in new_components:
             logger.info(f'Registered new Component: {new_component.label}')
             self._check_if_element_is_unique(new_component)  # check if already exists:
-            new_component.register_component_in_flows()  # Komponente in Flow registrieren
-            new_component.register_flows_in_bus()  # Flows in Bus registrieren:
+            new_component.connect_elements()
+
         self.components.extend(new_components)  # Add to existing list of components
 
     def add_elements(self, *args: Element) -> None:
