@@ -27,10 +27,6 @@ logger = logging.getLogger('flixOpt')
 
 
 class Medium:
-    category_heat = 'heat'
-    category_electricity = 'electricity'
-    category_fuel = 'fuel'
-
     def __init__(self,
                  label: str,
                  unit: str,
@@ -60,9 +56,14 @@ class Medium:
         self.categories: List[str] = categories or []
         self.description = description
 
-    def infos(self) -> str:
-        infos = get_object_infos_as_dict(self)
+    def infos(self):
+        return get_object_infos_as_dict(self)
 
+
+class MediumCategories:
+    heat = 'heat'
+    electricity = 'electricity'
+    fuel = 'fuel'
 
 class Component(Element):
     """
