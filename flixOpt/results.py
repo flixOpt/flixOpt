@@ -458,10 +458,11 @@ class CalculationResults:
     def change_colors(self, colors: Dict[str, str]):
         """
         Change the colors of Elements. This will affect all plots.
-        For compatability with both plotly and matplotlib, we advise to use hex-color-codes.
-        You can find helpful tools to convert color-codes under:
-        https://htmlcolorcodes.com
+        For compatability with both plotly and matplotlib, we advise to use hex-color-codes ('#FF7043') or named-colors ('red').
+        You can find helpful tools to lookup or convert color-codes under:
+        https://htmlcolorcodes.com/color-names/
         https://www.rapidtables.com/web/color/RGB_Color.html
+        https://www.w3.org/TR/css-color-4/#named-colors
 
         Parameters
         ----------
@@ -530,6 +531,10 @@ class ComponentResults(ElementResults):
 
         return pd.DataFrame(data={**inputs, **outputs})
 
+    @property
+    def flows(self) -> List[FlowResults]:
+        return self.inputs + self.outputs
+
 
 class BusResults(ElementResults):
     def __init__(self, infos: Dict, results: Dict, inputs: List[FlowResults], outputs: List[FlowResults]):
@@ -555,6 +560,10 @@ class BusResults(ElementResults):
                 outputs['Excess Output'] = self.variables['excess_output'] * output_factor
 
         return pd.DataFrame(data={**inputs, **outputs})
+
+    @property
+    def flows(self) -> List[FlowResults]:
+        return self.inputs + self.outputs
 
 
 class EffectResults(ElementResults):

@@ -18,7 +18,12 @@ if __name__ == '__main__':
 
     # --- Define Energy Buses ---
     # These represent nodes, where the used medias are balanced (electricity, heat, and gas)
-    Strom, Fernwaerme, Gas = fx.Bus(label='Strom'), fx.Bus(label='Fernwärme'), fx.Bus(label='Gas')
+    # Medias are used to validating connections, and to define colors for plotting.
+    Strom = fx.Bus(label='Strom')
+    Fernwaerme = fx.Bus(label='Fernwärme',
+                        medium=fx.Medium('heat', 'kWh', categories=[fx.MediumCategories.heat]))
+    Gas = fx.Bus(label='Gas',
+                 medium=fx.Medium('gas', 'kWh', categories=[fx.MediumCategories.fuel]))
 
     # --- Define Effects (Objective and CO2 Emissions) ---
     # Cost effect: used as the optimization objective --> minimizing costs
