@@ -586,6 +586,7 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
     Args:
         data (Any): The data to format and represent.
         array_length (int): Maximum length of NumPy arrays to display. Longer arrays are truncated.
+        precision (int): Number of decimal places to display for floats in numerical arrays.
 
     Returns:
         str: The formatted string representation of the data.
