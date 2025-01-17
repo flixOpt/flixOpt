@@ -292,10 +292,6 @@ class Element(Interface):
         """ This function is used to do some basic plausibility checks for each Element during initialization """
         raise NotImplementedError(f'Every Element needs a _plausibility_checks() method')
 
-    def transform_data(self) -> None:
-        """ This function is used to transform the time series data from the User to proper TimeSeries Objects """
-        raise NotImplementedError(f'Every Element needs a transform_data() method')
-
     def create_model(self) -> None:
         raise NotImplementedError(f'Every Element needs a create_model() method')
 
