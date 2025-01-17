@@ -192,7 +192,7 @@ class OnOffModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         self.on = create_variable('on', self, system_model.nr_of_time_steps, is_binary=True,
-                                  previous_values=self._previous_on_values())
+                                  previous_values=self._previous_on_values(CONFIG.modeling.EPSILON))
 
         self.total_on_hours = create_variable('totalOnHours', self, 1,
                                               lower_bound=self._on_off_parameters.on_hours_total_min,
@@ -205,7 +205,7 @@ class OnOffModel(ElementModel):
 
         if self._on_off_parameters.use_off:
             self.off = create_variable('off', self, system_model.nr_of_time_steps, is_binary=True,
-                                       previous_values=1 - self._previous_on_values())
+                                       previous_values=1 - self._previous_on_values(CONFIG.modeling.EPSILON))
 
             self._add_off_constraints(system_model, system_model.indices)
 
@@ -468,7 +468,7 @@ class OnOffModel(ElementModel):
             effect_collection.add_share_to_operation('running_hour_effects', self.element, effects_per_running_hour,
                                                      system_model.dt_in_hours, self.on)
 
-    def _previous_on_values(self, epsilon: float = CONFIG.modeling.EPSILON) -> np.ndarray:
+    def _previous_on_values(self, epsilon: float = 1e-5) -> np.ndarray:
         """
         Returns the previous 'on' states of defining variables as a binary array.
 
