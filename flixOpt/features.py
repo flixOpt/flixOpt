@@ -426,11 +426,11 @@ class OnOffModel(ElementModel):
         eq_initial_switch.add_constant(-1 * self.on.previous_values[-1])  # On(t-1)
 
         ## Entweder SwitchOff oder SwitchOn
-        # eq: SwitchOn(t) + SwitchOff(t) <= 1
+        # eq: SwitchOn(t) + SwitchOff(t) <= 1.1
         eq_switch_on_or_off = create_equation('Switch_On_or_Off', self, eq_type='ineq')
         eq_switch_on_or_off.add_summand(self.switch_on, 1)
         eq_switch_on_or_off.add_summand(self.switch_off, 1)
-        eq_switch_on_or_off.add_constant(1)
+        eq_switch_on_or_off.add_constant(1.1)
 
         ## Anzahl Starts:
         # eq: nrSwitchOn = sum(SwitchOn(t))
