@@ -89,11 +89,11 @@ class Calculation:
 
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = copy_and_convert_datatypes(self.results(), use_numpy=False)
+            results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
             json.dump(results, f, indent=4)
 
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False)
+            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
             json.dump(data, f, indent=4)
 
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
@@ -393,16 +393,23 @@ class SegmentedCalculation(Calculation):
 
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = copy_and_convert_datatypes(self.results(combined_arrays=True), use_numpy=False)
+            results = copy_and_convert_datatypes(
+                self.results(combined_arrays=True), use_numpy=False, use_element_label=False
+            )
             json.dump(results, f, indent=4)
 
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False)
+            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
             json.dump(data, f, indent=4)
 
         with open(self._paths['results'].parent / f'{self.name}_results_extra.json', 'w', encoding='utf-8') as f:
-            results = {'Individual Results': copy_and_convert_datatypes(self.results(individual_results=True), use_numpy=False),
-                       'Skalar Results': copy_and_convert_datatypes(self.results(combined_scalars=True), use_numpy=False)}
+            results = {
+                'Individual Results': copy_and_convert_datatypes(
+                    self.results(individual_results=True), use_numpy=False, use_element_label=False
+                ),
+                'Skalar Results': copy_and_convert_datatypes(
+                    self.results(combined_scalars=True), use_numpy=False, use_element_label=False)
+            }
             json.dump(results, f, indent=4)
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 

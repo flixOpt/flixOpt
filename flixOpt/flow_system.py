@@ -102,12 +102,12 @@ class FlowSystem:
 
         return nodes, edges
 
-    def infos(self, use_numpy=True) -> Dict:
-        infos = {'Components': {comp.label: comp.infos(use_numpy) for comp in
+    def infos(self, use_numpy=True, use_element_label=False) -> Dict:
+        infos = {'Components': {comp.label: comp.infos(use_numpy, use_element_label) for comp in
                                 sorted(self.components.values(), key=lambda component: component.label.upper())},
-                 'Buses': {bus.label: bus.infos(use_numpy) for bus in
+                 'Buses': {bus.label: bus.infos(use_numpy, use_element_label) for bus in
                            sorted(self.buses.values(), key=lambda bus: bus.label.upper())},
-                 'Effects': {effect.label: effect.infos(use_numpy) for effect in
+                 'Effects': {effect.label: effect.infos(use_numpy, use_element_label) for effect in
                              sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper())}}
         return infos
 
@@ -218,7 +218,7 @@ class FlowSystem:
         return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
 
     def __str__(self):
-        return get_str_representation(self.infos())
+        return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
 
     @property
     def flows(self) -> Dict[str, Flow]:
