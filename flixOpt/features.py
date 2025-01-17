@@ -343,7 +343,7 @@ class OnOffModel(ElementModel):
 
         """
         previous_values: Skalar = self.get_consecutive_duration(binary_variable.previous_values,
-                                                                system_model.dt_in_hours[0])
+                                                                system_model.previous_dt_in_hours)
         mega = system_model.dt_in_hours_total + previous_values
 
         if maximum_duration is not None:

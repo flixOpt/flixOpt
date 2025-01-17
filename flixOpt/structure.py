@@ -37,6 +37,7 @@ class SystemModel(MathModel):
         # Zeitdaten generieren:
         self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
             flow_system.get_time_data_from_indices(time_indices))
+        self.previous_dt_in_hours = flow_system.previous_dt_in_hours
         self.nr_of_time_steps = len(self.time_series)
         self.indices = range(self.nr_of_time_steps)
 
