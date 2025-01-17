@@ -37,9 +37,9 @@ class FlowSystem:
             If None, then last time increment of time_series is used.
         previous_dt_in_hours : Union[int, float, np.ndarray]
             The duration of previous time steps.
-            THis is needed to calculate previous durations.
-            If None, then first time increment of time_series is used.
-            example: np.array([1, 1, 2, 2, 1]) or 0.5
+            If None, the first time increment of time_series is used.
+            This is needed to calculate previous durations (for example consecutive_on_hours).
+            If you use an array, take care that its long enough to cover all previous values!
 
         """
         self.time_series = time_series if isinstance(time_series, np.ndarray) else np.array(time_series)
