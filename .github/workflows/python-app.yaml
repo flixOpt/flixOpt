@@ -18,6 +18,8 @@ on:
       - feature/ci-cd
       - main
       - next/*
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly cron to force clean reinstall every week (install without cache)
 
 jobs:
   test:
@@ -35,7 +37,8 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache dependencies
+    # Cache Python dependencies
+    - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
         path: |
@@ -44,10 +47,9 @@ jobs:
           .nox
           .coverage
           dist
-        key: ${{ runner.os }}-python-${{ matrix.python-version }}-$(date +%Y-%U)  # Cache key is date and python version. This will enforce a fresh install every week
+        key: ${{ runner.os }}-pip-cache-${{ hashFiles('pyproject.toml') }}-${{ github.event.schedule ? 'weekly' : 'default' }}
         restore-keys: |
-          ${{ runner.os }}-python-${{ matrix.python-version }}-
-          ${{ runner.os }}-python-
+          ${{ runner.os }}-pip-cache-${{ hashFiles('pyproject.toml') }}-
 
     - name: Install dependencies
       run: |
