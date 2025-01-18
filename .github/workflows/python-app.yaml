@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12']  # Using strings, as 3.10. is mistaken to be 3.1 (bug)
 
     steps:
     - name: Check out code
