@@ -47,7 +47,7 @@ jobs:
           .nox
           .coverage
           dist
-        key: ${{ runner.os }}-pip-cache-${{ hashFiles('pyproject.toml') }}-${{ github.event.schedule ? 'weekly' : 'default' }}
+        key: ${{ runner.os }}-pip-cache-${{ hashFiles('pyproject.toml') }}-${{ env.EVENT_TYPE == 'schedule' && 'weekly' || 'default' }}
         restore-keys: |
           ${{ runner.os }}-pip-cache-${{ hashFiles('pyproject.toml') }}-
 
