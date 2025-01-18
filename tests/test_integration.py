@@ -3,6 +3,7 @@ import os
 import datetime
 from typing import Literal
 
+import pytest
 import numpy as np
 import pandas as pd
 
@@ -528,4 +529,4 @@ class TestModelingTypes(BaseTest):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main(['-v', '--disable-warnings'])

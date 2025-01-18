@@ -39,3 +39,7 @@ def test_example_scripts(example_script):
     finally:
         # Restore the original working directory
         os.chdir(original_cwd)
+
+
+if __name__ == '__main__':
+    pytest.main(['-v', '--disable-warnings'])
