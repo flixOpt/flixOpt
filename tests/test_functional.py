@@ -28,7 +28,7 @@ class Data:
 
 class BaseTest(unittest.TestCase):
     def setUp(self):
-        fx.setup_logging("DEBUG", 'flixOpt_testing.log')
+        fx.change_logging_level("DEBUG")
         self.mip_gap = 0.0001
         self.datetime_array = fx.create_datetime_array('2020-01-01', 5, 'h')
 
