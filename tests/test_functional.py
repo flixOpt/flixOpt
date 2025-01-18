@@ -1,3 +1,22 @@
+"""
+Unit tests for the flixOpt framework.
+
+This module defines a set of unit tests for testing the functionality of the `flixOpt` framework.
+The tests focus on verifying the correct behavior of flow systems, including component modeling,
+investment optimization, and operational constraints like on-off behavior.
+
+### Approach:
+1. **Setup**: Each test initializes a flow system with a set of predefined elements and parameters.
+2. **Model Creation**: Test-specific flow systems are constructed using `create_model` with datetime arrays.
+3. **Solution**: The models are solved using the `solve_and_load` method, which performs modeling, solves the optimization problem, and loads the results.
+4. **Validation**: Results are validated using assertions, primarily `assert_allclose`, to ensure model outputs match expected values with a specified tolerance.
+
+Classes group related test cases by their functional focus:
+- Minimal modeling setup (`TestMinimal`)
+- Investment behavior (`TestInvestment`)
+- On-off operational constraints (`TestOnOff`).
+"""
+
 import unittest
 
 import numpy as np
@@ -8,7 +27,21 @@ import flixOpt as fx
 np.random.seed(45)
 
 class Data:
+    """
+    Generates time series data for testing.
+
+    Attributes:
+        length (int): The desired length of the data.
+        thermal_demand (np.ndarray): Thermal demand time series data.
+        electricity_demand (np.ndarray): Electricity demand time series data.
+    """
     def __init__(self, length: int):
+        """
+        Initialize the data generator with a specified length.
+
+        Args:
+            length (int): Length of the time series data to generate.
+        """
         self.length = length
 
         self.thermal_demand = np.arange(0, 30, 10)
@@ -27,6 +60,18 @@ class Data:
 
 
 class BaseTest(unittest.TestCase):
+    """
+    Base test class for setting up flow systems in flixOpt.
+
+    Provides shared setup, utility methods, and common functionality for the other test cases.
+
+    Methods:
+        - setUp: Initializes logging and default parameters.
+        - create_model: Creates a base flow system model with predefined buses and components.
+        - solve_and_load: Solves the flow system model and loads the results.
+        - get_element: Retrieves an element from the flow system by label.
+        - solver: Configures and returns a solver instance.
+    """
     def setUp(self):
         fx.change_logging_level("DEBUG")
         self.mip_gap = 0.0001
@@ -64,6 +109,13 @@ class BaseTest(unittest.TestCase):
 
 
 class TestMinimal(BaseTest):
+    """
+    Tests a minimal setup of a flow system.
+
+    Focuses on:
+    - Adding basic components.
+    - Verifying the correct setup and results for a small system with minimal complexity.
+    """
     def create_model(self, datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem:
         super().create_model(datetime_array)
         self.flow_system.add_elements(
@@ -97,6 +149,15 @@ class TestMinimal(BaseTest):
                         rtol=self.mip_gap, atol=1e-10)
 
 class TestInvestment(BaseTest):
+    """
+    Tests investment modeling and optimization in flow systems.
+
+    Focuses on:
+    - Fixed size investments.
+    - Optimized sizing of components.
+    - Investment constraints, including bounds and optional investments.
+    - Validating cost calculations and investment decisions.
+    """
     def test_fixed_size(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
@@ -192,6 +253,14 @@ class TestInvestment(BaseTest):
 
 
 class TestOnOff(BaseTest):
+    """
+    Tests on-off operational constraints in flow systems.
+
+    Focuses on:
+    - Verifying the correct behavior of components that can toggle on or off.
+    - Testing constraints like maximum consecutive off hours.
+    - Validating flow rates and operational costs under on-off scenarios.
+    """
     def test_on(self):
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(fx.linear_converters.Boiler(
