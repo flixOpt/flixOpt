@@ -5,6 +5,7 @@ Manual test script for plots
 import unittest
 from typing import Optional
 
+import pytest
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -122,4 +123,4 @@ class TestPlots(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main(['-v', '--disable-warnings'])
