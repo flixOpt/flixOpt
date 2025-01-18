@@ -658,13 +658,11 @@ def visualize_network(node_infos: dict,
     if not show and not path:
         return net
     elif path:
-        path = pathlib.Path(path).resolve().as_posix() if isinstance(path, str) else path.resolve()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        net.write_html(path.as_posix())
+        path = pathlib.Path(path).resolve().as_posix() if isinstance(path, str) else path.resolve().as_posix()
+        net.write_html(path)
     elif show:
-        path = pathlib.Path('network.html').resolve()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        net.write_html(path.as_posix())
+        path = pathlib.Path('network.html').resolve().as_posix()
+        net.write_html(path)
 
     if show:
         try:
