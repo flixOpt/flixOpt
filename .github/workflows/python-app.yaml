@@ -37,7 +37,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # Cache Python dependencies
+    # Cache Python dependencies. Cache is valid for one week, but invalidated if the dependencies change.
     - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
@@ -47,9 +47,9 @@ jobs:
           .nox
           .coverage
           dist
-        key: ${{ runner.os }}-pip-cache-${{ hashFiles('pyproject.toml') }}-${{ env.EVENT_TYPE == 'schedule' && 'weekly' || 'default' }}
+        key: ${{ runner.os }}-pip-cache-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-${{ env.EVENT_TYPE == 'schedule' && 'weekly' || 'default' }}
         restore-keys: |
-          ${{ runner.os }}-pip-cache-${{ hashFiles('pyproject.toml') }}-
+          ${{ runner.os }}-pip-cache-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-
 
     - name: Install dependencies
       run: |
