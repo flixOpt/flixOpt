@@ -5,21 +5,19 @@ name: flixOpt Test on Push
 
 on:
   push:
-    branches:
-      - feature/ci-cd
-      - main
-      - next/*
     tags:
       - v*  # Triggers on version tags like v1.0.0
     release:
       types: [ created, published ]  # Runs when a release is created or published
+    branches:
+      - feature/ci-cd
+      - main
+      - next/*
   pull_request:
     branches:
       - feature/ci-cd
       - main
       - next/*
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly cron to force clean reinstall every week (install without cache)
 
 jobs:
   test:
@@ -36,20 +34,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-
-    # Cache Python dependencies. Cache is valid for one week, but invalidated if the dependencies change.
-    - name: Cache Python dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/pip
-          .tox
-          .nox
-          .coverage
-          dist
-        key: ${{ runner.os }}-pip-cache-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-${{ env.EVENT_TYPE == 'schedule' && 'weekly' || 'default' }}
-        restore-keys: |
-          ${{ runner.os }}-pip-cache-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-
 
     - name: Install dependencies
       run: |
