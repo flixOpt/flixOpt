@@ -58,3 +58,4 @@ if __name__ == '__main__':
     pprint(calculation.results())
     pprint(f'Look into .yaml and .json file for results')
     pprint(calculation.system_model.main_results)
+
