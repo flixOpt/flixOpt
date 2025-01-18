@@ -19,6 +19,7 @@ Classes group related test cases by their functional focus:
 
 import unittest
 
+import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 
@@ -399,4 +400,4 @@ class TestOnOff(BaseTest):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    pytest.main(['-v', '--disable-warnings'])
