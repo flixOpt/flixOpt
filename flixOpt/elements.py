@@ -13,9 +13,7 @@ from .effects import EffectValues, effect_values_to_time_series
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
 from .math_modeling import Variable, VariableTS
-from .structure import (
-    Element,
-    ElementModel,
+from .structure import ( Element, Interface, ElementModel,
     SystemModel,
     _create_time_series,
     copy_and_convert_datatypes,
@@ -66,7 +64,7 @@ class MediumColors:
         return cls.colors.get(category, cls.default)
 
 
-class Medium:
+class Medium(Interface):
     """
     Represents a medium with attributes such as label, unit, color, and categories.
     """
@@ -115,9 +113,6 @@ class Medium:
             # Use the first category's color as default
             return MediumColors.get_color(self.categories[0])
         return MediumColors.get_color('unknown')
-
-    def infos(self):
-        return get_object_infos_as_dict(self)
 
 
 class Component(Element):

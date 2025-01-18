@@ -299,7 +299,7 @@ class FlowSystem:
         return {element.label_full: element.medium.color
         if (isinstance(element, (Bus, Flow)) and element.medium is not None)
         else self.default_color
-                for element in self.all_elements}
+                for element in self.all_elements.values()}
 
 def create_datetime_array(
     start: str, steps: Optional[int] = None, freq: str = '1h', end: Optional[str] = None
