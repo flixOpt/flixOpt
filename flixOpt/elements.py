@@ -12,7 +12,7 @@ from .core import Numeric, Numeric_TS, Skalar
 from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
+from .structure import SystemModel, Element, Interface, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
 from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
@@ -58,7 +58,7 @@ class MediumColors:
         return cls.colors.get(category, cls.default)
 
 
-class Medium:
+class Medium(Interface):
     """
     Represents a medium with attributes such as label, unit, color, and categories.
     """
@@ -107,9 +107,6 @@ class Medium:
             # Use the first category's color as default
             return MediumColors.get_color(self.categories[0])
         return MediumColors.get_color('unknown')
-
-    def infos(self):
-        return get_object_infos_as_dict(self)
 
 
 class Component(Element):
