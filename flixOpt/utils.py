@@ -84,35 +84,11 @@ def apply_formating(data_dict: Dict[str, Union[int, float]],
 
 
 def label_is_valid(label: str) -> bool:
-    """ Function to make shure '__' is reserved for internal splitting of labels"""
+    """ Function to make sure '__' is reserved for internal splitting of labels"""
     if label.startswith('_') or label.endswith('_') or '__' in label:
         return False
     return True
 
-
-def convert_to_native_types(value: Optional[Union[int, float, str, list, tuple, dict, np.ndarray, datetime]]
-                            ) -> Optional[Union[int, float, str, list, dict]]:
-    """ Recursively converts datatypes from a nested structure. Makes types compatible with yaml and json."""
-    if isinstance(value, np.floating):
-        return float(value)
-    elif isinstance(value, np.integer):
-        return int(value)
-    elif isinstance(value, np.ndarray):
-        return [convert_to_native_types(item) for item in value.tolist()]
-    elif isinstance(value, (np.generic,)):  # For any numpy scalar types
-        return value.item()
-
-    elif isinstance(value, (int, float, str, bool, type(None))):  # After numpy checks!!!
-        return value
-    elif isinstance(value, (list, tuple)):
-        return [convert_to_native_types(item) for item in value]
-    elif isinstance(value, dict):
-        return {convert_to_native_types(k): convert_to_native_types(v) for k, v in value.items()}
-
-    elif isinstance(value, datetime):
-        return value.isoformat()
-    else:
-        raise TypeError(f'Type {type(value)} is not supported in convert_to_native_types().')
 
 def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) -> Union[Dict[str, Any], List[Any], tuple]:
     """

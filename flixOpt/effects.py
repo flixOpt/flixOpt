@@ -241,7 +241,7 @@ class EffectCollection:
     def __init__(self, label: str):
         self.label = label
         self.model: Optional[EffectCollectionModel] = None
-        self.effects: List[Effect] = []
+        self.effects: Dict[str, Effect] = {}
 
     def create_model(self, system_model: SystemModel) -> 'EffectCollectionModel':
         self.model = EffectCollectionModel(self, system_model)
@@ -252,21 +252,21 @@ class EffectCollection:
             raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
         if effect.is_objective and self.objective_effect is not None:
             raise Exception(f'A objective-effect already exists! ({self.objective_effect.label=})')
-        if effect in self.effects:
+        if effect in self.effects.values():
             raise Exception(f'Effect already added! ({effect.label=})')
-        if effect.label in [existing_effect.label for existing_effect in self.effects]:
+        if effect.label in self.effects:
             raise Exception(f'Effect with label "{effect.label=}" already added!')
-        self.effects.append(effect)
+        self.effects[effect.label] = effect
 
     @property
     def standard_effect(self) -> Optional[Effect]:
-        for effect in self.effects:
+        for effect in self.effects.values():
             if effect.is_standard:
                 return effect
 
     @property
     def objective_effect(self) -> Optional[Effect]:
-        for effect in self.effects:
+        for effect in self.effects.values():
             if effect.is_objective:
                 return effect
 
@@ -286,7 +286,7 @@ class EffectCollectionModel(ElementModel):
         self.objective: Optional[Equation] = None
 
     def do_modeling(self, system_model: SystemModel):
-        self._effect_models = {effect: effect.create_model() for effect in self.element.effects}
+        self._effect_models = {effect: effect.create_model() for effect in self.element.effects.values()}
         self.penalty = ShareAllocationModel(self.element, 'penalty', False)
         self.sub_models.extend(list(self._effect_models.values()) + [self.penalty])
         for model in self.sub_models:
@@ -314,7 +314,7 @@ class EffectCollectionModel(ElementModel):
         for effect, value in effect_values.items():
             if effect is None:  # Falls None, dann Standard-effekt nutzen:
                 effect = self.element.standard_effect
-            assert effect in self.element.effects, f'Effect {effect.label} was used but not added to model!'
+            assert effect in self.element.effects.values(), f'Effect {effect.label} was used but not added to model!'
 
             if target == 'operation':
                 model = self._effect_models[effect].operation
@@ -354,7 +354,7 @@ class EffectCollectionModel(ElementModel):
         self.penalty.add_share(self._system_model, name, variable, factor,  True)
 
     def add_share_between_effects(self):
-        for origin_effect in self.element.effects:
+        for origin_effect in self.element.effects.values():
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation

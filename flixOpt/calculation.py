@@ -19,7 +19,7 @@ import numpy as np
 
 from .aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
 from .core import Numeric, Skalar
-from .structure import SystemModel
+from .structure import SystemModel, copy_and_convert_datatypes
 from .flow_system import FlowSystem
 from .elements import Component
 from .components import Storage
@@ -89,11 +89,11 @@ class Calculation:
 
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = utils.convert_to_native_types(self.results())
+            results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
             json.dump(results, f, indent=4)
 
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = utils.convert_to_native_types(self.flow_system.infos())
+            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
             json.dump(data, f, indent=4)
 
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
@@ -320,8 +320,8 @@ class SegmentedCalculation(Calculation):
 
         # Storing all original start values
         self._original_start_values = {
-            **{flow: flow.previous_flow_rate for flow in self.flow_system.all_flows},
-            **{comp: comp.initial_charge_state for comp in self.flow_system.components if isinstance(comp, Storage)}
+            **{flow: flow.previous_flow_rate for flow in self.flow_system.flows.values()},
+            **{comp: comp.initial_charge_state for comp in self.flow_system.components.values() if isinstance(comp, Storage)}
         }
         self._transfered_start_values: Dict[str, Dict[str, Any]] = {}
 
@@ -393,16 +393,23 @@ class SegmentedCalculation(Calculation):
 
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = utils.convert_to_native_types(self.results(combined_arrays=True))
+            results = copy_and_convert_datatypes(
+                self.results(combined_arrays=True), use_numpy=False, use_element_label=False
+            )
             json.dump(results, f, indent=4)
 
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = utils.convert_to_native_types(self.flow_system.infos())
+            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
             json.dump(data, f, indent=4)
 
         with open(self._paths['results'].parent / f'{self.name}_results_extra.json', 'w', encoding='utf-8') as f:
-            results = {'Individual Results': utils.convert_to_native_types(self.results(individual_results=True)),
-                       'Skalar Results': utils.convert_to_native_types(self.results(combined_scalars=True))}
+            results = {
+                'Individual Results': copy_and_convert_datatypes(
+                    self.results(individual_results=True), use_numpy=False, use_element_label=False
+                ),
+                'Skalar Results': copy_and_convert_datatypes(
+                    self.results(combined_scalars=True), use_numpy=False, use_element_label=False)
+            }
             json.dump(results, f, indent=4)
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
@@ -433,10 +440,10 @@ class SegmentedCalculation(Calculation):
         """
         final_index_of_prior_segment = - (1 + self.overlap_length)
         start_values_of_this_segment = {}
-        for flow in self.flow_system.all_flows:
+        for flow in self.flow_system.flows.values():
             flow.previous_flow_rate = flow.model.flow_rate.result[final_index_of_prior_segment]  #TODO: maybe more values?
             start_values_of_this_segment[flow.label_full] = flow.previous_flow_rate
-        for comp in self.flow_system.components:
+        for comp in self.flow_system.components.values():
             if isinstance(comp, Storage):
                 comp.initial_charge_state = comp.model.charge_state.result[final_index_of_prior_segment]
                 start_values_of_this_segment[comp.label_full] = comp.initial_charge_state
@@ -445,9 +452,9 @@ class SegmentedCalculation(Calculation):
 
     def _reset_start_values(self):
         """ This resets the start values of all Elements to its original state"""
-        for flow in self.flow_system.all_flows:
+        for flow in self.flow_system.flows.values():
             flow.previous_flow_rate = self._original_start_values[flow]
-        for comp in self.flow_system.components:
+        for comp in self.flow_system.components.values():
             if isinstance(comp, Storage):
                 comp.initial_charge_state = self._original_start_values[comp]
 

@@ -48,8 +48,8 @@ class TestSimple(BaseTest):
 
     def test_model(self):
         calculation = self.model()
-        effects = {effect.label: effect for effect in calculation.flow_system.effect_collection.effects}
-        comps = {comp.label: comp for comp in calculation.flow_system.components}
+        effects = calculation.flow_system.effect_collection.effects
+        comps = calculation.flow_system.components
 
         # Compare expected values with actual values
         self.assertAlmostEqualNumeric(effects['costs'].model.all.sum.result, 81.88394666666667,
@@ -81,7 +81,7 @@ class TestSimple(BaseTest):
                                   "Q_th doesnt match expected value")
 
         df = results.to_dataframe('Fernwärme', with_last_time_step=False)
-        comps = {comp.label: comp for comp in calculation.flow_system.components}
+        comps = calculation.flow_system.components
         self.assertAlmostEqualNumeric(comps['Wärmelast'].sink.model.flow_rate.result,
                                       df['Wärmelast__Q_th_Last'],
                                       "Loaded Results and directly used results dont match, or loading didnt work properly")
@@ -258,8 +258,8 @@ class TestComplex(BaseTest):
 
     def test_basic(self):
         calculation = self.basic_model()
-        effects = {effect.label: effect for effect in calculation.flow_system.effect_collection.effects}
-        comps = {comp.label: comp for comp in calculation.flow_system.components}
+        effects = calculation.flow_system.effect_collection.effects
+        comps = calculation.flow_system.components
 
         # Compare expected values with actual values
         self.assertAlmostEqualNumeric(effects['costs'].model.all.sum.result, -11597.873624489237,
@@ -323,8 +323,8 @@ class TestComplex(BaseTest):
 
     def test_segments_of_flows(self):
         calculation = self.segments_of_flows_model()
-        effects = {effect.label: effect for effect in calculation.flow_system.effect_collection.effects}
-        comps = {comp.label: comp for comp in calculation.flow_system.components}
+        effects = calculation.flow_system.effect_collection.effects
+        comps = calculation.flow_system.components
 
         # Compare expected values with actual values
         self.assertAlmostEqualNumeric(effects['costs'].model.all.sum.result, -10710.997365760755,
@@ -456,13 +456,13 @@ class TestModelingTypes(BaseTest):
 
     def test_full(self):
         calculation = self.calculate("full")
-        effects = {effect.label: effect for effect in calculation.flow_system.effect_collection.effects}
-        comps = {comp.label: comp for comp in calculation.flow_system.components}
+        effects = calculation.flow_system.effect_collection.effects
+        comps = calculation.flow_system.components
         self.assertAlmostEqualNumeric(effects['costs'].model.all.sum.result, 343613, "costs doesnt match expected value")
 
     def test_aggregated(self):
         calculation = self.calculate("aggregated")
-        effects = {effect.label: effect for effect in calculation.flow_system.effect_collection.effects}
+        effects = calculation.flow_system.effect_collection.effects
         self.assertAlmostEqualNumeric(effects['costs'].model.all.sum.result, 342967.0, "costs doesnt match expected value")
 
     def test_segmented(self):
