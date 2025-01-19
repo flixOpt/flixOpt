@@ -617,7 +617,7 @@ class SolverLog:
             """
             Optimize a model with 285 rows, 292 columns and 878 nonzeros
             Model fingerprint: 0x1756ffd1
-            Variable types: 202 continuous, 90 integer (90 binary)        
+            Variable types: 202 continuous, 90 integer (90 binary)
             """
             # string-Schnipsel 2:
             """
@@ -988,7 +988,7 @@ class PyomoModel(ModelingLanguage):
         fixed_value_vector = utils.as_vector(variable.fixed_value, variable.length)
         for i in variable.indices:
             # Wenn Vorgabe-Wert vorhanden:
-            if variable.fixed and (fixed_value_vector[i] != None):
+            if variable.fixed and (fixed_value_vector[i] is not None):
                 # Fixieren:
                 pyomo_comp[i].value = fixed_value_vector[i]
                 pyomo_comp[i].fix()

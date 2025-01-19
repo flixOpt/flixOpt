@@ -165,9 +165,9 @@ class Storage(Component):
             None: free to choose by optimizer
             'lastValueOfSim': chargeState0 is equal to chargestate of last timestep ("closed simulation")
         minimal_final_charge_state : float or None, optional
-            minimal value of chargeState at the end of timeseries. 
+            minimal value of chargeState at the end of timeseries.
         maximal_final_charge_state : float or None, optional
-            maximal value of chargeState at the end of timeseries. 
+            maximal value of chargeState at the end of timeseries.
         eta_charge : float, optional
             efficiency factor of charging/loading. The default is 1.
         eta_discharge : TYPE, optional

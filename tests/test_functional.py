@@ -128,7 +128,7 @@ class TestMinimal(BaseTest):
 
     def test_solve_and_load(self):
         flow_system = self.create_model(self.datetime_array)
-        results = self.solve_and_load(flow_system)
+        self.solve_and_load(flow_system)
 
     def test_results(self):
         flow_system = self.create_model(self.datetime_array)

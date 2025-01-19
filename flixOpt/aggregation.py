@@ -97,7 +97,7 @@ class Aggregation:
         if self.use_extreme_periods:
             # Zeitreihe rauslöschen:
             extremePeriods = self.tsam.extremePeriods.copy()
-            for key, val in extremePeriods.items():
+            for key in extremePeriods:
                 del (extremePeriods[key]['profile'])
         else:
             extremePeriods = {}
@@ -176,7 +176,7 @@ class Aggregation:
         idx_var2 = []
 
         # Iterate through cluster index vectors
-        for cluster_id, index_vectors in self.get_cluster_indices().items():
+        for index_vectors in self.get_cluster_indices().values():
             if len(index_vectors) <= 1:  # Only proceed if cluster has more than one period
                 continue
 

@@ -342,7 +342,7 @@ def heat_map_matplotlib(data: pd.DataFrame,
 
     # Create the heatmap plot
     fig, ax = plt.subplots(figsize=figsize)
-    cax = ax.pcolormesh(data.values, cmap=color_map)
+    ax.pcolormesh(data.values, cmap=color_map)
     ax.invert_yaxis()  # Flip the y-axis to start at the top
 
     # Adjust ticks and labels for x and y axes
@@ -362,7 +362,7 @@ def heat_map_matplotlib(data: pd.DataFrame,
     # Add the colorbar
     sm1 = plt.cm.ScalarMappable(cmap=color_map, norm=plt.Normalize(vmin=color_bar_min, vmax=color_bar_max))
     sm1._A = []
-    cb1 = fig.colorbar(sm1, ax=ax, pad=0.12, aspect=15, fraction=0.2, orientation='horizontal')
+    fig.colorbar(sm1, ax=ax, pad=0.12, aspect=15, fraction=0.2, orientation='horizontal')
 
     fig.tight_layout()
     if show:
@@ -550,7 +550,7 @@ def heat_map_data_from_df(df: pd.DataFrame,
     minimum_time_diff_in_min = df.index.to_series().diff().min().total_seconds() / 60  # Smallest time_diff in minutes
     time_intervals = {'min': 1, '15min': 15, 'h': 60, 'D': 24 * 60, 'W': 7 * 24 * 60}
     if time_intervals[steps_per_period] > minimum_time_diff_in_min:
-        new_smallest_interval = time_intervals[steps_per_period]
+        time_intervals[steps_per_period]
         logger.warning(f'To compute the heatmap, the data was aggregated from {minimum_time_diff_in_min:.2f} min to '
                        f'{time_intervals[steps_per_period]:.2f} min. Mean values are displayed.')
 

@@ -426,7 +426,7 @@ class ElementModel:
     def all_inequations(self) -> Dict[str, Inequation]:
         all_ineqs = self.inequations.copy()
         for sub_model in self.sub_models:
-            for key, value in sub_model.all_inequations.items():
+            for key in sub_model.all_inequations:
                 if key in all_ineqs:
                     raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
         return all_ineqs

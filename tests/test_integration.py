@@ -454,7 +454,6 @@ class TestModelingTypes(BaseTest):
     def test_full(self):
         calculation = self.calculate("full")
         effects = calculation.flow_system.effect_collection.effects
-        comps = calculation.flow_system.components
         self.assertAlmostEqualNumeric(effects['costs'].model.all.sum.result, 343613, "costs doesnt match expected value")
 
     def test_aggregated(self):
