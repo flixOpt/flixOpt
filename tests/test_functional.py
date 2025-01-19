@@ -96,14 +96,16 @@ class BaseTest(unittest.TestCase):
     def solve_and_load(self, flow_system: fx.FlowSystem) -> fx.results.CalculationResults:
         calculation = fx.FullCalculation('Calculation', flow_system)
         calculation.do_modeling()
-        calculation.solve(self.solver(), True)
+        calculation.solve(self.solver, True)
         results = fx.results.CalculationResults('Calculation', 'results')
         return results
 
     def get_element(self, label: str):
         return {**self.flow_system.all_elements, **self.buses}[label]
 
+    @property
     def solver(self):
+        """Returns a (new) solver instance with the specified parameters."""
         return fx.solvers.HighsSolver(mip_gap=self.mip_gap, time_limit_seconds=3600, solver_output_to_console=False)
 
 
@@ -146,6 +148,7 @@ class TestMinimal(BaseTest):
         assert_allclose(results.effect_results['costs'].all_results['operation']['Shares']['Gastarif__Gas__effects_per_flow_hour'],
                         [-0., 20., 40., -0., 20.],
                         rtol=self.mip_gap, atol=1e-10)
+
 
 class TestInvestment(BaseTest):
     """
