@@ -207,7 +207,7 @@ class _Constraint:
             raise ValueError(f'Length of Constant {value=} does not fit: {e}')
 
     def description(self, at_index: int = 0) -> str:
-        raise NotImplementedError(f'Not implemented for Abstract class <_Constraint>')
+        raise NotImplementedError('Not implemented for Abstract class <_Constraint>')
 
     def _update_length(self, new_length: int) -> None:
         """
@@ -644,14 +644,14 @@ class SolverLog:
 
             # string: Presolve 1623 (-1079) rows, 1430 (-1078) columns and 4296 (-3306) elements
             match = re.search(r'Presolve (\d+) \((-?\d+)\) rows, (\d+) \((-?\d+)\) columns and (\d+)', self.log)
-            if not match is None:
+            if match is not None:
                 self.presolved_rows = int(match.group(1))
                 self.presolved_cols = int(match.group(3))
                 self.presolved_nonzeros = int(match.group(5))
 
             # string: Presolved problem has 862 integers (862 of which binary)
             match = re.search(r'Presolved problem has (\d+) integers \((\d+) of which binary\)', self.log)
-            if not match is None:
+            if match is not None:
                 self.presolved_integer = int(match.group(1))
                 self.presolved_binary = int(match.group(2))
                 self.presolved_continuous = self.presolved_cols - self.presolved_integer
@@ -694,7 +694,7 @@ class Solver(ABC):
         self._results: Optional[float, str] = None
 
     def solve(self, modeling_language: 'ModelingLanguage'):
-        raise NotImplementedError(f' Solving is not possible with this Abstract class')
+        raise NotImplementedError(' Solving is not possible with this Abstract class')
 
     def __repr__(self):
         return (f"{self.__class__.__name__}("
@@ -751,11 +751,11 @@ class GurobiSolver(Solver):
                 import gurobi_logtools
                 self.log = gurobi_logtools.get_dataframe([str(self.logfile_name)]).T.to_dict()[0]
             except ImportError:
-                logger.info(f'Evaluationg the gurobi log after the solve was not possible, due to a missing dependency '
-                            f'"gurobi_logtools". For further details of the solving process, '
-                            f'install the dependency via "pip install gurobi_logtools".')
+                logger.info('Evaluationg the gurobi log after the solve was not possible, due to a missing dependency '
+                            '"gurobi_logtools". For further details of the solving process, '
+                            'install the dependency via "pip install gurobi_logtools".')
         else:
-            raise NotImplementedError(f'Only Pyomo is implemented for GUROBI solver.')
+            raise NotImplementedError('Only Pyomo is implemented for GUROBI solver.')
 
 
 class CplexSolver(Solver):
@@ -789,7 +789,7 @@ class CplexSolver(Solver):
             self.best_bound = self._results['Problem'][0]['Lower bound']
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:
-            raise NotImplementedError(f'Only Pyomo is implemented for CPLEX solver.')
+            raise NotImplementedError('Only Pyomo is implemented for CPLEX solver.')
 
 
 class HighsSolver(Solver):
@@ -836,7 +836,7 @@ class HighsSolver(Solver):
             self.best_bound = self._results.best_objective_bound
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:
-            raise NotImplementedError(f'Only Pyomo is implemented for HIGHS solver.')
+            raise NotImplementedError('Only Pyomo is implemented for HIGHS solver.')
 
 
 class CbcSolver(Solver):
@@ -869,7 +869,7 @@ class CbcSolver(Solver):
             self.best_bound = self._results['Problem'][0]['Lower bound']
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
         else:
-            raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
+            raise NotImplementedError('Only Pyomo is implemented for Cbc solver.')
 
 
 class GlpkSolver(Solver):
@@ -898,7 +898,7 @@ class GlpkSolver(Solver):
                 self.log = None
                 logger.warning(f'SolverLog could not be loaded. {e}')
         else:
-            raise NotImplementedError(f'Only Pyomo is implemented for Cbc solver.')
+            raise NotImplementedError('Only Pyomo is implemented for Cbc solver.')
 
 
 class ModelingLanguage(ABC):
@@ -937,7 +937,7 @@ class PyomoModel(ModelingLanguage):
 
     def solve(self, math_model: MathModel, solver: Solver):
         if self._counter == 0:
-            raise Exception(f' First, call .translate_model(). Else PyomoModel cant solve()')
+            raise Exception(' First, call .translate_model(). Else PyomoModel cant solve()')
         solver.solve(self)
 
         # write results

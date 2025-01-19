@@ -95,7 +95,7 @@ class InvestmentModel(ElementModel):
         specific_effects = invest_parameters.specific_effects
         if specific_effects != {}:
             # share: + investment_size (=var)   * specific_effects
-            effect_collection.add_share_to_invest(f'specific_effects', self.element, specific_effects, 1, self.size)
+            effect_collection.add_share_to_invest('specific_effects', self.element, specific_effects, 1, self.size)
         # segmented Effects
         invest_segments = invest_parameters.effects_in_segments
         if invest_segments:
@@ -188,7 +188,7 @@ class OnOffModel(ElementModel):
         self._on_off_parameters = on_off_parameters
         self._defining_variables = defining_variables
         self._defining_bounds = defining_bounds
-        assert len(defining_variables) == len(defining_bounds), f'Every defining Variable needs bounds to Model OnOff'
+        assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
 
     def do_modeling(self, system_model: SystemModel):
         self.on = create_variable('on', self, system_model.nr_of_time_steps, is_binary=True,
@@ -636,7 +636,7 @@ class SingleShareModel(ElementModel):
                  share_as_sum: bool):
         super().__init__(element, name)
         if variable is not None:
-            assert not (variable.length == 1 and share_as_sum), f'A Variable with the length 1 cannot be summed up!'
+            assert not (variable.length == 1 and share_as_sum), 'A Variable with the length 1 cannot be summed up!'
 
         if share_as_sum or (variable is not None and variable.length == 1) or (
                 variable is None and np.isscalar(factor)):
@@ -667,7 +667,7 @@ class SegmentedSharesModel(ElementModel):
                  label: str = 'SegmentedShares'):
         super().__init__(element, label)
         assert len(variable_segments[1]) == len(list(share_segments.values())[0]), \
-            f'Segment length of variable_segments and share_segments must be equal'
+            'Segment length of variable_segments and share_segments must be equal'
         self.element: Element
         self._can_be_outside_segments = can_be_outside_segments
         self._variable_segments = variable_segments

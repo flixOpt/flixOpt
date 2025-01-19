@@ -4,7 +4,6 @@ These classes are not directly used by the end user, but are used by other modul
 """
 
 from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING, Any
-from copy import deepcopy
 import logging
 import inspect
 from io import StringIO
@@ -90,7 +89,7 @@ class SystemModel(MathModel):
             f'{"Objective":<17}: {self.main_results["Objective"]:>10.2f}\n'
             f'{"":-^80}')
 
-        logger.info(f'Investment Decisions:')
+        logger.info('Investment Decisions:')
         logger.info(utils.apply_formating(data_dict={**self.main_results["Invest-Decisions"]["invested"],
                                                      **self.main_results["Invest-Decisions"]["not invested"]},
                                           key_format="<30", indent=2, sort_by='value'))
@@ -235,7 +234,7 @@ class Interface:
     """
 
     def transform_data(self):
-        raise NotImplementedError(f'Every Interface needs a transform_data() method')
+        raise NotImplementedError('Every Interface needs a transform_data() method')
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         """
@@ -312,10 +311,10 @@ class Element(Interface):
 
     def _plausibility_checks(self) -> None:
         """ This function is used to do some basic plausibility checks for each Element during initialization """
-        raise NotImplementedError(f'Every Element needs a _plausibility_checks() method')
+        raise NotImplementedError('Every Element needs a _plausibility_checks() method')
 
     def create_model(self) -> None:
-        raise NotImplementedError(f'Every Element needs a create_model() method')
+        raise NotImplementedError('Every Element needs a create_model() method')
 
     @property
     def label_full(self) -> str:

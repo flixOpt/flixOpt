@@ -3,7 +3,6 @@ This module contains the basic components of the flixOpt framework.
 """
 
 import numpy as np
-import textwrap
 import logging
 from typing import Union, Optional, Literal, List, Dict, Tuple, Set
 
@@ -279,8 +278,8 @@ class Transmission(Component):
         # Check Investments
         for flow in [self.out1, self.in2, self.out2]:
             if flow is not None and isinstance(flow.size, InvestParameters):
-                raise ValueError(f'Transmission currently does not support separate InvestParameters for Flows. '
-                                 f'Please use Flow in1. The size of in2 is equal to in1. THis is handled internally')
+                raise ValueError('Transmission currently does not support separate InvestParameters for Flows. '
+                                 'Please use Flow in1. The size of in2 is equal to in1. THis is handled internally')
 
     def create_model(self) -> 'TransmissionModel':
         self.model = TransmissionModel(self)

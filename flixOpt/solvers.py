@@ -3,3 +3,12 @@ This module contains the solvers of the flixOpt framework, making them available
 """
 
 from .math_modeling import Solver, HighsSolver, GurobiSolver, CbcSolver, CplexSolver, GlpkSolver
+
+__all__ = [
+    "Solver",
+    "HighsSolver",
+    "GurobiSolver",
+    "CbcSolver",
+    "CplexSolver",
+    "GlpkSolver",
+]

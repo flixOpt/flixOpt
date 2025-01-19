@@ -231,10 +231,10 @@ class Flow(Element):
         return self.model
 
     def transform_data(self):
-        self.relative_minimum = _create_time_series(f'relative_minimum', self.relative_minimum, self)
-        self.relative_maximum = _create_time_series(f'relative_maximum', self.relative_maximum, self)
-        self.fixed_relative_profile = _create_time_series(f'fixed_relative_profile', self.fixed_relative_profile, self)
-        self.effects_per_flow_hour = effect_values_to_time_series(f'per_flow_hour', self.effects_per_flow_hour, self)
+        self.relative_minimum = _create_time_series('relative_minimum', self.relative_minimum, self)
+        self.relative_maximum = _create_time_series('relative_maximum', self.relative_maximum, self)
+        self.fixed_relative_profile = _create_time_series('fixed_relative_profile', self.fixed_relative_profile, self)
+        self.effects_per_flow_hour = effect_values_to_time_series('per_flow_hour', self.effects_per_flow_hour, self)
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
         if isinstance(self.size, InvestParameters):

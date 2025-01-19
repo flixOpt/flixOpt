@@ -56,5 +56,5 @@ if __name__ == '__main__':
 
     # Print results to the console. Check Results in file or perform more plotting
     pprint(calculation.results())
-    pprint(f'Look into .yaml and .json file for results')
+    pprint('Look into .yaml and .json file for results')
     pprint(calculation.system_model.main_results)

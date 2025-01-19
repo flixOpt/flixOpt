@@ -5,7 +5,7 @@ Different Datatypes are used to represent the effects with assigned values by th
 which are then transformed into the internal data structure.
 """
 
-from typing import List, Dict, Union, Optional, Literal
+from typing import Dict, Union, Optional, Literal
 import logging
 
 import numpy as np
@@ -131,7 +131,7 @@ class Effect(Element):
             'maximum_operation_per_hour', self.maximum_operation_per_hour, self)
 
         self.specific_share_to_other_effects_operation = effect_values_to_time_series(
-            f'specific_share_to_other_effects_operation',
+            'specific_share_to_other_effects_operation',
             self.specific_share_to_other_effects_operation, self)
 
     def create_model(self) -> 'EffectModel':
@@ -350,7 +350,7 @@ class EffectCollectionModel(ElementModel):
                              variable: Variable,
                              factor: Numeric,
                              ) -> None:
-        assert variable is not None, f'A Variable must be passed to add a share to penalty! Else its a constant Penalty!'
+        assert variable is not None, 'A Variable must be passed to add a share to penalty! Else its a constant Penalty!'
         self.penalty.add_share(self._system_model, name, variable, factor,  True)
 
     def add_share_between_effects(self):

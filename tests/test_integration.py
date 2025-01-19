@@ -182,7 +182,7 @@ class TestComponents(BaseTest):
 
         self.assertAlmostEqualNumeric(transmission.in1.model.flow_rate.result * 0.8 - 20,
                                       transmission.out1.model.flow_rate.result,
-                                      f'Losses are not computed correctly')
+                                      'Losses are not computed correctly')
 
     def test_transmission_advanced(self):
         self.create_basic_elements()
@@ -222,16 +222,16 @@ class TestComponents(BaseTest):
 
         self.assertAlmostEqualNumeric(results.to_dataframe('Rohr', with_last_time_step=False)['Rohr__Rohr1b'].values,
                                       transmission.out1.model.flow_rate.result,
-                                      f'Flow rate of Rohr__Rohr1b is not correct')
+                                      'Flow rate of Rohr__Rohr1b is not correct')
 
         self.assertAlmostEqualNumeric(transmission.in1.model.flow_rate.result * 0.8
                                       - np.array([20 if val > 0.1 else 0 for val in transmission.in1.model.flow_rate.result]),
                                       transmission.out1.model.flow_rate.result,
-                                      f'Losses are not computed correctly')
+                                      'Losses are not computed correctly')
 
         self.assertAlmostEqualNumeric(transmission.in1.model._investment.size.result,
                                       transmission.in2.model._investment.size.result,
-                                      f'THe Investments are not equated correctly')
+                                      'THe Investments are not equated correctly')
 
 
 

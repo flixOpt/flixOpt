@@ -3,16 +3,14 @@ This module contains the FlowSystem class, which is used to collect instances of
 """
 
 import pathlib
-from typing import List, Set, Tuple, Dict, Union, Optional, Literal
+from typing import List, Tuple, Dict, Union, Optional, Literal
 import logging
-from io import StringIO
 
 import numpy as np
-from rich.console import Console
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel, get_str_representation, copy_and_convert_datatypes
+from .structure import Element, SystemModel, get_str_representation
 from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
 

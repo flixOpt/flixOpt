@@ -5,7 +5,7 @@ Through this, aggregating TimeSeriesData is possible.
 
 import copy
 import timeit
-from typing import Optional, List, Dict, Union, TYPE_CHECKING, Tuple
+from typing import Optional, List, Dict, Tuple
 import warnings
 import logging
 from collections import Counter
@@ -206,7 +206,7 @@ class TimeSeriesCollection:
                                             time_series in self.time_series_list}
 
         if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
-            logger.info(f'All Aggregation weights were set to 1')
+            logger.info('All Aggregation weights were set to 1')
 
     def _calculate_aggregation_weigths(self):
         """ Calculates the aggergation weights of all TimeSeries. Necessary to use groups"""
@@ -357,7 +357,7 @@ class AggregationModel(ElementModel):
         # Gleichung:
         # eq1: x(p1,t) - x(p3,t) = 0 # wobei p1 und p3 im gleichen Cluster sind und t = 0..N_p
         length = len(indices[0])
-        assert len(indices[0]) == len(indices[1]), f'The length of the indices must match!!'
+        assert len(indices[0]) == len(indices[1]), 'The length of the indices must match!!'
 
         eq = create_equation(f'Equate_indices_of_{variable.label}', self)
         eq.add_summand(variable, 1, indices_of_variable=indices[0])
