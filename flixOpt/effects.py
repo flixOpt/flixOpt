@@ -10,7 +10,7 @@ from typing import Dict, Literal, Optional, Union
 
 import numpy as np
 
-from .core import Numeric, Numeric_TS, Skalar, TimeSeries, as_effect_dict
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries
 from .features import ShareAllocationModel
 from .math_modeling import Equation, Variable
 from .structure import Element, ElementModel, SystemModel, _create_time_series

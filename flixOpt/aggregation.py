@@ -8,7 +8,7 @@ import logging
 import timeit
 import warnings
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -26,6 +26,9 @@ from .structure import (
     create_equation,
     create_variable,
 )
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 logger = logging.getLogger('flixOpt')
@@ -119,7 +122,7 @@ class Aggregation:
     def use_extreme_periods(self):
         return self.time_series_for_high_peaks or self.time_series_for_low_peaks
 
-    def plot(self, colormap: str = 'viridis', show: bool = True) -> 'plotly.Figure':
+    def plot(self, colormap: str = 'viridis', show: bool = True) -> 'go.Figure':
         from . import plotting
 
         df_org = self.original_data.copy().rename(
