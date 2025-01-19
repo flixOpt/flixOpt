@@ -76,15 +76,13 @@ exclude = [
 # Enforce a maximum line length (commonly 88 for compatibility with Black)
 line-length = 88
 
-# Enable linting rules by category (e.g., error, warnings, unused imports)
-select = ["E", "F", "W", "I", "B"]
-
-# Ignore specific rules
-ignore = [
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]  # Enable linting rules by category (e.g., error, warnings, unused imports)
+ignore = [  # Ignore specific rules
     "E501",  # Ignore line-length checks (use Black for formatting)
     "F401",  # Allow unused imports in some cases (use __all__)
 ]
 
 # Apply rule exceptions to specific files or directories
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["S101"]  # Ignore assertions in test files
