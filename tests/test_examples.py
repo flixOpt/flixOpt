@@ -1,8 +1,9 @@
-import subprocess
-import pytest
-from pathlib import Path
 import os
+import subprocess
 import sys
+from pathlib import Path
+
+import pytest
 
 # Path to the examples directory
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples"

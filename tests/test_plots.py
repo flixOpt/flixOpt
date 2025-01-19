@@ -5,11 +5,11 @@ Manual test script for plots
 import unittest
 from typing import Optional
 
-import pytest
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly
+import pytest
 
 from flixOpt import plotting
 

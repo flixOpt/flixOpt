@@ -3,21 +3,27 @@ This module contains the features of the flixOpt framework.
 Features extend the functionality of Elements.
 """
 
-from typing import List, Tuple, Dict, Union, Optional, TYPE_CHECKING
 import logging
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .math_modeling import Variable, VariableTS, Equation
-from .core import TimeSeries, Skalar, Numeric
 from .config import CONFIG
+from .core import Numeric, Skalar, TimeSeries
 from .interface import InvestParameters, OnOffParameters
-from .structure import ElementModel, SystemModel, Element, create_equation, create_variable
+from .math_modeling import Equation, Variable, VariableTS
+from .structure import (
+    Element,
+    ElementModel,
+    SystemModel,
+    create_equation,
+    create_variable,
+)
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
+    from .components import Storage
     from .effects import Effect
     from .elements import Flow
-    from .components import Storage
 
 
 logger = logging.getLogger('flixOpt')
@@ -270,7 +276,7 @@ class OnOffModel(ElementModel):
             #  --> damit Gleichungswerte nicht zu groß werden, noch durch nr_of_flows geteilt:
             #  eq: sum( Leistung(t,i) / nr_of_flows ) - sum(Leistung_max(i)) / nr_of_flows * On(t) <= 0
             absolute_maximum: Numeric = 0
-            for variable, bounds in zip(self._defining_variables, self._defining_bounds):
+            for variable, bounds in zip(self._defining_variables, self._defining_bounds, strict=False):
                 eq_on_2.add_summand(variable, 1 / nr_of_defining_variables, time_indices)
                 absolute_maximum += bounds[1]  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
 
@@ -492,7 +498,7 @@ class MultipleSegmentsModel(ElementModel):
         self.element = element
 
         self.outside_segments: Optional[VariableTS] = None
-        
+
         self._as_time_series = as_time_series
         self._can_be_outside_segments = can_be_outside_segments
         self._sample_points = sample_points

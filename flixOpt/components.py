@@ -2,18 +2,18 @@
 This module contains the basic components of the flixOpt framework.
 """
 
-import numpy as np
 import logging
-from typing import Union, Optional, Literal, List, Dict, Tuple, Set
+from typing import Dict, List, Literal, Optional, Set, Tuple, Union
+
+import numpy as np
 
 from . import utils
-from .elements import Flow, _create_time_series
-from .core import Skalar, Numeric, Numeric_TS, TimeSeries
-from .math_modeling import VariableTS, Equation
-from .features import OnOffModel, MultipleSegmentsModel, InvestmentModel
-from .structure import SystemModel, create_equation, create_variable
-from .elements import Component, ComponentModel
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries
+from .elements import Component, ComponentModel, Flow, _create_time_series
+from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
+from .math_modeling import Equation, VariableTS
+from .structure import SystemModel, create_equation, create_variable
 
 logger = logging.getLogger('flixOpt')
 

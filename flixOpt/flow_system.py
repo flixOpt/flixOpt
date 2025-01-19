@@ -2,17 +2,17 @@
 This module contains the FlowSystem class, which is used to collect instances of many other classes by the end User.
 """
 
-import pathlib
-from typing import List, Tuple, Dict, Union, Optional, Literal
 import logging
+import pathlib
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel, get_str_representation
-from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
+from .elements import Bus, Component, Flow
+from .structure import Element, SystemModel, get_str_representation
 
 logger = logging.getLogger('flixOpt')
 

@@ -3,9 +3,9 @@ This module contains the core functionality of the flixOpt framework.
 It provides Datatypes, logging functionality, and some functions to transform data structures.
 """
 
-from typing import Union, Optional, List, Dict, Any
-import logging
 import inspect
+import logging
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 

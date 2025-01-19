@@ -13,20 +13,19 @@ import logging
 import math
 import pathlib
 import timeit
-from typing import List, Dict, Optional, Literal, Union, Any
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 
-from .aggregation import TimeSeriesCollection, AggregationParameters, AggregationModel
-from .core import Numeric, Skalar
-from .structure import SystemModel, copy_and_convert_datatypes
-from .flow_system import FlowSystem
-from .elements import Component
-from .components import Storage
-from .features import InvestmentModel
-from .solvers import Solver
 from . import utils as utils
-
+from .aggregation import AggregationModel, AggregationParameters, TimeSeriesCollection
+from .components import Storage
+from .core import Numeric, Skalar
+from .elements import Component
+from .features import InvestmentModel
+from .flow_system import FlowSystem
+from .solvers import Solver
+from .structure import SystemModel, copy_and_convert_datatypes
 
 logger = logging.getLogger('flixOpt')
 
@@ -84,8 +83,9 @@ class Calculation:
             self._paths["infos"] = path / f'{self.name}_infos.yaml'
 
     def _save_solve_infos(self):
-        import yaml
         import json
+
+        import yaml
 
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
@@ -388,8 +388,9 @@ class SegmentedCalculation(Calculation):
             return all_results
 
     def _save_solve_infos(self):
-        import yaml
         import json
+
+        import yaml
 
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:

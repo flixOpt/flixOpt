@@ -1,10 +1,10 @@
 """
 This script shows how to use the flixOpt framework to model a super minimalistic energy system.
 """
-import flixOpt as fx
-
 import numpy as np
 from rich.pretty import pprint
+
+import flixOpt as fx
 
 if __name__ == '__main__':
 

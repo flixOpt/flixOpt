@@ -6,14 +6,13 @@ It's meant to be used in results.py, but is designed to be used by the end user 
 
 import logging
 import pathlib
-from typing import Literal, Tuple, Union, Optional, List
-
-import pandas as pd
-import numpy as np
+from typing import List, Literal, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go
+import numpy as np
+import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import plotly.offline
 
 logger = logging.getLogger('flixOpt')

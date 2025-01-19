@@ -1,17 +1,17 @@
-import unittest
-import os
 import datetime
+import os
+import unittest
 from typing import Literal
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 
 import flixOpt.results
 from flixOpt import *
-from flixOpt.components import Transmission
-from flixOpt.linear_converters import Boiler, CHP
 from flixOpt.aggregation import AggregationParameters
+from flixOpt.components import Transmission
+from flixOpt.linear_converters import CHP, Boiler
 
 np.random.seed(45)
 

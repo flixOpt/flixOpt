@@ -1,12 +1,12 @@
+import logging
 import os
 import types
-from typing import Optional, Literal, Annotated
-import logging
-from dataclasses import dataclass, is_dataclass, fields
+from dataclasses import dataclass, fields, is_dataclass
+from typing import Annotated, Literal, Optional
 
 import yaml
-from rich.logging import RichHandler
 from rich.console import Console
+from rich.logging import RichHandler
 
 logger = logging.getLogger('flixOpt')
 

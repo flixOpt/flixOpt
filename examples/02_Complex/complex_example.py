@@ -4,6 +4,7 @@ This script shows how to use the flixOpt framework to model a more complex energ
 import numpy as np
 import pandas as pd
 from rich.pretty import pprint  # Used for pretty printing
+
 import flixOpt as fx
 
 if __name__ == '__main__':

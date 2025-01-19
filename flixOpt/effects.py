@@ -5,16 +5,15 @@ Different Datatypes are used to represent the effects with assigned values by th
 which are then transformed into the internal data structure.
 """
 
-from typing import Dict, Union, Optional, Literal
 import logging
+from typing import Dict, Literal, Optional, Union
 
 import numpy as np
 
-from .math_modeling import Variable, Equation
-from .core import TimeSeries, Skalar, Numeric, Numeric_TS, as_effect_dict
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries, as_effect_dict
 from .features import ShareAllocationModel
+from .math_modeling import Equation, Variable
 from .structure import Element, ElementModel, SystemModel, _create_time_series
-
 
 logger = logging.getLogger('flixOpt')
 

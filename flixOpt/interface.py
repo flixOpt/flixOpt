@@ -4,11 +4,11 @@ These are tightly connected to features.py
 """
 
 import logging
-from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
-from .core import Numeric, Skalar, Numeric_TS
 from .config import CONFIG
-from .structure import Interface, Element
+from .core import Numeric, Numeric_TS, Skalar
+from .structure import Element, Interface
 
 if TYPE_CHECKING:
     from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest

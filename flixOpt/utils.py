@@ -3,7 +3,7 @@ This module contains several utility functions used throughout the flixOpt frame
 """
 
 import logging
-from typing import Union, List, Optional, Dict, Literal, Any
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 

@@ -2,18 +2,26 @@
 This module contains the basic elements of the flixOpt framework.
 """
 
-from typing import List, Tuple, Union, Optional, Dict
 import logging
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .math_modeling import Variable, VariableTS
-from .core import Numeric, Numeric_TS, Skalar
 from .config import CONFIG
-from .interface import InvestParameters, OnOffParameters
-from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
+from .core import Numeric, Numeric_TS, Skalar
 from .effects import EffectValues, effect_values_to_time_series
+from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
+from .interface import InvestParameters, OnOffParameters
+from .math_modeling import Variable, VariableTS
+from .structure import (
+    Element,
+    ElementModel,
+    SystemModel,
+    _create_time_series,
+    copy_and_convert_datatypes,
+    create_equation,
+    create_variable,
+)
 
 logger = logging.getLogger('flixOpt')
 
@@ -161,7 +169,7 @@ class Flow(Element):
                  load_factor_max: Optional[Skalar] = None,
                  previous_flow_rate: Optional[Numeric] = None,
                  meta_data: Optional[Dict] = None):
-        """
+        r"""
         Parameters
         ----------
         label : str
@@ -249,7 +257,7 @@ class Flow(Element):
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
-            
+
         if self.size == CONFIG.modeling.BIG and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
             logger.warning(f'Flow "{self.label}" has no size assigned, but a "fixed_relative_profile". '
                            f'The default size is {CONFIG.modeling.BIG}. As "flow_rate = size * fixed_relative_profile", '

@@ -3,24 +3,24 @@ This module contains the core structure of the flixOpt framework.
 These classes are not directly used by the end user, but are used by other modules.
 """
 
-from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING, Any
-import logging
 import inspect
-from io import StringIO
+import logging
 from datetime import datetime
+from io import StringIO
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 from rich.console import Console
 from rich.pretty import Pretty
 
 from . import utils
-from .math_modeling import MathModel, Variable, Equation, Inequation, VariableTS, Solver
-from .core import TimeSeries, Skalar, Numeric, Numeric_TS, TimeSeriesData
 from .config import CONFIG
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData
+from .math_modeling import Equation, Inequation, MathModel, Solver, Variable, VariableTS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
+    from .elements import BusModel, ComponentModel
     from .flow_system import FlowSystem
-    from .elements import ComponentModel, BusModel
 
 logger = logging.getLogger('flixOpt')
 

@@ -9,8 +9,8 @@ Multiple solvers are supported.
 import logging
 import re
 import timeit
-from typing import List, Dict, Optional, Union, Literal, Any
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 import pyomo.environ as pyo

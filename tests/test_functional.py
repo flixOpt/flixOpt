@@ -19,8 +19,8 @@ Classes group related test cases by their functional focus:
 
 import unittest
 
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 import flixOpt as fx

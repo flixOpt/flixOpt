@@ -3,14 +3,14 @@ This Module contains high-level classes to easily model a FlowSystem.
 """
 
 import logging
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import numpy as np
 
-from .elements import Flow
-from .interface import OnOffParameters
 from .components import LinearConverter
 from .core import Numeric_TS, TimeSeriesData
+from .elements import Flow
+from .interface import OnOffParameters
 
 logger = logging.getLogger('flixOpt')
 

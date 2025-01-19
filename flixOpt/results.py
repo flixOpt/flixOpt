@@ -5,20 +5,19 @@ It leverages the plotting.py module to plot the results.
 The results can also be analyzed without this module, as the results are stored in a widely supported format.
 """
 
-import logging
-import json
-import pathlib
-from typing import Dict, List, Tuple, Literal, Optional, Union
 import datetime
+import json
+import logging
+import pathlib
 import timeit
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
-import yaml
 import numpy as np
 import pandas as pd
 import plotly
+import yaml
 
-from flixOpt import utils
-from flixOpt import plotting
+from flixOpt import plotting, utils
 
 logger = logging.getLogger('flixOpt')
 
@@ -408,7 +407,7 @@ class ComponentResults(ElementResults):
         flow_infos = {flow['label']: flow for flow in self.all_infos['inputs'] + self.all_infos['outputs']}
         flow_results = {flow_info['label']: self.all_results[flow_info['label']] for flow_info in flow_infos.values()}
         flows = [FlowResults(flow_info, flow_result, self.label)
-                 for flow_info, flow_result in zip(flow_infos.values(), flow_results.values())]
+                 for flow_info, flow_result in zip(flow_infos.values(), flow_results.values(), strict=False)]
         inputs = [flow for flow in flows if flow.is_input_in_component]
         outputs = [flow for flow in flows if not flow.is_input_in_component]
         return inputs, outputs

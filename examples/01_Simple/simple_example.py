@@ -3,6 +3,7 @@ THis script shows how to use the flixOpt framework to model a simple energy syst
 """
 import numpy as np
 from rich.pretty import pprint  # Used for pretty printing
+
 import flixOpt as fx
 
 if __name__ == '__main__':

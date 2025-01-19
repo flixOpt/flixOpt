@@ -4,24 +4,28 @@ Through this, aggregating TimeSeriesData is possible.
 """
 
 import copy
-import timeit
-from typing import Optional, List, Dict, Tuple
-import warnings
 import logging
+import timeit
+import warnings
 from collections import Counter
+from typing import Dict, List, Optional, Tuple
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import tsam.timeseriesaggregation as tsam
 
-from .core import Skalar, TimeSeries
+from .components import Storage
+from .core import Skalar, TimeSeries, TimeSeriesData
 from .elements import Component
 from .flow_system import FlowSystem
-from .components import Storage
-from .core import TimeSeriesData
-from .structure import Element, SystemModel, ElementModel, create_variable, create_equation
 from .math_modeling import Equation, Variable, VariableTS
-
+from .structure import (
+    Element,
+    ElementModel,
+    SystemModel,
+    create_equation,
+    create_variable,
+)
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 logger = logging.getLogger('flixOpt')
