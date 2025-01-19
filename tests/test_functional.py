@@ -80,7 +80,8 @@ class BaseTest(unittest.TestCase):
 
     def create_model(self, datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem:
         self.flow_system = fx.FlowSystem(datetime_array)
-        self.buses = [fx.Bus('Fernwärme', excess_penalty_per_flow_hour=None), fx.Bus('Gas', excess_penalty_per_flow_hour=None)]
+        self.buses = {'Fernwärme': fx.Bus('Fernwärme', excess_penalty_per_flow_hour=None),
+                      'Gas': fx.Bus('Gas', excess_penalty_per_flow_hour=None)}
         self.flow_system.add_elements(
                                       fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True))
         data = Data(len(datetime_array))
@@ -100,10 +101,7 @@ class BaseTest(unittest.TestCase):
         return results
 
     def get_element(self, label: str):
-        elements = {element.label_full: element
-                    for element in set(self.flow_system.effect_collection.effects + self.flow_system.components +
-                    list(self.flow_system.all_buses) + self.buses)}
-        return elements[label]
+        return {**self.flow_system.all_elements, **self.buses}[label]
 
     def solver(self):
         return fx.solvers.HighsSolver(mip_gap=self.mip_gap, time_limit_seconds=3600, solver_output_to_console=False)
