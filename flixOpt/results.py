@@ -10,7 +10,7 @@ import json
 import logging
 import pathlib
 import timeit
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -18,6 +18,11 @@ import plotly
 import yaml
 
 from flixOpt import plotting, utils
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
+    import pyvis
 
 logger = logging.getLogger('flixOpt')
 

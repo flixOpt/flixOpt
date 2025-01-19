@@ -175,7 +175,8 @@ class _Constraint:
             self._update_length(summand.length)   # Check Variablen-Länge:
         except ValueError as e:
             raise ValueError(f'Length of Summand with variable "{variable.label}" '
-                             f'does not fit equation "{self.label}": {e}')
+                             f'does not fit equation "{self.label}": {e}'
+                             ) from e
         self.summands.append(summand)
 
     def add_constant(self, value: Numeric) -> None:
@@ -204,7 +205,7 @@ class _Constraint:
         try:
             self._update_length(length)
         except ValueError as e:
-            raise ValueError(f'Length of Constant {value=} does not fit: {e}')
+            raise ValueError(f'Length of Constant {value=} does not fit: {e}') from e
 
     def description(self, at_index: int = 0) -> str:
         raise NotImplementedError('Not implemented for Abstract class <_Constraint>')
@@ -693,6 +694,7 @@ class Solver(ABC):
         self._solver = None
         self._results: Optional[float, str] = None
 
+    @abstractmethod
     def solve(self, modeling_language: 'ModelingLanguage'):
         raise NotImplementedError(' Solving is not possible with this Abstract class')
 

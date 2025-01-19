@@ -4,7 +4,7 @@ This module contains the FlowSystem class, which is used to collect instances of
 
 import logging
 import pathlib
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 
@@ -13,6 +13,9 @@ from .core import TimeSeries
 from .effects import Effect, EffectCollection
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_str_representation
+
+if TYPE_CHECKING:
+    import pyvis
 
 logger = logging.getLogger('flixOpt')
 

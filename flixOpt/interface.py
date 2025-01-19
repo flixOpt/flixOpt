@@ -11,7 +11,7 @@ from .core import Numeric, Numeric_TS, Skalar
 from .structure import Element, Interface
 
 if TYPE_CHECKING:
-    from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
+    from .effects import Effect, EffectTimeSeries, EffectValues, EffectValuesInvest
 
 logger = logging.getLogger('flixOpt')
 

@@ -6,7 +6,7 @@ It's meant to be used in results.py, but is designed to be used by the end user 
 
 import logging
 import pathlib
-from typing import List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Literal, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +14,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.offline
+
+if TYPE_CHECKING:
+    import pyvis
 
 logger = logging.getLogger('flixOpt')
 
@@ -641,7 +644,7 @@ def visualize_network(node_infos: dict,
                      title=node['infos'].replace(')', '\n)'),
                      font={'size': 14})
 
-    for id, edge in edge_infos.items():
+    for edge in edge_infos.values():
         net.add_edge(edge['start'],
                      edge['end'],
                      label=edge['label'],

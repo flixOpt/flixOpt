@@ -467,7 +467,8 @@ class TestModelingTypes(BaseTest):
 
     def calculate(self, modeling_type: Literal["full", "segmented", "aggregated"]):
         doFullCalc, doSegmentedCalc, doAggregatedCalc = modeling_type == "full", modeling_type == "segmented", modeling_type == "aggregated"
-        if not any([doFullCalc, doSegmentedCalc, doAggregatedCalc]): raise Exception("Unknown modeling type")
+        if not any([doFullCalc, doSegmentedCalc, doAggregatedCalc]):
+            raise Exception("Unknown modeling type")
 
         filename = os.path.join(os.path.dirname(__file__), "ressources", "Zeitreihen2020.csv")
         ts_raw = pd.read_csv(filename, index_col=0).sort_index()
