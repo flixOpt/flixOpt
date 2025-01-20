@@ -16,13 +16,15 @@ logger = logging.getLogger('flixOpt')
 
 
 class Boiler(LinearConverter):
-    def __init__(self,
-                 label: str,
-                 eta: Numeric_TS,
-                 Q_fu: Flow,
-                 Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None,
-                 meta_data: Optional[Dict] = None):
+    def __init__(
+        self,
+        label: str,
+        eta: Numeric_TS,
+        Q_fu: Flow,
+        Q_th: Flow,
+        on_off_parameters: OnOffParameters = None,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         constructor for boiler
 
@@ -39,8 +41,14 @@ class Boiler(LinearConverter):
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
-        super().__init__(label, inputs=[Q_fu], outputs=[Q_th], conversion_factors=[{Q_fu: eta, Q_th: 1}],
-                         on_off_parameters=on_off_parameters, meta_data=meta_data)
+        super().__init__(
+            label,
+            inputs=[Q_fu],
+            outputs=[Q_th],
+            conversion_factors=[{Q_fu: eta, Q_th: 1}],
+            on_off_parameters=on_off_parameters,
+            meta_data=meta_data,
+        )
 
         self.eta = eta
         self.Q_fu = Q_fu
@@ -50,13 +58,15 @@ class Boiler(LinearConverter):
 
 
 class Power2Heat(LinearConverter):
-    def __init__(self,
-                 label: str,
-                 eta: Numeric_TS,
-                 P_el: Flow,
-                 Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None,
-                 meta_data: Optional[Dict] = None):
+    def __init__(
+        self,
+        label: str,
+        eta: Numeric_TS,
+        P_el: Flow,
+        Q_th: Flow,
+        on_off_parameters: OnOffParameters = None,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         Parameters
         ----------
@@ -72,8 +82,14 @@ class Power2Heat(LinearConverter):
             used to store more information about the element. Is not used internally, but saved in the results
 
         """
-        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: eta, Q_th: 1}],
-                         on_off_parameters=on_off_parameters, meta_data=meta_data)
+        super().__init__(
+            label,
+            inputs=[P_el],
+            outputs=[Q_th],
+            conversion_factors=[{P_el: eta, Q_th: 1}],
+            on_off_parameters=on_off_parameters,
+            meta_data=meta_data,
+        )
 
         self.eta = eta
         self.P_el = P_el
@@ -83,13 +99,15 @@ class Power2Heat(LinearConverter):
 
 
 class HeatPump(LinearConverter):
-    def __init__(self,
-                 label: str,
-                 COP: Numeric_TS,
-                 P_el: Flow,
-                 Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None,
-                 meta_data: Optional[Dict] = None):
+    def __init__(
+        self,
+        label: str,
+        COP: Numeric_TS,
+        P_el: Flow,
+        Q_th: Flow,
+        on_off_parameters: OnOffParameters = None,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         Parameters
         ----------
@@ -104,8 +122,14 @@ class HeatPump(LinearConverter):
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
-        super().__init__(label, inputs=[P_el], outputs=[Q_th], conversion_factors=[{P_el: COP, Q_th: 1}],
-                         on_off_parameters=on_off_parameters, meta_data=meta_data)
+        super().__init__(
+            label,
+            inputs=[P_el],
+            outputs=[Q_th],
+            conversion_factors=[{P_el: COP, Q_th: 1}],
+            on_off_parameters=on_off_parameters,
+            meta_data=meta_data,
+        )
 
         self.COP = COP
         self.P_el = P_el
@@ -115,13 +139,15 @@ class HeatPump(LinearConverter):
 
 
 class CoolingTower(LinearConverter):
-    def __init__(self,
-                 label: str,
-                 specific_electricity_demand: Numeric_TS,
-                 P_el:Flow,
-                 Q_th:Flow,
-                 on_off_parameters: OnOffParameters = None,
-                 meta_data: Optional[Dict] = None):
+    def __init__(
+        self,
+        label: str,
+        specific_electricity_demand: Numeric_TS,
+        P_el: Flow,
+        Q_th: Flow,
+        on_off_parameters: OnOffParameters = None,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         Parameters
         ----------
@@ -137,27 +163,40 @@ class CoolingTower(LinearConverter):
             used to store more information about the element. Is not used internally, but saved in the results
 
         """
-        super().__init__(label, inputs=[P_el, Q_th], outputs=[],
-                         conversion_factors=[{P_el: 1, Q_th: -specific_electricity_demand}],
-                         on_off_parameters=on_off_parameters, meta_data=meta_data)
+        super().__init__(
+            label,
+            inputs=[P_el, Q_th],
+            outputs=[],
+            conversion_factors=[{P_el: 1, Q_th: -specific_electricity_demand}],
+            on_off_parameters=on_off_parameters,
+            meta_data=meta_data,
+        )
 
         self.specific_electricity_demand = specific_electricity_demand
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(specific_electricity_demand, 'specific_electricity_demand', self.label_full, 0, 1)
+        check_bounds(
+            specific_electricity_demand,
+            'specific_electricity_demand',
+            self.label_full,
+            0,
+            1,
+        )
 
 
 class CHP(LinearConverter):
-    def __init__(self,
-                 label: str,
-                 eta_th: Numeric_TS,
-                 eta_el: Numeric_TS,
-                 Q_fu: Flow,
-                 P_el: Flow,
-                 Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None,
-                 meta_data: Optional[Dict] = None):
+    def __init__(
+        self,
+        label: str,
+        eta_th: Numeric_TS,
+        eta_el: Numeric_TS,
+        Q_fu: Flow,
+        P_el: Flow,
+        Q_th: Flow,
+        on_off_parameters: OnOffParameters = None,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         constructor of cCHP
 
@@ -181,8 +220,14 @@ class CHP(LinearConverter):
         heat = {Q_fu: eta_th, Q_th: 1}
         electricity = {Q_fu: eta_el, P_el: 1}
 
-        super().__init__(label, inputs=[Q_fu], outputs=[Q_th, P_el], conversion_factors=[heat, electricity],
-                         on_off_parameters=on_off_parameters, meta_data=meta_data)
+        super().__init__(
+            label,
+            inputs=[Q_fu],
+            outputs=[Q_th, P_el],
+            conversion_factors=[heat, electricity],
+            on_off_parameters=on_off_parameters,
+            meta_data=meta_data,
+        )
 
         # args to attributes:
         self.eta_th = eta_th
@@ -191,20 +236,22 @@ class CHP(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(eta_th, 'eta_th', self.label_full,0 , 1)
-        check_bounds(eta_el, 'eta_el', self.label_full, 0 , 1)
-        check_bounds(eta_el+eta_th, 'eta_th+eta_el', self.label_full, 0 , 1)
+        check_bounds(eta_th, 'eta_th', self.label_full, 0, 1)
+        check_bounds(eta_el, 'eta_el', self.label_full, 0, 1)
+        check_bounds(eta_el + eta_th, 'eta_th+eta_el', self.label_full, 0, 1)
 
 
 class HeatPumpWithSource(LinearConverter):
-    def __init__(self,
-                 label: str,
-                 COP: Numeric_TS,
-                 P_el: Flow,
-                 Q_ab: Flow,
-                 Q_th: Flow,
-                 on_off_parameters: OnOffParameters = None,
-                 meta_data: Optional[Dict] = None):
+    def __init__(
+        self,
+        label: str,
+        COP: Numeric_TS,
+        P_el: Flow,
+        Q_ab: Flow,
+        Q_th: Flow,
+        on_off_parameters: OnOffParameters = None,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         Parameters
         ----------
@@ -226,9 +273,14 @@ class HeatPumpWithSource(LinearConverter):
         electricity = {P_el: COP, Q_th: 1}
         heat_source = {Q_ab: COP / (COP - 1), Q_th: 1}
 
-        super().__init__(label, inputs=[P_el, Q_ab], outputs=[Q_th],
-                         conversion_factors=[electricity, heat_source],
-                         on_off_parameters=on_off_parameters, meta_data=meta_data)
+        super().__init__(
+            label,
+            inputs=[P_el, Q_ab],
+            outputs=[Q_th],
+            conversion_factors=[electricity, heat_source],
+            on_off_parameters=on_off_parameters,
+            meta_data=meta_data,
+        )
 
         self.COP = COP
         self.P_el = P_el
@@ -238,11 +290,13 @@ class HeatPumpWithSource(LinearConverter):
         check_bounds(COP, 'eta_th', self.label_full, 1, 20)
 
 
-def check_bounds(value: Numeric_TS,
-                 parameter_label: str,
-                 element_label: str,
-                 lower_bound: Numeric_TS,
-                 upper_bound: Numeric_TS):
+def check_bounds(
+    value: Numeric_TS,
+    parameter_label: str,
+    element_label: str,
+    lower_bound: Numeric_TS,
+    upper_bound: Numeric_TS,
+):
     """
     Check if the value is within the bounds. The bounds are exclusive.
     If not, log a warning.
@@ -270,8 +324,12 @@ def check_bounds(value: Numeric_TS,
     if isinstance(upper_bound, TimeSeriesData):
         upper_bound = upper_bound.data
     if not np.all(value > lower_bound):
-        logger.warning(f"'{element_label}.{parameter_label}' is equal or below the common lower bound {lower_bound}."
-                       f"    {parameter_label}.min={np.min(value)};    {parameter_label}={value}")
+        logger.warning(
+            f"'{element_label}.{parameter_label}' is equal or below the common lower bound {lower_bound}."
+            f'    {parameter_label}.min={np.min(value)};    {parameter_label}={value}'
+        )
     if not np.all(value < upper_bound):
-        logger.warning(f"'{element_label}.{parameter_label}' exceeds or matches the common upper bound {upper_bound}."
-                       f"    {parameter_label}.max={np.max(value)};    {parameter_label}={value}")
+        logger.warning(
+            f"'{element_label}.{parameter_label}' exceeds or matches the common upper bound {upper_bound}."
+            f'    {parameter_label}.max={np.max(value)};    {parameter_label}={value}'
+        )

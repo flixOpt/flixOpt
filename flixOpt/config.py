@@ -34,7 +34,7 @@ def dataclass_from_dict_with_validation(cls, data: dict):
     Recursively initialize a dataclass from a dictionary.
     """
     if not is_dataclass(cls):
-        raise TypeError(f"{cls} must be a dataclass")
+        raise TypeError(f'{cls} must be a dataclass')
 
     # Build kwargs for the dataclass constructor
     kwargs = {}
@@ -63,7 +63,10 @@ class ValidatedConfig:
 
 @dataclass
 class LoggingConfig(ValidatedConfig):
-    level: Annotated[Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], lambda level: level in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']]
+    level: Annotated[
+        Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+        lambda level: level in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+    ]
     file: Annotated[str, lambda file: isinstance(file, str)]
     rich: Annotated[bool, lambda rich: isinstance(rich, bool)]
 
@@ -86,6 +89,7 @@ class CONFIG:
     """
     A configuration class that stores global configuration values as class attributes.
     """
+
     config_name: str = None
     modeling: ModelingConfig = None
     logging: LoggingConfig = None
@@ -96,15 +100,15 @@ class CONFIG:
         Initialize configuration using defaults or user-specified file.
         """
         # Default config file
-        default_config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+        default_config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
 
         if user_config_file is None:
-            with open(default_config_path, "r") as file:
+            with open(default_config_path, 'r') as file:
                 new_config = yaml.safe_load(file)
         elif not os.path.exists(user_config_file):
-            raise FileNotFoundError(f"Config file not found: {user_config_file}")
+            raise FileNotFoundError(f'Config file not found: {user_config_file}')
         else:
-            with open(user_config_file, "r") as user_file:
+            with open(user_config_file, 'r') as user_file:
                 new_config = yaml.safe_load(user_file)
 
         # Convert the merged config to ConfigSchema
@@ -115,9 +119,11 @@ class CONFIG:
         cls.modeling = config_data.modeling
         cls.config_name = config_data.config_name
 
-        setup_logging(default_level=cls.logging.level,
-                      log_file=cls.logging.file,
-                      use_rich_handler=cls.logging.rich)
+        setup_logging(
+            default_level=cls.logging.level,
+            log_file=cls.logging.file,
+            use_rich_handler=cls.logging.rich,
+        )
 
     @classmethod
     def to_dict(cls):
@@ -128,7 +134,11 @@ class CONFIG:
         config_dict = {}
         for attribute, value in cls.__dict__.items():
             # Only consider attributes (not methods, etc.)
-            if not attribute.startswith("_") and not isinstance(value, (types.FunctionType, types.MethodType)) and not isinstance(value, classmethod):
+            if (
+                not attribute.startswith('_')
+                and not isinstance(value, (types.FunctionType, types.MethodType))
+                and not isinstance(value, classmethod)
+            ):
                 if is_dataclass(value):
                     config_dict[attribute] = value.__dict__
                 else:  # Assuming only basic types here!
@@ -138,19 +148,18 @@ class CONFIG:
 
 
 class MultilineFormater(logging.Formatter):
-
     def format(self, record):
         message_lines = record.getMessage().split('\n')
 
         # Prepare the log prefix (timestamp + log level)
         timestamp = self.formatTime(record, self.datefmt)
         log_level = record.levelname.ljust(8)  # Align log levels for consistency
-        log_prefix = f"{timestamp} | {log_level} |"
+        log_prefix = f'{timestamp} | {log_level} |'
 
         # Format all lines
         first_line = [f'{log_prefix} {message_lines[0]}']
         if len(message_lines) > 1:
-            lines = first_line + [f"{log_prefix} {line}" for line in message_lines[1:]]
+            lines = first_line + [f'{log_prefix} {line}' for line in message_lines[1:]]
         else:
             lines = first_line
 
@@ -175,13 +184,12 @@ class ColoredMultilineFormater(MultilineFormater):
         # Create a formatted message for each line separately
         formatted_lines = []
         for line in lines:
-            formatted_lines.append(f"{log_color}{line}{self.RESET}")
+            formatted_lines.append(f'{log_color}{line}{self.RESET}')
 
         return '\n'.join(formatted_lines)
 
 
-def _get_logging_handler(log_file: Optional[str] = None,
-                         use_rich_handler: bool = False) -> logging.Handler:
+def _get_logging_handler(log_file: Optional[str] = None, use_rich_handler: bool = False) -> logging.Handler:
     """Returns a logging handler for the given log file."""
     if use_rich_handler and log_file is None:
         # RichHandler for console output
@@ -191,32 +199,38 @@ def _get_logging_handler(log_file: Optional[str] = None,
             rich_tracebacks=True,
             omit_repeated_times=True,
             show_path=False,
-            log_time_format="%Y-%m-%d %H:%M:%S",
+            log_time_format='%Y-%m-%d %H:%M:%S',
         )
-        rich_handler.setFormatter(logging.Formatter("%(message)s"))  # Simplified formatting
+        rich_handler.setFormatter(logging.Formatter('%(message)s'))  # Simplified formatting
 
         return rich_handler
     elif log_file is None:
         # Regular Logger with custom formating enabled
         file_handler = logging.StreamHandler()
-        file_handler.setFormatter(ColoredMultilineFormater(
-            fmt="%(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        ))
+        file_handler.setFormatter(
+            ColoredMultilineFormater(
+                fmt='%(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S',
+            )
+        )
         return file_handler
     else:
         # FileHandler for file output
         file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(MultilineFormater(
-            fmt="%(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        ))
+        file_handler.setFormatter(
+            MultilineFormater(
+                fmt='%(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S',
+            )
+        )
         return file_handler
 
 
-def setup_logging(default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO',
-                  log_file: Optional[str] = 'flixOpt.log',
-                  use_rich_handler: bool = False):
+def setup_logging(
+    default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = 'INFO',
+    log_file: Optional[str] = 'flixOpt.log',
+    use_rich_handler: bool = False,
+):
     """Setup logging configuration"""
     logger = logging.getLogger('flixOpt')  # Use a specific logger name for your package
     logger.setLevel(get_logging_level_by_name(default_level))
@@ -231,7 +245,9 @@ def setup_logging(default_level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'C
     return logger
 
 
-def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']) -> int:
+def get_logging_level_by_name(
+    level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+) -> int:
     possible_logging_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
     if level_name.upper() not in possible_logging_levels:
         raise ValueError(f'Invalid logging level {level_name}')
@@ -240,7 +256,9 @@ def get_logging_level_by_name(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'E
         return logging_level
 
 
-def change_logging_level(level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']):
+def change_logging_level(
+    level_name: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+):
     logger = logging.getLogger('flixOpt')
     logging_level = get_logging_level_by_name(level_name)
     logger.setLevel(logging_level)

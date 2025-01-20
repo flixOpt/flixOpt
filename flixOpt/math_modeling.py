@@ -25,14 +25,17 @@ class Variable:
     """
     Variable class
     """
-    def __init__(self,
-                 label: str,
-                 length: int,
-                 label_short: Optional[str] = None,
-                 is_binary: bool = False,
-                 fixed_value: Optional[Numeric] = None,
-                 lower_bound: Optional[Numeric] = None,
-                 upper_bound: Optional[Numeric] = None):
+
+    def __init__(
+        self,
+        label: str,
+        length: int,
+        label_short: Optional[str] = None,
+        is_binary: bool = False,
+        fixed_value: Optional[Numeric] = None,
+        lower_bound: Optional[Numeric] = None,
+        upper_bound: Optional[Numeric] = None,
+    ):
         """
         label: full label of the variable
         label_short: short label of the variable
@@ -52,12 +55,14 @@ class Variable:
 
         self.result = None  # Ergebnis-Speicher
 
-        if self.fixed_value is not None:   # Check if value is within bounds, element-wise
+        if self.fixed_value is not None:  # Check if value is within bounds, element-wise
             above = self.lower_bound is None or np.all(np.asarray(self.fixed_value) >= np.asarray(self.lower_bound))
             below = self.upper_bound is None or np.all(np.asarray(self.fixed_value) <= np.asarray(self.upper_bound))
             if not (above and below):
-                raise Exception(f'Fixed value of Variable {self.label} not inside set bounds:'
-                                f'\n{self.fixed_value=};\n{self.lower_bound=};\n{self.upper_bound=}')
+                raise Exception(
+                    f'Fixed value of Variable {self.label} not inside set bounds:'
+                    f'\n{self.fixed_value=};\n{self.lower_bound=};\n{self.upper_bound=}'
+                )
 
             # Mark as fixed
             self.fixed = True
@@ -71,8 +76,10 @@ class Variable:
         if self.fixed:
             description = f'{header:<40}: fixed={str(self.fixed_value)[:max_length_ts]:<10}'
         else:
-            description = (f'{header:<40}: min={str(self.lower_bound)[:max_length_ts]:<10}, '
-                           f'max={str(self.upper_bound)[:max_length_ts]:<10}')
+            description = (
+                f'{header:<40}: min={str(self.lower_bound)[:max_length_ts]:<10}, '
+                f'max={str(self.upper_bound)[:max_length_ts]:<10}'
+            )
         return description
 
     def reset_result(self):
@@ -83,18 +90,28 @@ class VariableTS(Variable):
     """
     Timeseries-Variable, optionally with previous_values. class for Variables that are related by time
     """
-    def __init__(self,
-                 label: str,
-                 length: int,
-                 label_short: Optional[str] = None,
-                 is_binary: bool = False,
-                 fixed_value: Optional[Numeric] = None,
-                 lower_bound: Optional[Numeric] = None,
-                 upper_bound: Optional[Numeric] = None,
-                 previous_values: Optional[Numeric] = None):
+
+    def __init__(
+        self,
+        label: str,
+        length: int,
+        label_short: Optional[str] = None,
+        is_binary: bool = False,
+        fixed_value: Optional[Numeric] = None,
+        lower_bound: Optional[Numeric] = None,
+        upper_bound: Optional[Numeric] = None,
+        previous_values: Optional[Numeric] = None,
+    ):
         assert length > 1, 'length is one, that seems not right for VariableTS'
-        super().__init__(label, length, label_short, is_binary=is_binary, fixed_value=fixed_value,
-                         lower_bound=lower_bound, upper_bound=upper_bound)
+        super().__init__(
+            label,
+            length,
+            label_short,
+            is_binary=is_binary,
+            fixed_value=fixed_value,
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
+        )
         self.previous_values = previous_values
 
 
@@ -103,9 +120,8 @@ class _Constraint:
     Abstract Class for Constraints. Use Child classes!
 
     """
-    def __init__(self,
-                 label: str,
-                 label_short: Optional[str] = None):
+
+    def __init__(self, label: str, label_short: Optional[str] = None):
         """
         Equation of the form: ∑(<summands>) = <constant>        type: 'eq'
         Equation of the form: ∑(<summands>) <= <constant>       type: 'ineq'
@@ -126,11 +142,13 @@ class _Constraint:
 
         logger.debug(f'Equation created: {self.label}')
 
-    def add_summand(self,
-                    variable: Variable,
-                    factor: Numeric,
-                    indices_of_variable: Optional[Union[int, np.ndarray, range, List[int]]] = None,
-                    as_sum: bool = False) -> None:
+    def add_summand(
+        self,
+        variable: Variable,
+        factor: Numeric,
+        indices_of_variable: Optional[Union[int, np.ndarray, range, List[int]]] = None,
+        as_sum: bool = False,
+    ) -> None:
         """
         Adds a summand to the left side of the equation.
 
@@ -163,7 +181,7 @@ class _Constraint:
         if variable is None and as_sum:
             raise ValueError(f'Error in Equation "{self.label}": Variable can not be None and be summed up!')
 
-        if np.isscalar(indices_of_variable):   # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
+        if np.isscalar(indices_of_variable):  # Wenn nur ein Wert, dann Liste mit einem Eintrag drausmachen:
             indices_of_variable = [indices_of_variable]
 
         if as_sum:
@@ -172,11 +190,11 @@ class _Constraint:
             summand = Summand(variable, factor, indices=indices_of_variable)
 
         try:
-            self._update_length(summand.length)   # Check Variablen-Länge:
+            self._update_length(summand.length)  # Check Variablen-Länge:
         except ValueError as e:
-            raise ValueError(f'Length of Summand with variable "{variable.label}" '
-                             f'does not fit equation "{self.label}": {e}'
-                             ) from e
+            raise ValueError(
+                f'Length of Summand with variable "{variable.label}" does not fit equation "{self.label}": {e}'
+            ) from e
         self.summands.append(summand)
 
     def add_constant(self, value: Numeric) -> None:
@@ -199,7 +217,7 @@ class _Constraint:
 
         """
         self.constant = np.add(self.constant, value)  # Adding to current constant
-        self.parts_of_constant.append(value)   # Adding to parts of constants
+        self.parts_of_constant.append(value)  # Adding to parts of constants
 
         length = 1 if np.isscalar(self.constant) else len(self.constant)
         try:
@@ -219,8 +237,10 @@ class _Constraint:
         elif new_length == 1 or new_length == self.length:  # Length 1 is always possible
             pass
         else:
-            raise ValueError(f'The length of the new element {new_length=} doesnt match the existing '
-                             f'length of the Equation {self.length=}!')
+            raise ValueError(
+                f'The length of the new element {new_length=} doesnt match the existing '
+                f'length of the Equation {self.length=}!'
+            )
 
     @property
     def constant_vector(self) -> Numeric:
@@ -241,6 +261,7 @@ class Equation(_Constraint):
     is_objective : bool, optional
         Indicates if this equation is the objective of the model (default is False).
     """
+
     def __init__(self, label, label_short=None, is_objective=False):
         super().__init__(label, label_short)
         self.is_objective = is_objective
@@ -252,7 +273,7 @@ class Equation(_Constraint):
         if self.is_objective == 'objective':
             name, index_str = 'OBJ', ''
         else:
-            name, index_str = f'EQ {self.label}', f'[{equation_nr+1}/{self.length}]'
+            name, index_str = f'EQ {self.label}', f'[{equation_nr + 1}/{self.length}]'
 
         # Summands:
         summand_strings = [summand.description(at_index) for summand in self.summands]
@@ -262,7 +283,7 @@ class Equation(_Constraint):
 
         # String formating
         header_width = 30
-        header = f"{name:<{header_width-len(index_str)-1}} {index_str}"
+        header = f'{name:<{header_width - len(index_str) - 1}} {index_str}'
         return f'{header:<{header_width}}: {constant:>8} = {all_summands_string}'
 
 
@@ -293,7 +314,7 @@ class Inequation(_Constraint):
 
         # String formating
         header_width = 30
-        header = f"{name:<{header_width - len(index_str) - 1}} {index_str}"
+        header = f'{name:<{header_width - len(index_str) - 1}} {index_str}'
         return f'{header:<{header_width}}: {constant:>8} >= {all_summands_string}'
 
 
@@ -310,24 +331,27 @@ class Summand:
     indices : int, np.ndarray, range, List[int], optional
         Specifies which indices of the variable to use. If None, all indices of the variable are used.
     """
-    def __init__(self,
-                 variable: Variable,
-                 factor: Numeric,
-                 indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
+
+    def __init__(
+        self,
+        variable: Variable,
+        factor: Numeric,
+        indices: Optional[Union[int, np.ndarray, range, List[int]]] = None,
+    ):  # indices_of_variable default : alle
         self.variable = variable
         self.factor = factor
-        self.indices = indices if indices is not None else variable.indices    # wenn nicht definiert, dann alle Indexe
+        self.indices = indices if indices is not None else variable.indices  # wenn nicht definiert, dann alle Indexe
 
-        self.length = self._check_length()   # Länge ermitteln:
+        self.length = self._check_length()  # Länge ermitteln:
 
-        self.factor_vec = utils.as_vector(factor, self.length)   # Faktor als Vektor:
+        self.factor_vec = utils.as_vector(factor, self.length)  # Faktor als Vektor:
 
     def description(self, at_index=0):
         i = 0 if self.length == 1 else at_index
         index = self.indices[i]
         factor = self.factor_vec[i]
-        factor_str = f"{factor:.6}" if isinstance(factor, (float, np.floating)) else str(factor)
-        return f"{factor_str} * {self.variable.label}[{index}]"
+        factor_str = f'{factor:.6}' if isinstance(factor, (float, np.floating)) else str(factor)
+        return f'{factor_str} * {self.variable.label}[{index}]'
 
     def _check_length(self):
         """
@@ -354,8 +378,10 @@ class Summand:
         elif length_of_indices == 1:
             return length_of_factor
         else:
-            raise Exception(f'Variable {self.variable.label} (length={length_of_indices}) und '
-                            f'Faktor (length={length_of_factor}) müssen gleiche Länge haben oder Skalar sein')
+            raise Exception(
+                f'Variable {self.variable.label} (length={length_of_indices}) und '
+                f'Faktor (length={length_of_factor}) müssen gleiche Länge haben oder Skalar sein'
+            )
 
 
 class SumOfSummand(Summand):
@@ -371,19 +397,22 @@ class SumOfSummand(Summand):
     indices : int, np.ndarray, range, List[int], optional
         Specifies which indices of the variable to use for the sum. If None, all indices are summed.
     """
-    def __init__(self,
-                 variable: Variable,
-                 factor: Numeric,
-                 indices: Optional[Union[int, np.ndarray, range, List[int]]] = None):  # indices_of_variable default : alle
+
+    def __init__(
+        self,
+        variable: Variable,
+        factor: Numeric,
+        indices: Optional[Union[int, np.ndarray, range, List[int]]] = None,
+    ):  # indices_of_variable default : alle
         super().__init__(variable, factor, indices)
         self.length = 1
 
     def description(self, at_index=0):
         index = self.indices[at_index]
         factor = self.factor_vec[0]
-        factor_str = str(factor) if isinstance(factor, int) else f"{factor:.6}"
-        single_summand_str = f"{factor_str} * {self.variable.label}[{index}]"
-        return f"∑({('..+' if index > 0 else '')}{single_summand_str}{('+..' if index < self.variable.length else '')})"
+        factor_str = str(factor) if isinstance(factor, int) else f'{factor:.6}'
+        single_summand_str = f'{factor_str} * {self.variable.label}[{index}]'
+        return f'∑({("..+" if index > 0 else "")}{single_summand_str}{("+.." if index < self.variable.length else "")})'
 
 
 class MathModel:
@@ -449,9 +478,7 @@ class MathModel:
         Returns a dictionary of variable results after solving.
     """
 
-    def __init__(self,
-                 label: str,
-                 modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'):
+    def __init__(self, label: str, modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo'):
         self._infos = {}
         self.label = label
         self.modeling_language: str = modeling_language
@@ -481,9 +508,11 @@ class MathModel:
                 raise Exception(f'{arg} cant be added this way!')
 
     def describe_size(self) -> str:
-        return (f'No. of Equations   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
-                f'No. of Inequations (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
-                f'No. of Variables   (single): {self.nr_of_variables} ({self.nr_of_single_variables})')
+        return (
+            f'No. of Equations   (single): {self.nr_of_equations} ({self.nr_of_single_equations})\n'
+            f'No. of Inequations (single): {self.nr_of_inequations} ({self.nr_of_single_inequations})\n'
+            f'No. of Variables   (single): {self.nr_of_variables} ({self.nr_of_single_variables})'
+        )
 
     def translate_to_modeling_language(self) -> None:
         t_start = timeit.default_timer()
@@ -507,17 +536,19 @@ class MathModel:
 
     @property
     def infos(self) -> Dict:
-        return {'Solver': repr(self.solver),
-                'Model Size': {
-                    'No. of Eqs.': self.nr_of_equations,
-                    'No. of Eqs. (single)': self.nr_of_single_equations,
-                    'No. of Ineqs.': self.nr_of_inequations,
-                    'No. of Ineqs. (single)': self.nr_of_single_inequations,
-                    'No. of Vars.': self.nr_of_variables,
-                    'No. of Vars. (single)': self.nr_of_single_variables,
-                    'No. of Vars. (TS)': len(self.ts_variables),
-                },
-                'Solver Log': self.solver.log.infos if isinstance(self.solver.log, SolverLog) else self.solver.log}
+        return {
+            'Solver': repr(self.solver),
+            'Model Size': {
+                'No. of Eqs.': self.nr_of_equations,
+                'No. of Eqs. (single)': self.nr_of_single_equations,
+                'No. of Ineqs.': self.nr_of_inequations,
+                'No. of Ineqs. (single)': self.nr_of_single_inequations,
+                'No. of Vars.': self.nr_of_variables,
+                'No. of Vars. (single)': self.nr_of_single_variables,
+                'No. of Vars. (TS)': len(self.ts_variables),
+            },
+            'Solver Log': self.solver.log.infos if isinstance(self.solver.log, SolverLog) else self.solver.log,
+        }
 
     @property
     def variables(self) -> List[Variable]:
@@ -582,6 +613,7 @@ class SolverLog:
         presolved_integer (Optional[int]): Number of integer variables after presolving.
         presolved_binary (Optional[int]): Number of binary variables after presolving.
     """
+
     def __init__(self, solver_name: str, filename: str):
         with open(filename, 'r') as file:
             self.log = file.read()
@@ -613,7 +645,6 @@ class SolverLog:
     # Suche infos aus log:
     def parse_infos(self):
         if self.solver_name == 'gurobi':
-
             # string-Schnipsel 1:
             """
             Optimize a model with 285 rows, 292 columns and 878 nonzeros
@@ -628,9 +659,11 @@ class SolverLog:
             Variable types: 53 continuous, 67 integer (67 binary)
             """
             # string: Presolved: 131 rows, 120 columns, 339 nonzeros\n
-            match = re.search(r'Presolved: (\d+) rows, (\d+) columns, (\d+) nonzeros\n'
-                              r'Variable types: (\d+) continuous, (\d+) integer \((\d+) binary\)',
-                              self.log)
+            match = re.search(
+                r'Presolved: (\d+) rows, (\d+) columns, (\d+) nonzeros\n'
+                r'Variable types: (\d+) continuous, (\d+) integer \((\d+) binary\)',
+                self.log,
+            )
             if match:
                 # string: Presolved: 131 rows, 120 columns, 339 nonzeros\n
                 self.presolved_rows = int(match.group(1))
@@ -642,16 +675,21 @@ class SolverLog:
                 self.presolved_binary = int(match.group(6))
 
         elif self.solver_name == 'cbc':
-
             # string: Presolve 1623 (-1079) rows, 1430 (-1078) columns and 4296 (-3306) elements
-            match = re.search(r'Presolve (\d+) \((-?\d+)\) rows, (\d+) \((-?\d+)\) columns and (\d+)', self.log)
+            match = re.search(
+                r'Presolve (\d+) \((-?\d+)\) rows, (\d+) \((-?\d+)\) columns and (\d+)',
+                self.log,
+            )
             if match is not None:
                 self.presolved_rows = int(match.group(1))
                 self.presolved_cols = int(match.group(3))
                 self.presolved_nonzeros = int(match.group(5))
 
             # string: Presolved problem has 862 integers (862 of which binary)
-            match = re.search(r'Presolved problem has (\d+) integers \((\d+) of which binary\)', self.log)
+            match = re.search(
+                r'Presolved problem has (\d+) integers \((\d+) of which binary\)',
+                self.log,
+            )
             if match is not None:
                 self.presolved_integer = int(match.group(1))
                 self.presolved_binary = int(match.group(2))
@@ -677,11 +715,13 @@ class Solver(ABC):
         best_bound (Optional[float]): Best bound from the solver.
         termination_message (Optional[str]): Solver's termination message.
     """
-    def __init__(self,
-                 mip_gap: float,
-                 solver_output_to_console: bool,
-                 logfile_name: str,
-                 ):
+
+    def __init__(
+        self,
+        mip_gap: float,
+        solver_output_to_console: bool,
+        logfile_name: str,
+    ):
         self.mip_gap = mip_gap
         self.solver_output_to_console = solver_output_to_console
         self.logfile_name = logfile_name
@@ -699,13 +739,15 @@ class Solver(ABC):
         raise NotImplementedError(' Solving is not possible with this Abstract class')
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}("
-                f"mip_gap={self.mip_gap}, "
-                f"solver_output_to_console={self.solver_output_to_console}, "
-                f"logfile_name='{self.logfile_name}', "
-                f"objective={self.objective!r}, "
-                f"best_bound={self.best_bound!r}, "
-                f"termination_message={self.termination_message!r})")
+        return (
+            f'{self.__class__.__name__}('
+            f'mip_gap={self.mip_gap}, '
+            f'solver_output_to_console={self.solver_output_to_console}, '
+            f"logfile_name='{self.logfile_name}', "
+            f'objective={self.objective!r}, '
+            f'best_bound={self.best_bound!r}, '
+            f'termination_message={self.termination_message!r})'
+        )
 
 
 class GurobiSolver(Solver):
@@ -717,12 +759,14 @@ class GurobiSolver(Solver):
         time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
         best solution, ignoring the mip_gap.
     """
-    def __init__(self,
-                 mip_gap: float = 0.01,
-                 time_limit_seconds: int = 300,
-                 logfile_name: str = 'gurobi.log',
-                 solver_output_to_console: bool = True,
-                 ):
+
+    def __init__(
+        self,
+        mip_gap: float = 0.01,
+        time_limit_seconds: int = 300,
+        logfile_name: str = 'gurobi.log',
+        solver_output_to_console: bool = True,
+    ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
 
@@ -730,8 +774,11 @@ class GurobiSolver(Solver):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyo.SolverFactory('gurobi')
             self._results = self._solver.solve(
-                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
-                options={"mipgap": self.mip_gap, "TimeLimit": self.time_limit_seconds}
+                modeling_language.model,
+                tee=self.solver_output_to_console,
+                keepfiles=True,
+                logfile=self.logfile_name,
+                options={'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds},
             )
 
             self.objective = modeling_language.model.objective.expr()
@@ -739,10 +786,15 @@ class GurobiSolver(Solver):
             self.best_bound = self._results.problem.lower_bound
 
             from pyomo.opt import SolverStatus, TerminationCondition
-            if not (self._results.solver.status == SolverStatus.ok and
-                    self._results.solver.termination_condition == TerminationCondition.optimal):
-                logger.warning(f'Solver ended with status {self._results.solver.status} and '
-                               f'termination condition {self._results.solver.termination_condition}')
+
+            if not (
+                self._results.solver.status == SolverStatus.ok
+                and self._results.solver.termination_condition == TerminationCondition.optimal
+            ):
+                logger.warning(
+                    f'Solver ended with status {self._results.solver.status} and '
+                    f'termination condition {self._results.solver.termination_condition}'
+                )
             try:
                 self.log = SolverLog('gurobi', self.logfile_name)
             except Exception as e:
@@ -751,11 +803,14 @@ class GurobiSolver(Solver):
 
             try:
                 import gurobi_logtools
+
                 self.log = gurobi_logtools.get_dataframe([str(self.logfile_name)]).T.to_dict()[0]
             except ImportError:
-                logger.info('Evaluationg the gurobi log after the solve was not possible, due to a missing dependency '
-                            '"gurobi_logtools". For further details of the solving process, '
-                            'install the dependency via "pip install gurobi_logtools".')
+                logger.info(
+                    'Evaluationg the gurobi log after the solve was not possible, due to a missing dependency '
+                    '"gurobi_logtools". For further details of the solving process, '
+                    'install the dependency via "pip install gurobi_logtools".'
+                )
         else:
             raise NotImplementedError('Only Pyomo is implemented for GUROBI solver.')
 
@@ -769,12 +824,14 @@ class CplexSolver(Solver):
         time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
         best solution, ignoring the mip_gap.
     """
-    def __init__(self,
-                 mip_gap: float = 0.01,
-                 time_limit_seconds: int = 300,
-                 logfile_name: str = 'cplex.log',
-                 solver_output_to_console: bool = True,
-                 ):
+
+    def __init__(
+        self,
+        mip_gap: float = 0.01,
+        time_limit_seconds: int = 300,
+        logfile_name: str = 'cplex.log',
+        solver_output_to_console: bool = True,
+    ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
 
@@ -782,8 +839,11 @@ class CplexSolver(Solver):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyo.SolverFactory('cplex')
             self._results = self._solver.solve(
-                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
-                options={"mipgap": self.mip_gap, "timelimit": self.time_limit_seconds}
+                modeling_language.model,
+                tee=self.solver_output_to_console,
+                keepfiles=True,
+                logfile=self.logfile_name,
+                options={'mipgap': self.mip_gap, 'timelimit': self.time_limit_seconds},
             )
 
             self.objective = modeling_language.model.objective.expr()
@@ -804,13 +864,15 @@ class HighsSolver(Solver):
         best solution, ignoring the mip_gap.
         threads (int): Number of threads to use for the solver.
     """
-    def __init__(self,
-                 mip_gap: float = 0.01,
-                 time_limit_seconds: int = 300,
-                 logfile_name: str = 'highs.log',
-                 solver_output_to_console: bool = True,
-                 threads: int = 4,
-                 ):
+
+    def __init__(
+        self,
+        mip_gap: float = 0.01,
+        time_limit_seconds: int = 300,
+        logfile_name: str = 'highs.log',
+        solver_output_to_console: bool = True,
+        threads: int = 4,
+    ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
         self.threads = threads
@@ -818,18 +880,23 @@ class HighsSolver(Solver):
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             from pyomo.contrib import appsi
+
             self._solver = appsi.solvers.Highs()
-            self._solver.highs_options = {"mip_rel_gap": self.mip_gap,
-                                          "time_limit": self.time_limit_seconds,
-                                          "log_file": str(self.logfile_name),
-                                          #"log_to_console": self.solver_output_to_console,
-                                          "threads": self.threads,
-                                          "parallel": "on",
-                                          "presolve": "on",
-                                          "output_flag": True}
+            self._solver.highs_options = {
+                'mip_rel_gap': self.mip_gap,
+                'time_limit': self.time_limit_seconds,
+                'log_file': str(self.logfile_name),
+                # "log_to_console": self.solver_output_to_console,
+                'threads': self.threads,
+                'parallel': 'on',
+                'presolve': 'on',
+                'output_flag': True,
+            }
             self._solver.config.stream_solver = True
 
-            self._results = self._solver.solve(modeling_language.model)  # HiGHS writes logs to stdout/stderr, so we capture them here
+            self._results = self._solver.solve(
+                modeling_language.model
+            )  # HiGHS writes logs to stdout/stderr, so we capture them here
 
             self.objective = modeling_language.model.objective.expr()
             self.termination_message: Optional[str] = self._results.termination_condition.name
@@ -850,12 +917,14 @@ class CbcSolver(Solver):
         time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
         best solution, ignoring the mip_gap.
     """
-    def __init__(self,
-                 mip_gap: float = 0.01,
-                 time_limit_seconds: int = 300,
-                 logfile_name: str = 'cbc.log',
-                 solver_output_to_console: bool = True,
-                 ):
+
+    def __init__(
+        self,
+        mip_gap: float = 0.01,
+        time_limit_seconds: int = 300,
+        logfile_name: str = 'cbc.log',
+        solver_output_to_console: bool = True,
+    ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
         self.time_limit_seconds = time_limit_seconds
 
@@ -863,8 +932,11 @@ class CbcSolver(Solver):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyo.SolverFactory('cbc')
             self._results = self._solver.solve(
-                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
-                options={"ratio": self.mip_gap, "sec": self.time_limit_seconds}
+                modeling_language.model,
+                tee=self.solver_output_to_console,
+                keepfiles=True,
+                logfile=self.logfile_name,
+                options={'ratio': self.mip_gap, 'sec': self.time_limit_seconds},
             )
             self.objective = modeling_language.model.objective.expr()
             self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
@@ -875,20 +947,25 @@ class CbcSolver(Solver):
 
 
 class GlpkSolver(Solver):
-    """ Solver implementation for Glpk. Also Look in class Solver for more details """
-    def __init__(self,
-                 mip_gap: float = 0.01,
-                 logfile_name: str = 'glpk.log',
-                 solver_output_to_console: bool = True,
-                 ):
+    """Solver implementation for Glpk. Also Look in class Solver for more details"""
+
+    def __init__(
+        self,
+        mip_gap: float = 0.01,
+        logfile_name: str = 'glpk.log',
+        solver_output_to_console: bool = True,
+    ):
         super().__init__(mip_gap, solver_output_to_console, logfile_name)
 
     def solve(self, modeling_language: 'ModelingLanguage'):
         if isinstance(modeling_language, PyomoModel):
             self._solver = pyo.SolverFactory('glpk')
             self._results = self._solver.solve(
-                modeling_language.model, tee=self.solver_output_to_console, keepfiles=True, logfile=self.logfile_name,
-                options={"mipgap": self.mip_gap}
+                modeling_language.model,
+                tee=self.solver_output_to_console,
+                keepfiles=True,
+                logfile=self.logfile_name,
+                options={'mipgap': self.mip_gap},
             )
 
             self.objective = modeling_language.model.objective.expr()
@@ -910,6 +987,7 @@ class ModelingLanguage(ABC):
     Methods:
         translate_model(model): Translates a math model into a solveable form.
     """
+
     @abstractmethod
     def translate_model(self, model: MathModel):
         raise NotImplementedError
@@ -932,7 +1010,7 @@ class PyomoModel(ModelingLanguage):
     def __init__(self):
         logger.debug('Loaded pyomo modules')
 
-        self.model = pyo.ConcreteModel(name="(Minimalbeispiel)")
+        self.model = pyo.ConcreteModel(name='(Minimalbeispiel)')
 
         self.mapping: Dict[Union[Variable, Equation], Any] = {}  # Mapping to Pyomo Units
         self._counter = 0
@@ -959,13 +1037,13 @@ class PyomoModel(ModelingLanguage):
                 variable.result = result
 
     def translate_model(self, math_model: MathModel):
-        for variable in math_model.variables:   # Variablen erstellen
+        for variable in math_model.variables:  # Variablen erstellen
             logger.debug(f'VAR {variable.label} gets translated to Pyomo')
             self.translate_variable(variable)
-        for eq in math_model.equations:   # Gleichungen erstellen
+        for eq in math_model.equations:  # Gleichungen erstellen
             logger.debug(f'EQ {eq.label} gets translated to Pyomo')
             self.translate_equation(eq)
-        for ineq in math_model.inequations:   # Ungleichungen erstellen:
+        for ineq in math_model.inequations:  # Ungleichungen erstellen:
             logger.debug(f'INEQ {ineq.label} gets translated to Pyomo')
             self.translate_inequation(ineq)
 
@@ -1007,7 +1085,7 @@ class PyomoModel(ModelingLanguage):
         constant_vector = equation.constant_vector
 
         def linear_sum_pyomo_rule(model, i):
-            """ This function is needed for pyomoy internal construction of Constraints."""
+            """This function is needed for pyomoy internal construction of Constraints."""
             lhs = 0
             aSummand: Summand
             for aSummand in equation.summands:
@@ -1015,8 +1093,7 @@ class PyomoModel(ModelingLanguage):
             rhs = constant_vector[i]
             return lhs == rhs
 
-        pyomo_comp = pyo.Constraint(range(equation.length),
-                                         rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
+        pyomo_comp = pyo.Constraint(range(equation.length), rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
 
         self._register_pyomo_comp(pyomo_comp, equation)
 
@@ -1028,7 +1105,7 @@ class PyomoModel(ModelingLanguage):
         constant_vector = inequation.constant_vector
 
         def linear_sum_pyomo_rule(model, i):
-            """ This function is needed for pyomoy internal construction of Constraints."""
+            """This function is needed for pyomoy internal construction of Constraints."""
             lhs = 0
             aSummand: Summand
             for aSummand in inequation.summands:
@@ -1037,8 +1114,7 @@ class PyomoModel(ModelingLanguage):
 
             return lhs <= rhs
 
-        pyomo_comp = pyo.Constraint(range(inequation.length),
-                                         rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
+        pyomo_comp = pyo.Constraint(range(inequation.length), rule=linear_sum_pyomo_rule)  # Nebenbedingung erstellen
 
         self._register_pyomo_comp(pyomo_comp, inequation)
 
@@ -1046,8 +1122,10 @@ class PyomoModel(ModelingLanguage):
         if not isinstance(objective, Equation):
             raise TypeError(f'Class {objective.__class__.__name__} Can not be the objective!')
         if not objective.is_objective:
-            raise TypeError(f'Objective Equation is not marked as objective, {objective.is_objective=}, '
-                            f'but was sent to translate to objective!')
+            raise TypeError(
+                f'Objective Equation is not marked as objective, {objective.is_objective=}, '
+                f'but was sent to translate to objective!'
+            )
         if objective.length != 1:
             raise Exception('Length of Objective must be 0')
 

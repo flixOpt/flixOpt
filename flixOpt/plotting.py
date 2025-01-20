@@ -21,15 +21,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger('flixOpt')
 
 
-def with_plotly(data: pd.DataFrame,
-                mode: Literal['bar', 'line', 'area'] = 'area',
-                colors: Union[List[str], str] = 'viridis',
-                title: str = '',
-                ylabel: str = '',
-                fig: Optional[go.Figure] = None,
-                show: bool = False,
-                save: bool = False,
-                path: Union[str, pathlib.Path] = 'temp-plot.html') -> go.Figure:
+def with_plotly(
+    data: pd.DataFrame,
+    mode: Literal['bar', 'line', 'area'] = 'area',
+    colors: Union[List[str], str] = 'viridis',
+    title: str = '',
+    ylabel: str = '',
+    fig: Optional[go.Figure] = None,
+    show: bool = False,
+    save: bool = False,
+    path: Union[str, pathlib.Path] = 'temp-plot.html',
+) -> go.Figure:
     """
     Plot a DataFrame with Plotly, using either stacked bars or stepped lines.
 
@@ -82,20 +84,24 @@ def with_plotly(data: pd.DataFrame,
         colorscale = px.colors.get_colorscale(colors)
         colors = px.colors.sample_colorscale(
             colorscale,
-            [i / (len(data.columns) - 1) for i in range(len(data.columns))] if len(data.columns) > 1 else [0])
+            [i / (len(data.columns) - 1) for i in range(len(data.columns))] if len(data.columns) > 1 else [0],
+        )
 
-    assert len(colors) == len(data.columns), (f'The number of colors does not match the provided data columns. '
-                                              f'{len(colors)=}; {len(colors)=}')
+    assert len(colors) == len(data.columns), (
+        f'The number of colors does not match the provided data columns. {len(colors)=}; {len(colors)=}'
+    )
     fig = fig if fig is not None else go.Figure()
 
     if mode == 'bar':
         for i, column in enumerate(data.columns):
-            fig.add_trace(go.Bar(
-                x=data.index,
-                y=data[column],
-                name=column,
-                marker=dict(color=colors[i]),
-            ))
+            fig.add_trace(
+                go.Bar(
+                    x=data.index,
+                    y=data[column],
+                    name=column,
+                    marker=dict(color=colors[i]),
+                )
+            )
 
         fig.update_layout(
             barmode='relative' if mode == 'bar' else None,
@@ -104,13 +110,15 @@ def with_plotly(data: pd.DataFrame,
         )
     elif mode == 'line':
         for i, column in enumerate(data.columns):
-            fig.add_trace(go.Scatter(
-                x=data.index,
-                y=data[column],
-                mode='lines',
-                name=column,
-                line=dict(shape='hv', color=colors[i]),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data[column],
+                    mode='lines',
+                    name=column,
+                    line=dict(shape='hv', color=colors[i]),
+                )
+            )
     elif mode == 'area':
         data[(data > -1e-5) & (data < 1e-5)] = 0  # Preventing issues with plotting
         # Split columns into positive, negative, and mixed categories
@@ -118,36 +126,42 @@ def with_plotly(data: pd.DataFrame,
         negative_columns = list(data.columns[(data <= 0).all()])
         mixed_columns = list(set(data.columns) - set(positive_columns + negative_columns))
         if mixed_columns:
-            logger.warning(f'Data for plotting stacked lines contains columns with both positive and negative values:'
-                           f' {mixed_columns}. These can not be stacked, and are printed as simple lines')
+            logger.warning(
+                f'Data for plotting stacked lines contains columns with both positive and negative values:'
+                f' {mixed_columns}. These can not be stacked, and are printed as simple lines'
+            )
 
         colors_stacked = {column: colors[i] for i, column in enumerate(data.columns)}
 
         for column in positive_columns + negative_columns:
-            fig.add_trace(go.Scatter(
-                x=data.index,
-                y=data[column],
-                mode='lines',
-                name=column,
-                line=dict(shape='hv', color=colors_stacked[column]),
-                fill='tonexty',
-                stackgroup='pos' if column in positive_columns else 'neg',
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data[column],
+                    mode='lines',
+                    name=column,
+                    line=dict(shape='hv', color=colors_stacked[column]),
+                    fill='tonexty',
+                    stackgroup='pos' if column in positive_columns else 'neg',
+                )
+            )
 
         for column in mixed_columns:
-            fig.add_trace(go.Scatter(
-                x=data.index,
-                y=data[column],
-                mode='lines',
-                name=column,
-                line=dict(shape='hv', color=colors_stacked[column], dash="dash"),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=data.index,
+                    y=data[column],
+                    mode='lines',
+                    name=column,
+                    line=dict(shape='hv', color=colors_stacked[column], dash='dash'),
+                )
+            )
 
     # Update layout for better aesthetics
     fig.update_layout(
         title=title,
         yaxis=dict(
-            title= ylabel,
+            title=ylabel,
             showgrid=True,  # Enable grid lines on the y-axis
             gridcolor='lightgrey',  # Customize grid line color
             gridwidth=0.5,  # Customize grid line width
@@ -156,19 +170,19 @@ def with_plotly(data: pd.DataFrame,
             title='Time in h',
             showgrid=True,  # Enable grid lines on the x-axis
             gridcolor='lightgrey',  # Customize grid line color
-            gridwidth=0.5  # Customize grid line width
+            gridwidth=0.5,  # Customize grid line width
         ),
         plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
         paper_bgcolor='rgba(0,0,0,0)',  # Transparent paper background
         font=dict(size=14),  # Increase font size for better readability
         legend=dict(
-            orientation="h",  # Horizontal legend
-            yanchor="bottom",
+            orientation='h',  # Horizontal legend
+            yanchor='bottom',
             y=-0.3,  # Adjusts how far below the plot it appears
-            xanchor="center",
+            xanchor='center',
             x=0.5,
-            title_text=None  # Removes legend title for a cleaner look
-        )
+            title_text=None,  # Removes legend title for a cleaner look
+        ),
     )
 
     if isinstance(path, pathlib.Path):
@@ -180,15 +194,16 @@ def with_plotly(data: pd.DataFrame,
     return fig
 
 
-def with_matplotlib(data: pd.DataFrame,
-                    mode: Literal['bar', 'line'] = 'bar',
-                    colors: Union[List[str], str] = 'viridis',
-                    figsize: Tuple[int, int] = (12, 6),
-                    fig: Optional[plt.Figure] = None,
-                    ax: Optional[plt.Axes] = None,
-                    show: bool = False,
-                    path: Optional[Union[str, pathlib.Path]] = None
-                    ) -> Tuple[plt.Figure, plt.Axes]:
+def with_matplotlib(
+    data: pd.DataFrame,
+    mode: Literal['bar', 'line'] = 'bar',
+    colors: Union[List[str], str] = 'viridis',
+    figsize: Tuple[int, int] = (12, 6),
+    fig: Optional[plt.Figure] = None,
+    ax: Optional[plt.Axes] = None,
+    show: bool = False,
+    path: Optional[Union[str, pathlib.Path]] = None,
+) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plot a DataFrame with Matplotlib using stacked bars or stepped lines.
 
@@ -240,8 +255,9 @@ def with_matplotlib(data: pd.DataFrame,
     if isinstance(colors, str):
         cmap = plt.get_cmap(colors, len(data.columns))
         colors = [cmap(i) for i in range(len(data.columns))]
-    assert len(colors) == len(data.columns), (f'The number of colors does not match the provided data columns. '
-                                              f'{len(colors)=}; {len(colors)=}')
+    assert len(colors) == len(data.columns), (
+        f'The number of colors does not match the provided data columns. {len(colors)=}; {len(colors)=}'
+    )
 
     if mode == 'bar':
         cumulative_positive = np.zeros(len(data))
@@ -259,7 +275,7 @@ def with_matplotlib(data: pd.DataFrame,
                 color=colors[i],
                 label=column,
                 width=width,
-                align='center'
+                align='center',
             )
             cumulative_positive += positive_values.values
             # Plot negative bars
@@ -268,21 +284,15 @@ def with_matplotlib(data: pd.DataFrame,
                 negative_values,
                 bottom=cumulative_negative,
                 color=colors[i],
-                label="",  # No label for negative bars
+                label='',  # No label for negative bars
                 width=width,
-                align='center'
+                align='center',
             )
             cumulative_negative += negative_values.values
 
     elif mode == 'line':
         for i, column in enumerate(data.columns):
-            ax.step(
-                data.index,
-                data[column],
-                where='post',
-                color=colors[i],
-                label=column
-            )
+            ax.step(data.index, data[column], where='post', color=colors[i], label=column)
 
     # Aesthetics
     ax.set_xlabel('Time in h', fontsize=14)
@@ -291,7 +301,7 @@ def with_matplotlib(data: pd.DataFrame,
         loc='upper center',  # Place legend at the bottom center
         bbox_to_anchor=(0.5, -0.15),  # Adjust the position to fit below plot
         ncol=5,
-        frameon=False  # Remove box around legend
+        frameon=False,  # Remove box around legend
     )
     fig.tight_layout()
 
@@ -303,11 +313,13 @@ def with_matplotlib(data: pd.DataFrame,
     return fig, ax
 
 
-def heat_map_matplotlib(data: pd.DataFrame,
-                        color_map: str = 'viridis',
-                        figsize: Tuple[float, float] = (12, 6),
-                        show: bool = False,
-                        path: Optional[Union[str, pathlib.Path]] = None) -> Tuple[plt.Figure, plt.Axes]:
+def heat_map_matplotlib(
+    data: pd.DataFrame,
+    color_map: str = 'viridis',
+    figsize: Tuple[float, float] = (12, 6),
+    show: bool = False,
+    path: Optional[Union[str, pathlib.Path]] = None,
+) -> Tuple[plt.Figure, plt.Axes]:
     """
     Plots a DataFrame as a heatmap using Matplotlib. The columns of the DataFrame will be displayed on the x-axis,
     the index will be displayed on the y-axis, and the values will represent the 'heat' intensity in the plot.
@@ -355,12 +367,12 @@ def heat_map_matplotlib(data: pd.DataFrame,
     ax.set_yticklabels(data.index, va='center')
 
     # Add labels to the axes
-    ax.set_xlabel("Period", ha='center')
-    ax.set_ylabel("Step", va='center')
+    ax.set_xlabel('Period', ha='center')
+    ax.set_ylabel('Step', va='center')
 
     # Position x-axis labels at the top
-    ax.xaxis.set_label_position("top")
-    ax.xaxis.set_ticks_position("top")
+    ax.xaxis.set_label_position('top')
+    ax.xaxis.set_ticks_position('top')
 
     # Add the colorbar
     sm1 = plt.cm.ScalarMappable(cmap=color_map, norm=plt.Normalize(vmin=color_bar_min, vmax=color_bar_max))
@@ -376,15 +388,17 @@ def heat_map_matplotlib(data: pd.DataFrame,
     return fig, ax
 
 
-def heat_map_plotly(data: pd.DataFrame,
-                    color_map: str = 'viridis',
-                    title: str = '',
-                    xlabel: str = 'Periods',
-                    ylabel: str = 'Step',
-                    categorical_labels: bool = True,
-                    show: bool = False,
-                    save: bool = False,
-                    path: Union[str, pathlib.Path] = 'temp-plot.html') -> go.Figure:
+def heat_map_plotly(
+    data: pd.DataFrame,
+    color_map: str = 'viridis',
+    title: str = '',
+    xlabel: str = 'Periods',
+    ylabel: str = 'Step',
+    categorical_labels: bool = True,
+    show: bool = False,
+    save: bool = False,
+    path: Union[str, pathlib.Path] = 'temp-plot.html',
+) -> go.Figure:
     """
     Plots a DataFrame as a heatmap using Plotly. The columns of the DataFrame will be mapped to the x-axis,
     and the index will be displayed on the y-axis. The values in the DataFrame will represent the 'heat' in the plot.
@@ -418,31 +432,40 @@ def heat_map_plotly(data: pd.DataFrame,
     The y-axis is reversed to display the first row at the top.
     """
 
-    color_bar_min, color_bar_max = data.min().min(), data.max().max()  # Min and max values for color scaling
+    color_bar_min, color_bar_max = (
+        data.min().min(),
+        data.max().max(),
+    )  # Min and max values for color scaling
     # Define the figure
-    fig = go.Figure(data=go.Heatmap(
-        z=data.values,
-        x=data.columns,
-        y=data.index,
-        colorscale=color_map,
-        zmin=color_bar_min,
-        zmax=color_bar_max,
-        colorbar=dict(
-            title=dict(text='Color Bar Label', side='right'),
-            orientation='h',
-            xref='container',
-            yref='container',
-            len=0.8,  # Color bar length relative to plot
-            x=0.5,
-            y=0.1
-        ),
-    ))
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=data.values,
+            x=data.columns,
+            y=data.index,
+            colorscale=color_map,
+            zmin=color_bar_min,
+            zmax=color_bar_max,
+            colorbar=dict(
+                title=dict(text='Color Bar Label', side='right'),
+                orientation='h',
+                xref='container',
+                yref='container',
+                len=0.8,  # Color bar length relative to plot
+                x=0.5,
+                y=0.1,
+            ),
+        )
+    )
 
     # Set axis labels and style
     fig.update_layout(
         title=title,
         xaxis=dict(title=xlabel, side='top', type='category' if categorical_labels else None),
-        yaxis=dict(title=ylabel, autorange='reversed', type='category' if categorical_labels else None)
+        yaxis=dict(
+            title=ylabel,
+            autorange='reversed',
+            type='category' if categorical_labels else None,
+        ),
     )
 
     if isinstance(path, pathlib.Path):
@@ -480,7 +503,7 @@ def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarra
 
     # Step 1: Ensure the input is a 1D array.
     if data_1d.ndim != 1:
-        raise ValueError("Input must be a 1D array")
+        raise ValueError('Input must be a 1D array')
 
     # Step 2: Convert data to float type to allow NaN padding
     if data_1d.dtype != np.float64:
@@ -495,8 +518,12 @@ def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarra
         cols += 1
 
     # Step 4: Pad the 1D data to match the required number of rows and columns
-    padded_data = np.pad(data_1d, (0, cols * nr_of_steps_per_column - total_steps), mode='constant',
-                         constant_values=np.nan)
+    padded_data = np.pad(
+        data_1d,
+        (0, cols * nr_of_steps_per_column - total_steps),
+        mode='constant',
+        constant_values=np.nan,
+    )
 
     # Step 5: Reshape the padded data into a 2D array
     data_2d = padded_data.reshape(cols, nr_of_steps_per_column)
@@ -504,10 +531,12 @@ def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarra
     return data_2d.T
 
 
-def heat_map_data_from_df(df: pd.DataFrame,
-                          periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'],
-                          steps_per_period: Literal['W', 'D', 'h', '15min', 'min'],
-                          fill: Optional[Literal['ffill', 'bfill']] = None) -> pd.DataFrame:
+def heat_map_data_from_df(
+    df: pd.DataFrame,
+    periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'],
+    steps_per_period: Literal['W', 'D', 'h', '15min', 'min'],
+    fill: Optional[Literal['ffill', 'bfill']] = None,
+) -> pd.DataFrame:
     """
     Reshapes a DataFrame with a DateTime index into a 2D array for heatmap plotting,
     based on a specified sample rate.
@@ -532,8 +561,9 @@ def heat_map_data_from_df(df: pd.DataFrame,
         A DataFrame suitable for heatmap plotting, with rows representing steps within each period
         and columns representing each period.
     """
-    assert pd.api.types.is_datetime64_any_dtype(df.index), \
+    assert pd.api.types.is_datetime64_any_dtype(df.index), (
         'The index of the Dataframe must be datetime to transfrom it properly for a heatmap plot'
+    )
 
     # Define formats for different combinations of `periods` and `steps_per_period`
     formats = {
@@ -542,7 +572,10 @@ def heat_map_data_from_df(df: pd.DataFrame,
         ('YS', 'h'): ('%Y', '%j %H:00'),
         ('MS', 'D'): ('%Y-%m', '%d'),  # day of month
         ('MS', 'h'): ('%Y-%m', '%d %H:00'),
-        ('W', 'D'): ('%Y-w%W', '%w_%A'),  # week and day of week (with prefix for proper sorting)
+        ('W', 'D'): (
+            '%Y-w%W',
+            '%w_%A',
+        ),  # week and day of week (with prefix for proper sorting)
         ('W', 'h'): ('%Y-w%W', '%w_%A %H:00'),
         ('D', 'h'): ('%Y-%m-%d', '%H:00'),  # Day and hour
         ('D', '15min'): ('%Y-%m-%d', '%H:%MM'),  # Day and hour
@@ -554,8 +587,10 @@ def heat_map_data_from_df(df: pd.DataFrame,
     time_intervals = {'min': 1, '15min': 15, 'h': 60, 'D': 24 * 60, 'W': 7 * 24 * 60}
     if time_intervals[steps_per_period] > minimum_time_diff_in_min:
         time_intervals[steps_per_period]
-        logger.warning(f'To compute the heatmap, the data was aggregated from {minimum_time_diff_in_min:.2f} min to '
-                       f'{time_intervals[steps_per_period]:.2f} min. Mean values are displayed.')
+        logger.warning(
+            f'To compute the heatmap, the data was aggregated from {minimum_time_diff_in_min:.2f} min to '
+            f'{time_intervals[steps_per_period]:.2f} min. Mean values are displayed.'
+        )
 
     # Select the format based on the `periods` and `steps_per_period` combination
     format_pair = (periods, steps_per_period)
@@ -574,21 +609,37 @@ def heat_map_data_from_df(df: pd.DataFrame,
     resampled_data['period'] = resampled_data.index.strftime(period_format)
     resampled_data['step'] = resampled_data.index.strftime(step_format)
     if '%w_%A' in step_format:  # SHift index of strings to ensure proper sorting
-        resampled_data['step'] = resampled_data['step'].apply(lambda x: x.replace('0_Sunday', '7_Sunday') if '0_Sunday' in x else x)
+        resampled_data['step'] = resampled_data['step'].apply(
+            lambda x: x.replace('0_Sunday', '7_Sunday') if '0_Sunday' in x else x
+        )
 
     # Pivot the table so periods are columns and steps are indices
     df_pivoted = resampled_data.pivot(columns='period', index='step', values=df.columns[0])
 
     return df_pivoted
 
-def visualize_network(node_infos: dict,
-                      edge_infos: dict,
-                      path: Optional[Union[str, pathlib.Path]] = None,
-                      controls: Union[bool, List[Literal[
-                          'nodes', 'edges', 'layout', 'interaction', 'manipulation',
-                          'physics', 'selection', 'renderer']]] = True,
-                      show: bool = True
-                      ) -> Optional['pyvis.network.Network']:
+
+def visualize_network(
+    node_infos: dict,
+    edge_infos: dict,
+    path: Optional[Union[str, pathlib.Path]] = None,
+    controls: Union[
+        bool,
+        List[
+            Literal[
+                'nodes',
+                'edges',
+                'layout',
+                'interaction',
+                'manipulation',
+                'physics',
+                'selection',
+                'renderer',
+            ]
+        ],
+    ] = True,
+    show: bool = True,
+) -> Optional['pyvis.network.Network']:
     """
     Visualizes the network structure of a FlowSystem using PyVis, using info-dictionaries.
 
@@ -634,23 +685,31 @@ def visualize_network(node_infos: dict,
         logger.warning("Please install pyvis to visualize the network: 'pip install pyvis'")
         return None
 
-    net = Network(directed=True, height='100%' if controls is False else '800px', font_color="white")
+    net = Network(
+        directed=True,
+        height='100%' if controls is False else '800px',
+        font_color='white',
+    )
 
     for node_id, node in node_infos.items():
-        net.add_node(node_id,
-                     label=node['label'],
-                     shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
-                     color={'Bus': '#393E46', 'Component': '#00ADB5'}[node['class']],
-                     title=node['infos'].replace(')', '\n)'),
-                     font={'size': 14})
+        net.add_node(
+            node_id,
+            label=node['label'],
+            shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
+            color={'Bus': '#393E46', 'Component': '#00ADB5'}[node['class']],
+            title=node['infos'].replace(')', '\n)'),
+            font={'size': 14},
+        )
 
     for edge in edge_infos.values():
-        net.add_edge(edge['start'],
-                     edge['end'],
-                     label=edge['label'],
-                     title=edge['infos'].replace(')', '\n)'),
-                     font={"color": "#4D4D4D", "size": 14},
-                     color="#222831")
+        net.add_edge(
+            edge['start'],
+            edge['end'],
+            label=edge['label'],
+            title=edge['infos'].replace(')', '\n)'),
+            font={'color': '#4D4D4D', 'size': 14},
+            color='#222831',
+        )
 
     # Enhanced physics settings
     net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.05, gravity=-10000)
@@ -669,7 +728,7 @@ def visualize_network(node_infos: dict,
     if show:
         try:
             import webbrowser
+
             webbrowser.open(f'file://{path}', 2)
         except Exception:
-            logger.warning(f'Showing the network in the Browser went wrong. Open it manually. '
-                           f'Its saved under {path}')
+            logger.warning(f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}')
