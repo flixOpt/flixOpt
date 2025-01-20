@@ -30,7 +30,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
     if np.isscalar(value):
         return np.ones(length) * value
 
-    if len(value) != length:   # Wenn Vektor nicht richtige Länge
+    if len(value) != length:  # Wenn Vektor nicht richtige Länge
         raise Exception(f'error in changing to {length=}; vector has already {len(value)=}')
 
     if isinstance(value, np.ndarray):
@@ -40,7 +40,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
 
 
 def is_number(number_alias: Union[int, float, str]):
-    """ Returns True is string is a number. """
+    """Returns True is string is a number."""
     try:
         float(number_alias)
         return True
@@ -48,8 +48,7 @@ def is_number(number_alias: Union[int, float, str]):
         return False
 
 
-def check_time_series(label: str,
-                      time_series: np.ndarray[np.datetime64]):
+def check_time_series(label: str, time_series: np.ndarray[np.datetime64]):
     # check sowohl für globale Zeitreihe, als auch für chosenIndexe:
 
     # Zeitdifferenz:
@@ -66,11 +65,13 @@ def check_time_series(label: str,
         raise Exception(label + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
 
 
-def apply_formating(data_dict: Dict[str, Union[int, float]],
-                    key_format: str = "<17",
-                    value_format: str = ">10.2f",
-                    indent: int = 0,
-                    sort_by: Optional[Literal['key', 'value']] = None) -> str:
+def apply_formating(
+    data_dict: Dict[str, Union[int, float]],
+    key_format: str = '<17',
+    value_format: str = '>10.2f',
+    indent: int = 0,
+    sort_by: Optional[Literal['key', 'value']] = None,
+) -> str:
     if sort_by == 'key':
         sorted_keys = sorted(data_dict.keys(), key=str.lower)
     elif sort_by == 'value':
@@ -78,18 +79,20 @@ def apply_formating(data_dict: Dict[str, Union[int, float]],
     else:
         sorted_keys = data_dict.keys()
 
-    lines = [f'{indent*" "}{key:{key_format}}: {data_dict[key]:{value_format}}' for key in sorted_keys]
+    lines = [f'{indent * " "}{key:{key_format}}: {data_dict[key]:{value_format}}' for key in sorted_keys]
     return '\n'.join(lines)
 
 
 def label_is_valid(label: str) -> bool:
-    """ Function to make sure '__' is reserved for internal splitting of labels"""
+    """Function to make sure '__' is reserved for internal splitting of labels"""
     if label.startswith('_') or label.endswith('_') or '__' in label:
         return False
     return True
 
 
-def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) -> Union[Dict[str, Any], List[Any], tuple]:
+def convert_numeric_lists_to_arrays(
+    d: Union[Dict[str, Any], List[Any], tuple],
+) -> Union[Dict[str, Any], List[Any], tuple]:
     """
     Recursively converts all lists of numeric values in a nested dictionary to numpy arrays.
     Handles nested lists, tuples, and dictionaries. Does not alter the original dictionary.
@@ -109,8 +112,10 @@ def convert_numeric_lists_to_arrays(d: Union[Dict[str, Any], List[Any], tuple]) 
         elif isinstance(sequence, list) and all(isinstance(item, (int, float)) for item in sequence):
             return np.array(sequence)
         else:
-            return[convert_numeric_lists_to_arrays(item) if
-                   isinstance(item, (dict, list, tuple)) else item for item in sequence]
+            return [
+                convert_numeric_lists_to_arrays(item) if isinstance(item, (dict, list, tuple)) else item
+                for item in sequence
+            ]
 
     if isinstance(d, dict):
         d_copy = {}  # Reconstruct the dict from ground up to not modify the original dictionary.'

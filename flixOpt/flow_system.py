@@ -24,25 +24,28 @@ class FlowSystem:
     """
     A FlowSystem organizes the high level Elements (Components & Effects).
     """
-    def __init__(self,
-                 time_series: np.ndarray[np.datetime64],
-                 last_time_step_hours: Optional[Union[int, float]] = None):
+
+    def __init__(
+        self, time_series: np.ndarray[np.datetime64], last_time_step_hours: Optional[Union[int, float]] = None
+    ):
         """
-          Parameters
-          ----------
-          time_series : np.ndarray of datetime64
-              timeseries of the data. Must be in datetime64 format. Don't use precisions below 'us'. !np.datetime64[ns]!
-          last_time_step_hours :
-              The duration of last time step.
-              Storages needs this time-duration for calculation of charge state
-              after last time step.
-              If None, then last time increment of time_series is used.
+        Parameters
+        ----------
+        time_series : np.ndarray of datetime64
+            timeseries of the data. Must be in datetime64 format. Don't use precisions below 'us'. !np.datetime64[ns]!
+        last_time_step_hours :
+            The duration of last time step.
+            Storages needs this time-duration for calculation of charge state
+            after last time step.
+            If None, then last time increment of time_series is used.
         """
         self.time_series = time_series if isinstance(time_series, np.ndarray) else np.array(time_series)
         if self.time_series.dtype == np.dtype('datetime64[ns]'):
             self.time_series = self.time_series.astype('datetime64[us]')
 
-        self.last_time_step_hours = self.time_series[-1] - self.time_series[-2] if last_time_step_hours is None else last_time_step_hours
+        self.last_time_step_hours = (
+            self.time_series[-1] - self.time_series[-2] if last_time_step_hours is None else last_time_step_hours
+        )
         self.time_series_with_end = np.append(self.time_series, self.time_series[-1] + self.last_time_step_hours)
 
         utils.check_time_series('time series of FlowSystem', self.time_series_with_end)
@@ -90,35 +93,55 @@ class FlowSystem:
             element.transform_data()
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
-        nodes = {node.label_full: {'label': node.label,
-                                   'class': 'Bus' if isinstance(node, Bus) else 'Component',
-                                   'infos':  node.__str__()}
-                 for node in list(self.components.values()) + list(self.buses.values())}
+        nodes = {
+            node.label_full: {
+                'label': node.label,
+                'class': 'Bus' if isinstance(node, Bus) else 'Component',
+                'infos': node.__str__(),
+            }
+            for node in list(self.components.values()) + list(self.buses.values())
+        }
 
-        edges = {flow.label_full: {'label': flow.label,
-                                   'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
-                                   'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
-                                   'infos': flow.__str__()}
-                 for flow in self.flows.values()}
+        edges = {
+            flow.label_full: {
+                'label': flow.label,
+                'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
+                'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
+                'infos': flow.__str__(),
+            }
+            for flow in self.flows.values()
+        }
 
         return nodes, edges
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
-        infos = {'Components': {comp.label: comp.infos(use_numpy, use_element_label) for comp in
-                                sorted(self.components.values(), key=lambda component: component.label.upper())},
-                 'Buses': {bus.label: bus.infos(use_numpy, use_element_label) for bus in
-                           sorted(self.buses.values(), key=lambda bus: bus.label.upper())},
-                 'Effects': {effect.label: effect.infos(use_numpy, use_element_label) for effect in
-                             sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper())}}
+        infos = {
+            'Components': {
+                comp.label: comp.infos(use_numpy, use_element_label)
+                for comp in sorted(self.components.values(), key=lambda component: component.label.upper())
+            },
+            'Buses': {
+                bus.label: bus.infos(use_numpy, use_element_label)
+                for bus in sorted(self.buses.values(), key=lambda bus: bus.label.upper())
+            },
+            'Effects': {
+                effect.label: effect.infos(use_numpy, use_element_label)
+                for effect in sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper())
+            },
+        }
         return infos
 
-    def visualize_network(self,
-                          path: Union[bool, str, pathlib.Path] = 'flow_system.html',
-                          controls: Union[bool, List[Literal[
-                              'nodes', 'edges', 'layout', 'interaction', 'manipulation',
-                              'physics', 'selection', 'renderer']]] = True,
-                          show: bool = True
-                          ) -> Optional['pyvis.network.Network']:
+    def visualize_network(
+        self,
+        path: Union[bool, str, pathlib.Path] = 'flow_system.html',
+        controls: Union[
+            bool,
+            List[
+                Literal['nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer']
+            ],
+        ] = True,
+        show: bool = True,
+    ) -> Optional['pyvis.network.Network']:
         """
         Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.
 
@@ -155,6 +178,7 @@ class FlowSystem:
         - Nodes are styled based on type (e.g., circles for buses, boxes for components) and annotated with node information.
         """
         from . import plotting
+
         node_infos, edge_infos = self.network_infos()
         return plotting.visualize_network(node_infos, edge_infos, path, controls, show)
 
@@ -173,8 +197,9 @@ class FlowSystem:
         if element.label_full in self.all_elements:
             raise Exception(f'Label of Element {element.label} already used in another element!')
 
-    def get_time_data_from_indices(self, time_indices: Optional[Union[List[int], range]] = None
-                                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.float64]:
+    def get_time_data_from_indices(
+        self, time_indices: Optional[Union[List[int], range]] = None
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.float64]:
         """
         Computes time series data based on the provided time indices.
 
@@ -216,7 +241,7 @@ class FlowSystem:
         return time_series, time_series_with_end, dt_in_hours, dt_in_hours_total
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
+        return f'<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>'
 
     def __str__(self):
         return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
@@ -239,10 +264,9 @@ class FlowSystem:
         return [ts for element in self.all_elements.values() for ts in element.used_time_series]
 
 
-def create_datetime_array(start: str,
-                          steps: Optional[int] = None,
-                          freq: str = '1h',
-                          end: Optional[str] = None) -> np.ndarray[np.datetime64]:
+def create_datetime_array(
+    start: str, steps: Optional[int] = None, freq: str = '1h', end: Optional[str] = None
+) -> np.ndarray[np.datetime64]:
     """
     Create a NumPy array with datetime64 values.
 
@@ -296,4 +320,4 @@ def create_datetime_array(start: str,
         return np.array([start_dt + i * step_size for i in range(steps)], dtype='datetime64')
 
     else:  # If neither `steps` nor `end` is provided, raise an error
-        raise ValueError("Either `steps` or `end` must be provided.")
+        raise ValueError('Either `steps` or `end` must be provided.')

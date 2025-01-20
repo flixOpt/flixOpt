@@ -34,9 +34,14 @@ class Calculation:
     """
     class for defined way of solving a flow_system optimization
     """
-    def __init__(self, name, flow_system: FlowSystem,
-                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
-                 time_indices: Optional[Union[range, List[int]]] = None):
+
+    def __init__(
+        self,
+        name,
+        flow_system: FlowSystem,
+        modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo',
+        time_indices: Optional[Union[range, List[int]]] = None,
+    ):
         """
         Parameters
         ----------
@@ -57,12 +62,14 @@ class Calculation:
         self.system_model: Optional[SystemModel] = None
         self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}  # Dauer der einzelnen Dinge
 
-        self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {'log': None, 'data': None, 'info': None}
+        self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {
+            'log': None,
+            'data': None,
+            'info': None,
+        }
         self._results = None
 
-    def _define_path_names(self,
-                           save_results: Union[bool, str, pathlib.Path],
-                           include_timestamp: bool = False):
+    def _define_path_names(self, save_results: Union[bool, str, pathlib.Path], include_timestamp: bool = False):
         """
         Creates the path for saving results and alters the name of the calculation to have a timestamp
         """
@@ -77,10 +84,10 @@ class Calculation:
 
             path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
 
-            self._paths["log"] = path / f'{self.name}_solver.log'
-            self._paths["data"] = path / f'{self.name}_data.json'
-            self._paths["results"] = path / f'{self.name}_results.json'
-            self._paths["infos"] = path / f'{self.name}_infos.yaml'
+            self._paths['log'] = path / f'{self.name}_solver.log'
+            self._paths['data'] = path / f'{self.name}_data.json'
+            self._paths['results'] = path / f'{self.name}_results.json'
+            self._paths['infos'] = path / f'{self.name}_infos.yaml'
 
     def _save_solve_infos(self):
         import json
@@ -100,20 +107,23 @@ class Calculation:
 
         t_start = timeit.default_timer()
         nodes_info, edges_info = self.flow_system.network_infos()
-        infos = {'Calculation': self.infos,
-                 'Model': self.system_model.infos,
-                 'Network': {
-                     'Nodes': nodes_info, 'Edges': edges_info}
-                 }
+        infos = {
+            'Calculation': self.infos,
+            'Model': self.system_model.infos,
+            'Network': {'Nodes': nodes_info, 'Edges': edges_info},
+        }
 
         with open(self._paths['infos'], 'w', encoding='utf-8') as f:
-            yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
-                      allow_unicode=True, sort_keys=False)
+            yaml.dump(
+                infos,
+                f,
+                width=1000,  # Verhinderung Zeilenumbruch für lange equations
+                allow_unicode=True,
+                sort_keys=False,
+            )
 
         message = f' Saved Calculation: {self.name} '
-        logger.info(f'{"":#^80}\n'
-                    f'{message:#^80}\n'
-                    f'{"":#^80}')
+        logger.info(f'{"":#^80}\n{message:#^80}\n{"":#^80}')
         logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
         logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
 
@@ -167,11 +177,15 @@ class AggregatedCalculation(Calculation):
     class for defined way of solving a flow_system optimization
     """
 
-    def __init__(self, name, flow_system: FlowSystem,
-                 aggregation_parameters: AggregationParameters,
-                 components_to_clusterize: Optional[List[Component]] = None,
-                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
-                 time_indices: Optional[Union[range, List[int]]] = None):
+    def __init__(
+        self,
+        name,
+        flow_system: FlowSystem,
+        aggregation_parameters: AggregationParameters,
+        components_to_clusterize: Optional[List[Component]] = None,
+        modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo',
+        time_indices: Optional[Union[range, List[int]]] = None,
+    ):
         """
         Class for Optimizing the FLowSystem including:
             1. Aggregating TimeSeriesData via typical periods using tsam.
@@ -208,42 +222,56 @@ class AggregatedCalculation(Calculation):
         from .aggregation import Aggregation
 
         (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
-            self.flow_system.get_time_data_from_indices(self.time_indices))
+            self.flow_system.get_time_data_from_indices(self.time_indices)
+        )
 
         t_start_agg = timeit.default_timer()
 
         # Validation
         dt_min, dt_max = np.min(dt_in_hours), np.max(dt_in_hours)
         if not dt_min == dt_max:
-            raise ValueError(f"Aggregation failed due to inconsistent time step sizes:"
-                             f"delta_t varies from {dt_min} to {dt_max} hours.")
+            raise ValueError(
+                f'Aggregation failed due to inconsistent time step sizes:'
+                f'delta_t varies from {dt_min} to {dt_max} hours.'
+            )
         steps_per_period = self.aggregation_parameters.hours_per_period / dt_in_hours[0]
         if not steps_per_period.is_integer():
-            raise Exception(f"The selected {self.aggregation_parameters.hours_per_period=} does not match the time "
-                            f"step size of {dt_in_hours[0]} hours). It must be a multiple of {dt_in_hours[0]} hours.")
+            raise Exception(
+                f'The selected {self.aggregation_parameters.hours_per_period=} does not match the time '
+                f'step size of {dt_in_hours[0]} hours). It must be a multiple of {dt_in_hours[0]} hours.'
+            )
 
         logger.info(f'{"":#^80}')
         logger.info(f'{" Aggregating TimeSeries Data ":#^80}')
 
-        self.time_series_collection = TimeSeriesCollection([ts for ts in self.flow_system.all_time_series if ts.is_array])
+        self.time_series_collection = TimeSeriesCollection(
+            [ts for ts in self.flow_system.all_time_series if ts.is_array]
+        )
 
         import pandas as pd
+
         original_data = pd.DataFrame(self.time_series_collection.data, index=chosenTimeSeries)
 
         # Aggregation - creation of aggregated timeseries:
-        self.aggregation = Aggregation(original_data=original_data,
-                                            hours_per_time_step=dt_min,
-                                            hours_per_period=self.aggregation_parameters.hours_per_period,
-                                            nr_of_periods=self.aggregation_parameters.nr_of_periods,
-                                            weights=self.time_series_collection.weights,
-                                            time_series_for_high_peaks=self.aggregation_parameters.labels_for_high_peaks,
-                                            time_series_for_low_peaks=self.aggregation_parameters.labels_for_low_peaks)
+        self.aggregation = Aggregation(
+            original_data=original_data,
+            hours_per_time_step=dt_min,
+            hours_per_period=self.aggregation_parameters.hours_per_period,
+            nr_of_periods=self.aggregation_parameters.nr_of_periods,
+            weights=self.time_series_collection.weights,
+            time_series_for_high_peaks=self.aggregation_parameters.labels_for_high_peaks,
+            time_series_for_low_peaks=self.aggregation_parameters.labels_for_low_peaks,
+        )
 
         self.aggregation.cluster()
         self.aggregation.plot()
         if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
             self.time_series_collection.insert_data(  # Converting it into a dict with labels as keys
-                {col: np.array(values) for col, values in self.aggregation.aggregated_data.to_dict(orient='list').items()})
+                {
+                    col: np.array(values)
+                    for col, values in self.aggregation.aggregated_data.to_dict(orient='list').items()
+                }
+            )
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
         # Model the System
@@ -251,9 +279,10 @@ class AggregatedCalculation(Calculation):
 
         self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         self.system_model.do_modeling()
-        #Add Aggregation Model after modeling the rest
-        aggregation_model = AggregationModel(self.aggregation_parameters, self.flow_system, self.aggregation,
-                                             self.components_to_clusterize)
+        # Add Aggregation Model after modeling the rest
+        aggregation_model = AggregationModel(
+            self.aggregation_parameters, self.flow_system, self.aggregation, self.components_to_clusterize
+        )
         self.system_model.other_models.append(aggregation_model)
         aggregation_model.do_modeling(self.system_model)
 
@@ -274,11 +303,15 @@ class AggregatedCalculation(Calculation):
 
 
 class SegmentedCalculation(Calculation):
-    def __init__(self, name, flow_system: FlowSystem,
-                 segment_length: int,
-                 overlap_length: int,
-                 modeling_language: Literal["pyomo", "cvxpy"] = "pyomo",
-                 time_indices: Optional[Union[range, list[int]]] = None):
+    def __init__(
+        self,
+        name,
+        flow_system: FlowSystem,
+        segment_length: int,
+        overlap_length: int,
+        modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo',
+        time_indices: Optional[Union[range, list[int]]] = None,
+    ):
         """
         Dividing and Modeling the problem in (overlapping) segments.
         The final values of each Segment are recognized by the following segment, effectively coupling
@@ -315,13 +348,18 @@ class SegmentedCalculation(Calculation):
         self.sub_calculations: List[FullCalculation] = []
 
         assert segment_length > 2, 'The Segment length must be greater 2, due to unwanted internal side effects'
-        assert self.segment_length_with_overlap <= self._total_length, \
+        assert self.segment_length_with_overlap <= self._total_length, (
             f'{self.segment_length_with_overlap=} cant be greater than the total length {self._total_length}'
+        )
 
         # Storing all original start values
         self._original_start_values = {
             **{flow: flow.previous_flow_rate for flow in self.flow_system.flows.values()},
-            **{comp: comp.initial_charge_state for comp in self.flow_system.components.values() if isinstance(comp, Storage)}
+            **{
+                comp: comp.initial_charge_state
+                for comp in self.flow_system.components.values()
+                if isinstance(comp, Storage)
+            },
         }
         self._transfered_start_values: Dict[str, Dict[str, Any]] = {}
 
@@ -331,20 +369,25 @@ class SegmentedCalculation(Calculation):
         self._define_path_names(save_results)
 
         for i in range(self.number_of_segments):
-            name_of_segment = f'Segment_{i+1}'
+            name_of_segment = f'Segment_{i + 1}'
             if self.sub_calculations:
                 self._transfer_start_values(name_of_segment)
             time_indices = self._get_indices(i)
-            logger.info(f'{name_of_segment}. (flow_system indices {time_indices.start}...{time_indices.stop-1}):')
+            logger.info(f'{name_of_segment}. (flow_system indices {time_indices.start}...{time_indices.stop - 1}):')
             calculation = FullCalculation(name_of_segment, self.flow_system, self.modeling_language, time_indices)
             # TODO: Add Before Values if available
             self.sub_calculations.append(calculation)
             calculation.do_modeling()
-            invest_elements = [model.element.label_full for model in calculation.system_model.sub_models
-                               if isinstance(model, InvestmentModel)]
+            invest_elements = [
+                model.element.label_full
+                for model in calculation.system_model.sub_models
+                if isinstance(model, InvestmentModel)
+            ]
             if invest_elements:
-                logger.critical(f'Investments are not supported in Segmented Calculation! '
-                                f'Following elements Contain Investments: {invest_elements}')
+                logger.critical(
+                    f'Investments are not supported in Segmented Calculation! '
+                    f'Following elements Contain Investments: {invest_elements}'
+                )
             calculation.solve(solver, save_results=False)
 
         self._reset_start_values()
@@ -356,10 +399,9 @@ class SegmentedCalculation(Calculation):
         if save_results:
             self._save_solve_infos()
 
-    def results(self,
-                combined_arrays: bool = False,
-                combined_scalars: bool = False,
-                individual_results: bool = False) -> Dict[str, Union[Numeric, Dict[str, Numeric]]]:
+    def results(
+        self, combined_arrays: bool = False, combined_scalars: bool = False, individual_results: bool = False
+    ) -> Dict[str, Union[Numeric, Dict[str, Numeric]]]:
         """
         Retrieving the results of a Segmented Calculation is not as straight forward as with other Calculation types.
         You have 3 options:
@@ -377,9 +419,10 @@ class SegmentedCalculation(Calculation):
 
         """
         options_chosen = combined_arrays + combined_scalars + individual_results
-        assert options_chosen == 1, \
+        assert options_chosen == 1, (
             'Exactly one of the three options to retrieve the results needs to be chosen! You chose {options_chosen}!'
-        all_results = {f'Segment_{i+1}': calculation.results() for i, calculation in enumerate(self.sub_calculations)}
+        )
+        all_results = {f'Segment_{i + 1}': calculation.results() for i, calculation in enumerate(self.sub_calculations)}
         if combined_arrays:
             return _combine_nested_arrays(*list(all_results.values()), length_per_array=self.segment_length)
         elif combined_scalars:
@@ -409,40 +452,45 @@ class SegmentedCalculation(Calculation):
                     self.results(individual_results=True), use_numpy=False, use_element_label=False
                 ),
                 'Skalar Results': copy_and_convert_datatypes(
-                    self.results(combined_scalars=True), use_numpy=False, use_element_label=False)
+                    self.results(combined_scalars=True), use_numpy=False, use_element_label=False
+                ),
             }
             json.dump(results, f, indent=4)
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
         t_start = timeit.default_timer()
         nodes_info, edges_info = self.flow_system.network_infos()
-        infos = {'Calculation': self.infos,
-                 'Model': self.sub_calculations[0].system_model.infos,
-                 'Network': {
-                     'Nodes': nodes_info, 'Edges': edges_info}
-                 }
+        infos = {
+            'Calculation': self.infos,
+            'Model': self.sub_calculations[0].system_model.infos,
+            'Network': {'Nodes': nodes_info, 'Edges': edges_info},
+        }
 
         with open(self._paths['infos'], 'w', encoding='utf-8') as f:
-            yaml.dump(infos, f, width=1000,  # Verhinderung Zeilenumbruch für lange equations
-                      allow_unicode=True, sort_keys=False)
+            yaml.dump(
+                infos,
+                f,
+                width=1000,  # Verhinderung Zeilenumbruch für lange equations
+                allow_unicode=True,
+                sort_keys=False,
+            )
 
         message = f' Saved Calculation: {self.name} '
-        logger.info(f'{"":#^80}\n'
-                    f'{message:#^80}\n'
-                    f'{"":#^80}')
+        logger.info(f'{"":#^80}\n{message:#^80}\n{"":#^80}')
         logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
         logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
-
 
     def _transfer_start_values(self, segment_name: str):
         """
         This function gets the last values of the previous solved segment and
         inserts them as start values for the nest segment
         """
-        final_index_of_prior_segment = - (1 + self.overlap_length)
+        final_index_of_prior_segment = -(1 + self.overlap_length)
         start_values_of_this_segment = {}
         for flow in self.flow_system.flows.values():
-            flow.previous_flow_rate = flow.model.flow_rate.result[final_index_of_prior_segment]  #TODO: maybe more values?
+            flow.previous_flow_rate = flow.model.flow_rate.result[
+                final_index_of_prior_segment
+            ]  # TODO: maybe more values?
             start_values_of_this_segment[flow.label_full] = flow.previous_flow_rate
         for comp in self.flow_system.components.values():
             if isinstance(comp, Storage):
@@ -452,7 +500,7 @@ class SegmentedCalculation(Calculation):
         self._transfered_start_values[segment_name] = start_values_of_this_segment
 
     def _reset_start_values(self):
-        """ This resets the start values of all Elements to its original state"""
+        """This resets the start values of all Elements to its original state"""
         for flow in self.flow_system.flows.values():
             flow.previous_flow_rate = self._original_start_values[flow]
         for comp in self.flow_system.components.values():
@@ -469,11 +517,13 @@ class SegmentedCalculation(Calculation):
 
     @property
     def start_values_of_segments(self) -> Dict[str, Dict[str, Any]]:
-        """ Gives an overview of the start values of all Segments """
+        """Gives an overview of the start values of all Segments"""
         return {
             self.sub_calculations[0].name: {
-                element.label_full: value for element, value in self._original_start_values.items()},
-            **self._transfered_start_values}
+                element.label_full: value for element, value in self._original_start_values.items()
+            },
+            **self._transfered_start_values,
+        }
 
 
 def _remove_none_values(d: Dict[Any, Optional[Any]]) -> Dict[Any, Any]:
@@ -482,15 +532,19 @@ def _remove_none_values(d: Dict[Any, Optional[Any]]) -> Dict[Any, Any]:
 
 
 def _remove_empty_dicts(d: Dict[Any, Any]) -> Dict[Any, Any]:
-    """ Recursively removes empty dictionaries from a nested dictionary. """
-    return {k: _remove_empty_dicts(v) if isinstance(v, dict) else v for k, v in d.items() if
-            not isinstance(v, dict) or _remove_empty_dicts(v)}
+    """Recursively removes empty dictionaries from a nested dictionary."""
+    return {
+        k: _remove_empty_dicts(v) if isinstance(v, dict) else v
+        for k, v in d.items()
+        if not isinstance(v, dict) or _remove_empty_dicts(v)
+    }
 
 
-def _combine_nested_arrays(*dicts: Dict[str, Union[Numeric, dict]],
-                           trim: Optional[int] = None,
-                           length_per_array: Optional[int] = None,
-                           ) -> Dict[str, Union[np.ndarray, dict]]:
+def _combine_nested_arrays(
+    *dicts: Dict[str, Union[Numeric, dict]],
+    trim: Optional[int] = None,
+    length_per_array: Optional[int] = None,
+) -> Dict[str, Union[np.ndarray, dict]]:
     """
     Combines multiple dictionaries with identical structures by concatenating their arrays,
     with optional trimming. Filters out all other values.
@@ -517,14 +571,18 @@ def _combine_nested_arrays(*dicts: Dict[str, Union[Numeric, dict]],
     >>> _combine_nested_arrays(dict1, dict2, trim=1)
     {'a': array([1, 2, 7, 8, 9]), 'b': {'c': array([4, 5, 10, 11, 12])}}
     """
-    assert (trim is None) != (length_per_array is None), 'Either trim or length_per_array must be provided,But not both!'
+    assert (trim is None) != (length_per_array is None), (
+        'Either trim or length_per_array must be provided,But not both!'
+    )
 
-    def combine_arrays_recursively(*values: Union[Numeric, Dict[str, Numeric], Any]
-                                   ) -> Optional[Union[np.ndarray, Dict[str, Union[np.ndarray, dict]]]]:
+    def combine_arrays_recursively(
+        *values: Union[Numeric, Dict[str, Numeric], Any],
+    ) -> Optional[Union[np.ndarray, Dict[str, Union[np.ndarray, dict]]]]:
         if all(isinstance(val, dict) for val in values):  # If all values are dictionaries, recursively combine each key
             return {key: combine_arrays_recursively(*(val[key] for val in values)) for key in values[0]}
 
         if all(isinstance(val, np.ndarray) for val in values):
+
             def limit(idx: int, arr: np.ndarray) -> np.ndarray:
                 # Performs the trimming of the arrays. Doesn't trim the last array!
                 if trim and idx < len(values) - 1:
@@ -536,12 +594,11 @@ def _combine_nested_arrays(*dicts: Dict[str, Union[Numeric, dict]],
             values: List[np.ndarray]
             return np.concatenate([limit(idx, arr) for idx, arr in enumerate(values)])
 
-
         else:  # Ignore non-array values
             return None
 
     combined_arrays = combine_arrays_recursively(*dicts)
-    combined_arrays =_remove_none_values(combined_arrays)
+    combined_arrays = _remove_none_values(combined_arrays)
     return _remove_empty_dicts(combined_arrays)
 
 
@@ -556,8 +613,9 @@ def _combine_nested_scalars(*dicts: Dict[str, Union[Numeric, dict]]) -> Dict[str
         Dictionaries with matching structures and Numeric values.
     """
 
-    def combine_scalars_recursively(*values: Union[Numeric, Dict[str, Numeric], Any]
-                                    ) -> Optional[Union[List[Skalar], Dict[str, Union[List[Skalar], dict]]]]:
+    def combine_scalars_recursively(
+        *values: Union[Numeric, Dict[str, Numeric], Any],
+    ) -> Optional[Union[List[Skalar], Dict[str, Union[List[Skalar], dict]]]]:
         # If all values are dictionaries, recursively combine each key
         if all(isinstance(val, dict) for val in values):
             return {key: combine_scalars_recursively(*(val[key] for val in values)) for key in values[0]}
@@ -569,5 +627,5 @@ def _combine_nested_scalars(*dicts: Dict[str, Union[Numeric, dict]]) -> Dict[str
             return None
 
     combined_scalars = combine_scalars_recursively(*dicts)
-    combined_scalars =_remove_none_values(combined_scalars)
+    combined_scalars = _remove_none_values(combined_scalars)
     return _remove_empty_dicts(combined_scalars)

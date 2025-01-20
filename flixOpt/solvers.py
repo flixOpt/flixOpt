@@ -12,10 +12,10 @@ from .math_modeling import (
 )
 
 __all__ = [
-    "Solver",
-    "HighsSolver",
-    "GurobiSolver",
-    "CbcSolver",
-    "CplexSolver",
-    "GlpkSolver",
+    'Solver',
+    'HighsSolver',
+    'GurobiSolver',
+    'CbcSolver',
+    'CplexSolver',
+    'GlpkSolver',
 ]

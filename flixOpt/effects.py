@@ -24,23 +24,25 @@ class Effect(Element):
     Components, FLows, and so on can contribute to an Effect. One Effect is chosen as the Objective of the Optimization
     """
 
-    def __init__(self,
-                 label: str,
-                 unit: str,
-                 description: str,
-                 meta_data: Optional[Dict] = None,
-                 is_standard: bool = False,
-                 is_objective: bool = False,
-                 specific_share_to_other_effects_operation: 'EffectValues' = None,
-                 specific_share_to_other_effects_invest: 'EffectValuesInvest' = None,
-                 minimum_operation: Optional[Skalar] = None,
-                 maximum_operation: Optional[Skalar] = None,
-                 minimum_invest: Optional[Skalar] = None,
-                 maximum_invest: Optional[Skalar] = None,
-                 minimum_operation_per_hour: Optional[Numeric_TS] = None,
-                 maximum_operation_per_hour: Optional[Numeric_TS] = None,
-                 minimum_total: Optional[Skalar] = None,
-                 maximum_total: Optional[Skalar] = None):
+    def __init__(
+        self,
+        label: str,
+        unit: str,
+        description: str,
+        meta_data: Optional[Dict] = None,
+        is_standard: bool = False,
+        is_objective: bool = False,
+        specific_share_to_other_effects_operation: 'EffectValues' = None,
+        specific_share_to_other_effects_invest: 'EffectValuesInvest' = None,
+        minimum_operation: Optional[Skalar] = None,
+        maximum_operation: Optional[Skalar] = None,
+        minimum_invest: Optional[Skalar] = None,
+        maximum_invest: Optional[Skalar] = None,
+        minimum_operation_per_hour: Optional[Numeric_TS] = None,
+        maximum_operation_per_hour: Optional[Numeric_TS] = None,
+        minimum_total: Optional[Skalar] = None,
+        maximum_total: Optional[Skalar] = None,
+    ):
         """
         Parameters
         ----------
@@ -90,8 +92,12 @@ class Effect(Element):
         self.description = description
         self.is_standard = is_standard
         self.is_objective = is_objective
-        self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = specific_share_to_other_effects_operation or {}
-        self.specific_share_to_other_effects_invest: Union[EffectValuesInvest, EffectDictInvest] = specific_share_to_other_effects_invest or {}
+        self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = (
+            specific_share_to_other_effects_operation or {}
+        )
+        self.specific_share_to_other_effects_invest: Union[EffectValuesInvest, EffectDictInvest] = (
+            specific_share_to_other_effects_invest or {}
+        )
         self.minimum_operation = minimum_operation
         self.maximum_operation = maximum_operation
         self.minimum_operation_per_hour: Numeric_TS = minimum_operation_per_hour
@@ -105,7 +111,7 @@ class Effect(Element):
 
     def _plausibility_checks(self) -> None:
         # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
-        #TODO: Improve checks!! Only most basic case covered...
+        # TODO: Improve checks!! Only most basic case covered...
 
         def error_str(effect_label: str, shareEffect_label: str):
             return (
@@ -116,22 +122,26 @@ class Effect(Element):
         # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
         # operation:
         for target_effect in self.specific_share_to_other_effects_operation.keys():
-            assert self not in target_effect.specific_share_to_other_effects_operation.keys(), \
+            assert self not in target_effect.specific_share_to_other_effects_operation.keys(), (
                 f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
+            )
         # invest:
         for target_effect in self.specific_share_to_other_effects_invest.keys():
-            assert self not in target_effect.specific_share_to_other_effects_invest.keys(), \
+            assert self not in target_effect.specific_share_to_other_effects_invest.keys(), (
                 f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
+            )
 
     def transform_data(self):
         self.minimum_operation_per_hour = _create_time_series(
-            'minimum_operation_per_hour', self.minimum_operation_per_hour, self)
+            'minimum_operation_per_hour', self.minimum_operation_per_hour, self
+        )
         self.maximum_operation_per_hour = _create_time_series(
-            'maximum_operation_per_hour', self.maximum_operation_per_hour, self)
+            'maximum_operation_per_hour', self.maximum_operation_per_hour, self
+        )
 
         self.specific_share_to_other_effects_operation = effect_values_to_time_series(
-            'specific_share_to_other_effects_operation',
-            self.specific_share_to_other_effects_operation, self)
+            'specific_share_to_other_effects_operation', self.specific_share_to_other_effects_operation, self
+        )
 
     def create_model(self) -> 'EffectModel':
         self.model = EffectModel(self)
@@ -142,18 +152,25 @@ class EffectModel(ElementModel):
     def __init__(self, element: Effect):
         super().__init__(element)
         self.element: Effect
-        self.invest = ShareAllocationModel(self.element, 'invest', False,
-                                           total_max=self.element.maximum_invest,
-                                           total_min=self.element.minimum_invest)
-        self.operation = ShareAllocationModel(
-            self.element, 'operation', True, total_max=self.element.maximum_operation,
-            total_min=self.element.minimum_operation,
-            min_per_hour=self.element.minimum_operation_per_hour.active_data if self.element.minimum_operation_per_hour is not None else None,
-            max_per_hour=self.element.maximum_operation_per_hour.active_data if self.element.maximum_operation_per_hour is not None else None
+        self.invest = ShareAllocationModel(
+            self.element, 'invest', False, total_max=self.element.maximum_invest, total_min=self.element.minimum_invest
         )
-        self.all = ShareAllocationModel(self.element, 'all', False,
-                                        total_max=self.element.maximum_total,
-                                        total_min=self.element.minimum_total)
+        self.operation = ShareAllocationModel(
+            self.element,
+            'operation',
+            True,
+            total_max=self.element.maximum_operation,
+            total_min=self.element.minimum_operation,
+            min_per_hour=self.element.minimum_operation_per_hour.active_data
+            if self.element.minimum_operation_per_hour is not None
+            else None,
+            max_per_hour=self.element.maximum_operation_per_hour.active_data
+            if self.element.maximum_operation_per_hour is not None
+            else None,
+        )
+        self.all = ShareAllocationModel(
+            self.element, 'all', False, total_max=self.element.maximum_total, total_min=self.element.minimum_total
+        )
         self.sub_models.extend([self.invest, self.operation, self.all])
 
     def do_modeling(self, system_model: SystemModel):
@@ -174,21 +191,24 @@ EffectTimeSeries = Dict[Optional['Effect'], TimeSeries]  # Final Internal Data S
 ElementTimeSeries = Dict[Optional[Element], TimeSeries]  # Final Internal Data Structure
 
 
-def nested_values_to_time_series(nested_values: Dict[Element, Numeric_TS],
-                                 label_suffix: str,
-                                 parent_element: Element) -> ElementTimeSeries:
+def nested_values_to_time_series(
+    nested_values: Dict[Element, Numeric_TS], label_suffix: str, parent_element: Element
+) -> ElementTimeSeries:
     """
     Creates TimeSeries from nested values, which are a Dict of Elements to values.
     The resulting label of the TimeSeries is the label of the parent_element, followed by the label of the element in
     the nested_values and the label_suffix.
     """
-    return {element: _create_time_series(f'{element.label}_{label_suffix}', value, parent_element)
-            for element, value in nested_values.items() if element is not None}
+    return {
+        element: _create_time_series(f'{element.label}_{label_suffix}', value, parent_element)
+        for element, value in nested_values.items()
+        if element is not None
+    }
 
 
-def effect_values_to_time_series(label_suffix: str,
-                                 nested_values: EffectValues,
-                                 parent_element: Element) -> Optional[EffectTimeSeries]:
+def effect_values_to_time_series(
+    label_suffix: str, nested_values: EffectValues, parent_element: Element
+) -> Optional[EffectTimeSeries]:
     """
     Creates TimeSeries from EffectValues. The resulting label of the TimeSeries is the label of the parent_element,
     followed by the label of the Effect in the nested_values and the label_suffix.
@@ -201,7 +221,9 @@ def effect_values_to_time_series(label_suffix: str,
         standard_value = nested_values.pop(None, None)
         transformed_values = nested_values_to_time_series(nested_values, label_suffix, parent_element)
         if standard_value is not None:
-            transformed_values[None] = _create_time_series(f'Standard_Effect_{label_suffix}', standard_value, parent_element)
+            transformed_values[None] = _create_time_series(
+                f'Standard_Effect_{label_suffix}', standard_value, parent_element
+            )
         return transformed_values
 
 
@@ -225,7 +247,13 @@ def as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
     dict or None
         A dictionary with None or Effect as the key, or None if input is None.
     """
-    return effect_values if isinstance(effect_values, dict) else {None: effect_values} if effect_values is not None else None
+    return (
+        effect_values
+        if isinstance(effect_values, dict)
+        else {None: effect_values}
+        if effect_values is not None
+        else None
+    )
 
 
 def effect_values_from_effect_time_series(effect_time_series: EffectTimeSeries) -> Dict[Optional[Effect], Numeric]:
@@ -302,13 +330,15 @@ class EffectCollectionModel(ElementModel):
     def _objective_effect_model(self) -> EffectModel:
         return self._effect_models[self.element.objective_effect]
 
-    def _add_share_to_effects(self,
-                              name: str,
-                              element: Element,
-                              target: Literal['operation', 'invest'],
-                              effect_values: EffectDict,
-                              factor: Numeric,
-                              variable: Optional[Variable] = None) -> None:
+    def _add_share_to_effects(
+        self,
+        name: str,
+        element: Element,
+        target: Literal['operation', 'invest'],
+        effect_values: EffectDict,
+        factor: Numeric,
+        variable: Optional[Variable] = None,
+    ) -> None:
         # an alle Effects, die einen Wert haben, anhängen:
         for effect, value in effect_values.items():
             if effect is None:  # Falls None, dann Standard-effekt nutzen:
@@ -326,31 +356,38 @@ class EffectCollectionModel(ElementModel):
             total_factor = np.multiply(value, factor)
             model.add_share(self._system_model, name_of_share, variable, total_factor)
 
-    def add_share_to_invest(self,
-                            name: str,
-                            element: Element,
-                            effect_values: EffectDictInvest,
-                            factor: Numeric,
-                            variable: Optional[Variable] = None) -> None:
-        #TODO: Add checks
+    def add_share_to_invest(
+        self,
+        name: str,
+        element: Element,
+        effect_values: EffectDictInvest,
+        factor: Numeric,
+        variable: Optional[Variable] = None,
+    ) -> None:
+        # TODO: Add checks
         self._add_share_to_effects(name, element, 'invest', effect_values, factor, variable)
 
-    def add_share_to_operation(self,
-                               name: str,
-                               element: Element,
-                               effect_values: EffectTimeSeries,
-                               factor: Numeric,
-                               variable: Optional[Variable] = None) -> None:
+    def add_share_to_operation(
+        self,
+        name: str,
+        element: Element,
+        effect_values: EffectTimeSeries,
+        factor: Numeric,
+        variable: Optional[Variable] = None,
+    ) -> None:
         # TODO: Add checks
-        self._add_share_to_effects(name, element, 'operation', effect_values_from_effect_time_series(effect_values), factor, variable)
+        self._add_share_to_effects(
+            name, element, 'operation', effect_values_from_effect_time_series(effect_values), factor, variable
+        )
 
-    def add_share_to_penalty(self,
-                             name: Optional[str],
-                             variable: Variable,
-                             factor: Numeric,
-                             ) -> None:
+    def add_share_to_penalty(
+        self,
+        name: Optional[str],
+        variable: Variable,
+        factor: Numeric,
+    ) -> None:
         assert variable is not None, 'A Variable must be passed to add a share to penalty! Else its a constant Penalty!'
-        self.penalty.add_share(self._system_model, name, variable, factor,  True)
+        self.penalty.add_share(self._system_model, name, variable, factor, True)
 
     def add_share_between_effects(self):
         for origin_effect in self.element.effects.values():
@@ -358,11 +395,16 @@ class EffectCollectionModel(ElementModel):
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_model = self._effect_models[target_effect].operation
                 origin_model = self._effect_models[origin_effect].operation
-                target_model.add_share(self._system_model, f'{origin_effect.label_full}_operation', origin_model.sum_TS,
-                                                time_series.active_data)
+                target_model.add_share(
+                    self._system_model,
+                    f'{origin_effect.label_full}_operation',
+                    origin_model.sum_TS,
+                    time_series.active_data,
+                )
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_model = self._effect_models[target_effect].invest
                 origin_model = self._effect_models[origin_effect].invest
-                target_model.add_share(self._system_model, f'{origin_effect.label_full}_invest', origin_model.sum,
-                                                factor)
+                target_model.add_share(
+                    self._system_model, f'{origin_effect.label_full}_invest', origin_model.sum, factor
+                )
