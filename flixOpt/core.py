@@ -16,15 +16,12 @@ logger = logging.getLogger('flixOpt')
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
 
-
 class TimeSeriesData:
     # TODO: Move to Interface.py
-    def __init__(
-        self,
-        data: Numeric,
-        agg_group: Optional[str] = None,
-        agg_weight: Optional[float] = None,
-    ):
+    def __init__(self,
+                 data: Numeric,
+                 agg_group: Optional[str] = None,
+                 agg_weight: Optional[float] = None):
         """
         timeseries class for transmit timeseries AND special characteristics of timeseries,
         i.g. to define weights needed in calculation_type 'aggregated'
@@ -64,16 +61,17 @@ class TimeSeriesData:
         init_args = init_signature.parameters
 
         # Create a dictionary with argument names and their values
-        args_str = ', '.join(f'{name}={repr(getattr(self, name, None))}' for name in init_args if name != 'self')
-        return f'{self.__class__.__name__}({args_str})'
+        args_str = ', '.join(
+            f"{name}={repr(getattr(self, name, None))}"
+            for name in init_args if name != 'self'
+        )
+        return f"{self.__class__.__name__}({args_str})"
 
     def __str__(self):
         return str(self.data)
 
 
-Numeric_TS = Union[
-    Skalar, np.ndarray, TimeSeriesData
-]  # TODO: This is not really correct throughozt the codebase. Sometimes its used for TimeSeries aswell?
+Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesData]  # TODO: This is not really correct throughozt the codebase. Sometimes its used for TimeSeries aswell?
 
 
 class TimeSeries:
@@ -104,10 +102,7 @@ class TimeSeries:
         self.label: str = label
         if isinstance(data, TimeSeriesData):
             self.data = self.make_scalar_if_possible(data.data)
-            self.aggregation_weight, self.aggregation_group = (
-                data.agg_weight,
-                data.agg_group,
-            )
+            self.aggregation_weight, self.aggregation_group = data.agg_weight, data.agg_group
             data.label = self.label  # Connecting User_time_series to real Time_series
         else:
             self.data = self.make_scalar_if_possible(data)
@@ -116,18 +111,13 @@ class TimeSeries:
         self.active_indices: Optional[Union[range, List[int]]] = None
         self.aggregated_data: Optional[Numeric] = None
 
-    def activate_indices(
-        self,
-        indices: Optional[Union[range, List[int]]],
-        aggregated_data: Optional[Numeric] = None,
-    ):
+    def activate_indices(self, indices: Optional[Union[range, List[int]]], aggregated_data: Optional[Numeric] = None):
         self.active_indices = indices
 
         if aggregated_data is not None:
-            assert len(aggregated_data) == len(self.active_indices) or len(aggregated_data) == 1, (
-                f'The aggregated_data has the wrong length for TimeSeries {self.label}. '
-                f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}'
-            )
+            assert len(aggregated_data) == len(self.active_indices) or len(aggregated_data) == 1, \
+                (f'The aggregated_data has the wrong length for TimeSeries {self.label}. '
+                 f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}')
             self.aggregated_data = self.make_scalar_if_possible(aggregated_data)
 
     def clear_indices_and_aggregated_data(self):
@@ -162,9 +152,9 @@ class TimeSeries:
         # Retrieve all attributes and their values
         attrs = vars(self)
         # Format each attribute as 'key=value'
-        attrs_str = ', '.join(f'{key}={value!r}' for key, value in attrs.items())
+        attrs_str = ', '.join(f"{key}={value!r}" for key, value in attrs.items())
         # Format the output as 'ClassName(attr1=value1, attr2=value2, ...)'
-        return f'{self.__class__.__name__}({attrs_str})'
+        return f"{self.__class__.__name__}({attrs_str})"
 
     def __str__(self):
         return str(self.active_data)
@@ -185,7 +175,7 @@ class TimeSeries:
         Numeric
             A scalar if all values in the array are equal, otherwise the array itself. None, if the passed value is None
         """
-        # TODO: Should this really return None Values?
+        #TODO: Should this really return None Values?
         if np.isscalar(data) or data is None:
             return data
         data = np.array(data)

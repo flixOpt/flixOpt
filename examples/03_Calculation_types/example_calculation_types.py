@@ -13,6 +13,7 @@ from rich.pretty import pprint  # Used for pretty printing
 import flixOpt as fx
 
 if __name__ == '__main__':
+
     # Calculation Types
     full, segmented, aggregated = True, True, True
 
@@ -26,8 +27,7 @@ if __name__ == '__main__':
         fix_storage_flows=True,
         aggregate_data_and_fix_non_binary_vars=True,
         percentage_of_period_freedom=0,
-        penalty_of_period_freedom=0,
-    )
+        penalty_of_period_freedom=0)
     keep_extreme_periods = True
 
     # Data Import
@@ -65,122 +65,62 @@ if __name__ == '__main__':
     # Component Definitions
 
     # 1. Boiler
-    a_gaskessel = fx.linear_converters.Boiler(
-        'Kessel',
-        eta=0.85,
-        Q_th=fx.Flow(label='Q_th', bus=Fernwaerme),
-        Q_fu=fx.Flow(
-            label='Q_fu',
-            bus=Gas,
-            size=95,
-            relative_minimum=12 / 95,
-            previous_flow_rate=20,
-            can_be_off=fx.OnOffParameters(effects_per_switch_on=1000),
-        ),
-    )
+    a_gaskessel = fx.linear_converters.Boiler('Kessel', eta=0.85,
+                                              Q_th=fx.Flow(label='Q_th', bus=Fernwaerme),
+                                              Q_fu=fx.Flow(label='Q_fu', bus=Gas, size=95,
+                                                           relative_minimum=12 / 95, previous_flow_rate=20,
+                                                           can_be_off=fx.OnOffParameters(effects_per_switch_on=1000)))
 
     # 2. CHP
-    a_kwk = fx.linear_converters.CHP(
-        'BHKW2',
-        eta_th=0.58,
-        eta_el=0.22,
-        on_off_parameters=fx.OnOffParameters(effects_per_switch_on=24000),
-        P_el=fx.Flow('P_el', bus=Strom, size=200),
-        Q_th=fx.Flow('Q_th', bus=Fernwaerme, size=200),
-        Q_fu=fx.Flow(
-            'Q_fu',
-            bus=Kohle,
-            size=288,
-            relative_minimum=87 / 288,
-            previous_flow_rate=100,
-        ),
+    a_kwk = fx.linear_converters.CHP('BHKW2', eta_th=0.58, eta_el=0.22,
+                                     on_off_parameters=fx.OnOffParameters(effects_per_switch_on=24000),
+                                     P_el=fx.Flow('P_el', bus=Strom, size=200),
+                                     Q_th=fx.Flow('Q_th', bus=Fernwaerme, size=200),
+                                     Q_fu=fx.Flow('Q_fu', bus=Kohle, size=288, relative_minimum=87 / 288,
+                                                  previous_flow_rate=100)
     )
 
     # 3. Storage
-    a_speicher = fx.Storage(
-        'Speicher',
-        capacity_in_flow_hours=684,
-        initial_charge_state=137,
-        minimal_final_charge_state=137,
-        maximal_final_charge_state=158,
-        eta_charge=1,
-        eta_discharge=1,
-        relative_loss_per_hour=0.001,
-        prevent_simultaneous_charge_and_discharge=True,
-        charging=fx.Flow('Q_th_load', size=137, bus=Fernwaerme),
-        discharging=fx.Flow('Q_th_unload', size=158, bus=Fernwaerme),
-    )
+    a_speicher = fx.Storage('Speicher', capacity_in_flow_hours=684, initial_charge_state=137,
+                            minimal_final_charge_state=137, maximal_final_charge_state=158,
+                            eta_charge=1, eta_discharge=1,
+                            relative_loss_per_hour=0.001, prevent_simultaneous_charge_and_discharge=True,
+                            charging=fx.Flow('Q_th_load', size=137, bus=Fernwaerme),
+                            discharging=fx.Flow('Q_th_unload', size=158, bus=Fernwaerme))
 
     # 4. Sinks and Sources
     # Heat Load Profile
-    a_waermelast = fx.Sink(
-        'Wärmelast',
-        sink=fx.Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_profile=TS_heat_demand),
-    )
+    a_waermelast = fx.Sink('Wärmelast',
+                           sink=fx.Flow('Q_th_Last', bus=Fernwaerme, size=1,fixed_relative_profile=TS_heat_demand))
 
     # Electricity Feed-in
-    a_strom_last = fx.Sink(
-        'Stromlast',
-        sink=fx.Flow('P_el_Last', bus=Strom, size=1, fixed_relative_profile=TS_electricity_demand),
-    )
+    a_strom_last = fx.Sink('Stromlast',
+                           sink=fx.Flow('P_el_Last', bus=Strom, size=1, fixed_relative_profile=TS_electricity_demand))
 
     # Gas Tariff
-    a_gas_tarif = fx.Source(
-        'Gastarif',
-        source=fx.Flow(
-            'Q_Gas',
-            bus=Gas,
-            size=1000,
-            effects_per_flow_hour={costs: gas_price, CO2: 0.3},
-        ),
-    )
+    a_gas_tarif = fx.Source('Gastarif',
+                            source=fx.Flow('Q_Gas', bus=Gas, size=1000,
+                                           effects_per_flow_hour={costs: gas_price, CO2: 0.3}))
 
     # Coal Tariff
-    a_kohle_tarif = fx.Source(
-        'Kohletarif',
-        source=fx.Flow(
-            'Q_Kohle',
-            bus=Kohle,
-            size=1000,
-            effects_per_flow_hour={costs: 4.6, CO2: 0.3},
-        ),
-    )
+    a_kohle_tarif = fx.Source('Kohletarif',
+                              source=fx.Flow('Q_Kohle', bus=Kohle, size=1000,
+                                             effects_per_flow_hour={costs: 4.6, CO2: 0.3}))
 
     # Electricity Tariff and Feed-in
-    a_strom_einspeisung = fx.Sink(
-        'Einspeisung',
-        sink=fx.Flow(
-            'P_el',
-            bus=Strom,
-            size=1000,
-            effects_per_flow_hour=TS_electricity_price_sell,
-        ),
-    )
+    a_strom_einspeisung = fx.Sink('Einspeisung',
+                                  sink=fx.Flow('P_el', bus=Strom, size=1000,
+                                               effects_per_flow_hour=TS_electricity_price_sell))
 
-    a_strom_tarif = fx.Source(
-        'Stromtarif',
-        source=fx.Flow(
-            'P_el',
-            bus=Strom,
-            size=1000,
-            effects_per_flow_hour={costs: TS_electricity_price_buy, CO2: 0.3},
-        ),
-    )
+    a_strom_tarif = fx.Source('Stromtarif',
+                              source=fx.Flow('P_el', bus=Strom, size=1000,
+                                             effects_per_flow_hour={costs: TS_electricity_price_buy, CO2: 0.3}))
 
     # Flow System Setup
     flow_system = fx.FlowSystem(datetime_series)
     flow_system.add_effects(costs, CO2, PE)
-    flow_system.add_components(
-        a_gaskessel,
-        a_waermelast,
-        a_strom_last,
-        a_gas_tarif,
-        a_kohle_tarif,
-        a_strom_einspeisung,
-        a_strom_tarif,
-        a_kwk,
-        a_speicher,
-    )
+    flow_system.add_components(a_gaskessel, a_waermelast, a_strom_last, a_gas_tarif, a_kohle_tarif,
+                               a_strom_einspeisung, a_strom_tarif, a_kwk, a_speicher)
     flow_system.visualize_network(controls=False)
     # Calculations
     kinds = ['Full', 'Segmented', 'Aggregated']
@@ -203,10 +143,7 @@ if __name__ == '__main__':
     if aggregated:
         if keep_extreme_periods:
             aggregation_parameters.time_series_for_high_peaks = [TS_heat_demand]
-            aggregation_parameters.time_series_for_low_peaks = [
-                TS_electricity_demand,
-                TS_heat_demand,
-            ]
+            aggregation_parameters.time_series_for_low_peaks = [TS_electricity_demand, TS_heat_demand]
         calculation = fx.AggregatedCalculation('aggModel', flow_system, aggregation_parameters)
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver())
@@ -214,13 +151,12 @@ if __name__ == '__main__':
         results['Aggregated'] = calculations['Aggregated'].results()
     pprint(results)
 
-    def extract_result(results_data: dict[str, dict], keys: List[str]) -> Dict[str, Union[int, float, np.ndarray]]:
+    def extract_result(results_data: dict[str, dict], keys: List[str]) -> Dict[str,Union[int, float, np.ndarray]]:
         """
         Function to retrieve values from a nested dictionary.
         Tries to get the wanted value for eachnkey in the first layer of the dict.
         Returns a dict with one key value pair for each dict it found a value in.
         """
-
         def get_nested_value(d, ks):
             for k in ks:
                 if isinstance(d, dict):
@@ -231,6 +167,7 @@ if __name__ == '__main__':
 
         return {kind: get_nested_value(results_data.get(kind, {}), keys) for kind in results_data.keys()}
 
+
     if calculations['Full'] is not None:
         time_series_used = calculations['Full'].system_model.time_series
         time_series_used_w_end = calculations['Full'].system_model.time_series_with_end
@@ -238,59 +175,37 @@ if __name__ == '__main__':
         time_series_used = calculations['Aggregated'].system_model.time_series
         time_series_used_w_end = calculations['Aggregated'].system_model.time_series_with_end
 
-    data = pd.DataFrame(
-        extract_result(results, ['Components', 'Speicher', 'charge_state']),
-        index=time_series_used_w_end,
-    )
+    data = pd.DataFrame(extract_result(results, ['Components', 'Speicher', 'charge_state']),
+                        index=time_series_used_w_end)
     fig = fx.plotting.with_plotly(data, 'line')
-    fig.update_layout(title='Charge State Comparison', xaxis_title='Time', yaxis_title='Charge state')
+    fig.update_layout(title="Charge State Comparison", xaxis_title="Time", yaxis_title="Charge state")
     fig.write_html('results/Charge State.html')
 
-    data = pd.DataFrame(
-        extract_result(results, ['Components', 'BHKW2', 'Q_th', 'flow_rate']),
-        index=time_series_used,
-    )
+    data = pd.DataFrame(extract_result(results, ['Components', 'BHKW2', 'Q_th', 'flow_rate']),
+                        index=time_series_used)
     fig = fx.plotting.with_plotly(data, 'line')
-    fig.update_layout(
-        title='BHKW2 Q_th Flow Rate Comparison',
-        xaxis_title='Time',
-        yaxis_title='Flow rate',
-    )
+    fig.update_layout(title="BHKW2 Q_th Flow Rate Comparison", xaxis_title="Time", yaxis_title="Flow rate")
     fig.write_html('results/BHKW2 Thermal Power.html')
 
-    data = pd.DataFrame(
-        extract_result(results, ['Effects', 'costs', 'operation', 'operation_sum_TS']),
-        index=calculations['Full'].system_model.time_series,
-    )
+    data = pd.DataFrame(extract_result(results, ['Effects', 'costs', 'operation', 'operation_sum_TS']),
+                        index=calculations['Full'].system_model.time_series)
     fig = fx.plotting.with_plotly(data, 'line')
-    fig.update_layout(title='Cost Comparison', xaxis_title='Time', yaxis_title='Costs (€)')
+    fig.update_layout(title="Cost Comparison", xaxis_title="Time", yaxis_title="Costs (€)")
     fig.write_html('results/Operation Costs.html')
 
-    data = pd.DataFrame(
-        extract_result(results, ['Effects', 'costs', 'operation', 'operation_sum_TS']),
-        index=time_series_used,
-    )
+    data = pd.DataFrame(extract_result(results, ['Effects', 'costs', 'operation', 'operation_sum_TS']),
+                        index=time_series_used)
     data = pd.DataFrame(data.sum()).T
     fig = fx.plotting.with_plotly(data, 'bar')
-    fig.update_layout(title='Total Cost Comparison', yaxis_title='Costs (€)', barmode='group')
+    fig.update_layout(title="Total Cost Comparison", yaxis_title="Costs (€)", barmode='group')
     fig.write_html('results/Total Costs.html')
 
-    duration_data = pd.DataFrame(
-        {
-            'Full': [calculations['Full'].durations.get(key, 0) for key in calculations['Aggregated'].durations],
-            'Aggregated': [
-                calculations['Aggregated'].durations.get(key, 0) for key in calculations['Aggregated'].durations
-            ],
-            'Segmented': [
-                calculations['Segmented'].durations.get(key, 0) for key in calculations['Aggregated'].durations
-            ],
-        },
-        index=list(calculations['Aggregated'].durations.keys()),
-    ).T
+    duration_data = pd.DataFrame({
+        'Full': [calculations['Full'].durations.get(key, 0) for key in calculations['Aggregated'].durations],
+        'Aggregated': [calculations['Aggregated'].durations.get(key, 0) for key in calculations['Aggregated'].durations],
+        'Segmented': [calculations['Segmented'].durations.get(key, 0) for key in calculations['Aggregated'].durations]},
+        index=list(calculations['Aggregated'].durations.keys())).T
     fig = fx.plotting.with_plotly(duration_data, 'bar')
-    fig.update_layout(
-        title='Duration Comparison',
-        xaxis_title='Calculation type',
-        yaxis_title='Time (s)',
-    )
+    fig.update_layout(title="Duration Comparison", xaxis_title="Calculation type", yaxis_title="Time (s)")
     fig.write_html('results/Speed Comparison.html')
+

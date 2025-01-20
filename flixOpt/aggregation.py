@@ -30,7 +30,7 @@ from .structure import (
 if TYPE_CHECKING:
     import plotly.graph_objects as go
 
-warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 logger = logging.getLogger('flixOpt')
 
 
@@ -38,17 +38,15 @@ class Aggregation:
     """
     aggregation organizing class
     """
-
-    def __init__(
-        self,
-        original_data: pd.DataFrame,
-        hours_per_time_step: Skalar,
-        hours_per_period: Skalar,
-        nr_of_periods: int = 8,
-        weights: Dict[str, float] = None,
-        time_series_for_high_peaks: List[str] = None,
-        time_series_for_low_peaks: List[str] = None,
-    ):
+    def __init__(self,
+                 original_data: pd.DataFrame,
+                 hours_per_time_step: Skalar,
+                 hours_per_period: Skalar,
+                 nr_of_periods: int = 8,
+                 weights: Dict[str, float] = None,
+                 time_series_for_high_peaks: List[str] = None,
+                 time_series_for_low_peaks: List[str] = None
+                 ):
         """
         Write a docstring please
 
@@ -76,56 +74,49 @@ class Aggregation:
         """
         start_time = timeit.default_timer()
         # Erstellen des aggregation objects
-        self.tsam = tsam.TimeSeriesAggregation(
-            self.original_data,
-            noTypicalPeriods=self.nr_of_periods,
-            hoursPerPeriod=self.hours_per_period,
-            resolution=self.hours_per_time_step,
-            clusterMethod='k_means',
-            extremePeriodMethod='new_cluster_center'
-            if self.use_extreme_periods
-            else 'None',  # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
-            weightDict=self.weights,
-            addPeakMax=self.time_series_for_high_peaks,
-            addPeakMin=self.time_series_for_low_peaks,
-        )
+        self.tsam = tsam.TimeSeriesAggregation(self.original_data,
+                                                      noTypicalPeriods=self.nr_of_periods,
+                                                      hoursPerPeriod=self.hours_per_period,
+                                                      resolution=self.hours_per_time_step,
+                                                      clusterMethod='k_means',
+                                                      extremePeriodMethod='new_cluster_center' if self.use_extreme_periods else 'None',  # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
+                                                      weightDict=self.weights,
+                                                      addPeakMax=self.time_series_for_high_peaks,
+                                                      addPeakMin=self.time_series_for_low_peaks
+                                                      )
 
-        self.tsam.createTypicalPeriods()  # Ausführen der Aggregation/Clustering
+        self.tsam.createTypicalPeriods()   # Ausführen der Aggregation/Clustering
         self.aggregated_data = self.tsam.predictOriginalData()
 
-        self.clustering_duration_seconds = timeit.default_timer() - start_time  # Zeit messen:
+        self.clustering_duration_seconds = timeit.default_timer() - start_time   # Zeit messen:
         logger.info(self.describe_clusters())
 
     def describe_clusters(self) -> str:
         aVisual = {}
         for cluster in self.get_cluster_indices().keys():
-            aVisual[cluster] = [
-                str(indexVector[0]) + '...' + str(indexVector[-1])
-                for indexVector in self.get_cluster_indices()[cluster]
-            ]
+            aVisual[cluster] = [str(indexVector[0]) + '...' + str(indexVector[-1]) for indexVector in
+                                self.get_cluster_indices()[cluster]]
 
         if self.use_extreme_periods:
             # Zeitreihe rauslöschen:
             extremePeriods = self.tsam.extremePeriods.copy()
             for key in extremePeriods:
-                del extremePeriods[key]['profile']
+                del (extremePeriods[key]['profile'])
         else:
             extremePeriods = {}
 
-        return (
-            f'{"":#^80}\n'
-            f'{" Clustering ":#^80}\n'
-            f'periods_order:\n'
-            f'{self.tsam.clusterOrder}\n'
-            f'clusterPeriodNoOccur:\n'
-            f'{self.tsam.clusterPeriodNoOccur}\n'
-            f'index_vectors_of_clusters:\n'
-            f'{aVisual}\n'
-            f'{"":#^80}\n'
-            f'extremePeriods:\n'
-            f'{extremePeriods}\n'
-            f'{"":#^80}'
-        )
+        return (f'{"":#^80}\n'
+                f'{" Clustering ":#^80}\n'
+                f'periods_order:\n'
+                f'{self.tsam.clusterOrder}\n'
+                f'clusterPeriodNoOccur:\n'
+                f'{self.tsam.clusterPeriodNoOccur}\n'
+                f'index_vectors_of_clusters:\n'
+                f'{aVisual}\n'
+                f'{"":#^80}\n'
+                f'extremePeriods:\n'
+                f'{extremePeriods}\n'
+                f'{"":#^80}')
 
     @property
     def use_extreme_periods(self):
@@ -135,11 +126,9 @@ class Aggregation:
         from . import plotting
 
         df_org = self.original_data.copy().rename(
-            columns={col: f'Original - {col}' for col in self.original_data.columns}
-        )
+            columns={col: f'Original - {col}' for col in self.original_data.columns})
         df_agg = self.aggregated_data.copy().rename(
-            columns={col: f'Aggregated - {col}' for col in self.aggregated_data.columns}
-        )
+            columns={col: f'Aggregated - {col}' for col in self.aggregated_data.columns})
         fig = plotting.with_plotly(df_org, 'line', colors=colormap)
         for trace in fig.data:
             trace.update(dict(line=dict(dash='dash')))
@@ -148,7 +137,7 @@ class Aggregation:
         fig.update_layout(
             title='Original vs Aggregated Data (original = ---)',
             xaxis_title='Index',
-            yaxis_title='Value',
+            yaxis_title='Value'
         )
         return fig
 
@@ -212,40 +201,35 @@ class Aggregation:
 
 
 class TimeSeriesCollection:
-    def __init__(self, time_series_list: List[TimeSeries]):
+    def __init__(self,
+                 time_series_list: List[TimeSeries]):
         self.time_series_list = time_series_list
         self.group_weights: Dict[str, float] = {}
         self._unique_labels()
         self._calculate_aggregation_weigths()
-        self.weights: Dict[str, float] = {
-            time_series.label: time_series.aggregation_weight for time_series in self.time_series_list
-        }
-        self.data: Dict[str, np.ndarray] = {
-            time_series.label: time_series.active_data for time_series in self.time_series_list
-        }
+        self.weights: Dict[str, float] = {time_series.label: time_series.aggregation_weight for
+                                          time_series in self.time_series_list}
+        self.data: Dict[str, np.ndarray] = {time_series.label: time_series.active_data for
+                                            time_series in self.time_series_list}
 
         if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
             logger.info('All Aggregation weights were set to 1')
 
     def _calculate_aggregation_weigths(self):
-        """Calculates the aggergation weights of all TimeSeries. Necessary to use groups"""
-        groups = [
-            time_series.aggregation_group
-            for time_series in self.time_series_list
-            if time_series.aggregation_group is not None
-        ]
+        """ Calculates the aggergation weights of all TimeSeries. Necessary to use groups"""
+        groups = [time_series.aggregation_group for time_series in self.time_series_list if
+                  time_series.aggregation_group is not None]
         group_size = dict(Counter(groups))
         self.group_weights = {group: 1 / size for group, size in group_size.items()}
         for time_series in self.time_series_list:
-            time_series.aggregation_weight = self.group_weights.get(
-                time_series.aggregation_group, time_series.aggregation_weight or 1
-            )
+            time_series.aggregation_weight = self.group_weights.get(time_series.aggregation_group,
+                                                                    time_series.aggregation_weight or 1)
 
     def _unique_labels(self):
-        """Makes sure every label of the TimeSeries in time_series_list is unique"""
+        """ Makes sure every label of the TimeSeries in time_series_list is unique """
         label_counts = Counter([time_series.label for time_series in self.time_series_list])
         duplicates = [label for label, count in label_counts.items() if count > 1]
-        assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))
+        assert duplicates == [], "Duplicate TimeSeries labels found: {}.".format(', '.join(duplicates))
 
     def insert_data(self, data: Dict[str, np.ndarray]):
         for time_series in self.time_series_list:
@@ -254,7 +238,7 @@ class TimeSeriesCollection:
                 logger.debug(f'Inserted data for {time_series.label}')
 
     def description(self) -> str:
-        # TODO:
+        #TODO:
         result = f'{len(self.time_series_list)} TimeSeries used for aggregation:\n'
         for time_series in self.time_series_list:
             result += f' -> {time_series.label} (weight: {time_series.aggregation_weight:.4f}; group: "{time_series.aggregation_group}")\n'
@@ -266,17 +250,16 @@ class TimeSeriesCollection:
 
 
 class AggregationParameters:
-    def __init__(
-        self,
-        hours_per_period: float,
-        nr_of_periods: int,
-        fix_storage_flows: bool,
-        aggregate_data_and_fix_non_binary_vars: bool,
-        percentage_of_period_freedom: float = 0,
-        penalty_of_period_freedom: float = 0,
-        time_series_for_high_peaks: List[TimeSeriesData] = None,
-        time_series_for_low_peaks: List[TimeSeriesData] = None,
-    ):
+    def __init__(self,
+                 hours_per_period: float,
+                 nr_of_periods: int,
+                 fix_storage_flows: bool,
+                 aggregate_data_and_fix_non_binary_vars: bool,
+                 percentage_of_period_freedom: float = 0,
+                 penalty_of_period_freedom: float = 0,
+                 time_series_for_high_peaks: List[TimeSeriesData] = None,
+                 time_series_for_low_peaks: List[TimeSeriesData] = None
+                 ):
         """
         Initializes aggregation parameters for time series data
 
@@ -331,21 +314,18 @@ class AggregationParameters:
 
 
 class AggregationModel(ElementModel):
-    """The AggregationModel holds equations and variables related to the Aggregation of a FLowSystem.
-    It creates Equations that equates indices of variables, and introduces penalties related to binary variables, that
-    escape the equation to their related binaries in other periods"""
-
-    def __init__(
-        self,
-        aggregation_parameters: AggregationParameters,
-        flow_system: FlowSystem,
-        aggregation_data: Aggregation,
-        components_to_clusterize: Optional[List[Component]],
-    ):
+    """ The AggregationModel holds equations and variables related to the Aggregation of a FLowSystem.
+     It creates Equations that equates indices of variables, and introduces penalties related to binary variables, that
+     escape the equation to their related binaries in other periods"""
+    def __init__(self,
+                 aggregation_parameters: AggregationParameters,
+                 flow_system: FlowSystem,
+                 aggregation_data: Aggregation,
+                 components_to_clusterize: Optional[List[Component]]):
         """
         Modeling-Element for "index-equating"-equations
         """
-        super().__init__(Element('Aggregation'), 'Model')
+        super().__init__(Element("Aggregation"), "Model")
         self.flow_system = flow_system
         self.aggregation_parameters = aggregation_parameters
         self.aggregation_data = aggregation_data
@@ -367,25 +347,20 @@ class AggregationModel(ElementModel):
             if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
                 all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
             else:
-                all_relevant_variables = [
-                    v for v in all_variables_of_component.values() if isinstance(v, VariableTS) and v.is_binary
-                ]
+                all_relevant_variables = [v for v in all_variables_of_component.values() if
+                                          isinstance(v, VariableTS) and v.is_binary]
             for variable in all_relevant_variables:
                 self.equate_indices(variable, indices, system_model)
 
         penalty = self.aggregation_parameters.penalty_of_period_freedom
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
             for label, variable in self.variables.items():
-                system_model.effect_collection_model.add_share_to_penalty(
-                    f'Aggregation_penalty__{label}', variable, penalty
-                )
+                system_model.effect_collection_model.add_share_to_penalty(f'Aggregation_penalty__{label}', variable,
+                                                                          penalty)
 
-    def equate_indices(
-        self,
-        variable: Variable,
-        indices: Tuple[np.ndarray, np.ndarray],
-        system_model: SystemModel,
-    ) -> Equation:
+    def equate_indices(self, variable: Variable,
+                       indices: Tuple[np.ndarray, np.ndarray],
+                       system_model: SystemModel) -> Equation:
         # Gleichung:
         # eq1: x(p1,t) - x(p3,t) = 0 # wobei p1 und p3 im gleichen Cluster sind und t = 0..N_p
         length = len(indices[0])
@@ -421,7 +396,5 @@ class AggregationModel(ElementModel):
             eq_max = create_equation(f'Nr_of_Corrections_{variable.label}', self, eq_type='ineq')
             eq_max.add_summand(var_K1, 1, as_sum=True)
             eq_max.add_summand(var_K0, 1, as_sum=True)
-            eq_max.add_constant(
-                round(self.aggregation_parameters.percentage_of_period_freedom / 100 * var_K1.length)
-            )  # Maximum
+            eq_max.add_constant(round(self.aggregation_parameters.percentage_of_period_freedom / 100 * var_K1.length))  # Maximum
         return eq

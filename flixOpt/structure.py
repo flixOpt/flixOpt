@@ -30,22 +30,16 @@ class SystemModel(MathModel):
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     """
 
-    def __init__(
-        self,
-        label: str,
-        modeling_language: Literal['pyomo', 'cvxpy'],
-        flow_system: 'FlowSystem',
-        time_indices: Optional[Union[List[int], range]],
-    ):
+    def __init__(self,
+                 label: str,
+                 modeling_language: Literal['pyomo', 'cvxpy'],
+                 flow_system: 'FlowSystem',
+                 time_indices: Optional[Union[List[int], range]]):
         super().__init__(label, modeling_language)
         self.flow_system = flow_system
         # Zeitdaten generieren:
-        (
-            self.time_series,
-            self.time_series_with_end,
-            self.dt_in_hours,
-            self.dt_in_hours_total,
-        ) = flow_system.get_time_data_from_indices(time_indices)
+        self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
+            flow_system.get_time_data_from_indices(time_indices))
         self.nr_of_time_steps = len(self.time_series)
         self.indices = range(self.nr_of_time_steps)
 
@@ -83,80 +77,59 @@ class SystemModel(MathModel):
         logger.info(f'{" finished solving ":#^80}')
         logger.info(f'{" Main Results ":#^80}')
         for effect_name, effect_results in self.main_results['Effects'].items():
-            logger.info(
-                f'{effect_name}:\n'
-                f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
-                f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
-                f'  {"sum":<15}: {effect_results["sum"]:>10.2f}'
-            )
+            logger.info(f'{effect_name}:\n'
+                        f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
+                        f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
+                        f'  {"sum":<15}: {effect_results["sum"]:>10.2f}')
 
         logger.info(
             # f'{"SUM":<15}: ...todo...\n'
             f'{"Penalty":<17}: {self.main_results["penalty"]:>10.2f}\n'
             f'{"":-^80}\n'
             f'{"Objective":<17}: {self.main_results["Objective"]:>10.2f}\n'
-            f'{"":-^80}'
-        )
+            f'{"":-^80}')
 
         logger.info('Investment Decisions:')
-        logger.info(
-            utils.apply_formating(
-                data_dict={
-                    **self.main_results['Invest-Decisions']['invested'],
-                    **self.main_results['Invest-Decisions']['not invested'],
-                },
-                key_format='<30',
-                indent=2,
-                sort_by='value',
-            )
-        )
+        logger.info(utils.apply_formating(data_dict={**self.main_results["Invest-Decisions"]["invested"],
+                                                     **self.main_results["Invest-Decisions"]["not invested"]},
+                                          key_format="<30", indent=2, sort_by='value'))
 
         for bus in self.main_results['buses with excess']:
             logger.warning(f'A penalty occurred in Bus "{bus}"!')
 
-        if self.main_results['penalty'] > 10:
-            logger.warning(f'A total penalty of {self.main_results["penalty"]} occurred.This might distort the results')
+        if self.main_results["penalty"] > 10:
+            logger.warning(f'A total penalty of {self.main_results["penalty"]} occurred.'
+                           f'This might distort the results')
         logger.info(f'{" End of Main Results ":#^80}')
 
     def description_of_variables(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {
-            'Components': {
-                label: comp.model.description_of_variables(structured)
-                for label, comp in self.flow_system.components.items()
-            },
-            'Buses': {
-                label: bus.model.description_of_variables(structured) for label, bus in self.flow_system.buses.items()
-            },
-            'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
-            'Others': {model.element.label: model.description_of_variables(structured) for model in self.other_models},
-        }
+        return {'Components': {label: comp.model.description_of_variables(structured)
+                               for label, comp in self.flow_system.components.items()},
+                'Buses': {label: bus.model.description_of_variables(structured)
+                          for label,bus in self.flow_system.buses.items()},
+                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
+                'Others': {model.element.label: model.description_of_variables(structured)
+                           for model in self.other_models}}
 
     def description_of_constraints(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {
-            'Components': {
-                label: comp.model.description_of_constraints(structured)
-                for label, comp in self.flow_system.components.items()
-            },
-            'Buses': {
-                label: bus.model.description_of_constraints(structured) for label, bus in self.flow_system.buses.items()
-            },
-            'Objective': self.objective.description(),
-            'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
-            'Others': {
-                model.element.label: model.description_of_constraints(structured) for model in self.other_models
-            },
-        }
+        return {'Components': {label: comp.model.description_of_constraints(structured)
+                               for label, comp in self.flow_system.components.items()},
+                'Buses': {label: bus.model.description_of_constraints(structured)
+                          for label, bus in self.flow_system.buses.items()},
+                'Objective': self.objective.description(),
+                'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
+                'Others': {model.element.label: model.description_of_constraints(structured)
+                           for model in self.other_models}}
 
     def results(self):
-        return {
-            'Components': {model.element.label: model.results() for model in self.component_models},
-            'Effects': self.effect_collection_model.results(),
-            'Buses': {model.element.label: model.results() for model in self.bus_models},
-            'Others': {model.element.label: model.results() for model in self.other_models},
-            'Objective': self.result_of_objective,
-            'Time': self.time_series_with_end,
-            'Time intervals in hours': self.dt_in_hours,
-        }
+        return {'Components': {model.element.label: model.results() for model in self.component_models},
+                'Effects': self.effect_collection_model.results(),
+                'Buses': {model.element.label: model.results() for model in self.bus_models},
+                'Others': {model.element.label: model.results() for model in self.other_models},
+                'Objective': self.result_of_objective,
+                'Time': self.time_series_with_end,
+                'Time intervals in hours': self.dt_in_hours
+                }
 
     @property
     def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
@@ -167,8 +140,7 @@ class SystemModel(MathModel):
             effect_results[f'{effect.label} [{effect.unit}]'] = {
                 'operation': float(effect.model.operation.sum.result),
                 'invest': float(effect.model.invest.sum.result),
-                'sum': float(effect.model.all.sum.result),
-            }
+                'sum': float(effect.model.all.sum.result)}
         main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
         main_results['Objective'] = self.result_of_objective
         main_results['lower bound'] = self.solver.best_bound
@@ -182,7 +154,6 @@ class SystemModel(MathModel):
         invest_decisions = {'invested': {}, 'not invested': {}}
         main_results['Invest-Decisions'] = invest_decisions
         from flixOpt.features import InvestmentModel
-
         for sub_model in self.sub_models:
             if isinstance(sub_model, InvestmentModel):
                 invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
@@ -208,7 +179,7 @@ class SystemModel(MathModel):
         for model in self.sub_models:
             for label, variable in model.variables.items():
                 if label in all_vars:
-                    raise KeyError(f'Duplicate Variable found in SystemModel:{model=} {label=}; {variable=}')
+                    raise KeyError(f"Duplicate Variable found in SystemModel:{model=} {label=}; {variable=}")
                 all_vars[label] = variable
         return all_vars
 
@@ -218,7 +189,7 @@ class SystemModel(MathModel):
         for model in self.sub_models:
             for label, constr in model.constraints.items():
                 if label in all_constr:
-                    raise KeyError(f'Duplicate Constraint found in SystemModel: {label=}; {constr=}')
+                    raise KeyError(f"Duplicate Constraint found in SystemModel: {label=}; {constr=}")
                 else:
                     all_constr[label] = constr
         return all_constr
@@ -239,17 +210,17 @@ class SystemModel(MathModel):
 
     @property
     def variables(self) -> List[Variable]:
-        """Needed for Mother class"""
+        """ Needed for Mother class """
         return list(self.all_variables.values())
 
     @property
     def equations(self) -> List[Equation]:
-        """Needed for Mother class"""
+        """ Needed for Mother class """
         return list(self.all_equations.values())
 
     @property
     def inequations(self) -> List[Inequation]:
-        """Needed for Mother class"""
+        """ Needed for Mother class """
         return list(self.all_inequations.values())
 
     @property
@@ -288,7 +259,7 @@ class Interface:
         # Get the constructor arguments and their default values
         init_params = sorted(
             inspect.signature(self.__init__).parameters.items(),
-            key=lambda x: (x[0].lower() != 'label', x[0].lower()),  # Prioritize 'label'
+            key=lambda x: (x[0].lower() != 'label', x[0].lower())  # Prioritize 'label'
         )
         # Build a dict of attribute=value pairs, excluding defaults
         details = {'class': ':'.join([cls.__name__ for cls in self.__class__.__mro__])}
@@ -308,15 +279,18 @@ class Interface:
         init_args = init_signature.parameters
 
         # Create a dictionary with argument names and their values
-        args_str = ', '.join(f'{name}={repr(getattr(self, name, None))}' for name in init_args if name != 'self')
-        return f'{self.__class__.__name__}({args_str})'
+        args_str = ', '.join(
+            f"{name}={repr(getattr(self, name, None))}"
+            for name in init_args if name != 'self'
+        )
+        return f"{self.__class__.__name__}({args_str})"
 
     def __str__(self):
         return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
 
 
 class Element(Interface):
-    """Basic Element of flixOpt"""
+    """ Basic Element of flixOpt"""
 
     def __init__(self, label: str, meta_data: Dict = None):
         """
@@ -328,17 +302,15 @@ class Element(Interface):
             used to store more information about the element. Is not used internally, but saved in the results
         """
         if not utils.label_is_valid(label):
-            logger.critical(
-                f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
-                f'Use any other symbol instead'
-            )
+            logger.critical(f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
+                            f"Use any other symbol instead")
         self.label = label
         self.meta_data = meta_data if meta_data is not None else {}
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 
     def _plausibility_checks(self) -> None:
-        """This function is used to do some basic plausibility checks for each Element during initialization"""
+        """ This function is used to do some basic plausibility checks for each Element during initialization """
         raise NotImplementedError('Every Element needs a _plausibility_checks() method')
 
     def create_model(self) -> None:
@@ -350,7 +322,7 @@ class Element(Interface):
 
 
 class ElementModel:
-    """Interface to create the mathematical Models for Elements"""
+    """ Interface to create the mathematical Models for Elements """
 
     def __init__(self, element: Element, label: Optional[str] = None):
         logger.debug(f'Created {self.__class__.__name__} for {element.label_full}')
@@ -404,19 +376,13 @@ class ElementModel:
 
     @property
     def overview_of_model_size(self) -> Dict[str, int]:
-        all_vars, all_eqs, all_ineqs = (
-            self.all_variables,
-            self.all_equations,
-            self.all_inequations,
-        )
-        return {
-            'no of Euations': len(all_eqs),
-            'no of Equations single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
-            'no of Inequations': len(all_ineqs),
-            'no of Inequations single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
-            'no of Variables': len(all_vars),
-            'no of Variables single': sum(var.length for var in all_vars.values()),
-        }
+        all_vars, all_eqs, all_ineqs = self.all_variables, self.all_equations, self.all_inequations
+        return {'no of Euations': len(all_eqs),
+                'no of Equations single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
+                'no of Inequations': len(all_ineqs),
+                'no of Inequations single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
+                'no of Variables': len(all_vars),
+                'no of Variables single': sum(var.length for var in all_vars.values())}
 
     @property
     def inequations(self) -> Dict[str, Inequation]:
@@ -475,10 +441,8 @@ class ElementModel:
         return all_subs
 
     def results(self) -> Dict:
-        return {
-            **{variable.label_short: variable.result for variable in self.variables.values()},
-            **{model.label: model.results() for model in self.sub_models},
-        }
+        return {**{variable.label_short: variable.result for variable in self.variables.values()},
+                **{model.label: model.results() for model in self.sub_models}}
 
     @property
     def label_full(self) -> str:
@@ -489,9 +453,7 @@ class ElementModel:
         return self._label or self.element.label
 
 
-def _create_time_series(
-    label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element
-) -> Optional[TimeSeries]:
+def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element) -> Optional[TimeSeries]:
     """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
     If the data already is a TimeSeries, nothing happens and the TimeSeries gets cleaned and returned"""
     if data is None:
@@ -505,10 +467,10 @@ def _create_time_series(
         return time_series
 
 
-def create_equation(
-    label: str, element_model: ElementModel, eq_type: Literal['eq', 'ineq'] = 'eq'
-) -> Union[Equation, Inequation]:
-    """Creates an Equation and adds it to the model of the Element"""
+def create_equation(label: str,
+                    element_model: ElementModel,
+                    eq_type: Literal['eq', 'ineq'] = 'eq') -> Union[Equation, Inequation]:
+    """ Creates an Equation and adds it to the model of the Element """
     if eq_type == 'eq':
         constr = Equation(f'{element_model.label_full}_{label}', label)
     elif eq_type == 'ineq':
@@ -517,47 +479,31 @@ def create_equation(
     return constr
 
 
-def create_variable(
-    label: str,
-    element_model: ElementModel,
-    length: int,
-    is_binary: bool = False,
-    fixed_value: Optional[Numeric] = None,
-    lower_bound: Optional[Numeric] = None,
-    upper_bound: Optional[Numeric] = None,
-    previous_values: Optional[Numeric] = None,
-    avoid_use_of_variable_ts: bool = False,
-) -> VariableTS:
-    """Creates a VariableTS and adds it to the model of the Element"""
+def create_variable(label: str,
+                    element_model: ElementModel,
+                    length: int, is_binary: bool = False,
+                    fixed_value: Optional[Numeric] = None,
+                    lower_bound: Optional[Numeric] = None,
+                    upper_bound: Optional[Numeric] = None,
+                    previous_values: Optional[Numeric] = None,
+                    avoid_use_of_variable_ts: bool = False) -> VariableTS:
+    """ Creates a VariableTS and adds it to the model of the Element """
     variable_label = f'{element_model.label_full}_{label}'
     if length > 1 and not avoid_use_of_variable_ts:
-        var = VariableTS(
-            variable_label,
-            length,
-            label,
-            is_binary,
-            fixed_value,
-            lower_bound,
-            upper_bound,
-            previous_values,
-        )
+        var = VariableTS(variable_label, length, label,
+                         is_binary, fixed_value, lower_bound, upper_bound, previous_values)
         logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
     else:
-        var = Variable(
-            variable_label,
-            length,
-            label,
-            is_binary,
-            fixed_value,
-            lower_bound,
-            upper_bound,
-        )
+        var = Variable(variable_label, length, label,
+                       is_binary, fixed_value, lower_bound, upper_bound)
         logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var
 
 
-def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_label: bool = False) -> Any:
+def copy_and_convert_datatypes(data: Any,
+                               use_numpy: bool = True,
+                               use_element_label: bool = False) -> Any:
     """
     Converts values in a nested data structure into JSON-compatible types while preserving or transforming numpy arrays
     and custom `Element` objects based on the specified options.
@@ -596,10 +542,10 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
 
     Examples
     --------
-    >>> copy_and_convert_datatypes({'a': np.array([1, 2, 3]), 'b': Element(label='example')})
+    >>> copy_and_convert_datatypes({"a": np.array([1, 2, 3]), "b": Element(label="example")})
     {'a': array([1, 2, 3]), 'b': {'class': 'Element', 'label': 'example'}}
 
-    >>> copy_and_convert_datatypes({'a': np.array([1, 2, 3]), 'b': Element(label='example')}, use_numpy=False)
+    >>> copy_and_convert_datatypes({"a": np.array([1, 2, 3]), "b": Element(label="example")}, use_numpy=False)
     {'a': [1, 2, 3], 'b': {'class': 'Element', 'label': 'example'}}
 
     Notes
@@ -623,12 +569,8 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
     elif isinstance(data, (tuple, set)):
         return copy_and_convert_datatypes([item for item in data], use_numpy)
     elif isinstance(data, dict):
-        return {
-            copy_and_convert_datatypes(key, use_numpy, use_element_label=True): copy_and_convert_datatypes(
-                value, use_numpy, use_element_label
-            )
-            for key, value in data.items()
-        }
+        return {copy_and_convert_datatypes(key, use_numpy, use_element_label=True):
+                    copy_and_convert_datatypes(value, use_numpy, use_element_label) for key, value in data.items()}
     elif isinstance(data, list):  # Shorten arrays/lists to be readable
         if use_numpy and all([isinstance(value, (int, float)) for value in data]):
             return np.array([item for item in data])
@@ -641,9 +583,8 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
         elif use_numpy and np.issubdtype(data.dtype, np.number):
             return data
         else:
-            logger.critical(
-                f'An np.array with non-numeric content was found: {data=}.It will be converted to a list instead'
-            )
+            logger.critical(f'An np.array with non-numeric content was found: {data=}.'
+                           f'It will be converted to a list instead')
             return copy_and_convert_datatypes(data.tolist(), use_numpy, use_element_label)
 
     elif isinstance(data, TimeSeries):
@@ -657,7 +598,6 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
         return data.infos(use_numpy, use_element_label)
     else:
         raise TypeError(f'copy_and_convert_datatypes() did get unexpected data of type "{type(data)}": {data=}')
-
 
 def get_str_representation(data: Any, array_length: int = 50, precision: int = 2) -> str:
     """
@@ -684,25 +624,19 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
         elif isinstance(value, (list, tuple, set)):
             return [format_np_array_if_found(v) for v in value]
         else:
-            logger.warning(
-                f'Unexpected value found when trying to format numpy array numpy array: {type(value)=}; {value=}'
-            )
+            logger.warning(f'Unexpected value found when trying to format numpy array numpy array: {type(value)=}; {value=}')
             return value
 
     def shorten_np_array(arr: np.ndarray) -> str:
         """Shortens NumPy arrays if they exceed the specified length."""
         if arr.size > array_length:  # Calculate basic statistics
-            return (
-                f'Array (min={np.min(arr):.2f}, max={np.max(arr):.2f}, mean={np.mean(arr):.2f}, '
-                f'median={np.median(arr):.2f}, std={np.std(arr):.2f}, length={len(arr)})'
-            )
+            return (f"Array (min={np.min(arr):.2f}, max={np.max(arr):.2f}, mean={np.mean(arr):.2f}, "
+                    f"median={np.median(arr):.2f}, std={np.std(arr):.2f}, length={len(arr)})")
         else:
-            return np.array2string(
-                arr[:array_length],
-                precision=precision,
-                max_line_width=1000,
-                separator=', ',
-            )
+            return np.array2string(arr[:array_length],
+                                        precision=precision,
+                                        max_line_width=1000,
+                                        separator=', ')
 
     # Process the data to handle NumPy arrays
     formatted_data = format_np_array_if_found(copy_and_convert_datatypes(data, use_numpy=True))
