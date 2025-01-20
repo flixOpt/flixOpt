@@ -646,10 +646,10 @@ class ShareAllocationModel(ElementModel):
         self._eq_sum.add_summand(self.sum, -1)
 
         if self._shares_are_time_series:
-            lb_TS = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
-            ub_TS = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
+            lb_ts = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
+            ub_ts = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
             self.sum_TS = create_variable(
-                f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, lower_bound=lb_TS, upper_bound=ub_TS
+                f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, lower_bound=lb_ts, upper_bound=ub_ts
             )
 
             # eq: sum_TS = sum(share_TS_i) # TS

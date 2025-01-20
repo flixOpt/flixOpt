@@ -1075,9 +1075,9 @@ class PyomoModel(ModelingLanguage):
         def linear_sum_pyomo_rule(model, i):
             """This function is needed for pyomoy internal construction of Constraints."""
             lhs = 0
-            aSummand: Summand
-            for aSummand in equation.summands:
-                lhs += self._summand_math_expression(aSummand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
+            summand: Summand
+            for summand in equation.summands:
+                lhs += self._summand_math_expression(summand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
             rhs = constant_vector[i]
             return lhs == rhs
 
@@ -1095,9 +1095,9 @@ class PyomoModel(ModelingLanguage):
         def linear_sum_pyomo_rule(model, i):
             """This function is needed for pyomoy internal construction of Constraints."""
             lhs = 0
-            aSummand: Summand
-            for aSummand in inequation.summands:
-                lhs += self._summand_math_expression(aSummand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
+            summand: Summand
+            for summand in inequation.summands:
+                lhs += self._summand_math_expression(summand, i)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
             rhs = constant_vector[i]
 
             return lhs <= rhs

@@ -221,7 +221,7 @@ class AggregatedCalculation(Calculation):
 
         from .aggregation import Aggregation
 
-        (chosenTimeSeries, chosenTimeSeriesWithEnd, dt_in_hours, dt_in_hours_total) = (
+        (chosen_time_series, chosen_time_series_with_end, dt_in_hours, dt_in_hours_total) = (
             self.flow_system.get_time_data_from_indices(self.time_indices)
         )
 
@@ -250,7 +250,7 @@ class AggregatedCalculation(Calculation):
 
         import pandas as pd
 
-        original_data = pd.DataFrame(self.time_series_collection.data, index=chosenTimeSeries)
+        original_data = pd.DataFrame(self.time_series_collection.data, index=chosen_time_series)
 
         # Aggregation - creation of aggregated timeseries:
         self.aggregation = Aggregation(

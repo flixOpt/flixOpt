@@ -113,10 +113,10 @@ class Effect(Element):
         # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
         # TODO: Improve checks!! Only most basic case covered...
 
-        def error_str(effect_label: str, shareEffect_label: str):
+        def error_str(effect_label: str, share_ffect_label: str):
             return (
-                f'  {effect_label} -> has share in: {shareEffect_label}\n'
-                f'  {shareEffect_label} -> has share in: {effect_label}'
+                f'  {effect_label} -> has share in: {share_ffect_label}\n'
+                f'  {share_ffect_label} -> has share in: {effect_label}'
             )
 
         # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:

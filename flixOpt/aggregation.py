@@ -97,20 +97,20 @@ class Aggregation:
         logger.info(self.describe_clusters())
 
     def describe_clusters(self) -> str:
-        aVisual = {}
+        description = {}
         for cluster in self.get_cluster_indices().keys():
-            aVisual[cluster] = [
+            description[cluster] = [
                 str(indexVector[0]) + '...' + str(indexVector[-1])
                 for indexVector in self.get_cluster_indices()[cluster]
             ]
 
         if self.use_extreme_periods:
             # Zeitreihe rauslöschen:
-            extremePeriods = self.tsam.extremePeriods.copy()
-            for key in extremePeriods:
-                del extremePeriods[key]['profile']
+            extreme_periods = self.tsam.extremePeriods.copy()
+            for key in extreme_periods:
+                del extreme_periods[key]['profile']
         else:
-            extremePeriods = {}
+            extreme_periods = {}
 
         return (
             f'{"":#^80}\n'
@@ -120,10 +120,10 @@ class Aggregation:
             f'clusterPeriodNoOccur:\n'
             f'{self.tsam.clusterPeriodNoOccur}\n'
             f'index_vectors_of_clusters:\n'
-            f'{aVisual}\n'
+            f'{description}\n'
             f'{"":#^80}\n'
-            f'extremePeriods:\n'
-            f'{extremePeriods}\n'
+            f'extreme_periods:\n'
+            f'{extreme_periods}\n'
             f'{"":#^80}'
         )
 
@@ -393,30 +393,30 @@ class AggregationModel(ElementModel):
         # Korrektur: (bisher nur für Binärvariablen:)
         if variable.is_binary and self.aggregation_parameters.percentage_of_period_freedom > 0:
             # correction-vars (so viele wie Indexe in eq:)
-            var_K1 = create_variable(f'Korr1_{variable.label}', self, length, is_binary=True)
-            var_K0 = create_variable(f'Korr0_{variable.label}', self, length, is_binary=True)
+            var_k1 = create_variable(f'Korr1_{variable.label}', self, length, is_binary=True)
+            var_k0 = create_variable(f'Korr0_{variable.label}', self, length, is_binary=True)
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
             # --> correction On(p3) can be:
             #  On(p1,t) = 1 -> On(p3) can be 0 -> K0=1 (,K1=0)
             #  On(p1,t) = 0 -> On(p3) can be 1 -> K1=1 (,K0=1)
-            eq.add_summand(var_K1, +1)
-            eq.add_summand(var_K0, -1)
+            eq.add_summand(var_k1, +1)
+            eq.add_summand(var_k0, -1)
 
-            # interlock var_K1 and var_K2:
-            # eq: var_K0(t)+var_K1(t) <= 1.1
+            # interlock var_k1 and var_K2:
+            # eq: var_k0(t)+var_k1(t) <= 1.1
             eq_lock = create_equation(f'lock_K0andK1_{variable.label}', self, eq_type='ineq')
-            eq_lock.add_summand(var_K0, 1)
-            eq_lock.add_summand(var_K1, 1)
+            eq_lock.add_summand(var_k0, 1)
+            eq_lock.add_summand(var_k1, 1)
             eq_lock.add_constant(1.1)
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
             eq_max = create_equation(f'Nr_of_Corrections_{variable.label}', self, eq_type='ineq')
-            eq_max.add_summand(var_K1, 1, as_sum=True)
-            eq_max.add_summand(var_K0, 1, as_sum=True)
+            eq_max.add_summand(var_k1, 1, as_sum=True)
+            eq_max.add_summand(var_k0, 1, as_sum=True)
             eq_max.add_constant(
-                round(self.aggregation_parameters.percentage_of_period_freedom / 100 * var_K1.length)
+                round(self.aggregation_parameters.percentage_of_period_freedom / 100 * var_k1.length)
             )  # Maximum
         return eq

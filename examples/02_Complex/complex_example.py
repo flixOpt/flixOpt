@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     # 2. Define CHP Unit
     # Combined Heat and Power unit that generates both electricity and heat from fuel
-    aKWK = fx.linear_converters.CHP(
+    bhkw = fx.linear_converters.CHP(
         'BHKW2',
         eta_th=0.5,
         eta_el=0.4,
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         Q_fu: [(12, 70), (90, 200)],
     }
 
-    aKWK2 = fx.LinearConverter(
+    bhkw_2 = fx.LinearConverter(
         'BHKW2',
         inputs=[Q_fu],
         outputs=[P_el, Q_th],
@@ -115,7 +115,7 @@ if __name__ == '__main__':
         },
     )
 
-    aSpeicher = fx.Storage(
+    speicher = fx.Storage(
         'Speicher',
         charging=fx.Flow('Q_th_load', bus=Fernwaerme, size=1e4),
         discharging=fx.Flow('Q_th_unload', bus=Fernwaerme, size=1e4),
@@ -170,8 +170,8 @@ if __name__ == '__main__':
     # Select components to be included in the final system model
     flow_system = fx.FlowSystem(time_series, last_time_step_hours=None)  # Create FlowSystem
 
-    flow_system.add_elements(Costs, CO2, PE, Gaskessel, Waermelast, Gasbezug, Stromverkauf, aSpeicher)
-    flow_system.add_elements(aKWK2) if use_chp_with_segments else flow_system.add_components(aKWK)
+    flow_system.add_elements(Costs, CO2, PE, Gaskessel, Waermelast, Gasbezug, Stromverkauf, speicher)
+    flow_system.add_elements(bhkw_2) if use_chp_with_segments else flow_system.add_components(bhkw)
 
     pprint(flow_system)  # Get a string representation of the FlowSystem
 
