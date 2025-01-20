@@ -636,8 +636,8 @@ def visualize_network(node_infos: dict,
 
     net = Network(directed=True, height='100%' if controls is False else '800px', font_color="white")
 
-    for id, node in node_infos.items():
-        net.add_node(id,
+    for node_id, node in node_infos.items():
+        net.add_node(node_id,
                      label=node['label'],
                      shape={'Bus': 'circle', 'Component': 'box'}[node['class']],
                      color={'Bus': '#393E46', 'Component': '#00ADB5'}[node['class']],
