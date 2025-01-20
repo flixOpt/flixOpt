@@ -44,7 +44,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest"
+    "pytest",
+    "ruff"
 ]
 
 visualization = [
@@ -73,8 +74,7 @@ exclude = [
     ".mypy_cache",  # MyPy cache
 ]
 
-# Enforce a maximum line length (commonly 88 for compatibility with Black)
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]  # Enable linting rules by category (e.g., error, warnings, unused imports)
@@ -82,7 +82,13 @@ ignore = [  # Ignore specific rules
     "E501",  # Ignore line-length checks (use Black for formatting)
     "F401",  # Allow unused imports in some cases (use __all__)
 ]
+extend-fixable = ["B"]   # Enable fix for flake8-bugbear (`B`), on top of any rules specified by `fixable`.
 
 # Apply rule exceptions to specific files or directories
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["S101"]  # Ignore assertions in test files
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
