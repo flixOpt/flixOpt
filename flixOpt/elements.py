@@ -155,6 +155,10 @@ class Flow(Element):
                  flow_hours_total_min: Optional[Skalar] = None,
                  load_factor_min: Optional[Skalar] = None,
                  load_factor_max: Optional[Skalar] = None,
+                 max_increasing_gradient_abs: Optional[Skalar] = None,
+                 max_decreasing_gradient_abs: Optional[Skalar] = None,
+                 max_gradient_for_switch_on: Optional[bool] = True,
+                 max_gradient_for_switch_off: Optional[bool] = True,
                  previous_flow_rate: Optional[Numeric] = None,
                  meta_data: Optional[Dict] = None):
         """
@@ -209,7 +213,10 @@ class Flow(Element):
 
         self.load_factor_min = load_factor_min
         self.load_factor_max = load_factor_max
-        # self.positive_gradient = TimeSeries('positive_gradient', positive_gradient, self)
+        self.max_increasing_gradient_abs = max_increasing_gradient_abs
+        self.max_decreasing_gradient_abs = max_decreasing_gradient_abs
+        self.max_gradient_for_switch_on = max_gradient_for_switch_on
+        self.max_gradient_for_switch_off = max_gradient_for_switch_off
         self.effects_per_flow_hour = effects_per_flow_hour
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
@@ -325,6 +332,87 @@ class FlowModel(ElementModel):
 
         # Shares
         self._create_shares(system_model)
+        
+        
+        #max_increasing_gradient_abs   
+           
+        if self.element.max_increasing_gradient_abs is not None:
+            if self._on is not None:
+                if self.element.max_gradient_for_switch_on:
+                    ineq_grad_max = create_equation('maximalabsoluteGradientincrease', self, 'ineq')
+                    ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[1:])
+                    ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[0:-1])
+                    ineq_grad_max.add_summand(self._on.switch_on, -self.element.relative_minimum.active_data*self.element.size+self.element.max_increasing_gradient_abs*system_model.dt_in_hours[1:], system_model.indices[1:])
+                    ineq_grad_max.add_constant(self.element.max_increasing_gradient_abs*system_model.dt_in_hours[1:])
+                else:    
+                    ineq_grad_max = create_equation('maximalabsoluteGradientincrease', self, 'ineq')
+                    ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[1:])
+                    ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[0:-1])
+                    ineq_grad_max.add_summand(self._on.switch_on, -1e6, system_model.indices[1:])
+                    ineq_grad_max.add_constant(self.element.max_increasing_gradient_abs*system_model.dt_in_hours[1:])
+                if self.element.previous_flow_rate is not None:
+                    if self.element.max_gradient_for_switch_on:
+                        ineq_grad_max = create_equation('maximalabsoluteGradientincrease_initial', self, 'ineq')
+                        ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[0])
+                        ineq_grad_max.add_summand(self._on.switch_on, -self.element.relative_minimum.active_data*self.element.size+self.element.max_increasing_gradient_abs*system_model.dt_in_hours[1:], system_model.indices[1:])
+                        ineq_grad_max.add_constant(self.element.max_increasing_gradient_abs*system_model.dt_in_hours[0])
+                        ineq_grad_max.add_constant(self.element.previous_flow_rate)
+                    else:
+                        ineq_grad_max = create_equation('maximalabsoluteGradientincrease_initial', self, 'ineq')
+                        ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[0])
+                        ineq_grad_max.add_summand(self._on.switch_on, -1e6, system_model.indices[1:])
+                        ineq_grad_max.add_constant(self.element.max_increasing_gradient_abs*system_model.dt_in_hours[0])
+                        ineq_grad_max.add_constant(self.element.previous_flow_rate)
+                    
+            else:
+                ineq_grad_max = create_equation('maximalabsoluteGradientincrease', self, 'ineq')
+                ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[1:])
+                ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[0:-1])
+                ineq_grad_max.add_constant(self.element.max_increasing_gradient_abs*system_model.dt_in_hours[1:])
+                if self.element.previous_flow_rate is not None:
+                    ineq_grad_max = create_equation('maximalabsoluteGradientincrease_initial', self, 'ineq')
+                    ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[0])
+                    ineq_grad_max.add_summand(self._on.switch_on, -1e6, system_model.indices[0])
+                    ineq_grad_max.add_constant(self.element.previous_flow_rate)
+                
+        #max_decreasing_gradient_abs        
+        if self.element.max_decreasing_gradient_abs is not None:
+            if self._on is not None:
+                if self.element.max_gradient_for_switch_off:
+                    ineq_grad_max = create_equation('maximalabsoluteGradientdecrease', self, 'ineq')
+                    ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[1:])
+                    ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[0:-1])
+                    ineq_grad_max.add_summand(self._on.switch_off, -self.element.relative_minimum.active_data*self.element.size+self.element.max_decreasing_gradient_abs*system_model.dt_in_hours[1:], system_model.indices[1:])
+                    ineq_grad_max.add_constant(self.element.max_decreasing_gradient_abs*system_model.dt_in_hours[1:])
+                else:
+                    ineq_grad_max = create_equation('maximalabsoluteGradientdecrease', self, 'ineq')
+                    ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[1:])
+                    ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[0:-1])
+                    ineq_grad_max.add_summand(self._on.switch_off, -1e6, system_model.indices[1:])
+                    ineq_grad_max.add_constant(self.element.max_decreasing_gradient_abs*system_model.dt_in_hours[1:])
+                if self.element.previous_flow_rate is not None:
+                    if self.element.max_gradient_for_switch_off:
+                        ineq_grad_max = create_equation('maximalabsoluteGradientdecrease_initial', self, 'ineq')
+                        ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[0])
+                        ineq_grad_max.add_summand(self._on.switch_off, -self.element.relative_minimum.active_data*self.element.size+self.element.max_decreasing_gradient_abs*system_model.dt_in_hours[1:], system_model.indices[1:])
+                        ineq_grad_max.add_constant(self.element.max_decreasing_gradient_abs*system_model.dt_in_hours[0])
+                        ineq_grad_max.add_constant(-1*self.element.previous_flow_rate)
+                    else:
+                        ineq_grad_max = create_equation('maximalabsoluteGradientdecrease_initial', self, 'ineq')
+                        ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[0])
+                        ineq_grad_max.add_summand(self._on.switch_off, -1e6, system_model.indices[1:])
+                        ineq_grad_max.add_constant(self.element.max_decreasing_gradient_abs*system_model.dt_in_hours[0])
+                        ineq_grad_max.add_constant(-1*self.element.previous_flow_rate)
+            else:
+                ineq_grad_max = create_equation('maximalabsoluteGradientdecrease', self, 'ineq')
+                ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[1:])
+                ineq_grad_max.add_summand(self.flow_rate, 1, system_model.indices[0:-1])
+                ineq_grad_max.add_constant(self.element.max_decreasing_gradient_abs*system_model.dt_in_hours[1:])
+                if self.element.previous_flow_rate is not None:
+                    ineq_grad_max = create_equation('maximalabsoluteGradientdecrease_initial', self, 'ineq')
+                    ineq_grad_max.add_summand(self.flow_rate, -1, system_model.indices[0])
+                    ineq_grad_max.add_summand(self._on.switch_off, -1e6, system_model.indices[0])
+                    ineq_grad_max.add_constant(-1*self.element.previous_flow_rate)
 
     def _create_shares(self, system_model: SystemModel):
         # Arbeitskosten:
