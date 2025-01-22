@@ -52,7 +52,9 @@ class TestSimple(BaseTest):
         self.assert_almost_equal_numeric(
             effects['costs'].model.all.sum.result, 81.88394666666667, 'costs doesnt match expected value'
         )
-        self.assert_almost_equal_numeric(effects['CO2'].model.all.sum.result, 255.09184, 'CO2 doesnt match expected value')
+        self.assert_almost_equal_numeric(
+            effects['CO2'].model.all.sum.result, 255.09184, 'CO2 doesnt match expected value'
+        )
         self.assert_almost_equal_numeric(
             comps['Boiler'].Q_th.model.flow_rate.result,
             [0, 0, 0, 28.4864, 35, 0, 0, 0, 0],
@@ -528,7 +530,8 @@ class TestComplex(BaseTest):
                     on_hours_total_min=0,
                     on_hours_total_max=1000,
                     consecutive_on_hours_max=10,
-                    consecutive_on_hours_min =1,consecutive_off_hours_max=10,
+                    consecutive_on_hours_min=1,
+                    consecutive_off_hours_max=10,
                     effects_per_switch_on=0.01,
                     switch_on_total_max=1000,
                 ),

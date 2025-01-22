@@ -286,7 +286,7 @@ class Interface:
         # Get the constructor arguments and their default values
         init_params = sorted(
             inspect.signature(self.__init__).parameters.items(),
-            key=lambda x: (x[0].lower() != 'label', x[0].lower())  # Prioritize 'label'
+            key=lambda x: (x[0].lower() != 'label', x[0].lower()),  # Prioritize 'label'
         )
         # Build a dict of attribute=value pairs, excluding defaults
         details = {'class': ':'.join([cls.__name__ for cls in self.__class__.__mro__])}
@@ -338,6 +338,7 @@ class Element(Interface):
     def _plausibility_checks(self) -> None:
         """This function is used to do some basic plausibility checks for each Element during initialization"""
         raise NotImplementedError('Every Element needs a _plausibility_checks() method')
+
     def create_model(self) -> None:
         raise NotImplementedError('Every Element needs a create_model() method')
 

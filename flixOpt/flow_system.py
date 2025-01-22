@@ -26,9 +26,11 @@ class FlowSystem:
     """
 
     def __init__(
-        self, time_series: np.ndarray[np.datetime64], last_time_step_hours: Optional[Union[int, float]] = None
-    ,
-                 previous_dt_in_hours: Optional[Union[int, float, np.ndarray]] = None):
+        self,
+        time_series: np.ndarray[np.datetime64],
+        last_time_step_hours: Optional[Union[int, float]] = None,
+        previous_dt_in_hours: Optional[Union[int, float, np.ndarray]] = None,
+    ):
         """
         Parameters
         ----------
@@ -54,8 +56,10 @@ class FlowSystem:
         )
         self.time_series_with_end = np.append(self.time_series, self.time_series[-1] + self.last_time_step_hours)
         self.previous_dt_in_hours: Union[int, float, np.ndarray] = (
-                (self.time_series[1] - self.time_series[0]) / np.timedelta64(1, 'h')) \
-                if previous_dt_in_hours is None else previous_dt_in_hours
+            ((self.time_series[1] - self.time_series[0]) / np.timedelta64(1, 'h'))
+            if previous_dt_in_hours is None
+            else previous_dt_in_hours
+        )
 
         utils.check_time_series('time series of FlowSystem', self.time_series_with_end)
 

@@ -66,7 +66,9 @@ if __name__ == '__main__':
                 on_hours_total_min=0,  # Minimum operating hours
                 on_hours_total_max=1000,  # Maximum operating hours
                 consecutive_on_hours_max=10,  # Max consecutive operating hours
-                consecutive_on_hours_min=np.array([1., 1., 1., 1, 1, 2, 2, 2, 2]), # min consecutive operation hoursconsecutive_off_hours_max=10,  # Max consecutive off hours
+                consecutive_on_hours_min=np.array(
+                    [1, 1, 1, 1, 1, 2, 2, 2, 2]
+                ),  # min consecutive operation hoursconsecutive_off_hours_max=10,  # Max consecutive off hours
                 effects_per_switch_on=0.01,  # Cost per switch-on
                 switch_on_total_max=1000,  # Max number of starts
             ),

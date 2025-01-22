@@ -387,19 +387,24 @@ class OnOffModel(ElementModel):
 
         """
         try:
-            previous_duration: Skalar = self.get_consecutive_duration(binary_variable.previous_values,
-                                                                    system_model.previous_dt_in_hours)
+            previous_duration: Skalar = self.get_consecutive_duration(
+                binary_variable.previous_values, system_model.previous_dt_in_hours
+            )
         except TypeError as e:
-            raise TypeError(f'The consecutive_duration of "{variable_label}" could not be calculated. {e}')
+            raise TypeError(f'The consecutive_duration of "{variable_label}" could not be calculated. {e}') from e
         mega = system_model.dt_in_hours_total + previous_duration
 
         if maximum_duration is not None:
-            first_step_max: Skalar = maximum_duration.active_data[0] if maximum_duration.is_array else maximum_duration.active_data
+            first_step_max: Skalar = (
+                maximum_duration.active_data[0] if maximum_duration.is_array else maximum_duration.active_data
+            )
             if previous_duration + system_model.dt_in_hours[0] > first_step_max:
-                logger.warning(f'The maximum duration of "{variable_label}" is set to {maximum_duration.active_data}h, '
-                               f'but the consecutive_duration previous to this model is {previous_duration}h. '
-                               f'This forces "{binary_variable.label} = 0" in the first time step '
-                               f'(dt={system_model.dt_in_hours[0]}h)!')
+                logger.warning(
+                    f'The maximum duration of "{variable_label}" is set to {maximum_duration.active_data}h, '
+                    f'but the consecutive_duration previous to this model is {previous_duration}h. '
+                    f'This forces "{binary_variable.label} = 0" in the first time step '
+                    f'(dt={system_model.dt_in_hours[0]}h)!'
+                )
 
         duration_in_hours = create_variable(
             variable_label,
@@ -407,7 +412,7 @@ class OnOffModel(ElementModel):
             system_model.nr_of_time_steps,
             lower_bound=0,
             upper_bound=maximum_duration.active_data if maximum_duration is not None else mega,
-            previous_values=previous_duration
+            previous_values=previous_duration,
         )
         label_prefix = duration_in_hours.label
 
@@ -453,10 +458,16 @@ class OnOffModel(ElementModel):
                 minimum_duration_used = minimum_duration.active_data[0:-1]  # only checked for t=1...(n-1)
             eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
             eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # -duration(t)
-            eq_min_duration.add_summand(binary_variable, -1 * minimum_duration_used, time_indices[1:])  # - minimum_duration (t) * On(t+1)
-            eq_min_duration.add_summand(binary_variable, minimum_duration_used, time_indices[0:-1])  # minimum_duration * On(t)
+            eq_min_duration.add_summand(
+                binary_variable, -1 * minimum_duration_used, time_indices[1:]
+            )  # - minimum_duration (t) * On(t+1)
+            eq_min_duration.add_summand(
+                binary_variable, minimum_duration_used, time_indices[0:-1]
+            )  # minimum_duration * On(t)
 
-            first_step_min: Skalar = minimum_duration.active_data[0] if minimum_duration.is_array else minimum_duration.active_data
+            first_step_min: Skalar = (
+                minimum_duration.active_data[0] if minimum_duration.is_array else minimum_duration.active_data
+            )
             if duration_in_hours.previous_values < first_step_min:
                 # Force the first step to be = 1, if the minimum_duration is not reached in previous_values
                 # Note: Only if the previous consecutive_duration is smaller than the minimum duration
@@ -470,9 +481,11 @@ class OnOffModel(ElementModel):
         first_index = time_indices[0]  # only first element
         eq_first = create_equation(f'{label_prefix}_initial', self)
         eq_first.add_summand(duration_in_hours, 1, first_index)
-        eq_first.add_summand(binary_variable,
-                             -1 * (system_model.dt_in_hours[first_index] + duration_in_hours.previous_values),
-                             first_index)
+        eq_first.add_summand(
+            binary_variable,
+            -1 * (system_model.dt_in_hours[first_index] + duration_in_hours.previous_values),
+            first_index,
+        )
 
         return duration_in_hours
 
@@ -543,8 +556,7 @@ class OnOffModel(ElementModel):
             A binary array (0 and 1) indicating the previous on/off states of the variables.
             Returns `array([0])` if no previous values are available.
         """
-        previous_values = [var.previous_values for var in self._defining_variables
-                           if var.previous_values is not None]
+        previous_values = [var.previous_values for var in self._defining_variables if var.previous_values is not None]
 
         if not previous_values:
             return np.array([0])
@@ -556,9 +568,9 @@ class OnOffModel(ElementModel):
                 return (~np.isclose(previous_values, 0, atol=epsilon)).astype(int)
 
     @classmethod
-    def get_consecutive_duration(cls,
-                                 binary_values: Union[int, np.ndarray],
-                                 dt_in_hours: Union[int, float, np.ndarray]) -> Skalar:
+    def get_consecutive_duration(
+        cls, binary_values: Union[int, np.ndarray], dt_in_hours: Union[int, float, np.ndarray]
+    ) -> Skalar:
         """
         Returns the current consecutive duration in hours, computed from binary values.
         If only one binary value is availlable, the last dt_in_hours is used.
@@ -595,15 +607,19 @@ class OnOffModel(ElementModel):
             return np.sum(binary_values[-length_of_last_duration:] * dt_in_hours)
 
         elif not np.isscalar(binary_values) and not np.isscalar(dt_in_hours):
-            if length_of_last_duration > len(dt_in_hours):   # check that lengths are compatible
-                raise TypeError(f'When trying to calculate the consecutive duration, the length of the last duration '
-                                f'({len(length_of_last_duration)}) is longer than the dt_in_hours ({len(dt_in_hours)}), '
-                                f'as {binary_values=}')
+            if length_of_last_duration > len(dt_in_hours):  # check that lengths are compatible
+                raise TypeError(
+                    f'When trying to calculate the consecutive duration, the length of the last duration '
+                    f'({len(length_of_last_duration)}) is longer than the dt_in_hours ({len(dt_in_hours)}), '
+                    f'as {binary_values=}'
+                )
             return np.sum(binary_values[-length_of_last_duration:] * dt_in_hours[-length_of_last_duration:])
 
         else:
-            raise Exception(f'Unexpected state reached in function get_consecutive_duration(). binary_values={binary_values}; '
-                            f'dt_in_hours={dt_in_hours}')
+            raise Exception(
+                f'Unexpected state reached in function get_consecutive_duration(). binary_values={binary_values}; '
+                f'dt_in_hours={dt_in_hours}'
+            )
 
 
 class SegmentModel(ElementModel):
