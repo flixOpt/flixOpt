@@ -2,18 +2,26 @@
 This module contains the basic elements of the flixOpt framework.
 """
 
-from typing import List, Tuple, Union, Optional, Dict
 import logging
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .math_modeling import Variable, VariableTS
-from .core import Numeric, Numeric_TS, Skalar
 from .config import CONFIG
-from .interface import InvestParameters, OnOffParameters
-from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
+from .core import Numeric, Numeric_TS, Skalar
 from .effects import EffectValues, effect_values_to_time_series
+from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
+from .interface import InvestParameters, OnOffParameters
+from .math_modeling import Variable, VariableTS
+from .structure import (
+    Element,
+    ElementModel,
+    SystemModel,
+    _create_time_series,
+    copy_and_convert_datatypes,
+    create_equation,
+    create_variable,
+)
 
 logger = logging.getLogger('flixOpt')
 
@@ -22,13 +30,16 @@ class Component(Element):
     """
     basic component class for all components
     """
-    def __init__(self,
-                 label: str,
-                 inputs: Optional[List['Flow']] = None,
-                 outputs: Optional[List['Flow']] = None,
-                 on_off_parameters: Optional[OnOffParameters] = None,
-                 prevent_simultaneous_flows: Optional[List['Flow']] = None,
-                 meta_data: Optional[Dict] = None):
+
+    def __init__(
+        self,
+        label: str,
+        inputs: Optional[List['Flow']] = None,
+        outputs: Optional[List['Flow']] = None,
+        on_off_parameters: Optional[OnOffParameters] = None,
+        prevent_simultaneous_flows: Optional[List['Flow']] = None,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         Parameters
         ----------
@@ -86,10 +97,9 @@ class Bus(Element):
     (penalty flow is excess can be activated)
     """
 
-    def __init__(self,
-                 label: str,
-                 excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5,
-                 meta_data: Optional[Dict] = None):
+    def __init__(
+        self, label: str, excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5, meta_data: Optional[Dict] = None
+    ):
         """
         Parameters
         ----------
@@ -112,8 +122,9 @@ class Bus(Element):
         return self.model
 
     def transform_data(self):
-        self.excess_penalty_per_flow_hour = _create_time_series('excess_penalty_per_flow_hour',
-                                                                self.excess_penalty_per_flow_hour, self)
+        self.excess_penalty_per_flow_hour = _create_time_series(
+            'excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour, self
+        )
 
     def add_input(self, flow) -> None:
         flow: Flow
@@ -146,22 +157,24 @@ class Flow(Element):
     flows are inputs and outputs of components
     """
 
-    def __init__(self,
-                 label: str,
-                 bus: Bus,
-                 size: Union[Skalar, InvestParameters] = None,
-                 fixed_relative_profile: Optional[Numeric_TS] = None,
-                 relative_minimum: Numeric_TS = 0,
-                 relative_maximum: Numeric_TS = 1,
-                 effects_per_flow_hour: EffectValues = None,
-                 can_be_off: Optional[OnOffParameters] = None,
-                 flow_hours_total_max: Optional[Skalar] = None,
-                 flow_hours_total_min: Optional[Skalar] = None,
-                 load_factor_min: Optional[Skalar] = None,
-                 load_factor_max: Optional[Skalar] = None,
-                 previous_flow_rate: Optional[Numeric] = None,
-                 meta_data: Optional[Dict] = None):
-        """
+    def __init__(
+        self,
+        label: str,
+        bus: Bus,
+        size: Union[Skalar, InvestParameters] = None,
+        fixed_relative_profile: Optional[Numeric_TS] = None,
+        relative_minimum: Numeric_TS = 0,
+        relative_maximum: Numeric_TS = 1,
+        effects_per_flow_hour: EffectValues = None,
+        can_be_off: Optional[OnOffParameters] = None,
+        flow_hours_total_max: Optional[Skalar] = None,
+        flow_hours_total_min: Optional[Skalar] = None,
+        load_factor_min: Optional[Skalar] = None,
+        load_factor_max: Optional[Skalar] = None,
+        previous_flow_rate: Optional[Numeric] = None,
+        meta_data: Optional[Dict] = None,
+    ):
+        r"""
         Parameters
         ----------
         label : str
@@ -231,10 +244,10 @@ class Flow(Element):
         return self.model
 
     def transform_data(self):
-        self.relative_minimum = _create_time_series(f'relative_minimum', self.relative_minimum, self)
-        self.relative_maximum = _create_time_series(f'relative_maximum', self.relative_maximum, self)
-        self.fixed_relative_profile = _create_time_series(f'fixed_relative_profile', self.fixed_relative_profile, self)
-        self.effects_per_flow_hour = effect_values_to_time_series(f'per_flow_hour', self.effects_per_flow_hour, self)
+        self.relative_minimum = _create_time_series('relative_minimum', self.relative_minimum, self)
+        self.relative_maximum = _create_time_series('relative_maximum', self.relative_maximum, self)
+        self.fixed_relative_profile = _create_time_series('fixed_relative_profile', self.fixed_relative_profile, self)
+        self.effects_per_flow_hour = effect_values_to_time_series('per_flow_hour', self.effects_per_flow_hour, self)
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
         if isinstance(self.size, InvestParameters):
@@ -249,11 +262,15 @@ class Flow(Element):
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
         if np.any(self.relative_minimum > self.relative_maximum):
             raise Exception(self.label_full + ': Take care, that relative_minimum <= relative_maximum!')
-            
-        if self.size == CONFIG.modeling.BIG and self.fixed_relative_profile is not None:  # Default Size --> Most likely by accident
-            logger.warning(f'Flow "{self.label}" has no size assigned, but a "fixed_relative_profile". '
-                           f'The default size is {CONFIG.modeling.BIG}. As "flow_rate = size * fixed_relative_profile", '
-                           f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.')
+
+        if (
+            self.size == CONFIG.modeling.BIG and self.fixed_relative_profile is not None
+        ):  # Default Size --> Most likely by accident
+            logger.warning(
+                f'Flow "{self.label}" has no size assigned, but a "fixed_relative_profile". '
+                f'The default size is {CONFIG.modeling.BIG}. As "flow_rate = size * fixed_relative_profile", '
+                f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.'
+            )
 
     @property
     def label_full(self) -> str:
@@ -295,13 +312,14 @@ class FlowModel(ElementModel):
             fixed_value=self.fixed_relative_flow_rate,
             lower_bound=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
             upper_bound=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else None,
-            previous_values=self.element.previous_flow_rate)
+            previous_values=self.element.previous_flow_rate,
+        )
 
         # OnOff
         if self.element.on_off_parameters is not None:
-            self._on = OnOffModel(self.element, self.element.on_off_parameters,
-                                  [self.flow_rate],
-                                  [self.absolute_flow_rate_bounds])
+            self._on = OnOffModel(
+                self.element, self.element.on_off_parameters, [self.flow_rate], [self.absolute_flow_rate_bounds]
+            )
             self._on.do_modeling(system_model)
             self.sub_models.append(self._on)
 
@@ -313,14 +331,19 @@ class FlowModel(ElementModel):
                 self.flow_rate,
                 self.relative_flow_rate_bounds,
                 fixed_relative_profile=self.fixed_relative_flow_rate,
-                on_variable=self._on.on if self._on is not None else None
+                on_variable=self._on.on if self._on is not None else None,
             )
             self._investment.do_modeling(system_model)
             self.sub_models.append(self._investment)
 
         # sumFLowHours
-        self.sum_flow_hours = create_variable('sumFlowHours', self, 1, lower_bound=self.element.flow_hours_total_min,
-                                              upper_bound=self.element.flow_hours_total_max)
+        self.sum_flow_hours = create_variable(
+            'sumFlowHours',
+            self,
+            1,
+            lower_bound=self.element.flow_hours_total_min,
+            upper_bound=self.element.flow_hours_total_max,
+        )
         eq_sum_flow_hours = create_equation('sumFlowHours', self, 'eq')
         eq_sum_flow_hours.add_summand(self.flow_rate, system_model.dt_in_hours, as_sum=True)
         eq_sum_flow_hours.add_summand(self.sum_flow_hours, -1)
@@ -339,7 +362,7 @@ class FlowModel(ElementModel):
                 element=self.element,
                 variable=self.flow_rate,
                 effect_values=self.element.effects_per_flow_hour,
-                factor=system_model.dt_in_hours
+                factor=system_model.dt_in_hours,
             )
 
     def _create_bounds_for_load_factor(self, system_model: SystemModel):
@@ -398,7 +421,7 @@ class FlowModel(ElementModel):
             return self.element.relative_minimum.active_data, self.element.relative_maximum.active_data
         return (
             np.minimum(fixed_profile.active_data, self.element.relative_minimum.active_data),
-            np.maximum(fixed_profile.active_data, self.element.relative_maximum.active_data)
+            np.maximum(fixed_profile.active_data, self.element.relative_maximum.active_data),
         )
 
 
@@ -420,7 +443,9 @@ class BusModel(ElementModel):
 
         # Fehlerplus/-minus:
         if self.element.with_excess:
-            excess_penalty = np.multiply(system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour.active_data)
+            excess_penalty = np.multiply(
+                system_model.dt_in_hours, self.element.excess_penalty_per_flow_hour.active_data
+            )
             self.excess_input = create_variable('excess_input', self, system_model.nr_of_time_steps, lower_bound=0)
             self.excess_output = create_variable('excess_output', self, system_model.nr_of_time_steps, lower_bound=0)
 
@@ -429,8 +454,12 @@ class BusModel(ElementModel):
 
             fx_collection = system_model.effect_collection_model
 
-            fx_collection.add_share_to_penalty(f'{self.element.label_full}__excess_input', self.excess_input, excess_penalty)
-            fx_collection.add_share_to_penalty(f'{self.element.label_full}__excess_output', self.excess_output, excess_penalty)
+            fx_collection.add_share_to_penalty(
+                f'{self.element.label_full}__excess_input', self.excess_input, excess_penalty
+            )
+            fx_collection.add_share_to_penalty(
+                f'{self.element.label_full}__excess_output', self.excess_output, excess_penalty
+            )
 
 
 class ComponentModel(ElementModel):
@@ -440,7 +469,7 @@ class ComponentModel(ElementModel):
         self._on: Optional[OnOffModel] = None
 
     def do_modeling(self, system_model: SystemModel):
-        """ Initiates all FlowModels """
+        """Initiates all FlowModels"""
         all_flows = self.element.inputs + self.element.outputs
         if self.element.on_off_parameters:
             for flow in all_flows:
@@ -459,8 +488,7 @@ class ComponentModel(ElementModel):
         if self.element.on_off_parameters:
             flow_rates: List[VariableTS] = [flow.model.flow_rate for flow in all_flows]
             bounds: List[Tuple[Numeric, Numeric]] = [flow.model.absolute_flow_rate_bounds for flow in all_flows]
-            self._on = OnOffModel(self.element, self.element.on_off_parameters,
-                                  flow_rates, bounds)
+            self._on = OnOffModel(self.element, self.element.on_off_parameters, flow_rates, bounds)
             self.sub_models.append(self._on)
             self._on.do_modeling(system_model)
 

@@ -44,7 +44,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest"
+    "pytest",
+    "ruff"
 ]
 
 visualization = [
@@ -61,3 +62,37 @@ exclude = ["tests", "docs", "examples", "examples.*", "Tutorials", ".git", ".vsc
 
 [tool.setuptools.package-data]
 "flixOpt" = ["config.yaml"]
+
+[tool.ruff]
+# Files or directories to exclude (e.g., virtual environments, cache, build artifacts)
+exclude = [
+    "venv",  # Virtual environments
+    "build",  # Build artifacts
+    "dist",  # Distribution files
+    "__pycache__",  # Bytecode cache
+    ".git",  # Git folder
+    ".mypy_cache",  # MyPy cache
+]
+
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "N"]  # Enable linting rules by category (e.g., error, warnings, unused imports)
+ignore = [  # Ignore specific rules
+    "E501",  # Ignore line-length checks (use Black for formatting)
+    "F401",  # Allow unused imports in some cases (use __all__)
+    "N813",  # Allow importing of flixOpt as fx (lowercase)
+    "N999",  # Allow module Name flixOpt
+]
+extend-fixable = ["B"]   # Enable fix for flake8-bugbear (`B`), on top of any rules specified by `fixable`.
+
+# Apply rule exceptions to specific files or directories
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["S101"]  # Ignore assertions in test files
+"tests/test_integration.py" = ["N806"]  # Ignore NOT lowercase names in test files
+"flixOpt/linear_converters.py" = ["N803"]  # Parameters with NOT lowercase names
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+docstring-code-format = true
