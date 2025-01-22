@@ -528,7 +528,7 @@ class TestComplex(BaseTest):
                     on_hours_total_min=0,
                     on_hours_total_max=1000,
                     consecutive_on_hours_max=10,
-                    consecutive_off_hours_max=10,
+                    consecutive_on_hours_min =1,consecutive_off_hours_max=10,
                     effects_per_switch_on=0.01,
                     switch_on_total_max=1000,
                 ),
