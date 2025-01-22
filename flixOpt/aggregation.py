@@ -326,7 +326,7 @@ class AggregationModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         if not self.components_to_clusterize:
-            components = self.flow_system.components
+            components = self.flow_system.components.values()
         else:
             components = [component for component in self.components_to_clusterize]
 
