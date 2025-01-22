@@ -723,6 +723,7 @@ class TestOnOff(BaseTest):
                     'Q_th',
                     bus=self.get_element('Fernwärme'),
                     size=100,
+                    previous_flow_rate=np.array([20]),  # Otherwise its Off before the start
                     can_be_off=fx.OnOffParameters(consecutive_off_hours_max=2, consecutive_off_hours_min=2),
                 ),
             ),
