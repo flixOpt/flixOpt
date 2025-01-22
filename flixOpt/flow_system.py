@@ -5,12 +5,14 @@ This module contains the FlowSystem class, which is used to collect instances of
 import pathlib
 from typing import List, Set, Tuple, Dict, Union, Optional, Literal
 import logging
+from io import StringIO
 
 import numpy as np
+from rich.console import Console
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel, get_object_infos_as_dict
+from .structure import Element, SystemModel, get_str_representation, copy_and_convert_datatypes
 from .elements import Bus, Flow, Component
 from .effects import Effect, EffectCollection
 
@@ -55,7 +57,7 @@ class FlowSystem:
         utils.check_time_series('time series of FlowSystem', self.time_series_with_end)
 
         # defaults:
-        self.components: List[Component] = []
+        self.components: Dict[str, Component] = {}
         self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
         self.model: Optional[SystemModel] = None
 
@@ -72,7 +74,7 @@ class FlowSystem:
             self._check_if_element_is_unique(new_component)  # check if already exists:
             new_component.register_component_in_flows()  # Komponente in Flow registrieren
             new_component.register_flows_in_bus()  # Flows in Bus registrieren:
-        self.components.extend(new_components)  # Add to existing list of components
+            self.components[new_component.label] = new_component  # Add to existing components
 
     def add_elements(self, *args: Element) -> None:
         """
@@ -93,30 +95,30 @@ class FlowSystem:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
     def transform_data(self):
-        for element in self.all_elements:
+        for element in self.all_elements.values():
             element.transform_data()
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
         nodes = {node.label_full: {'label': node.label,
                                    'class': 'Bus' if isinstance(node, Bus) else 'Component',
                                    'infos':  node.__str__()}
-                 for node in self.components + list(self.all_buses)}
+                 for node in list(self.components.values()) + list(self.buses.values())}
 
         edges = {flow.label_full: {'label': flow.label,
                                    'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
                                    'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
                                    'infos': flow.__str__()}
-                 for flow in self.all_flows}
+                 for flow in self.flows.values()}
 
         return nodes, edges
 
-    def infos(self):
-        infos = {'Components': {comp.label: comp.infos() for comp in
-                                sorted(self.components, key=lambda component: component.label.upper())},
-                 'Buses': {bus.label: bus.infos() for bus in
-                           sorted(self.all_buses, key=lambda bus: bus.label.upper())},
-                 'Effects': {effect.label: effect.infos() for effect in
-                             sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper())}}
+    def infos(self, use_numpy=True, use_element_label=False) -> Dict:
+        infos = {'Components': {comp.label: comp.infos(use_numpy, use_element_label) for comp in
+                                sorted(self.components.values(), key=lambda component: component.label.upper())},
+                 'Buses': {bus.label: bus.infos(use_numpy, use_element_label) for bus in
+                           sorted(self.buses.values(), key=lambda bus: bus.label.upper())},
+                 'Effects': {effect.label: effect.infos(use_numpy, use_element_label) for effect in
+                             sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper())}}
         return infos
 
     def visualize_network(self,
@@ -177,7 +179,7 @@ class FlowSystem:
         if element in self.all_elements:
             raise Exception(f'Element {element.label} already added to FlowSystem!')
         # check if name is already used:
-        if element.label_full in [elem.label_full for elem in self.all_elements]:
+        if element.label_full in self.all_elements:
             raise Exception(f'Label of Element {element.label} already used in another element!')
 
     def get_time_data_from_indices(self, time_indices: Optional[Union[List[int], range]] = None
@@ -226,27 +228,24 @@ class FlowSystem:
         return f"<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>"
 
     def __str__(self):
-        components = '\n'.join(component.__str__() for component in
-                               sorted(self.components, key=lambda component: component.label.upper()))
-        effects = '\n'.join(effect.__str__() for effect in
-                            sorted(self.effect_collection.effects, key=lambda effect: effect.label.upper()))
-        return f"FlowSystem with components:\n{components}\nand effects:\n{effects}"
+        return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
 
     @property
-    def all_flows(self) -> Set[Flow]:
-        return {flow for comp in self.components for flow in comp.inputs + comp.outputs}
+    def flows(self) -> Dict[str, Flow]:
+        set_of_flows = {flow for comp in self.components.values() for flow in comp.inputs + comp.outputs}
+        return {flow.label_full: flow for flow in set_of_flows}
 
     @property
-    def all_buses(self) -> Set[Bus]:
-        return {flow.bus for flow in self.all_flows}
+    def buses(self) -> Dict[str, Bus]:
+        return {flow.bus.label: flow.bus for flow in self.flows.values()}
 
     @property
-    def all_elements(self) -> List[Element]:
-        return self.components + self.effect_collection.effects + list(self.all_flows) + list(self.all_buses)
+    def all_elements(self) -> Dict[str, Element]:
+        return {**self.components, **self.effect_collection.effects, **self.flows, **self.buses}
 
     @property
     def all_time_series(self) -> List[TimeSeries]:
-        return [ts for element in self.all_elements for ts in element.used_time_series]
+        return [ts for element in self.all_elements.values() for ts in element.used_time_series]
 
 
 def create_datetime_array(start: str,
@@ -307,6 +306,3 @@ def create_datetime_array(start: str,
 
     else:  # If neither `steps` nor `end` is provided, raise an error
         raise ValueError("Either `steps` or `end` must be provided.")
-
-
-

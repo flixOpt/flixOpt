@@ -12,8 +12,7 @@ from .core import Numeric, Numeric_TS, Skalar
 from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, \
-    get_object_infos_as_dict
+from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
 from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
@@ -52,6 +51,8 @@ class Component(Element):
         self.on_off_parameters = on_off_parameters
         self.prevent_simultaneous_flows: List['Flow'] = prevent_simultaneous_flows or []
 
+        self.flows: Dict[str, Flow] = {flow.label: flow for flow in self.inputs + self.outputs}
+
     def create_model(self) -> 'ComponentModel':
         self.model = ComponentModel(self)
         return self.model
@@ -70,10 +71,12 @@ class Component(Element):
         for flow in self.outputs:
             flow.bus.add_input(flow)
 
-    def infos(self):
-        infos = get_object_infos_as_dict(self)
-        infos['inputs'] = [flow.infos() for flow in self.inputs]
-        infos['outputs'] = [flow.infos() for flow in self.outputs]
+    def infos(self, use_numpy=True, use_element_label=False) -> Dict:
+        infos = super().infos(use_numpy, use_element_label)
+        if 'inputs' not in infos:
+            infos['inputs'] = copy_and_convert_datatypes(self.inputs, use_numpy, use_element_label)
+        if 'outputs' not in infos:
+            infos['outputs'] = copy_and_convert_datatypes(self.outputs, use_numpy, use_element_label)
         return infos
 
 
@@ -237,8 +240,8 @@ class Flow(Element):
         if isinstance(self.size, InvestParameters):
             self.size.transform_data()
 
-    def infos(self) -> Dict:
-        infos = super().infos()
+    def infos(self, use_numpy=True, use_element_label=False) -> Dict:
+        infos = super().infos(use_numpy, use_element_label)
         infos['is_input_in_component'] = self.is_input_in_comp
         return infos
 
