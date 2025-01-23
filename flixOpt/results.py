@@ -28,6 +28,7 @@ class ElementResults:
         self.all_infos = infos
         self.all_results = results
         self.label = self.all_infos['label']
+        self.color = self.all_infos.get('medium', {'color': CalculationResults.default_color})['color']
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.label})'
@@ -38,6 +39,9 @@ class ElementResults:
 
 
 class CalculationResults:
+    default_color = '#B2B2B2'
+    default_color_map = 'viridis'
+
     def __init__(self, calculation_name: str, folder: str) -> None:
         self.name = calculation_name
         self.folder = pathlib.Path(folder)
@@ -188,7 +192,7 @@ class CalculationResults:
                        variable_name: str = 'flow_rate',
                        heatmap_periods: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
                        heatmap_steps_per_period: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
-                       colors: Union[str, List[str]] = 'viridis',
+                       colors: Optional[Union[str, List[str]]] = None,
                        engine: Literal['plotly', 'matplotlib'] = 'plotly',
                        invert: bool = True,
                        show: bool = True,
@@ -210,8 +214,9 @@ class CalculationResults:
             The period for heatmap plotting.
         heatmap_steps_per_period : {'W', 'D', 'h', '15min', 'min'}, default='h'
             The steps per period for heatmap plotting.
-        colors : str or List[str], default='viridis'
-            The colors or colorscale to use for the plot.
+        colors : str or List[str], optional
+            The colors or colorscale to use for the plot. If not provided, the colors are automatically generated,
+            using the ElementResults.color attribute. Bus plots are colored according to the connected Component.
         engine : {'plotly', 'matplotlib'}, default='plotly'
             The plotting engine to use.
         invert : bool, default=False
@@ -233,13 +238,8 @@ class CalculationResults:
         ValueError
             If an invalid engine or color configuration is provided for heatmap mode.
         """
-
-        if mode == 'heatmap' and not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
-            logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
-        if mode == 'heatmap' and not isinstance(colors, str):
-            raise ValueError(f'For a heatmap, you need to pass the colors as a valid name of a colormap, not {colors=}.'
-                             f'Try "Turbo", "Hot", or "Viridis" instead.')
-
+        assert engine in ['plotly', 'matplotlib'], f'Engine {engine} not supported.'
+        assert mode in ['bar', 'line', 'area', 'heatmap'], f'Mode {mode} not supported.'
         title = f'{variable_name.replace("_", " ").title()} of {label}'
         if path == 'auto':
             file_suffix = 'html' if engine == 'plotly' else 'png'
@@ -251,14 +251,21 @@ class CalculationResults:
         data = self.to_dataframe(label, variable_name,
                                  input_factor=-1 if not invert else 1,
                                  output_factor=1 if not invert else -1)
+
         if mode == 'heatmap':
+            if not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
+                logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
+                if colors is None:
+                    colors = self.default_color_map
+                if not isinstance(colors, str):
+                    raise ValueError(f'For a heatmap, you need to pass the colors as a valid name of a colormap, not '
+                                     f'{colors=}. Try "Turbo", "Hot", or "Viridis" instead.')
+
             heatmap_data = plotting.heat_map_data_from_df(data,
                                                           heatmap_periods,
                                                           heatmap_steps_per_period,
                                                           'ffill')
-
-        if engine == 'plotly':
-            if mode == 'heatmap':
+            if engine == 'plotly':
                 return plotting.heat_map_plotly(heatmap_data,
                                                 title=title,
                                                 color_map=colors,
@@ -266,6 +273,18 @@ class CalculationResults:
                                                 save=save,
                                                 path=path)
             else:
+                return plotting.heat_map_matplotlib(heatmap_data,
+                                                    color_map=colors,
+                                                    show=show,
+                                                    path=path if save else None)
+
+        else:
+            if colors is None:
+                colors = self._assign_colors(data.columns, label)
+                if all([color == self.default_color for color in colors]):
+                    colors = self.default_color_map
+
+            if engine == 'plotly':
                 return plotting.with_plotly(data=data,
                                             mode=mode,
                                             show=show,
@@ -273,21 +292,12 @@ class CalculationResults:
                                             colors=colors,
                                             save=save,
                                             path=path)
-
-        elif engine == 'matplotlib':
-            if mode == 'heatmap':
-                return plotting.heat_map_matplotlib(heatmap_data,
-                                                    color_map=colors,
-                                                    show=show,
-                                                    path=path if save else None)
             else:
                 return plotting.with_matplotlib(data=data,
                                                 mode=mode,
                                                 colors=colors,
                                                 show=show,
                                                 path=path if save else None)
-        else:
-            raise ValueError(f'Unknown Engine: {engine=}')
 
     def plot_storage(self,
                      label: str,
@@ -381,6 +391,57 @@ class CalculationResults:
         return plotting.visualize_network(self.calculation_infos['Network']['Nodes'],
                                           self.calculation_infos['Network']['Edges'], path, controls, show)
 
+    @property
+    def colors(self) -> Dict[str, str]:
+        """Returns a dictionary of colors for all elements in the flow system."""
+        return {**{label: flow.color for label, flow in self.flow_results().items()},
+                **{label: bus.color for label, bus in self.bus_results.items()},
+                **{label: comp.color for label, comp in self.component_results.items()}}
+
+    def _assign_colors(self, labels: List[str], element_label: str) -> List[str]:
+        if element_label in self.component_results:
+            return [self.colors[label] for label in labels]
+        elif element_label in self.bus_results:
+            flow_results = self.flow_results()
+            try:
+                comp_labels = [flow_results[flow].component_label for flow in labels]
+            except KeyError:
+                logger.warning(f'When trying to retrive colors for plotting, not all component colors could be '
+                               f'retrieved for the bus plot. Using default colors.')
+                return [self.default_color] * len(labels)
+            return [self.colors[label] for label in comp_labels]
+        elif element_label in self.flow_results():
+            return [self.colors[element_label]]
+        else:
+            logger.error(f'Element {element_label=} not found')
+
+    def change_colors(self, colors: Dict[str, str]):
+        """
+        Change the colors of Elements. This will affect all plots.
+        For compatability with both plotly and matplotlib, we advise to use hex-color-codes ('#FF7043') or named-colors ('red').
+        You can find helpful tools to lookup or convert color-codes under:
+        https://htmlcolorcodes.com/color-names/
+        https://www.rapidtables.com/web/color/RGB_Color.html
+        https://www.w3.org/TR/css-color-4/#named-colors
+
+        Parameters
+        ----------
+        colors : Dict[str, str]
+            The mapping between elements and colors.
+
+        Returns
+        -------
+        None
+        """
+        all_elements = {**self.flow_results(),
+                        **self.bus_results,
+                        **self.component_results}
+
+        for label, color in colors.items():
+            previous_color = all_elements[label].color
+            all_elements[label].color = color
+            logger.debug(f'Changed color of {label=} from "{previous_color}" to "{color}"')
+
 
 class FlowResults(ElementResults):
     def __init__(self, infos: Dict, results: Dict, label_of_component: str) -> None:
@@ -403,6 +464,8 @@ class ComponentResults(ElementResults):
         self.inputs: List[FlowResults] = inputs
         self.outputs: List[FlowResults] = outputs
         self.variables = {key: val for key, val in self.all_results.items() if key not in self.inputs + self.outputs}
+        if self.all_infos.get('meta_data', {}).get('color') is not None:
+            self.color = self.all_infos['meta_data']['color']
 
     def _create_flow_results(self) -> Tuple[List[FlowResults], List[FlowResults]]:
         flow_infos = {flow['label']: flow for flow in self.all_infos['inputs'] + self.all_infos['outputs']}
@@ -424,6 +487,10 @@ class ComponentResults(ElementResults):
             outputs = {flow.label_full: flow.variables[variable_name] * output_factor for flow in self.outputs}
 
         return pd.DataFrame(data={**inputs, **outputs})
+
+    @property
+    def flows(self) -> List[FlowResults]:
+        return self.inputs + self.outputs
 
 
 class BusResults(ElementResults):
@@ -448,6 +515,10 @@ class BusResults(ElementResults):
                 outputs['Excess Output'] = self.variables['excess_output'] * output_factor
 
         return pd.DataFrame(data={**inputs, **outputs})
+
+    @property
+    def flows(self) -> List[FlowResults]:
+        return self.inputs + self.outputs
 
 
 class EffectResults(ElementResults):

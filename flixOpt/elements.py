@@ -12,10 +12,101 @@ from .core import Numeric, Numeric_TS, Skalar
 from .config import CONFIG
 from .interface import InvestParameters, OnOffParameters
 from .features import OnOffModel, InvestmentModel, PreventSimultaneousUsageModel
-from .structure import SystemModel, Element, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
+from .structure import SystemModel, Element, Interface, ElementModel, _create_time_series, create_equation, create_variable, copy_and_convert_datatypes
 from .effects import EffectValues, effect_values_to_time_series
 
 logger = logging.getLogger('flixOpt')
+
+
+class MediumCategories:
+    """
+    A centralized class to define standard medium categories.
+    """
+    heat = 'heat'
+    electricity = 'electricity'
+    fuel = 'fuel'
+
+
+class MediumColors:
+    """
+    A centralized class to define default colors for medium categories.
+    Change values before creating new mediums!
+    """
+    colors = {
+        MediumCategories.heat: 'orange',
+        MediumCategories.electricity: 'steelblue',
+        MediumCategories.fuel: 'brown',
+    }
+
+    default = 'gray'
+
+    @classmethod
+    def get_color(cls, category: str = '') -> str:
+        """
+        Returns the color associated with a category. Returns default color if category is not found.
+
+        Parameters
+        ----------
+        category : str
+            The category for which to retrieve the color.
+
+        Returns
+        -------
+        str
+            The color code (hex format).
+        """
+        return cls.colors.get(category, cls.default)
+
+
+class Medium(Interface):
+    """
+    Represents a medium with attributes such as label, unit, color, and categories.
+    """
+
+    def __init__(
+        self,
+        label: str,
+        unit: str,
+        color: Optional[str] = None,
+        categories: Optional[List[str]] = None,
+        description: Optional[str] = None,
+    ):
+        """
+        Creates a new Medium object.
+
+        Parameters
+        ----------
+        label : str
+            The label of the medium.
+        unit : str
+            The unit of the medium.
+        color : str, optional
+            The color of the medium. Defaults to the color of the first category, or 'unknown' if no category is specified.
+        categories : List[str], optional
+            The categories of the medium. Used for validation purposes.
+            It's recommended to use the default categories from "MediumCategories".
+        description : str, optional
+            A description of the medium.
+        """
+        self.label = label
+        self.unit = unit
+        self.categories: List[str] = categories or []
+        self.color = color or self._get_default_color()
+        self.description = description
+
+    def _get_default_color(self) -> str:
+        """
+        Determines the default color for the medium based on its categories.
+
+        Returns
+        -------
+        str
+            The default color of the medium.
+        """
+        if self.categories:
+            # Use the first category's color as default
+            return MediumColors.get_color(self.categories[0])
+        return MediumColors.get_color('unknown')
 
 
 class Component(Element):
@@ -61,11 +152,13 @@ class Component(Element):
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(self)
 
-    def register_component_in_flows(self) -> None:
+    def connect_elements(self) -> None:
+        """
+        Connects components, flows and buses to each other.
+        """
         for flow in self.inputs + self.outputs:
             flow.comp = self
-
-    def register_flows_in_bus(self) -> None:
+        # Register flows in buses
         for flow in self.inputs:
             flow.bus.add_output(flow)
         for flow in self.outputs:
@@ -88,6 +181,7 @@ class Bus(Element):
 
     def __init__(self,
                  label: str,
+                 medium: Optional[Medium] = None,
                  excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5,
                  meta_data: Optional[Dict] = None):
         """
@@ -95,6 +189,8 @@ class Bus(Element):
         ----------
         label : str
             name.
+        medium : Medium
+            The medium of the bus. This is used to validate flows connected to the bus.
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesData
@@ -103,6 +199,7 @@ class Bus(Element):
             (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
         """
         super().__init__(label, meta_data=meta_data)
+        self.medium = medium
         self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
@@ -115,13 +212,32 @@ class Bus(Element):
         self.excess_penalty_per_flow_hour = _create_time_series('excess_penalty_per_flow_hour',
                                                                 self.excess_penalty_per_flow_hour, self)
 
-    def add_input(self, flow) -> None:
-        flow: Flow
+    def add_input(self, flow: 'Flow') -> None:
         self.inputs.append(flow)
+        self._assign_medium(flow)
 
-    def add_output(self, flow) -> None:
-        flow: Flow
+    def add_output(self, flow: 'Flow') -> None:
         self.outputs.append(flow)
+        self._assign_medium(flow)
+
+    def _assign_medium(self, flow: 'Flow') -> None:
+        """
+        Assigns the bus.medium to the flow.medium.
+        Tries to ensure that the medium of the flow is compatible with the medium of the bus.
+        If not, a logger warning is raised.
+        """
+        if flow.medium is None or self.medium is None:
+            pass
+        elif flow.medium in self.medium.categories:
+            pass
+        else:
+            logger.warning(
+                f'Flow "{flow.label_full}" is not compatible with its connected Bus "{self.label_full}" and its medium '
+                f'"{self.medium.label}", according to medium categories: {flow.medium=}, '
+                f'bus.medium.categories={self.medium.categories}. This might be the cause of connecting a Flow to the '
+                f'wrong bus. Further, this might lead to inconsistent plotting regarding units and colors '
+                f'(which doesnt interfere with the calculation itself!).')
+        flow.medium = self.medium
 
     def _plausibility_checks(self) -> None:
         if self.excess_penalty_per_flow_hour == 0:
@@ -160,6 +276,7 @@ class Flow(Element):
                  load_factor_min: Optional[Skalar] = None,
                  load_factor_max: Optional[Skalar] = None,
                  previous_flow_rate: Optional[Numeric] = None,
+                 medium: Optional[str] = None,
                  meta_data: Optional[Dict] = None):
         """
         Parameters
@@ -204,6 +321,10 @@ class Flow(Element):
             If the load-profile is just an upper limit, use relative_maximum instead.
         previous_flow_rate : scalar, array, optional
             previous flow rate of the component.
+        medium : str, optional
+            The medium category of the flow. Used for validation purposes.
+        meta_data : Dict, optional
+            Additional metadata for the flow.
         """
         super().__init__(label, meta_data=meta_data)
         self.size = size or CONFIG.modeling.BIG  # Default size
@@ -222,6 +343,7 @@ class Flow(Element):
         self.previous_flow_rate = previous_flow_rate
 
         self.bus = bus
+        self.medium: Optional[Medium, str] = medium
         self.comp: Optional[Component] = None
 
         self._plausibility_checks()
