@@ -10,12 +10,10 @@ on:
     release:
       types: [ created, published ]  # Runs when a release is created or published
     branches:
-      - feature/ci-cd
       - main
       - next/*
   pull_request:
     branches:
-      - feature/ci-cd
       - main
       - next/*
 
