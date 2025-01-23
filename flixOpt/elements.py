@@ -84,10 +84,8 @@ class Component(Element):
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         infos = super().infos(use_numpy, use_element_label)
-        if 'inputs' not in infos:
-            infos['inputs'] = copy_and_convert_datatypes(self.inputs, use_numpy, use_element_label)
-        if 'outputs' not in infos:
-            infos['outputs'] = copy_and_convert_datatypes(self.outputs, use_numpy, use_element_label)
+        infos['inputs'] = [flow.infos(use_numpy, use_element_label) for flow in self.inputs]
+        infos['outputs'] = [flow.infos(use_numpy, use_element_label) for flow in self.outputs]
         return infos
 
 
