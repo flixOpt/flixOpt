@@ -674,7 +674,10 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
             # position in array (0 bis 1 normiert)
             positions = np.linspace(0, 1, len(array))  # weights w_i
             # mass center
-            return np.sum(positions * array) / np.sum(array)
+            if np.sum(array) == 0:
+                return np.nan
+            else:
+                return np.sum(positions * array) / np.sum(array)
 
         if arr.size > array_length:  # Calculate basic statistics
             return (
