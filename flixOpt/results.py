@@ -9,9 +9,9 @@ import datetime
 import json
 import logging
 import os
-import zipfile
 import pathlib
 import timeit
+import zipfile
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np

@@ -433,10 +433,9 @@ class SegmentedCalculation(Calculation):
 
     def _save_solve_infos(self):
         import json
+        import zipfile
 
         import yaml
-        import json
-        import zipfile
 
         t_start = timeit.default_timer()
 
