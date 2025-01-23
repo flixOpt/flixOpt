@@ -1,16 +1,20 @@
-import subprocess
-import pytest
-from pathlib import Path
 import os
+import subprocess
 import sys
+from pathlib import Path
+
+import pytest
 
 # Path to the examples directory
-EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
+EXAMPLES_DIR = Path(__file__).parent.parent / 'examples'
+
 
 @pytest.mark.parametrize(
-    "example_script",
-    sorted(EXAMPLES_DIR.rglob("*.py"), key=lambda path: (str(path.parent), path.name)),  # Sort by parent and script name
-    ids=lambda path: str(path.relative_to(EXAMPLES_DIR))  # Show relative file paths
+    'example_script',
+    sorted(
+        EXAMPLES_DIR.rglob('*.py'), key=lambda path: (str(path.parent), path.name)
+    ),  # Sort by parent and script name
+    ids=lambda path: str(path.relative_to(EXAMPLES_DIR)),  # Show relative file paths
 )
 def test_example_scripts(example_script):
     """
@@ -34,7 +38,7 @@ def test_example_scripts(example_script):
             stderr=subprocess.PIPE,
             text=True,
         )
-        assert result.returncode == 0, f"Script {example_script} failed:\n{result.stderr}"
+        assert result.returncode == 0, f'Script {example_script} failed:\n{result.stderr}'
 
     finally:
         # Restore the original working directory

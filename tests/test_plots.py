@@ -2,14 +2,15 @@
 """
 Manual test script for plots
 """
+
 import unittest
 from typing import Optional
 
-import pytest
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly
+import pytest
 
 from flixOpt import plotting
 
@@ -19,23 +20,28 @@ class TestPlots(unittest.TestCase):
         np.random.seed(72)
 
     @staticmethod
-    def get_sample_data(nr_of_columns: int = 7,
-                        nr_of_periods: int = 10,
-                        time_steps_per_period: int = 24,
-                        drop_fraction_of_indices: Optional[float] = None,
-                        only_pos_or_neg: bool = True,
-                        column_prefix: str = ''):
-        columns = [f"Region {i + 1}{column_prefix}" for i in range(nr_of_columns)]  # More realistic column labels
+    def get_sample_data(
+        nr_of_columns: int = 7,
+        nr_of_periods: int = 10,
+        time_steps_per_period: int = 24,
+        drop_fraction_of_indices: Optional[float] = None,
+        only_pos_or_neg: bool = True,
+        column_prefix: str = '',
+    ):
+        columns = [f'Region {i + 1}{column_prefix}' for i in range(nr_of_columns)]  # More realistic column labels
         values_per_column = nr_of_periods * time_steps_per_period
         if only_pos_or_neg:
             positive_data = np.abs(np.random.rand(values_per_column, nr_of_columns) * 100)
             negative_data = -np.abs(np.random.rand(values_per_column, nr_of_columns) * 100)
-            data = pd.DataFrame(np.concatenate([positive_data, negative_data], axis=1),
-                                columns=[f"Region {i + 1}" for i in range(nr_of_columns)] +
-                                        [f"Region {i + 1} Negative" for i in range(nr_of_columns)])
+            data = pd.DataFrame(
+                np.concatenate([positive_data, negative_data], axis=1),
+                columns=[f'Region {i + 1}' for i in range(nr_of_columns)]
+                + [f'Region {i + 1} Negative' for i in range(nr_of_columns)],
+            )
         else:
-            data = pd.DataFrame(np.random.randn(values_per_column, nr_of_columns) * 50 + 20,
-                                columns=columns)  # Random data with both positive and negative values
+            data = pd.DataFrame(
+                np.random.randn(values_per_column, nr_of_columns) * 50 + 20, columns=columns
+            )  # Random data with both positive and negative values
         data.index = pd.date_range('2023-01-01', periods=values_per_column, freq='h')
 
         if drop_fraction_of_indices:
@@ -50,8 +56,9 @@ class TestPlots(unittest.TestCase):
         plotting.with_matplotlib(data, 'bar')
         plt.show()
 
-        data = self.get_sample_data(nr_of_columns=10, nr_of_periods=5, time_steps_per_period=24,
-                                    drop_fraction_of_indices=0.3)
+        data = self.get_sample_data(
+            nr_of_columns=10, nr_of_periods=5, time_steps_per_period=24, drop_fraction_of_indices=0.3
+        )
         plotly.offline.plot(plotting.with_plotly(data, 'bar'))
         plotting.with_matplotlib(data, 'bar')
         plt.show()
@@ -62,8 +69,9 @@ class TestPlots(unittest.TestCase):
         plotting.with_matplotlib(data, 'line')
         plt.show()
 
-        data = self.get_sample_data(nr_of_columns=10, nr_of_periods=5, time_steps_per_period=24,
-                                    drop_fraction_of_indices=0.3)
+        data = self.get_sample_data(
+            nr_of_columns=10, nr_of_periods=5, time_steps_per_period=24, drop_fraction_of_indices=0.3
+        )
         plotly.offline.plot(plotting.with_plotly(data, 'line'))
         plotting.with_matplotlib(data, 'line')
         plt.show()
@@ -72,8 +80,9 @@ class TestPlots(unittest.TestCase):
         data = self.get_sample_data(nr_of_columns=10, nr_of_periods=1, time_steps_per_period=24)
         plotly.offline.plot(plotting.with_plotly(data, 'area'))
 
-        data = self.get_sample_data(nr_of_columns=10, nr_of_periods=5, time_steps_per_period=24,
-                                    drop_fraction_of_indices=0.3)
+        data = self.get_sample_data(
+            nr_of_columns=10, nr_of_periods=5, time_steps_per_period=24, drop_fraction_of_indices=0.3
+        )
         plotly.offline.plot(plotting.with_plotly(data, 'area'))
 
     def test_heat_map_plots(self):
@@ -88,13 +97,13 @@ class TestPlots(unittest.TestCase):
         plt.show()
 
     def test_heat_map_plots_resampling(self):
-        date_range = pd.date_range(start="2023-01-01", end="2023-03-21", freq="5min")
+        date_range = pd.date_range(start='2023-01-01', end='2023-03-21', freq='5min')
 
         # Generate random data for the DataFrame, simulating some metric (e.g., energy consumption, temperature)
         data = np.random.rand(len(date_range))
 
         # Create the DataFrame with a datetime index
-        df = pd.DataFrame(data, index=date_range, columns=["value"])
+        df = pd.DataFrame(data, index=date_range, columns=['value'])
 
         # Randomly drop a percentage of rows to create irregular intervals
         drop_fraction = 0.3  # Fraction of data points to drop (30% in this case)
