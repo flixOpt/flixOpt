@@ -4,32 +4,36 @@ These are tightly connected to features.py
 """
 
 import logging
-from typing import Union, Optional, Dict, List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
-from .core import Numeric, Skalar, Numeric_TS
 from .config import CONFIG
-from .structure import get_object_infos_as_str, get_object_infos_as_dict
+from .core import Numeric, Numeric_TS, Skalar
+from .structure import Element, Interface
+
 if TYPE_CHECKING:
-    from .structure import Element
-    from .effects import EffectTimeSeries, EffectValues, EffectValuesInvest
+    from .effects import Effect, EffectTimeSeries, EffectValues, EffectValuesInvest
 
 logger = logging.getLogger('flixOpt')
 
 
-class InvestParameters:
+class InvestParameters(Interface):
     """
     collects arguments for invest-stuff
     """
 
-    def __init__(self,
-                 fixed_size: Optional[Union[int, float]] = None,
-                 minimum_size: Union[int, float] = 0,  # TODO: Use EPSILON?
-                 maximum_size: Optional[Union[int, float]] = None,
-                 optional: bool = True,  # Investition ist weglassbar
-                 fix_effects: Union[Dict, int, float] = None,
-                 specific_effects: Union[Dict, int, float] = None,  # costs per Flow-Unit/Storage-Size/...
-                 effects_in_segments: Optional[Tuple[List[Tuple[Skalar, Skalar]], Dict['Effect', List[Tuple[Skalar, Skalar]]]]] = None,
-                 divest_effects: Union[Dict, int, float] = None):
+    def __init__(
+        self,
+        fixed_size: Optional[Union[int, float]] = None,
+        minimum_size: Union[int, float] = 0,  # TODO: Use EPSILON?
+        maximum_size: Optional[Union[int, float]] = None,
+        optional: bool = True,  # Investition ist weglassbar
+        fix_effects: Union[Dict, int, float] = None,
+        specific_effects: Union[Dict, int, float] = None,  # costs per Flow-Unit/Storage-Size/...
+        effects_in_segments: Optional[
+            Tuple[List[Tuple[Skalar, Skalar]], Dict['Effect', List[Tuple[Skalar, Skalar]]]]
+        ] = None,
+        divest_effects: Union[Dict, int, float] = None,
+    ):
         """
         Parameters
         ----------
@@ -73,15 +77,13 @@ class InvestParameters:
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
         self._maximum_size = maximum_size or CONFIG.modeling.BIG  # default maximum
-    
+
     def transform_data(self):
         from .effects import as_effect_dict
+
         self.fix_effects = as_effect_dict(self.fix_effects)
         self.divest_effects = as_effect_dict(self.divest_effects)
         self.specific_effects = as_effect_dict(self.specific_effects)
-
-    def infos(self) -> Dict:
-        return get_object_infos_as_dict(self)
 
     @property
     def minimum_size(self):
@@ -91,25 +93,21 @@ class InvestParameters:
     def maximum_size(self):
         return self.fixed_size or self._maximum_size
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}>: {self.__dict__}"
 
-    def __str__(self):
-        return get_object_infos_as_str(self)
-
-
-class OnOffParameters:
-    def __init__(self,
-                 effects_per_switch_on: Union[Dict, Numeric] = None,
-                 effects_per_running_hour: Union[Dict, Numeric] = None,
-                 on_hours_total_min: Optional[int] = None,
-                 on_hours_total_max: Optional[int] = None,
-                 consecutive_on_hours_min: Optional[Numeric] = None,
-                 consecutive_on_hours_max: Optional[Numeric] = None,
-                 consecutive_off_hours_min: Optional[Numeric] = None,
-                 consecutive_off_hours_max: Optional[Numeric] = None,
-                 switch_on_total_max: Optional[int] = None,
-                 force_switch_on: bool = False):
+class OnOffParameters(Interface):
+    def __init__(
+        self,
+        effects_per_switch_on: Union[Dict, Numeric] = None,
+        effects_per_running_hour: Union[Dict, Numeric] = None,
+        on_hours_total_min: Optional[int] = None,
+        on_hours_total_max: Optional[int] = None,
+        consecutive_on_hours_min: Optional[Numeric] = None,
+        consecutive_on_hours_max: Optional[Numeric] = None,
+        consecutive_off_hours_min: Optional[Numeric] = None,
+        consecutive_off_hours_max: Optional[Numeric] = None,
+        switch_on_total_max: Optional[int] = None,
+        force_switch_on: bool = False,
+    ):
         """
         on_off_parameters class for modeling on and off state of an Element.
         If no parameters are given, the default is to create a binary variable for the on state
@@ -155,18 +153,23 @@ class OnOffParameters:
     def transform_data(self, owner: 'Element'):
         from .effects import effect_values_to_time_series
         from .structure import _create_time_series
+
         self.effects_per_switch_on = effect_values_to_time_series('per_switch_on', self.effects_per_switch_on, owner)
-        self.effects_per_running_hour = effect_values_to_time_series('per_running_hour', self.effects_per_running_hour, owner)
-        self.consecutive_on_hours_min = _create_time_series('consecutive_on_hours_min', self.consecutive_on_hours_min, owner)
-        self.consecutive_on_hours_max = _create_time_series('consecutive_on_hours_max', self.consecutive_on_hours_max, owner)
-        self.consecutive_off_hours_min = _create_time_series('consecutive_off_hours_min', self.consecutive_off_hours_min, owner)
-        self.consecutive_off_hours_max = _create_time_series('consecutive_off_hours_max', self.consecutive_off_hours_max, owner)
-
-    def infos(self) -> Dict:
-        return get_object_infos_as_dict(self)
-
-    def __str__(self):
-        return get_object_infos_as_str(self)
+        self.effects_per_running_hour = effect_values_to_time_series(
+            'per_running_hour', self.effects_per_running_hour, owner
+        )
+        self.consecutive_on_hours_min = _create_time_series(
+            'consecutive_on_hours_min', self.consecutive_on_hours_min, owner
+        )
+        self.consecutive_on_hours_max = _create_time_series(
+            'consecutive_on_hours_max', self.consecutive_on_hours_max, owner
+        )
+        self.consecutive_off_hours_min = _create_time_series(
+            'consecutive_off_hours_min', self.consecutive_off_hours_min, owner
+        )
+        self.consecutive_off_hours_max = _create_time_series(
+            'consecutive_off_hours_max', self.consecutive_off_hours_max, owner
+        )
 
     @property
     def use_off(self) -> bool:
@@ -186,8 +189,15 @@ class OnOffParameters:
     @property
     def use_switch_on(self) -> bool:
         """Determines wether a Variable for SWITCH-ON is needed or not"""
-        return (any(param is not None for param in [self.effects_per_switch_on,
-                                                    self.switch_on_total_max,
-                                                    self.on_hours_total_min,
-                                                    self.on_hours_total_max])
-                or self.force_switch_on)
+        return (
+            any(
+                param is not None
+                for param in [
+                    self.effects_per_switch_on,
+                    self.switch_on_total_max,
+                    self.on_hours_total_min,
+                    self.on_hours_total_max,
+                ]
+            )
+            or self.force_switch_on
+        )

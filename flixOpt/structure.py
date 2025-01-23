@@ -3,21 +3,24 @@ This module contains the core structure of the flixOpt framework.
 These classes are not directly used by the end user, but are used by other modules.
 """
 
-from typing import List, Dict, Union, Optional, Literal, TYPE_CHECKING, Any
-import logging
 import inspect
-import textwrap
+import logging
+from datetime import datetime
+from io import StringIO
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
+from rich.console import Console
+from rich.pretty import Pretty
 
 from . import utils
-from .math_modeling import MathModel, Variable, Equation, Inequation, VariableTS, Solver
-from .core import TimeSeries, Skalar, Numeric, Numeric_TS, TimeSeriesData
 from .config import CONFIG
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData
+from .math_modeling import Equation, Inequation, MathModel, Solver, Variable, VariableTS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
+    from .elements import BusModel, ComponentModel
     from .flow_system import FlowSystem
-    from .elements import ComponentModel, BusModel
 
 logger = logging.getLogger('flixOpt')
 
@@ -27,16 +30,20 @@ class SystemModel(MathModel):
     Hier kommen die ModellingLanguage-spezifischen Sachen rein
     """
 
-    def __init__(self,
-                 label: str,
-                 modeling_language: Literal['pyomo', 'cvxpy'],
-                 flow_system: 'FlowSystem',
-                 time_indices: Optional[Union[List[int], range]]):
+    def __init__(
+        self,
+        label: str,
+        modeling_language: Literal['pyomo', 'cvxpy'],
+        flow_system: 'FlowSystem',
+        time_indices: Optional[Union[List[int], range]],
+    ):
         super().__init__(label, modeling_language)
         self.flow_system = flow_system
         # Zeitdaten generieren:
         self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
-            flow_system.get_time_data_from_indices(time_indices))
+            flow_system.get_time_data_from_indices(time_indices)
+        )
+        self.previous_dt_in_hours = flow_system.previous_dt_in_hours
         self.nr_of_time_steps = len(self.time_series)
         self.indices = range(self.nr_of_time_steps)
 
@@ -47,8 +54,8 @@ class SystemModel(MathModel):
 
     def do_modeling(self):
         self.effect_collection_model.do_modeling(self)
-        self.component_models = [component.create_model() for component in self.flow_system.components]
-        self.bus_models = [bus.create_model() for bus in self.flow_system.all_buses]
+        self.component_models = [component.create_model() for component in self.flow_system.components.values()]
+        self.bus_models = [bus.create_model() for bus in self.flow_system.buses.values()]
         for component_model in self.component_models:
             component_model.do_modeling(self)
         for bus_model in self.bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
@@ -74,76 +81,98 @@ class SystemModel(MathModel):
         logger.info(f'{" finished solving ":#^80}')
         logger.info(f'{" Main Results ":#^80}')
         for effect_name, effect_results in self.main_results['Effects'].items():
-            logger.info(f'{effect_name}:\n'
-                        f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
-                        f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
-                        f'  {"sum":<15}: {effect_results["sum"]:>10.2f}')
+            logger.info(
+                f'{effect_name}:\n'
+                f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
+                f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
+                f'  {"sum":<15}: {effect_results["sum"]:>10.2f}'
+            )
 
         logger.info(
             # f'{"SUM":<15}: ...todo...\n'
             f'{"Penalty":<17}: {self.main_results["penalty"]:>10.2f}\n'
             f'{"":-^80}\n'
             f'{"Objective":<17}: {self.main_results["Objective"]:>10.2f}\n'
-            f'{"":-^80}')
+            f'{"":-^80}'
+        )
 
-        logger.info(f'Investment Decisions:')
-        logger.info(utils.apply_formating(data_dict={**self.main_results["Invest-Decisions"]["invested"],
-                                                     **self.main_results["Invest-Decisions"]["not invested"]},
-                                          key_format="<30", indent=2, sort_by='value'))
+        logger.info('Investment Decisions:')
+        logger.info(
+            utils.apply_formating(
+                data_dict={
+                    **self.main_results['Invest-Decisions']['invested'],
+                    **self.main_results['Invest-Decisions']['not invested'],
+                },
+                key_format='<30',
+                indent=2,
+                sort_by='value',
+            )
+        )
 
         for bus in self.main_results['buses with excess']:
             logger.warning(f'A penalty occurred in Bus "{bus}"!')
 
-        if self.main_results["penalty"] > 10:
-            logger.warning(f'A total penalty of {self.main_results["penalty"]} occurred.'
-                           f'This might distort the results')
+        if self.main_results['penalty'] > 10:
+            logger.warning(f'A total penalty of {self.main_results["penalty"]} occurred.This might distort the results')
         logger.info(f'{" End of Main Results ":#^80}')
 
     def description_of_variables(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {'Components': {comp.label: comp.model.description_of_variables(structured)
-                               for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_variables(structured)
-                          for bus in self.flow_system.all_buses},
-                'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
-                'Others': {model.element.label: model.description_of_variables(structured)
-                           for model in self.other_models}}
+        return {
+            'Components': {
+                label: comp.model.description_of_variables(structured)
+                for label, comp in self.flow_system.components.items()
+            },
+            'Buses': {
+                label: bus.model.description_of_variables(structured) for label, bus in self.flow_system.buses.items()
+            },
+            'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
+            'Others': {model.element.label: model.description_of_variables(structured) for model in self.other_models},
+        }
 
     def description_of_constraints(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {'Components': {comp.label: comp.model.description_of_constraints(structured)
-                               for comp in self.flow_system.components},
-                'Buses': {bus.label: bus.model.description_of_constraints(structured)
-                          for bus in self.flow_system.all_buses},
-                'Objective': self.objective.description(),
-                'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
-                'Others': {model.element.label: model.description_of_constraints(structured)
-                           for model in self.other_models}}
+        return {
+            'Components': {
+                label: comp.model.description_of_constraints(structured)
+                for label, comp in self.flow_system.components.items()
+            },
+            'Buses': {
+                label: bus.model.description_of_constraints(structured) for label, bus in self.flow_system.buses.items()
+            },
+            'Objective': self.objective.description(),
+            'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
+            'Others': {
+                model.element.label: model.description_of_constraints(structured) for model in self.other_models
+            },
+        }
 
     def results(self):
-        return {'Components': {model.element.label: model.results() for model in self.component_models},
-                'Effects': self.effect_collection_model.results(),
-                'Buses': {model.element.label: model.results() for model in self.bus_models},
-                'Others': {model.element.label: model.results() for model in self.other_models},
-                'Objective': self.result_of_objective,
-                'Time': self.time_series_with_end,
-                'Time intervals in hours': self.dt_in_hours
-                }
+        return {
+            'Components': {model.element.label: model.results() for model in self.component_models},
+            'Effects': self.effect_collection_model.results(),
+            'Buses': {model.element.label: model.results() for model in self.bus_models},
+            'Others': {model.element.label: model.results() for model in self.other_models},
+            'Objective': self.result_of_objective,
+            'Time': self.time_series_with_end,
+            'Time intervals in hours': self.dt_in_hours,
+        }
 
     @property
     def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
         main_results = {}
         effect_results = {}
         main_results['Effects'] = effect_results
-        for effect in self.flow_system.effect_collection.effects:
+        for effect in self.flow_system.effect_collection.effects.values():
             effect_results[f'{effect.label} [{effect.unit}]'] = {
                 'operation': float(effect.model.operation.sum.result),
                 'invest': float(effect.model.invest.sum.result),
-                'sum': float(effect.model.all.sum.result)}
+                'sum': float(effect.model.all.sum.result),
+            }
         main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
         main_results['Objective'] = self.result_of_objective
         main_results['lower bound'] = self.solver.best_bound
         buses_with_excess = []
         main_results['buses with excess'] = buses_with_excess
-        for bus in self.flow_system.all_buses:
+        for bus in self.flow_system.buses.values():
             if bus.with_excess:
                 if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
                     buses_with_excess.append(bus.label)
@@ -151,6 +180,7 @@ class SystemModel(MathModel):
         invest_decisions = {'invested': {}, 'not invested': {}}
         main_results['Invest-Decisions'] = invest_decisions
         from flixOpt.features import InvestmentModel
+
         for sub_model in self.sub_models:
             if isinstance(sub_model, InvestmentModel):
                 invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
@@ -176,7 +206,7 @@ class SystemModel(MathModel):
         for model in self.sub_models:
             for label, variable in model.variables.items():
                 if label in all_vars:
-                    raise KeyError(f"Duplicate Variable found in SystemModel:{model=} {label=}; {variable=}")
+                    raise KeyError(f'Duplicate Variable found in SystemModel:{model=} {label=}; {variable=}')
                 all_vars[label] = variable
         return all_vars
 
@@ -186,7 +216,7 @@ class SystemModel(MathModel):
         for model in self.sub_models:
             for label, constr in model.constraints.items():
                 if label in all_constr:
-                    raise KeyError(f"Duplicate Constraint found in SystemModel: {label=}; {constr=}")
+                    raise KeyError(f'Duplicate Constraint found in SystemModel: {label=}; {constr=}')
                 else:
                     all_constr[label] = constr
         return all_constr
@@ -207,17 +237,17 @@ class SystemModel(MathModel):
 
     @property
     def variables(self) -> List[Variable]:
-        """ Needed for Mother class """
+        """Needed for Mother class"""
         return list(self.all_variables.values())
 
     @property
     def equations(self) -> List[Equation]:
-        """ Needed for Mother class """
+        """Needed for Mother class"""
         return list(self.all_equations.values())
 
     @property
     def inequations(self) -> List[Inequation]:
-        """ Needed for Mother class """
+        """Needed for Mother class"""
         return list(self.all_inequations.values())
 
     @property
@@ -225,8 +255,66 @@ class SystemModel(MathModel):
         return self.effect_collection_model.objective
 
 
-class Element:
-    """ Basic Element of flixOpt"""
+class Interface:
+    """
+    This class is used to collect arguments about a Model.
+    """
+
+    def transform_data(self):
+        raise NotImplementedError('Every Interface needs a transform_data() method')
+
+    def infos(self, use_numpy=True, use_element_label=False) -> Dict:
+        """
+        Generate a dictionary representation of the object's constructor arguments.
+        Excludes default values and empty dictionaries and lists.
+        Converts data to be compatible with JSON.
+
+        Parameters:
+        -----------
+        use_numpy bool:
+            Whether to convert NumPy arrays to lists. Defaults to True.
+            If True, numeric numpy arrays (`np.ndarray`) are preserved as-is.
+            If False, they are converted to lists.
+        use_element_label bool:
+            Whether to use the element label instead of the infos of the element. Defaults to False.
+            Note that Elements used as keys in dictionaries are always converted to their labels.
+
+        Returns:
+            Dict: A dictionary representation of the object's constructor arguments.
+
+        """
+        # Get the constructor arguments and their default values
+        init_params = sorted(
+            inspect.signature(self.__init__).parameters.items(),
+            key=lambda x: (x[0].lower() != 'label', x[0].lower()),  # Prioritize 'label'
+        )
+        # Build a dict of attribute=value pairs, excluding defaults
+        details = {'class': ':'.join([cls.__name__ for cls in self.__class__.__mro__])}
+        for name, param in init_params:
+            if name == 'self':
+                continue
+            value, default = getattr(self, name, None), param.default
+            # Ignore default values and empty dicts and list
+            if np.all(value == default) or (isinstance(value, (dict, list)) and not value):
+                continue
+            details[name] = copy_and_convert_datatypes(value, use_numpy, use_element_label)
+        return details
+
+    def __repr__(self):
+        # Get the constructor arguments and their current values
+        init_signature = inspect.signature(self.__init__)
+        init_args = init_signature.parameters
+
+        # Create a dictionary with argument names and their values
+        args_str = ', '.join(f'{name}={repr(getattr(self, name, None))}' for name in init_args if name != 'self')
+        return f'{self.__class__.__name__}({args_str})'
+
+    def __str__(self):
+        return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
+
+
+class Element(Interface):
+    """Basic Element of flixOpt"""
 
     def __init__(self, label: str, meta_data: Dict = None):
         """
@@ -238,41 +326,21 @@ class Element:
             used to store more information about the element. Is not used internally, but saved in the results
         """
         if not utils.label_is_valid(label):
-            logger.critical(f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
-                            f"Use any other symbol instead")
+            logger.critical(
+                f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
+                f'Use any other symbol instead'
+            )
         self.label = label
         self.meta_data = meta_data if meta_data is not None else {}
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 
     def _plausibility_checks(self) -> None:
-        """ This function is used to do some basic plausibility checks for each Element during initialization """
-        raise NotImplementedError(f'Every Element needs a _plausibility_checks() method')
-
-    def transform_data(self) -> None:
-        """ This function is used to transform the time series data from the User to proper TimeSeries Objects """
-        raise NotImplementedError(f'Every Element needs a transform_data() method')
+        """This function is used to do some basic plausibility checks for each Element during initialization"""
+        raise NotImplementedError('Every Element needs a _plausibility_checks() method')
 
     def create_model(self) -> None:
-        raise NotImplementedError(f'Every Element needs a create_model() method')
-
-    def __repr__(self):
-        # Get the constructor arguments and their current values
-        init_signature = inspect.signature(self.__init__)
-        init_args = init_signature.parameters
-
-        # Create a dictionary with argument names and their values
-        args_str = ', '.join(
-            f"{name}={repr(getattr(self, name, None))}"
-            for name in init_args if name != 'self'
-        )
-        return f"{self.__class__.__name__}({args_str})"
-
-    def __str__(self):
-        return get_object_infos_as_str(self)
-
-    def infos(self) -> Dict:
-        return get_object_infos_as_dict(self)
+        raise NotImplementedError('Every Element needs a create_model() method')
 
     @property
     def label_full(self) -> str:
@@ -280,7 +348,7 @@ class Element:
 
 
 class ElementModel:
-    """ Interface to create the mathematical Models for Elements """
+    """Interface to create the mathematical Models for Elements"""
 
     def __init__(self, element: Element, label: Optional[str] = None):
         logger.debug(f'Created {self.__class__.__name__} for {element.label_full}')
@@ -335,12 +403,14 @@ class ElementModel:
     @property
     def overview_of_model_size(self) -> Dict[str, int]:
         all_vars, all_eqs, all_ineqs = self.all_variables, self.all_equations, self.all_inequations
-        return {'no of Euations': len(all_eqs),
-                'no of Equations single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
-                'no of Inequations': len(all_ineqs),
-                'no of Inequations single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
-                'no of Variables': len(all_vars),
-                'no of Variables single': sum(var.length for var in all_vars.values())}
+        return {
+            'no of Euations': len(all_eqs),
+            'no of Equations single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
+            'no of Inequations': len(all_ineqs),
+            'no of Inequations single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
+            'no of Variables': len(all_vars),
+            'no of Variables single': sum(var.length for var in all_vars.values()),
+        }
 
     @property
     def inequations(self) -> Dict[str, Inequation]:
@@ -384,7 +454,7 @@ class ElementModel:
     def all_inequations(self) -> Dict[str, Inequation]:
         all_ineqs = self.inequations.copy()
         for sub_model in self.sub_models:
-            for key, value in sub_model.all_inequations.items():
+            for key in sub_model.all_inequations:
                 if key in all_ineqs:
                     raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
         return all_ineqs
@@ -399,8 +469,10 @@ class ElementModel:
         return all_subs
 
     def results(self) -> Dict:
-        return {**{variable.label_short: variable.result for variable in self.variables.values()},
-                **{model.label: model.results() for model in self.sub_models}}
+        return {
+            **{variable.label_short: variable.result for variable in self.variables.values()},
+            **{model.label: model.results() for model in self.sub_models},
+        }
 
     @property
     def label_full(self) -> str:
@@ -411,7 +483,9 @@ class ElementModel:
         return self._label or self.element.label
 
 
-def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element) -> Optional[TimeSeries]:
+def _create_time_series(
+    label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element
+) -> Optional[TimeSeries]:
     """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
     If the data already is a TimeSeries, nothing happens and the TimeSeries gets cleaned and returned"""
     if data is None:
@@ -425,10 +499,10 @@ def _create_time_series(label: str, data: Optional[Union[Numeric_TS, TimeSeries]
         return time_series
 
 
-def create_equation(label: str,
-                    element_model: ElementModel,
-                    eq_type: Literal['eq', 'ineq'] = 'eq') -> Union[Equation, Inequation]:
-    """ Creates an Equation and adds it to the model of the Element """
+def create_equation(
+    label: str, element_model: ElementModel, eq_type: Literal['eq', 'ineq'] = 'eq'
+) -> Union[Equation, Inequation]:
+    """Creates an Equation and adds it to the model of the Element"""
     if eq_type == 'eq':
         constr = Equation(f'{element_model.label_full}_{label}', label)
     elif eq_type == 'ineq':
@@ -437,172 +511,188 @@ def create_equation(label: str,
     return constr
 
 
-def create_variable(label: str,
-                    element_model: ElementModel,
-                    length: int, is_binary: bool = False,
-                    fixed_value: Optional[Numeric] = None,
-                    lower_bound: Optional[Numeric] = None,
-                    upper_bound: Optional[Numeric] = None,
-                    previous_values: Optional[Numeric] = None,
-                    avoid_use_of_variable_ts: bool = False) -> VariableTS:
-    """ Creates a VariableTS and adds it to the model of the Element """
+def create_variable(
+    label: str,
+    element_model: ElementModel,
+    length: int,
+    is_binary: bool = False,
+    fixed_value: Optional[Numeric] = None,
+    lower_bound: Optional[Numeric] = None,
+    upper_bound: Optional[Numeric] = None,
+    previous_values: Optional[Numeric] = None,
+    avoid_use_of_variable_ts: bool = False,
+) -> VariableTS:
+    """Creates a VariableTS and adds it to the model of the Element"""
     variable_label = f'{element_model.label_full}_{label}'
     if length > 1 and not avoid_use_of_variable_ts:
-        var = VariableTS(variable_label, length, label,
-                         is_binary, fixed_value, lower_bound, upper_bound, previous_values)
+        var = VariableTS(
+            variable_label, length, label, is_binary, fixed_value, lower_bound, upper_bound, previous_values
+        )
         logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
     else:
-        var = Variable(variable_label, length, label,
-                       is_binary, fixed_value, lower_bound, upper_bound)
+        var = Variable(variable_label, length, label, is_binary, fixed_value, lower_bound, upper_bound)
         logger.debug(f'Created Variable "{variable_label}": [{length}]')
     element_model.add_variables(var)
     return var
 
 
-def get_object_infos_as_str(obj) -> str:
+def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_label: bool = False) -> Any:
     """
-    Returns a string representation of an object's constructor arguments,
-    excluding default values. Formats dictionaries with nested child class objects, displaying their labels.
+    Converts values in a nested data structure into JSON-compatible types while preserving or transforming numpy arrays
+    and custom `Element` objects based on the specified options.
+
+    The function handles various data types and transforms them into a consistent, readable format:
+    - Primitive types (`int`, `float`, `str`, `bool`, `None`) are returned as-is.
+    - Numpy scalars are converted to their corresponding Python scalar types.
+    - Collections (`list`, `tuple`, `set`, `dict`) are recursively processed to ensure all elements are compatible.
+    - Numpy arrays are preserved or converted to lists, depending on `use_numpy`.
+    - Custom `Element` objects can be represented either by their `label` or their initialization parameters as a dictionary.
+    - Timestamps (`datetime`) are converted to ISO 8601 strings.
+
+    Parameters
+    ----------
+    data : Any
+        The input data to process, which may be deeply nested and contain a mix of types.
+    use_numpy : bool, optional
+        If `True`, numeric numpy arrays (`np.ndarray`) are preserved as-is. If `False`, they are converted to lists.
+        Default is `True`.
+    use_element_label : bool, optional
+        If `True`, `Element` objects are represented by their `label`. If `False`, they are converted into a dictionary
+        based on their initialization parameters. Default is `False`.
+
+    Returns
+    -------
+    Any
+        A transformed version of the input data, containing only JSON-compatible types:
+        - `int`, `float`, `str`, `bool`, `None`
+        - `list`, `dict`
+        - `np.ndarray` (if `use_numpy=True`. This is NOT JSON-compatible)
+
+    Raises
+    ------
+    TypeError
+        If the data cannot be converted to the specified types.
+
+    Examples
+    --------
+    >>> copy_and_convert_datatypes({'a': np.array([1, 2, 3]), 'b': Element(label='example')})
+    {'a': array([1, 2, 3]), 'b': {'class': 'Element', 'label': 'example'}}
+
+    >>> copy_and_convert_datatypes({'a': np.array([1, 2, 3]), 'b': Element(label='example')}, use_numpy=False)
+    {'a': [1, 2, 3], 'b': {'class': 'Element', 'label': 'example'}}
+
+    Notes
+    -----
+    - The function gracefully handles unexpected types by issuing a warning and returning a deep copy of the data.
+    - Empty collections (lists, dictionaries) and default parameter values in `Element` objects are omitted from the output.
+    - Numpy arrays with non-numeric data types are automatically converted to lists.
+    """
+    if isinstance(data, (int, float, str, bool, type(None))):
+        return data
+    elif isinstance(data, datetime):
+        return data.isoformat()
+
+    elif isinstance(data, np.integer):
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+    elif isinstance(data, (np.generic,)):  # For any numpy scalar types
+        return data.item()
+
+    elif isinstance(data, (tuple, set)):
+        return copy_and_convert_datatypes([item for item in data], use_numpy)
+    elif isinstance(data, dict):
+        return {
+            copy_and_convert_datatypes(key, use_numpy, use_element_label=True): copy_and_convert_datatypes(
+                value, use_numpy, use_element_label
+            )
+            for key, value in data.items()
+        }
+    elif isinstance(data, list):  # Shorten arrays/lists to be readable
+        if use_numpy and all([isinstance(value, (int, float)) for value in data]):
+            return np.array([item for item in data])
+        else:
+            return [copy_and_convert_datatypes(item, use_numpy, use_element_label) for item in data]
+
+    elif isinstance(data, np.ndarray):
+        if not use_numpy:
+            return copy_and_convert_datatypes(data.tolist(), use_numpy, use_element_label)
+        elif use_numpy and np.issubdtype(data.dtype, np.number):
+            return data
+        else:
+            logger.critical(
+                f'An np.array with non-numeric content was found: {data=}.It will be converted to a list instead'
+            )
+            return copy_and_convert_datatypes(data.tolist(), use_numpy, use_element_label)
+
+    elif isinstance(data, TimeSeries):
+        return copy_and_convert_datatypes(data.active_data, use_numpy, use_element_label)
+    elif isinstance(data, TimeSeriesData):
+        return copy_and_convert_datatypes(data.data, use_numpy, use_element_label)
+
+    elif isinstance(data, Interface):
+        if use_element_label and isinstance(data, Element):
+            return data.label
+        return data.infos(use_numpy, use_element_label)
+    else:
+        raise TypeError(f'copy_and_convert_datatypes() did get unexpected data of type "{type(data)}": {data=}')
+
+
+def get_str_representation(data: Any, array_length: int = 50, precision: int = 2) -> str:
+    """
+    Generate a string representation of deeply nested data using `rich.print`.
+    NumPy arrays are shortened to the specified length and converted to strings.
 
     Args:
-        obj: The object whose constructor arguments will be formatted and returned as a string.
+        data (Any): The data to format and represent.
+        array_length (int): Maximum length of NumPy arrays to display. Longer arrays are truncated.
+        precision (int): Number of decimal places to display for floats in numerical arrays.
 
     Returns:
-        str: A string representation of the object's constructor arguments,
-             with properly formatted dictionaries, and nested objects' labels.
+        str: The formatted string representation of the data.
     """
 
-    def numeric_as_str(item: Union[Numeric, TimeSeries, TimeSeriesData], max_length: int = 100) -> str:
-        """
-        Returns a short oneline string of numeric data.
-        If something else than the expected datatypes is passes, it returns the item aas a str
-        """
-        if isinstance(item, TimeSeries):
-            item = item.active_data
-        elif isinstance(item, TimeSeriesData):
-            item = item.data
-
-        if isinstance(item, np.ndarray):
-            text = str(item).replace('\n', '')
-            if len(text) > max_length:
-                return text[:max_length-3]+'...'
-            else:
-                return text
-        elif isinstance(item, (Skalar, np.integer, np.floating)):
-            return str(item)
+    def format_np_array_if_found(value: Any) -> Any:
+        """Recursively processes the data, formatting NumPy arrays."""
+        if isinstance(value, (int, float, str, bool, type(None))):
+            return value
+        elif isinstance(value, np.ndarray):
+            return shorten_np_array(value)
+        elif isinstance(value, dict):
+            return {format_np_array_if_found(k): format_np_array_if_found(v) for k, v in value.items()}
+        elif isinstance(value, (list, tuple, set)):
+            return [format_np_array_if_found(v) for v in value]
         else:
-            raise TypeError(f' Wrong type passed to function numeric_as_str(): {type(item)}')
+            logger.warning(
+                f'Unexpected value found when trying to format numpy array numpy array: {type(value)=}; {value=}'
+            )
+            return value
 
-    def dict_as_str(d: Dict, current_indent_level: int = 1, indent_depth: int = 3) -> str:
-        """
-        Recursively formats a dictionary, skipping {None: some_value} dictionaries by returning only the value.
+    def shorten_np_array(arr: np.ndarray) -> str:
+        """Shortens NumPy arrays if they exceed the specified length."""
+        def normalized_center_of_mass(array: Any) -> float:
+            # position in array (0 bis 1 normiert)
+            positions = np.linspace(0, 1, len(array))  # weights w_i
+            # mass center
+            return np.sum(positions * array) / np.sum(array)
 
-        Args:
-            d (dict): The dictionary to format.
-            current_indent_level (int): The current indentation level (default is 1).
-            indent_depth (int): The number of spaces per indent (default is 3).
-
-        Returns:
-            str: A string representation of the dictionary with the keys' labels and appropriate indentation.
-        """
-        # If the dictionary has a single {None: value} entry, return the value directly
-        if len(d) == 1 and None in d:
-            return str(d[None])
-
-        formatted_items = []
-        for k, v in d.items():
-            key_str = k.label if hasattr(k, 'label') else str(k)  # Use labels instead of __str__ if availlable
-            if isinstance(v, dict):
-                v_str = dict_as_str(v, current_indent_level + 1)  # Recursively format nested dictionaries
-            else:
-                v_str = item_as_str(v)
-            formatted_items.append(f"{key_str}: {v_str}")
-        return '{\n' + textwrap.indent(",\n".join(formatted_items), ' ' * current_indent_level * indent_depth) + '}'
-
-    def item_as_str(item: Any, indent_level: int = 1, indent_depth: int = 3) -> str:
-        """ Convert Any item to a string"""
-        if isinstance(item, dict):
-            return dict_as_str(item, indent_level, indent_depth)  # Recursively format nested dictionaries
-        elif isinstance(item, (Numeric, TimeSeries, TimeSeriesData)):
-            return numeric_as_str(item)  # Special formatting for numerical data
+        if arr.size > array_length:  # Calculate basic statistics
+            return (
+                f'Array (min={np.min(arr):.2f}, max={np.max(arr):.2f}, mean={np.mean(arr):.2f}, '
+                f'median={np.median(arr):.2f}, std={np.std(arr):.2f}, len={len(arr)}, '
+                f'center={normalized_center_of_mass(arr):.2f})'
+            )
         else:
-            return str(item)  # All others as str
+            return np.array2string(arr[:array_length], precision=precision, max_line_width=1000, separator=', ')
 
-    # Get the constructor arguments and their default values
-    init_params = sorted(inspect.signature(obj.__init__).parameters.items(),
-                         key=lambda x: (x[0].lower() != 'label', x[0].lower()))
+    # Process the data to handle NumPy arrays
+    formatted_data = format_np_array_if_found(copy_and_convert_datatypes(data, use_numpy=True))
 
-    # Build a list of attribute=value pairs, excluding defaults
-    details = []
-    for name, param in init_params:
-        if name == 'self':
-            continue
-        value, default = getattr(obj, name, None), param.default
-
-        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
-            pass
-        elif np.all(value == default):  # Ignore default values
-            pass
-        else:
-            details.append(f"{name}={item_as_str(value)}")  # Formatted numeric-string
-
-    # Join all relevant parts and format them in the output
-    full_str = ',\n'.join(details)
-    return f"{obj.__class__.__name__}(\n{textwrap.indent(full_str, ' '*3)})"
+    # Use Rich to format and print the data
+    with StringIO() as output_buffer:
+        console = Console(file=output_buffer, width=1000)  # Adjust width as needed
+        console.print(Pretty(formatted_data, expand_all=True, indent_guides=True))
+        return output_buffer.getvalue()
 
 
-def get_object_infos_as_dict(obj) -> Dict[str, Optional[Union[int, float, str, bool, list, dict]]]:
-    """
-    Returns a dictionary representation of an object's constructor arguments,
-    excluding default values. Formats dictionaries with nested child class objects, displaying their labels.
-    Converts data to python native objects. Further, converts Tuples to Lists.
 
-    Args:
-        obj: The object whose constructor arguments will be formatted and returned as a dictionary.
-
-    Returns:
-        dict: A dictionary representation of the object's constructor arguments,
-              with properly formatted dictionaries and nested objects' labels.
-    """
-
-    def format_dict(d: Dict[Any, Any]) -> Dict[str, Optional[Union[int, float, str, bool, Dict, List]]]:
-        """ Recursively converts datatypes in a dictionary. Converts keys to string """
-        return {k.label if hasattr(k, 'label') else str(k): format_item(v) for k, v in d.items()}
-
-    def format_item(item: Any) -> Optional[Union[int, float, str, bool, List, Dict]]:
-        """ Convert any item to a format that is usable by json and yaml"""
-        if isinstance(item, (int, float, str, bool, type(None), np.integer, np.floating, np.ndarray)):
-            return utils.convert_to_native_types(item)
-        elif isinstance(item, (tuple, list)):
-            return [format_item(i) for i in item]
-        elif isinstance(item, dict):  # Format dictionaries with custom formatting
-            if len(item) == 1 and None in item:
-                return format_item(item[None])
-            else:
-                return format_dict(item)
-        elif isinstance(item, TimeSeries):
-            return format_item(item.active_data)
-        elif isinstance(item, TimeSeriesData):
-            return format_item(item.data)
-        elif hasattr(item, 'infos') and callable(getattr(item, 'infos')):
-            return item.infos()
-        else:
-            raise TypeError(f'Unexpected type passed to function format_item(). {type(item)=}; {item=}')
-
-    init_params = sorted(inspect.signature(obj.__init__).parameters.items(),
-                         key=lambda x: (x[0].lower() != 'label', x[0].lower()))
-
-    # Build a dict of attribute=value pairs, excluding defaults
-    details = {'class': ':'.join([cls.__name__ for cls in obj.__class__.__mro__])}
-    for name, param in init_params:
-        if name == 'self':
-            continue
-        value, default = getattr(obj, name, None), param.default
-        if isinstance(value, (dict, list)) and not value:  # Ignore empty dicts and lists
-            pass
-        elif np.all(value == default):  # Ignore default values
-            pass
-        else:
-            details[name] = format_item(value)
-
-    return details

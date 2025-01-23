@@ -3,9 +3,9 @@ This module contains the core functionality of the flixOpt framework.
 It provides Datatypes, logging functionality, and some functions to transform data structures.
 """
 
-from typing import Union, Optional, List, Dict, Any
-import logging
 import inspect
+import logging
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -16,12 +16,10 @@ logger = logging.getLogger('flixOpt')
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
 
+
 class TimeSeriesData:
     # TODO: Move to Interface.py
-    def __init__(self,
-                 data: Numeric,
-                 agg_group: Optional[str] = None,
-                 agg_weight: Optional[float] = None):
+    def __init__(self, data: Numeric, agg_group: Optional[str] = None, agg_weight: Optional[float] = None):
         """
         timeseries class for transmit timeseries AND special characteristics of timeseries,
         i.g. to define weights needed in calculation_type 'aggregated'
@@ -61,17 +59,16 @@ class TimeSeriesData:
         init_args = init_signature.parameters
 
         # Create a dictionary with argument names and their values
-        args_str = ', '.join(
-            f"{name}={repr(getattr(self, name, None))}"
-            for name in init_args if name != 'self'
-        )
-        return f"{self.__class__.__name__}({args_str})"
+        args_str = ', '.join(f'{name}={repr(getattr(self, name, None))}' for name in init_args if name != 'self')
+        return f'{self.__class__.__name__}({args_str})'
 
     def __str__(self):
         return str(self.data)
 
 
-Numeric_TS = Union[Skalar, np.ndarray, TimeSeriesData]  # TODO: This is not really correct throughozt the codebase. Sometimes its used for TimeSeries aswell?
+Numeric_TS = Union[
+    Skalar, np.ndarray, TimeSeriesData
+]  # TODO: This is not really correct throughozt the codebase. Sometimes its used for TimeSeries aswell?
 
 
 class TimeSeries:
@@ -115,9 +112,10 @@ class TimeSeries:
         self.active_indices = indices
 
         if aggregated_data is not None:
-            assert len(aggregated_data) == len(self.active_indices) or len(aggregated_data) == 1, \
-                (f'The aggregated_data has the wrong length for TimeSeries {self.label}. '
-                 f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}')
+            assert len(aggregated_data) == len(self.active_indices) or len(aggregated_data) == 1, (
+                f'The aggregated_data has the wrong length for TimeSeries {self.label}. '
+                f'Length should be: {len(self.active_indices)} or 1, but is {len(aggregated_data)}'
+            )
             self.aggregated_data = self.make_scalar_if_possible(aggregated_data)
 
     def clear_indices_and_aggregated_data(self):
@@ -152,9 +150,9 @@ class TimeSeries:
         # Retrieve all attributes and their values
         attrs = vars(self)
         # Format each attribute as 'key=value'
-        attrs_str = ', '.join(f"{key}={value!r}" for key, value in attrs.items())
+        attrs_str = ', '.join(f'{key}={value!r}' for key, value in attrs.items())
         # Format the output as 'ClassName(attr1=value1, attr2=value2, ...)'
-        return f"{self.__class__.__name__}({attrs_str})"
+        return f'{self.__class__.__name__}({attrs_str})'
 
     def __str__(self):
         return str(self.active_data)
@@ -175,98 +173,10 @@ class TimeSeries:
         Numeric
             A scalar if all values in the array are equal, otherwise the array itself. None, if the passed value is None
         """
-        #TODO: Should this really return None Values?
+        # TODO: Should this really return None Values?
         if np.isscalar(data) or data is None:
             return data
         data = np.array(data)
         if np.all(data == data[0]):
             return data[0]
         return data
-
-
-def as_effect_dict(effect_values: Union[Numeric, TimeSeries, Dict]) -> Optional[Dict]:
-    """
-    Converts effect values into a dictionary. If a scalar value is provided, it is associated with a standard effect type.
-
-    Examples
-    --------
-    If costs are given without effectType, a standard effect is related:
-      costs = 20                        -> {None: 20}
-      costs = None                      -> no change
-      costs = {effect1: 20, effect2: 0.3} -> no change
-
-    Parameters
-    ----------
-    effect_values : None, int, float, TimeSeries, or dict
-        The effect values to convert can be a scalar, a TimeSeries, or a dictionary with an effectas key
-
-    Returns
-    -------
-    dict or None
-        Converted values in from of dict with either None or Effect as key. if values is None, None is returned
-    """
-    if isinstance(effect_values, dict):
-        return effect_values
-    elif effect_values is None:
-        return None
-    else:
-        return {None: effect_values}
-
-
-def effect_values_to_ts(name_of_param: str, effect_dict: Optional[Dict[Any, Union[Numeric, TimeSeries]]], owner) -> Optional[Dict[Any, TimeSeries]]:
-    """
-    Transforms values in a dictionary to instances of TimeSeries.
-
-    Parameters
-    ----------
-    name_of_param : str
-        The base name of the parameter.
-    effect_dict : dict
-        A dictionary with effect-value pairs.
-    owner : object
-        The owner object where TimeSeries belongs to.
-
-    Returns
-    -------
-    dict
-        A dictionary with effect types as keys and TimeSeries instances as values.
-    """
-    if effect_dict is None:
-        return None
-
-    transformed_dict = {}
-    for effect, value in effect_dict.items():
-        if not isinstance(value, TimeSeries):
-            subname = 'standard' if effect is None else effect.label
-            full_name = f"{name_of_param}_{subname}"
-            transformed_dict[effect] = TimeSeries(full_name, value, owner)
-
-    return transformed_dict
-
-
-def as_effect_dict_with_ts(name_of_param: str,
-                           effect_values: Union[Numeric, TimeSeries, Dict],
-                           owner
-                           ) -> Optional[Dict[Any, TimeSeries]]:
-    """
-    Transforms effect or cost input to a dictionary of TimeSeries instances.
-
-    If only a value is given, it is associated with a standard effect type.
-
-    Parameters
-    ----------
-    name_of_param : str
-        The base name of the parameter.
-    effect_values : int, float, TimeSeries, or dict
-        The effect values to transform.
-    owner : object
-        The owner object where cTS_vector belongs to.
-
-    Returns
-    -------
-    dict
-        A dictionary with effect types as keys and cTS_vector instances as values.
-    """
-    effect_dict = as_effect_dict(effect_values)
-    effect_ts_dict = effect_values_to_ts(name_of_param, effect_dict, owner)
-    return effect_ts_dict
