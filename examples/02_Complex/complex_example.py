@@ -62,7 +62,7 @@ if __name__ == '__main__':
             relative_maximum=1,  # Maximum part load
             previous_flow_rate=50,  # Previous flow rate
             flow_hours_total_max=1e6,  # Total energy flow limit
-            can_be_off=fx.OnOffParameters(
+            on_off_parameters=fx.OnOffParameters(
                 on_hours_total_min=0,  # Minimum operating hours
                 on_hours_total_max=1000,  # Maximum operating hours
                 consecutive_on_hours_max=10,  # Max consecutive operating hours

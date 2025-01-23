@@ -164,7 +164,7 @@ class Flow(Element):
         relative_minimum: Numeric_TS = 0,
         relative_maximum: Numeric_TS = 1,
         effects_per_flow_hour: EffectValues = None,
-        can_be_off: Optional[OnOffParameters] = None,
+        on_off_parameters: Optional[OnOffParameters] = None,
         flow_hours_total_max: Optional[Skalar] = None,
         flow_hours_total_min: Optional[Skalar] = None,
         load_factor_min: Optional[Skalar] = None,
@@ -196,10 +196,10 @@ class Flow(Element):
             maximal load factor (see minimal load factor)
         effects_per_flow_hour : scalar, array, TimeSeriesData, optional
             operational costs, costs per flow-"work"
-        can_be_off : OnOffParameters, optional
-            flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
-            Then a binary var "on" is used.. Further, several other restrictions and effects can be modeled
-            through this On and Off State (See OnOffParameters)
+        on_off_parameters : OnOffParameters, optional
+            If present, flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
+            Therefore a binary var "on" is used. Further, several other restrictions and effects can be modeled
+            through this On/Off State (See OnOffParameters)
         flow_hours_total_max : TYPE, optional
             maximum flow-hours ("flow-work")
             (if size is not const, maybe load_factor_max fits better for you!)
@@ -228,7 +228,7 @@ class Flow(Element):
         self.effects_per_flow_hour = effects_per_flow_hour if effects_per_flow_hour is not None else {}
         self.flow_hours_total_max = flow_hours_total_max
         self.flow_hours_total_min = flow_hours_total_min
-        self.on_off_parameters = can_be_off
+        self.on_off_parameters = on_off_parameters
 
         self.previous_flow_rate = previous_flow_rate
 

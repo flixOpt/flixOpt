@@ -123,7 +123,7 @@ class TestSimple(BaseTest):
                 size=50,
                 relative_minimum=5 / 50,
                 relative_maximum=1,
-                can_be_off=fx.OnOffParameters(),
+                on_off_parameters=fx.OnOffParameters(),
             ),
             Q_fu=fx.Flow('Q_fu', bus=Gas),
         )
@@ -131,7 +131,7 @@ class TestSimple(BaseTest):
             'CHP_unit',
             eta_th=0.5,
             eta_el=0.4,
-            P_el=fx.Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60, can_be_off=fx.OnOffParameters()),
+            P_el=fx.Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60, on_off_parameters=fx.OnOffParameters()),
             Q_th=fx.Flow('Q_th', bus=Fernwaerme),
             Q_fu=fx.Flow('Q_fu', bus=Gas),
         )
@@ -526,7 +526,7 @@ class TestComplex(BaseTest):
                 size=fx.InvestParameters(
                     fix_effects=1000, fixed_size=50, optional=False, specific_effects={costs: 10, PE: 2}
                 ),
-                can_be_off=fx.OnOffParameters(
+                on_off_parameters=fx.OnOffParameters(
                     on_hours_total_min=0,
                     on_hours_total_max=1000,
                     consecutive_on_hours_max=10,
@@ -624,7 +624,7 @@ class TestComplex(BaseTest):
                 load_factor_min=0.1,
                 relative_minimum=5 / 50,
                 relative_maximum=1,
-                can_be_off=fx.OnOffParameters(
+                on_off_parameters=fx.OnOffParameters(
                     on_hours_total_min=0,
                     on_hours_total_max=1000,
                     consecutive_on_hours_max=10,
@@ -775,7 +775,7 @@ class TestModelingTypes(BaseTest):
                 size=95,
                 relative_minimum=12 / 95,
                 previous_flow_rate=0,
-                can_be_off=fx.OnOffParameters(effects_per_switch_on=1000),
+                on_off_parameters=fx.OnOffParameters(effects_per_switch_on=1000),
             ),
         )
         aKWK = fx.linear_converters.CHP(
