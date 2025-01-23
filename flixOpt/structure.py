@@ -670,10 +670,17 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
 
     def shorten_np_array(arr: np.ndarray) -> str:
         """Shortens NumPy arrays if they exceed the specified length."""
+        def normalized_center_of_mass(array: Any) -> float:
+            # position in array (0 bis 1 normiert)
+            positions = np.linspace(0, 1, len(array))  # weights w_i
+            # mass center
+            return np.sum(positions * array) / np.sum(array)
+
         if arr.size > array_length:  # Calculate basic statistics
             return (
                 f'Array (min={np.min(arr):.2f}, max={np.max(arr):.2f}, mean={np.mean(arr):.2f}, '
-                f'median={np.median(arr):.2f}, std={np.std(arr):.2f}, length={len(arr)})'
+                f'median={np.median(arr):.2f}, std={np.std(arr):.2f}, len={len(arr)}, '
+                f'center={normalized_center_of_mass(arr):.2f})'
             )
         else:
             return np.array2string(arr[:array_length], precision=precision, max_line_width=1000, separator=', ')
@@ -686,3 +693,6 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
         console = Console(file=output_buffer, width=1000)  # Adjust width as needed
         console.print(Pretty(formatted_data, expand_all=True, indent_guides=True))
         return output_buffer.getvalue()
+
+
+

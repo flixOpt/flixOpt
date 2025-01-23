@@ -389,7 +389,7 @@ class TestOnOff(BaseTest):
                 'Boiler',
                 0.5,
                 Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'), size=100, can_be_off=fx.OnOffParameters()),
+                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'), size=100, on_off_parameters=fx.OnOffParameters()),
             )
         )
 
@@ -431,7 +431,7 @@ class TestOnOff(BaseTest):
                     'Q_th',
                     bus=self.get_element('Fernwärme'),
                     size=100,
-                    can_be_off=fx.OnOffParameters(consecutive_off_hours_max=100),
+                    on_off_parameters=fx.OnOffParameters(consecutive_off_hours_max=100),
                 ),
             )
         )
@@ -481,7 +481,7 @@ class TestOnOff(BaseTest):
                     'Q_th',
                     bus=self.get_element('Fernwärme'),
                     size=100,
-                    can_be_off=fx.OnOffParameters(force_switch_on=True),
+                    on_off_parameters=fx.OnOffParameters(force_switch_on=True),
                 ),
             )
         )
@@ -538,7 +538,7 @@ class TestOnOff(BaseTest):
                     'Q_th',
                     bus=self.get_element('Fernwärme'),
                     size=100,
-                    can_be_off=fx.OnOffParameters(on_hours_total_max=1),
+                    on_off_parameters=fx.OnOffParameters(on_hours_total_max=1),
                 ),
             ),
             fx.linear_converters.Boiler(
@@ -587,7 +587,7 @@ class TestOnOff(BaseTest):
                     'Q_th',
                     bus=self.get_element('Fernwärme'),
                     size=100,
-                    can_be_off=fx.OnOffParameters(on_hours_total_max=2),
+                    on_off_parameters=fx.OnOffParameters(on_hours_total_max=2),
                 ),
             ),
             fx.linear_converters.Boiler(
@@ -598,7 +598,7 @@ class TestOnOff(BaseTest):
                     'Q_th',
                     bus=self.get_element('Fernwärme'),
                     size=100,
-                    can_be_off=fx.OnOffParameters(on_hours_total_min=3),
+                    on_off_parameters=fx.OnOffParameters(on_hours_total_min=3),
                 ),
             ),
         )
@@ -658,7 +658,7 @@ class TestOnOff(BaseTest):
                     'Q_th',
                     bus=self.get_element('Fernwärme'),
                     size=100,
-                    can_be_off=fx.OnOffParameters(consecutive_on_hours_max=2, consecutive_on_hours_min=2),
+                    on_off_parameters=fx.OnOffParameters(consecutive_on_hours_max=2, consecutive_on_hours_min=2),
                 ),
             ),
             fx.linear_converters.Boiler(
@@ -724,7 +724,7 @@ class TestOnOff(BaseTest):
                     bus=self.get_element('Fernwärme'),
                     size=100,
                     previous_flow_rate=np.array([20]),  # Otherwise its Off before the start
-                    can_be_off=fx.OnOffParameters(consecutive_off_hours_max=2, consecutive_off_hours_min=2),
+                    on_off_parameters=fx.OnOffParameters(consecutive_off_hours_max=2, consecutive_off_hours_min=2),
                 ),
             ),
         )

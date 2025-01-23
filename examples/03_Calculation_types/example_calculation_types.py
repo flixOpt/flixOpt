@@ -75,7 +75,7 @@ if __name__ == '__main__':
             size=95,
             relative_minimum=12 / 95,
             previous_flow_rate=20,
-            can_be_off=fx.OnOffParameters(effects_per_switch_on=1000),
+            on_off_parameters=fx.OnOffParameters(effects_per_switch_on=1000),
         ),
     )
 
