@@ -439,7 +439,7 @@ class SegmentedCalculation(Calculation):
 
         t_start = timeit.default_timer()
 
-        with zipfile.ZipFile(self._paths["data"], 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+        with zipfile.ZipFile(self._paths['data'], 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
             with zipf.open('results.json', 'w') as file:
                 results = copy_and_convert_datatypes(
                     self.results(combined_arrays=True), use_numpy=False, use_element_label=False
