@@ -85,23 +85,24 @@ class Calculation:
             path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
 
             self._paths['log'] = path / f'{self.name}_solver.log'
-            self._paths['data'] = path / f'{self.name}_data.json'
-            self._paths['results'] = path / f'{self.name}_results.json'
+            self._paths['data'] = path / f'{self.name}_data.zip'
             self._paths['infos'] = path / f'{self.name}_infos.yaml'
 
     def _save_solve_infos(self):
         import json
+        import zipfile
 
         import yaml
 
         t_start = timeit.default_timer()
-        with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
-            json.dump(results, f, indent=4)
 
-        with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-            json.dump(data, f, indent=4)
+        with zipfile.ZipFile(self._paths['data'], 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+            with zipf.open('results.json', 'w') as file:
+                results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
+                file.write(json.dumps(results, indent=4).encode('utf-8'))
+            with zipf.open('data.json', 'w') as file:
+                data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
+                file.write(json.dumps(data, indent=4).encode('utf-8'))
 
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
@@ -432,30 +433,32 @@ class SegmentedCalculation(Calculation):
 
     def _save_solve_infos(self):
         import json
+        import zipfile
 
         import yaml
 
         t_start = timeit.default_timer()
-        with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = copy_and_convert_datatypes(
-                self.results(combined_arrays=True), use_numpy=False, use_element_label=False
-            )
-            json.dump(results, f, indent=4)
 
-        with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-            json.dump(data, f, indent=4)
+        with zipfile.ZipFile(self._paths['data'], 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+            with zipf.open('results.json', 'w') as file:
+                results = copy_and_convert_datatypes(
+                    self.results(combined_arrays=True), use_numpy=False, use_element_label=False
+                )
+                file.write(json.dumps(results, indent=4).encode('utf-8'))
+            with zipf.open('data.json', 'w') as file:
+                data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
+                file.write(json.dumps(data, indent=4).encode('utf-8'))
 
-        with open(self._paths['results'].parent / f'{self.name}_results_extra.json', 'w', encoding='utf-8') as f:
-            results = {
-                'Individual Results': copy_and_convert_datatypes(
-                    self.results(individual_results=True), use_numpy=False, use_element_label=False
-                ),
-                'Skalar Results': copy_and_convert_datatypes(
-                    self.results(combined_scalars=True), use_numpy=False, use_element_label=False
-                ),
-            }
-            json.dump(results, f, indent=4)
+            with zipf.open('results_extra.json', 'w') as file:
+                results = {
+                    'Individual Results': copy_and_convert_datatypes(
+                        self.results(individual_results=True), use_numpy=False, use_element_label=False
+                    ),
+                    'Skalar Results': copy_and_convert_datatypes(
+                        self.results(combined_scalars=True), use_numpy=False, use_element_label=False
+                    ),
+                }
+                file.write(json.dumps(results, indent=4).encode('utf-8'))
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
         t_start = timeit.default_timer()
