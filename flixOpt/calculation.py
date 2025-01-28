@@ -26,6 +26,7 @@ from .features import InvestmentModel
 from .flow_system import FlowSystem
 from .solvers import Solver
 from .structure import SystemModel, copy_and_convert_datatypes
+from .math_modeling import Equation, Inequation, Variable
 
 logger = logging.getLogger('flixOpt')
 
@@ -60,7 +61,12 @@ class Calculation:
         self.time_indices = time_indices
 
         self.system_model: Optional[SystemModel] = None
-        self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}  # Dauer der einzelnen Dinge
+        self.durations = {
+            'modeling': 0.0,
+            'translating': 0.0,
+            'solving': 0.0,
+            'saving': 0.0,
+        }  # Dauer der einzelnen Dinge
 
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {
             'log': None,
@@ -141,6 +147,18 @@ class Calculation:
             'Durations': self.durations,
         }
 
+    def add_constrains(self, *constraints: Union[Equation, Inequation]):
+        if self.system_model is None:
+            raise Exception('System Model not defined yet')
+        for constraint in constraints:
+            self.system_model.add_user_constraint(constraint)
+
+    def add_variables(self, *variables: Variable):
+        if self.system_model is None:
+            raise Exception('System Model not defined yet')
+        for variable in variables:
+            self.system_model.add_user_variable(variable)
+
 
 class FullCalculation(Calculation):
     """
@@ -156,15 +174,19 @@ class FullCalculation(Calculation):
 
         self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
         self.system_model.do_modeling()
-        self.system_model.translate_to_modeling_language()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
 
     def solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = False):
-        self._define_path_names(save_results)
         t_start = timeit.default_timer()
+        self.system_model.translate_to_modeling_language()
+        self.durations['translating'] = round(timeit.default_timer() - t_start, 2)
+
+        self._define_path_names(save_results)
         solver.logfile_name = self._paths['log']
+
+        t_start = timeit.default_timer()
         self.system_model.solve(solver)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
@@ -286,15 +308,19 @@ class AggregatedCalculation(Calculation):
         self.system_model.other_models.append(aggregation_model)
         aggregation_model.do_modeling(self.system_model)
 
-        self.system_model.translate_to_modeling_language()
-
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
+
         return self.system_model
 
     def solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = False):
-        self._define_path_names(save_results)
         t_start = timeit.default_timer()
+        self.system_model.translate_to_modeling_language()
+        self.durations['translating'] = round(timeit.default_timer() - t_start, 2)
+
+        self._define_path_names(save_results)
         solver.logfile_name = self._paths['log']
+
+        t_start = timeit.default_timer()
         self.system_model.solve(solver)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
