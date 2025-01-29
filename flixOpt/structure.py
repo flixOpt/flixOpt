@@ -4,6 +4,7 @@ These classes are not directly used by the end user, but are used by other modul
 """
 
 import inspect
+import json
 import logging
 import pathlib
 from datetime import datetime
@@ -311,7 +312,6 @@ class Interface:
         path : Union[str, pathlib.Path]
             The path to the json file.
         """
-        import json
         data = get_compact_representation(self.infos(use_numpy=True, use_element_label=True))
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
@@ -686,6 +686,7 @@ def get_compact_representation(data: Any, array_threshold: int = 50, decimals: i
 
     def describe_numpy_arrays(arr: np.ndarray) -> Union[str, List]:
         """Shortens NumPy arrays if they exceed the specified length."""
+
         def normalized_center_of_mass(array: Any) -> float:
             # position in array (0 bis 1 normiert)
             positions = np.linspace(0, 1, len(array))  # weights w_i
@@ -709,6 +710,7 @@ def get_compact_representation(data: Any, array_threshold: int = 50, decimals: i
     formatted_data = format_np_array_if_found(copy_and_convert_datatypes(data, use_numpy=True))
 
     return formatted_data
+
 
 def get_str_representation(data: Any, array_threshold: int = 50, decimals: int = 2) -> str:
     """

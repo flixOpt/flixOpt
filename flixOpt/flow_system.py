@@ -2,6 +2,7 @@
 This module contains the FlowSystem class, which is used to collect instances of many other classes by the end User.
 """
 
+import json
 import logging
 import pathlib
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
@@ -12,7 +13,7 @@ from . import utils
 from .core import TimeSeries
 from .effects import Effect, EffectCollection
 from .elements import Bus, Component, Flow
-from .structure import Element, SystemModel, get_str_representation, get_compact_representation
+from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
 if TYPE_CHECKING:
     import pyvis
@@ -154,7 +155,6 @@ class FlowSystem:
         path : Union[str, pathlib.Path]
             The path to the json file.
         """
-        import json
         data = get_compact_representation(self.infos(use_numpy=True, use_element_label=True))
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
