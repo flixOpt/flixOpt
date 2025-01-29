@@ -39,7 +39,7 @@ class Calculation:
         self,
         name,
         flow_system: FlowSystem,
-        modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo',
+        modeling_language: Literal['pyomo', 'cvxpy', 'linopy'] = 'pyomo',
         time_indices: Optional[Union[range, List[int]]] = None,
     ):
         """
