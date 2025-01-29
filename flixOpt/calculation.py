@@ -25,7 +25,7 @@ from .elements import Component
 from .features import InvestmentModel
 from .flow_system import FlowSystem
 from .solvers import Solver
-from .structure import SystemModel, copy_and_convert_datatypes
+from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
 
 logger = logging.getLogger('flixOpt')
 
@@ -110,6 +110,7 @@ class Calculation:
         infos = {
             'Calculation': self.infos,
             'Model': self.system_model.infos,
+            'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
             'Network': {'Nodes': nodes_info, 'Edges': edges_info},
         }
 
@@ -463,6 +464,7 @@ class SegmentedCalculation(Calculation):
         infos = {
             'Calculation': self.infos,
             'Model': self.sub_calculations[0].system_model.infos,
+            'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
             'Network': {'Nodes': nodes_info, 'Edges': edges_info},
         }
 
