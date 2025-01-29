@@ -186,7 +186,7 @@ def with_plotly(
     )
 
     if isinstance(path, pathlib.Path):
-        path = path.resolve().as_posix()
+        path = path.as_posix()
     if show:
         plotly.offline.plot(fig, filename=path)
     elif save:  # If show, the file is saved anyway
@@ -462,7 +462,7 @@ def heat_map_plotly(
     )
 
     if isinstance(path, pathlib.Path):
-        path = path.resolve().as_posix()
+        path = path.as_posix()
     if show:
         plotly.offline.plot(fig, filename=path)
     elif save:  # If show, the file is saved anyway
@@ -691,16 +691,17 @@ def visualize_network(
     if not show and not path:
         return net
     elif path:
-        path = pathlib.Path(path).resolve().as_posix() if isinstance(path, str) else path.resolve().as_posix()
-        net.write_html(path)
+        path = pathlib.Path(path) if isinstance(path, str) else path
+        net.write_html(path.as_posix())
     elif show:
-        path = pathlib.Path('network.html').resolve().as_posix()
-        net.write_html(path)
+        path = pathlib.Path('network.html')
+        net.write_html(path.as_posix())
 
     if show:
         try:
             import webbrowser
-
-            webbrowser.open(f'file://{path}', 2)
-        except Exception:
-            logger.warning(f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}')
+            worked = webbrowser.open(f'file://{path.resolve()}', 2)
+            if not worked:
+                logger.warning(f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}')
+        except Exception as e:
+            logger.warning(f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}: {e}')
