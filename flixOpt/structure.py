@@ -655,18 +655,18 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
 
 
 def get_compact_representation(data: Any, array_threshold: int = 50, decimals: int = 2) -> Dict:
-    '''
+    """
     Generate a compact json serializable representation of deeply nested data.
     Numpy arrays are statistically described if they exceed a threshold and converted to lists.
 
     Args:
         data (Any): The data to format and represent.
-        array_length (int): Maximum length of NumPy arrays to display. Longer arrays are truncated.
-        precision (int): Number of decimal places to display for floats in numerical arrays.
+        array_threshold (int): Maximum length of NumPy arrays to display. Longer arrays are statistically described.
+        decimals (int): Number of decimal places in which to describe the arrays.
 
     Returns:
         Dict: A dictionary representation of the data
-    '''
+    """
 
     def format_np_array_if_found(value: Any) -> Any:
         """Recursively processes the data, formatting NumPy arrays."""
@@ -710,64 +710,24 @@ def get_compact_representation(data: Any, array_threshold: int = 50, decimals: i
 
     return formatted_data
 
-def get_str_representation(data: Any, array_length: int = 50, precision: int = 2) -> str:
+def get_str_representation(data: Any, array_threshold: int = 50, decimals: int = 2) -> str:
     """
     Generate a string representation of deeply nested data using `rich.print`.
     NumPy arrays are shortened to the specified length and converted to strings.
 
     Args:
         data (Any): The data to format and represent.
-        array_length (int): Maximum length of NumPy arrays to display. Longer arrays are truncated.
-        precision (int): Number of decimal places to display for floats in numerical arrays.
+        array_threshold (int): Maximum length of NumPy arrays to display. Longer arrays are statistically described.
+        decimals (int): Number of decimal places in which to describe the arrays.
 
     Returns:
         str: The formatted string representation of the data.
     """
 
-    def format_np_array_if_found(value: Any) -> Any:
-        """Recursively processes the data, formatting NumPy arrays."""
-        if isinstance(value, (int, float, str, bool, type(None))):
-            return value
-        elif isinstance(value, np.ndarray):
-            return shorten_np_array(value)
-        elif isinstance(value, dict):
-            return {format_np_array_if_found(k): format_np_array_if_found(v) for k, v in value.items()}
-        elif isinstance(value, (list, tuple, set)):
-            return [format_np_array_if_found(v) for v in value]
-        else:
-            logger.warning(
-                f'Unexpected value found when trying to format numpy array numpy array: {type(value)=}; {value=}'
-            )
-            return value
-
-    def shorten_np_array(arr: np.ndarray) -> str:
-        """Shortens NumPy arrays if they exceed the specified length."""
-        def normalized_center_of_mass(array: Any) -> float:
-            # position in array (0 bis 1 normiert)
-            positions = np.linspace(0, 1, len(array))  # weights w_i
-            # mass center
-            if np.sum(array) == 0:
-                return np.nan
-            else:
-                return np.sum(positions * array) / np.sum(array)
-
-        if arr.size > array_length:  # Calculate basic statistics
-            return (
-                f'Array (min={np.min(arr):.2f}, max={np.max(arr):.2f}, mean={np.mean(arr):.2f}, '
-                f'median={np.median(arr):.2f}, std={np.std(arr):.2f}, len={len(arr)}, '
-                f'center={normalized_center_of_mass(arr):.2f})'
-            )
-        else:
-            return np.array2string(arr[:array_length], precision=precision, max_line_width=1000, separator=', ')
-
-    # Process the data to handle NumPy arrays
-    formatted_data = format_np_array_if_found(copy_and_convert_datatypes(data, use_numpy=True))
+    formatted_data = get_compact_representation(data, array_threshold, decimals)
 
     # Use Rich to format and print the data
     with StringIO() as output_buffer:
         console = Console(file=output_buffer, width=1000)  # Adjust width as needed
         console.print(Pretty(formatted_data, expand_all=True, indent_guides=True))
         return output_buffer.getvalue()
-
-
-
