@@ -45,9 +45,9 @@ class CalculationResults:
     def __init__(self, calculation_name: str, folder: str) -> None:
         self.name = calculation_name
         self.folder = pathlib.Path(folder)
-        self._path_infos = (self.folder / f'{calculation_name}_infos.yaml').resolve().as_posix()
-        self._path_data = (self.folder / f'{calculation_name}_data.json').resolve().as_posix()
-        self._path_results = (self.folder / f'{calculation_name}_results.json').resolve().as_posix()
+        self._path_infos = (self.folder / f'{calculation_name}_infos.yaml')
+        self._path_data = (self.folder / f'{calculation_name}_data.json')
+        self._path_results = (self.folder / f'{calculation_name}_results.json')
 
         start_time = timeit.default_timer()
         with open(self._path_infos, 'rb') as f:
@@ -351,7 +351,7 @@ class CalculationResults:
 
         if path == 'auto':
             path = self.folder / f'{title} ({mode}).html'
-            path = path.resolve().as_posix()
+            path = path.as_posix()
         if show:
             plotly.offline.plot(fig, filename=path)
         elif save:  # If show, the file is saved anyway
