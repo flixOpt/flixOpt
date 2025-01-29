@@ -603,20 +603,18 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
     - Empty collections (lists, dictionaries) and default parameter values in `Element` objects are omitted from the output.
     - Numpy arrays with non-numeric data types are automatically converted to lists.
     """
-    if isinstance(data, (int, float, str, bool, type(None))):
+    if isinstance(data, np.integer):  # This must be checked before checking for regular int and float!
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+
+    elif isinstance(data, (int, float, str, bool, type(None))):
         return data
     elif isinstance(data, datetime):
         return data.isoformat()
 
-    elif isinstance(data, np.integer):
-        return int(data)
-    elif isinstance(data, np.floating):
-        return float(data)
-    elif isinstance(data, (np.generic,)):  # For any numpy scalar types
-        return data.item()
-
     elif isinstance(data, (tuple, set)):
-        return copy_and_convert_datatypes([item for item in data], use_numpy)
+        return copy_and_convert_datatypes([item for item in data], use_numpy, use_element_label)
     elif isinstance(data, dict):
         return {
             copy_and_convert_datatypes(key, use_numpy, use_element_label=True): copy_and_convert_datatypes(
