@@ -12,7 +12,7 @@ from . import utils
 from .core import TimeSeries
 from .effects import Effect, EffectCollection
 from .elements import Bus, Component, Flow
-from .structure import Element, SystemModel, get_str_representation
+from .structure import Element, SystemModel, get_str_representation, get_compact_representation
 
 if TYPE_CHECKING:
     import pyvis
@@ -143,6 +143,21 @@ class FlowSystem:
             },
         }
         return infos
+
+    def to_json(self, path: Union[str, pathlib.Path]):
+        """
+        Saves the flow system to a json file.
+        This not meant to be reloaded and recreate the object, but rather used to document or compare the object.
+
+        Parameters:
+        -----------
+        path : Union[str, pathlib.Path]
+            The path to the json file.
+        """
+        import json
+        data = get_compact_representation(self.infos(use_numpy=True, use_element_label=True))
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
     def visualize_network(
         self,

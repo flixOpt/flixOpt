@@ -5,6 +5,7 @@ These classes are not directly used by the end user, but are used by other modul
 
 import inspect
 import logging
+import pathlib
 from datetime import datetime
 from io import StringIO
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
@@ -299,6 +300,21 @@ class Interface:
                 continue
             details[name] = copy_and_convert_datatypes(value, use_numpy, use_element_label)
         return details
+
+    def to_json(self, path: Union[str, pathlib.Path]):
+        """
+        Saves the element to a json file.
+        This not meant to be reloaded and recreate the object, but rather used to document or compare the object.
+
+        Parameters:
+        -----------
+        path : Union[str, pathlib.Path]
+            The path to the json file.
+        """
+        import json
+        data = get_compact_representation(self.infos(use_numpy=True, use_element_label=True))
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
     def __repr__(self):
         # Get the constructor arguments and their current values
@@ -637,6 +653,62 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
     else:
         raise TypeError(f'copy_and_convert_datatypes() did get unexpected data of type "{type(data)}": {data=}')
 
+
+def get_compact_representation(data: Any, array_threshold: int = 50, decimals: int = 2) -> Dict:
+    '''
+    Generate a compact json serializable representation of deeply nested data.
+    Numpy arrays are statistically described if they exceed a threshold and converted to lists.
+
+    Args:
+        data (Any): The data to format and represent.
+        array_length (int): Maximum length of NumPy arrays to display. Longer arrays are truncated.
+        precision (int): Number of decimal places to display for floats in numerical arrays.
+
+    Returns:
+        Dict: A dictionary representation of the data
+    '''
+
+    def format_np_array_if_found(value: Any) -> Any:
+        """Recursively processes the data, formatting NumPy arrays."""
+        if isinstance(value, (int, float, str, bool, type(None))):
+            return value
+        elif isinstance(value, np.ndarray):
+            return describe_numpy_arrays(value)
+        elif isinstance(value, dict):
+            return {format_np_array_if_found(k): format_np_array_if_found(v) for k, v in value.items()}
+        elif isinstance(value, (list, tuple, set)):
+            return [format_np_array_if_found(v) for v in value]
+        else:
+            logger.warning(
+                f'Unexpected value found when trying to format numpy array numpy array: {type(value)=}; {value=}'
+            )
+            return value
+
+    def describe_numpy_arrays(arr: np.ndarray) -> Union[str, List]:
+        """Shortens NumPy arrays if they exceed the specified length."""
+        def normalized_center_of_mass(array: Any) -> float:
+            # position in array (0 bis 1 normiert)
+            positions = np.linspace(0, 1, len(array))  # weights w_i
+            # mass center
+            if np.sum(array) == 0:
+                return np.nan
+            else:
+                return np.sum(positions * array) / np.sum(array)
+
+        if arr.size > array_threshold:  # Calculate basic statistics
+            fmt = f'.{decimals}f'
+            return (
+                f'Array (min={np.min(arr):{fmt}}, max={np.max(arr):{fmt}}, mean={np.mean(arr):{fmt}}, '
+                f'median={np.median(arr):{fmt}}, std={np.std(arr):{fmt}}, len={len(arr)}, '
+                f'center={normalized_center_of_mass(arr):{fmt}})'
+            )
+        else:
+            return np.around(arr, decimals=decimals).tolist()
+
+    # Process the data to handle NumPy arrays
+    formatted_data = format_np_array_if_found(copy_and_convert_datatypes(data, use_numpy=True))
+
+    return formatted_data
 
 def get_str_representation(data: Any, array_length: int = 50, precision: int = 2) -> str:
     """
