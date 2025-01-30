@@ -1189,13 +1189,13 @@ class LinopyModel(ModelingLanguage):
                 dtype = np.int8  # geht das vielleicht noch kleiner ???
             else:
                 dtype = float
-            # transform to np-array (fromiter() is 5-7x faster than np.array(list(...)) )
-            result = np.fromiter(raw_results, dtype=dtype)
-            # Falls skalar:
-            if len(result) == 1:
-                variable.result = result[0]
-            else:
-                variable.result = result
+
+            if raw_results.ndim == 0 and dtype == float:
+                variable.result = float(raw_results)
+            elif raw_results.ndim == 0 and dtype == np.int8:
+                variable.result = np.int8(raw_results)
+            else:  # transform to np-array (fromiter() is 5-7x faster than np.array(list(...)) )
+                variable.result = np.fromiter(raw_results, dtype=dtype)
 
     def translate_model(self, math_model: MathModel):
         for variable in math_model.variables:  # Variablen erstellen
@@ -1217,7 +1217,7 @@ class LinopyModel(ModelingLanguage):
 
         if variable.is_binary:
             var = self.model.add_variables(binary=True,
-                                     coords=(pd.RangeIndex(variable.indices),),
+                                     coords=(pd.RangeIndex(variable.indices),) if len(variable.indices) > 1 else None,
                                      name=variable.label)
         else:
             lower = utils.as_vector(variable.lower_bound,
@@ -1231,7 +1231,7 @@ class LinopyModel(ModelingLanguage):
             var = self.model.add_variables(
                 lower=lower,
                 upper=upper,
-                coords=(pd.RangeIndex(variable.indices),),
+                coords=(pd.RangeIndex(variable.indices),) if len(variable.indices) > 1 else None,
                 name=variable.label)
 
         if variable.fixed:  # Wenn Vorgabe-Wert vorhanden:
@@ -1250,7 +1250,8 @@ class LinopyModel(ModelingLanguage):
             raise TypeError(f'Wrong Class: {constraint.__class__.__name__}')
 
         lhs = 0
-        for summand in constraint.summands:
+        summands_sorted = sorted(constraint.summands, key=lambda summand: len(summand.factor_vec), reverse=True)
+        for summand in summands_sorted:  #Sorting is necessary to not cretae a ScalarExpression if SumOfSummand is present
             lhs += self._summand_math_expression(summand)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
         rhs = constraint.constant_vector
         if len(rhs) == 1:
@@ -1279,20 +1280,29 @@ class LinopyModel(ModelingLanguage):
         self.model.add_objective(lhs)
 
     def _summand_math_expression(self, summand: Summand) -> 'linopy.LinearExpression':
-        linopy_variable = self.mapping[summand.variable]
-        if isinstance(summand, SumOfSummand):
-            factor = summand.factor_vec
-            if len(summand.factor_vec) == 1:
-                factor = factor[0]
-            return (linopy_variable * factor).sum()
 
-        # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
-        if summand.length == 1:  # ignore argument at_index, because Skalar is used for every single equation
-            if linopy_variable.size == 1:
-                return linopy_variable * summand.factor_vec[0]
-            return linopy_variable.loc[0] * summand.factor_vec[0]
-        if len(summand.indices) == 1:
-            if linopy_variable.size == 1:
-                return linopy_variable * summand.factor_vec[0]
-            return linopy_variable.loc[0] * summand.factor_vec[0]
-        return linopy_variable.loc[summand.indices] * summand.factor_vec
+        linopy_variable = self.mapping[summand.variable]
+
+        if summand.variable.length != 1:
+            linopy_variable = linopy_variable.loc[summand.indices]
+
+        factor = summand.factor_vec
+        if len(summand.factor_vec) == 1:
+            factor = factor[0]
+
+        if summand.variable.length == 1 and len(summand.factor_vec) != 1:
+
+            def scalar_var_and_array_factor(m, i):
+                return linopy_variable.at[i] * factor[i]
+
+            expr = self.model.linexpr(scalar_var_and_array_factor, (range(len(factor)),))
+            if isinstance(summand, SumOfSummand):
+                return expr.sum()
+            else:
+                return expr
+
+        if isinstance(summand, SumOfSummand):
+            return (factor * linopy_variable).sum()
+        else:
+            # Ausdruck für i-te Gleichung (falls Skalar, dann immer gleicher Ausdruck ausgegeben)
+            return linopy_variable * factor
