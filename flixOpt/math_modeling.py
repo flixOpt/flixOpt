@@ -904,6 +904,14 @@ class HighsSolver(Solver):
                 logger.warning(f'Solution is not optimal. Termination Message: "{self.termination_message}"')
             self.best_bound = self._results.best_objective_bound
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
+        elif isinstance(modeling_language, LinopyModel):
+            status = modeling_language.model.solve(
+                'highs',
+                **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds})
+
+            self.objective = modeling_language.model.objective.value
+            self.termination_message = status[1]
+            self.best_bound = None
         else:
             raise NotImplementedError('Only Pyomo is implemented for HIGHS solver.')
 
