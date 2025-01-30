@@ -700,8 +700,13 @@ def visualize_network(
     if show:
         try:
             import webbrowser
+
             worked = webbrowser.open(f'file://{path.resolve()}', 2)
             if not worked:
-                logger.warning(f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}')
+                logger.warning(
+                    f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}'
+                )
         except Exception as e:
-            logger.warning(f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}: {e}')
+            logger.warning(
+                f'Showing the network in the Browser went wrong. Open it manually. Its saved under {path}: {e}'
+            )
