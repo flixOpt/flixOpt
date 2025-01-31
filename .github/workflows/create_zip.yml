@@ -1,0 +1,33 @@
+# This workflow will create zip- and tar.gz-files to use it with a new release
+
+name: Create Release Assets
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create Release Assets Directory
+        run: mkdir release_assets
+
+      - name: Create Zip file
+        run: |
+          zip -r release_assets/release_assets.zip .
+
+      - name: Create Tar.gz file
+        run: |
+          tar -czvf release_assets/release_assets.tar.gz .
+
+      - name: Upload Release Assets
+        uses: actions/upload-artifact@v2
+        with:
+          name: release-assets
+          path: release_assets/
