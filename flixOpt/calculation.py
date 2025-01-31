@@ -93,13 +93,14 @@ class Calculation:
 
     def _save_solve_infos(self):
         t_start = timeit.default_timer()
+        indent = 4 if len(self.flow_system.time_series) < 50 else None
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
-            json.dump(results, f, indent=4)
+            json.dump(results, f, indent=indent)
 
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
             data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-            json.dump(data, f, indent=4)
+            json.dump(data, f, indent=indent)
 
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
@@ -431,15 +432,16 @@ class SegmentedCalculation(Calculation):
 
     def _save_solve_infos(self):
         t_start = timeit.default_timer()
+        indent = 4 if len(self.flow_system.time_series) < 50 else None
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = copy_and_convert_datatypes(
                 self.results(combined_arrays=True), use_numpy=False, use_element_label=False
             )
-            json.dump(results, f, indent=4)
+            json.dump(results, f, indent=indent)
 
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
             data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-            json.dump(data, f, indent=4)
+            json.dump(data, f, indent=indent)
 
         with open(self._paths['results'].parent / f'{self.name}_results_extra.json', 'w', encoding='utf-8') as f:
             results = {
@@ -450,7 +452,7 @@ class SegmentedCalculation(Calculation):
                     self.results(combined_scalars=True), use_numpy=False, use_element_label=False
                 ),
             }
-            json.dump(results, f, indent=4)
+            json.dump(results, f, indent=indent)
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
         t_start = timeit.default_timer()
