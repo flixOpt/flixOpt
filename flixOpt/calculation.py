@@ -9,6 +9,7 @@ There are three different Calculation types:
 """
 
 import datetime
+import json
 import logging
 import math
 import pathlib
@@ -16,6 +17,7 @@ import timeit
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
+import yaml
 
 from . import utils as utils
 from .aggregation import AggregationModel, AggregationParameters, TimeSeriesCollection
@@ -25,7 +27,7 @@ from .elements import Component
 from .features import InvestmentModel
 from .flow_system import FlowSystem
 from .solvers import Solver
-from .structure import SystemModel, copy_and_convert_datatypes
+from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
 
 logger = logging.getLogger('flixOpt')
 
@@ -90,10 +92,6 @@ class Calculation:
             self._paths['infos'] = path / f'{self.name}_infos.yaml'
 
     def _save_solve_infos(self):
-        import json
-
-        import yaml
-
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
@@ -110,6 +108,7 @@ class Calculation:
         infos = {
             'Calculation': self.infos,
             'Model': self.system_model.infos,
+            'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
             'Network': {'Nodes': nodes_info, 'Edges': edges_info},
         }
 
@@ -431,10 +430,6 @@ class SegmentedCalculation(Calculation):
             return all_results
 
     def _save_solve_infos(self):
-        import json
-
-        import yaml
-
         t_start = timeit.default_timer()
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = copy_and_convert_datatypes(
@@ -463,6 +458,7 @@ class SegmentedCalculation(Calculation):
         infos = {
             'Calculation': self.infos,
             'Model': self.sub_calculations[0].system_model.infos,
+            'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
             'Network': {'Nodes': nodes_info, 'Edges': edges_info},
         }
 
