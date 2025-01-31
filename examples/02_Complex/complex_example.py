@@ -178,7 +178,7 @@ if __name__ == '__main__':
     pprint(flow_system)  # Get a string representation of the FlowSystem
 
     # --- Solve FlowSystem ---
-    calculation = fx.FullCalculation('Sim1', flow_system, 'pyomo', time_indices)
+    calculation = fx.FullCalculation('Sim1', flow_system, 'linopy', time_indices)
     calculation.do_modeling()
 
     # Show variables as str (else, you can find them in the results.yaml file

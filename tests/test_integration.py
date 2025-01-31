@@ -169,7 +169,7 @@ class TestSimple(BaseTest):
         print(es)
         es.visualize_network()
 
-        aCalc = fx.FullCalculation('Test_Sim', es, 'pyomo', time_indices)
+        aCalc = fx.FullCalculation('Test_Sim', es, 'linopy', time_indices)
         aCalc.do_modeling()
 
         aCalc.solve(self.get_solver(), save_results=save_results)
@@ -592,7 +592,7 @@ class TestComplex(BaseTest):
         print(es)
         es.visualize_network()
 
-        aCalc = fx.FullCalculation('Sim1', es, 'pyomo', None)
+        aCalc = fx.FullCalculation('Sim1', es, 'linopy', None)
         aCalc.do_modeling()
 
         aCalc.solve(self.get_solver())
@@ -696,7 +696,7 @@ class TestComplex(BaseTest):
         print(es)
         es.visualize_network()
 
-        aCalc = fx.FullCalculation('Sim1', es, 'pyomo', None)
+        aCalc = fx.FullCalculation('Sim1', es, 'linopy', None)
         aCalc.do_modeling()
 
         aCalc.solve(self.get_solver())
@@ -840,12 +840,12 @@ class TestModelingTypes(BaseTest):
         es.visualize_network()
 
         if doFullCalc:
-            calc = fx.FullCalculation('fullModel', es, 'pyomo')
+            calc = fx.FullCalculation('fullModel', es, 'linopy')
             calc.do_modeling()
             calc.solve(self.get_solver(), save_results=True)
         elif doSegmentedCalc:
             calc = fx.SegmentedCalculation(
-                'segModel', es, segment_length=96, overlap_length=1, modeling_language='pyomo'
+                'segModel', es, segment_length=96, overlap_length=1, modeling_language='linopy'
             )
             calc.do_modeling_and_solve(self.get_solver(), save_results=True)
         elif doAggregatedCalc:
