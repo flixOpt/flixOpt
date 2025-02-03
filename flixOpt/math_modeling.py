@@ -472,7 +472,7 @@ class MathModel:
         Returns a dictionary of variable results after solving.
     """
 
-    def __init__(self, label: str, modeling_language: Literal['pyomo', 'linopy'] = 'linopy'):
+    def __init__(self, label: str, modeling_language: Literal['pyomo', 'linopy'] = 'pyomo'):
         self._infos = {}
         self.label = label
         self.modeling_language: str = modeling_language
