@@ -389,7 +389,9 @@ class TestOnOff(BaseTest):
                 'Boiler',
                 0.5,
                 Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'), size=100, on_off_parameters=fx.OnOffParameters()),
+                Q_th=fx.Flow(
+                    'Q_th', bus=self.get_element('Fernwärme'), size=100, on_off_parameters=fx.OnOffParameters()
+                ),
             )
         )
 

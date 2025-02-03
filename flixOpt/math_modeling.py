@@ -804,8 +804,8 @@ class GurobiSolver(Solver):
                 )
         elif isinstance(modeling_language, LinopyModel):
             status = modeling_language.model.solve(
-                'gurobi',
-                **{'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds})
+                'gurobi', **{'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds}
+            )
 
             self.objective = modeling_language.model.objective.value
             self.termination_message = status[1]
@@ -905,8 +905,8 @@ class HighsSolver(Solver):
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
         elif isinstance(modeling_language, LinopyModel):
             status = modeling_language.model.solve(
-                'highs',
-                **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds})
+                'highs', **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds}
+            )
 
             self.objective = modeling_language.model.objective.value
             self.termination_message = status[1]
@@ -1017,6 +1017,7 @@ class PyomoModel(ModelingLanguage):
     def __init__(self):
         global pyo
         import pyomo.environ as pyo
+
         logger.debug('Loaded pyomo modules')
 
         self.model = pyo.ConcreteModel(name='(Minimalbeispiel)')
@@ -1225,14 +1226,14 @@ class LinopyModel(ModelingLanguage):
         assert isinstance(variable, Variable), 'Wrong type of variable'
 
         if variable.is_binary:
-            var = self.model.add_variables(binary=True,
-                                     coords=(pd.RangeIndex(variable.indices),) if len(variable.indices) > 1 else None,
-                                     name=variable.label)
+            var = self.model.add_variables(
+                binary=True,
+                coords=(pd.RangeIndex(variable.indices),) if len(variable.indices) > 1 else None,
+                name=variable.label,
+            )
         else:
-            lower = utils.as_vector(variable.lower_bound,
-                                    variable.length) if variable.lower_bound is not None else -inf
-            upper = utils.as_vector(variable.upper_bound,
-                                    variable.length) if variable.upper_bound is not None else inf
+            lower = utils.as_vector(variable.lower_bound, variable.length) if variable.lower_bound is not None else -inf
+            upper = utils.as_vector(variable.upper_bound, variable.length) if variable.upper_bound is not None else inf
             if isinstance(lower, np.ndarray) and variable.length == 1:
                 lower = lower[0]
             if isinstance(upper, np.ndarray) and variable.length == 1:
@@ -1241,16 +1242,14 @@ class LinopyModel(ModelingLanguage):
                 lower=lower,
                 upper=upper,
                 coords=(pd.RangeIndex(variable.indices),) if len(variable.indices) > 1 else None,
-                name=variable.label)
+                name=variable.label,
+            )
 
         if variable.fixed:  # Wenn Vorgabe-Wert vorhanden:
             fixed_value = utils.as_vector(variable.fixed_value, variable.length)
             if isinstance(fixed_value, np.ndarray) and variable.length == 1:
                 fixed_value = fixed_value[0]
-            self.model.add_constraints(
-                var == fixed_value,
-                name=f'fix_{variable.label}'
-            )
+            self.model.add_constraints(var == fixed_value, name=f'fix_{variable.label}')
 
         self.mapping[variable] = var
 
@@ -1260,7 +1259,9 @@ class LinopyModel(ModelingLanguage):
 
         lhs = 0
         summands_sorted = sorted(constraint.summands, key=lambda summand: len(summand.factor_vec), reverse=True)
-        for summand in summands_sorted:  #Sorting is necessary to not cretae a ScalarExpression if SumOfSummand is present
+        for (
+            summand
+        ) in summands_sorted:  # Sorting is necessary to not cretae a ScalarExpression if SumOfSummand is present
             lhs += self._summand_math_expression(summand)  # i-te Gleichung (wenn Skalar, dann wird i ignoriert)
         rhs = constraint.constant_vector
         if len(rhs) == 1:
@@ -1289,7 +1290,6 @@ class LinopyModel(ModelingLanguage):
         self.model.add_objective(lhs)
 
     def _summand_math_expression(self, summand: Summand) -> 'linopy.LinearExpression':
-
         linopy_variable = self.mapping[summand.variable]
 
         if summand.variable.length != 1:
