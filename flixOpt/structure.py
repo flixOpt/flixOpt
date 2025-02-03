@@ -33,7 +33,7 @@ class SystemModel(MathModel):
     def __init__(
         self,
         label: str,
-        modeling_language: Literal['pyomo', 'cvxpy'],
+        modeling_language: Literal['pyomo', 'linopy'],
         flow_system: 'FlowSystem',
         time_indices: Optional[Union[List[int], range]],
     ):

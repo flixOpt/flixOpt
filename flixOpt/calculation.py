@@ -39,7 +39,7 @@ class Calculation:
         self,
         name,
         flow_system: FlowSystem,
-        modeling_language: Literal['pyomo', 'cvxpy', 'linopy'] = 'pyomo',
+        modeling_language: Literal['pyomo', 'linopy'] = 'pyomo',
         time_indices: Optional[Union[range, List[int]]] = None,
     ):
         """
@@ -49,7 +49,7 @@ class Calculation:
             name of calculation
         flow_system : FlowSystem
             flow_system which should be calculated
-        modeling_language : 'pyomo','cvxpy' (not implemeted yet)
+        modeling_language : 'pyomo', 'linopy'
             choose optimization modeling language
         time_indices : List[int] or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
@@ -183,7 +183,7 @@ class AggregatedCalculation(Calculation):
         flow_system: FlowSystem,
         aggregation_parameters: AggregationParameters,
         components_to_clusterize: Optional[List[Component]] = None,
-        modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo',
+        modeling_language: Literal['pyomo', 'linopy'] = 'pyomo',
         time_indices: Optional[Union[range, List[int]]] = None,
     ):
         """
@@ -202,7 +202,7 @@ class AggregatedCalculation(Calculation):
             computed in the DataAggregation
         flow_system : FlowSystem
             flow_system which should be calculated
-        modeling_language : 'pyomo','cvxpy' (not implemeted yet)
+        modeling_language : 'pyomo', 'linopy'
             choose optimization modeling language
         time_indices : List[int] or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
@@ -309,7 +309,7 @@ class SegmentedCalculation(Calculation):
         flow_system: FlowSystem,
         segment_length: int,
         overlap_length: int,
-        modeling_language: Literal['pyomo', 'cvxpy'] = 'pyomo',
+        modeling_language: Literal['pyomo', 'linopy'] = 'pyomo',
         time_indices: Optional[Union[range, list[int]]] = None,
     ):
         """
@@ -334,7 +334,7 @@ class SegmentedCalculation(Calculation):
         overlap_length : int
             The number of time_steps that are added to each individual model. Used for better
             results of storages)
-        modeling_language : 'pyomo', 'cvxpy' (not implemeted yet)
+        modeling_language : 'pyomo', 'linopy' (not implemeted yet)
             choose optimization modeling language
         time_indices : List[int] or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.

@@ -434,7 +434,7 @@ class MathModel:
     ----------
     label : str
         A descriptive label for the model.
-    modeling_language : {'pyomo', 'cvxpy'}, optional
+    modeling_language : {'pyomo', 'linopy'}, optional
         Specifies the modeling language used for translation (default is 'pyomo').
 
     Attributes
@@ -472,7 +472,7 @@ class MathModel:
         Returns a dictionary of variable results after solving.
     """
 
-    def __init__(self, label: str, modeling_language: Literal['pyomo', 'cvxpy', 'linopy'] = 'linopy'):
+    def __init__(self, label: str, modeling_language: Literal['pyomo', 'linopy'] = 'linopy'):
         self._infos = {}
         self.label = label
         self.modeling_language: str = modeling_language
@@ -517,7 +517,7 @@ class MathModel:
             self.model = LinopyModel()
             self.model.translate_model(self)
         else:
-            raise NotImplementedError('Modeling Language cvxpy is not yet implemented')
+            raise NotImplementedError(f'Modeling Language {self.modeling_language} is not yet implemented')
         self.duration['Translation'] = round(timeit.default_timer() - t_start, 2)
 
     def solve(self, solver: 'Solver') -> None:
@@ -811,7 +811,7 @@ class GurobiSolver(Solver):
             self.termination_message = status[1]
             self.best_bound = modeling_language.model.solver_model.ObjBound
         else:
-            raise NotImplementedError('Only Pyomo is implemented for GUROBI solver.')
+            raise NotImplementedError('Only Pyomo and Linopy are implemented for GUROBI solver.')
 
 
 class CplexSolver(Solver):
@@ -912,7 +912,7 @@ class HighsSolver(Solver):
             self.termination_message = status[1]
             self.best_bound = None
         else:
-            raise NotImplementedError('Only Pyomo is implemented for HIGHS solver.')
+            raise NotImplementedError('Only Pyomo and linopy are implemented for HIGHS solver.')
 
 
 class CbcSolver(Solver):
