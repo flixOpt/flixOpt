@@ -50,7 +50,7 @@ if __name__ == '__main__':
     flow_system.add_elements(cost_effect, boiler, heat_load, gas_source)
 
     # --- Define and Run Calculation ---
-    calculation = fx.FullCalculation('Simulation1', flow_system, modeling_language='linopy')
+    calculation = fx.FullCalculation('Simulation1', flow_system)
     calculation.do_modeling()
 
     # --- Solve the Calculation and Save Results ---

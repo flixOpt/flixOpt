@@ -63,7 +63,7 @@ if __name__ == '__main__':
         label='Storage',
         charging=fx.Flow('Q_th_load', bus=Fernwaerme, size=1000),
         discharging=fx.Flow('Q_th_unload', bus=Fernwaerme, size=1000),
-        capacity_in_flow_hours=30,#fx.InvestParameters(fix_effects=20, fixed_size=30, optional=False),
+        capacity_in_flow_hours=fx.InvestParameters(fix_effects=20, fixed_size=30, optional=False),
         initial_charge_state=0,  # Initial storage state: empty
         relative_maximum_charge_state=1 / 100 * np.array([80, 70, 80, 80, 80, 80, 80, 80, 80, 80]),
         eta_charge=0.9,
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     # --- Define and Run Calculation ---
     # Create a calculation object to model the Flow System
-    calculation = fx.FullCalculation(name='Sim1', flow_system=flow_system, modeling_language='linopy')
+    calculation = fx.FullCalculation(name='Sim1', flow_system=flow_system)
     calculation.do_modeling()  # Translate the model to a solvable form, creating equations and Variables
 
     # --- Solve the Calculation and Save Results ---
