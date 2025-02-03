@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 from numpy import inf
-import pyomo.environ as pyo
 
 from . import utils
 from .core import Numeric
@@ -1016,6 +1015,8 @@ class PyomoModel(ModelingLanguage):
     """
 
     def __init__(self):
+        global pyo
+        import pyomo.environ as pyo
         logger.debug('Loaded pyomo modules')
 
         self.model = pyo.ConcreteModel(name='(Minimalbeispiel)')
@@ -1198,7 +1199,7 @@ class LinopyModel(ModelingLanguage):
             else:
                 dtype = float
 
-            if raw_results.ndim == 0 and dtype == float:
+            if raw_results.ndim == 0 and dtype is float:
                 variable.result = float(raw_results)
             elif raw_results.ndim == 0 and dtype == np.int8:
                 variable.result = np.int8(raw_results)
