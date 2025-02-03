@@ -4,7 +4,9 @@ These classes are not directly used by the end user, but are used by other modul
 """
 
 import inspect
+import json
 import logging
+import pathlib
 from datetime import datetime
 from io import StringIO
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
@@ -50,7 +52,8 @@ class SystemModel(MathModel):
         self.effect_collection_model = flow_system.effect_collection.create_model(self)
         self.component_models: List['ComponentModel'] = []
         self.bus_models: List['BusModel'] = []
-        self.other_models: List[ElementModel] = []
+        self._user_model = ElementModel(Element('User'), 'Model')
+        self.other_models: List[ElementModel] = [self._user_model]
 
     def do_modeling(self):
         self.effect_collection_model.do_modeling(self)
@@ -155,6 +158,23 @@ class SystemModel(MathModel):
             'Time': self.time_series_with_end,
             'Time intervals in hours': self.dt_in_hours,
         }
+
+    def add_user_constraint(self, constraint: Union[Equation, Inequation]):
+        assert constraint.label not in self._user_model.constraints, (
+            f'Constraint with label "{constraint.label}" already exists'
+        )
+        for summand in constraint.summands:
+            if summand.variable not in self.all_variables.values():
+                raise KeyError(
+                    f'Variable "{summand.variable.label}" used in constraint "{constraint.label}" not found'
+                )
+        self._user_model.constraints[constraint.label] = constraint
+
+    def add_user_variable(self, variable: Variable):
+        assert variable.label not in self._user_model.variables, (
+            f'Variable with label "{variable.label}" already exists'
+        )
+        self._user_model.variables[variable.label] = variable
 
     @property
     def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
@@ -299,6 +319,20 @@ class Interface:
                 continue
             details[name] = copy_and_convert_datatypes(value, use_numpy, use_element_label)
         return details
+
+    def to_json(self, path: Union[str, pathlib.Path]):
+        """
+        Saves the element to a json file.
+        This not meant to be reloaded and recreate the object, but rather used to document or compare the object.
+
+        Parameters:
+        -----------
+        path : Union[str, pathlib.Path]
+            The path to the json file.
+        """
+        data = get_compact_representation(self.infos(use_numpy=True, use_element_label=True))
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
     def __repr__(self):
         # Get the constructor arguments and their current values
@@ -587,20 +621,18 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
     - Empty collections (lists, dictionaries) and default parameter values in `Element` objects are omitted from the output.
     - Numpy arrays with non-numeric data types are automatically converted to lists.
     """
-    if isinstance(data, (int, float, str, bool, type(None))):
+    if isinstance(data, np.integer):  # This must be checked before checking for regular int and float!
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+
+    elif isinstance(data, (int, float, str, bool, type(None))):
         return data
     elif isinstance(data, datetime):
         return data.isoformat()
 
-    elif isinstance(data, np.integer):
-        return int(data)
-    elif isinstance(data, np.floating):
-        return float(data)
-    elif isinstance(data, (np.generic,)):  # For any numpy scalar types
-        return data.item()
-
     elif isinstance(data, (tuple, set)):
-        return copy_and_convert_datatypes([item for item in data], use_numpy)
+        return copy_and_convert_datatypes([item for item in data], use_numpy, use_element_label)
     elif isinstance(data, dict):
         return {
             copy_and_convert_datatypes(key, use_numpy, use_element_label=True): copy_and_convert_datatypes(
@@ -638,18 +670,18 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
         raise TypeError(f'copy_and_convert_datatypes() did get unexpected data of type "{type(data)}": {data=}')
 
 
-def get_str_representation(data: Any, array_length: int = 50, precision: int = 2) -> str:
+def get_compact_representation(data: Any, array_threshold: int = 50, decimals: int = 2) -> Dict:
     """
-    Generate a string representation of deeply nested data using `rich.print`.
-    NumPy arrays are shortened to the specified length and converted to strings.
+    Generate a compact json serializable representation of deeply nested data.
+    Numpy arrays are statistically described if they exceed a threshold and converted to lists.
 
     Args:
         data (Any): The data to format and represent.
-        array_length (int): Maximum length of NumPy arrays to display. Longer arrays are truncated.
-        precision (int): Number of decimal places to display for floats in numerical arrays.
+        array_threshold (int): Maximum length of NumPy arrays to display. Longer arrays are statistically described.
+        decimals (int): Number of decimal places in which to describe the arrays.
 
     Returns:
-        str: The formatted string representation of the data.
+        Dict: A dictionary representation of the data
     """
 
     def format_np_array_if_found(value: Any) -> Any:
@@ -657,7 +689,7 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
         if isinstance(value, (int, float, str, bool, type(None))):
             return value
         elif isinstance(value, np.ndarray):
-            return shorten_np_array(value)
+            return describe_numpy_arrays(value)
         elif isinstance(value, dict):
             return {format_np_array_if_found(k): format_np_array_if_found(v) for k, v in value.items()}
         elif isinstance(value, (list, tuple, set)):
@@ -668,31 +700,52 @@ def get_str_representation(data: Any, array_length: int = 50, precision: int = 2
             )
             return value
 
-    def shorten_np_array(arr: np.ndarray) -> str:
+    def describe_numpy_arrays(arr: np.ndarray) -> Union[str, List]:
         """Shortens NumPy arrays if they exceed the specified length."""
+
         def normalized_center_of_mass(array: Any) -> float:
             # position in array (0 bis 1 normiert)
             positions = np.linspace(0, 1, len(array))  # weights w_i
             # mass center
-            return np.sum(positions * array) / np.sum(array)
+            if np.sum(array) == 0:
+                return np.nan
+            else:
+                return np.sum(positions * array) / np.sum(array)
 
-        if arr.size > array_length:  # Calculate basic statistics
+        if arr.size > array_threshold:  # Calculate basic statistics
+            fmt = f'.{decimals}f'
             return (
-                f'Array (min={np.min(arr):.2f}, max={np.max(arr):.2f}, mean={np.mean(arr):.2f}, '
-                f'median={np.median(arr):.2f}, std={np.std(arr):.2f}, len={len(arr)}, '
-                f'center={normalized_center_of_mass(arr):.2f})'
+                f'Array (min={np.min(arr):{fmt}}, max={np.max(arr):{fmt}}, mean={np.mean(arr):{fmt}}, '
+                f'median={np.median(arr):{fmt}}, std={np.std(arr):{fmt}}, len={len(arr)}, '
+                f'center={normalized_center_of_mass(arr):{fmt}})'
             )
         else:
-            return np.array2string(arr[:array_length], precision=precision, max_line_width=1000, separator=', ')
+            return np.around(arr, decimals=decimals).tolist()
 
     # Process the data to handle NumPy arrays
     formatted_data = format_np_array_if_found(copy_and_convert_datatypes(data, use_numpy=True))
+
+    return formatted_data
+
+
+def get_str_representation(data: Any, array_threshold: int = 50, decimals: int = 2) -> str:
+    """
+    Generate a string representation of deeply nested data using `rich.print`.
+    NumPy arrays are shortened to the specified length and converted to strings.
+
+    Args:
+        data (Any): The data to format and represent.
+        array_threshold (int): Maximum length of NumPy arrays to display. Longer arrays are statistically described.
+        decimals (int): Number of decimal places in which to describe the arrays.
+
+    Returns:
+        str: The formatted string representation of the data.
+    """
+
+    formatted_data = get_compact_representation(data, array_threshold, decimals)
 
     # Use Rich to format and print the data
     with StringIO() as output_buffer:
         console = Console(file=output_buffer, width=1000)  # Adjust width as needed
         console.print(Pretty(formatted_data, expand_all=True, indent_guides=True))
         return output_buffer.getvalue()
-
-
-
