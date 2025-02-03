@@ -78,6 +78,7 @@ class BaseTest(unittest.TestCase):
 
     def setUp(self):
         fx.change_logging_level('DEBUG')
+        self.modeling_language = 'pyomo'
         self.mip_gap = 0.0001
         self.datetime_array = fx.create_datetime_array('2020-01-01', 5, 'h')
 
@@ -103,7 +104,7 @@ class BaseTest(unittest.TestCase):
         return self.flow_system
 
     def solve_and_load(self, flow_system: fx.FlowSystem) -> fx.results.CalculationResults:
-        calculation = fx.FullCalculation('Calculation', flow_system)
+        calculation = fx.FullCalculation('Calculation', flow_system, self.modeling_language)
         calculation.do_modeling()
         calculation.solve(self.solver, True)
         results = fx.results.CalculationResults('Calculation', 'results')
@@ -774,6 +775,23 @@ class TestOnOff(BaseTest):
             err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
         )
 
+
+class LinopyTest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.modeling_language = 'linopy'
+
+
+class TestMinimalLinopy(LinopyTest, TestMinimal):
+    pass
+
+
+class TestInvestmentLinopy(LinopyTest, TestInvestment):
+    pass
+
+
+class TestOnOffLinopy(LinopyTest, TestInvestment):
+    pass
 
 if __name__ == '__main__':
     pytest.main(['-v', '--disable-warnings'])
