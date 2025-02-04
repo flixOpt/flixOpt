@@ -60,7 +60,6 @@ class Data:
             return extended_array[:new_length]  # Truncate to exact length
 
 
-
 def flow_system_base(datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem:
     data = Data(len(datetime_array))
 
@@ -73,13 +72,9 @@ def flow_system_base(datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem
     flow_system.add_elements(
         fx.Sink(
             label='Wärmelast',
-            sink=fx.Flow(
-                label='Wärme', bus=buses['Fernwärme'], fixed_relative_profile=data.thermal_demand, size=1
-            ),
+            sink=fx.Flow(label='Wärme', bus=buses['Fernwärme'], fixed_relative_profile=data.thermal_demand, size=1),
         ),
-        fx.Source(
-            label='Gastarif', source=fx.Flow(label='Gas', bus=buses['Gas'], effects_per_flow_hour=1)
-        ),
+        fx.Source(label='Gastarif', source=fx.Flow(label='Gas', bus=buses['Gas'], effects_per_flow_hour=1)),
     )
     return flow_system
 
@@ -98,7 +93,9 @@ def flow_system_minimal(datetime_array) -> fx.FlowSystem:
     return flow_system
 
 
-def solve_and_load(flow_system: fx.FlowSystem, modeling_language: str, solver: fx.solvers.Solver) -> fx.results.CalculationResults:
+def solve_and_load(
+    flow_system: fx.FlowSystem, modeling_language: str, solver: fx.solvers.Solver
+) -> fx.results.CalculationResults:
     calculation = fx.FullCalculation('Calculation', flow_system, modeling_language)
     calculation.do_modeling()
     calculation.solve(solver, True)
@@ -110,27 +107,25 @@ def solve_and_load(flow_system: fx.FlowSystem, modeling_language: str, solver: f
 def modeling_language_fixture(request):
     return request.param
 
+
 @pytest.fixture(params=['highs', 'gurobi'])
 def solver_fixture(request):
-    solvers = {'highs': fx.solvers.HighsSolver,
-               'gurobi': fx.solvers.GurobiSolver}
+    solvers = {'highs': fx.solvers.HighsSolver, 'gurobi': fx.solvers.GurobiSolver}
     return solvers[request.param](mip_gap=0.0001)
+
 
 @pytest.fixture
 def time_steps_fixture(request):
     return fx.create_datetime_array('2020-01-01', 5, 'h')
 
 
-
 def test_solve_and_load(modeling_language_fixture, solver_fixture, time_steps_fixture):
-    results = solve_and_load(flow_system_minimal(time_steps_fixture),
-                             modeling_language_fixture, solver_fixture)
+    results = solve_and_load(flow_system_minimal(time_steps_fixture), modeling_language_fixture, solver_fixture)
     assert results is not None
 
 
 def test_minimal_model(modeling_language_fixture, solver_fixture, time_steps_fixture):
-    results = solve_and_load(flow_system_minimal(time_steps_fixture),
-                             modeling_language_fixture, solver_fixture)
+    results = solve_and_load(flow_system_minimal(time_steps_fixture), modeling_language_fixture, solver_fixture)
 
     assert_allclose(
         results.effect_results['costs'].all_results['all']['all_sum'], 80, rtol=solver_fixture.mip_gap, atol=1e-10
@@ -198,6 +193,7 @@ def test_fixed_size(modeling_language_fixture, solver_fixture, time_steps_fixtur
         err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
     )
 
+
 def test_optimize_size(modeling_language_fixture, solver_fixture, time_steps_fixture):
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -238,6 +234,7 @@ def test_optimize_size(modeling_language_fixture, solver_fixture, time_steps_fix
         err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
     )
 
+
 def test_size_bounds(modeling_language_fixture, solver_fixture, time_steps_fixture):
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -277,6 +274,7 @@ def test_size_bounds(modeling_language_fixture, solver_fixture, time_steps_fixtu
         atol=1e-10,
         err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
     )
+
 
 def test_optional_invest(modeling_language_fixture, solver_fixture, time_steps_fixture):
     flow_system = flow_system_base(time_steps_fixture)
@@ -353,9 +351,7 @@ def test_on(modeling_language_fixture, solver_fixture, time_steps_fixture):
             'Boiler',
             0.5,
             Q_fu=fx.Flow('Q_fu', bus=flow_system.buses['Gas']),
-            Q_th=fx.Flow(
-                'Q_th', bus=flow_system.buses['Fernwärme'], size=100, on_off_parameters=fx.OnOffParameters()
-            ),
+            Q_th=fx.Flow('Q_th', bus=flow_system.buses['Fernwärme'], size=100, on_off_parameters=fx.OnOffParameters()),
         )
     )
 
@@ -384,6 +380,7 @@ def test_on(modeling_language_fixture, solver_fixture, time_steps_fixture):
         atol=1e-10,
         err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
     )
+
 
 def test_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
     """Tests if the Off Variable is correctly created and calculated in a Flow"""
@@ -434,6 +431,7 @@ def test_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
         atol=1e-10,
         err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
     )
+
 
 def test_switch_on_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
     """Tests if the Switch On/Off Variable is correctly created and calculated in a Flow"""
@@ -492,6 +490,7 @@ def test_switch_on_off(modeling_language_fixture, solver_fixture, time_steps_fix
         err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
     )
 
+
 def test_on_total_max(modeling_language_fixture, solver_fixture, time_steps_fixture):
     """Tests if the On Total Max Variable is correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
@@ -540,6 +539,7 @@ def test_on_total_max(modeling_language_fixture, solver_fixture, time_steps_fixt
         atol=1e-10,
         err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
     )
+
 
 def test_on_total_bounds(modeling_language_fixture, solver_fixture, time_steps_fixture):
     """Tests if the On Hours min and max are correctly created and calculated in a Flow"""
@@ -612,6 +612,7 @@ def test_on_total_bounds(modeling_language_fixture, solver_fixture, time_steps_f
         err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
     )
 
+
 def test_consecutive_on_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
     """Tests if the consecutive on/off hours are correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
@@ -634,7 +635,13 @@ def test_consecutive_on_off(modeling_language_fixture, solver_fixture, time_step
             Q_th=fx.Flow('Q_th', bus=flow_system.buses['Fernwärme'], size=100),
         ),
     )
-    flow_system.all_elements['Wärmelast'].sink.fixed_relative_profile = [5, 10, 20, 18, 12]  # Else its non deterministic
+    flow_system.all_elements['Wärmelast'].sink.fixed_relative_profile = [
+        5,
+        10,
+        20,
+        18,
+        12,
+    ]  # Else its non deterministic
 
     solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
@@ -670,6 +677,7 @@ def test_consecutive_on_off(modeling_language_fixture, solver_fixture, time_step
         atol=1e-10,
         err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
     )
+
 
 def test_consecutive_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
     """Tests if the consecutive on hours are correctly created and calculated in a Flow"""
