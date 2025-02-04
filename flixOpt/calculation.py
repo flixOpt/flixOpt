@@ -26,9 +26,9 @@ from .core import Numeric, Skalar
 from .elements import Component
 from .features import InvestmentModel
 from .flow_system import FlowSystem
+from .math_modeling import Equation, Inequation, Variable
 from .solvers import Solver
 from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
-from .math_modeling import Equation, Inequation, Variable
 
 logger = logging.getLogger('flixOpt')
 
