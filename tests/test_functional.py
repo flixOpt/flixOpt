@@ -17,8 +17,6 @@ Classes group related test cases by their functional focus:
 - On-off operational constraints (`TestOnOff`).
 """
 
-import unittest
-
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -62,116 +60,101 @@ class Data:
             return extended_array[:new_length]  # Truncate to exact length
 
 
-class BaseTest(unittest.TestCase):
-    """
-    Base test class for setting up flow systems in flixOpt.
 
-    Provides shared setup, utility methods, and common functionality for the other test cases.
+def flow_system_base(datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem:
+    data = Data(len(datetime_array))
 
-    Methods:
-        - setUp: Initializes logging and default parameters.
-        - create_model: Creates a base flow system model with predefined buses and components.
-        - solve_and_load: Solves the flow system model and loads the results.
-        - get_element: Retrieves an element from the flow system by label.
-        - solver: Configures and returns a solver instance.
-    """
-
-    def setUp(self):
-        fx.change_logging_level('DEBUG')
-        self.modeling_language = 'pyomo'
-        self.mip_gap = 0.0001
-        self.datetime_array = fx.create_datetime_array('2020-01-01', 5, 'h')
-
-    def create_model(self, datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem:
-        self.flow_system = fx.FlowSystem(datetime_array)
-        self.buses = {
-            'Fernwärme': fx.Bus('Fernwärme', excess_penalty_per_flow_hour=None),
-            'Gas': fx.Bus('Gas', excess_penalty_per_flow_hour=None),
-        }
-        self.flow_system.add_elements(fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True))
-        data = Data(len(datetime_array))
-        self.flow_system.add_elements(
-            fx.Sink(
-                label='Wärmelast',
-                sink=fx.Flow(
-                    label='Wärme', bus=self.get_element('Fernwärme'), fixed_relative_profile=data.thermal_demand, size=1
-                ),
+    flow_system = fx.FlowSystem(datetime_array)
+    buses = {
+        'Fernwärme': fx.Bus('Fernwärme', excess_penalty_per_flow_hour=None),
+        'Gas': fx.Bus('Gas', excess_penalty_per_flow_hour=None),
+    }
+    flow_system.add_elements(fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True))
+    flow_system.add_elements(
+        fx.Sink(
+            label='Wärmelast',
+            sink=fx.Flow(
+                label='Wärme', bus=buses['Fernwärme'], fixed_relative_profile=data.thermal_demand, size=1
             ),
-            fx.Source(
-                label='Gastarif', source=fx.Flow(label='Gas', bus=self.get_element('Gas'), effects_per_flow_hour=1)
-            ),
+        ),
+        fx.Source(
+            label='Gastarif', source=fx.Flow(label='Gas', bus=buses['Gas'], effects_per_flow_hour=1)
+        ),
+    )
+    return flow_system
+
+
+def flow_system_minimal(datetime_array) -> fx.FlowSystem:
+    flow_system = flow_system_base(datetime_array)
+    buses = flow_system.buses
+    flow_system.add_elements(
+        fx.linear_converters.Boiler(
+            'Boiler',
+            0.5,
+            Q_fu=fx.Flow('Q_fu', bus=buses['Gas']),
+            Q_th=fx.Flow('Q_th', bus=buses['Fernwärme']),
         )
-        return self.flow_system
-
-    def solve_and_load(self, flow_system: fx.FlowSystem) -> fx.results.CalculationResults:
-        calculation = fx.FullCalculation('Calculation', flow_system, self.modeling_language)
-        calculation.do_modeling()
-        calculation.solve(self.solver, True)
-        results = fx.results.CalculationResults('Calculation', 'results')
-        return results
-
-    def get_element(self, label: str):
-        return {**self.flow_system.all_elements, **self.buses}[label]
-
-    @property
-    def solver(self):
-        """Returns a (new) solver instance with the specified parameters."""
-        return fx.solvers.HighsSolver(mip_gap=self.mip_gap, time_limit_seconds=3600, solver_output_to_console=False)
+    )
+    return flow_system
 
 
-class TestMinimal(BaseTest):
-    """
-    Tests a minimal setup of a flow system.
+def solve_and_load(flow_system: fx.FlowSystem, modeling_language: str, solver: fx.solvers.Solver) -> fx.results.CalculationResults:
+    calculation = fx.FullCalculation('Calculation', flow_system, modeling_language)
+    calculation.do_modeling()
+    calculation.solve(solver, True)
+    results = fx.results.CalculationResults('Calculation', 'results')
+    return results
 
-    Focuses on:
-    - Adding basic components.
-    - Verifying the correct setup and results for a small system with minimal complexity.
-    """
 
-    def create_model(self, datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem:
-        super().create_model(datetime_array)
-        self.flow_system.add_elements(
-            fx.linear_converters.Boiler(
-                'Boiler',
-                0.5,
-                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme')),
-            )
-        )
-        return self.flow_system
+@pytest.fixture(params=['pyomo', 'linopy'])
+def modeling_language_fixture(request):
+    return request.param
 
-    def test_solve_and_load(self):
-        flow_system = self.create_model(self.datetime_array)
-        self.solve_and_load(flow_system)
+@pytest.fixture(params=['highs', 'gurobi'])
+def solver_fixture(request):
+    solvers = {'highs': fx.solvers.HighsSolver,
+               'gurobi': fx.solvers.GurobiSolver}
+    return solvers[request.param](mip_gap=0.0001)
 
-    def test_results(self):
-        flow_system = self.create_model(self.datetime_array)
-        results = self.solve_and_load(flow_system)
+@pytest.fixture
+def time_steps_fixture(request):
+    return fx.create_datetime_array('2020-01-01', 5, 'h')
 
-        assert_allclose(
-            results.effect_results['costs'].all_results['all']['all_sum'], 80, rtol=self.mip_gap, atol=1e-10
-        )
 
-        assert_allclose(
-            results.component_results['Boiler'].all_results['Q_th']['flow_rate'],
-            [-0.0, 10.0, 20.0, -0.0, 10.0],
-            rtol=self.mip_gap,
-            atol=1e-10,
-        )
+def test_solve_and_load(modeling_language_fixture, solver_fixture, time_steps_fixture):
+    results = solve_and_load(flow_system_minimal(time_steps_fixture),
+                             modeling_language_fixture, solver_fixture)
+    assert results is not None
 
-        assert_allclose(
-            results.effect_results['costs'].all_results['operation']['operation_sum_TS'],
-            [-0.0, 20.0, 40.0, -0.0, 20.0],
-            rtol=self.mip_gap,
-            atol=1e-10,
-        )
 
-        assert_allclose(
-            results.effect_results['costs'].all_results['operation']['Shares']['Gastarif__Gas__effects_per_flow_hour'],
-            [-0.0, 20.0, 40.0, -0.0, 20.0],
-            rtol=self.mip_gap,
-            atol=1e-10,
-        )
+def test_minimal_model(modeling_language_fixture, solver_fixture, time_steps_fixture):
+    results = solve_and_load(flow_system_minimal(time_steps_fixture),
+                             modeling_language_fixture, solver_fixture)
+
+    assert_allclose(
+        results.effect_results['costs'].all_results['all']['all_sum'], 80, rtol=solver_fixture.mip_gap, atol=1e-10
+    )
+
+    assert_allclose(
+        results.component_results['Boiler'].all_results['Q_th']['flow_rate'],
+        [-0.0, 10.0, 20.0, -0.0, 10.0],
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+    )
+
+    assert_allclose(
+        results.effect_results['costs'].all_results['operation']['operation_sum_TS'],
+        [-0.0, 20.0, 40.0, -0.0, 20.0],
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+    )
+
+    assert_allclose(
+        results.effect_results['costs'].all_results['operation']['Shares']['Gastarif__Gas__effects_per_flow_hour'],
+        [-0.0, 20.0, 40.0, -0.0, 20.0],
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+    )
 
 
 class TestInvestment(BaseTest):
