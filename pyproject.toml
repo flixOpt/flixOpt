@@ -45,7 +45,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "ruff"
+    "ruff",
+    "linopy >= 0.4.4",
+    "scipy >= 1.15.1",  # Used by tsam. Prior versions have conflict with highspy. See https://github.com/scipy/scipy/issues/22257
 ]
 
 linopy = [
