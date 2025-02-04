@@ -121,6 +121,7 @@ def time_steps_fixture(request):
     return fx.create_datetime_array('2020-01-01', 5, 'h')
 
 
+
 def test_solve_and_load(modeling_language_fixture, solver_fixture, time_steps_fixture):
     results = solve_and_load(flow_system_minimal(time_steps_fixture),
                              modeling_language_fixture, solver_fixture)
@@ -157,202 +158,192 @@ def test_minimal_model(modeling_language_fixture, solver_fixture, time_steps_fix
     )
 
 
-class TestInvestment(BaseTest):
-    """
-    Tests investment modeling and optimization in flow systems.
-
-    Focuses on:
-    - Fixed size investments.
-    - Optimized sizing of components.
-    - Investment constraints, including bounds and optional investments.
-    - Validating cost calculations and investment decisions.
-    """
-
-    def test_fixed_size(self):
-        self.flow_system = self.create_model(self.datetime_array)
-        self.flow_system.add_elements(
-            fx.linear_converters.Boiler(
-                'Boiler',
-                0.5,
-                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow(
-                    'Q_th',
-                    bus=self.get_element('Fernwärme'),
-                    size=fx.InvestParameters(fixed_size=1000, fix_effects=10, specific_effects=1),
-                ),
-            )
-        )
-
-        self.solve_and_load(self.flow_system)
-        boiler = self.get_element('Boiler')
-        costs = self.get_element('costs')
-        assert_allclose(
-            costs.model.all.sum.result,
-            80 + 1000 * 1 + 10,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='The total costs does not have the right value',
-        )
-        assert_allclose(
-            boiler.model.all_variables['Boiler__Q_th__Investment_size'].result,
-            1000,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
-        )
-        assert_allclose(
-            boiler.model.all_variables['Boiler__Q_th__Investment_isInvested'].result,
-            1,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
-        )
-
-    def test_optimize_size(self):
-        self.flow_system = self.create_model(self.datetime_array)
-        self.flow_system.add_elements(
-            fx.linear_converters.Boiler(
-                'Boiler',
-                0.5,
-                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow(
-                    'Q_th',
-                    bus=self.get_element('Fernwärme'),
-                    size=fx.InvestParameters(fix_effects=10, specific_effects=1),
-                ),
-            )
-        )
-
-        self.solve_and_load(self.flow_system)
-        boiler = self.get_element('Boiler')
-        costs = self.get_element('costs')
-        assert_allclose(
-            costs.model.all.sum.result,
-            80 + 20 * 1 + 10,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='The total costs does not have the right value',
-        )
-        assert_allclose(
-            boiler.Q_th.model._investment.size.result,
-            20,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
-        )
-        assert_allclose(
-            boiler.Q_th.model._investment.is_invested.result,
-            1,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
-        )
-
-    def test_size_bounds(self):
-        self.flow_system = self.create_model(self.datetime_array)
-        self.flow_system.add_elements(
-            fx.linear_converters.Boiler(
-                'Boiler',
-                0.5,
-                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow(
-                    'Q_th',
-                    bus=self.get_element('Fernwärme'),
-                    size=fx.InvestParameters(minimum_size=40, fix_effects=10, specific_effects=1),
-                ),
-            )
-        )
-
-        self.solve_and_load(self.flow_system)
-        boiler = self.get_element('Boiler')
-        costs = self.get_element('costs')
-        assert_allclose(
-            costs.model.all.sum.result,
-            80 + 40 * 1 + 10,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='The total costs does not have the right value',
-        )
-        assert_allclose(
-            boiler.Q_th.model._investment.size.result,
-            40,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
-        )
-        assert_allclose(
-            boiler.Q_th.model._investment.is_invested.result,
-            1,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
-        )
-
-    def test_optional_invest(self):
-        self.flow_system = self.create_model(self.datetime_array)
-        self.flow_system.add_elements(
-            fx.linear_converters.Boiler(
-                'Boiler',
-                0.5,
-                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow(
-                    'Q_th',
-                    bus=self.get_element('Fernwärme'),
-                    size=fx.InvestParameters(optional=True, minimum_size=40, fix_effects=10, specific_effects=1),
-                ),
-            ),
-            fx.linear_converters.Boiler(
-                'Boiler_optional',
-                0.5,
-                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
-                Q_th=fx.Flow(
-                    'Q_th',
-                    bus=self.get_element('Fernwärme'),
-                    size=fx.InvestParameters(optional=True, minimum_size=50, fix_effects=10, specific_effects=1),
-                ),
+def test_fixed_size(modeling_language_fixture, solver_fixture, time_steps_fixture):
+    flow_system = flow_system_base(time_steps_fixture)
+    flow_system.add_elements(
+        fx.linear_converters.Boiler(
+            'Boiler',
+            0.5,
+            Q_fu=fx.Flow('Q_fu', bus=flow_system.buses['Gas']),
+            Q_th=fx.Flow(
+                'Q_th',
+                bus=flow_system.buses['Fernwärme'],
+                size=fx.InvestParameters(fixed_size=1000, fix_effects=10, specific_effects=1),
             ),
         )
+    )
 
-        self.solve_and_load(self.flow_system)
-        boiler = self.get_element('Boiler')
-        boiler_optional = self.get_element('Boiler_optional')
-        costs = self.get_element('costs')
-        assert_allclose(
-            costs.model.all.sum.result,
-            80 + 40 * 1 + 10,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='The total costs does not have the right value',
-        )
-        assert_allclose(
-            boiler.Q_th.model._investment.size.result,
-            40,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
-        )
-        assert_allclose(
-            boiler.Q_th.model._investment.is_invested.result,
-            1,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
-        )
+    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    boiler = flow_system.all_elements['Boiler']
+    costs = flow_system.all_elements['costs']
+    assert_allclose(
+        costs.model.all.sum.result,
+        80 + 1000 * 1 + 10,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='The total costs does not have the right value',
+    )
+    assert_allclose(
+        boiler.model.all_variables['Boiler__Q_th__Investment_size'].result,
+        1000,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
+    )
+    assert_allclose(
+        boiler.model.all_variables['Boiler__Q_th__Investment_isInvested'].result,
+        1,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
+    )
 
-        assert_allclose(
-            boiler_optional.Q_th.model._investment.size.result,
-            0,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
+def test_optimize_size(modeling_language_fixture, solver_fixture, time_steps_fixture):
+    flow_system = flow_system_base(time_steps_fixture)
+    flow_system.add_elements(
+        fx.linear_converters.Boiler(
+            'Boiler',
+            0.5,
+            Q_fu=fx.Flow('Q_fu', bus=flow_system.buses['Gas']),
+            Q_th=fx.Flow(
+                'Q_th',
+                bus=flow_system.buses['Fernwärme'],
+                size=fx.InvestParameters(fix_effects=10, specific_effects=1),
+            ),
         )
-        assert_allclose(
-            boiler_optional.Q_th.model._investment.is_invested.result,
-            0,
-            rtol=self.mip_gap,
-            atol=1e-10,
-            err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
+    )
+
+    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    boiler = flow_system.all_elements['Boiler']
+    costs = flow_system.all_elements['costs']
+    assert_allclose(
+        costs.model.all.sum.result,
+        80 + 20 * 1 + 10,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='The total costs does not have the right value',
+    )
+    assert_allclose(
+        boiler.Q_th.model._investment.size.result,
+        20,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
+    )
+    assert_allclose(
+        boiler.Q_th.model._investment.is_invested.result,
+        1,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
+    )
+
+def test_size_bounds(modeling_language_fixture, solver_fixture, time_steps_fixture):
+    flow_system = flow_system_base(time_steps_fixture)
+    flow_system.add_elements(
+        fx.linear_converters.Boiler(
+            'Boiler',
+            0.5,
+            Q_fu=fx.Flow('Q_fu', bus=flow_system.buses['Gas']),
+            Q_th=fx.Flow(
+                'Q_th',
+                bus=flow_system.buses['Fernwärme'],
+                size=fx.InvestParameters(minimum_size=40, fix_effects=10, specific_effects=1),
+            ),
         )
+    )
+
+    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    boiler = flow_system.all_elements['Boiler']
+    costs = flow_system.all_elements['costs']
+    assert_allclose(
+        costs.model.all.sum.result,
+        80 + 40 * 1 + 10,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='The total costs does not have the right value',
+    )
+    assert_allclose(
+        boiler.Q_th.model._investment.size.result,
+        40,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
+    )
+    assert_allclose(
+        boiler.Q_th.model._investment.is_invested.result,
+        1,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
+    )
+
+def test_optional_invest(modeling_language_fixture, solver_fixture, time_steps_fixture):
+    flow_system = flow_system_base(time_steps_fixture)
+    flow_system.add_elements(
+        fx.linear_converters.Boiler(
+            'Boiler',
+            0.5,
+            Q_fu=fx.Flow('Q_fu', bus=flow_system.buses['Gas']),
+            Q_th=fx.Flow(
+                'Q_th',
+                bus=flow_system.buses['Fernwärme'],
+                size=fx.InvestParameters(optional=True, minimum_size=40, fix_effects=10, specific_effects=1),
+            ),
+        ),
+        fx.linear_converters.Boiler(
+            'Boiler_optional',
+            0.5,
+            Q_fu=fx.Flow('Q_fu', bus=flow_system.buses['Gas']),
+            Q_th=fx.Flow(
+                'Q_th',
+                bus=flow_system.buses['Fernwärme'],
+                size=fx.InvestParameters(optional=True, minimum_size=50, fix_effects=10, specific_effects=1),
+            ),
+        ),
+    )
+
+    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    boiler = flow_system.all_elements['Boiler']
+    boiler_optional = flow_system.all_elements['Boiler_optional']
+    costs = flow_system.all_elements['costs']
+    assert_allclose(
+        costs.model.all.sum.result,
+        80 + 40 * 1 + 10,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='The total costs does not have the right value',
+    )
+    assert_allclose(
+        boiler.Q_th.model._investment.size.result,
+        40,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
+    )
+    assert_allclose(
+        boiler.Q_th.model._investment.is_invested.result,
+        1,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
+    )
+
+    assert_allclose(
+        boiler_optional.Q_th.model._investment.size.result,
+        0,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__Investment_size" does not have the right value',
+    )
+    assert_allclose(
+        boiler_optional.Q_th.model._investment.is_invested.result,
+        0,
+        rtol=solver_fixture.mip_gap,
+        atol=1e-10,
+        err_msg='"Boiler__Q_th__IsInvested" does not have the right value',
+    )
+
 
 
 class TestOnOff(BaseTest):
