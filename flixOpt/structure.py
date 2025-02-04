@@ -165,9 +165,7 @@ class SystemModel(MathModel):
         )
         for summand in constraint.summands:
             if summand.variable not in self.all_variables.values():
-                raise KeyError(
-                    f'Variable "{summand.variable.label}" used in constraint "{constraint.label}" not found'
-                )
+                raise KeyError(f'Variable "{summand.variable.label}" used in constraint "{constraint.label}" not found')
         self._user_model.constraints[constraint.label] = constraint
 
     def add_user_variable(self, variable: Variable):
