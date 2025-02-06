@@ -93,14 +93,14 @@ class Calculation:
 
     def _save_solve_infos(self):
         t_start = timeit.default_timer()
-
+        indent = 4 if len(self.flow_system.time_series) < 50 else None
         with zipfile.ZipFile(self._paths['data'], 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
             with zipf.open('results.json', 'w') as file:
                 results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
-                file.write(json.dumps(results, indent=4).encode('utf-8'))
+                file.write(json.dumps(results, indent=indent).encode('utf-8'))
             with zipf.open('data.json', 'w') as file:
                 data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-                file.write(json.dumps(data, indent=4).encode('utf-8'))
+                file.write(json.dumps(data, indent=indent).encode('utf-8'))
 
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
@@ -432,16 +432,16 @@ class SegmentedCalculation(Calculation):
 
     def _save_solve_infos(self):
         t_start = timeit.default_timer()
-
+        indent = 4 if len(self.flow_system.time_series) < 50 else None
         with zipfile.ZipFile(self._paths['data'], 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
             with zipf.open('results.json', 'w') as file:
                 results = copy_and_convert_datatypes(
                     self.results(combined_arrays=True), use_numpy=False, use_element_label=False
                 )
-                file.write(json.dumps(results, indent=4).encode('utf-8'))
+                file.write(json.dumps(results, indent=indent).encode('utf-8'))
             with zipf.open('data.json', 'w') as file:
                 data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-                file.write(json.dumps(data, indent=4).encode('utf-8'))
+                file.write(json.dumps(data, indent=indent).encode('utf-8'))
 
             with zipf.open('results_extra.json', 'w') as file:
                 results = {
@@ -452,7 +452,7 @@ class SegmentedCalculation(Calculation):
                         self.results(combined_scalars=True), use_numpy=False, use_element_label=False
                     ),
                 }
-                file.write(json.dumps(results, indent=4).encode('utf-8'))
+                file.write(json.dumps(results, indent=indent).encode('utf-8'))
         self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
 
         t_start = timeit.default_timer()
