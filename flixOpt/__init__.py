@@ -27,6 +27,7 @@ from .commons import (
     plotting,
     results,
     solvers,
+    math_modeling,
 )
 
 CONFIG.load_config()

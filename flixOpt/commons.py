@@ -2,7 +2,7 @@
 This module makes the commonly used classes and functions available in the flixOpt framework.
 """
 
-from . import linear_converters, plotting, results, solvers
+from . import linear_converters, plotting, results, solvers, math_modeling
 from .aggregation import AggregationParameters
 from .calculation import AggregatedCalculation, FullCalculation, SegmentedCalculation
 from .components import (
@@ -45,4 +45,5 @@ __all__ = [
     'results',
     'linear_converters',
     'solvers',
+    'math_modeling'
 ]
