@@ -804,7 +804,9 @@ class GurobiSolver(Solver):
                 )
         elif isinstance(modeling_language, LinopyModel):
             status = modeling_language.model.solve(
-                'gurobi', **{'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds}
+                log_fn=self.logfile_name,
+                solver_name='gurobi',
+                **{'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds}
             )
 
             self.objective = modeling_language.model.objective.value
@@ -905,7 +907,9 @@ class HighsSolver(Solver):
             self.log = f'Not Implemented for {self.__class__.__name__} yet'
         elif isinstance(modeling_language, LinopyModel):
             status = modeling_language.model.solve(
-                'highs', **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds}
+                log_fn=self.logfile_name,
+                solver_name='highs',
+                **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds}
             )
 
             self.objective = modeling_language.model.objective.value
