@@ -24,6 +24,7 @@ from .commons import (
     change_logging_level,
     create_datetime_array,
     linear_converters,
+    math_modeling,
     plotting,
     results,
     solvers,
