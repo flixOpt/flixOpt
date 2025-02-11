@@ -902,16 +902,16 @@ class PreventSimultaneousUsageModel(ElementModel):
     # --> könnte man auch umsetzen (statt force_on_variable() für die Flows, aber sollte aufs selbe wie "new" kommen)
     """
 
-    def __init__(self, element: Element, variables: List[VariableTS], label: str = 'PreventSimultaneousUsage'):
+    def __init__(self, element: Element, variables: List[linopy.Variable], label: str = 'PreventSimultaneousUsage'):
         super().__init__(element, label)
         self._variables = variables
         assert len(self._variables) >= 2, f'Model {self.__class__.__name__} must get at least two variables'
         for variable in self._variables:  # classic
-            assert variable.is_binary, f'Variable {variable} must be binary for use in {self.__class__.__name__}'
+            assert variable.attrs['binary'], f'Variable {variable} must be binary for use in {self.__class__.__name__}'
 
     def do_modeling(self, system_model: SystemModel):
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
-        eq = create_equation('prevent_simultaneous_use', self, eq_type='ineq')
-        for variable in self._variables:
-            eq.add_summand(variable, 1)
-        eq.add_constant(1.1)
+        self.constraints['prevent_simultaneous_use'] = system_model.add_constraints(
+            sum([variable*1 for variable in self._variables]) <= 1 + CONFIG.modeling.EPSILON,
+            name=f'{self.label_full}__prevent_simultaneous_use'
+        )
