@@ -222,22 +222,6 @@ class ElementModel:
         self.sub_models = []
         self._label = label
 
-    def add_variables(self, *variables: Variable) -> None:
-        for variable in variables:
-            if variable.label not in self.variables.keys():
-                self.variables[variable.label] = variable
-            elif variable in self.variables.values():
-                raise Exception(f'Variable "{variable.label}" already exists')
-            else:
-                raise Exception(f'A Variable with the label "{variable.label}" already exists')
-
-    def add_constraints(self, *constraints: Union[Equation, Inequation]) -> None:
-        for constraint in constraints:
-            if constraint.label not in self.constraints.keys():
-                self.constraints[constraint.label] = constraint
-            else:
-                raise Exception(f'Constraint "{constraint.label}" already exists')
-
     def description_of_variables(self, structured: bool = True) -> Union[Dict[str, Union[List[str], Dict]], List[str]]:
         if structured:
             # Gather descriptions of this model's variables
@@ -277,14 +261,6 @@ class ElementModel:
         }
 
     @property
-    def inequations(self) -> Dict[str, Inequation]:
-        return {name: ineq for name, ineq in self.constraints.items() if isinstance(ineq, Inequation)}
-
-    @property
-    def equations(self) -> Dict[str, Equation]:
-        return {name: eq for name, eq in self.constraints.items() if isinstance(eq, Equation)}
-
-    @property
     def all_variables(self) -> Dict[str, Variable]:
         all_vars = self.variables.copy()
         for sub_model in self.sub_models:
@@ -303,25 +279,6 @@ class ElementModel:
                     raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
                 all_constr[key] = value
         return all_constr
-
-    @property
-    def all_equations(self) -> Dict[str, Equation]:
-        all_eqs = self.equations.copy()
-        for sub_model in self.sub_models:
-            for key, value in sub_model.all_equations.items():
-                if key in all_eqs:
-                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-                all_eqs[key] = value
-        return all_eqs
-
-    @property
-    def all_inequations(self) -> Dict[str, Inequation]:
-        all_ineqs = self.inequations.copy()
-        for sub_model in self.sub_models:
-            for key in sub_model.all_inequations:
-                if key in all_ineqs:
-                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-        return all_ineqs
 
     @property
     def all_sub_models(self) -> List['ElementModel']:
