@@ -254,7 +254,6 @@ class EffectCollection(ElementModel):
 
         self.effects: Dict[str, Effect] = effects  # Performs some validation
         self.penalty: Optional[ShareAllocationModel] = None
-        self.objective: Optional[Equation] = None
 
     def add_share_to_effects(
         self,
