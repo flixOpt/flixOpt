@@ -9,6 +9,7 @@ import logging
 from typing import Dict, Literal, Optional, Union
 
 import numpy as np
+import linopy
 
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries
 from .features import ShareAllocationModel
@@ -177,87 +178,10 @@ class EffectModel(ElementModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.total.add_share(system_model, 'operation', self.operation.sum, 1)
-        self.total.add_share(system_model, 'invest', self.invest.sum, 1)
+        self.total.add_share(system_model, 'operation', self.operation.total*1)
+        self.total.add_share(system_model, 'invest', self.invest.total*1)
 
-
-EffectDict = Dict[Optional['Effect'], Numeric]
-EffectDictInvest = Dict[Optional['Effect'], Skalar]
-
-EffectValues = Optional[Union[Numeric_TS, EffectDict]]  # Datatype for User Input
-EffectValuesInvest = Optional[Union[Skalar, EffectDictInvest]]  # Datatype for User Input
-
-EffectTimeSeries = Dict[Optional['Effect'], TimeSeries]  # Final Internal Data Structure
-ElementTimeSeries = Dict[Optional[Element], TimeSeries]  # Final Internal Data Structure
-
-
-def nested_values_to_time_series(
-    nested_values: Dict[Element, Numeric_TS], label_suffix: str, parent_element: Element
-) -> ElementTimeSeries:
-    """
-    Creates TimeSeries from nested values, which are a Dict of Elements to values.
-    The resulting label of the TimeSeries is the label of the parent_element, followed by the label of the element in
-    the nested_values and the label_suffix.
-    """
-    return {
-        element: _create_time_series(f'{element.label}_{label_suffix}', value, parent_element)
-        for element, value in nested_values.items()
-        if element is not None
-    }
-
-
-def effect_values_to_time_series(
-    label_suffix: str, nested_values: EffectValues, parent_element: Element
-) -> Optional[EffectTimeSeries]:
-    """
-    Creates TimeSeries from EffectValues. The resulting label of the TimeSeries is the label of the parent_element,
-    followed by the label of the Effect in the nested_values and the label_suffix.
-    If the key in the EffectValues is None, the alias 'Standart_Effect' is used
-    """
-    nested_values = as_effect_dict(nested_values)
-    if nested_values is None:
-        return None
-    else:
-        standard_value = nested_values.pop(None, None)
-        transformed_values = nested_values_to_time_series(nested_values, label_suffix, parent_element)
-        if standard_value is not None:
-            transformed_values[None] = _create_time_series(
-                f'Standard_Effect_{label_suffix}', standard_value, parent_element
-            )
-        return transformed_values
-
-
-def as_effect_dict(effect_values: EffectValues) -> Optional[EffectDict]:
-    """
-    Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
-
-    Examples
-    --------
-    costs = 20                        -> {None: 20}
-    costs = None                      -> None
-    costs = {effect1: 20, effect2: 0.3} -> {effect1: 20, effect2: 0.3}
-
-    Parameters
-    ----------
-    effect_values : None, int, float, TimeSeries, or dict
-        The effect values to convert, either a scalar, TimeSeries, or a dictionary.
-
-    Returns
-    -------
-    dict or None
-        A dictionary with None or Effect as the key, or None if input is None.
-    """
-    return (
-        effect_values
-        if isinstance(effect_values, dict)
-        else {None: effect_values}
-        if effect_values is not None
-        else None
-    )
-
-
-def effect_values_from_effect_time_series(effect_time_series: EffectTimeSeries) -> Dict[Optional[Effect], Numeric]:
-    return {effect: time_series.active_data for effect, time_series in effect_time_series.items()}
+EffectValues = Dict[Optional[Union[str, Effect]], linopy.LinearExpression]  # This is new
 
 
 class EffectCollection(ElementModel):
@@ -274,41 +198,25 @@ class EffectCollection(ElementModel):
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
 
-    def add_share_to_invest(
+    def add_share_to_effects(
         self,
         system_model: SystemModel,
         name: str,
-        element: Element,
-        effect_values: EffectDictInvest,
-        factor: Numeric,
-        variable: Optional[Variable] = None,
+        expressions: EffectValues,
+        target: Literal['operation', 'invest'],
     ) -> None:
-        # TODO: Add checks
-        self._add_share_to_effects(system_model, name, element, 'invest', effect_values, factor, variable)
+        for effect, expression in expressions.items():
+            if target == 'operation':
+                self[effect].model.operation.add_share(system_model, name, expression)
+            elif target =='invest':
+                self[effect].model.invest.add_share(system_model, name, expression)
+            else:
+                raise ValueError(f'Target {target} not supported!')
 
-    def add_share_to_operation(
-        self,
-        system_model: SystemModel,
-        name: str,
-        element: Element,
-        effect_values: EffectTimeSeries,
-        factor: Numeric,
-        variable: Optional[Variable] = None,
-    ) -> None:
-        # TODO: Add checks
-        self._add_share_to_effects(
-            system_model, name, element, 'operation', effect_values_from_effect_time_series(effect_values), factor, variable
-        )
-
-    def add_share_to_penalty(
-        self,
-        system_model: SystemModel,
-        name: Optional[str],
-        variable: Variable,
-        factor: Numeric,
-    ) -> None:
-        assert variable is not None, 'A Variable must be passed to add a share to penalty! Else its a constant Penalty!'
-        self.penalty.add_share(system_model, name, variable, factor, True)
+    def add_share_to_penalty(self, system_model: SystemModel, name: str, expression: linopy.LinearExpression) -> None:
+        if expression.ndim != 0:
+            raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
+        self.penalty.add_share(system_model, name, expression)
 
     def add_effect(self, effect: 'Effect') -> None:
         if effect.is_standard:
@@ -328,7 +236,7 @@ class EffectCollection(ElementModel):
         for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
             model.do_modeling(system_model)
 
-        self.add_share_between_effects(system_model)
+        self._add_share_between_effects(system_model)
 
         # TODO: Move this to the SystemModel!
         self.objective = Equation('OBJECTIVE', 'OBJECTIVE', is_objective=True)
@@ -336,7 +244,7 @@ class EffectCollection(ElementModel):
         self.objective.add_summand(self.objective_effect.model.invest.sum, 1)
         self.objective.add_summand(self.penalty.sum, 1)
 
-    def add_share_between_effects(self, system_model: SystemModel):
+    def _add_share_between_effects(self, system_model: SystemModel):
         for origin_effect in self.effects.values():
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
@@ -381,31 +289,6 @@ class EffectCollection(ElementModel):
             return item in self.effects.values()  # Check if the object exists
         return False
 
-    def _add_share_to_effects(
-        self,
-        system_model: SystemModel,
-        name: str,
-        element: Element,
-        target: Literal['operation', 'invest'],
-        effect_values: EffectDict,
-        factor: Numeric,
-        variable: Optional[Variable] = None,
-    ) -> None:
-        # an alle Effects, die einen Wert haben, anhängen:
-        for effect, value in effect_values.items():
-            if effect is None:  # Falls None, dann Standard-effekt nutzen:
-                effect = self.standard_effect
-            assert effect in self.effects.values(), f'Effect {effect.label} was used but not added to model!'
-
-            name_of_share = f'{element.label_full}__{name}'
-            total_factor = np.multiply(value, factor)
-            if target == 'operation':
-                effect.model.operation.add_share(system_model, name_of_share, variable, total_factor)
-            elif target =='invest':
-                effect.model.invest.add_share(system_model, name_of_share, variable, total_factor)
-            else:
-                raise ValueError(f'Target {target} not supported!')
-
     @property
     def standard_effect(self) -> Effect:
         if self._standard_effect is None:
@@ -429,4 +312,3 @@ class EffectCollection(ElementModel):
         if self._objective_effect is not None:
             raise ValueError(f'An objective-effect already exists! ({self._objective_effect.label=})')
         self._objective_effect = value
-
