@@ -428,42 +428,35 @@ class StorageModel(ComponentModel):
         super().do_modeling(system_model)
 
         lb, ub = self.absolute_charge_state_bounds
-        self.charge_state = create_variable(
-            'charge_state', self, system_model.nr_of_time_steps + 1, lower_bound=lb, upper_bound=ub
+        self.charge_state = system_model.add_variables(
+            lower_bound=lb, upper_bound=ub, coords=(system_model.periods, system_model.timesteps_extra),
+            name=f'{self.label_full}__charge_state'
         )
-
-        self.netto_discharge = create_variable(
-            'netto_discharge', self, system_model.nr_of_time_steps, lower_bound=-np.inf
-        )  # negative Werte zulässig!
-
+        self.netto_discharge = system_model.add_variables(
+            coords=system_model.coords, name=f'{self.label_full}__netto_discharge'
+        )
         # netto_discharge:
         # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
-        eq_netto = create_equation('netto_discharge', self, eq_type='eq')
-        eq_netto.add_summand(self.netto_discharge, 1)
-        eq_netto.add_summand(self.element.charging.model.flow_rate, 1)
-        eq_netto.add_summand(self.element.discharging.model.flow_rate, -1)
-
-        indices_charge_state = range(system_model.indices.start, system_model.indices.stop + 1)  # additional
-
-        ############# Charge State Equation
-        # charge_state(n+1)
-        # + charge_state(n) * [relative_loss_per_hour * dt(n) - 1]
-        # - charging(n)     * eta_charge * dt(n)
-        # + discharging(n)  * 1 / eta_discharge * dt(n)
-        # = 0
-        eq_charge_state = create_equation('charge_state', self, eq_type='eq')
-        eq_charge_state.add_summand(self.charge_state, 1, indices_charge_state[1:])  # 1:end
-        eq_charge_state.add_summand(
-            self.charge_state,
-            (self.element.relative_loss_per_hour.active_data * system_model.dt_in_hours) - 1,
-            indices_charge_state[:-1],
-        )  # sprich 0 .. end-1 % nach letztem Zeitschritt gibt es noch einen weiteren Ladezustand!
-        eq_charge_state.add_summand(
-            self.element.charging.model.flow_rate, -1 * self.element.eta_charge.active_data * system_model.dt_in_hours
+        self.constraints['netto_discharge'] = system_model.add_constraints(
+            self.netto_discharge == self.element.charging.model.flow_rate - self.element.discharging.model.flow_rate,
+            name=f'{self.label_full}__netto_discharge'
         )
-        eq_charge_state.add_summand(
-            self.element.discharging.model.flow_rate,
-            1 / self.element.eta_discharge.active_data * system_model.dt_in_hours,
+
+        charge_state = self.charge_state
+        rel_loss = self.element.relative_loss_per_hour.active_data
+        hours_per_step = system_model.hours_per_step
+        charge_rate = self.element.charging.model.flow_rate
+        discharge_rate = self.element.discharging.model.flow_rate
+        eff_charge = self.element.eta_charge.active_data
+        eff_discharge = self.element.eta_discharge.active_data
+
+        self.constraints['charge_state'] = system_model.add_constraints(
+            charge_state.isel(time=slice(1, None))
+            ==
+            charge_state.isel(time=slice(None, -1)) * (1 - rel_loss * hours_per_step)
+            + charge_rate * eff_charge * hours_per_step
+            - discharge_rate * eff_discharge * hours_per_step,
+            name=f'{self.label_full}__charge_state'
         )
 
         if isinstance(self.element.capacity_in_flow_hours, InvestParameters):
