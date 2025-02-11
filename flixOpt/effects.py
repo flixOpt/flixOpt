@@ -353,10 +353,16 @@ class EffectCollection(ElementModel):
                 )
 
     def __getitem__(self, label: str) -> 'Effect':
+        """Get an effect by label"""
         return self.effects[label]
 
-    def __contains__(self, label: str) -> bool:
-        return label in self.effects
+    def __contains__(self, item: Union[str, 'Effect']) -> bool:
+        """Check if the effect exists. Checks for label or object"""
+        if isinstance(item, str):
+            return item in self.effects  # Check if the label exists
+        elif isinstance(item, Effect):
+            return item in self.effects.values()  # Check if the object exists
+        return False
 
     @property
     def standard_effect(self) -> Optional[Effect]:
