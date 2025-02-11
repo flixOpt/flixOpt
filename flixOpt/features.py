@@ -755,32 +755,32 @@ class ShareAllocationModel(ElementModel):
 
         # Parameters
         self._shares_are_time_series = shares_are_time_series
-        self._total_max = total_max
-        self._total_min = total_min
-        self._max_per_hour = max_per_hour
-        self._min_per_hour = min_per_hour
+        self._total_max = total_max if total_min is not None else np.inf
+        self._total_min = total_min if total_min is not None else -np.inf
+        self._max_per_hour = max_per_hour if max_per_hour is not None else np.inf
+        self._min_per_hour = min_per_hour if min_per_hour is not None else -np.inf
 
     def do_modeling(self, system_model: SystemModel):
         self.total = system_model.add_variables(
-            lower_bound=self._total_min, upper_bound=self._total_max, coords=system_model.coords, name=f'{self.label}_total'
+            lower=self._total_min, upper=self._total_max, coords=None, name=f'{self.label_full}_total'
         )
         # eq: sum = sum(share_i) # skalar
-        self._eq_total = system_model.add_constraints(self.total == 0, name=f'{self.label}__total')
+        self._eq_total = system_model.add_constraints(self.total == 0, name=f'{self.label_full}__total')
 
         if self._shares_are_time_series:
             self.total_per_timestep = system_model.add_variables(
-                lower_bound=None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.hours_per_step),
-                upper_bound=None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.hours_per_step),
+                lower=-np.inf if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.hours_per_step),
+                upper=np.inf if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.hours_per_step),
                 coords=system_model.coords,
-                name=f'{self.label}_total_per_timestep'
+                name=f'{self.label_full}_total_per_timestep'
             )
 
             self._eq_total_per_timestep = system_model.add_constraints(
-                self.total_per_timestep == 0, name=f'{self.label}__total_per_timestep'
+                self.total_per_timestep == 0, name=f'{self.label_full}__total_per_timestep'
             )
 
             # Add it to the total
-            self._eq_total.lhs += self.total_per_timestep.sum()
+            self._eq_total.lhs -= self.total_per_timestep.sum()
 
     def add_share(
         self,

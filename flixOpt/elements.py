@@ -302,14 +302,14 @@ class FlowModel(ElementModel):
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
         self.flow_rate = system_model.add_variables(
             lower=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
-            upper=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else None,
+            upper=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else np.inf,
             coords=system_model.coords,
-            name='flow_rate',
+            name=f'{self.label_full}__flow_rate',
         )
         if self.element.fixed_relative_profile is not None:
             self.constraints['fix_flow_rate'] = system_model.add_constraints(
                 self.flow_rate == self.element.fixed_relative_profile.active_data,
-                f'{self.element.label}_fix_flow_rate'
+                name=f'{self.element.label}_fix_flow_rate'
             )
 
         # OnOff
@@ -334,8 +334,8 @@ class FlowModel(ElementModel):
             self.sub_models.append(self._investment)
 
         self.total_flow_hours = system_model.add_variables(
-            lower=self.element.flow_hours_total_min,
-            upper=self.element.flow_hours_total_max,
+            lower=self.element.flow_hours_total_min if self.element.flow_hours_total_min is not None else -np.inf,
+            upper=self.element.flow_hours_total_max if self.element.flow_hours_total_max is not None else np.inf,
             coords=None,
             name=f'{self.element.label_full}__total_flow_hours'
         )
@@ -358,7 +358,7 @@ class FlowModel(ElementModel):
                 system_model,
                 name=self.label_full,  # Use the full label of the element
                 expressions={
-                    effect.model.operation: self.flow_rate * system_model.hours_per_step * factor
+                    effect: self.flow_rate * system_model.hours_per_step * factor.active_data
                     for effect, factor in self.element.effects_per_flow_hour.items()
                 },
                 target='operation',
@@ -460,18 +460,18 @@ class BusModel(ElementModel):
                 system_model.hours_per_step, self.element.excess_penalty_per_flow_hour.active_data
             )
             self.excess_input = system_model.add_variables(
-                lower_bound=0, coords=system_model.coords, name=f'{self.label_full}__excess_input'
+                lower=0, coords=system_model.coords, name=f'{self.label_full}__excess_input'
             )
             self.excess_output = system_model.add_variables(
-                lower_bound=0, coords=system_model.coords, name=f'{self.label_full}__excess_output'
+                lower=0, coords=system_model.coords, name=f'{self.label_full}__excess_output'
             )
-            eq_bus_balance.lhs += self.excess_input - self.excess_output
+            eq_bus_balance.lhs -= -self.excess_input + self.excess_output
 
             system_model.effects.add_share_to_penalty(
-                system_model, self.element.label_full, self.excess_input * excess_penalty
+                system_model, self.element.label_full, (self.excess_input * excess_penalty).sum()
             )
             system_model.effects.add_share_to_penalty(
-                system_model, self.element.label_full, self.excess_output *excess_penalty
+                system_model, self.element.label_full, (self.excess_output * excess_penalty).sum()
             )
 
 
