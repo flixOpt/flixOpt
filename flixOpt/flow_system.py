@@ -61,13 +61,13 @@ class FlowSystem:
 
         # defaults:
         self.components: Dict[str, Component] = {}
-        self.effect_collection: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
+        self.effects: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
             logger.info(f'Registered new Effect: {new_effect.label}')
-            self.effect_collection.add_effect(new_effect)
+            self.effects.add_effect(new_effect)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
