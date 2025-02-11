@@ -6,6 +6,7 @@ import logging
 from typing import Dict, List, Literal, Optional, Set, Tuple, Union
 
 import numpy as np
+import linopy
 
 from . import utils
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries
@@ -416,12 +417,11 @@ class LinearConverterModel(ComponentModel):
 class StorageModel(ComponentModel):
     """Model of Storage"""
 
-    # TODO: Add additional Timestep!!!
     def __init__(self, element: Storage):
         super().__init__(element)
         self.element: Storage = element
-        self.charge_state: Optional[VariableTS] = None
-        self.netto_discharge: Optional[VariableTS] = None
+        self.charge_state: Optional[linopy.Variable] = None
+        self.netto_discharge: Optional[linopy.Variable] = None
         self._investment: Optional[InvestmentModel] = None
 
     def do_modeling(self, system_model):
@@ -467,39 +467,37 @@ class StorageModel(ComponentModel):
             self._investment.do_modeling(system_model)
 
         # Initial charge state
-        if self.element.initial_charge_state is not None:
-            self._model_initial_and_final_charge_state(system_model)
+        self._initial_and_final_charge_state(system_model)
 
-    def _model_initial_and_final_charge_state(self, system_model):
-        indices_charge_state = range(system_model.indices.start, system_model.indices.stop + 1)  # additional
-
+    def _initial_and_final_charge_state(self, system_model):
         if self.element.initial_charge_state is not None:
-            eq_initial = create_equation('initial_charge_state', self, eq_type='eq')
+            name_short = f'initial_charge_state'
+            name = f'{self.label_full}__{name_short}'
+
             if utils.is_number(self.element.initial_charge_state):
-                # eq: Q_Ladezustand(1) = Q_Ladezustand_Start;
-                eq_initial.add_constant(self.element.initial_charge_state)  # chargeState_0 !
-                eq_initial.add_summand(self.charge_state, 1, system_model.indices[0])
+                self.constraints[name_short] = system_model.add_constraints(
+                    self.charge_state.isel(time=0) == self.element.initial_charge_state,
+                    name=name,
+                )
             elif self.element.initial_charge_state == 'lastValueOfSim':
-                # eq: Q_Ladezustand(1) - Q_Ladezustand(end) = 0;
-                eq_initial.add_summand(self.charge_state, 1, system_model.indices[0])
-                eq_initial.add_summand(self.charge_state, -1, system_model.indices[-1])
-            else:
+                self.constraints[name_short] = system_model.add_constraints(
+                    self.charge_state.isel(time=0) == self.charge_state.isel(time=-1),
+                    name=name
+                )
+            else:  # TODO: Validation in Storage Class, not in Model
                 raise Exception(f'initial_charge_state has undefined value: {self.element.initial_charge_state}')
-                # TODO: Validation in Storage Class, not in Model
 
-        ####################################
-        # Final Charge State
-        # 1: eq:  Q_charge_state(end) <= Q_max
         if self.element.maximal_final_charge_state is not None:
-            eq_max = create_equation('eq_final_charge_state_max', self, eq_type='ineq')
-            eq_max.add_summand(self.charge_state, 1, indices_charge_state[-1])
-            eq_max.add_constant(self.element.maximal_final_charge_state)
+            self.constraints['final_charge_max'] = system_model.add_constraints(
+                self.charge_state.isel(time=-1) <= self.element.maximal_final_charge_state,
+                name=f'{self.label_full}__final_charge_max'
+            )
 
-        # 2: eq: - Q_charge_state(end) <= - Q_min
         if self.element.minimal_final_charge_state is not None:
-            eq_min = create_equation('eq_charge_state_end_min', self, eq_type='ineq')
-            eq_min.add_summand(self.charge_state, -1, indices_charge_state[-1])
-            eq_min.add_constant(-self.element.minimal_final_charge_state)
+            self.constraints['final_charge_min'] = system_model.add_constraints(
+                self.charge_state.isel(time=-1) >= self.element.minimal_final_charge_state,
+                name=f'{self.label_full}__final_charge_min'
+            )
 
     @property
     def absolute_charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
