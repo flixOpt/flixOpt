@@ -6,6 +6,7 @@ Features extend the functionality of Elements.
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
+import linopy
 import numpy as np
 
 from .config import CONFIG
@@ -180,7 +181,7 @@ class OnOffModel(ElementModel):
         self,
         element: Element,
         on_off_parameters: OnOffParameters,
-        defining_variables: List[VariableTS],
+        defining_variables: List[linopy.Variable],
         defining_bounds: List[Tuple[Numeric, Numeric]],
         label: str = 'OnOff',
     ):
@@ -744,12 +745,13 @@ class ShareAllocationModel(ElementModel):
                 'Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False'
             )
         self.element = element
-        self.sum_TS: Optional[VariableTS] = None
-        self.sum: Optional[Variable] = None
-        self.shares: Dict[str, Variable] = {}
+        self.total_per_timestep: Optional[linopy.Variable] = None
+        self.total: Optional[linopy.Variable] = None
+        self.shares: Dict[str, linopy.Variable] = {}
+        self.share_constraints: Dict[str, linopy.Constraint] = {}
 
-        self._eq_time_series: Optional[Equation] = None
-        self._eq_sum: Optional[Equation] = None
+        self._eq_total_per_timestep: Optional[linopy.Constraint] = None
+        self._eq_total: Optional[linopy.Constraint] = None
 
         # Parameters
         self._shares_are_time_series = shares_are_time_series
@@ -759,89 +761,64 @@ class ShareAllocationModel(ElementModel):
         self._min_per_hour = min_per_hour
 
     def do_modeling(self, system_model: SystemModel):
-        self.sum = create_variable(
-            f'{self.label}_sum', self, 1, lower_bound=self._total_min, upper_bound=self._total_max
+        self.total = system_model.add_variables(
+            lower_bound=self._total_min, upper_bound=self._total_max, coords=system_model.coords, name=f'{self.label}_total'
         )
         # eq: sum = sum(share_i) # skalar
-        self._eq_sum = create_equation(f'{self.label}_sum', self)
-        self._eq_sum.add_summand(self.sum, -1)
+        self._eq_total = system_model.add_constraints(self.total == 0, name=f'{self.label}__total')
 
         if self._shares_are_time_series:
-            lb_ts = None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.dt_in_hours)
-            ub_ts = None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.dt_in_hours)
-            self.sum_TS = create_variable(
-                f'{self.label}_sum_TS', self, system_model.nr_of_time_steps, lower_bound=lb_ts, upper_bound=ub_ts
+            self.total_per_timestep = system_model.add_variables(
+                lower_bound=None if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.hours_per_step),
+                upper_bound=None if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.hours_per_step),
+                coords=system_model.coords,
+                name=f'{self.label}_total_per_timestep'
             )
 
-            # eq: sum_TS = sum(share_TS_i) # TS
-            self._eq_time_series = create_equation(f'{self.label}_time_series', self)
-            self._eq_time_series.add_summand(self.sum_TS, -1)
+            self._eq_total_per_timestep = system_model.add_constraints(
+                self.total_per_timestep == 0, name=f'{self.label}__total_per_timestep'
+            )
 
-            # eq: sum = sum(sum_TS(t)) # additionaly to self.sum
-            self._eq_sum.add_summand(self.sum_TS, 1, as_sum=True)
+            # Add it to the total
+            self._eq_total.lhs += self.total_per_timestep.sum()
 
     def add_share(
         self,
         system_model: SystemModel,
-        name_of_share: str,
-        variable: Optional[Variable],
-        factor: Numeric,
-        share_as_sum: bool = False,
+        name: str,
+        expression: linopy.LinearExpression,
     ):
         """
-        Adding a Share to a Share Allocation Model.
+        Add a share to the share allocation model. If the share already exists, the expression is added to the existing share.
+        The expression is added to the left hand side (lhs) of the constraint.
+        The variable representing the total share is on the right hand side (rhs) of the constraint.
+        total = sum(shares)
+
+        Parameters
+        ----------
+        system_model : SystemModel
+            The system model.
+        name : str
+            The name of the share.
+        expression : linopy.LinearExpression
+            The expression of the share. Added to the right hand side of the constraint.
         """
-        # TODO: accept only one factor or accept unlimited factors -> *factors
-
-        # Check to which equation the share should be added
-        if share_as_sum or not self._shares_are_time_series:
-            target_eq = self._eq_sum
+        if name in self.shares:
+            self.share_constraints[name].lhs += expression
         else:
-            target_eq = self._eq_time_series
-
-        new_share = SingleShareModel(self.element, name_of_share, variable, factor, share_as_sum)
-        target_eq.add_summand(new_share.single_share, 1)
-
-        self.sub_models.append(new_share)
-        assert new_share.label not in self.shares, (
-            f'A Share with the label {new_share.label} was already present in {self.label}'
-        )
-        self.shares[new_share.label] = new_share.single_share
+            self.shares[name] = system_model.add_variables(
+                coords=None if expression.ndim == 0 else system_model.coords,
+                name=f'{name}__{self.label_full}'
+            )
+            self.share_constraints[name] = system_model.add_constraints(
+                self.shares[name] == expression, name=f'{name}__{self.label_full}'
+            )
 
     def results(self):
         return {
             **{variable.label_short: variable.result for variable in self.variables.values()},
             **{'Shares': {variable.label_short: variable.result for variable in self.shares.values()}},
         }
-
-
-class SingleShareModel(ElementModel):
-    """Holds a Variable and an Equation. Summands can be added to the Equation. Used to publish Shares"""
-
-    def __init__(self, element: Element, name: str, variable: Optional[Variable], factor: Numeric, share_as_sum: bool):
-        super().__init__(element, name)
-        if variable is not None:
-            assert not (variable.length == 1 and share_as_sum), 'A Variable with the length 1 cannot be summed up!'
-
-        if (
-            share_as_sum
-            or (variable is not None and variable.length == 1)
-            or (variable is None and np.isscalar(factor))
-        ):
-            self.single_share = Variable(self.label_full, 1, self.label)
-        elif variable is not None:
-            self.single_share = VariableTS(self.label_full, variable.length, self.label)
-        else:
-            raise Exception('This case is not yet covered for a SingleShareModel')
-
-        self.add_variables(self.single_share)
-        self.single_equation = create_equation(self.label_full, self)
-        self.single_equation.add_summand(self.single_share, -1)
-
-        if variable is None:
-            self.single_equation.add_constant(-1 * np.sum(factor) if share_as_sum else -1 * factor)
-        else:
-            self.single_equation.add_summand(variable, factor, as_sum=share_as_sum)
 
 
 class SegmentedSharesModel(ElementModel):

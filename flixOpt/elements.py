@@ -502,7 +502,7 @@ class ComponentModel(ElementModel):
             sub_model.do_modeling(system_model)
 
         if self.element.on_off_parameters:
-            flow_rates: List[VariableTS] = [flow.model.flow_rate for flow in all_flows]
+            flow_rates: List[linopy.Variable] = [flow.model.flow_rate for flow in all_flows]
             bounds: List[Tuple[Numeric, Numeric]] = [flow.model.absolute_flow_rate_bounds for flow in all_flows]
             self.on_off = OnOffModel(self.element, self.element.on_off_parameters, flow_rates, bounds)
             self.sub_models.append(self.on_off)
