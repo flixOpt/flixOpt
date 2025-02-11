@@ -48,6 +48,7 @@ class SystemModel(linopy.Model):
     def do_modeling(self):
         from .effects import EffectCollection
         self.effects = EffectCollection(list(self.flow_system.effects.values()))
+        self.effects.do_modeling(self)
         component_models = [component.create_model() for component in self.flow_system.components.values()]
         bus_models = [bus.create_model() for bus in self.flow_system.buses.values()]
         for component_model in component_models:
