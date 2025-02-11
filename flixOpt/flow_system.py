@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 from . import utils
 from .core import TimeSeries
@@ -52,17 +53,57 @@ class FlowSystem:
         """
         self.timesteps = timesteps
         self.hours_of_last_step = hours_of_last_timestep
+        self.periods = periods
+        self._order_dimensions()
+
         self.hours_of_previous_timesteps: Union[int, float, np.ndarray] = (
             ((self.timesteps[1] - self.timesteps[0]) / np.timedelta64(1, 'h'))
             if hours_of_previous_timesteps is None
             else hours_of_previous_timesteps
         )
-        self.periods = periods
 
         # defaults:
         self.components: Dict[str, Component] = {}
         self.effects: Dict[str, Effect] = {}
         self.model: Optional[SystemModel] = None
+
+    def _order_dimensions(self):
+        if self.timesteps.dtype == np.dtype('datetime64[ns]'):
+            self.timesteps = self.timesteps.astype('datetime64[us]')
+        else:
+            self.timesteps = self.timesteps
+        self.timesteps.name = 'time'
+
+        self.periods = pd.Index(self.periods, name='period') if self.periods is not None else None
+
+        if self.hours_of_last_step:
+            last_date = pd.DatetimeIndex(
+                [self.timesteps[-1] + pd.to_timedelta(self.hours_of_last_step, 'h')])
+        else:
+            last_date = pd.DatetimeIndex([self.timesteps[-1] + (self.timesteps[-1] - self.timesteps[-2])])
+        self.timesteps_extra = self.timesteps.append(last_date)
+        self.timesteps_extra.name = 'time'
+        hours_per_step = self.timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
+        self.hours_per_step = xr.DataArray(
+            data=np.tile(hours_per_step, (len(self.periods), 1)) if self.periods is not None else hours_per_step,
+            coords=self.coords,
+            name='hours_per_step'
+        )
+
+    @property
+    def snapshots(self):
+        return xr.Dataset(
+            coords={'period': list(self.periods), 'time': list(self.timesteps)} if self.periods is not None else {
+                'time': list(self.timesteps)},
+        )
+
+    @property
+    def coords(self):
+        return self.snapshots.coords
+
+    @property
+    def index_shape(self) -> Tuple[int, int]:
+        return len(self.periods) if self.periods is not None else 1, len(self.timesteps)
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
