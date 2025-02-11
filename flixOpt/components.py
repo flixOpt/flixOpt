@@ -323,7 +323,7 @@ class TransmissionModel(ComponentModel):
     def __init__(self, element: Transmission):
         super().__init__(element)
         self.element: Transmission = element
-        self._on: Optional[OnOffModel] = None
+        self.on_off: Optional[OnOffModel] = None
 
     def do_modeling(self, system_model: SystemModel):
         """Initiates all FlowModels"""
@@ -365,7 +365,7 @@ class TransmissionModel(ComponentModel):
         eq_transmission.add_summand(in_flow.model.flow_rate, efficiency)
         eq_transmission.add_summand(out_flow.model.flow_rate, -1)
         if self.element.absolute_losses is not None:
-            eq_transmission.add_summand(in_flow.model._on.on, -1 * self.element.absolute_losses.active_data)
+            eq_transmission.add_summand(in_flow.model.on_off.on, -1 * self.element.absolute_losses.active_data)
         return eq_transmission
 
 
@@ -373,7 +373,7 @@ class LinearConverterModel(ComponentModel):
     def __init__(self, element: LinearConverter):
         super().__init__(element)
         self.element: LinearConverter = element
-        self._on: Optional[OnOffModel] = None
+        self.on_off: Optional[OnOffModel] = None
 
     def do_modeling(self, system_model: SystemModel):
         super().do_modeling(system_model)
@@ -414,7 +414,7 @@ class LinearConverterModel(ComponentModel):
                 for flow in self.element.inputs + self.element.outputs
             }
             linear_segments = MultipleSegmentsModel(
-                self.element, segments, self._on.on if self._on is not None else None
+                self.element, segments, self.on_off.on if self.on_off is not None else None
             )  # TODO: Add Outside_segments Variable (On)
             linear_segments.do_modeling(system_model)
             self.sub_models.append(linear_segments)

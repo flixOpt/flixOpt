@@ -226,7 +226,7 @@ class TestComponents(BaseTest):
         calculation.solve(self.get_solver())
         print(calculation.results())
         self.assert_almost_equal_numeric(
-            transmission.in1.model._on.on.result, np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]), 'On does not work properly'
+            transmission.in1.model.on_off.on.result, np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]), 'On does not work properly'
         )
 
         self.assert_almost_equal_numeric(
@@ -281,7 +281,7 @@ class TestComponents(BaseTest):
         results = fx.results.CalculationResults(calculation.name, 'results')
 
         self.assert_almost_equal_numeric(
-            transmission.in1.model._on.on.result, np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]), 'On does not work properly'
+            transmission.in1.model.on_off.on.result, np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]), 'On does not work properly'
         )
 
         self.assert_almost_equal_numeric(

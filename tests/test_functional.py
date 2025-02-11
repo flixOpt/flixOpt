@@ -367,7 +367,7 @@ def test_on(modeling_language_fixture, solver_fixture, time_steps_fixture):
     )
 
     assert_allclose(
-        boiler.Q_th.model._on.on.result,
+        boiler.Q_th.model.on_off.on.result,
         [0, 1, 1, 0, 1],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
@@ -411,15 +411,15 @@ def test_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
     )
 
     assert_allclose(
-        boiler.Q_th.model._on.on.result,
+        boiler.Q_th.model.on_off.on.result,
         [0, 1, 1, 0, 1],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
         err_msg='"Boiler__Q_th__on" does not have the right value',
     )
     assert_allclose(
-        boiler.Q_th.model._on.off.result,
-        1 - boiler.Q_th.model._on.on.result,
+        boiler.Q_th.model.on_off.off.result,
+        1 - boiler.Q_th.model.on_off.on.result,
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
         err_msg='"Boiler__Q_th__off" does not have the right value',
@@ -462,21 +462,21 @@ def test_switch_on_off(modeling_language_fixture, solver_fixture, time_steps_fix
     )
 
     assert_allclose(
-        boiler.Q_th.model._on.on.result,
+        boiler.Q_th.model.on_off.on.result,
         [0, 1, 1, 0, 1],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
         err_msg='"Boiler__Q_th__on" does not have the right value',
     )
     assert_allclose(
-        boiler.Q_th.model._on.switch_on.result,
+        boiler.Q_th.model.on_off.switch_on.result,
         [0, 1, 0, 0, 1],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
         err_msg='"Boiler__Q_th__switch_on" does not have the right value',
     )
     assert_allclose(
-        boiler.Q_th.model._on.switch_off.result,
+        boiler.Q_th.model.on_off.switch_off.result,
         [0, 0, 0, 1, 0],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
@@ -526,7 +526,7 @@ def test_on_total_max(modeling_language_fixture, solver_fixture, time_steps_fixt
     )
 
     assert_allclose(
-        boiler.Q_th.model._on.on.result,
+        boiler.Q_th.model.on_off.on.result,
         [0, 0, 1, 0, 0],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
@@ -583,7 +583,7 @@ def test_on_total_bounds(modeling_language_fixture, solver_fixture, time_steps_f
     )
 
     assert_allclose(
-        boiler.Q_th.model._on.on.result,
+        boiler.Q_th.model.on_off.on.result,
         [0, 0, 1, 0, 1],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
@@ -598,7 +598,7 @@ def test_on_total_bounds(modeling_language_fixture, solver_fixture, time_steps_f
     )
 
     assert_allclose(
-        sum(boiler_backup.Q_th.model._on.on.result),
+        sum(boiler_backup.Q_th.model.on_off.on.result),
         3,
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
@@ -656,7 +656,7 @@ def test_consecutive_on_off(modeling_language_fixture, solver_fixture, time_step
     )
 
     assert_allclose(
-        boiler.Q_th.model._on.on.result,
+        boiler.Q_th.model.on_off.on.result,
         [1, 1, 0, 1, 1],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
@@ -717,14 +717,14 @@ def test_consecutive_off(modeling_language_fixture, solver_fixture, time_steps_f
     )
 
     assert_allclose(
-        boiler_backup.Q_th.model._on.on.result,
+        boiler_backup.Q_th.model.on_off.on.result,
         [0, 0, 1, 0, 0],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,
         err_msg='"Boiler_backup__Q_th__on" does not have the right value',
     )
     assert_allclose(
-        boiler_backup.Q_th.model._on.off.result,
+        boiler_backup.Q_th.model.on_off.off.result,
         [1, 1, 0, 1, 1],
         rtol=solver_fixture.mip_gap,
         atol=1e-10,

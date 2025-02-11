@@ -298,7 +298,7 @@ class FlowModel(ElementModel):
         self.flow_rate: Optional[VariableTS] = None
         self.sum_flow_hours: Optional[Variable] = None
 
-        self._on: Optional[OnOffModel] = None
+        self.on_off: Optional[OnOffModel] = None
         self._investment: Optional[InvestmentModel] = None
 
     def do_modeling(self, system_model: SystemModel):
@@ -315,11 +315,11 @@ class FlowModel(ElementModel):
 
         # OnOff
         if self.element.on_off_parameters is not None:
-            self._on = OnOffModel(
+            self.on_off = OnOffModel(
                 self.element, self.element.on_off_parameters, [self.flow_rate], [self.absolute_flow_rate_bounds]
             )
-            self._on.do_modeling(system_model)
-            self.sub_models.append(self._on)
+            self.on_off.do_modeling(system_model)
+            self.sub_models.append(self.on_off)
 
         # Investment
         if isinstance(self.element.size, InvestParameters):
@@ -329,7 +329,7 @@ class FlowModel(ElementModel):
                 self.flow_rate,
                 self.relative_flow_rate_bounds,
                 fixed_relative_profile=self.fixed_relative_flow_rate,
-                on_variable=self._on.on if self._on is not None else None,
+                on_variable=self.on_off.on if self.on_off is not None else None,
             )
             self._investment.do_modeling(system_model)
             self.sub_models.append(self._investment)
@@ -464,7 +464,7 @@ class ComponentModel(ElementModel):
     def __init__(self, element: Component):
         super().__init__(element)
         self.element: Component = element
-        self._on: Optional[OnOffModel] = None
+        self.on_off: Optional[OnOffModel] = None
 
     def do_modeling(self, system_model: SystemModel):
         """Initiates all FlowModels"""
@@ -486,13 +486,13 @@ class ComponentModel(ElementModel):
         if self.element.on_off_parameters:
             flow_rates: List[VariableTS] = [flow.model.flow_rate for flow in all_flows]
             bounds: List[Tuple[Numeric, Numeric]] = [flow.model.absolute_flow_rate_bounds for flow in all_flows]
-            self._on = OnOffModel(self.element, self.element.on_off_parameters, flow_rates, bounds)
-            self.sub_models.append(self._on)
-            self._on.do_modeling(system_model)
+            self.on_off = OnOffModel(self.element, self.element.on_off_parameters, flow_rates, bounds)
+            self.sub_models.append(self.on_off)
+            self.on_off.do_modeling(system_model)
 
         if self.element.prevent_simultaneous_flows:
             # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
-            on_variables = [flow.model._on.on for flow in self.element.prevent_simultaneous_flows]
+            on_variables = [flow.model.on_off.on for flow in self.element.prevent_simultaneous_flows]
             simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
             self.sub_models.append(simultaneous_use)
             simultaneous_use.do_modeling(system_model)
