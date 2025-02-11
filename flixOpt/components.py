@@ -384,25 +384,18 @@ class LinearConverterModel(ComponentModel):
             all_output_flows = set(self.element.outputs)
 
             # für alle linearen Gleichungen:
-            for i, conversion_factor in enumerate(self.element.conversion_factors):
-                # erstelle Gleichung für jedes t:
-                # sum(inputs * factor) = sum(outputs * factor)
-                # left = in1.flow_rate[t] * factor_in1[t] + in2.flow_rate[t] * factor_in2[t] + ...
-                # right = out1.flow_rate[t] * factor_out1[t] + out2.flow_rate[t] * factor_out2[t] + ...
-                # eq: left = right
-                used_flows = set(conversion_factor.keys())
+            for i, conv_fact in enumerate(self.element.conversion_factors):
+                used_flows = set(conv_fact.keys())
                 used_inputs: Set = all_input_flows & used_flows
                 used_outputs: Set = all_output_flows & used_flows
 
-                eq_conversion = create_equation(f'conversion_{i}', self)
-                for flow in used_inputs:
-                    factor = conversion_factor[flow].active_data
-                    eq_conversion.add_summand(flow.model.flow_rate, factor)  # flow1.flow_rate[t]      * factor[t]
-                for flow in used_outputs:
-                    factor = conversion_factor[flow].active_data
-                    eq_conversion.add_summand(flow.model.flow_rate, -1 * factor)  # output.val[t] * -1 * factor[t]
+                self.constraints[f'conversion_{i}'] = system_model.add_constraints(
+                    sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_inputs])
+                    ==
+                    sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_outputs]),
+                    name=f'{self.label_full}__conversion_{i}'
 
-                eq_conversion.add_constant(0)  # TODO: Is this necessary?
+                )
 
         # (linear) segments:
         else:
