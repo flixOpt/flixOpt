@@ -153,6 +153,7 @@ class EffectModel(ElementModel):
     def __init__(self, element: Effect):
         super().__init__(element)
         self.element: Effect = element
+        self.total: Optional[linopy.Variable] = None
         self.invest = ShareAllocationModel(
             self.element, 'invest', False, total_max=self.element.maximum_invest, total_min=self.element.minimum_invest
         )
@@ -169,17 +170,22 @@ class EffectModel(ElementModel):
             if self.element.maximum_operation_per_hour is not None
             else None,
         )
-        self.total = ShareAllocationModel(
-            self.element, 'total', False, total_max=self.element.maximum_total, total_min=self.element.minimum_total
-        )
-        self.sub_models.extend([self.invest, self.operation, self.total])
+        self.sub_models.extend([self.invest, self.operation])
 
     def do_modeling(self, system_model: SystemModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.total.add_share(system_model, 'operation', self.operation.total*1)
-        self.total.add_share(system_model, 'invest', self.invest.total*1)
+        self.total = system_model.add_variables(
+            lower=self.element.minimum_total if self.element.minimum_total is not None else -np.inf,
+            upper=self.element.maximum_total if self.element.maximum_total is not None else np.inf,
+            coords=None,
+            name=f'{self.element.label_full}__total'
+        )
+
+        self.constraints['total'] = system_model.add_constraints(
+            self.total == self.operation.total.sum() + self.invest.total.sum(), name=f'{self.element.label_full}__total'
+        )
 
 
 EffectValuesExpr = Dict[Optional[Union[str, Effect]], linopy.LinearExpression]  # This is used to create Shares
