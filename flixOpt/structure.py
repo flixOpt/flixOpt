@@ -78,7 +78,7 @@ class SystemModel(linopy.Model):
         return self.snapshots.coords
 
     @property
-    def variables_filtered(self, filter_by: Optional[Literal['binary', 'continous', 'integer']] = None,):
+    def variables_filtered(self, filter_by: Optional[Literal['binary', 'continous', 'integer']] = None):
         if filter_by is None:
             all_variables = super().variables
         elif filter_by == 'binary':
@@ -203,7 +203,7 @@ class Element(Interface):
         """This function is used to do some basic plausibility checks for each Element during initialization"""
         raise NotImplementedError('Every Element needs a _plausibility_checks() method')
 
-    def create_model(self) -> None:
+    def create_model(self) -> 'ElementModel':
         raise NotImplementedError('Every Element needs a create_model() method')
 
     @property
@@ -212,15 +212,24 @@ class Element(Interface):
 
 
 class ElementModel:
-    """Interface to create the mathematical Models for Elements"""
+    """Interface to create the mathematical Variables and Constraints for Elements"""
 
-    def __init__(self, element: Element, label: Optional[str] = None):
-        logger.debug(f'Created {self.__class__.__name__} for {element.label_full}')
+    def __init__(self, element: Element, labels: Optional[Union[str, List[str]]] = None):
+        """
+        Parameters
+        ----------
+        element : Element
+            The element this model is created for.
+        labels : Optional[Union[str, List[str]]], optional
+            Used to construct the label of the model. If None, the element label is used.
+            The labels are used as suffixes
+        """
         self.element = element
         self.variables = {}
         self.constraints = {}
         self.sub_models = []
-        self._label = label
+        self._labels = labels
+        logger.debug(f'Created {self.__class__.__name__}  "{self.label_full}"')
 
     def description_of_variables(self, structured: bool = True) -> Union[Dict[str, Union[List[str], Dict]], List[str]]:
         if structured:
@@ -297,11 +306,29 @@ class ElementModel:
 
     @property
     def label_full(self) -> str:
-        return f'{self.element.label_full}__{self._label}' if self._label else self.element.label_full
+        if self._labels is not None and self.element is not None:
+            if isinstance(self._labels, str) :
+                return f'{self.element.label_full}__{self._labels}'
+            else:
+                return f'{self.element.label_full}__' + '__'.join(self._labels)
+        if self._labels is not None and self.element is None:
+            if isinstance(self._labels, str):
+                return self._labels
+            else:
+                return '__'.join(self._labels)
+        if self.element is not None:
+            return self.element.label_full
+        raise Exception('This should not happen! Internal Error. Please create Issue on GitHub')
 
     @property
-    def label(self):
-        return self._label or self.element.label
+    def label(self) -> str:
+        if self._labels is not None:
+            if isinstance(self._labels, str):
+                return self._labels
+            else:
+                return self._labels[-1]
+        else:
+            return self.element.label
 
 
 def _create_time_series(
