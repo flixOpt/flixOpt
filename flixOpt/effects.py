@@ -151,7 +151,7 @@ class Effect(Element):
 class EffectModel(ElementModel):
     def __init__(self, element: Effect):
         super().__init__(element)
-        self.element: Effect
+        self.element: Effect = element
         self.invest = ShareAllocationModel(
             self.element, 'invest', False, total_max=self.element.maximum_invest, total_min=self.element.minimum_invest
         )
@@ -168,17 +168,17 @@ class EffectModel(ElementModel):
             if self.element.maximum_operation_per_hour is not None
             else None,
         )
-        self.all = ShareAllocationModel(
-            self.element, 'all', False, total_max=self.element.maximum_total, total_min=self.element.minimum_total
+        self.total = ShareAllocationModel(
+            self.element, 'total', False, total_max=self.element.maximum_total, total_min=self.element.minimum_total
         )
-        self.sub_models.extend([self.invest, self.operation, self.all])
+        self.sub_models.extend([self.invest, self.operation, self.total])
 
     def do_modeling(self, system_model: SystemModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.all.add_share(system_model, 'operation', self.operation.sum, 1)
-        self.all.add_share(system_model, 'invest', self.invest.sum, 1)
+        self.total.add_share(system_model, 'operation', self.operation.sum, 1)
+        self.total.add_share(system_model, 'invest', self.invest.sum, 1)
 
 
 EffectDict = Dict[Optional['Effect'], Numeric]
