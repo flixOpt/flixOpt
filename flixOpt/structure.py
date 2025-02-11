@@ -21,6 +21,7 @@ import pandas as pd
 from . import utils
 from .config import CONFIG
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData
+from .effects import EffectCollection
 from .math_modeling import Equation, Inequation, MathModel, Solver, Variable, VariableTS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -35,13 +36,23 @@ class SystemModel(linopy.Model):
     def __init__(
             self,
             flow_system: FlowSystem,
-            active_time_steps,
+            active_time_steps: Optional = None,
     ):
         super().__init__(force_dim_names=True)
         self.flow_system = flow_system
         self.active_time_steps = active_time_steps
-
         self._order_dimensions()
+
+        self.effects: Optional[EffectCollection] = None
+
+    def do_modeling(self):
+        self.effects = EffectCollection(list(self.flow_system.effects.values()))
+        component_models = [component.create_model() for component in self.flow_system.components.values()]
+        bus_models = [bus.create_model() for bus in self.flow_system.buses.values()]
+        for component_model in component_models:
+            component_model.do_modeling(self)
+        for bus_model in bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
+            bus_model.do_modeling(self)
 
     def _order_dimensions(self):
         if self.flow_system.timesteps.dtype == np.dtype('datetime64[ns]'):
