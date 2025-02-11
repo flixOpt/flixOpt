@@ -790,9 +790,9 @@ class ShareAllocationModel(ElementModel):
     ):
         """
         Add a share to the share allocation model. If the share already exists, the expression is added to the existing share.
-        The expression is added to the left hand side (lhs) of the constraint.
-        The variable representing the total share is on the right hand side (rhs) of the constraint.
-        total = sum(shares)
+        The expression is added to the right hand side (rhs) of the constraint.
+        The variable representing the total share is on the left hand side (lhs) of the constraint.
+        var_total = sum(expressions)
 
         Parameters
         ----------
@@ -813,6 +813,10 @@ class ShareAllocationModel(ElementModel):
             self.share_constraints[name] = system_model.add_constraints(
                 self.shares[name] == expression, name=f'{name}__{self.label_full}'
             )
+            if self.shares[name].ndim == 0:
+                self._eq_total.lhs -= self.shares[name]
+            else:
+                self._eq_total_per_timestep.lhs -= self.shares[name]
 
     def results(self):
         return {
