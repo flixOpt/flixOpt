@@ -271,8 +271,8 @@ class EffectCollection(ElementModel):
         self.penalty: Optional[ShareAllocationModel] = None
         self.objective: Optional[Equation] = None
 
-        self.standard_effect: Optional[Effect] = None
-        self.objective_effect: Optional[Effect] = None
+        self._standard_effect: Optional[Effect] = None
+        self._objective_effect: Optional[Effect] = None
 
     def add_share_to_invest(
         self,
@@ -312,12 +312,8 @@ class EffectCollection(ElementModel):
 
     def add_effect(self, effect: 'Effect') -> None:
         if effect.is_standard:
-            if self.standard_effect is not None:
-                raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
             self.standard_effect = effect
         if effect.is_objective:
-            if self.objective_effect is not None:
-                raise Exception(f'A objective-effect already exists! ({self.objective_effect.label=})')
             self.objective_effect = effect
         if effect in self.effects.values():
             raise Exception(f'Effect already added! ({effect.label=})')
@@ -359,9 +355,23 @@ class EffectCollection(ElementModel):
                     factor
                 )
 
-    def __getitem__(self, label: str) -> Optional['Effect']:
-        """Get an effect by label, or return the standart effect if not found"""
-        return self.effects.get(label, self.standard_effect)
+    def __getitem__(self, label: str) -> 'Effect':
+        """
+        Get an effect by label, or return the standard effect if None is passed
+
+        Raises:
+            KeyError: If no effect with the given label is found.
+            KeyError: If no standard effect is specified.
+        """
+        if label is None:
+            try:
+                return self.standard_effect
+            except:
+                raise KeyError(f'No Standard-effect specified!')
+        try:
+            return self.effects[label]
+        except:
+            raise KeyError(f'No effect with label {label} found!')
 
     def __contains__(self, item: Union[str, 'Effect']) -> bool:
         """Check if the effect exists. Checks for label or object"""
@@ -395,3 +405,28 @@ class EffectCollection(ElementModel):
                 effect.model.invest.add_share(system_model, name_of_share, variable, total_factor)
             else:
                 raise ValueError(f'Target {target} not supported!')
+
+    @property
+    def standard_effect(self) -> Effect:
+        if self._standard_effect is None:
+            raise KeyError(f'No standard-effect specified!')
+        return self._standard_effect
+
+    @standard_effect.setter
+    def standard_effect(self, value: Effect) -> None:
+        if self._standard_effect is not None:
+            raise ValueError(f'A standard-effect already exists! ({self._standard_effect.label=})')
+        self._standard_effect = value
+
+    @property
+    def objective_effect(self) -> Effect:
+        if self._objective_effect is None:
+            raise KeyError(f'No objective-effect specified!')
+        return self._objective_effect
+
+    @objective_effect.setter
+    def objective_effect(self, value: Effect) -> None:
+        if self._objective_effect is not None:
+            raise ValueError(f'An objective-effect already exists! ({self._objective_effect.label=})')
+        self._objective_effect = value
+
