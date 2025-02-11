@@ -9,11 +9,14 @@ import logging
 import pathlib
 from datetime import datetime
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union, Tuple
 
 import numpy as np
 from rich.console import Console
 from rich.pretty import Pretty
+import xarray as xr
+import linopy
+import pandas as pd
 
 from . import utils
 from .config import CONFIG
@@ -27,171 +30,70 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 logger = logging.getLogger('flixOpt')
 
 
-class SystemModel(MathModel):
-    """
-    Hier kommen die ModellingLanguage-spezifischen Sachen rein
-    """
+class SystemModel(linopy.Model):
 
     def __init__(
-        self,
-        label: str,
-        modeling_language: Literal['pyomo', 'linopy'],
-        flow_system: 'FlowSystem',
-        time_indices: Optional[Union[List[int], range]],
+            self,
+            flow_system: FlowSystem,
+            active_time_steps,
     ):
-        super().__init__(label, modeling_language)
+        super().__init__(force_dim_names=True)
         self.flow_system = flow_system
-        # Zeitdaten generieren:
-        self.time_series, self.time_series_with_end, self.dt_in_hours, self.dt_in_hours_total = (
-            flow_system.get_time_data_from_indices(time_indices)
-        )
-        self.previous_dt_in_hours = flow_system.previous_dt_in_hours
-        self.nr_of_time_steps = len(self.time_series)
-        self.indices = range(self.nr_of_time_steps)
+        self.active_time_steps = active_time_steps
 
-        self.effect_collection_model = flow_system.effect_collection.create_model(self)
-        self.component_models: List['ComponentModel'] = []
-        self.bus_models: List['BusModel'] = []
-        self.other_models: List[ElementModel] = []
+        self._order_dimensions()
 
-    def do_modeling(self):
-        self.effect_collection_model.do_modeling(self)
-        self.component_models = [component.create_model() for component in self.flow_system.components.values()]
-        self.bus_models = [bus.create_model() for bus in self.flow_system.buses.values()]
-        for component_model in self.component_models:
-            component_model.do_modeling(self)
-        for bus_model in self.bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
-            bus_model.do_modeling(self)
+    def _order_dimensions(self):
+        if self.flow_system.timesteps.dtype == np.dtype('datetime64[ns]'):
+            self.timesteps = self.flow_system.timesteps.astype('datetime64[us]')
+        else:
+            self.timesteps = self.flow_system.timesteps
+        self.timesteps.name = 'time'
 
-    def solve(self, solver: Solver, excess_threshold: Union[int, float] = 0.1):
-        """
-        Parameters
-        ----------
-        solver : Solver
-            An Instance of the class Solver. Choose from flixOpt.solvers
-        excess_threshold : float, positive!
-            threshold for excess: If sum(Excess)>excess_threshold a warning is raised, that an excess occurs
-        """
+        self.periods = pd.Index(self.flow_system.periods, name='period') if self.flow_system.periods is not None else None
 
-        logger.info(f'{" starting solving ":#^80}')
-        logger.info(f'{self.describe_size()}')
-
-        super().solve(solver)
-
-        logger.info(f'Termination message: "{self.solver.termination_message}"')
-
-        logger.info(f'{" finished solving ":#^80}')
-        logger.info(f'{" Main Results ":#^80}')
-        for effect_name, effect_results in self.main_results['Effects'].items():
-            logger.info(
-                f'{effect_name}:\n'
-                f'  {"operation":<15}: {effect_results["operation"]:>10.2f}\n'
-                f'  {"invest":<15}: {effect_results["invest"]:>10.2f}\n'
-                f'  {"sum":<15}: {effect_results["sum"]:>10.2f}'
-            )
-
-        logger.info(
-            # f'{"SUM":<15}: ...todo...\n'
-            f'{"Penalty":<17}: {self.main_results["penalty"]:>10.2f}\n'
-            f'{"":-^80}\n'
-            f'{"Objective":<17}: {self.main_results["Objective"]:>10.2f}\n'
-            f'{"":-^80}'
+        if self.flow_system.hours_of_last_step:
+            last_date = pd.DatetimeIndex([self.timesteps[-1] + pd.to_timedelta(self.flow_system.hours_of_last_step, 'h')])
+        else:
+            last_date = pd.DatetimeIndex([self.timesteps[-1] + (self.timesteps[-1] - self.timesteps[-2])])
+        self.timesteps_extra = self.timesteps.append(last_date)
+        self.timesteps_extra.name = 'time'
+        hours_per_step = self.timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
+        self.hours_per_step = xr.DataArray(
+            data=np.tile(hours_per_step, (len(self.periods), 1)) if self.periods is not None else hours_per_step,
+            coords=self.coords,
+            name='hours_per_step'
         )
 
-        logger.info('Investment Decisions:')
-        logger.info(
-            utils.apply_formating(
-                data_dict={
-                    **self.main_results['Invest-Decisions']['invested'],
-                    **self.main_results['Invest-Decisions']['not invested'],
-                },
-                key_format='<30',
-                indent=2,
-                sort_by='value',
-            )
-        )
-
-        for bus in self.main_results['buses with excess']:
-            logger.warning(f'A penalty occurred in Bus "{bus}"!')
-
-        if self.main_results['penalty'] > 10:
-            logger.warning(f'A total penalty of {self.main_results["penalty"]} occurred.This might distort the results')
-        logger.info(f'{" End of Main Results ":#^80}')
-
-    def description_of_variables(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {
-            'Components': {
-                label: comp.model.description_of_variables(structured)
-                for label, comp in self.flow_system.components.items()
-            },
-            'Buses': {
-                label: bus.model.description_of_variables(structured) for label, bus in self.flow_system.buses.items()
-            },
-            'Effects': self.flow_system.effect_collection.model.description_of_variables(structured),
-            'Others': {model.element.label: model.description_of_variables(structured) for model in self.other_models},
-        }
-
-    def description_of_constraints(self, structured: bool = True) -> Dict[str, Union[str, List[str]]]:
-        return {
-            'Components': {
-                label: comp.model.description_of_constraints(structured)
-                for label, comp in self.flow_system.components.items()
-            },
-            'Buses': {
-                label: bus.model.description_of_constraints(structured) for label, bus in self.flow_system.buses.items()
-            },
-            'Objective': self.objective.description(),
-            'Effects': self.flow_system.effect_collection.model.description_of_constraints(structured),
-            'Others': {
-                model.element.label: model.description_of_constraints(structured) for model in self.other_models
-            },
-        }
-
-    def results(self):
-        return {
-            'Components': {model.element.label: model.results() for model in self.component_models},
-            'Effects': self.effect_collection_model.results(),
-            'Buses': {model.element.label: model.results() for model in self.bus_models},
-            'Others': {model.element.label: model.results() for model in self.other_models},
-            'Objective': self.result_of_objective,
-            'Time': self.time_series_with_end,
-            'Time intervals in hours': self.dt_in_hours,
-        }
+        # utils.check_time_series('time series of FlowSystem', self.timesteps_extra)
 
     @property
-    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
-        main_results = {}
-        effect_results = {}
-        main_results['Effects'] = effect_results
-        for effect in self.flow_system.effect_collection.effects.values():
-            effect_results[f'{effect.label} [{effect.unit}]'] = {
-                'operation': float(effect.model.operation.sum.result),
-                'invest': float(effect.model.invest.sum.result),
-                'sum': float(effect.model.all.sum.result),
-            }
-        main_results['penalty'] = float(self.effect_collection_model.penalty.sum.result)
-        main_results['Objective'] = self.result_of_objective
-        main_results['lower bound'] = self.solver.best_bound
-        buses_with_excess = []
-        main_results['buses with excess'] = buses_with_excess
-        for bus in self.flow_system.buses.values():
-            if bus.with_excess:
-                if np.sum(bus.model.excess_input.result) > 1e-3 or np.sum(bus.model.excess_output.result) > 1e-3:
-                    buses_with_excess.append(bus.label)
+    def snapshots(self):
+        return xr.Dataset(
+            coords={'period': list(self.periods), 'time': list(self.timesteps)} if self.periods is not None else {'time': list(self.timesteps)},
+        )
 
-        invest_decisions = {'invested': {}, 'not invested': {}}
-        main_results['Invest-Decisions'] = invest_decisions
-        from flixOpt.features import InvestmentModel
+    @property
+    def coords(self):
+        return self.snapshots.coords
 
-        for sub_model in self.sub_models:
-            if isinstance(sub_model, InvestmentModel):
-                invested_size = float(sub_model.size.result)  # bei np.floats Probleme bei Speichern
-                if invested_size > 1e-3:
-                    invest_decisions['invested'][sub_model.element.label_full] = invested_size
-                else:
-                    invest_decisions['not invested'][sub_model.element.label_full] = invested_size
+    @property
+    def variables_filtered(self, filter_by: Optional[Literal['binary', 'continous', 'integer']] = None,):
+        if filter_by is None:
+            all_variables = super().variables
+        elif filter_by == 'binary':
+            all_variables = super().binaries
+        elif filter_by == 'integer':
+            all_variables = super().integers
+        elif filter_by == 'continous':
+            all_variables = super().continuous
+        else:
+            raise ValueError(f'Invalid filter_by "{filter_by}", must be one of "binary", "continous", "integer"')
+        return all_variables[[name for name in all_variables if 'time' in all_variables[name].dims]]
 
-        return main_results
+    @property
+    def index_shape(self) -> Tuple[int, int]:
+        return len(self.periods) if self.periods is not None else 1, len(self.timesteps)
 
     @property
     def infos(self) -> Dict:
@@ -201,60 +103,6 @@ class SystemModel(MathModel):
         infos['Main Results'] = self.main_results
         infos['Config'] = CONFIG.to_dict()
         return infos
-
-    @property
-    def all_variables(self) -> Dict[str, Variable]:
-        all_vars = {}
-        for model in self.sub_models:
-            for label, variable in model.variables.items():
-                if label in all_vars:
-                    raise KeyError(f'Duplicate Variable found in SystemModel:{model=} {label=}; {variable=}')
-                all_vars[label] = variable
-        return all_vars
-
-    @property
-    def all_constraints(self) -> Dict[str, Union[Equation, Inequation]]:
-        all_constr = {}
-        for model in self.sub_models:
-            for label, constr in model.constraints.items():
-                if label in all_constr:
-                    raise KeyError(f'Duplicate Constraint found in SystemModel: {label=}; {constr=}')
-                else:
-                    all_constr[label] = constr
-        return all_constr
-
-    @property
-    def all_equations(self) -> Dict[str, Equation]:
-        return {key: value for key, value in self.all_constraints.items() if isinstance(value, Equation)}
-
-    @property
-    def all_inequations(self) -> Dict[str, Inequation]:
-        return {key: value for key, value in self.all_constraints.items() if isinstance(value, Inequation)}
-
-    @property
-    def sub_models(self) -> List['ElementModel']:
-        direct_models = [self.effect_collection_model] + self.component_models + self.bus_models + self.other_models
-        sub_models = [sub_model for direct_model in direct_models for sub_model in direct_model.all_sub_models]
-        return direct_models + sub_models
-
-    @property
-    def variables(self) -> List[Variable]:
-        """Needed for Mother class"""
-        return list(self.all_variables.values())
-
-    @property
-    def equations(self) -> List[Equation]:
-        """Needed for Mother class"""
-        return list(self.all_equations.values())
-
-    @property
-    def inequations(self) -> List[Inequation]:
-        """Needed for Mother class"""
-        return list(self.all_inequations.values())
-
-    @property
-    def objective(self) -> Equation:
-        return self.effect_collection_model.objective
 
 
 class Interface:

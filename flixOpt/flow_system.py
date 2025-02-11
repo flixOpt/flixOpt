@@ -8,6 +8,7 @@ import pathlib
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
+import pandas as pd
 
 from . import utils
 from .core import TimeSeries
@@ -27,42 +28,36 @@ class FlowSystem:
     """
 
     def __init__(
-        self,
-        time_series: np.ndarray[np.datetime64],
-        last_time_step_hours: Optional[Union[int, float]] = None,
-        previous_dt_in_hours: Optional[Union[int, float, np.ndarray]] = None,
+            self,
+            timesteps: pd.DatetimeIndex,
+            hours_of_last_timestep: Optional[float] = None,
+            hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None,
+            periods: Optional[List[int]] = None,
     ):
         """
         Parameters
         ----------
-        time_series : np.ndarray of datetime64
-            timeseries of the data. Must be in datetime64 format. Don't use precisions below 'us'. !np.datetime64[ns]!
-        last_time_step_hours :
-            The duration of last time step.
-            Storages needs this time-duration for calculation of charge state
-            after last time step.
-            If None, then last time increment of time_series is used.
+        timesteps : pd.DatetimeIndex
+            The timesteps of the model.
+        hours_of_last_step : Optional[float], optional
+            The duration of the last time step. Uses the last time interval if not specified
         previous_dt_in_hours : Union[int, float, np.ndarray]
-            The duration of previous time steps.
+            The duration of previous timesteps.
             If None, the first time increment of time_series is used.
             This is needed to calculate previous durations (for example consecutive_on_hours).
             If you use an array, take care that its long enough to cover all previous values!
+        periods : Optional[List[int]], optional
+            The periods of the model. Every period has the same timesteps.
+            Usually years are used as periods.
         """
-        self.time_series = time_series if isinstance(time_series, np.ndarray) else np.array(time_series)
-        if self.time_series.dtype == np.dtype('datetime64[ns]'):
-            self.time_series = self.time_series.astype('datetime64[us]')
-
-        self.last_time_step_hours = (
-            self.time_series[-1] - self.time_series[-2] if last_time_step_hours is None else last_time_step_hours
+        self.timesteps = timesteps
+        self.hours_of_last_step = hours_of_last_timestep
+        self.hours_of_previous_timesteps: Union[int, float, np.ndarray] = (
+            ((self.timesteps[1] - self.timesteps[0]) / np.timedelta64(1, 'h'))
+            if hours_of_previous_timesteps is None
+            else hours_of_previous_timesteps
         )
-        self.time_series_with_end = np.append(self.time_series, self.time_series[-1] + self.last_time_step_hours)
-        self.previous_dt_in_hours: Union[int, float, np.ndarray] = (
-            ((self.time_series[1] - self.time_series[0]) / np.timedelta64(1, 'h'))
-            if previous_dt_in_hours is None
-            else previous_dt_in_hours
-        )
-
-        utils.check_time_series('time series of FlowSystem', self.time_series_with_end)
+        self.periods = periods
 
         # defaults:
         self.components: Dict[str, Component] = {}
