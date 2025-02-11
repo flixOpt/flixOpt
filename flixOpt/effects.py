@@ -271,6 +271,9 @@ class EffectCollection(ElementModel):
         self.penalty: Optional[ShareAllocationModel] = None
         self.objective: Optional[Equation] = None
 
+        self.standard_effect: Optional[Effect] = None
+        self.objective_effect: Optional[Effect] = None
+
     def add_share_to_invest(
         self,
         system_model: SystemModel,
@@ -308,10 +311,14 @@ class EffectCollection(ElementModel):
         self.penalty.add_share(system_model, name, variable, factor, True)
 
     def add_effect(self, effect: 'Effect') -> None:
-        if effect.is_standard and self.standard_effect is not None:
-            raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
-        if effect.is_objective and self.objective_effect is not None:
-            raise Exception(f'A objective-effect already exists! ({self.objective_effect.label=})')
+        if effect.is_standard:
+            if self.standard_effect is not None:
+                raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
+            self.standard_effect = effect
+        if effect.is_objective:
+            if self.objective_effect is not None:
+                raise Exception(f'A objective-effect already exists! ({self.objective_effect.label=})')
+            self.objective_effect = effect
         if effect in self.effects.values():
             raise Exception(f'Effect already added! ({effect.label=})')
         if effect.label in self.effects:
@@ -329,8 +336,8 @@ class EffectCollection(ElementModel):
 
         # TODO: Move this to the SystemModel!
         self.objective = Equation('OBJECTIVE', 'OBJECTIVE', is_objective=True)
-        self.objective.add_summand(self._objective_effect_model.operation.sum, 1)
-        self.objective.add_summand(self._objective_effect_model.invest.sum, 1)
+        self.objective.add_summand(self.objective_effect.model.operation.sum, 1)
+        self.objective.add_summand(self.objective_effect.model.invest.sum, 1)
         self.objective.add_summand(self.penalty.sum, 1)
 
     def add_share_between_effects(self, system_model: SystemModel):
@@ -352,9 +359,9 @@ class EffectCollection(ElementModel):
                     factor
                 )
 
-    def __getitem__(self, label: str) -> 'Effect':
-        """Get an effect by label"""
-        return self.effects[label]
+    def __getitem__(self, label: str) -> Optional['Effect']:
+        """Get an effect by label, or return the standart effect if not found"""
+        return self.effects.get(label, self.standard_effect)
 
     def __contains__(self, item: Union[str, 'Effect']) -> bool:
         """Check if the effect exists. Checks for label or object"""
@@ -363,22 +370,6 @@ class EffectCollection(ElementModel):
         elif isinstance(item, Effect):
             return item in self.effects.values()  # Check if the object exists
         return False
-
-    @property
-    def standard_effect(self) -> Optional[Effect]:
-        for effect in self.effects.values():
-            if effect.is_standard:
-                return effect
-
-    @property
-    def objective_effect(self) -> Optional[Effect]:
-        for effect in self.effects.values():
-            if effect.is_objective:
-                return effect
-
-    @property
-    def label_full(self):
-        return self.label
 
     def _add_share_to_effects(
         self,

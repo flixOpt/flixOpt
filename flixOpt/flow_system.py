@@ -61,7 +61,7 @@ class FlowSystem:
 
         # defaults:
         self.components: Dict[str, Component] = {}
-        self.effects: EffectCollection = EffectCollection('Effects')  # Organizes Effects, Penalty & Objective
+        self.effects: EffectCollection = EffectCollection()  # Organizes Effects, Penalty & Objective
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
