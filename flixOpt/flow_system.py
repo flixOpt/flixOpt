@@ -12,7 +12,7 @@ import pandas as pd
 
 from . import utils
 from .core import TimeSeries
-from .effects import Effect, EffectCollection
+from .effects import Effect
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
@@ -61,13 +61,15 @@ class FlowSystem:
 
         # defaults:
         self.components: Dict[str, Component] = {}
-        self.effects: EffectCollection = EffectCollection()  # Organizes Effects, Penalty & Objective
+        self.effects: Dict[str, Effect] = {}
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
+            if new_effect.label in self.effects:
+                raise Exception(f'Effect with label "{new_effect.label=}" already added!')
+            self.effects[new_effect.label] = new_effect
             logger.info(f'Registered new Effect: {new_effect.label}')
-            self.effects.add_effect(new_effect)
 
     def add_components(self, *args: Component) -> None:
         # Komponenten registrieren:
@@ -135,7 +137,7 @@ class FlowSystem:
             },
             'Effects': {
                 effect.label: effect.infos(use_numpy, use_element_label)
-                for effect in sorted(self.effect_collection.effects.values(), key=lambda effect: effect.label.upper())
+                for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
             },
         }
         return infos
@@ -264,7 +266,7 @@ class FlowSystem:
         return time_series, time_series_with_end, dt_in_hours, dt_in_hours_total
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} with {len(self.components)} components and {len(self.effect_collection.effects)} effects>'
+        return f'<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>'
 
     def __str__(self):
         return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
@@ -280,7 +282,7 @@ class FlowSystem:
 
     @property
     def all_elements(self) -> Dict[str, Element]:
-        return {**self.components, **self.effect_collection.effects, **self.flows, **self.buses}
+        return {**self.components, **self.effects, **self.flows, **self.buses}
 
     @property
     def all_time_series(self) -> List[TimeSeries]:

@@ -6,7 +6,7 @@ which are then transformed into the internal data structure.
 """
 
 import logging
-from typing import Dict, Literal, Optional, Union
+from typing import Dict, Literal, Optional, Union, List
 
 import numpy as np
 import linopy
@@ -189,14 +189,15 @@ class EffectCollection(ElementModel):
     Handling all Effects
     """
 
-    def __init__(self):
+    def __init__(self, effects: List[Effect]):
         super().__init__(Element('Effects'))
-        self.effects: Dict[str, Effect] = {}
-        self.penalty: Optional[ShareAllocationModel] = None
-        self.objective: Optional[Equation] = None
-
+        self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
+
+        self.effects: Dict[str, Effect] = effects  # Performs some validation
+        self.penalty: Optional[ShareAllocationModel] = None
+        self.objective: Optional[Equation] = None
 
     def add_share_to_effects(
         self,
@@ -217,17 +218,6 @@ class EffectCollection(ElementModel):
         if expression.ndim != 0:
             raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
         self.penalty.add_share(system_model, name, expression)
-
-    def add_effect(self, effect: 'Effect') -> None:
-        if effect.is_standard:
-            self.standard_effect = effect
-        if effect.is_objective:
-            self.objective_effect = effect
-        if effect in self.effects.values():
-            raise Exception(f'Effect already added! ({effect.label=})')
-        if effect.label in self.effects:
-            raise Exception(f'Effect with label "{effect.label=}" already added!')
-        self.effects[effect.label] = effect
 
     def do_modeling(self, system_model: SystemModel):
         for effect in self.effects.values():
@@ -288,6 +278,21 @@ class EffectCollection(ElementModel):
         elif isinstance(item, Effect):
             return item in self.effects.values()  # Check if the object exists
         return False
+
+    @property
+    def effects(self) -> Dict[str, Effect]:
+        return self._effects
+
+    @effects.setter
+    def effects(self, value: List[Effect]):
+        for effect in value:
+            if effect.is_standard:
+                self.standard_effect = effect
+            if effect.is_objective:
+                self.objective_effect = effect
+            if effect in self:
+                raise Exception(f'Effect with label "{effect.label=}" already added!')
+            self._effects[effect.label] = effect
 
     @property
     def standard_effect(self) -> Effect:
