@@ -271,6 +271,42 @@ class EffectCollection(ElementModel):
         self.penalty: Optional[ShareAllocationModel] = None
         self.objective: Optional[Equation] = None
 
+    def add_share_to_invest(
+        self,
+        system_model: SystemModel,
+        name: str,
+        element: Element,
+        effect_values: EffectDictInvest,
+        factor: Numeric,
+        variable: Optional[Variable] = None,
+    ) -> None:
+        # TODO: Add checks
+        self._add_share_to_effects(system_model, name, element, 'invest', effect_values, factor, variable)
+
+    def add_share_to_operation(
+        self,
+        system_model: SystemModel,
+        name: str,
+        element: Element,
+        effect_values: EffectTimeSeries,
+        factor: Numeric,
+        variable: Optional[Variable] = None,
+    ) -> None:
+        # TODO: Add checks
+        self._add_share_to_effects(
+            system_model, name, element, 'operation', effect_values_from_effect_time_series(effect_values), factor, variable
+        )
+
+    def add_share_to_penalty(
+        self,
+        system_model: SystemModel,
+        name: Optional[str],
+        variable: Variable,
+        factor: Numeric,
+    ) -> None:
+        assert variable is not None, 'A Variable must be passed to add a share to penalty! Else its a constant Penalty!'
+        self.penalty.add_share(system_model, name, variable, factor, True)
+
     def add_effect(self, effect: 'Effect') -> None:
         if effect.is_standard and self.standard_effect is not None:
             raise Exception(f'A standard-effect already exists! ({self.standard_effect.label=})')
@@ -362,39 +398,3 @@ class EffectCollection(ElementModel):
                 effect.model.invest.add_share(system_model, name_of_share, variable, total_factor)
             else:
                 raise ValueError(f'Target {target} not supported!')
-
-    def add_share_to_invest(
-        self,
-        system_model: SystemModel,
-        name: str,
-        element: Element,
-        effect_values: EffectDictInvest,
-        factor: Numeric,
-        variable: Optional[Variable] = None,
-    ) -> None:
-        # TODO: Add checks
-        self._add_share_to_effects(system_model, name, element, 'invest', effect_values, factor, variable)
-
-    def add_share_to_operation(
-        self,
-        system_model: SystemModel,
-        name: str,
-        element: Element,
-        effect_values: EffectTimeSeries,
-        factor: Numeric,
-        variable: Optional[Variable] = None,
-    ) -> None:
-        # TODO: Add checks
-        self._add_share_to_effects(
-            system_model, name, element, 'operation', effect_values_from_effect_time_series(effect_values), factor, variable
-        )
-
-    def add_share_to_penalty(
-        self,
-        system_model: SystemModel,
-        name: Optional[str],
-        variable: Variable,
-        factor: Numeric,
-    ) -> None:
-        assert variable is not None, 'A Variable must be passed to add a share to penalty! Else its a constant Penalty!'
-        self.penalty.add_share(system_model, name, variable, factor, True)
