@@ -357,13 +357,14 @@ class FlowModel(ElementModel):
     def _create_shares(self, system_model: SystemModel):
         # Arbeitskosten:
         if self.element.effects_per_flow_hour != {}:
-            system_model.flow_system.effects.add_share_to_operation(
+            system_model.flow_system.effects.add_share_to_effects(
                 system_model,
-                name='effects_per_flow_hour',
-                element=self.element,
-                variable=self.flow_rate,
-                effect_values=self.element.effects_per_flow_hour,
-                factor=system_model.dt_in_hours,
+                name=self.label_full,  # Use the full label of the element
+                expressions={
+                    effect.model.operation: self.flow_rate * system_model.hours_per_step * factor
+                    for effect, factor in self.element.effects_per_flow_hour.items()
+                },
+                target='operation',
             )
 
     def _create_bounds_for_load_factor(self, system_model: SystemModel):
@@ -470,10 +471,10 @@ class BusModel(ElementModel):
             eq_bus_balance.lhs += self.excess_input - self.excess_output
 
             system_model.flow_system.effects.add_share_to_penalty(
-                system_model, f'{self.element.label_full}__excess_input', self.excess_input, excess_penalty
+                system_model, self.element.label_full, self.excess_input * excess_penalty
             )
             system_model.flow_system.effects.add_share_to_penalty(
-                system_model, f'{self.element.label_full}__excess_output', self.excess_output, excess_penalty
+                system_model, self.element.label_full, self.excess_output *excess_penalty
             )
 
 
