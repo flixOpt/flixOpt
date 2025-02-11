@@ -804,7 +804,7 @@ class ShareAllocationModel(ElementModel):
             The expression of the share. Added to the right hand side of the constraint.
         """
         if name in self.shares:
-            self.share_constraints[name].lhs += expression
+            self.share_constraints[name].lhs -= expression
         else:
             self.shares[name] = system_model.add_variables(
                 coords=None if expression.ndim == 0 else system_model.coords,
