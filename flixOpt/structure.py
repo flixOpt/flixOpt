@@ -55,6 +55,10 @@ class SystemModel(linopy.Model):
         for bus_model in bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
             bus_model.do_modeling(self)
 
+        self.add_objective(
+            self.effects.objective_effect.model.total + self.effects.penalty.total
+        )
+
     def _order_dimensions(self):
         if self.flow_system.timesteps.dtype == np.dtype('datetime64[ns]'):
             self.timesteps = self.flow_system.timesteps.astype('datetime64[us]')

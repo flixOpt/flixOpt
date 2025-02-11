@@ -285,12 +285,6 @@ class EffectCollection(ElementModel):
 
         self._add_share_between_effects(system_model)
 
-        # TODO: Move this to the SystemModel!
-        self.objective = Equation('OBJECTIVE', 'OBJECTIVE', is_objective=True)
-        self.objective.add_summand(self.objective_effect.model.operation.sum, 1)
-        self.objective.add_summand(self.objective_effect.model.invest.sum, 1)
-        self.objective.add_summand(self.penalty.sum, 1)
-
     def _add_share_between_effects(self, system_model: SystemModel):
         for origin_effect in self.effects.values():
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
