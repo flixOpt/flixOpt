@@ -33,8 +33,8 @@ class Effect(Element):
         meta_data: Optional[Dict] = None,
         is_standard: bool = False,
         is_objective: bool = False,
-        specific_share_to_other_effects_operation: 'EffectValues' = None,
-        specific_share_to_other_effects_invest: 'EffectValuesInvest' = None,
+        specific_share_to_other_effects_operation: Optional['EffectValuesUser'] = None,
+        specific_share_to_other_effects_invest: Optional['EffectValuesUser'] = None,
         minimum_operation: Optional[Skalar] = None,
         maximum_operation: Optional[Skalar] = None,
         minimum_invest: Optional[Skalar] = None,
@@ -93,10 +93,10 @@ class Effect(Element):
         self.description = description
         self.is_standard = is_standard
         self.is_objective = is_objective
-        self.specific_share_to_other_effects_operation: Union[EffectValues, EffectTimeSeries] = (
+        self.specific_share_to_other_effects_operation: EffectValuesUser = (
             specific_share_to_other_effects_operation or {}
         )
-        self.specific_share_to_other_effects_invest: Union[EffectValuesInvest, EffectDictInvest] = (
+        self.specific_share_to_other_effects_invest: EffectValuesUser = (
             specific_share_to_other_effects_invest or {}
         )
         self.minimum_operation = minimum_operation
@@ -181,7 +181,58 @@ class EffectModel(ElementModel):
         self.total.add_share(system_model, 'operation', self.operation.total*1)
         self.total.add_share(system_model, 'invest', self.invest.total*1)
 
-EffectValues = Dict[Optional[Union[str, Effect]], linopy.LinearExpression]  # This is new
+
+EffectValuesExpr = Dict[Optional[Union[str, Effect]], linopy.LinearExpression]  # This is used to create Shares
+
+EffectValuesTS = Dict[Optional[Union[str, Effect]], TimeSeries]  # This is used internally to index the values
+
+EffectValuesDict = Dict[Optional[Union[str, Effect]], Numeric_TS]  # This is how The effect values are stored
+
+EffectValuesUser = Union[Numeric_TS, Dict[Optional[Union[str, Effect]], Numeric_TS]]  # This is how the User can specify Shares to Effects
+
+
+def effect_values_to_time_series(label_suffix: str,
+                                 effect_values: EffectValuesUser,
+                                 parent_element: Element) -> Optional[EffectValuesTS]:
+    """
+    Transform EffectValues to EffectValuesTS.
+    Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
+
+    The resulting label of the TimeSeries is the label of the parent_element,
+    followed by the label of the Effect in the nested_values and the label_suffix.
+    If the key in the EffectValues is None, the alias 'Standard_Effect' is used
+    """
+    effect_values: Optional[EffectValuesDict] = effect_values_to_dict(effect_values)
+    if effect_values is None:
+        return None
+
+    standard_value = effect_values.pop(None, None)
+    effect_values_ts = {
+        effect: _create_time_series(f'{effect.label}_{label_suffix}', value, parent_element)
+        for effect, value in effect_values.items() if effect is not None
+    }
+    if standard_value is not None:
+        effect_values_ts[None] = _create_time_series(f'Standard_Effect_{label_suffix}', standard_value, parent_element)
+    return effect_values_ts
+
+
+def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[EffectValuesDict]:
+    """
+    Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
+
+    Examples
+    --------
+    effect_values_user = 20                             -> {None: 20}
+    effect_values_user = None                           -> None
+    effect_values_user = {effect1: 20, effect2: 0.3}    -> {effect1: 20, effect2: 0.3}
+
+    Returns
+    -------
+    dict or None
+        A dictionary with None or Effect as the key, or None if input is None.
+    """
+    return effect_values_user if isinstance(effect_values_user, dict) else {
+        None: effect_values_user} if effect_values_user is not None else None
 
 
 class EffectCollection(ElementModel):
@@ -203,7 +254,7 @@ class EffectCollection(ElementModel):
         self,
         system_model: SystemModel,
         name: str,
-        expressions: EffectValues,
+        expressions: EffectValuesExpr,
         target: Literal['operation', 'invest'],
     ) -> None:
         for effect, expression in expressions.items():

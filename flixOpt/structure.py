@@ -21,12 +21,12 @@ import pandas as pd
 from . import utils
 from .config import CONFIG
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData
-from .effects import EffectCollection
 from .math_modeling import Equation, Inequation, MathModel, Solver, Variable, VariableTS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .elements import BusModel, ComponentModel
     from .flow_system import FlowSystem
+    from .effects import EffectCollection
 
 logger = logging.getLogger('flixOpt')
 
@@ -35,7 +35,7 @@ class SystemModel(linopy.Model):
 
     def __init__(
             self,
-            flow_system: FlowSystem,
+            flow_system: 'FlowSystem',
             active_time_steps: Optional = None,
     ):
         super().__init__(force_dim_names=True)
@@ -46,6 +46,7 @@ class SystemModel(linopy.Model):
         self.effects: Optional[EffectCollection] = None
 
     def do_modeling(self):
+        from .effects import EffectCollection
         self.effects = EffectCollection(list(self.flow_system.effects.values()))
         component_models = [component.create_model() for component in self.flow_system.components.values()]
         bus_models = [bus.create_model() for bus in self.flow_system.buses.values()]
@@ -346,7 +347,7 @@ def _create_time_series(
     label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element
 ) -> Optional[TimeSeries]:
     """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
-    If the data already is a TimeSeries, nothing happens and the TimeSeries gets cleaned and returned"""
+    If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned"""
     if data is None:
         return None
     elif isinstance(data, TimeSeries):
