@@ -8,6 +8,8 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+import xarray as xr
+import pandas as pd
 
 from . import utils
 
@@ -95,21 +97,20 @@ class TimeSeries:
         Group for calculating the aggregation weigth for aggregation method.
     """
 
-    def __init__(self, label: str, data: Optional[Numeric_TS]):
+    def __init__(self,
+                 label: str,
+                 data: Numeric,
+                 index: pd.Index,
+                 aggregation_weight: Optional[float] = None):
         self.label: str = label
-        if isinstance(data, TimeSeriesData):
-            self.data = self.make_scalar_if_possible(data.data)
-            self.aggregation_weight, self.aggregation_group = data.agg_weight, data.agg_group
-            data.label = self.label  # Connecting User_time_series to real Time_series
-        else:
-            self.data = self.make_scalar_if_possible(data)
-            self.aggregation_weight, self.aggregation_group = None, None
+        self.data: pd.Series = self.as_series(data, index)
+        self.aggregation_weight = aggregation_weight
 
-        self.active_indices: Optional[Union[range, List[int]]] = None
+        self.active_coords: Optional[Dict] = None
         self.aggregated_data: Optional[Numeric] = None
 
-    def activate_indices(self, indices: Optional[Union[range, List[int]]], aggregated_data: Optional[Numeric] = None):
-        self.active_indices = indices
+    def activate_indices(self, coords: Dict, aggregated_data: Optional[Numeric] = None):
+        self.active_coords = coords
 
         if aggregated_data is not None:
             assert len(aggregated_data) == len(self.active_indices) or len(aggregated_data) == 1, (
@@ -119,24 +120,89 @@ class TimeSeries:
             self.aggregated_data = self.make_scalar_if_possible(aggregated_data)
 
     def clear_indices_and_aggregated_data(self):
-        self.active_indices = None
+        self.active_coords = None
         self.aggregated_data = None
 
     @property
-    def active_data(self) -> Numeric:
+    def active_data(self) -> Union[int, float, xr.DataArray]:
         if self.aggregated_data is not None:  # Aggregated data is always active, if present
             return self.aggregated_data
 
-        indices_not_applicable = np.isscalar(self.data) or (self.data is None) or (self.active_indices is None)
-        if indices_not_applicable:
+        if np.isscalar(self.data) or (self.active_coords is None):
             return self.data
         else:
-            return self.data[self.active_indices]
+            return self.data.sel(self.active_coords)
 
-    @property
-    def active_data_vector(self) -> np.ndarray:
-        # Always returns the active data as a vector.
-        return utils.as_vector(self.active_data, len(self.active_indices))
+    @staticmethod
+    def as_series(data: Numeric, dims: Tuple[pd.Index, ...]) -> pd.Series:
+        """
+        Converts the given data to a pd.Series with the specified index.
+
+        - Arrays and Series are stacked across the period index.
+        - The length of the array must match the length of the time coordinate if applicable.
+        - If a 1D array is given but two indices are provided, it is reshaped to 2D automatically.
+
+        Parameters:
+        - data: The input data (scalar, array, Series, or DataFrame).
+        - dims: A Tuple of pd.Index objects specifying the index dimensions.
+
+        Returns:
+        - pd.Series: The resulting Series, possibly with a MultiIndex.
+        """
+
+        if not isinstance(dims, tuple) or not all(isinstance(idx, pd.Index) for idx in dims):
+            raise TypeError("dims must be a tuple of pandas Index objects")
+
+        expected_shape = tuple(len(idx) for idx in dims)
+        index = pd.MultiIndex.from_product(dims) if len(dims) > 1 else dims[0]
+
+        if isinstance(data, (int, float)):  # Scalar case
+            return pd.Series(data, index=index)
+
+        if isinstance(data, pd.DataFrame):
+            if len(dims) == 1:
+                if not data.index.equals(dims[0]):
+                    raise ValueError("Series index does not match the provided index")
+                data = data.values.ravel()
+            else:
+                data = data.stack().swaplevel(0,1).sort_index()
+                if data.index != index:
+                    raise ValueError("DataFrame index does not match the provided index")
+                return data
+
+        if isinstance(data, pd.Series):
+            if len(dims) == 1:
+                if not data.index.equals(dims[0]):
+                    raise ValueError("Series index does not match the provided index")
+            data =  data.ravel()  # Retrieve the data from the Series
+
+        if isinstance(data, np.ndarray):
+
+            if data.ndim == 1 and len(dims) == 2:  # If 1D data but 2D index is given
+                if data.shape[0] == len(dims[0]):
+                    data = np.tile(data[:, np.newaxis], (1, len(dims[1])))  # Expand along second dimension
+                elif data.shape[0] == len(dims[1]):
+                    data = np.tile(data[np.newaxis, :], (len(dims[0]), 1))  # Expand along first dimension
+                else:
+                    raise ValueError("1D array length does not match either dimension in dims")
+
+            if data.shape != expected_shape:
+                raise ValueError(f"Shape of data {data.shape} does not match expected shape {expected_shape}")
+
+            return pd.Series(data.ravel(), index=index)
+
+        elif isinstance(data, pd.Series):
+            if not data.index.equals(dims[0]):
+                raise ValueError("Series index does not match the provided index")
+            return data
+
+        elif isinstance(data, pd.DataFrame):
+            if len(dims) != 2 or data.shape != (len(dims[0]), len(dims[1])):
+                raise ValueError("DataFrame shape does not match provided indexes")
+            return data.stack()
+
+        else:
+            raise TypeError("Unsupported data type. Must be scalar, np.ndarray, pd.Series, or pd.DataFrame.")
 
     @property
     def is_scalar(self) -> bool:
@@ -157,26 +223,32 @@ class TimeSeries:
     def __str__(self):
         return str(self.active_data)
 
-    @staticmethod
-    def make_scalar_if_possible(data: Optional[Numeric]) -> Optional[Numeric]:
-        """
-        Convert an array to a scalar if all values are equal, or return the array as-is.
-        Can Return None if the passed data is None
+    def _apply_op(self, other, op):
+        """Helper function to apply an operation using active_data."""
+        if isinstance(other, TimeSeries):
+            return op(self.active_data, other.active_data)
+        return op(self.active_data, other)
 
-        Parameters
-        ----------
-        data : Numeric, None
-            The data to process.
+    def __add__(self, other):
+        return self._apply_op(other, np.add)
 
-        Returns
-        -------
-        Numeric
-            A scalar if all values in the array are equal, otherwise the array itself. None, if the passed value is None
-        """
-        # TODO: Should this really return None Values?
-        if np.isscalar(data) or data is None:
-            return data
-        data = np.array(data)
-        if np.all(data == data[0]):
-            return data[0]
-        return data
+    def __sub__(self, other):
+        return self._apply_op(other, np.subtract)
+
+    def __mul__(self, other):
+        return self._apply_op(other, np.multiply)
+
+    def __truediv__(self, other):
+        return self._apply_op(other, np.divide)
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __rsub__(self, other):
+        return self._apply_op(other, lambda x, y: x - y)
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __rtruediv__(self, other):
+        return self._apply_op(other, lambda x, y: x / y)
