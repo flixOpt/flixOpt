@@ -91,7 +91,7 @@ class DataConverter:
     @staticmethod
     def _handle_dataframe(data: pd.DataFrame, dims: Tuple[pd.Index, ...], index: pd.Index) -> pd.Series:
         """Handles pandas DataFrame input."""
-        if len(dims) != 2 or data.shape != (len(dims[0]), len(dims[1])):
+        if len(dims) != 2 or data.shape != (len(dims[1]), len(dims[0])):
             raise ValueError("DataFrame shape does not match provided indexes")
 
         # Stack and ensure columns become level 0
@@ -157,6 +157,24 @@ Numeric_TS = Union[
 
 
 class TimeSeries:
+
+    @classmethod
+    def from_datasource(cls,
+                        data: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray],
+                        dims: Tuple[pd.Index, ...],
+                        aggregation_weight: Optional[float] = None):
+        """
+        Initialize the TimeSeries from multiple datasources.
+
+        Parameters:
+        - data (pd.Series): A Series with a DatetimeIndex and possibly a MultiIndex.
+        - dims (Tuple[pd.Index, ...]): The dimensions of the TimeSeries.
+        - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
+        """
+        data = DataConverter.as_series(data, dims)
+        # TODO: Add validation for the dimensions
+        return cls(DataConverter.as_series(data, dims), aggregation_weight)
+
     def __init__(self, data: pd.Series, aggregation_weight: Optional[float] = None):
         """
         Initialize the TimeSeriesManager with a Series.
