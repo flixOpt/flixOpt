@@ -166,7 +166,7 @@ class TimeSeries:
         - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
         """
         self._stored_data = data.copy()  # Store data
-        self._backup = self.stored_data  # Single backup instance. Enables to temporarily overwrite the data.
+        self._backup: pd.Series = self.stored_data  # Single backup instance. Enables to temporarily overwrite the data.
         self._active_data = None
         self._active_index = None
         self.aggregation_weight = aggregation_weight
@@ -175,8 +175,8 @@ class TimeSeries:
 
     def restore_data(self):
         """Restore stored_data from the backup."""
+        self._stored_data = self._backup.copy()
         self.active_index = None
-        self._stored_data[:] = self._backup.copy()
 
     def as_dataarray(self) -> xr.DataArray:
         return self.active_data.to_xarray()
@@ -256,3 +256,47 @@ class TimeSeries:
 
     def __pow__(self, other):
         return self._apply_operation(other, lambda x, y: x ** y)
+
+    # Reflected arithmetic operations (to handle cases like `some_xarray + ts1`)
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __rsub__(self, other):
+        return self._apply_operation(other, lambda x, y: y - x)
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __rtruediv__(self, other):
+        return self._apply_operation(other, lambda x, y: y / x)
+
+    def __rfloordiv__(self, other):
+        return self._apply_operation(other, lambda x, y: y // x)
+
+    def __rpow__(self, other):
+        return self._apply_operation(other, lambda x, y: y ** x)
+
+    # Unary operations. Not sure if this is the best way...
+    def __neg__(self):
+        return -self.as_dataarray()
+
+    def __pos__(self):
+        return +self.as_dataarray()
+
+    def __abs__(self):
+        return abs(self.as_dataarray())
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """Ensures NumPy functions like np.add(TimeSeries, xarray) work correctly."""
+        inputs = [x.as_dataarray() if isinstance(x, TimeSeries) else x for x in inputs]
+        result = getattr(ufunc, method)(*inputs, **kwargs)
+
+        # Ensure return type consistency
+        if isinstance(result, xr.DataArray):
+            return result
+        elif isinstance(result, np.ndarray):  # Handles cases like np.exp(ts)
+            return pd.Series(result, index=self.active_data.index)
+        else:
+            raise NotImplementedError(f"ufunc {ufunc} not implemented for TimeSeries")
+
+
