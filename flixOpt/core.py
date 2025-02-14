@@ -11,7 +11,6 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 
-from . import utils
 
 logger = logging.getLogger('flixOpt')
 
@@ -252,10 +251,8 @@ class TimeSeries:
     # Enable arithmetic operations using active_data
     def _apply_operation(self, other, op):
         if isinstance(other, TimeSeries):
-            other = other.active_data
-        if isinstance(other, xr.DataArray):
-            return op(self.as_dataarray(), other)
-        return op(self.active_data, other)
+            other = other.as_dataarray()
+        return op(self.as_dataarray(), other)
 
     def __add__(self, other):
         return self._apply_operation(other, lambda x, y: x + y)
@@ -269,30 +266,18 @@ class TimeSeries:
     def __truediv__(self, other):
         return self._apply_operation(other, lambda x, y: x / y)
 
-    def __floordiv__(self, other):
-        return self._apply_operation(other, lambda x, y: x // y)
-
-    def __pow__(self, other):
-        return self._apply_operation(other, lambda x, y: x ** y)
-
     # Reflected arithmetic operations (to handle cases like `some_xarray + ts1`)
     def __radd__(self, other):
-        return self.__add__(other)
+        return other + self.as_dataarray()
 
     def __rsub__(self, other):
-        return self._apply_operation(other, lambda x, y: y - x)
+        return other - self.as_dataarray()
 
     def __rmul__(self, other):
-        return self.__mul__(other)
+        return other * self.as_dataarray()
 
     def __rtruediv__(self, other):
-        return self._apply_operation(other, lambda x, y: y / x)
-
-    def __rfloordiv__(self, other):
-        return self._apply_operation(other, lambda x, y: y // x)
-
-    def __rpow__(self, other):
-        return self._apply_operation(other, lambda x, y: y ** x)
+        return other / self.as_dataarray()
 
     # Unary operations. Not sure if this is the best way...
     def __neg__(self):
