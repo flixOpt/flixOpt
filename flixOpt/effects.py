@@ -159,7 +159,7 @@ class EffectModel(ElementModel):
         super().__init__(model, element)
         self.element: Effect = element
         self.total: Optional[linopy.Variable] = None
-        self.invest = self.add(
+        self.invest: ShareAllocationModel = self.add(
             ShareAllocationModel(
                 self._model,
                 False,
@@ -170,7 +170,7 @@ class EffectModel(ElementModel):
             )
         )
 
-        self.operation = self.add(
+        self.operation: ShareAllocationModel = self.add(
             ShareAllocationModel(
                 self._model,
                 True,
@@ -197,14 +197,16 @@ class EffectModel(ElementModel):
                 upper=self.element.maximum_total if self.element.maximum_total is not None else np.inf,
                 coords=None,
                 name=f'{self.element.label_full}__total'
-            )
+            ),
+            'total'
         )
 
         self.add(
             system_model.add_constraints(
                 self.total == self.operation.total.sum() + self.invest.total.sum(),
                 name=f'{self.element.label_full}__total'
-            )
+            ),
+            'total'
         )
 
 
@@ -316,17 +318,15 @@ class EffectCollection(InterfaceModel):
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_effect.model.operation.add_share(
                     system_model,
-                    f'{origin_effect.label_full}_operation',
-                    origin_effect.model.operation.sum_TS,
-                    time_series.active_data,
+                    origin_effect.label_full,
+                    origin_effect.model.operation.total_per_timestep * time_series.active_data,
                 )
             # 2. invest:    -> hier ist es Skalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_effect.model.invest.add_share(
                     system_model,
-                    f'{origin_effect.label_full}_invest',
-                    origin_effect.model.invest.sum,
-                    factor
+                    origin_effect.label_full,
+                    origin_effect.model.invest.total * factor,
                 )
 
     def __getitem__(self, label: str) -> 'Effect':
