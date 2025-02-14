@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     # --- Build the Flow System ---
     # Add all components and effects to the system
-    flow_system = fx.FlowSystem(datetime_series)
+    flow_system = fx.FlowSystem(timesteps)
     flow_system.add_elements(cost_effect, boiler, heat_load, gas_source)
 
     # --- Define and Run Calculation ---

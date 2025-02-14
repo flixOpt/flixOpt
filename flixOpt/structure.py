@@ -65,7 +65,6 @@ class SystemModel(linopy.Model):
         return self.flow_system.coords
 
 
-
 class Interface:
     """
     This class is used to collect arguments about a Model.
@@ -189,6 +188,17 @@ class Element(Interface):
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 
+    def solution_numeric(
+        self,
+        use_numpy: bool = True,
+        all_variables: bool = True
+    ) -> Union[Dict[str, np.ndarray], Dict[str, Union[List, int, float]]]:
+        vars = self.model.all_variables if all_variables else self.model.variables
+        results = {var: vars.solution[var].values for var in vars.solution.data_vars}
+        if use_numpy:
+            return {k: v.item() if v.ndim == 0 else v for k, v in results.items()}
+        return {k: v.tolist() for k, v in results.items()}
+
     def _plausibility_checks(self) -> None:
         """This function is used to do some basic plausibility checks for each Element during initialization"""
         raise NotImplementedError('Every Element needs a _plausibility_checks() method')
@@ -300,6 +310,27 @@ class InterfaceModel:
     @property
     def all_sub_models(self) -> List['InterfaceModel']:
         return [model for sub_model in self.sub_models for model in [sub_model] + sub_model.all_sub_models]
+
+    def filter_variables(self,
+                         filter_by: Optional[Literal['binary', 'continuous', 'integer']] = None,
+                         length: Literal['scalar', 'time'] = None):
+        if filter_by is None:
+            all_variables = self.variables
+        elif filter_by == 'binary':
+            all_variables = self.variables.binaries
+        elif filter_by == 'integer':
+            all_variables = self.variables.integers
+        elif filter_by == 'continuous':
+            all_variables = self.variables.continuous
+        else:
+            raise ValueError(f'Invalid filter_by "{filter_by}", must be one of "binary", "continous", "integer"')
+        if length is None:
+            return all_variables
+        elif length == 'scalar':
+            return all_variables[[name for name in all_variables if all_variables[name].ndim == 0]]
+        elif length == 'time':
+            return all_variables[[name for name in all_variables if 'time' in all_variables[name].dims]]
+        raise ValueError(f'Invalid length "{length}", must be one of "scalar", "time" or None')
 
 
 class ElementModel(InterfaceModel):
