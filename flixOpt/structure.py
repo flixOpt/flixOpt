@@ -244,16 +244,36 @@ class InterfaceModel:
         self.sub_models = []
         self._label = label
         self._label_of_parent = label_of_parent
+        self._variables_short: Dict[str, str] = {}
+        self._constraints_short: Dict[str, str] = {}
+        self._sub_models_short: Dict[str, str] = {}
         logger.debug(f'Created {self.__class__.__name__}  "{self.label_full}"')
 
-    def add(self, item: Union[linopy.Variable, linopy.Constraint, 'InterfaceModel']
-            ) -> Union[linopy.Variable, linopy.Constraint, 'InterfaceModel']:
+    def add(
+        self,
+        item: Union[linopy.Variable, linopy.Constraint, 'InterfaceModel'],
+        short_name: Optional[str] = None
+    ) -> Union[linopy.Variable, linopy.Constraint, 'InterfaceModel']:
+        """
+        Add a variable, constraint or sub-model to the model
+
+        Parameters
+        ----------
+        item : linopy.Variable, linopy.Constraint, InterfaceModel
+            The variable, constraint or sub-model to add to the model
+        short_name : str, optional
+            The short name of the variable, constraint or sub-model. If not provided, the full name is used.
+        """
+        # TODO: Check uniquenes of short names
         if isinstance(item, linopy.Variable):
             self._variables.append(item.name)
+            self._variables_short[item.name] = short_name or item.name
         elif isinstance(item, linopy.Constraint):
             self._constraints.append(item.name)
+            self._constraints_short[item.name] = short_name or item.name
         elif isinstance(item, InterfaceModel):
             self.sub_models.append(item)
+            self._constraints_short[item.label_full] = short_name or item.label_full
         else:
             raise ValueError(f'Item must be a linopy.Variable or linopy.Constraint, got {type(item)}')
         return item
@@ -331,6 +351,19 @@ class InterfaceModel:
         elif length == 'time':
             return all_variables[[name for name in all_variables if 'time' in all_variables[name].dims]]
         raise ValueError(f'Invalid length "{length}", must be one of "scalar", "time" or None')
+
+    def solution_structured(
+        self,
+        use_numpy: bool = True,
+    ) -> Dict[str, Union[np.ndarray, Dict]]:
+        results = {
+            self._variables_short[var_name]: var.values
+            for var_name, var in self.variables.solution.data_vars.items()
+        }
+        return {
+            **results,
+            **{sub_model.label: sub_model.solution_numeric(use_numpy) for sub_model in self.sub_models}
+        }
 
 
 class ElementModel(InterfaceModel):
