@@ -766,10 +766,11 @@ class ShareAllocationModel(InterfaceModel):
         self.total = self.add(
             system_model.add_variables(
                 lower=self._total_min, upper=self._total_max, coords=None, name=f'{self.label_full}__total'
-            )
+            ),
+            'total'
         )
         # eq: sum = sum(share_i) # skalar
-        self._eq_total = self.add(system_model.add_constraints(self.total == 0, name=f'{self.label_full}__total'))
+        self._eq_total = self.add(system_model.add_constraints(self.total == 0, name=f'{self.label_full}__total'), 'total')
 
         if self._shares_are_time_series:
             self.total_per_timestep = self.add(
@@ -778,11 +779,13 @@ class ShareAllocationModel(InterfaceModel):
                     upper=np.inf if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.hours_per_step),
                     coords=system_model.coords,
                     name=f'{self.label_full}_total_per_timestep'
-                )
+                ),
+                'total_per_timestep'
             )
 
             self._eq_total_per_timestep = self.add(
-                system_model.add_constraints(self.total_per_timestep == 0, name=f'{self.label_full}__total_per_timestep')
+                system_model.add_constraints(self.total_per_timestep == 0, name=f'{self.label_full}__total_per_timestep'),
+                'total_per_timestep'
             )
 
             # Add it to the total
@@ -816,22 +819,36 @@ class ShareAllocationModel(InterfaceModel):
                 system_model.add_variables(
                     coords=None if expression.ndim == 0 else system_model.coords,
                     name=f'{name}__{self.label_full}'
-                )
+                ),
+                name
             )
             self.share_constraints[name] = self.add(
                 system_model.add_constraints(
                     self.shares[name] == expression, name=f'{name}__{self.label_full}'
-                )
+                ),
+                name
             )
             if self.shares[name].ndim == 0:
                 self._eq_total.lhs -= self.shares[name]
             else:
                 self._eq_total_per_timestep.lhs -= self.shares[name]
 
-    def results(self):
+    def solution_structured(
+        self,
+        use_numpy: bool = True,
+    ) -> Dict[str, Union[np.ndarray, Dict]]:
+        shares_var_names = [var.name for var in self.shares.values()]
+        results = {
+            self._variables_short[var_name]: var.values
+            for var_name, var in self.variables.solution.data_vars.items() if var_name not in shares_var_names
+        }
+        results['Shares'] = {
+            self._variables_short[var_name]: var.values
+            for var_name, var in self.variables.solution.data_vars.items() if var_name in shares_var_names
+        }
         return {
-            **{variable.label_short: variable.result for variable in self.variables.values()},
-            **{'Shares': {variable.label_short: variable.result for variable in self.shares.values()}},
+            **results,
+            **{sub_model.label: sub_model.solution_structured(use_numpy) for sub_model in self.sub_models}
         }
 
 
