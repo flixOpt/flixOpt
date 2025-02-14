@@ -36,13 +36,9 @@ class SystemModel(linopy.Model):
     def __init__(
             self,
             flow_system: 'FlowSystem',
-            active_time_steps: Optional = None,
     ):
         super().__init__(force_dim_names=True)
         self.flow_system = flow_system
-        self.active_time_steps = active_time_steps
-        self._order_dimensions()
-
         self.effects: Optional[EffectCollection] = None
 
     def do_modeling(self):
@@ -60,74 +56,13 @@ class SystemModel(linopy.Model):
             self.effects.objective_effect.model.total + self.effects.penalty.total
         )
 
-    def _order_dimensions(self):
-        if self.flow_system.timesteps.dtype == np.dtype('datetime64[ns]'):
-            self.timesteps = self.flow_system.timesteps.astype('datetime64[us]')
-        else:
-            self.timesteps = self.flow_system.timesteps
-        self.timesteps.name = 'time'
-
-        self.periods = pd.Index(self.flow_system.periods, name='period') if self.flow_system.periods is not None else None
-
-        if self.flow_system.hours_of_last_step:
-            last_date = pd.DatetimeIndex([self.timesteps[-1] + pd.to_timedelta(self.flow_system.hours_of_last_step, 'h')])
-        else:
-            last_date = pd.DatetimeIndex([self.timesteps[-1] + (self.timesteps[-1] - self.timesteps[-2])])
-        self.timesteps_extra = self.timesteps.append(last_date)
-        self.timesteps_extra.name = 'time'
-        hours_per_step = self.timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
-        self.hours_per_step = xr.DataArray(
-            data=np.tile(hours_per_step, (len(self.periods), 1)) if self.periods is not None else hours_per_step,
-            coords=self.coords,
-            name='hours_per_step'
-        )
-
-        # utils.check_time_series('time series of FlowSystem', self.timesteps_extra)
-
-    @property
-    def snapshots(self):
-        return xr.Dataset(
-            coords={'period': list(self.periods), 'time': list(self.timesteps)} if self.periods is not None else {'time': list(self.timesteps)},
-        )
-
-    @property
-    def coords(self):
-        return self.snapshots.coords
-
-    @property
-    def variables_filtered(self, filter_by: Optional[Literal['binary', 'continous', 'integer']] = None):
-        if filter_by is None:
-            all_variables = super().variables
-        elif filter_by == 'binary':
-            all_variables = super().binaries
-        elif filter_by == 'integer':
-            all_variables = super().integers
-        elif filter_by == 'continous':
-            all_variables = super().continuous
-        else:
-            raise ValueError(f'Invalid filter_by "{filter_by}", must be one of "binary", "continous", "integer"')
-        return all_variables[[name for name in all_variables if 'time' in all_variables[name].dims]]
-
-    @property
-    def index_shape(self) -> Tuple[int, int]:
-        return len(self.periods) if self.periods is not None else 1, len(self.timesteps)
-
-    @property
-    def infos(self) -> Dict:
-        infos = super().infos
-        infos['Constraints'] = self.description_of_constraints()
-        infos['Variables'] = self.description_of_variables()
-        infos['Main Results'] = self.main_results
-        infos['Config'] = CONFIG.to_dict()
-        return infos
-
 
 class Interface:
     """
     This class is used to collect arguments about a Model.
     """
 
-    def transform_data(self):
+    def transform_data(self, data_array: xr.DataArray):
         raise NotImplementedError('Every Interface needs a transform_data() method')
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
@@ -228,124 +163,104 @@ class Element(Interface):
         return self.label
 
 
-class ElementModel:
+class InterfaceModel:
+    """Stores the mathematical Variables and Constraints related to an Interface"""
+
+    def __init__(self, interface: Optional[Interface], label_of_parent: Optional[str], label: Optional[str] = None):
+        """
+        Parameters
+        ----------
+        interface : Interface
+            The interface this model is created for.
+        label : str
+            Used to construct the label of the model. If None, the interface label is used.
+        """
+        self.interface = interface
+        self._model: Optional[linopy.Model] = None
+        self._variables: List[str] = []
+        self._constraints: List[str] = []
+        self.sub_models = []
+        self._label = label
+        self._label_of_parent = label_of_parent
+        logger.debug(f'Created {self.__class__.__name__}  "{self.label_full}"')
+
+    def add(self, item: Union[linopy.Variable, linopy.Constraint, 'InterfaceModel']
+            ) -> Union[linopy.Variable, linopy.Constraint, 'InterfaceModel']:
+        if isinstance(item, linopy.Variable):
+            self._variables.append(item.name)
+        elif isinstance(item, linopy.Constraint):
+            self._constraints.append(item.name)
+        elif isinstance(item, InterfaceModel):
+            self.sub_models.append(item)
+        else:
+            raise ValueError(f'Item must be a linopy.Variable or linopy.Constraint, got {type(item)}')
+        return item
+
+    @property
+    def label(self) -> str:
+        return self._label or self._label_of_parent
+
+    @property
+    def label_full(self) -> str:
+        if self._label and self._label_of_parent:
+            return f'{self._label_of_parent}__{self._label}'
+        else:
+            return self.label
+
+    @property
+    def variables(self) -> linopy.Variables:
+        return self._model.variables[self._variables]
+
+    @property
+    def constraints(self) -> linopy.Constraints:
+        return self._model.constraints[self._constraints]
+
+    @property
+    def _all_variables(self) -> List[str]:
+        all_variables = self._variables.copy()
+        for sub_model in self.sub_models:
+            for variable in sub_model._all_variables:
+                if variable in all_variables:
+                    raise KeyError(
+                        f"Duplicate key found: '{variable}' in both {self.label_full} and {sub_model.label_full}!"
+                    )
+                all_variables.append(variable)
+        return all_variables
+
+    @property
+    def _all_constraints(self) -> List[str]:
+        all_constraints = self._constraints.copy()
+        for sub_model in self.sub_models:
+            for constraint in sub_model._all_variables:
+                if constraint in all_constraints:
+                    raise KeyError(f"Duplicate key found: '{constraint}' in both main model and submodel!")
+                all_constraints.append(constraint)
+        return all_constraints
+
+    @property
+    def all_variables(self) -> linopy.Variables:
+        return self._model.variables[self._all_variables]
+
+    @property
+    def all_constraints(self) -> linopy.Constraints:
+        return self._model.constraints[self._all_constraints]
+
+    @property
+    def all_sub_models(self) -> List['InterfaceModel']:
+        return [model for sub_model in self.sub_models for model in [sub_model] + sub_model.all_sub_models]
+
+
+class ElementModel(InterfaceModel):
     """Interface to create the mathematical Variables and Constraints for Elements"""
 
-    def __init__(self, element: Element, labels: Optional[Union[str, List[str]]] = None):
+    def __init__(self, element: Optional[Element]):
         """
         Parameters
         ----------
         element : Element
             The element this model is created for.
-        labels : Optional[Union[str, List[str]]], optional
-            Used to construct the label of the model. If None, the element label is used.
-            The labels are used as suffixes
         """
-        self.element = element
-        self.variables = {}
-        self.constraints = {}
-        self.sub_models = []
-        self._labels = labels
-        logger.debug(f'Created {self.__class__.__name__}  "{self.label_full}"')
-
-    def description_of_variables(self, structured: bool = True) -> Union[Dict[str, Union[List[str], Dict]], List[str]]:
-        if structured:
-            # Gather descriptions of this model's variables
-            descriptions = {'_self': [var.description() for var in self.variables.values()]}
-
-            # Recursively gather descriptions from sub-models
-            for sub_model in self.sub_models:
-                descriptions[sub_model.label] = sub_model.description_of_variables(structured=structured)
-
-            return descriptions
-        else:
-            return [var.description() for var in self.all_variables.values()]
-
-    def description_of_constraints(self, structured: bool = True) -> Union[Dict[str, str], List[str]]:
-        if structured:
-            # Gather descriptions of this model's variables
-            descriptions = {'_self': [constr.description() for constr in self.constraints.values()]}
-
-            # Recursively gather descriptions from sub-models
-            for sub_model in self.sub_models:
-                descriptions[sub_model.label] = sub_model.description_of_constraints(structured=structured)
-
-            return descriptions
-        else:
-            return [eq.description() for eq in self.all_equations.values()]
-
-    @property
-    def overview_of_model_size(self) -> Dict[str, int]:
-        all_vars, all_eqs, all_ineqs = self.all_variables, self.all_equations, self.all_inequations
-        return {
-            'no of Euations': len(all_eqs),
-            'no of Equations single': sum(eq.nr_of_single_equations for eq in all_eqs.values()),
-            'no of Inequations': len(all_ineqs),
-            'no of Inequations single': sum(ineq.nr_of_single_equations for ineq in all_ineqs.values()),
-            'no of Variables': len(all_vars),
-            'no of Variables single': sum(var.length for var in all_vars.values()),
-        }
-
-    @property
-    def all_variables(self) -> Dict[str, Variable]:
-        all_vars = self.variables.copy()
-        for sub_model in self.sub_models:
-            for key, value in sub_model.all_variables.items():
-                if key in all_vars:
-                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-                all_vars[key] = value
-        return all_vars
-
-    @property
-    def all_constraints(self) -> Dict[str, Union[Equation, Inequation]]:
-        all_constr = self.constraints.copy()
-        for sub_model in self.sub_models:
-            for key, value in sub_model.all_constraints.items():
-                if key in all_constr:
-                    raise KeyError(f"Duplicate key found: '{key}' in both main model and submodel!")
-                all_constr[key] = value
-        return all_constr
-
-    @property
-    def all_sub_models(self) -> List['ElementModel']:
-        all_subs = []
-        to_process = self.sub_models.copy()
-        for model in to_process:
-            all_subs.append(model)
-            to_process.extend(model.sub_models)
-        return all_subs
-
-    def results(self) -> Dict:
-        return {
-            **{variable.label_short: variable.result for variable in self.variables.values()},
-            **{model.label: model.results() for model in self.sub_models},
-        }
-
-    @property
-    def label_full(self) -> str:
-        if self._labels is not None and self.element is not None:
-            if isinstance(self._labels, str) :
-                return f'{self.element.label_full}__{self._labels}'
-            else:
-                return f'{self.element.label_full}__' + '__'.join(self._labels)
-        if self._labels is not None and self.element is None:
-            if isinstance(self._labels, str):
-                return self._labels
-            else:
-                return '__'.join(self._labels)
-        if self.element is not None:
-            return self.element.label_full
-        raise Exception('This should not happen! Internal Error. Please create Issue on GitHub')
-
-    @property
-    def label(self) -> str:
-        if self._labels is not None:
-            if isinstance(self._labels, str):
-                return self._labels
-            else:
-                return self._labels[-1]
-        else:
-            return self.element.label
+        super().__init__(element, element.label_full)
 
 
 def _create_time_series(
@@ -358,6 +273,11 @@ def _create_time_series(
     elif isinstance(data, TimeSeries):
         data.clear_indices_and_aggregated_data()
         return data
+    elif isinstance(data, TimeSeriesData):
+        time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data.data, aggregation_weight=data.agg_weight)
+        data.label = time_series.label  # Connecting User_time_series to TimeSeries
+        element.used_time_series.append(time_series)
+        return time_series
     else:
         time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data)
         element.used_time_series.append(time_series)
