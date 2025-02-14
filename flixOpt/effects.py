@@ -241,7 +241,7 @@ def effect_values_to_time_series(label_suffix: str,
             timesteps,
             periods
         )
-        for effect, value in effect_values.items() if effect is not None
+        for effect, value in effect_values.items()
     }
 
     return effect_values_ts
