@@ -362,21 +362,29 @@ class InterfaceModel:
         }
         return {
             **results,
-            **{sub_model.label: sub_model.solution_numeric(use_numpy) for sub_model in self.sub_models}
+            **{sub_model.label: sub_model.solution_structured(use_numpy) for sub_model in self.sub_models}
         }
 
 
 class ElementModel(InterfaceModel):
     """Interface to create the mathematical Variables and Constraints for Elements"""
 
-    def __init__(self, model: linopy.Model, element: Optional[Element]):
+    def __init__(self, model: linopy.Model, element: Element):
         """
         Parameters
         ----------
         element : Element
             The element this model is created for.
         """
-        super().__init__(model, element, element.label_full)
+        super().__init__(model, element, label=element.label_full)
+
+    @property
+    def label(self) -> str:
+        return self.interface.label
+
+    @property
+    def label_full(self) -> str:
+        return self.interface.label_full
 
 
 def create_equation(
