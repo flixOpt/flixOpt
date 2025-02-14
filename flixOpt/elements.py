@@ -271,7 +271,7 @@ class Flow(Element):
     def label_full(self) -> str:
         # Wenn im Erstellungsprozess comp noch nicht bekannt:
         comp_label = 'unknownComp' if self.comp is None else self.comp.label
-        return f'{comp_label}__{self.label}'  # z.B. für results_struct (deswegen auch _  statt . dazwischen)
+        return f'{self.label} ({comp_label})'
 
     @property  # Richtung
     def is_input_in_comp(self) -> bool:
@@ -300,18 +300,22 @@ class FlowModel(ElementModel):
 
     def do_modeling(self, system_model: SystemModel):
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
-        self.flow_rate = system_model.add_variables(
-            lower=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
-            upper=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else np.inf,
-            coords=system_model.coords,
-            name=f'{self.label_full}__flow_rate',
+        self.flow_rate = self.add(
+            system_model.add_variables(
+                lower=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
+                upper=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else np.inf,
+                coords=system_model.coords,
+                name=f'{self.label_full}__flow_rate'
+            ),
+            'flow_rate'
         )
         if self.element.fixed_relative_profile is not None:
             self.add(
                 system_model.add_constraints(
                     self.flow_rate == self.element.fixed_relative_profile.active_data,
                     name=f'{self.element.label}_fix_flow_rate'
-                )
+                ),
+                'flow_rate (fix)'
             )
 
         # OnOff
@@ -319,7 +323,8 @@ class FlowModel(ElementModel):
             self.on_off = self.add(
                 OnOffModel(
                     self.element, self.element.on_off_parameters, [self.flow_rate], [self.absolute_flow_rate_bounds]
-                )
+                ),
+                'on_off'
             )
             self.on_off.do_modeling(system_model)
 
@@ -333,22 +338,27 @@ class FlowModel(ElementModel):
                     self.relative_flow_rate_bounds,
                     fixed_relative_profile=self.fixed_relative_flow_rate,
                     on_variable=self.on_off.on if self.on_off is not None else None,
-                )
+                ),
+                'investment'
             )
             self._investment.do_modeling(system_model)
 
-        self.total_flow_hours = self.add(system_model.add_variables(
-            lower=self.element.flow_hours_total_min if self.element.flow_hours_total_min is not None else -np.inf,
-            upper=self.element.flow_hours_total_max if self.element.flow_hours_total_max is not None else np.inf,
-            coords=None,
-            name=f'{self.element.label_full}__total_flow_hours'
-        ))
+        self.total_flow_hours = self.add(
+            system_model.add_variables(
+                lower=self.element.flow_hours_total_min if self.element.flow_hours_total_min is not None else -np.inf,
+                upper=self.element.flow_hours_total_max if self.element.flow_hours_total_max is not None else np.inf,
+                coords=None,
+                name=f'{self.element.label_full}__total_flow_hours'
+            ),
+            'total_flow_hours'
+        )
 
         self.add(
             system_model.add_constraints(
                 self.total_flow_hours == (self.flow_rate * system_model.hours_per_step).sum(),
                 name=f'{self.element.label_full}__total_flow_hours'
-            )
+            ),
+            'total_flow_hours'
         )
 
         # Load factor
@@ -383,13 +393,15 @@ class FlowModel(ElementModel):
                 self.add(
                     system_model.add_constraints(
                         self.total_flow_hours <= self._investment.size * flow_hours_per_size_max, name=name,
-                    )
+                    ),
+                    name_short
                 )
             else:
                 self.add(
                     system_model.add_constraints(
                         self.total_flow_hours <= self.element.size * flow_hours_per_size_max, name=name,
-                    )
+                    ),
+                    name_short
                 )
 
         #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
@@ -399,15 +411,21 @@ class FlowModel(ElementModel):
             flow_hours_per_size_in = system_model.hours_per_step * self.element.load_factor_min
 
             if self._investment is not None:
-                self.add(system_model.add_constraints(
-                    self.total_flow_hours >= self._investment.size * flow_hours_per_size_in,
-                    name=name
-                ))
+                self.add(
+                    system_model.add_constraints(
+                        self.total_flow_hours >= self._investment.size * flow_hours_per_size_in,
+                        name=name
+                    ),
+                    name_short
+                )
             else:
-                self.add(system_model.add_constraints(
-                    self.total_flow_hours >= self.element.size * flow_hours_per_size_in,
-                    name=name
-                ))
+                self.add(
+                    system_model.add_constraints(
+                        self.total_flow_hours >= self.element.size * flow_hours_per_size_in,
+                        name=name
+                    ),
+                    name_short
+                )
 
     @property
     def with_investment(self) -> bool:
