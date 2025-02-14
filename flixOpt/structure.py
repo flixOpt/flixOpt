@@ -220,10 +220,10 @@ class Element(Interface):
         return super()._create_time_series(self, name, data, timesteps, periods)
 
 
-class InterfaceModel:
-    """Stores the mathematical Variables and Constraints related to an Interface"""
+class Model:
+    """Stores Variables and Constraints"""
 
-    def __init__(self, model: linopy.Model, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
+    def __init__(self, model: linopy.Model, label: str, label_full: Optional[str] = None):
         """
         Parameters
         ----------
@@ -234,26 +234,25 @@ class InterfaceModel:
         label : str
             Used to construct the label of the model. If None, the interface label is used.
         """
-        if label_of_parent is None and label is None:
-            raise ValueError('Either label_of_parent or label must be set')
 
-        self.interface = interface
         self._model = model
+        self._label = label
+        self._label_full = label_full
+
         self._variables: List[str] = []
         self._constraints: List[str] = []
-        self.sub_models = []
-        self._label = label
-        self._label_of_parent = label_of_parent
+        self.sub_models: List[Model] = []
+
         self._variables_short: Dict[str, str] = {}
         self._constraints_short: Dict[str, str] = {}
         self._sub_models_short: Dict[str, str] = {}
-        logger.debug(f'Created {self.__class__.__name__}  "{self.label_full}"')
+        logger.debug(f'Created {self.__class__.__name__}  "{self._label}"')
 
     def add(
         self,
-        item: Union[linopy.Variable, linopy.Constraint, 'InterfaceModel'],
+        item: Union[linopy.Variable, linopy.Constraint, 'Model'],
         short_name: Optional[str] = None
-    ) -> Union[linopy.Variable, linopy.Constraint, 'InterfaceModel']:
+    ) -> Union[linopy.Variable, linopy.Constraint, 'Model']:
         """
         Add a variable, constraint or sub-model to the model
 
@@ -278,16 +277,47 @@ class InterfaceModel:
             raise ValueError(f'Item must be a linopy.Variable or linopy.Constraint, got {type(item)}')
         return item
 
+    def filter_variables(self,
+                         filter_by: Optional[Literal['binary', 'continuous', 'integer']] = None,
+                         length: Literal['scalar', 'time'] = None):
+        if filter_by is None:
+            all_variables = self.variables
+        elif filter_by == 'binary':
+            all_variables = self.variables.binaries
+        elif filter_by == 'integer':
+            all_variables = self.variables.integers
+        elif filter_by == 'continuous':
+            all_variables = self.variables.continuous
+        else:
+            raise ValueError(f'Invalid filter_by "{filter_by}", must be one of "binary", "continous", "integer"')
+        if length is None:
+            return all_variables
+        elif length == 'scalar':
+            return all_variables[[name for name in all_variables if all_variables[name].ndim == 0]]
+        elif length == 'time':
+            return all_variables[[name for name in all_variables if 'time' in all_variables[name].dims]]
+        raise ValueError(f'Invalid length "{length}", must be one of "scalar", "time" or None')
+
+    def solution_structured(
+        self,
+        use_numpy: bool = True,
+    ) -> Dict[str, Union[np.ndarray, Dict]]:
+        results = {
+            self._variables_short[var_name]: var.values
+            for var_name, var in self.variables.solution.data_vars.items()
+        }
+        return {
+            **results,
+            **{sub_model.label: sub_model.solution_structured(use_numpy) for sub_model in self.sub_models}
+        }
+
     @property
     def label(self) -> str:
-        return self._label or self._label_of_parent
+        return self._label
 
     @property
     def label_full(self) -> str:
-        if self._label and self._label_of_parent:
-            return f'{self._label_of_parent}__{self._label}'
-        else:
-            return self.label
+        return self._label_full or self.label
 
     @property
     def variables(self) -> linopy.Variables:
@@ -328,45 +358,33 @@ class InterfaceModel:
         return self._model.constraints[self._all_constraints]
 
     @property
-    def all_sub_models(self) -> List['InterfaceModel']:
+    def all_sub_models(self) -> List['Model']:
         return [model for sub_model in self.sub_models for model in [sub_model] + sub_model.all_sub_models]
 
-    def filter_variables(self,
-                         filter_by: Optional[Literal['binary', 'continuous', 'integer']] = None,
-                         length: Literal['scalar', 'time'] = None):
-        if filter_by is None:
-            all_variables = self.variables
-        elif filter_by == 'binary':
-            all_variables = self.variables.binaries
-        elif filter_by == 'integer':
-            all_variables = self.variables.integers
-        elif filter_by == 'continuous':
-            all_variables = self.variables.continuous
-        else:
-            raise ValueError(f'Invalid filter_by "{filter_by}", must be one of "binary", "continous", "integer"')
-        if length is None:
-            return all_variables
-        elif length == 'scalar':
-            return all_variables[[name for name in all_variables if all_variables[name].ndim == 0]]
-        elif length == 'time':
-            return all_variables[[name for name in all_variables if 'time' in all_variables[name].dims]]
-        raise ValueError(f'Invalid length "{length}", must be one of "scalar", "time" or None')
 
-    def solution_structured(
-        self,
-        use_numpy: bool = True,
-    ) -> Dict[str, Union[np.ndarray, Dict]]:
-        results = {
-            self._variables_short[var_name]: var.values
-            for var_name, var in self.variables.solution.data_vars.items()
-        }
-        return {
-            **results,
-            **{sub_model.label: sub_model.solution_structured(use_numpy) for sub_model in self.sub_models}
-        }
+class InterfaceModel(Model):
+    """Stores the mathematical Variables and Constraints related to an Interface"""
+
+    def __init__(self, model: linopy.Model, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
+        """
+        Parameters
+        ----------
+        interface : Interface
+            The interface this model is created for.
+        label_of_parent : str
+            The label of the parent. Used to construct the full label of the model.
+        label : str
+            Used to construct the label of the model. If None, the interface label is used.
+        """
+        if label_of_parent is None and label is None:
+            raise ValueError('Either label_of_parent or label must be set')
+        super().__init__(model, label, f'{label_of_parent}__{label}' if label_of_parent else None)
+
+        self.interface = interface
+        logger.debug(f'Created {self.__class__.__name__}  "{self.label_full}"')
 
 
-class ElementModel(InterfaceModel):
+class ElementModel(Model):
     """Interface to create the mathematical Variables and Constraints for Elements"""
 
     def __init__(self, model: linopy.Model, element: Element):
@@ -376,15 +394,8 @@ class ElementModel(InterfaceModel):
         element : Element
             The element this model is created for.
         """
-        super().__init__(model, element, label=element.label_full)
-
-    @property
-    def label(self) -> str:
-        return self.interface.label
-
-    @property
-    def label_full(self) -> str:
-        return self.interface.label_full
+        super().__init__(model, label=element.label, label_full=element.label_full)
+        self.element = element
 
 
 def create_equation(
