@@ -166,15 +166,19 @@ class Element(Interface):
 class InterfaceModel:
     """Stores the mathematical Variables and Constraints related to an Interface"""
 
-    def __init__(self, interface: Optional[Interface], label_of_parent: Optional[str], label: Optional[str] = None):
+    def __init__(self, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
         """
         Parameters
         ----------
         interface : Interface
             The interface this model is created for.
+        label_of_parent : str
+            The label of the parent. Used to construct the full label of the model.
         label : str
             Used to construct the label of the model. If None, the interface label is used.
         """
+        if label_of_parent is None and label is None:
+            raise ValueError('Either label_of_parent or label must be set')
         self.interface = interface
         self._model: Optional[linopy.Model] = None
         self._variables: List[str] = []

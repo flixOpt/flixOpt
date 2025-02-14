@@ -14,7 +14,7 @@ import linopy
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries
 from .features import ShareAllocationModel
 from .math_modeling import Equation, Variable
-from .structure import Element, ElementModel, SystemModel, _create_time_series
+from .structure import Element, ElementModel, SystemModel, _create_time_series, InterfaceModel
 
 logger = logging.getLogger('flixOpt')
 
@@ -154,37 +154,50 @@ class EffectModel(ElementModel):
         super().__init__(element)
         self.element: Effect = element
         self.total: Optional[linopy.Variable] = None
-        self.invest = ShareAllocationModel(
-            self.element, 'invest', False, total_max=self.element.maximum_invest, total_min=self.element.minimum_invest
+        self.invest = self.add(
+            ShareAllocationModel(
+                False,
+                self.element.label_full,
+                'invest',
+                total_max=self.element.maximum_invest,
+                total_min=self.element.minimum_invest
+            )
         )
-        self.operation = ShareAllocationModel(
-            self.element,
-            'operation',
-            True,
-            total_max=self.element.maximum_operation,
-            total_min=self.element.minimum_operation,
-            min_per_hour=self.element.minimum_operation_per_hour.active_data
-            if self.element.minimum_operation_per_hour is not None
-            else None,
-            max_per_hour=self.element.maximum_operation_per_hour.active_data
-            if self.element.maximum_operation_per_hour is not None
-            else None,
+
+        self.operation = self.add(
+            ShareAllocationModel(
+                True,
+                self.element.label_full,
+                'operation',
+                total_max=self.element.maximum_operation,
+                total_min=self.element.minimum_operation,
+                min_per_hour=self.element.minimum_operation_per_hour.active_data
+                if self.element.minimum_operation_per_hour is not None
+                else None,
+                max_per_hour=self.element.maximum_operation_per_hour.active_data
+                if self.element.maximum_operation_per_hour is not None
+                else None,
+            )
         )
-        self.sub_models.extend([self.invest, self.operation])
 
     def do_modeling(self, system_model: SystemModel):
         for model in self.sub_models:
             model.do_modeling(system_model)
 
-        self.total = system_model.add_variables(
-            lower=self.element.minimum_total if self.element.minimum_total is not None else -np.inf,
-            upper=self.element.maximum_total if self.element.maximum_total is not None else np.inf,
-            coords=None,
-            name=f'{self.element.label_full}__total'
+        self.total = self.add(
+            system_model.add_variables(
+                lower=self.element.minimum_total if self.element.minimum_total is not None else -np.inf,
+                upper=self.element.maximum_total if self.element.maximum_total is not None else np.inf,
+                coords=None,
+                name=f'{self.element.label_full}__total'
+            )
         )
 
-        self.constraints['total'] = system_model.add_constraints(
-            self.total == self.operation.total.sum() + self.invest.total.sum(), name=f'{self.element.label_full}__total'
+        self.add(
+            system_model.add_constraints(
+                self.total == self.operation.total.sum() + self.invest.total.sum(),
+                name=f'{self.element.label_full}__total'
+            )
         )
 
 
@@ -241,13 +254,13 @@ def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[Effe
         None: effect_values_user} if effect_values_user is not None else None
 
 
-class EffectCollection(ElementModel):
+class EffectCollection(InterfaceModel):
     """
     Handling all Effects
     """
 
     def __init__(self, effects: List[Effect]):
-        super().__init__(Element('Effects'))
+        super().__init__(label='Effects')
         self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
@@ -278,7 +291,7 @@ class EffectCollection(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         for effect in self.effects.values():
             effect.create_model()
-        self.penalty = ShareAllocationModel(Element('Penalty'), 'penalty', False)
+        self.penalty = self.add(ShareAllocationModel(shares_are_time_series=False, label='penalty'))
         for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
             model.do_modeling(system_model)
 

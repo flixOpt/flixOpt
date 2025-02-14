@@ -16,6 +16,8 @@ from .math_modeling import Equation, Variable, VariableTS
 from .structure import (
     Element,
     ElementModel,
+    InterfaceModel,
+    Interface,
     SystemModel,
     create_equation,
     create_variable,
@@ -728,23 +730,22 @@ class MultipleSegmentsModel(ElementModel):
         return len(next(iter(self._sample_points.values())))
 
 
-class ShareAllocationModel(ElementModel):
+class ShareAllocationModel(InterfaceModel):
     def __init__(
         self,
-        element: Element,
-        label: str,
         shares_are_time_series: bool,
+        label_of_parent: Optional[str] = None,
+        label: Optional[str] = None,
         total_max: Optional[Skalar] = None,
         total_min: Optional[Skalar] = None,
         max_per_hour: Optional[Numeric] = None,
         min_per_hour: Optional[Numeric] = None,
     ):
-        super().__init__(element, label)
+        super().__init__(label_of_parent=label_of_parent, label=label)
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, (
                 'Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False'
             )
-        self.element = element
         self.total_per_timestep: Optional[linopy.Variable] = None
         self.total: Optional[linopy.Variable] = None
         self.shares: Dict[str, linopy.Variable] = {}
