@@ -62,7 +62,7 @@ class Interface:
     This class is used to collect arguments about a Model.
     """
 
-    def transform_data(self, data_array: xr.DataArray):
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
         raise NotImplementedError('Every Interface needs a transform_data() method')
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
@@ -128,6 +128,35 @@ class Interface:
     def __str__(self):
         return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
 
+    @staticmethod
+    def _create_time_series(
+        element: 'Element',
+        name: str,
+        data: Optional[Union[Numeric_TS, TimeSeries]],
+        timesteps: pd.DatetimeIndex,
+        periods: Optional[pd.Index],
+    ) -> Optional[TimeSeries]:
+        """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
+        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned"""
+
+        if data is None:
+            return None
+        elif isinstance(data, TimeSeries):
+            data.restore_data()
+            return data
+
+        time_series = TimeSeries.from_datasource(
+            name=f'{element.label_full}__{name}',
+            data=data.data if isinstance(data, TimeSeriesData) else data,
+            timesteps=timesteps,
+            periods=periods,
+            aggregation_weight=data.agg_weight if isinstance(data, TimeSeriesData) else None,
+        )
+        element.used_time_series.append(time_series)
+        if isinstance(data, TimeSeriesData):
+            data.label = time_series.name  # Connecting User_time_series to TimeSeries
+        return time_series
+
 
 class Element(Interface):
     """Basic Element of flixOpt"""
@@ -161,6 +190,15 @@ class Element(Interface):
     @property
     def label_full(self) -> str:
         return self.label
+
+    def _create_time_series(
+        self,
+        name: str,
+        data: Optional[Union[Numeric_TS, TimeSeries]],
+        timesteps: pd.DatetimeIndex,
+        periods: Optional[pd.Index],
+    ) -> Optional[TimeSeries]:
+        return super()._create_time_series(self, name, data, timesteps, periods)
 
 
 class InterfaceModel:
@@ -265,27 +303,6 @@ class ElementModel(InterfaceModel):
             The element this model is created for.
         """
         super().__init__(element, element.label_full)
-
-
-def _create_time_series(
-    label: str, data: Optional[Union[Numeric_TS, TimeSeries]], element: Element
-) -> Optional[TimeSeries]:
-    """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
-    If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned"""
-    if data is None:
-        return None
-    elif isinstance(data, TimeSeries):
-        data.clear_indices_and_aggregated_data()
-        return data
-    elif isinstance(data, TimeSeriesData):
-        time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data.data, aggregation_weight=data.agg_weight)
-        data.label = time_series.label  # Connecting User_time_series to TimeSeries
-        element.used_time_series.append(time_series)
-        return time_series
-    else:
-        time_series = TimeSeries(label=f'{element.label_full}__{label}', data=data)
-        element.used_time_series.append(time_series)
-        return time_series
 
 
 def create_equation(
