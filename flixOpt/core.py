@@ -20,85 +20,92 @@ Numeric = Union[int, float, np.ndarray]  # Datatype
 
 class DataConverter:
     @staticmethod
-    def as_series(data: Union[Numeric, pd.Series, pd.DataFrame], dims: Tuple[pd.Index, ...]) -> pd.Series:
+    def as_dataarray(data: Union[Numeric, pd.Series, pd.DataFrame], time: pd.DatetimeIndex, period: Optional[pd.Index] = None) -> xr.DataArray:
         """
-        Converts the given data to a pd.Series with the specified index.
+        Converts the given data to an xarray.DataArray with the specified time and period indexes.
 
-        - Arrays and Series are stacked across the period index.
+        - If period is provided, data will have both period and time coordinates.
+        - If period is not provided, data will have only time as the index.
         - The length of the array must match the length of the time coordinate if applicable.
         - If a 1D array is given but two indices are provided, it is reshaped to 2D automatically.
 
         Parameters:
         - data: The input data (scalar, array, Series, or DataFrame).
-        - dims: A Tuple of pd.Index objects specifying the index dimensions.
+        - time: A pd.DatetimeIndex for the time dimension.
+        - period: An optional pd.Index for the period dimension.
 
         Returns:
-        - pd.Series: The resulting Series, possibly with a MultiIndex.
+        - xr.DataArray: The resulting DataArray with time and optionally period as coordinates.
         """
 
-        if not isinstance(dims, tuple) or not all(isinstance(idx, pd.Index) for idx in dims):
-            raise TypeError("dims must be a tuple of pandas Index objects")
-
-        index = pd.MultiIndex.from_product(dims) if len(dims) > 1 else dims[0]
+        if period is not None:
+            coords = [period, time]
+            dims = ['period', 'time']
+        else:
+            coords = [time]
+            dims = ['time']
 
         if isinstance(data, (int, float)):  # Scalar case
-            return DataConverter._handle_scalar(data, index)
+            return DataConverter._handle_scalar(data, coords, dims)
 
         if isinstance(data, np.ndarray):
-            return DataConverter._handle_array(data, dims, index)
+            return DataConverter._handle_array(data, coords, dims)
 
         if isinstance(data, pd.Series):
-            return DataConverter._handle_series(data, dims, index)
+            return DataConverter._handle_series(data, coords, dims)
 
         if isinstance(data, pd.DataFrame):
-            return DataConverter._handle_dataframe(data, dims, index)
+            return DataConverter._handle_dataframe(data, coords, dims)
 
         raise TypeError("Unsupported data type. Must be scalar, np.ndarray, pd.Series, or pd.DataFrame.")
 
     @staticmethod
-    def _handle_scalar(data: Union[int, float], index: pd.Index) -> pd.Series:
+    def _handle_scalar(data: Union[int, float], coords: list, dims: list) -> xr.DataArray:
         """Handles scalar input."""
-        return pd.Series(data, index=index)
+        return xr.DataArray(data, coords=coords, dims=dims)
 
     @staticmethod
-    def _handle_array(data: np.ndarray, dims: Tuple[pd.Index, ...], index: pd.Index) -> pd.Series:
+    def _handle_array(data: np.ndarray, coords: list, dims: list) -> xr.DataArray:
         """Handles NumPy array input."""
-        expected_shape = tuple(len(idx) for idx in dims)
+        expected_shape = tuple(len(coord) for coord in coords)
 
-        if data.ndim == 1 and len(dims) == 2:  # Automatically reshape 1D arrays
-            if data.shape[0] == len(dims[0]):
-                data = np.tile(data[:, np.newaxis], (1, len(dims[1])))  # Expand along second dimension
-            elif data.shape[0] == len(dims[1]):
-                data = np.tile(data[np.newaxis, :], (len(dims[0]), 1))  # Expand along first dimension
+        if data.ndim == 1 and len(coords) == 2:  # Automatically reshape 1D arrays
+            if data.shape[0] == len(coords[0]):
+                data = np.tile(data[:, np.newaxis], (1, len(coords[1])))  # Expand along second dimension
+            elif data.shape[0] == len(coords[1]):
+                data = np.tile(data[np.newaxis, :], (len(coords[0]), 1))  # Expand along first dimension
             else:
-                raise ValueError("1D array length does not match either dimension in dims")
+                raise ValueError("1D array length does not match either dimension in coords")
 
         if data.shape != expected_shape:
             raise ValueError(f"Shape of data {data.shape} does not match expected shape {expected_shape}")
 
-        return pd.Series(data.ravel(), index=index)
+        return xr.DataArray(data, coords=coords, dims=dims)
 
     @staticmethod
-    def _handle_series(data: pd.Series, dims: Tuple[pd.Index, ...], index: pd.Index) -> pd.Series:
+    def _handle_series(data: pd.Series, coords: list, dims: list) -> xr.DataArray:
         """Handles pandas Series input."""
-        if len(dims) == 1:
-            if not data.index.equals(dims[0]):
-                raise ValueError("Series index does not match the provided index")
-            return data
-        return pd.Series(data.values.ravel(), index=index)
+        if len(coords) == 1:
+            if not data.index.equals(coords[0]):
+                raise ValueError("Series index does not match the provided time index")
+            return xr.DataArray(data.values, coords=coords, dims=dims)
+
+        # Reshape if necessary and return as DataArray
+        return xr.DataArray(data.values.ravel(), coords=coords, dims=dims)
 
     @staticmethod
-    def _handle_dataframe(data: pd.DataFrame, dims: Tuple[pd.Index, ...], index: pd.Index) -> pd.Series:
+    def _handle_dataframe(data: pd.DataFrame, coords: list, dims: list) -> xr.DataArray:
         """Handles pandas DataFrame input."""
-        if len(dims) != 2 or data.shape != (len(dims[1]), len(dims[0])):
+        if len(coords) != 2 or data.shape != (len(coords[1]), len(coords[0])):
             raise ValueError("DataFrame shape does not match provided indexes")
 
         # Stack and ensure columns become level 0
         stacked = data.stack().swaplevel(0, 1).sort_index()
-        if not stacked.index.equals(index):
+        if not stacked.index.equals(coords[0]):
             raise ValueError("Stacked DataFrame index does not match the provided index")
 
-        return stacked
+        return xr.DataArray(stacked.values, coords=coords, dims=dims)
+
 
 
 class TimeSeriesData:
@@ -160,8 +167,10 @@ class TimeSeries:
     @classmethod
     def from_datasource(cls,
                         data: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray],
-                        dims: Tuple[pd.Index, ...],
-                        aggregation_weight: Optional[float] = None):
+                        name: str,
+                        timesteps: pd.DatetimeIndex = None,
+                        periods: Optional[pd.Index] = None,
+                        aggregation_weight: Optional[float] = None) -> 'TimeSeries':
         """
         Initialize the TimeSeries from multiple datasources.
 
@@ -170,54 +179,86 @@ class TimeSeries:
         - dims (Tuple[pd.Index, ...]): The dimensions of the TimeSeries.
         - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
         """
-        data = DataConverter.as_series(data, dims)
-        # TODO: Add validation for the dimensions
-        return cls(DataConverter.as_series(data, dims), aggregation_weight)
+        data = cls(DataConverter.as_dataarray(data, timesteps, periods), name, aggregation_weight)
+        return data
 
-    def __init__(self, data: pd.Series, aggregation_weight: Optional[float] = None):
+    def __init__(self,
+                 data: xr.DataArray,
+                 name: str,
+                 aggregation_weight: Optional[float] = None):
         """
-        Initialize the TimeSeriesManager with a Series.
+        Initialize a TimeSeries with a DataArray.
 
         Parameters:
-        - data (pd.Series): A Series with a DatetimeIndex and possibly a MultiIndex.
+        - data (xr.DataArray): A Series with a DatetimeIndex and possibly a MultiIndex.
         - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
         """
-        self._stored_data = data.copy()  # Store data
-        self._backup: pd.Series = self.stored_data  # Single backup instance. Enables to temporarily overwrite the data.
+        if 'time' not in data.indexes:
+            raise ValueError(f'DataArray must have a "time" index. Got {data.indexes}')
+        if 'period' not in data.indexes and data.ndim > 1:
+            raise ValueError(f'Second index of DataArray must be "period". Got {data.indexes}')
+
         self._active_data = None
-        self._active_index = None
+        self._active_timesteps = None
+        self._active_periods = None
+        self.name = name
         self.aggregation_weight = aggregation_weight
 
-        self.active_index = None  # Initializes the active index and active data
+        self._stored_data = data.copy()
+
+        self._backup: xr.DataArray = self.stored_data  # Single backup instance. Enables to temporarily overwrite the data.
+        self.active_timesteps = None  # Initializes the active timesteps and active data
+        self.active_periods = None  # Initializes the active timesteps and active data
 
     def restore_data(self):
         """Restore stored_data from the backup."""
         self._stored_data = self._backup.copy()
-        self.active_index = None
+        self.active_timesteps = None
+        self.active_periods = None
 
-    def as_dataarray(self) -> xr.DataArray:
-        return self.active_data.to_xarray()
-
-    @property
-    def active_index(self) -> pd.Index:
-        """Return the current active index."""
-        return self._active_index
-
-    @active_index.setter
-    def active_index(self, index: Optional[pd.Index]):
-        """Set a new active index and refresh active_data."""
-        if index is None:
-            self._active_index = self._stored_data.index
-            self._active_data = self._stored_data
-            return
-        elif not isinstance(index, (pd.Index, pd.MultiIndex)):
-            raise TypeError("active_index must be a pandas Index or MultiIndex or None")
+    def _update_active_data(self):
+        """Update the active data."""
+        if 'period' in self._stored_data.indexes:
+            self._active_data = self._stored_data.sel(timesteps=self.active_timesteps, periods=self.active_periods)
         else:
-            self._active_index = index
-            self._active_data = self.stored_data.loc[self._active_index]  # Refresh view
+            self._active_data = self._stored_data.sel(timesteps=self.active_timesteps)
 
     @property
-    def active_data(self) -> pd.Series:
+    def active_timesteps(self) -> pd.DatetimeIndex:
+        """Return the current active index."""
+        return self._active_timesteps
+
+    @active_timesteps.setter
+    def active_timesteps(self, timesteps: Optional[pd.DatetimeIndex]):
+        """Set active_timesteps and refresh active_data."""
+        if timesteps is None:
+            self._active_timesteps = slice(None)
+        elif isinstance(timesteps, pd.DatetimeIndex):
+            self._active_timesteps = timesteps
+        else:
+            raise TypeError("active_index must be a pandas Index or MultiIndex or None")
+
+        self._update_active_data()  # Refresh view
+
+    @property
+    def active_periods(self) -> pd.Index:
+        """Return the current active index."""
+        return self._active_periods
+
+    @active_periods.setter
+    def active_periods(self, periods: Optional[pd.Index]):
+        """Set new active periods and refresh active_data."""
+        if periods is None:
+            self._active_periods = slice(None)
+        elif isinstance(periods, pd.Index):
+            self._active_periods = periods
+        else:
+            raise TypeError("periods must be a pd.Index or None")
+
+        self._update_active_data()  # Refresh view
+
+    @property
+    def active_data(self) -> xr.DataArray:
         """Return a view of stored_data based on active_index."""
         return self._active_data
 
@@ -227,32 +268,31 @@ class TimeSeries:
         raise AttributeError("active_data cannot be directly modified. Modify stored_data instead.")
 
     @property
-    def stored_data(self) -> pd.Series:
+    def stored_data(self) -> xr.DataArray:
         """Return a copy of stored_data. Prevents modification of stored data"""
         return self._stored_data.copy()
 
     @stored_data.setter
-    def stored_data(self, value: pd.Series):
+    def stored_data(self, value: xr.DataArray):
         """Set stored_data and refresh active_index and active_data."""
         self._backup = self._stored_data
         self._stored_data = value
-        self.active_index = None
+        self.active_timesteps = None
+        self.active_periods = None
 
     @property
-    def loc(self):
-        """Access active_data using loc."""
-        return self.active_data.loc
+    def sel(self):
+        return self.active_data.sel
 
     @property
-    def iloc(self):
-        """Access active_data using iloc."""
-        return self.active_data.iloc
+    def isel(self):
+        return self.active_data.sel
 
     # Enable arithmetic operations using active_data
     def _apply_operation(self, other, op):
         if isinstance(other, TimeSeries):
-            other = other.as_dataarray()
-        return op(self.as_dataarray(), other)
+            other = other.active_data
+        return op(self.active_data, other)
 
     def __add__(self, other):
         return self._apply_operation(other, lambda x, y: x + y)
@@ -268,38 +308,30 @@ class TimeSeries:
 
     # Reflected arithmetic operations (to handle cases like `some_xarray + ts1`)
     def __radd__(self, other):
-        return other + self.as_dataarray()
+        return other + self.active_data
 
     def __rsub__(self, other):
-        return other - self.as_dataarray()
+        return other - self.active_data
 
     def __rmul__(self, other):
-        return other * self.as_dataarray()
+        return other * self.active_data
 
     def __rtruediv__(self, other):
-        return other / self.as_dataarray()
+        return other / self.active_data
 
     # Unary operations. Not sure if this is the best way...
     def __neg__(self):
-        return -self.as_dataarray()
+        return -self.active_data
 
     def __pos__(self):
-        return +self.as_dataarray()
+        return +self.active_data
 
     def __abs__(self):
-        return abs(self.as_dataarray())
+        return abs(self.active_data)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Ensures NumPy functions like np.add(TimeSeries, xarray) work correctly."""
-        inputs = [x.as_dataarray() if isinstance(x, TimeSeries) else x for x in inputs]
-        result = getattr(ufunc, method)(*inputs, **kwargs)
-
-        # Ensure return type consistency
-        if isinstance(result, xr.DataArray):
-            return result
-        elif isinstance(result, np.ndarray):  # Handles cases like np.exp(ts)
-            return pd.Series(result, index=self.active_data.index)
-        else:
-            raise NotImplementedError(f"ufunc {ufunc} not implemented for TimeSeries")
+        inputs = [x.active_data if isinstance(x, TimeSeries) else x for x in inputs]
+        return getattr(ufunc, method)(*inputs, **kwargs)
 
 
