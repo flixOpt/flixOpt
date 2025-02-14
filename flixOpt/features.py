@@ -762,22 +762,26 @@ class ShareAllocationModel(InterfaceModel):
         self._min_per_hour = min_per_hour if min_per_hour is not None else -np.inf
 
     def do_modeling(self, system_model: SystemModel):
-        self.total = system_model.add_variables(
-            lower=self._total_min, upper=self._total_max, coords=None, name=f'{self.label_full}_total'
+        self.total = self.add(
+            system_model.add_variables(
+                lower=self._total_min, upper=self._total_max, coords=None, name=f'{self.label_full}_total'
+            )
         )
         # eq: sum = sum(share_i) # skalar
-        self._eq_total = system_model.add_constraints(self.total == 0, name=f'{self.label_full}__total')
+        self._eq_total = self.add(system_model.add_constraints(self.total == 0, name=f'{self.label_full}__total'))
 
         if self._shares_are_time_series:
-            self.total_per_timestep = system_model.add_variables(
-                lower=-np.inf if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.hours_per_step),
-                upper=np.inf if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.hours_per_step),
-                coords=system_model.coords,
-                name=f'{self.label_full}_total_per_timestep'
+            self.total_per_timestep = self.add(
+                    system_model.add_variables(
+                    lower=-np.inf if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.hours_per_step),
+                    upper=np.inf if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.hours_per_step),
+                    coords=system_model.coords,
+                    name=f'{self.label_full}_total_per_timestep'
+                )
             )
 
-            self._eq_total_per_timestep = system_model.add_constraints(
-                self.total_per_timestep == 0, name=f'{self.label_full}__total_per_timestep'
+            self._eq_total_per_timestep = self.add(
+                system_model.add_constraints(self.total_per_timestep == 0, name=f'{self.label_full}__total_per_timestep')
             )
 
             # Add it to the total
@@ -807,12 +811,16 @@ class ShareAllocationModel(InterfaceModel):
         if name in self.shares:
             self.share_constraints[name].lhs -= expression
         else:
-            self.shares[name] = system_model.add_variables(
-                coords=None if expression.ndim == 0 else system_model.coords,
-                name=f'{name}__{self.label_full}'
+            self.shares[name] = self.add(
+                system_model.add_variables(
+                    coords=None if expression.ndim == 0 else system_model.coords,
+                    name=f'{name}__{self.label_full}'
+                )
             )
-            self.share_constraints[name] = system_model.add_constraints(
-                self.shares[name] == expression, name=f'{name}__{self.label_full}'
+            self.share_constraints[name] = self.add(
+                system_model.add_constraints(
+                    self.shares[name] == expression, name=f'{name}__{self.label_full}'
+                )
             )
             if self.shares[name].ndim == 0:
                 self._eq_total.lhs -= self.shares[name]
