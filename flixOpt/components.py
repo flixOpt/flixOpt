@@ -6,11 +6,12 @@ import logging
 from typing import Dict, List, Literal, Optional, Set, Tuple, Union
 
 import numpy as np
+import pandas as pd
 import linopy
 
 from . import utils
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries
-from .elements import Component, ComponentModel, Flow, _create_time_series
+from .elements import Component, ComponentModel, Flow
 from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
 from .math_modeling import Equation, VariableTS
@@ -60,8 +61,8 @@ class LinearConverter(Component):
         self.segmented_conversion_factors = segmented_conversion_factors or {}
         self._plausibility_checks()
 
-    def create_model(self) -> 'LinearConverterModel':
-        self.model = LinearConverterModel(self)
+    def create_model(self, model: linopy.Model) -> 'LinearConverterModel':
+        self.model = LinearConverterModel(model, self)
         return self.model
 
     def _plausibility_checks(self) -> None:
@@ -92,29 +93,29 @@ class LinearConverter(Component):
                         f'(in flow {flow.label_full}) do not make sense together!'
                     )
 
-    def transform_data(self):
-        super().transform_data()
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
+        super().transform_data(timesteps, periods)
         if self.conversion_factors:
-            self.conversion_factors = self._transform_conversion_factors()
+            self.conversion_factors = self._transform_conversion_factors(timesteps, periods)
         else:
             segmented_conversion_factors = {}
             for flow, segments in self.segmented_conversion_factors.items():
                 segmented_conversion_factors[flow] = [
                     (
-                        _create_time_series('Stuetzstelle', segment[0], self),
-                        _create_time_series('Stuetzstelle', segment[1], self),
+                        self._create_time_series('Stützstelle', segment[0], timesteps, periods),
+                        self._create_time_series('Stützstelle', segment[1], timesteps, periods),
                     )
                     for segment in segments
                 ]
             self.segmented_conversion_factors = segmented_conversion_factors
 
-    def _transform_conversion_factors(self) -> List[Dict[Flow, TimeSeries]]:
+    def _transform_conversion_factors(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> List[Dict[Flow, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
         list_of_conversion_factors = []
         for conversion_factor in self.conversion_factors:
             transformed_dict = {}
             for flow, values in conversion_factor.items():
-                transformed_dict[flow] = _create_time_series(f'{flow.label}_factor', values, self)
+                transformed_dict[flow] = self._create_time_series(f'{flow.label}_factor', values, timesteps, periods)
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
 
@@ -215,19 +216,19 @@ class Storage(Component):
         self.model = StorageModel(self)
         return self.model
 
-    def transform_data(self) -> None:
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> None:
         super().transform_data()
-        self.relative_minimum_charge_state = _create_time_series(
-            'relative_minimum_charge_state', self.relative_minimum_charge_state, self
+        self.relative_minimum_charge_state = self._create_time_series(
+            'relative_minimum_charge_state', self.relative_minimum_charge_state, timesteps, periods
         )
-        self.relative_maximum_charge_state = _create_time_series(
-            'relative_maximum_charge_state', self.relative_maximum_charge_state, self
+        self.relative_maximum_charge_state = self._create_time_series(
+            'relative_maximum_charge_state', self.relative_maximum_charge_state, timesteps, periods
         )
-        self.eta_charge = _create_time_series('eta_charge', self.eta_charge, self)
-        self.eta_discharge = _create_time_series('eta_discharge', self.eta_discharge, self)
-        self.relative_loss_per_hour = _create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, self)
+        self.eta_charge = self._create_time_series('eta_charge', self.eta_charge, timesteps, periods)
+        self.eta_discharge = self._create_time_series('eta_discharge', self.eta_discharge, timesteps, periods)
+        self.relative_loss_per_hour = self._create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, timesteps, periods)
         if isinstance(self.capacity_in_flow_hours, InvestParameters):
-            self.capacity_in_flow_hours.transform_data()
+            self.capacity_in_flow_hours.transform_data(timesteps, periods)
 
 
 class Transmission(Component):
@@ -314,10 +315,10 @@ class Transmission(Component):
         self.model = TransmissionModel(self)
         return self.model
 
-    def transform_data(self) -> None:
-        super().transform_data()
-        self.relative_losses = _create_time_series('relative_losses', self.relative_losses, self)
-        self.absolute_losses = _create_time_series('absolute_losses', self.absolute_losses, self)
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> None:
+        super().transform_data(timesteps, periods)
+        self.relative_losses = self._create_time_series('relative_losses', self.relative_losses, timesteps, periods)
+        self.absolute_losses = self._create_time_series('absolute_losses', self.absolute_losses, timesteps, periods)
 
 
 class TransmissionModel(ComponentModel):
@@ -371,8 +372,8 @@ class TransmissionModel(ComponentModel):
 
 
 class LinearConverterModel(ComponentModel):
-    def __init__(self, element: LinearConverter):
-        super().__init__(element)
+    def __init__(self, model: linopy.Model, element: LinearConverter):
+        super().__init__(model, element)
         self.element: LinearConverter = element
         self.on_off: Optional[OnOffModel] = None
 
@@ -390,12 +391,13 @@ class LinearConverterModel(ComponentModel):
                 used_inputs: Set = all_input_flows & used_flows
                 used_outputs: Set = all_output_flows & used_flows
 
-                self.constraints[f'conversion_{i}'] = system_model.add_constraints(
-                    sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_inputs])
-                    ==
-                    sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_outputs]),
-                    name=f'{self.label_full}__conversion_{i}'
-
+                self.add(
+                    system_model.add_constraints(
+                        sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_inputs])
+                        ==
+                        sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_outputs]),
+                        name=f'{self.label_full}__conversion_{i}'
+                    )
                 )
 
         # (linear) segments:

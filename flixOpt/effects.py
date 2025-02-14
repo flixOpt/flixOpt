@@ -9,12 +9,13 @@ import logging
 from typing import Dict, Literal, Optional, Union, List
 
 import numpy as np
+import pandas as pd
 import linopy
 
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries
 from .features import ShareAllocationModel
 from .math_modeling import Equation, Variable
-from .structure import Element, ElementModel, SystemModel, _create_time_series, InterfaceModel
+from .structure import Element, ElementModel, SystemModel, InterfaceModel
 
 logger = logging.getLogger('flixOpt')
 
@@ -132,30 +133,35 @@ class Effect(Element):
                 f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
             )
 
-    def transform_data(self):
-        self.minimum_operation_per_hour = _create_time_series(
-            'minimum_operation_per_hour', self.minimum_operation_per_hour, self
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
+        self.minimum_operation_per_hour = self._create_time_series(
+            'minimum_operation_per_hour', self.minimum_operation_per_hour, timesteps, periods
         )
-        self.maximum_operation_per_hour = _create_time_series(
-            'maximum_operation_per_hour', self.maximum_operation_per_hour, self
+        self.maximum_operation_per_hour = self._create_time_series(
+            'maximum_operation_per_hour', self.maximum_operation_per_hour, timesteps, periods
         )
 
         self.specific_share_to_other_effects_operation = effect_values_to_time_series(
-            'specific_share_to_other_effects_operation', self.specific_share_to_other_effects_operation, self
+            'operation_to',
+            self.specific_share_to_other_effects_operation,
+            self,
+            timesteps,
+            periods
         )
 
-    def create_model(self) -> 'EffectModel':
-        self.model = EffectModel(self)
+    def create_model(self, model: linopy.Model) -> 'EffectModel':
+        self.model = EffectModel(model, self)
         return self.model
 
 
 class EffectModel(ElementModel):
-    def __init__(self, element: Effect):
-        super().__init__(element)
+    def __init__(self, model: linopy.Model, element: Effect):
+        super().__init__(model, element)
         self.element: Effect = element
         self.total: Optional[linopy.Variable] = None
         self.invest = self.add(
             ShareAllocationModel(
+                self._model,
                 False,
                 self.element.label_full,
                 'invest',
@@ -166,6 +172,7 @@ class EffectModel(ElementModel):
 
         self.operation = self.add(
             ShareAllocationModel(
+                self._model,
                 True,
                 self.element.label_full,
                 'operation',
@@ -212,7 +219,9 @@ EffectValuesUser = Union[Numeric_TS, Dict[Optional[Union[str, Effect]], Numeric_
 
 def effect_values_to_time_series(label_suffix: str,
                                  effect_values: EffectValuesUser,
-                                 parent_element: Element) -> Optional[EffectValuesTS]:
+                                 parent_element: Element,
+                                 timesteps: pd.DatetimeIndex,
+                                 periods: Optional[pd.Index]) -> Optional[EffectValuesTS]:
     """
     Transform EffectValues to EffectValuesTS.
     Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
@@ -225,13 +234,16 @@ def effect_values_to_time_series(label_suffix: str,
     if effect_values is None:
         return None
 
-    standard_value = effect_values.pop(None, None)
-    effect_values_ts = {
-        effect: _create_time_series(f'{effect.label}_{label_suffix}', value, parent_element)
+    effect_values_ts: EffectValuesTS = {
+        effect: parent_element._create_time_series(
+            f'{effect.label if effect is not None else "Standard_Effect"}_{label_suffix}',
+            value,
+            timesteps,
+            periods
+        )
         for effect, value in effect_values.items() if effect is not None
     }
-    if standard_value is not None:
-        effect_values_ts[None] = _create_time_series(f'Standard_Effect_{label_suffix}', standard_value, parent_element)
+
     return effect_values_ts
 
 
@@ -259,8 +271,8 @@ class EffectCollection(InterfaceModel):
     Handling all Effects
     """
 
-    def __init__(self, effects: List[Effect]):
-        super().__init__(label='Effects')
+    def __init__(self, model: linopy.Model, effects: List[Effect]):
+        super().__init__(model, label='Effects')
         self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
@@ -289,9 +301,10 @@ class EffectCollection(InterfaceModel):
         self.penalty.add_share(system_model, name, expression)
 
     def do_modeling(self, system_model: SystemModel):
+        self._model = system_model
         for effect in self.effects.values():
-            effect.create_model()
-        self.penalty = self.add(ShareAllocationModel(shares_are_time_series=False, label='penalty'))
+            effect.create_model(self._model)
+        self.penalty = self.add(ShareAllocationModel(self._model,shares_are_time_series=False, label='penalty'))
         for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
             model.do_modeling(system_model)
 

@@ -6,12 +6,14 @@ These are tightly connected to features.py
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
+import pandas as pd
+
 from .config import CONFIG
 from .core import Numeric, Numeric_TS, Skalar
 from .structure import Element, Interface
 
 if TYPE_CHECKING:
-    from .effects import Effect, EffectTimeSeries, EffectValues, EffectValuesInvest
+    from .effects import Effect, EffectValuesUser
 
 logger = logging.getLogger('flixOpt')
 
@@ -69,21 +71,21 @@ class InvestParameters(Interface):
         maximum_size : scalar, Optional
             Max nominal value (only if: size_is_fixed = False).
         """
-        self.fix_effects: EffectValuesInvest = fix_effects or {}
-        self.divest_effects: EffectValuesInvest = divest_effects or {}
+        self.fix_effects: EffectValuesUser = fix_effects or {}
+        self.divest_effects: EffectValuesUser = divest_effects or {}
         self.fixed_size = fixed_size
         self.optional = optional
-        self.specific_effects: EffectValuesInvest = specific_effects or {}
+        self.specific_effects: EffectValuesUser = specific_effects or {}
         self.effects_in_segments = effects_in_segments
         self._minimum_size = minimum_size
         self._maximum_size = maximum_size or CONFIG.modeling.BIG  # default maximum
 
-    def transform_data(self):
-        from .effects import as_effect_dict
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
+        from .effects import effect_values_to_dict
 
-        self.fix_effects = as_effect_dict(self.fix_effects)
-        self.divest_effects = as_effect_dict(self.divest_effects)
-        self.specific_effects = as_effect_dict(self.specific_effects)
+        self.fix_effects = effect_values_to_dict(self.fix_effects)
+        self.divest_effects = effect_values_to_dict(self.divest_effects)
+        self.specific_effects = effect_values_to_dict(self.specific_effects)
 
     @property
     def minimum_size(self):
@@ -150,25 +152,24 @@ class OnOffParameters(Interface):
         self.switch_on_total_max: Skalar = switch_on_total_max
         self.force_switch_on: bool = force_switch_on
 
-    def transform_data(self, owner: 'Element'):
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index], owner: 'Element'):
         from .effects import effect_values_to_time_series
-        from .structure import _create_time_series
 
         self.effects_per_switch_on = effect_values_to_time_series('per_switch_on', self.effects_per_switch_on, owner)
         self.effects_per_running_hour = effect_values_to_time_series(
-            'per_running_hour', self.effects_per_running_hour, owner
+            'per_running_hour', self.effects_per_running_hour, owner, timesteps, periods
         )
-        self.consecutive_on_hours_min = _create_time_series(
-            'consecutive_on_hours_min', self.consecutive_on_hours_min, owner
+        self.consecutive_on_hours_min = self._create_time_series(
+            owner, 'consecutive_on_hours_min', self.consecutive_on_hours_min, timesteps, periods
         )
-        self.consecutive_on_hours_max = _create_time_series(
-            'consecutive_on_hours_max', self.consecutive_on_hours_max, owner
+        self.consecutive_on_hours_max = self._create_time_series(
+            owner, 'consecutive_on_hours_max', self.consecutive_on_hours_max, timesteps, periods
         )
-        self.consecutive_off_hours_min = _create_time_series(
-            'consecutive_off_hours_min', self.consecutive_off_hours_min, owner
+        self.consecutive_off_hours_min = self._create_time_series(
+            owner, 'consecutive_off_hours_min', self.consecutive_off_hours_min, timesteps, periods
         )
-        self.consecutive_off_hours_max = _create_time_series(
-            'consecutive_off_hours_max', self.consecutive_off_hours_max, owner
+        self.consecutive_off_hours_max = self._create_time_series(
+            owner, 'consecutive_off_hours_max', self.consecutive_off_hours_max, timesteps, periods
         )
 
     @property

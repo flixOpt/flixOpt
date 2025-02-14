@@ -43,10 +43,10 @@ class SystemModel(linopy.Model):
 
     def do_modeling(self):
         from .effects import EffectCollection
-        self.effects = EffectCollection(list(self.flow_system.effects.values()))
+        self.effects = EffectCollection(self, list(self.flow_system.effects.values()))
         self.effects.do_modeling(self)
-        component_models = [component.create_model() for component in self.flow_system.components.values()]
-        bus_models = [bus.create_model() for bus in self.flow_system.buses.values()]
+        component_models = [component.create_model(self) for component in self.flow_system.components.values()]
+        bus_models = [bus.create_model(self) for bus in self.flow_system.buses.values()]
         for component_model in component_models:
             component_model.do_modeling(self)
         for bus_model in bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
@@ -55,6 +55,15 @@ class SystemModel(linopy.Model):
         self.add_objective(
             self.effects.objective_effect.model.total + self.effects.penalty.total
         )
+
+    @property
+    def hours_per_step(self):
+        return self.flow_system.hours_per_step
+
+    @property
+    def coords(self):
+        return self.flow_system.coords
+
 
 
 class Interface:
@@ -204,7 +213,7 @@ class Element(Interface):
 class InterfaceModel:
     """Stores the mathematical Variables and Constraints related to an Interface"""
 
-    def __init__(self, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
+    def __init__(self, model: linopy.Model, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
         """
         Parameters
         ----------
@@ -217,8 +226,9 @@ class InterfaceModel:
         """
         if label_of_parent is None and label is None:
             raise ValueError('Either label_of_parent or label must be set')
+
         self.interface = interface
-        self._model: Optional[linopy.Model] = None
+        self._model = model
         self._variables: List[str] = []
         self._constraints: List[str] = []
         self.sub_models = []
@@ -295,14 +305,14 @@ class InterfaceModel:
 class ElementModel(InterfaceModel):
     """Interface to create the mathematical Variables and Constraints for Elements"""
 
-    def __init__(self, element: Optional[Element]):
+    def __init__(self, model: linopy.Model, element: Optional[Element]):
         """
         Parameters
         ----------
         element : Element
             The element this model is created for.
         """
-        super().__init__(element, element.label_full)
+        super().__init__(model, element, element.label_full)
 
 
 def create_equation(

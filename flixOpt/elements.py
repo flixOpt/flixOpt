@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import linopy
+import pandas as pd
 
 from .config import CONFIG
 from .core import Numeric, Numeric_TS, Skalar
@@ -17,7 +18,6 @@ from .structure import (
     Element,
     ElementModel,
     SystemModel,
-    _create_time_series,
 )
 
 logger = logging.getLogger('flixOpt')
@@ -61,13 +61,13 @@ class Component(Element):
 
         self.flows: Dict[str, Flow] = {flow.label: flow for flow in self.inputs + self.outputs}
 
-    def create_model(self) -> 'ComponentModel':
-        self.model = ComponentModel(self)
+    def create_model(self, model: linopy.Model) -> 'ComponentModel':
+        self.model = ComponentModel(model, self)
         return self.model
 
-    def transform_data(self) -> None:
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> None:
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_data(self)
+            self.on_off_parameters.transform_data(timesteps, periods, self)
 
     def register_component_in_flows(self) -> None:
         for flow in self.inputs + self.outputs:
@@ -112,13 +112,13 @@ class Bus(Element):
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
 
-    def create_model(self) -> 'BusModel':
-        self.model = BusModel(self)
+    def create_model(self, model: linopy.Model) -> 'BusModel':
+        self.model = BusModel(model, self)
         return self.model
 
-    def transform_data(self):
-        self.excess_penalty_per_flow_hour = _create_time_series(
-            'excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour, self
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
+        self.excess_penalty_per_flow_hour = self._create_time_series(
+            'excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour, timesteps, periods
         )
 
     def add_input(self, flow) -> None:
@@ -234,19 +234,19 @@ class Flow(Element):
 
         self._plausibility_checks()
 
-    def create_model(self) -> 'FlowModel':
-        self.model = FlowModel(self)
+    def create_model(self, model: linopy.Model) -> 'FlowModel':
+        self.model = FlowModel(model, self)
         return self.model
 
-    def transform_data(self):
-        self.relative_minimum = _create_time_series('relative_minimum', self.relative_minimum, self)
-        self.relative_maximum = _create_time_series('relative_maximum', self.relative_maximum, self)
-        self.fixed_relative_profile = _create_time_series('fixed_relative_profile', self.fixed_relative_profile, self)
-        self.effects_per_flow_hour = effect_values_to_time_series('per_flow_hour', self.effects_per_flow_hour, self)
+    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
+        self.relative_minimum = self._create_time_series('relative_minimum', self.relative_minimum, timesteps, periods)
+        self.relative_maximum = self._create_time_series('relative_maximum', self.relative_maximum, timesteps, periods)
+        self.fixed_relative_profile = self._create_time_series('fixed_relative_profile', self.fixed_relative_profile, timesteps, periods)
+        self.effects_per_flow_hour = effect_values_to_time_series('per_flow_hour', self.effects_per_flow_hour, self, timesteps, periods)
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_data(self)
+            self.on_off_parameters.transform_data(timesteps, periods, self)
         if isinstance(self.size, InvestParameters):
-            self.size.transform_data()
+            self.size.transform_data(timesteps, periods)
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         infos = super().infos(use_numpy, use_element_label)
@@ -289,8 +289,8 @@ class Flow(Element):
 
 
 class FlowModel(ElementModel):
-    def __init__(self, element: Flow):
-        super().__init__(element)
+    def __init__(self, model: linopy.Model, element: Flow):
+        super().__init__(model, element)
         self.element: Flow = element
         self.flow_rate: Optional[linopy.Variable] = None
         self.total_flow_hours: Optional[linopy.Variable] = None
@@ -307,42 +307,48 @@ class FlowModel(ElementModel):
             name=f'{self.label_full}__flow_rate',
         )
         if self.element.fixed_relative_profile is not None:
-            self.constraints['fix_flow_rate'] = system_model.add_constraints(
-                self.flow_rate == self.element.fixed_relative_profile.active_data,
-                name=f'{self.element.label}_fix_flow_rate'
+            self.add(
+                system_model.add_constraints(
+                    self.flow_rate == self.element.fixed_relative_profile.active_data,
+                    name=f'{self.element.label}_fix_flow_rate'
+                )
             )
 
         # OnOff
         if self.element.on_off_parameters is not None:
-            self.on_off = OnOffModel(
-                self.element, self.element.on_off_parameters, [self.flow_rate], [self.absolute_flow_rate_bounds]
+            self.on_off = self.add(
+                OnOffModel(
+                    self.element, self.element.on_off_parameters, [self.flow_rate], [self.absolute_flow_rate_bounds]
+                )
             )
             self.on_off.do_modeling(system_model)
-            self.sub_models.append(self.on_off)
 
         # Investment
         if isinstance(self.element.size, InvestParameters):
-            self._investment = InvestmentModel(
-                self.element,
-                self.element.size,
-                self.flow_rate,
-                self.relative_flow_rate_bounds,
-                fixed_relative_profile=self.fixed_relative_flow_rate,
-                on_variable=self.on_off.on if self.on_off is not None else None,
+            self._investment = self.add(
+                InvestmentModel(
+                    self.element,
+                    self.element.size,
+                    self.flow_rate,
+                    self.relative_flow_rate_bounds,
+                    fixed_relative_profile=self.fixed_relative_flow_rate,
+                    on_variable=self.on_off.on if self.on_off is not None else None,
+                )
             )
             self._investment.do_modeling(system_model)
-            self.sub_models.append(self._investment)
 
-        self.total_flow_hours = system_model.add_variables(
+        self.total_flow_hours = self.add(system_model.add_variables(
             lower=self.element.flow_hours_total_min if self.element.flow_hours_total_min is not None else -np.inf,
             upper=self.element.flow_hours_total_max if self.element.flow_hours_total_max is not None else np.inf,
             coords=None,
             name=f'{self.element.label_full}__total_flow_hours'
-        )
+        ))
 
-        self.constraints['total_flow_hours'] = system_model.add_constraints(
-            self.total_flow_hours == (self.flow_rate * system_model.hours_per_step).sum(),
-            name=f'{self.element.label_full}__total_flow_hours'
+        self.add(
+            system_model.add_constraints(
+                self.total_flow_hours == (self.flow_rate * system_model.hours_per_step).sum(),
+                name=f'{self.element.label_full}__total_flow_hours'
+            )
         )
 
         # Load factor
@@ -374,14 +380,17 @@ class FlowModel(ElementModel):
             flow_hours_per_size_max = system_model.hours_per_step * self.element.load_factor_max
 
             if self._investment is not None:
-                eq_load_factor_max = system_model.add_constraints(
-                    self.total_flow_hours <= self._investment.size * flow_hours_per_size_max, name=name,
+                self.add(
+                    system_model.add_constraints(
+                        self.total_flow_hours <= self._investment.size * flow_hours_per_size_max, name=name,
+                    )
                 )
             else:
-                eq_load_factor_max = system_model.add_constraints(
-                    self.total_flow_hours <= self.element.size * flow_hours_per_size_max, name=name,
+                self.add(
+                    system_model.add_constraints(
+                        self.total_flow_hours <= self.element.size * flow_hours_per_size_max, name=name,
+                    )
                 )
-            self.constraints[name_short] = eq_load_factor_max
 
         #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
         if self.element.load_factor_min is not None:
@@ -390,16 +399,15 @@ class FlowModel(ElementModel):
             flow_hours_per_size_in = system_model.hours_per_step * self.element.load_factor_min
 
             if self._investment is not None:
-                eq_load_factor_min = system_model.add_constraints(
+                self.add(system_model.add_constraints(
                     self.total_flow_hours >= self._investment.size * flow_hours_per_size_in,
                     name=name
-                )
+                ))
             else:
-                eq_load_factor_min = system_model.add_constraints(
+                self.add(system_model.add_constraints(
                     self.total_flow_hours >= self.element.size * flow_hours_per_size_in,
                     name=name
-                )
-            self.constraints[name] = eq_load_factor_min
+                ))
 
     @property
     def with_investment(self) -> bool:
@@ -438,8 +446,8 @@ class FlowModel(ElementModel):
 
 
 class BusModel(ElementModel):
-    def __init__(self, element: Bus):
-        super().__init__(element)
+    def __init__(self, model: linopy.Model, element: Bus):
+        super().__init__(model, element)
         self.element: Bus = element
         self.excess_input: Optional[linopy.Variable] = None
         self.excess_output: Optional[linopy.Variable] = None
@@ -448,11 +456,10 @@ class BusModel(ElementModel):
         # inputs == outputs
         inputs = sum([flow.model.flow_rate for flow in self.element.inputs])
         outputs = sum([flow.model.flow_rate for flow in self.element.outputs])
-        eq_bus_balance = system_model.add_constraints(
+        eq_bus_balance = self.add(system_model.add_constraints(
             inputs == outputs,
             name=f'{self.label_full}__balance'
-        )
-        self.constraints['balance'] = eq_bus_balance
+        ))
 
         # Fehlerplus/-minus:
         if self.element.with_excess:
@@ -476,8 +483,8 @@ class BusModel(ElementModel):
 
 
 class ComponentModel(ElementModel):
-    def __init__(self, element: Component):
-        super().__init__(element)
+    def __init__(self, model: linopy.Model, element: Component):
+        super().__init__(model, element)
         self.element: Component = element
         self.on_off: Optional[OnOffModel] = None
 
@@ -494,7 +501,7 @@ class ComponentModel(ElementModel):
                 if flow.on_off_parameters is None:
                     flow.on_off_parameters = OnOffParameters()
 
-        self.sub_models.extend([flow.create_model() for flow in all_flows])
+        self.sub_models.extend([flow.create_model(system_model) for flow in all_flows])
         for sub_model in self.sub_models:
             sub_model.do_modeling(system_model)
 

@@ -733,6 +733,7 @@ class MultipleSegmentsModel(ElementModel):
 class ShareAllocationModel(InterfaceModel):
     def __init__(
         self,
+        model: linopy.Model,
         shares_are_time_series: bool,
         label_of_parent: Optional[str] = None,
         label: Optional[str] = None,
@@ -741,7 +742,7 @@ class ShareAllocationModel(InterfaceModel):
         max_per_hour: Optional[Numeric] = None,
         min_per_hour: Optional[Numeric] = None,
     ):
-        super().__init__(label_of_parent=label_of_parent, label=label)
+        super().__init__(model, label_of_parent=label_of_parent, label=label)
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, (
                 'Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False'
@@ -764,7 +765,7 @@ class ShareAllocationModel(InterfaceModel):
     def do_modeling(self, system_model: SystemModel):
         self.total = self.add(
             system_model.add_variables(
-                lower=self._total_min, upper=self._total_max, coords=None, name=f'{self.label_full}_total'
+                lower=self._total_min, upper=self._total_max, coords=None, name=f'{self.label_full}__total'
             )
         )
         # eq: sum = sum(share_i) # skalar
