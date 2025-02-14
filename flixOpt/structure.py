@@ -283,7 +283,7 @@ class InterfaceModel:
     def _all_constraints(self) -> List[str]:
         all_constraints = self._constraints.copy()
         for sub_model in self.sub_models:
-            for constraint in sub_model._all_variables:
+            for constraint in sub_model._all_constraints:
                 if constraint in all_constraints:
                     raise KeyError(f"Duplicate key found: '{constraint}' in both main model and submodel!")
                 all_constraints.append(constraint)

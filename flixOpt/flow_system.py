@@ -68,10 +68,7 @@ class FlowSystem:
         self.model: Optional[SystemModel] = None
 
     def _order_dimensions(self):
-        if self.timesteps.dtype == np.dtype('datetime64[ns]'):
-            self.timesteps = self.timesteps.astype('datetime64[us]')
-        else:
-            self.timesteps = self.timesteps
+        self.timesteps = self.timesteps
         self.timesteps.name = 'time'
 
         self.periods = pd.Index(self.periods, name='period') if self.periods is not None else None

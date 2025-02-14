@@ -219,9 +219,9 @@ class TimeSeries:
     def _update_active_data(self):
         """Update the active data."""
         if 'period' in self._stored_data.indexes:
-            self._active_data = self._stored_data.sel(timesteps=self.active_timesteps, periods=self.active_periods)
+            self._active_data = self._stored_data.sel(time=self.active_timesteps, periods=self.active_periods)
         else:
-            self._active_data = self._stored_data.sel(timesteps=self.active_timesteps)
+            self._active_data = self._stored_data.sel(time=self.active_timesteps)
 
     @property
     def active_timesteps(self) -> pd.DatetimeIndex:
