@@ -194,6 +194,22 @@ class FlowSystem:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
+    def results(self):
+        return {
+            'Components': {
+                comp.label: comp.model.solution_structured(use_numpy=True)
+                for comp in sorted(self.components.values(), key=lambda component: component.label.upper())
+            },
+            'Buses': {
+                bus.label: bus.model.solution_structured(use_numpy=True)
+                for bus in sorted(self.buses.values(), key=lambda bus: bus.label.upper())
+            },
+            'Effects': {
+                effect.label: effect.model.solution_structured(use_numpy=True)
+                for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
+            }
+        }
+
     def visualize_network(
         self,
         path: Union[bool, str, pathlib.Path] = 'flow_system.html',
