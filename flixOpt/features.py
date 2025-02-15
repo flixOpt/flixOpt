@@ -582,18 +582,24 @@ class OnOffModel(Model):
 
     def _create_shares(self, system_model: SystemModel):
         # Anfahrkosten:
-        effect_collection = system_model.effect_collection_model
         effects_per_switch_on = self.parameters.effects_per_switch_on
         if effects_per_switch_on != {}:
-            effect_collection.add_share_to_operation(
-                'switch_on_effects', self.element, effects_per_switch_on, 1, self.switch_on
+            self._model.effects.add_share_to_effects(
+                system_model=self._model,
+                name=self._label_of_parent,
+                expressions={effect: self.switch_on * factor for effect, factor in effects_per_switch_on.items()},
+                target='operation',
             )
 
         # Betriebskosten:
         effects_per_running_hour = self.parameters.effects_per_running_hour
         if effects_per_running_hour != {}:
-            effect_collection.add_share_to_operation(
-                'running_hour_effects', self.element, effects_per_running_hour, system_model.dt_in_hours, self.on
+            self._model.effects.add_share_to_effects(
+                system_model=self._model,
+                name=self._label_of_parent,
+                expressions={effect: self.on * factor * self._model.hours_per_step
+                             for effect, factor in effects_per_running_hour.items()},
+                target='operation',
             )
 
     def _previous_on_values(self, epsilon: float = 1e-5) -> np.ndarray:
