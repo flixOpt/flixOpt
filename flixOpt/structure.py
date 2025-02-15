@@ -103,6 +103,10 @@ class SystemModel(linopy.Model):
         return self.flow_system.hours_per_step
 
     @property
+    def hours_of_previous_timesteps(self):
+        return self.flow_system.hours_of_previous_timesteps
+
+    @property
     def coords(self):
         return self.flow_system.coords
 
@@ -316,11 +320,12 @@ class Model:
         elif isinstance(item, linopy.Constraint):
             self._constraints.append(item.name)
             self._constraints_short[item.name] = short_name or item.name
-        elif isinstance(item, InterfaceModel):
+        elif isinstance(item, Model):
             self.sub_models.append(item)
             self._constraints_short[item.label_full] = short_name or item.label_full
         else:
-            raise ValueError(f'Item must be a linopy.Variable or linopy.Constraint, got {type(item)}')
+            raise ValueError(
+                f'Item must be a linopy.Variable, linopy.Constraint or flixOpt.structure.Model, got {type(item)}')
         return item
 
     def filter_variables(self,
@@ -440,7 +445,7 @@ class ElementModel(Model):
         element : Element
             The element this model is created for.
         """
-        super().__init__(model, label=element.label, label_full=element.label_full)
+        super().__init__(model, label=element.label, label_of_parent=element.label_full)
         self.element = element
 
 

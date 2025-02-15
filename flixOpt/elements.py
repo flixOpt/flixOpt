@@ -326,7 +326,7 @@ class FlowModel(ElementModel):
         if self.element.on_off_parameters is not None:
             self.on_off = self.add(
                 OnOffModel(
-                    self.element, self.element.on_off_parameters, [self.flow_rate], [self.absolute_flow_rate_bounds]
+                    self._model, self.element.on_off_parameters, self.label_full, [self.flow_rate], [self.absolute_flow_rate_bounds]
                 ),
                 'on_off'
             )

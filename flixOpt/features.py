@@ -222,8 +222,8 @@ class OnOffModel(Model):
 
         self.total_on_hours = self.add(
             self._model.add_variables(
-                lower=self.parameters.on_hours_total_min,
-                upper=self.parameters.on_hours_total_max,
+                lower=self.parameters.on_hours_total_min if self.parameters.on_hours_total_min is not None else 0,
+                upper=self.parameters.on_hours_total_max if self.parameters.on_hours_total_max is not None else np.inf,
                 name=f'{self.label_full}__on_hours_total'
             ),
             'on_hours_total'
@@ -278,7 +278,7 @@ class OnOffModel(Model):
 
             self.switch_off = self.add(self._model.add_variables(binary=True, name=f'{self.label_full}__switch_off'),
                                        'switch_off')
-            
+
             self.switch_on_nr = self.add(self._model.add_variables(upper_bound=self.parameters.switch_on_total_max,
                                                                    binary=True,
                                                                    name=f'{self.label_full}__switch_on_nr'),
@@ -767,7 +767,7 @@ class MultipleSegmentsModel(ElementModel):
         return len(next(iter(self._sample_points.values())))
 
 
-class ShareAllocationModel(InterfaceModel):
+class ShareAllocationModel(Model):
     def __init__(
         self,
         model: SystemModel,
