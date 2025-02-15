@@ -26,7 +26,7 @@ if __name__ == '__main__':
     )
     electricity_price = np.array([40, 40, 40, 40, 40, 40, 40, 40, 40])
 
-    time_series = fx.create_datetime_array('2020-01-01', len(heat_demand), freq='h')
+    timesteps = pd.date_range('2020-01-01', periods=len(heat_demand), freq='h')
 
     # --- Define Energy Buses ---
     # Represent different energy carriers (electricity, heat, gas) in the system
@@ -170,7 +170,7 @@ if __name__ == '__main__':
 
     # --- Build FlowSystem ---
     # Select components to be included in the final system model
-    flow_system = fx.FlowSystem(time_series, last_time_step_hours=None)  # Create FlowSystem
+    flow_system = fx.FlowSystem(timesteps)  # Create FlowSystem
 
     flow_system.add_elements(Costs, CO2, PE, Gaskessel, Waermelast, Gasbezug, Stromverkauf, speicher)
     flow_system.add_elements(bhkw_2) if use_chp_with_segments else flow_system.add_components(bhkw)
@@ -178,17 +178,11 @@ if __name__ == '__main__':
     pprint(flow_system)  # Get a string representation of the FlowSystem
 
     # --- Solve FlowSystem ---
-    calculation = fx.FullCalculation('Sim1', flow_system, 'pyomo', time_indices)
+    calculation = fx.FullCalculation('Sim1', flow_system, time_indices)
     calculation.do_modeling()
 
-    # Show variables as str (else, you can find them in the results.yaml file
-    pprint(calculation.system_model.description_of_constraints())
-    pprint(calculation.system_model.description_of_variables())
-
     calculation.solve(
-        fx.solvers.HighsSolver(
-            mip_gap=0.005, time_limit_seconds=30
-        ),  # Specify which solver you want to use and specify parameters
+        'highs',
         save_results='results',  # If and where to save results
     )
 
