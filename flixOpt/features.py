@@ -195,17 +195,17 @@ class OnOffModel(Model):
         super().__init__(model, label_of_parent, label)
         assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
         self.parameters = on_off_parameters
-        self.on: Optional[VariableTS] = None
+        self.on: Optional[linopy.Variable] = None
         self.total_on_hours: Optional[Variable] = None
 
-        self.consecutive_on_hours: Optional[VariableTS] = None
-        self.consecutive_off_hours: Optional[VariableTS] = None
+        self.consecutive_on_hours: Optional[linopy.Variable] = None
+        self.consecutive_off_hours: Optional[linopy.Variable] = None
 
-        self.off: Optional[VariableTS] = None
+        self.off: Optional[linopy.Variable] = None
 
-        self.switch_on: Optional[VariableTS] = None
-        self.switch_off: Optional[VariableTS] = None
-        self.nr_switch_on: Optional[VariableTS] = None
+        self.switch_on: Optional[linopy.Variable] = None
+        self.switch_off: Optional[linopy.Variable] = None
+        self.nr_switch_on: Optional[linopy.Variable] = None
 
         self._defining_variables = defining_variables
         self._defining_bounds = defining_bounds
@@ -237,7 +237,7 @@ class OnOffModel(Model):
             'on_hours_total'
         )
 
-        self._add_on_constraints(system_model, system_model.indices)
+        self._add_on_constraints()
 
         if self.parameters.use_off:
             self.off = self.add(
@@ -249,7 +249,8 @@ class OnOffModel(Model):
                 'off'
             )
 
-            self._add_off_constraints(system_model, system_model.indices)
+            # eq: var_on(t) + var_off(t) = 1
+            self.add(self._model.add_constraints(self.on + self.off == 1, name=f'{self.label_full}__off'), 'off')
 
         if self.parameters.use_consecutive_on_hours:
             self.consecutive_on_hours = self._get_duration_in_hours(
@@ -369,24 +370,15 @@ class OnOffModel(Model):
                 f'If its a Component, you might need to adjust the sizes of all of its flows.'
             )
 
-    def _add_off_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
-        assert self.off is not None, f'Off variable of {self.element} must be defined to add constraints'
-        # Definition var_off:
-        # eq: var_on(t) + var_off(t) = 1
-        eq_off = create_equation('var_off', self, eq_type='eq')
-        eq_off.add_summand(self.off, 1, time_indices)
-        eq_off.add_summand(self.on, 1, time_indices)
-        eq_off.add_constant(1)
-
     def _get_duration_in_hours(
         self,
         variable_label: str,
-        binary_variable: VariableTS,
+        binary_variable: linopy.Variable,
         minimum_duration: Optional[TimeSeries],
         maximum_duration: Optional[TimeSeries],
         system_model: SystemModel,
         time_indices: Union[list[int], range],
-    ) -> VariableTS:
+    ) -> linopy.Variable:
         """
         creates duration variable and adds constraints to a time-series variable to enforce duration limits based on
         binary activity.
@@ -396,7 +388,7 @@ class OnOffModel(Model):
         Parameters:
             variable_label (str):
                 Label for the duration variable to be created.
-            binary_variable (VariableTS):
+            binary_variable (linopy.Variable):
                 Time-series binary variable (e.g., [0, 0, 1, 1, 1, 0, ...]) representing activity states.
             minimum_duration (Optional[TimeSeries]):
                 Minimum duration the activity must remain active once started.
@@ -410,7 +402,7 @@ class OnOffModel(Model):
                 List or range of indices to which to apply the constraints.
 
         Returns:
-            VariableTS: The created duration variable representing consecutive active durations.
+            linopy.Variable: The created duration variable representing consecutive active durations.
 
         Example:
             binary_variable: [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, ...]
