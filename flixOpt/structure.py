@@ -55,47 +55,49 @@ class SystemModel(linopy.Model):
 
     @property
     def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
-        main_results = {}
-        effect_results = {}
-        main_results['Effects'] = effect_results
-        for effect in self.flow_system.effects.values():
-            effect_results[f'{effect.label} [{effect.unit}]'] = {
-                'operation': float(effect.model.operation.total.solution.values),
-                'invest': float(effect.model.invest.total.solution.values),
-                'total': float(effect.model.total.solution.values),
-            }
-        main_results['penalty'] = float(self.effects.penalty.total.solution.values)
-        main_results['Objective'] = self.objective.value
-        main_results['lower bound'] = 'Not available'
-        buses_with_excess = []
-        main_results['buses with excess'] = buses_with_excess
-        for bus in self.flow_system.buses.values():
-            if bus.with_excess:
-                excess_in = float(np.sum(bus.model.excess_input.solution.values))
-                excess_out = float(np.sum(bus.model.excess_output.solution.values))
-                if excess_in > 1e-3 or excess_out > 1e-3:
-                    buses_with_excess.append({bus.label_full: {'input': excess_in, 'output': excess_out}})
-
-        invest_decisions = {'invested': {}, 'not invested': {}}
-        main_results['Invest-Decisions'] = invest_decisions
         from flixOpt.features import InvestmentModel
 
-        for component in self.flow_system.components.values():
-            for model in component.model.all_sub_models:
-                if isinstance(model, InvestmentModel):
-                    invested_size = float(model.size.solution)  # bei np.floats Probleme bei Speichern
-                    if invested_size >= CONFIG.modeling.EPSILON:
-                        invest_decisions['invested'][model._label_of_parent] = invested_size
-                    else:
-                        invest_decisions['not invested'][model._label_of_parent] = invested_size
-
-        return main_results
+        return {
+            "Objective": self.objective.value,
+            "Penalty": float(self.effects.penalty.total.solution.values),
+            "Effects": {
+                f"{effect.label} [{effect.unit}]": {
+                    "operation": float(effect.model.operation.total.solution.values),
+                    "invest": float(effect.model.invest.total.solution.values),
+                    "total": float(effect.model.total.solution.values),
+                }
+                for effect in self.flow_system.effects.values()
+            },
+            "Invest-Decisions": {
+                "Invested": {
+                    model._label_of_parent: float(model.size.solution)
+                    for component in self.flow_system.components.values()
+                    for model in component.model.all_sub_models
+                    if isinstance(model, InvestmentModel) and float(model.size.solution) >= CONFIG.modeling.EPSILON
+                },
+                "Not invested": {
+                    model._label_of_parent: float(model.size.solution)
+                    for component in self.flow_system.components.values()
+                    for model in component.model.all_sub_models
+                    if isinstance(model, InvestmentModel) and float(model.size.solution) < CONFIG.modeling.EPSILON
+                },
+            },
+            "Buses with excess": [
+                {bus.label_full: {
+                    "input": float(np.sum(bus.model.excess_input.solution.values)),
+                    "output": float(np.sum(bus.model.excess_output.solution.values))
+                }}
+                for bus in self.flow_system.buses.values()
+                if bus.with_excess and (float(np.sum(bus.model.excess_input.solution.values)) > 1e-3 or
+                                        float(np.sum(bus.model.excess_output.solution.values)) > 1e-3)
+            ],
+        }
 
     @property
     def infos(self) -> Dict:
-        return {'Constraints': self.constraints.ncons,
+        return {'Main Results': self.main_results,
+                'Constraints': self.constraints.ncons,
                 'Variables': self.variables.nvars,
-                'Main Results': self.main_results,
                 'Config': CONFIG.to_dict()}
 
     @property

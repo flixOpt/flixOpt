@@ -65,6 +65,15 @@ def check_time_series(label: str, time_series: np.ndarray[np.datetime64]):
         raise Exception(label + ': Zeitreihe besitzt Zurücksprünge - vermutlich Zeitumstellung nicht beseitigt!')
 
 
+def round_floats(obj, decimals=2):
+    if isinstance(obj, dict):
+        return {k: round_floats(v, decimals) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [round_floats(v, decimals) for v in obj]
+    elif isinstance(obj, float):
+        return round(obj, decimals)
+    return obj
+
 def apply_formating(
     data_dict: Dict[str, Union[int, float]],
     key_format: str = '<17',
