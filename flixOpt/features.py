@@ -272,24 +272,28 @@ class OnOffModel(Model):
             self.add(self._model.add_constraints(self.on + self.off == 1, name=f'{self.label_full}__off'), 'off')
 
         if self.parameters.use_consecutive_on_hours:
-            self.consecutive_on_hours = self._get_duration_in_hours(
-                'consecutiveOnHours',
-                self.on,
-                self.parameters.consecutive_on_hours_min,
-                self.parameters.consecutive_on_hours_max,
-                system_model,
-                system_model.indices,
-            )
+            # TODO: Implement consecutive_on_hours
+            if False:
+                self.consecutive_on_hours = self._get_duration_in_hours(
+                    'consecutiveOnHours',
+                    self.on,
+                    self.parameters.consecutive_on_hours_min,
+                    self.parameters.consecutive_on_hours_max,
+                    system_model,
+                    system_model.indices,
+                )
 
         if self.parameters.use_consecutive_off_hours:
-            self.consecutive_off_hours = self._get_duration_in_hours(
-                'consecutiveOffHours',
-                self.off,
-                self.parameters.consecutive_off_hours_min,
-                self.parameters.consecutive_off_hours_max,
-                system_model,
-                system_model.indices,
-            )
+            # TODO: Implement consecutive_on_hours
+            if False:
+                self.consecutive_off_hours = self._get_duration_in_hours(
+                    'consecutiveOffHours',
+                    self.off,
+                    self.parameters.consecutive_off_hours_min,
+                    self.parameters.consecutive_off_hours_max,
+                    system_model,
+                    system_model.indices,
+                )
 
         if self.parameters.use_switch_on:
             self.switch_on = self.add(self._model.add_variables(

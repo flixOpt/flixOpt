@@ -71,7 +71,7 @@ class Component(Element):
 
     def transform_data(self, flow_system: 'FlowSystem') -> None:
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_data(flow_system.timesteps, flow_system.periods, self)
+            self.on_off_parameters.transform_data(flow_system, self)
 
     def register_component_in_flows(self) -> None:
         for flow in self.inputs + self.outputs:
@@ -330,16 +330,17 @@ class FlowModel(ElementModel):
                 ),
                 'on_off'
             )
-            self.on_off.do_modeling(system_model)
+            self.on_off.do_modeling(self._model)
 
         # Investment
         if isinstance(self.element.size, InvestParameters):
             self._investment = self.add(
                 InvestmentModel(
-                    self.element,
-                    self.element.size,
-                    self.flow_rate,
-                    self.relative_flow_rate_bounds,
+                    model=self._model,
+                    label_of_parent=self.element.label_full,
+                    parameters=self.element.size,
+                    defining_variable=self.flow_rate,
+                    relative_bounds_of_defining_variable=self.relative_flow_rate_bounds,
                     fixed_relative_profile=self.fixed_relative_flow_rate,
                     on_variable=self.on_off.on if self.on_off is not None else None,
                 ),
@@ -532,7 +533,7 @@ class ComponentModel(ElementModel):
         if self.element.on_off_parameters:
             flow_rates: List[linopy.Variable] = [flow.model.flow_rate for flow in all_flows]
             bounds: List[Tuple[Numeric, Numeric]] = [flow.model.absolute_flow_rate_bounds for flow in all_flows]
-            self.on_off = OnOffModel(self.element, self.element.on_off_parameters, flow_rates, bounds)
+            self.on_off = OnOffModel(self._model, self.element.on_off_parameters, self.element.label_full, flow_rates, bounds)
             self.sub_models.append(self.on_off)
             self.on_off.do_modeling(self._model)
 

@@ -156,7 +156,9 @@ class OnOffParameters(Interface):
     def transform_data(self, flow_system: 'FlowSystem', owner: 'Element'):
         from .effects import effect_values_to_time_series
 
-        self.effects_per_switch_on = effect_values_to_time_series('per_switch_on', self.effects_per_switch_on, owner)
+        self.effects_per_switch_on = effect_values_to_time_series(
+            'per_switch_on', self.effects_per_switch_on, owner, flow_system.timesteps, flow_system.periods
+        )
         self.effects_per_running_hour = effect_values_to_time_series(
             'per_running_hour', self.effects_per_running_hour, owner, flow_system.timesteps, flow_system.periods
         )
