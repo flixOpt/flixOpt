@@ -71,8 +71,8 @@ class SystemModel(linopy.Model):
         main_results['buses with excess'] = buses_with_excess
         for bus in self.flow_system.buses.values():
             if bus.with_excess:
-                excess_in = np.sum(bus.model.excess_input.solution.values)
-                excess_out = np.sum(bus.model.excess_output.solution.values)
+                excess_in = float(np.sum(bus.model.excess_input.solution.values))
+                excess_out = float(np.sum(bus.model.excess_output.solution.values))
                 if excess_in > 1e-3 or excess_out > 1e-3:
                     buses_with_excess.append({bus.label_full: {'input': excess_in, 'output': excess_out}})
 
@@ -83,11 +83,11 @@ class SystemModel(linopy.Model):
         for component in self.flow_system.components.values():
             for model in component.model.all_sub_models:
                 if isinstance(model, InvestmentModel):
-                    invested_size = float(model.size.result)  # bei np.floats Probleme bei Speichern
+                    invested_size = float(model.size.solution)  # bei np.floats Probleme bei Speichern
                     if invested_size >= CONFIG.modeling.EPSILON:
-                        invest_decisions['invested'][model.element.label_full] = invested_size
+                        invest_decisions['invested'][model._label_of_parent] = invested_size
                     else:
-                        invest_decisions['not invested'][model.element.label_full] = invested_size
+                        invest_decisions['not invested'][model._label_of_parent] = invested_size
 
         return main_results
 

@@ -332,7 +332,7 @@ class EffectCollection(InterfaceModel):
                     origin_effect.model.invest.total * factor,
                 )
 
-    def __getitem__(self, label: str) -> 'Effect':
+    def __getitem__(self, effect: Union[str, Effect]) -> 'Effect':
         """
         Get an effect by label, or return the standard effect if None is passed
 
@@ -340,15 +340,20 @@ class EffectCollection(InterfaceModel):
             KeyError: If no effect with the given label is found.
             KeyError: If no standard effect is specified.
         """
-        if label is None:
+        if effect is None:
             try:
                 return self.standard_effect
             except:
                 raise KeyError(f'No Standard-effect specified!')
+        if isinstance(effect, Effect):
+            if effect in self:
+                return effect
+            else:
+                raise KeyError(f'Effect {effect} not found!')
         try:
-            return self.effects[label]
+            return self.effects[effect]
         except:
-            raise KeyError(f'No effect with label {label} found!')
+            raise KeyError(f'No effect with label {effect} found!')
 
     def __contains__(self, item: Union[str, 'Effect']) -> bool:
         """Check if the effect exists. Checks for label or object"""

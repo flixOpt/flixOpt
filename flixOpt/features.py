@@ -33,24 +33,24 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 logger = logging.getLogger('flixOpt')
 
 
-class InvestmentModel(ElementModel):
+class InvestmentModel(Model):
     """Class for modeling an investment"""
 
     def __init__(
         self,
-        element: Union['Flow', 'Storage'],
-        invest_parameters: InvestParameters,
-        defining_variable: [VariableTS],
+        model: SystemModel,
+        label_of_parent: str,
+        parameters: InvestParameters,
+        defining_variable: [linopy.Variable],
         relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
         fixed_relative_profile: Optional[Numeric] = None,
         label: str = 'Investment',
-        on_variable: Optional[VariableTS] = None,
+        on_variable: Optional[linopy.Variable] = None,
     ):
         """
         If fixed relative profile is used, the relative bounds are ignored
         """
-        super().__init__(element, label)
-        self.element: Union['Flow', 'Storage'] = element
+        super().__init__(model, label_of_parent, label)
         self.size: Optional[Union[Skalar, Variable]] = None
         self.is_invested: Optional[Variable] = None
 
@@ -60,118 +60,135 @@ class InvestmentModel(ElementModel):
         self._defining_variable = defining_variable
         self._relative_bounds_of_defining_variable = relative_bounds_of_defining_variable
         self._fixed_relative_profile = fixed_relative_profile
-        self._invest_parameters = invest_parameters
+        self.parameters = parameters
 
     def do_modeling(self, system_model: SystemModel):
-        invest_parameters = self._invest_parameters
-        if invest_parameters.fixed_size and not invest_parameters.optional:
-            self.size = create_variable('size', self, 1, fixed_value=invest_parameters.fixed_size)
+        if self.parameters.fixed_size and not self.parameters.optional:
+            self.size = self.add(self._model.add_variables(
+                lower=self.parameters.fixed_size,
+                upper=self.parameters.fixed_size,
+                name=f'{self.label_full}__size'),
+                'size')
         else:
-            lower_bound = 0 if invest_parameters.optional else invest_parameters.minimum_size
-            self.size = create_variable(
-                'size', self, 1, lower_bound=lower_bound, upper_bound=invest_parameters.maximum_size
-            )
+            self.size = self.add(self._model.add_variables(
+                lower=0 if self.parameters.optional else self.parameters.minimum_size,
+                upper=self.parameters.maximum_size,
+                name=f'{self.label_full}__size'),
+                'size')
+
         # Optional
-        if invest_parameters.optional:
-            self.is_invested = create_variable('isInvested', self, 1, is_binary=True)
-            self._create_bounds_for_optional_investment(system_model)
+        if self.parameters.optional:
+            self.is_invested = self.add(self._model.add_variables(
+                binary=True,
+                name=f'{self.label_full}__is_invested'),
+                'is_invested')
+
+            self._create_bounds_for_optional_investment()
 
         # Bounds for defining variable
-        self._create_bounds_for_defining_variable(system_model)
+        self._create_bounds_for_defining_variable()
 
         self._create_shares(system_model)
 
     def _create_shares(self, system_model: SystemModel):
-        effect_collection = system_model.effect_collection_model
-        invest_parameters = self._invest_parameters
 
         # fix_effects:
-        fix_effects = invest_parameters.fix_effects
+        fix_effects = self.parameters.fix_effects
         if fix_effects != {}:
-            if invest_parameters.optional:  # share: + isInvested * fix_effects
-                variable_is_invested = self.is_invested
-            else:
-                variable_is_invested = None
-            effect_collection.add_share_to_invest('fix_effects', self.element, fix_effects, 1, variable_is_invested)
+            self._model.effects.add_share_to_effects(
+                system_model=self._model,
+                name=self._label_of_parent,
+                expressions={effect: self.is_invested * factor if self.is_invested is not None else factor
+                             for effect, factor in fix_effects.items()},
+                target='invest',
+            )
 
-        # divest_effects:
-        divest_effects = invest_parameters.divest_effects
-        if divest_effects != {}:
-            if invest_parameters.optional:  # share: [divest_effects - isInvested * divest_effects]
-                # 1. part of share [+ divest_effects]:
-                effect_collection.add_share_to_invest('divest_effects', self.element, divest_effects, 1, None)
-                # 2. part of share [- isInvested * divest_effects]:
-                effect_collection.add_share_to_invest(
-                    'divest_cancellation_effects', self.element, divest_effects, -1, self.is_invested
-                )
-                # TODO : these 2 parts should be one share! -> SingleShareModel...?
+        if self.parameters.divest_effects != {} and self.parameters.optional:
+            # share: divest_effects - isInvested * divest_effects
+            self._model.effects.add_share_to_effects(
+                system_model=self._model,
+                name=self._label_of_parent,
+                expressions={effect: -self.is_invested * factor + factor for effect, factor in fix_effects.items()},
+                target='invest',
+            )
 
-        # # specific_effects:
-        specific_effects = invest_parameters.specific_effects
-        if specific_effects != {}:
-            # share: + investment_size (=var)   * specific_effects
-            effect_collection.add_share_to_invest('specific_effects', self.element, specific_effects, 1, self.size)
+        if self.parameters.specific_effects != {}:
+            self._model.effects.add_share_to_effects(
+                system_model=self._model,
+                name=self._label_of_parent,
+                expressions={effect: self.size * factor for effect, factor in self.parameters.specific_effects.items()},
+                target='invest',
+            )
+
+        if self.parameters.effects_in_segments:
+            self._segments = SegmentedSharesModel(self._model, self.size, self.parameters.effects_in_segments, self.is_invested)
+
         # segmented Effects
-        invest_segments = invest_parameters.effects_in_segments
-        if invest_segments:
+        if self.parameters.effects_in_segments:
             self._segments = SegmentedSharesModel(
                 self.element, (self.size, invest_segments[0]), invest_segments[1], self.is_invested
             )
             self.sub_models.append(self._segments)
             self._segments.do_modeling(system_model)
 
-    def _create_bounds_for_optional_investment(self, system_model: SystemModel):
-        if self._invest_parameters.fixed_size:
+    def _create_bounds_for_optional_investment(self):
+        if self.parameters.fixed_size:
             # eq: investment_size = isInvested * fixed_size
-            eq_is_invested = create_equation('is_invested', self, 'eq')
-            eq_is_invested.add_summand(self.size, -1)
-            eq_is_invested.add_summand(self.is_invested, self._invest_parameters.fixed_size)
+            self.add(self._model.add_constraints(
+                self.size == self.is_invested * self.parameters.fixed_size,
+                name=f'{self.label_full}__is_invested'),
+                'is_invested')
+
         else:
             # eq1: P_invest <= isInvested * investSize_max
-            eq_is_invested_ub = create_equation('is_invested_ub', self, 'ineq')
-            eq_is_invested_ub.add_summand(self.size, 1)
-            eq_is_invested_ub.add_summand(self.is_invested, np.multiply(-1, self._invest_parameters.maximum_size))
+            self.add(self._model.add_constraints(
+                self.size == self.is_invested * self.parameters.maximum_size,
+                name=f'{self.label_full}__is_invested_ub'),
+                'is_invested_ub')
 
             # eq2: P_invest >= isInvested * max(epsilon, investSize_min)
-            eq_is_invested_lb = create_equation('is_invested_lb', self, 'ineq')
-            eq_is_invested_lb.add_summand(self.size, -1)
-            eq_is_invested_lb.add_summand(
-                self.is_invested, np.maximum(CONFIG.modeling.EPSILON, self._invest_parameters.minimum_size)
-            )
+            self.add(self._model.add_constraints(
+                self.size >= self.is_invested * np.maximum(CONFIG.modeling.EPSILON,self.parameters.minimum_size),
+                name=f'{self.label_full}__is_invested_lb'),
+                'is_invested_lb')
 
-    def _create_bounds_for_defining_variable(self, system_model: SystemModel):
-        label = self._defining_variable.label
+    def _create_bounds_for_defining_variable(self):
+        variable = self._defining_variable
         # fixed relative value
         if self._fixed_relative_profile is not None:
-            # TODO: Allow Off? Currently not...
-            eq_fixed = create_equation(f'fixed_{label}', self)
-            eq_fixed.add_summand(self._defining_variable, 1)
-            eq_fixed.add_summand(self.size, np.multiply(-1, self._fixed_relative_profile))
-        else:
-            relative_minimum, relative_maximum = self._relative_bounds_of_defining_variable
-            eq_upper = create_equation(f'ub_{label}', self, 'ineq')
-            # eq: defining_variable(t)  <= size * upper_bound(t)
-            eq_upper.add_summand(self._defining_variable, 1)
-            eq_upper.add_summand(self.size, np.multiply(-1, relative_maximum))
+            # TODO: Allow Off? Currently not..
+            self.add(self._model.add_constraints(
+                variable == self.size * self._fixed_relative_profile,
+                name=f'{self.label_full}__fixed_{variable.name}'),
+                f'fixed_{variable.name}')
 
-            ## 2. Gleichung: Minimum durch Investmentgröße ##
-            eq_lower = create_equation(f'lb_{label}', self, 'ineq')
+        else:
+            lb_relative, ub_relative = self._relative_bounds_of_defining_variable
+            # eq: defining_variable(t)  <= size * upper_bound(t)
+            self.add(self._model.add_constraints(
+                variable <= self.size * ub_relative,
+                name=f'{self.label_full}__ub_{variable.name}'),
+                f'ub_{variable.name}')
+
             if self._on_variable is None:
                 # eq: defining_variable(t) >= investment_size * relative_minimum(t)
-                eq_lower.add_summand(self._defining_variable, -1)
-                eq_lower.add_summand(self.size, relative_minimum)
+                self.add(self._model.add_constraints(
+                    variable >= self.size * lb_relative,
+                    name=f'{self.label_full}__lb_{variable.name}'),
+                    f'lb_{variable.name}')
             else:
                 ## 2. Gleichung: Minimum durch Investmentgröße und On
                 # eq: defining_variable(t) >= mega * (On(t)-1) + size * relative_minimum(t)
                 #     ... mit mega = relative_maximum * maximum_size
                 # äquivalent zu:.
                 # eq: - defining_variable(t) + mega * On(t) + size * relative_minimum(t) <= + mega
-                mega = relative_maximum * self._invest_parameters.maximum_size
-                eq_lower.add_summand(self._defining_variable, -1)
-                eq_lower.add_summand(self._on_variable, mega)
-                eq_lower.add_summand(self.size, relative_minimum)
-                eq_lower.add_constant(mega)
-                # Anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu OnOff ??
+                mega = lb_relative * self.parameters.maximum_size
+                on = self._on_variable
+                self.add(self._model.add_constraints(
+                    variable >= mega * (on - 1) + self.size * lb_relative,
+                    name=f'{self.label_full}__lb_{variable.name}'),
+                    f'lb_{variable.name}')
+                # anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu OnOff ??
 
 
 class OnOffModel(Model):
@@ -215,6 +232,7 @@ class OnOffModel(Model):
             self._model.add_variables(
                 name=f'{self.label_full}__on',
                 binary=True,
+                coords=system_model.coords,
                 #TODO: previous_values=self._previous_on_values(CONFIG.modeling.EPSILON)
             ),
             'on',
@@ -244,6 +262,7 @@ class OnOffModel(Model):
                 self._model.add_variables(
                     name=f'{self.label_full}__off',
                     binary=True,
+                    coords=system_model.coords,
                     # TODO: previous_values=1 - self._previous_on_values(CONFIG.modeling.EPSILON),
                 ),
                 'off'
@@ -273,16 +292,17 @@ class OnOffModel(Model):
             )
 
         if self.parameters.use_switch_on:
-            self.switch_on = self.add(self._model.add_variables(binary=True, name=f'{self.label_full}__switch_on'),
-                                      'switch_on')
+            self.switch_on = self.add(self._model.add_variables(
+                binary=True, name=f'{self.label_full}__switch_on', coords=system_model.coords),'switch_on')
 
-            self.switch_off = self.add(self._model.add_variables(binary=True, name=f'{self.label_full}__switch_off'),
-                                       'switch_off')
+            self.switch_off = self.add(self._model.add_variables(
+                binary=True, name=f'{self.label_full}__switch_off', coords=system_model.coords), 'switch_off')
 
-            self.switch_on_nr = self.add(self._model.add_variables(upper_bound=self.parameters.switch_on_total_max,
-                                                                   binary=True,
-                                                                   name=f'{self.label_full}__switch_on_nr'),
-                                         'switch_on_nr')
+            self.switch_on_nr = self.add(self._model.add_variables(
+                upper=self.parameters.switch_on_total_max if self.parameters.switch_on_total_max is not None else np.inf,
+                name=f'{self.label_full}__switch_on_nr',
+                coords=system_model.coords),
+                'switch_on_nr')
 
             self._add_switch_constraints(system_model)
 
@@ -854,7 +874,7 @@ class ShareAllocationModel(Model):
         else:
             self.shares[name] = self.add(
                 system_model.add_variables(
-                    coords=None if expression.ndim == 0 else system_model.coords,
+                    coords=None if isinstance(expression, linopy.LinearExpression) and expression.ndim == 0 or not isinstance(expression, linopy.LinearExpression) else system_model.coords,
                     name=f'{name}__{self.label_full}'
                 ),
                 name
@@ -952,7 +972,7 @@ class SegmentedSharesModel(ElementModel):
                 )
 
 
-class PreventSimultaneousUsageModel(ElementModel):
+class PreventSimultaneousUsageModel(Model):
     """
     Prevents multiple Multiple Binary variables from being 1 at the same time
 
@@ -970,16 +990,15 @@ class PreventSimultaneousUsageModel(ElementModel):
     # --> könnte man auch umsetzen (statt force_on_variable() für die Flows, aber sollte aufs selbe wie "new" kommen)
     """
 
-    def __init__(self, element: Element, variables: List[linopy.Variable], label: str = 'PreventSimultaneousUsage'):
-        super().__init__(element, label)
-        self._variables = variables
-        assert len(self._variables) >= 2, f'Model {self.__class__.__name__} must get at least two variables'
-        for variable in self._variables:  # classic
+    def __init__(self, model: SystemModel, variables: List[linopy.Variable], label_of_parent: str, label: str = 'PreventSimultaneousUsage'):
+        super().__init__(model, label_of_parent, label)
+        self._simultanious_use_variables = variables
+        assert len(self._simultanious_use_variables) >= 2, f'Model {self.__class__.__name__} must get at least two variables'
+        for variable in self._simultanious_use_variables:  # classic
             assert variable.attrs['binary'], f'Variable {variable} must be binary for use in {self.__class__.__name__}'
 
     def do_modeling(self, system_model: SystemModel):
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
-        self.constraints['prevent_simultaneous_use'] = system_model.add_constraints(
-            sum([variable*1 for variable in self._variables]) <= 1 + CONFIG.modeling.EPSILON,
-            name=f'{self.label_full}__prevent_simultaneous_use'
-        )
+        self.add(self._model.add_constraints(sum(self._simultanious_use_variables) <= 1.1,
+                                             name=f'{self.label_full}__prevent_simultaneous_use'),
+                 'prevent_simultaneous_use')

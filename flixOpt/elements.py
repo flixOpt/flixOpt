@@ -305,17 +305,17 @@ class FlowModel(ElementModel):
     def do_modeling(self, system_model: SystemModel):
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
         self.flow_rate = self.add(
-            system_model.add_variables(
+            self._model.add_variables(
                 lower=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
                 upper=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else np.inf,
-                coords=system_model.coords,
+                coords=self._model.coords,
                 name=f'{self.label_full}__flow_rate'
             ),
             'flow_rate'
         )
         if self.element.fixed_relative_profile is not None:
             self.add(
-                system_model.add_constraints(
+                self._model.add_constraints(
                     self.flow_rate == self.element.fixed_relative_profile.active_data,
                     name=f'{self.element.label}_fix_flow_rate'
                 ),
@@ -348,7 +348,7 @@ class FlowModel(ElementModel):
             self._investment.do_modeling(system_model)
 
         self.total_flow_hours = self.add(
-            system_model.add_variables(
+            self._model.add_variables(
                 lower=self.element.flow_hours_total_min if self.element.flow_hours_total_min is not None else -np.inf,
                 upper=self.element.flow_hours_total_max if self.element.flow_hours_total_max is not None else np.inf,
                 coords=None,
@@ -358,8 +358,8 @@ class FlowModel(ElementModel):
         )
 
         self.add(
-            system_model.add_constraints(
-                self.total_flow_hours == (self.flow_rate * system_model.hours_per_step).sum(),
+            self._model.add_constraints(
+                self.total_flow_hours == (self.flow_rate * self._model.hours_per_step).sum(),
                 name=f'{self.element.label_full}__total_flow_hours'
             ),
             'total_flow_hours'
@@ -374,11 +374,11 @@ class FlowModel(ElementModel):
     def _create_shares(self, system_model: SystemModel):
         # Arbeitskosten:
         if self.element.effects_per_flow_hour != {}:
-            system_model.effects.add_share_to_effects(
-                system_model,
+            self._model.effects.add_share_to_effects(
+                self._model,
                 name=self.label_full,  # Use the full label of the element
                 expressions={
-                    effect: self.flow_rate * system_model.hours_per_step * factor.active_data
+                    effect: self.flow_rate * self._model.hours_per_step * factor.active_data
                     for effect, factor in self.element.effects_per_flow_hour.items()
                 },
                 target='operation',
@@ -391,18 +391,18 @@ class FlowModel(ElementModel):
         if self.element.load_factor_max is not None:
             name_short = 'load_factor_max'
             name = f'{self.element.label_full}__{name_short}'
-            flow_hours_per_size_max = system_model.hours_per_step * self.element.load_factor_max
+            flow_hours_per_size_max = self._model.hours_per_step * self.element.load_factor_max
 
             if self._investment is not None:
                 self.add(
-                    system_model.add_constraints(
+                    self._model.add_constraints(
                         self.total_flow_hours <= self._investment.size * flow_hours_per_size_max, name=name,
                     ),
                     name_short
                 )
             else:
                 self.add(
-                    system_model.add_constraints(
+                    self._model.add_constraints(
                         self.total_flow_hours <= self.element.size * flow_hours_per_size_max, name=name,
                     ),
                     name_short
@@ -412,11 +412,11 @@ class FlowModel(ElementModel):
         if self.element.load_factor_min is not None:
             name_short = 'load_factor_min'
             name = f'{self.element.label_full}__{name_short}'
-            flow_hours_per_size_in = system_model.hours_per_step * self.element.load_factor_min
+            flow_hours_per_size_in = self._model.hours_per_step * self.element.load_factor_min
 
             if self._investment is not None:
                 self.add(
-                    system_model.add_constraints(
+                    self._model.add_constraints(
                         self.total_flow_hours >= self._investment.size * flow_hours_per_size_in,
                         name=name
                     ),
@@ -424,7 +424,7 @@ class FlowModel(ElementModel):
                 )
             else:
                 self.add(
-                    system_model.add_constraints(
+                    self._model.add_constraints(
                         self.total_flow_hours >= self.element.size * flow_hours_per_size_in,
                         name=name
                     ),
@@ -478,7 +478,7 @@ class BusModel(ElementModel):
         # inputs == outputs
         inputs = sum([flow.model.flow_rate for flow in self.element.inputs])
         outputs = sum([flow.model.flow_rate for flow in self.element.outputs])
-        eq_bus_balance = self.add(system_model.add_constraints(
+        eq_bus_balance = self.add(self._model.add_constraints(
             inputs == outputs,
             name=f'{self.label_full}__balance'
         ))
@@ -486,21 +486,23 @@ class BusModel(ElementModel):
         # Fehlerplus/-minus:
         if self.element.with_excess:
             excess_penalty = np.multiply(
-                system_model.hours_per_step, self.element.excess_penalty_per_flow_hour.active_data
+                self._model.hours_per_step, self.element.excess_penalty_per_flow_hour.active_data
             )
-            self.excess_input = system_model.add_variables(
-                lower=0, coords=system_model.coords, name=f'{self.label_full}__excess_input'
+            self.excess_input = self.add(self._model.add_variables(
+                lower=0, coords=self._model.coords, name=f'{self.label_full}__excess_input'),
+                'excess_input'
             )
-            self.excess_output = system_model.add_variables(
-                lower=0, coords=system_model.coords, name=f'{self.label_full}__excess_output'
+            self.excess_output = self.add(self._model.add_variables(
+                lower=0, coords=self._model.coords, name=f'{self.label_full}__excess_output'),
+                'excess_output'
             )
             eq_bus_balance.lhs -= -self.excess_input + self.excess_output
 
-            system_model.effects.add_share_to_penalty(
-                system_model, self.element.label_full, (self.excess_input * excess_penalty).sum()
+            self._model.effects.add_share_to_penalty(
+                self._model, self.element.label_full, (self.excess_input * excess_penalty).sum()
             )
-            system_model.effects.add_share_to_penalty(
-                system_model, self.element.label_full, (self.excess_output * excess_penalty).sum()
+            self._model.effects.add_share_to_penalty(
+                self._model, self.element.label_full, (self.excess_output * excess_penalty).sum()
             )
 
 
@@ -523,20 +525,20 @@ class ComponentModel(ElementModel):
                 if flow.on_off_parameters is None:
                     flow.on_off_parameters = OnOffParameters()
 
-        self.sub_models.extend([flow.create_model(system_model) for flow in all_flows])
+        self.sub_models.extend([flow.create_model(self._model) for flow in all_flows])
         for sub_model in self.sub_models:
-            sub_model.do_modeling(system_model)
+            sub_model.do_modeling(self._model)
 
         if self.element.on_off_parameters:
             flow_rates: List[linopy.Variable] = [flow.model.flow_rate for flow in all_flows]
             bounds: List[Tuple[Numeric, Numeric]] = [flow.model.absolute_flow_rate_bounds for flow in all_flows]
             self.on_off = OnOffModel(self.element, self.element.on_off_parameters, flow_rates, bounds)
             self.sub_models.append(self.on_off)
-            self.on_off.do_modeling(system_model)
+            self.on_off.do_modeling(self._model)
 
         if self.element.prevent_simultaneous_flows:
             # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
             on_variables = [flow.model.on_off.on for flow in self.element.prevent_simultaneous_flows]
-            simultaneous_use = PreventSimultaneousUsageModel(self.element, on_variables)
+            simultaneous_use = PreventSimultaneousUsageModel(self._model, on_variables, self.label_full)
             self.sub_models.append(simultaneous_use)
-            simultaneous_use.do_modeling(system_model)
+            simultaneous_use.do_modeling(self._model)

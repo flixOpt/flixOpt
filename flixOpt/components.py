@@ -433,18 +433,21 @@ class StorageModel(ComponentModel):
         super().do_modeling(system_model)
 
         lb, ub = self.absolute_charge_state_bounds
-        self.charge_state = system_model.add_variables(
-            lower_bound=lb, upper_bound=ub, coords=(self._model.periods, self._model.timesteps_extra),
-            name=f'{self.label_full}__charge_state'
+        self.charge_state = self.add(self._model.add_variables(
+            lower=lb, upper=ub, coords=self._model.coords,
+            name=f'{self.label_full}__charge_state'),
+            'charge_state'
         )
-        self.netto_discharge = system_model.add_variables(
-            coords=system_model.coords, name=f'{self.label_full}__netto_discharge'
+        self.netto_discharge = self.add(self._model.add_variables(
+            coords=self._model.coords, name=f'{self.label_full}__netto_discharge'),
+            'netto_discharge'
         )
         # netto_discharge:
         # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
-        self.constraints['netto_discharge'] = system_model.add_constraints(
+        self.add(self._model.add_constraints(
             self.netto_discharge == self.element.charging.model.flow_rate - self.element.discharging.model.flow_rate,
-            name=f'{self.label_full}__netto_discharge'
+            name=f'{self.label_full}__netto_discharge'),
+            'netto_discharge'
         )
 
         charge_state = self.charge_state
@@ -455,18 +458,23 @@ class StorageModel(ComponentModel):
         eff_charge = self.element.eta_charge.active_data
         eff_discharge = self.element.eta_discharge.active_data
 
-        self.constraints['charge_state'] = system_model.add_constraints(
+        self.add(self._model.add_constraints(
             charge_state.isel(time=slice(1, None))
             ==
             charge_state.isel(time=slice(None, -1)) * (1 - rel_loss * hours_per_step)
             + charge_rate * eff_charge * hours_per_step
             - discharge_rate * eff_discharge * hours_per_step,
-            name=f'{self.label_full}__charge_state'
+            name=f'{self.label_full}__charge_state'),
+            'charge_state'
         )
 
         if isinstance(self.element.capacity_in_flow_hours, InvestParameters):
             self._investment = InvestmentModel(
-                self.element, self.element.capacity_in_flow_hours, self.charge_state, self.relative_charge_state_bounds
+                model=self._model,
+                label_of_parent=self.element.label_full,
+                parameters=self.element.capacity_in_flow_hours,
+                defining_variable=self.charge_state,
+                relative_bounds_of_defining_variable=self.relative_charge_state_bounds,
             )
             self.sub_models.append(self._investment)
             self._investment.do_modeling(system_model)
@@ -480,28 +488,32 @@ class StorageModel(ComponentModel):
             name = f'{self.label_full}__{name_short}'
 
             if utils.is_number(self.element.initial_charge_state):
-                self.constraints[name_short] = system_model.add_constraints(
+                self.add(self._model.add_constraints(
                     self.charge_state.isel(time=0) == self.element.initial_charge_state,
-                    name=name,
+                    name=name),
+                    name_short
                 )
             elif self.element.initial_charge_state == 'lastValueOfSim':
-                self.constraints[name_short] = system_model.add_constraints(
+                self.add(self._model.add_constraints(
                     self.charge_state.isel(time=0) == self.charge_state.isel(time=-1),
-                    name=name
+                    name=name),
+                    name_short
                 )
             else:  # TODO: Validation in Storage Class, not in Model
                 raise Exception(f'initial_charge_state has undefined value: {self.element.initial_charge_state}')
 
         if self.element.maximal_final_charge_state is not None:
-            self.constraints['final_charge_max'] = system_model.add_constraints(
+            self.add(self._model.add_constraints(
                 self.charge_state.isel(time=-1) <= self.element.maximal_final_charge_state,
-                name=f'{self.label_full}__final_charge_max'
+                name=f'{self.label_full}__final_charge_max'),
+                'final_charge_max'
             )
 
         if self.element.minimal_final_charge_state is not None:
-            self.constraints['final_charge_min'] = system_model.add_constraints(
+            self.add(self._model.add_constraints(
                 self.charge_state.isel(time=-1) >= self.element.minimal_final_charge_state,
-                name=f'{self.label_full}__final_charge_min'
+                name=f'{self.label_full}__final_charge_min'),
+                'final_charge_min'
             )
 
     @property
