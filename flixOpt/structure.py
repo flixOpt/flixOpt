@@ -266,20 +266,23 @@ class Element(Interface):
 class Model:
     """Stores Variables and Constraints"""
 
-    def __init__(self, model: SystemModel, label: str, label_full: Optional[str] = None):
+    def __init__(self, model: SystemModel, label_of_parent: str, label: str, label_full: Optional[str] = None):
         """
         Parameters
         ----------
         interface : Interface
             The interface this model is created for.
         label_of_parent : str
-            The label of the parent. Used to construct the full label of the model.
+            The label of the parent (Element). Used to construct the full label of the model.
         label : str
             Used to construct the label of the model. If None, the interface label is used.
+        label_full : str
+            The full label of the model. If None, the full label is constructed using the other given labels.
         """
 
         self._model = model
         self._label = label
+        self._label_of_parent = label_of_parent
         self._label_full = label_full
 
         self._variables: List[str] = []
@@ -360,7 +363,7 @@ class Model:
 
     @property
     def label_full(self) -> str:
-        return self._label_full or self.label
+        return self._label_full or f'{self._label_of_parent}__{self.label}'
 
     @property
     def variables(self) -> linopy.Variables:
