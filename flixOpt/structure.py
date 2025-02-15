@@ -33,10 +33,7 @@ logger = logging.getLogger('flixOpt')
 
 class SystemModel(linopy.Model):
 
-    def __init__(
-            self,
-            flow_system: 'FlowSystem',
-    ):
+    def __init__(self, flow_system: 'FlowSystem'):
         super().__init__(force_dim_names=True)
         self.flow_system = flow_system
         self.effects: Optional[EffectCollection] = None
@@ -55,6 +52,51 @@ class SystemModel(linopy.Model):
         self.add_objective(
             self.effects.objective_effect.model.total + self.effects.penalty.total
         )
+
+    @property
+    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
+        main_results = {}
+        effect_results = {}
+        main_results['Effects'] = effect_results
+        for effect in self.flow_system.effects.values():
+            effect_results[f'{effect.label} [{effect.unit}]'] = {
+                'operation': float(effect.model.operation.total.solution.values),
+                'invest': float(effect.model.invest.total.solution.values),
+                'total': float(effect.model.total.solution.values),
+            }
+        main_results['penalty'] = float(self.effects.penalty.total.solution.values)
+        main_results['Objective'] = self.objective.value
+        main_results['lower bound'] = 'Not availlable'
+        buses_with_excess = []
+        main_results['buses with excess'] = buses_with_excess
+        for bus in self.flow_system.buses.values():
+            if bus.with_excess:
+                excess_in = np.sum(bus.model.excess_input.solution.values)
+                excess_out = np.sum(bus.model.excess_output.solution.values)
+                if excess_in > 1e-3 or excess_out > 1e-3:
+                    buses_with_excess.append({bus.label_full: {'input': excess_in, 'output': excess_out}})
+
+        invest_decisions = {'invested': {}, 'not invested': {}}
+        main_results['Invest-Decisions'] = invest_decisions
+        from flixOpt.features import InvestmentModel
+
+        for component in self.flow_system.components.values():
+            for model in component.model.all_sub_models:
+                if isinstance(model, InvestmentModel):
+                    invested_size = float(model.size.result)  # bei np.floats Probleme bei Speichern
+                    if invested_size >= CONFIG.modeling.EPSILON:
+                        invest_decisions['invested'][model.element.label_full] = invested_size
+                    else:
+                        invest_decisions['not invested'][model.element.label_full] = invested_size
+
+        return main_results
+
+    @property
+    def infos(self) -> Dict:
+        return {'Constraints': self.constraints.ncons,
+                'Variables': self.variables.nvars,
+                'Main Results': self.main_results,
+                'Config': CONFIG.to_dict()}
 
     @property
     def hours_per_step(self):
@@ -531,6 +573,9 @@ def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_la
         if use_element_label and isinstance(data, Element):
             return data.label
         return data.infos(use_numpy, use_element_label)
+    elif isinstance(data, xr.DataArray):
+        #TODO: This is a temporary basic work around
+        return copy_and_convert_datatypes(data.values, use_numpy, use_element_label)
     else:
         raise TypeError(f'copy_and_convert_datatypes() did get unexpected data of type "{type(data)}": {data=}')
 

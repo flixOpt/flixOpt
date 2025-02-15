@@ -17,6 +17,7 @@ import timeit
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
+import pandas as pd
 import yaml
 
 from . import utils as utils
@@ -39,10 +40,9 @@ class Calculation:
 
     def __init__(
         self,
-        name,
+        name: str,
         flow_system: FlowSystem,
-        modeling_language: Literal['pyomo', 'linopy'] = 'pyomo',
-        time_indices: Optional[Union[range, List[int]]] = None,
+        active_timesteps:    Optional[Union[List[int], pd.DatetimeIndex]] = None,
     ):
         """
         Parameters
@@ -51,18 +51,14 @@ class Calculation:
             name of calculation
         flow_system : FlowSystem
             flow_system which should be calculated
-        modeling_language : 'pyomo', 'linopy'
-            choose optimization modeling language
-        time_indices : List[int] or None
+        active_timesteps : List[int] or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
         self.name = name
         self.flow_system = flow_system
-        self.modeling_language = modeling_language
-        self.time_indices = time_indices
+        self.active_timesteps = active_timesteps
 
-        self.system_model: Optional[SystemModel] = None
-        self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}  # Dauer der einzelnen Dinge
+        self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}
 
         self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {
             'log': None,
@@ -93,7 +89,7 @@ class Calculation:
 
     def _save_solve_infos(self):
         t_start = timeit.default_timer()
-        indent = 4 if len(self.flow_system.time_series) < 50 else None
+        indent = 4 if len(self.flow_system.timesteps) < 50 else None
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
             json.dump(results, f, indent=indent)
@@ -108,7 +104,7 @@ class Calculation:
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {
             'Calculation': self.infos,
-            'Model': self.system_model.infos,
+            'Model': self.flow_system.model.infos,
             'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
             'Network': {'Nodes': nodes_info, 'Edges': edges_info},
         }
@@ -129,14 +125,14 @@ class Calculation:
 
     def results(self):
         if self._results is None:
-            self._results = self.system_model.results()
+            self._results = self.flow_system.results()
         return self._results
 
     @property
     def infos(self):
         return {
             'Name': self.name,
-            'Number of indices': len(self.time_indices) if self.time_indices else 'all',
+            'Number of indices': len(self.active_timesteps) if self.active_timesteps else 'all',
             'Calculation Type': self.__class__.__name__,
             'Durations': self.durations,
         }
@@ -152,20 +148,19 @@ class FullCalculation(Calculation):
 
         self.flow_system.transform_data()
         for time_series in self.flow_system.all_time_series:
-            time_series.activate_indices(self.time_indices)
+            time_series.active_periods = self.flow_system.periods
+            time_series.active_timesteps = self.flow_system.timesteps
 
-        self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
-        self.system_model.do_modeling()
-        self.system_model.translate_to_modeling_language()
+        self.flow_system.create_model()
+        self.flow_system.model.do_modeling()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
-        return self.system_model
+        return self.flow_system.model
 
-    def solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = False):
+    def solve(self, solver_name: str, save_results: Union[bool, str, pathlib.Path] = False, solver_options: dict = None):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
-        solver.logfile_name = self._paths['log']
-        self.system_model.solve(solver)
+        self.flow_system.model.solve(log_fn=self._paths['log'], solver_name=solver_name, solver_options=solver_options)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         if save_results:

@@ -67,41 +67,6 @@ class FlowSystem:
         self.effects: Dict[str, Effect] = {}
         self.model: Optional[SystemModel] = None
 
-    def _order_dimensions(self):
-        self.timesteps = self.timesteps
-        self.timesteps.name = 'time'
-
-        self.periods = pd.Index(self.periods, name='period') if self.periods is not None else None
-
-        if self.hours_of_last_step:
-            last_date = pd.DatetimeIndex(
-                [self.timesteps[-1] + pd.to_timedelta(self.hours_of_last_step, 'h')])
-        else:
-            last_date = pd.DatetimeIndex([self.timesteps[-1] + (self.timesteps[-1] - self.timesteps[-2])])
-        self.timesteps_extra = self.timesteps.append(last_date)
-        self.timesteps_extra.name = 'time'
-        hours_per_step = self.timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
-        self.hours_per_step = xr.DataArray(
-            data=np.tile(hours_per_step, (len(self.periods), 1)) if self.periods is not None else hours_per_step,
-            coords=self.coords,
-            name='hours_per_step'
-        )
-
-    @property
-    def snapshots(self):
-        return xr.Dataset(
-            coords={'period': list(self.periods), 'time': list(self.timesteps)} if self.periods is not None else {
-                'time': list(self.timesteps)},
-        )
-
-    @property
-    def coords(self):
-        return self.snapshots.coords
-
-    @property
-    def index_shape(self) -> Tuple[int, int]:
-        return len(self.periods) if self.periods is not None else 1, len(self.timesteps)
-
     def add_effects(self, *args: Effect) -> None:
         for new_effect in list(args):
             if new_effect.label in self.effects:
@@ -261,6 +226,10 @@ class FlowSystem:
         node_infos, edge_infos = self.network_infos()
         return plotting.visualize_network(node_infos, edge_infos, path, controls, show)
 
+    def create_model(self) -> SystemModel:
+        self.model = SystemModel(self)
+        return self.model
+
     def _check_if_element_is_unique(self, element: Element) -> None:
         """
         checks if element or label of element already exists in list
@@ -270,11 +239,31 @@ class FlowSystem:
         element : Element
             new element to check
         """
-        if element in self.all_elements:
+        if element in self.all_elements.values():
             raise Exception(f'Element {element.label} already added to FlowSystem!')
         # check if name is already used:
         if element.label_full in self.all_elements:
             raise Exception(f'Label of Element {element.label} already used in another element!')
+
+    def _order_dimensions(self):
+        self.timesteps = self.timesteps
+        self.timesteps.name = 'time'
+
+        self.periods = pd.Index(self.periods, name='period') if self.periods is not None else None
+
+        if self.hours_of_last_step:
+            last_date = pd.DatetimeIndex(
+                [self.timesteps[-1] + pd.to_timedelta(self.hours_of_last_step, 'h')])
+        else:
+            last_date = pd.DatetimeIndex([self.timesteps[-1] + (self.timesteps[-1] - self.timesteps[-2])])
+        self.timesteps_extra = self.timesteps.append(last_date)
+        self.timesteps_extra.name = 'time'
+        hours_per_step = self.timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
+        self.hours_per_step = xr.DataArray(
+            data=np.tile(hours_per_step, (len(self.periods), 1)) if self.periods is not None else hours_per_step,
+            coords=self.coords,
+            name='hours_per_step'
+        )
 
     def get_time_data_from_indices(
         self, time_indices: Optional[Union[List[int], range]] = None
@@ -341,6 +330,21 @@ class FlowSystem:
     @property
     def all_time_series(self) -> List[TimeSeries]:
         return [ts for element in self.all_elements.values() for ts in element.used_time_series]
+
+    @property
+    def snapshots(self):
+        return xr.Dataset(
+            coords={'period': list(self.periods), 'time': list(self.timesteps)} if self.periods is not None else {
+                'time': list(self.timesteps)},
+        )
+
+    @property
+    def coords(self):
+        return self.snapshots.coords
+
+    @property
+    def index_shape(self) -> Tuple[int, int]:
+        return len(self.periods) if self.periods is not None else 1, len(self.timesteps)
 
 
 def create_datetime_array(
