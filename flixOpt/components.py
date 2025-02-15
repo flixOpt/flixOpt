@@ -434,7 +434,7 @@ class StorageModel(ComponentModel):
 
         lb, ub = self.absolute_charge_state_bounds
         self.charge_state = self.add(self._model.add_variables(
-            lower=lb, upper=ub, coords=self._model.coords,
+            lower=lb, upper=ub, coords=self._model.coords_extra,
             name=f'{self.label_full}__charge_state'),
             'charge_state'
         )
@@ -461,7 +461,7 @@ class StorageModel(ComponentModel):
         self.add(self._model.add_constraints(
             charge_state.isel(time=slice(1, None))
             ==
-            charge_state.isel(time=slice(None, -1)) * (1 - rel_loss * hours_per_step)
+            charge_state.isel(time=slice(None, -1)) * (1 - rel_loss) * hours_per_step
             + charge_rate * eff_charge * hours_per_step
             - discharge_rate * eff_discharge * hours_per_step,
             name=f'{self.label_full}__charge_state'),

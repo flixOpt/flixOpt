@@ -341,8 +341,19 @@ class FlowSystem:
         )
 
     @property
+    def snapshots_extra(self):
+        return xr.Dataset(
+            coords={'period': list(self.periods), 'time': list(self.timesteps_extra)} if self.periods is not None else {
+                'time': list(self.timesteps_extra)},
+        )
+
+    @property
     def coords(self):
         return self.snapshots.coords
+
+    @property
+    def coords_extra(self):
+        return self.snapshots_extra.coords
 
     @property
     def index_shape(self) -> Tuple[int, int]:

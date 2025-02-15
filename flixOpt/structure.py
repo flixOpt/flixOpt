@@ -110,6 +110,10 @@ class SystemModel(linopy.Model):
     def coords(self):
         return self.flow_system.coords
 
+    @property
+    def coords_extra(self):
+        return self.flow_system.coords_extra
+
 
 class Interface:
     """
