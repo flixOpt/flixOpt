@@ -104,7 +104,7 @@ class FlowSystem:
 
     def transform_data(self):
         for element in self.all_elements.values():
-            element.transform_data(self.timesteps, self.periods)
+            element.transform_data(self)
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
         nodes = {

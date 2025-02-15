@@ -3,7 +3,7 @@ This module contains the basic components of the flixOpt framework.
 """
 
 import logging
-from typing import Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import Dict, List, Literal, Optional, Set, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,9 @@ from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
 from .math_modeling import Equation, VariableTS
 from .structure import SystemModel, create_equation, create_variable
+
+if TYPE_CHECKING:
+    from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
 
@@ -93,29 +96,29 @@ class LinearConverter(Component):
                         f'(in flow {flow.label_full}) do not make sense together!'
                     )
 
-    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
-        super().transform_data(timesteps, periods)
+    def transform_data(self, flow_system: 'FlowSystem'):
+        super().transform_data(flow_system)
         if self.conversion_factors:
-            self.conversion_factors = self._transform_conversion_factors(timesteps, periods)
+            self.conversion_factors = self._transform_conversion_factors(flow_system)
         else:
             segmented_conversion_factors = {}
             for flow, segments in self.segmented_conversion_factors.items():
                 segmented_conversion_factors[flow] = [
                     (
-                        self._create_time_series('Stützstelle', segment[0], timesteps, periods),
-                        self._create_time_series('Stützstelle', segment[1], timesteps, periods),
+                        self._create_time_series('Stützstelle', segment[0], flow_system.timesteps, flow_system.periods),
+                        self._create_time_series('Stützstelle', segment[1], flow_system.timesteps, flow_system.periods),
                     )
                     for segment in segments
                 ]
             self.segmented_conversion_factors = segmented_conversion_factors
 
-    def _transform_conversion_factors(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> List[Dict[Flow, TimeSeries]]:
+    def _transform_conversion_factors(self, flow_system: 'FlowSystem') -> List[Dict[Flow, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
         list_of_conversion_factors = []
         for conversion_factor in self.conversion_factors:
             transformed_dict = {}
             for flow, values in conversion_factor.items():
-                transformed_dict[flow] = self._create_time_series(f'{flow.label}_factor', values, timesteps, periods)
+                transformed_dict[flow] = self._create_time_series(f'{flow.label}_factor', values, flow_system.timesteps, flow_system.periods)
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
 
@@ -213,22 +216,22 @@ class Storage(Component):
         self.relative_loss_per_hour: Numeric_TS = relative_loss_per_hour
 
     def create_model(self, model: SystemModel) -> 'StorageModel':
-        self.model = StorageModel(self, model)
+        self.model = StorageModel(model, self)
         return self.model
 
-    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> None:
-        super().transform_data(timesteps, periods)
+    def transform_data(self, flow_system: 'FlowSystem') -> None:
+        super().transform_data(flow_system)
         self.relative_minimum_charge_state = self._create_time_series(
-            'relative_minimum_charge_state', self.relative_minimum_charge_state, timesteps, periods
+            'relative_minimum_charge_state', self.relative_minimum_charge_state, flow_system.timesteps_extra, flow_system.periods
         )
         self.relative_maximum_charge_state = self._create_time_series(
-            'relative_maximum_charge_state', self.relative_maximum_charge_state, timesteps, periods
+            'relative_maximum_charge_state', self.relative_maximum_charge_state, flow_system.timesteps_extra, flow_system.periods
         )
-        self.eta_charge = self._create_time_series('eta_charge', self.eta_charge, timesteps, periods)
-        self.eta_discharge = self._create_time_series('eta_discharge', self.eta_discharge, timesteps, periods)
-        self.relative_loss_per_hour = self._create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, timesteps, periods)
+        self.eta_charge = self._create_time_series('eta_charge', self.eta_charge, flow_system.timesteps, flow_system.periods)
+        self.eta_discharge = self._create_time_series('eta_discharge', self.eta_discharge, flow_system.timesteps, flow_system.periods)
+        self.relative_loss_per_hour = self._create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, flow_system.timesteps, flow_system.periods)
         if isinstance(self.capacity_in_flow_hours, InvestParameters):
-            self.capacity_in_flow_hours.transform_data(timesteps, periods)
+            self.capacity_in_flow_hours.transform_data(flow_system)
 
 
 class Transmission(Component):
@@ -315,10 +318,10 @@ class Transmission(Component):
         self.model = TransmissionModel(self)
         return self.model
 
-    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> None:
-        super().transform_data(timesteps, periods)
-        self.relative_losses = self._create_time_series('relative_losses', self.relative_losses, timesteps, periods)
-        self.absolute_losses = self._create_time_series('absolute_losses', self.absolute_losses, timesteps, periods)
+    def transform_data(self, flow_system: 'FlowSystem') -> None:
+        super().transform_data(flow_system)
+        self.relative_losses = self._create_time_series('relative_losses', self.relative_losses, flow_system.timesteps, flow_system.periods)
+        self.absolute_losses = self._create_time_series('absolute_losses', self.absolute_losses, flow_system.timesteps, flow_system.periods)
 
 
 class TransmissionModel(ComponentModel):
@@ -431,7 +434,7 @@ class StorageModel(ComponentModel):
 
         lb, ub = self.absolute_charge_state_bounds
         self.charge_state = system_model.add_variables(
-            lower_bound=lb, upper_bound=ub, coords=(system_model.periods, system_model.timesteps_extra),
+            lower_bound=lb, upper_bound=ub, coords=(self._model.periods, self._model.timesteps_extra),
             name=f'{self.label_full}__charge_state'
         )
         self.netto_discharge = system_model.add_variables(

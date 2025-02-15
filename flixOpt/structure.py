@@ -112,7 +112,8 @@ class Interface:
     This class is used to collect arguments about a Model.
     """
 
-    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
+    def transform_data(self, flow_system: 'FlowSystem'):
+        """ Transforms the data of the interface to match the FlowSystem's dimensions"""
         raise NotImplementedError('Every Interface needs a transform_data() method')
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:

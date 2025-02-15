@@ -6,7 +6,7 @@ which are then transformed into the internal data structure.
 """
 
 import logging
-from typing import Dict, Literal, Optional, Union, List
+from typing import Dict, Literal, Optional, Union, List, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,9 @@ from .core import Numeric, Numeric_TS, Skalar, TimeSeries
 from .features import ShareAllocationModel
 from .math_modeling import Equation, Variable
 from .structure import Element, ElementModel, SystemModel, InterfaceModel
+
+if TYPE_CHECKING:
+    from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
 
@@ -133,20 +136,20 @@ class Effect(Element):
                 f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
             )
 
-    def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]):
+    def transform_data(self, flow_system: 'FlowSystem'):
         self.minimum_operation_per_hour = self._create_time_series(
-            'minimum_operation_per_hour', self.minimum_operation_per_hour, timesteps, periods
+            'minimum_operation_per_hour', self.minimum_operation_per_hour, flow_system.timesteps, flow_system.periods
         )
         self.maximum_operation_per_hour = self._create_time_series(
-            'maximum_operation_per_hour', self.maximum_operation_per_hour, timesteps, periods
+            'maximum_operation_per_hour', self.maximum_operation_per_hour, flow_system.timesteps, flow_system.periods
         )
 
         self.specific_share_to_other_effects_operation = effect_values_to_time_series(
             'operation_to',
             self.specific_share_to_other_effects_operation,
             self,
-            timesteps,
-            periods
+            flow_system.timesteps,
+            flow_system.periods
         )
 
     def create_model(self, model: SystemModel) -> 'EffectModel':
