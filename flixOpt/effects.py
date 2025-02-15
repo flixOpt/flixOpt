@@ -149,13 +149,13 @@ class Effect(Element):
             periods
         )
 
-    def create_model(self, model: linopy.Model) -> 'EffectModel':
+    def create_model(self, model: SystemModel) -> 'EffectModel':
         self.model = EffectModel(model, self)
         return self.model
 
 
 class EffectModel(ElementModel):
-    def __init__(self, model: linopy.Model, element: Effect):
+    def __init__(self, model: SystemModel, element: Effect):
         super().__init__(model, element)
         self.element: Effect = element
         self.total: Optional[linopy.Variable] = None
@@ -273,7 +273,7 @@ class EffectCollection(InterfaceModel):
     Handling all Effects
     """
 
-    def __init__(self, model: linopy.Model, effects: List[Effect]):
+    def __init__(self, model: SystemModel, effects: List[Effect]):
         super().__init__(model, label='Effects')
         self._effects = {}
         self._standard_effect: Optional[Effect] = None

@@ -245,7 +245,7 @@ class Element(Interface):
         """This function is used to do some basic plausibility checks for each Element during initialization"""
         raise NotImplementedError('Every Element needs a _plausibility_checks() method')
 
-    def create_model(self) -> 'ElementModel':
+    def create_model(self, model: SystemModel) -> 'ElementModel':
         raise NotImplementedError('Every Element needs a create_model() method')
 
     @property
@@ -265,7 +265,7 @@ class Element(Interface):
 class Model:
     """Stores Variables and Constraints"""
 
-    def __init__(self, model: linopy.Model, label: str, label_full: Optional[str] = None):
+    def __init__(self, model: SystemModel, label: str, label_full: Optional[str] = None):
         """
         Parameters
         ----------
@@ -407,7 +407,7 @@ class Model:
 class InterfaceModel(Model):
     """Stores the mathematical Variables and Constraints related to an Interface"""
 
-    def __init__(self, model: linopy.Model, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
+    def __init__(self, model: SystemModel, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
         """
         Parameters
         ----------
@@ -429,7 +429,7 @@ class InterfaceModel(Model):
 class ElementModel(Model):
     """Interface to create the mathematical Variables and Constraints for Elements"""
 
-    def __init__(self, model: linopy.Model, element: Element):
+    def __init__(self, model: SystemModel, element: Element):
         """
         Parameters
         ----------

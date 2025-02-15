@@ -61,7 +61,7 @@ class LinearConverter(Component):
         self.segmented_conversion_factors = segmented_conversion_factors or {}
         self._plausibility_checks()
 
-    def create_model(self, model: linopy.Model) -> 'LinearConverterModel':
+    def create_model(self, model: SystemModel) -> 'LinearConverterModel':
         self.model = LinearConverterModel(model, self)
         return self.model
 
@@ -212,12 +212,12 @@ class Storage(Component):
         self.eta_discharge: Numeric_TS = eta_discharge
         self.relative_loss_per_hour: Numeric_TS = relative_loss_per_hour
 
-    def create_model(self) -> 'StorageModel':
-        self.model = StorageModel(self)
+    def create_model(self, model: SystemModel) -> 'StorageModel':
+        self.model = StorageModel(self, model)
         return self.model
 
     def transform_data(self, timesteps: pd.DatetimeIndex, periods: Optional[pd.Index]) -> None:
-        super().transform_data()
+        super().transform_data(timesteps, periods)
         self.relative_minimum_charge_state = self._create_time_series(
             'relative_minimum_charge_state', self.relative_minimum_charge_state, timesteps, periods
         )
@@ -372,7 +372,7 @@ class TransmissionModel(ComponentModel):
 
 
 class LinearConverterModel(ComponentModel):
-    def __init__(self, model: linopy.Model, element: LinearConverter):
+    def __init__(self, model: SystemModel, element: LinearConverter):
         super().__init__(model, element)
         self.element: LinearConverter = element
         self.on_off: Optional[OnOffModel] = None
@@ -419,8 +419,8 @@ class LinearConverterModel(ComponentModel):
 class StorageModel(ComponentModel):
     """Model of Storage"""
 
-    def __init__(self, element: Storage):
-        super().__init__(element)
+    def __init__(self, model: SystemModel, element: Storage):
+        super().__init__(model, element)
         self.element: Storage = element
         self.charge_state: Optional[linopy.Variable] = None
         self.netto_discharge: Optional[linopy.Variable] = None

@@ -733,7 +733,7 @@ class MultipleSegmentsModel(ElementModel):
 class ShareAllocationModel(InterfaceModel):
     def __init__(
         self,
-        model: linopy.Model,
+        model: SystemModel,
         shares_are_time_series: bool,
         label_of_parent: Optional[str] = None,
         label: Optional[str] = None,

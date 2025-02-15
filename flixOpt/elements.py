@@ -61,7 +61,7 @@ class Component(Element):
 
         self.flows: Dict[str, Flow] = {flow.label: flow for flow in self.inputs + self.outputs}
 
-    def create_model(self, model: linopy.Model) -> 'ComponentModel':
+    def create_model(self, model: SystemModel) -> 'ComponentModel':
         self.model = ComponentModel(model, self)
         return self.model
 
@@ -112,7 +112,7 @@ class Bus(Element):
         self.inputs: List[Flow] = []
         self.outputs: List[Flow] = []
 
-    def create_model(self, model: linopy.Model) -> 'BusModel':
+    def create_model(self, model: SystemModel) -> 'BusModel':
         self.model = BusModel(model, self)
         return self.model
 
@@ -234,7 +234,7 @@ class Flow(Element):
 
         self._plausibility_checks()
 
-    def create_model(self, model: linopy.Model) -> 'FlowModel':
+    def create_model(self, model: SystemModel) -> 'FlowModel':
         self.model = FlowModel(model, self)
         return self.model
 
@@ -289,7 +289,7 @@ class Flow(Element):
 
 
 class FlowModel(ElementModel):
-    def __init__(self, model: linopy.Model, element: Flow):
+    def __init__(self, model: SystemModel, element: Flow):
         super().__init__(model, element)
         self.element: Flow = element
         self.flow_rate: Optional[linopy.Variable] = None
@@ -464,7 +464,7 @@ class FlowModel(ElementModel):
 
 
 class BusModel(ElementModel):
-    def __init__(self, model: linopy.Model, element: Bus):
+    def __init__(self, model: SystemModel, element: Bus):
         super().__init__(model, element)
         self.element: Bus = element
         self.excess_input: Optional[linopy.Variable] = None
@@ -501,7 +501,7 @@ class BusModel(ElementModel):
 
 
 class ComponentModel(ElementModel):
-    def __init__(self, model: linopy.Model, element: Component):
+    def __init__(self, model: SystemModel, element: Component):
         super().__init__(model, element)
         self.element: Component = element
         self.on_off: Optional[OnOffModel] = None
