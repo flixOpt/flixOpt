@@ -121,15 +121,15 @@ class InvestmentModel(Model):
             )
 
         if self.parameters.effects_in_segments:
-            self._segments = SegmentedSharesModel(self._model, self.size, self.parameters.effects_in_segments, self.is_invested)
-
-        # segmented Effects
-        if self.parameters.effects_in_segments:
-            self._segments = SegmentedSharesModel(
-                self.element, (self.size, invest_segments[0]), invest_segments[1], self.is_invested
+            self._segments = self.add(
+                SegmentedSharesModel(
+                    model=self._model,
+                    label_of_parent=self._label_of_parent,
+                    variable_segments=(self.size, self.parameters.effects_in_segments[0]),
+                    share_segments=self.parameters.effects_in_segments[1],
+                    can_be_outside_segments=self.is_invested),
+                'segments'
             )
-            self.sub_models.append(self._segments)
-            self._segments.do_modeling(system_model)
 
     def _create_bounds_for_optional_investment(self):
         if self.parameters.fixed_size:
@@ -686,18 +686,18 @@ class OnOffModel(Model):
             )
 
 
-class SegmentModel(ElementModel):
+class SegmentModel(Model):
     """Class for modeling a linear segment of one or more variables in parallel"""
 
     def __init__(
         self,
-        element: Element,
+        model: SystemModel,
+        label_of_parent: str,
         segment_index: Union[int, str],
         sample_points: Dict[Variable, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]],
         as_time_series: bool = True,
     ):
-        super().__init__(element, f'Segment_{segment_index}')
-        self.element = element
+        super().__init__(model, label_of_parent, f'Segment{segment_index}')
         self.in_segment: Optional[VariableTS] = None
         self.lambda0: Optional[VariableTS] = None
         self.lambda1: Optional[VariableTS] = None
@@ -720,11 +720,12 @@ class SegmentModel(ElementModel):
         equation.add_summand(self.lambda1, 1)
 
 
-class MultipleSegmentsModel(ElementModel):
+class MultipleSegmentsModel(Model):
     # TODO: Length...
     def __init__(
         self,
-        element: Element,
+        model: SystemModel,
+        label_of_parent: str,
         sample_points: Dict[Variable, List[Tuple[Numeric, Numeric]]],
         can_be_outside_segments: Optional[Union[bool, Variable]],
         as_time_series: bool = True,
@@ -735,10 +736,8 @@ class MultipleSegmentsModel(ElementModel):
                                     False or None -> No Variable gets_created;
                                     Variable -> the Variable gets used
         """
-        super().__init__(element, label)
-        self.element = element
-
-        self.outside_segments: Optional[VariableTS] = None
+        super().__init__(model, label_of_parent, label)
+        self.outside_segments: Optional[linopy.Variable] = None
 
         self._as_time_series = as_time_series
         self._can_be_outside_segments = can_be_outside_segments
@@ -751,11 +750,16 @@ class MultipleSegmentsModel(ElementModel):
         ]
 
         self._segment_models = [
-            SegmentModel(self.element, i, sample_points, self._as_time_series)
+            self.add(
+                SegmentModel(
+                    self._model,
+                    label_of_parent=self._label_of_parent,
+                    segment_index=i,
+                    sample_points=sample_points,
+                    as_time_series=self._as_time_series),
+                f'Segment_{i}')
             for i, sample_points in enumerate(restructured_variables_with_segments)
         ]
-
-        self.sub_models.extend(self._segment_models)
 
         for segment_model in self._segment_models:
             segment_model.do_modeling(system_model)
@@ -763,28 +767,35 @@ class MultipleSegmentsModel(ElementModel):
         #  eq: - v(t) + (v_0_0 * lambda_0_0 + v_0_1 * lambda_0_1) + (v_1_0 * lambda_1_0 + v_1_1 * lambda_1_1) ... = 0
         #  -> v_0_0, v_0_1 = Stützstellen des Segments 0
         for variable in self._sample_points.keys():
-            lambda_eq = create_equation(f'lambda_{variable.label}', self)
-            lambda_eq.add_summand(variable, -1)
-            for segment_model in self._segment_models:
-                lambda_eq.add_summand(segment_model.lambda0, segment_model.sample_points[variable][0])
-                lambda_eq.add_summand(segment_model.lambda1, segment_model.sample_points[variable][1])
+            self.add(self._model.add_constraints(
+                variable == sum([segment.lambda0 * segment.sample_points[variable][0]
+                                 + segment.lambda1 * segment.sample_points[variable][1]
+                                 for segment in self._segment_models]),
+                name=f'{self.label_full}__{variable.name}_lambda'),
+                f'{variable.name}_lambda'
+            )
 
-        # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
-        # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
-        in_single_segment = create_equation('in_single_Segment', self)
-        for segment_model in self._segment_models:
-            in_single_segment.add_summand(segment_model.in_segment, 1)
+            # a) eq: Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 1                Aufenthalt nur in Segmenten erlaubt
+            # b) eq: -On(t) + Segment1.onSeg(t) + Segment2.onSeg(t) + ... = 0       zusätzlich kann alles auch Null sein
+            if isinstance(self._can_be_outside_segments, linopy.Variable):
+                self.outside_segments = self._can_be_outside_segments
+                rhs = self.outside_segments
+            elif self._can_be_outside_segments is True:
+                self.outside_segments = self.add(self._model.add_variables(
+                    coords=self._model.coords,
+                    binary=True,
+                    name=f'{self.label_full}__outside_segments'),
+                    'outside_segments'
+                )
+                rhs = self.outside_segments
+            else:
+                rhs = 1
 
-        # a) or b) ?
-        if isinstance(self._can_be_outside_segments, Variable):  # Use existing Variable
-            self.outside_segments = self._can_be_outside_segments
-            in_single_segment.add_summand(self.outside_segments, -1)
-        elif self._can_be_outside_segments is True:  # Create Variable
-            length = system_model.nr_of_time_steps if self._as_time_series else 1
-            self.outside_segments = create_variable('outside_segments', self, length, is_binary=True)
-            in_single_segment.add_summand(self.outside_segments, -1)
-        else:  # Dont allow outside Segments
-            in_single_segment.add_constant(1)
+            self.add(self._model.add_constraints(
+                sum([segment.in_segment for segment in self._segment_models]) <= rhs,
+                name=f'{self.label_full}__{variable.name}_single_segment'),
+                f'single_segment'
+            )
 
     @property
     def _nr_of_segments(self):
@@ -913,67 +924,60 @@ class ShareAllocationModel(Model):
         }
 
 
-class SegmentedSharesModel(ElementModel):
+class SegmentedSharesModel(Model):
     # TODO: Length...
     def __init__(
         self,
-        element: Element,
+        model: SystemModel,
+        label_of_parent: str,
         variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
         share_segments: Dict['Effect', List[Tuple[Skalar, Skalar]]],
         can_be_outside_segments: Optional[Union[bool, Variable]],
         label: str = 'SegmentedShares',
     ):
-        super().__init__(element, label)
+        super().__init__(model, label_of_parent, label)
         assert len(variable_segments[1]) == len(list(share_segments.values())[0]), (
             'Segment length of variable_segments and share_segments must be equal'
         )
-        self.element: Element
         self._can_be_outside_segments = can_be_outside_segments
         self._variable_segments = variable_segments
         self._share_segments = share_segments
-        self._shares: Optional[Dict['Effect', SingleShareModel]] = None
+        self._shares: Dict['Effect', linopy.Variable] = {}
         self._segments_model: Optional[MultipleSegmentsModel] = None
         self._as_tme_series: bool = isinstance(self._variable_segments[0], VariableTS)
 
     def do_modeling(self, system_model: SystemModel):
-        length = system_model.nr_of_time_steps if self._as_tme_series else 1
         self._shares = {
-            effect: create_variable(f'{effect.label}_segmented', self, length) for effect in self._share_segments
+            effect: self.add(self._model.add_variables(
+                coords=self._model.coords if self._as_tme_series else None,
+                name=f'{self.label_full}__{effect.label}'),
+                f'{effect.label}'
+            ) for effect in self._share_segments
         }
 
-        segments: Dict[Variable, List[Tuple[Skalar, Skalar]]] = {
+        segments: Dict[linopy.Variable, List[Tuple[Skalar, Skalar]]] = {
             **{self._shares[effect]: segment for effect, segment in self._share_segments.items()},
             **{self._variable_segments[0]: self._variable_segments[1]},
         }
 
-        self._segments_model = MultipleSegmentsModel(
-            self.element,
-            segments,
-            can_be_outside_segments=self._can_be_outside_segments,
-            as_time_series=self._as_tme_series,
+        self._segments_model = self.add(
+            MultipleSegmentsModel(
+                model=self._model,
+                label_of_parent=self._label_of_parent,
+                sample_points=segments,
+                can_be_outside_segments=self._can_be_outside_segments,
+                as_time_series=self._as_tme_series),
+            'segments'
         )
         self._segments_model.do_modeling(system_model)
-        self.sub_models.append(self._segments_model)
 
         # Shares
-        effect_collection = system_model.effect_collection_model
-        for effect, variable in self._shares.items():
-            if self._as_tme_series:
-                effect_collection.add_share_to_operation(
-                    name='segmented_effects',
-                    element=self.element,
-                    effect_values={effect: 1},
-                    factor=1,
-                    variable=variable,
-                )
-            else:
-                effect_collection.add_share_to_invest(
-                    name='segmented_effects',
-                    element=self.element,
-                    effect_values={effect: 1},
-                    factor=1,
-                    variable=variable,
-                )
+        self._model.effects.add_share_to_effects(
+            system_model=self._model,
+            name=self._label_of_parent,
+            expressions={effect: variable*1 for effect, variable in self._shares.items()},
+            target='operation' if self._as_tme_series else 'invest',
+        )
 
 
 class PreventSimultaneousUsageModel(Model):
