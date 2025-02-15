@@ -149,8 +149,9 @@ class FullCalculation(Calculation):
 
         self.flow_system.transform_data()
         for time_series in self.flow_system.all_time_series:
-            time_series.active_periods = self.flow_system.periods
-            time_series.active_timesteps = self.flow_system.timesteps
+            pass  # TODO: This must work for timeseriews that are always one step longer
+            # time_series.active_periods = self.flow_system.periods
+            #time_series.active_timesteps = self.flow_system.timesteps
 
         self.flow_system.create_model()
         self.flow_system.model.do_modeling()
