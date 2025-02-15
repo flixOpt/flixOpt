@@ -205,7 +205,7 @@ class OnOffModel(Model):
 
         self.switch_on: Optional[linopy.Variable] = None
         self.switch_off: Optional[linopy.Variable] = None
-        self.nr_switch_on: Optional[linopy.Variable] = None
+        self.switch_on_nr: Optional[linopy.Variable] = None
 
         self._defining_variables = defining_variables
         self._defining_bounds = defining_bounds
@@ -273,29 +273,16 @@ class OnOffModel(Model):
             )
 
         if self.parameters.use_switch_on:
-            self.switch_on = self.add(
-                self._model.add_variables(
-                    binary=True,
-                    name=f'{self.label_full}__switch_on',
-                ),
-                'switch_on'
-            )
+            self.switch_on = self.add(self._model.add_variables(binary=True, name=f'{self.label_full}__switch_on'),
+                                      'switch_on')
 
-            self.switch_off = self.add(
-                self._model.add_variables(
-                    binary=True,
-                    name=f'{self.label_full}__switch_off',
-                ),
-                'switch_off'
-            )
-            self.nr_switch_on = self.add(
-                self._model.add_variables(
-                    upper_bound=self.parameters.switch_on_total_max,
-                    binary=True,
-                    name=f'{self.label_full}__switch_on_nr',
-                ),
-                'switch_on_nr'
-            )
+            self.switch_off = self.add(self._model.add_variables(binary=True, name=f'{self.label_full}__switch_off'),
+                                       'switch_off')
+            
+            self.switch_on_nr = self.add(self._model.add_variables(upper_bound=self.parameters.switch_on_total_max,
+                                                                   binary=True,
+                                                                   name=f'{self.label_full}__switch_on_nr'),
+                                         'switch_on_nr')
 
             self._add_switch_constraints(system_model)
 
@@ -526,7 +513,7 @@ class OnOffModel(Model):
     def _add_switch_constraints(self, system_model: SystemModel):
         assert self.switch_on is not None, f'Switch On Variable of {self.label_full} must be defined to add constraints'
         assert self.switch_off is not None, f'Switch Off Variable of {self.label_full} must be defined to add constraints'
-        assert self.nr_switch_on is not None, (
+        assert self.switch_on_nr is not None, (
             f'Nr of Switch On Variable of {self.label_full} must be defined to add constraints'
         )
         assert self.on is not None, f'On Variable of {self.label_full} must be defined to add constraints'
@@ -566,7 +553,7 @@ class OnOffModel(Model):
         # eq: nrSwitchOn = sum(SwitchOn(t))
         self.add(
             self._model.add_constraints(
-                self.nr_switch_on == self.switch_on.sum(),
+                self.switch_on_nr == self.switch_on.sum(),
                 name=f'{self.label_full}__switch_on_nr'
             ),
             'switch_on_nr'
