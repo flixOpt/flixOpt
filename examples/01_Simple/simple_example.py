@@ -3,6 +3,7 @@ THis script shows how to use the flixOpt framework to model a simple energy syst
 """
 
 import numpy as np
+import pandas as pd
 from rich.pretty import pprint  # Used for pretty printing
 
 import flixOpt as fx
@@ -14,7 +15,7 @@ if __name__ == '__main__':
     power_prices = 1 / 1000 * np.array([80, 80, 80, 80, 80, 80, 80, 80, 80])
 
     # Create datetime array starting from '2020-01-01' for the given time period
-    time_series = fx.create_datetime_array('2020-01-01', len(heat_demand_per_h))
+    timesteps = pd.date_range('2020-01-01', periods=len(heat_demand_per_h), freq='h')
 
     # --- Define Energy Buses ---
     # These represent nodes, where the used medias are balanced (electricity, heat, and gas)
@@ -91,7 +92,7 @@ if __name__ == '__main__':
 
     # --- Build the Flow System ---
     # Create the flow system and add all defined components and effects
-    flow_system = fx.FlowSystem(time_series=time_series)
+    flow_system = fx.FlowSystem(timesteps=timesteps)
     flow_system.add_elements(costs, CO2, boiler, storage, chp, heat_sink, gas_source, power_sink)
 
     # Visualize the flow system for validation purposes
@@ -103,7 +104,7 @@ if __name__ == '__main__':
     calculation.do_modeling()  # Translate the model to a solvable form, creating equations and Variables
 
     # --- Solve the Calculation and Save Results ---
-    calculation.solve(fx.solvers.HighsSolver(), save_results=True)
+    calculation.solve('highs', save_results=True)
 
     # --- Load and Analyze Results ---
     # Load the results and plot the operation of the District Heating Bus
@@ -117,4 +118,3 @@ if __name__ == '__main__':
 
     # Convert the results for the storage component to a dataframe and display
     results.to_dataframe('Storage')
-    pprint(results.all_results)

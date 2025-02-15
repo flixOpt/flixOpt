@@ -4,6 +4,7 @@ This script shows how to use the flixOpt framework to model a super minimalistic
 
 import numpy as np
 from rich.pretty import pprint
+import pandas as pd
 
 import flixOpt as fx
 
@@ -11,7 +12,7 @@ if __name__ == '__main__':
     # --- Define Thermal Load Profile ---
     # Load profile (e.g., kW) for heating demand over time
     thermal_load_profile = np.array([30, 0, 20])
-    datetime_series = fx.create_datetime_array('2020-01-01', 3, 'h')
+    timesteps = pd.date_range('2020-01-01', periods=3, freq='h')
 
     # --- Define Energy Buses ---
     # These represent the different energy carriers in the system
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     calculation.do_modeling()
 
     # --- Solve the Calculation and Save Results ---
-    calculation.solve(fx.solvers.HighsSolver(), save_results=True)
+    calculation.solve('highs', save_results=True)
 
     # --- Load and Analyze Results ---
     # Load results and plot the operation of the District Heating Bus
@@ -64,4 +65,4 @@ if __name__ == '__main__':
     # Print results to the console. Check Results in file or perform more plotting
     pprint(calculation.results())
     pprint('Look into .yaml and .json file for results')
-    pprint(calculation.system_model.main_results)
+    pprint(calculation.flow_system.model.main_results)
