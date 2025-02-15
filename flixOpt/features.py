@@ -272,11 +272,30 @@ class OnOffModel(Model):
             )
 
         if self.parameters.use_switch_on:
-            self.switch_on = create_variable('switchOn', self, system_model.nr_of_time_steps, is_binary=True)
-            self.switch_off = create_variable('switchOff', self, system_model.nr_of_time_steps, is_binary=True)
-            self.nr_switch_on = create_variable(
-                'nrSwitchOn', self, 1, upper_bound=self.parameters.switch_on_total_max
+            self.switch_on = self.add(
+                self._model.add_variables(
+                    binary=True,
+                    name=f'{self.label_full}__switch_on',
+                ),
+                'switch_on'
             )
+
+            self.switch_off = self.add(
+                self._model.add_variables(
+                    binary=True,
+                    name=f'{self.label_full}__switch_off',
+                ),
+                'switch_off'
+            )
+            self.nr_switch_on = self.add(
+                self._model.add_variables(
+                    upper_bound=self.parameters.switch_on_total_max,
+                    binary=True,
+                    name=f'{self.label_full}__switch_on_nr',
+                ),
+                'switch_on_nr'
+            )
+
             self._add_switch_constraints(system_model)
 
         self._create_shares(system_model)
@@ -513,40 +532,53 @@ class OnOffModel(Model):
         return duration_in_hours
 
     def _add_switch_constraints(self, system_model: SystemModel):
-        assert self.switch_on is not None, f'Switch On Variable of {self.element} must be defined to add constraints'
-        assert self.switch_off is not None, f'Switch Off Variable of {self.element} must be defined to add constraints'
+        assert self.switch_on is not None, f'Switch On Variable of {self.label_full} must be defined to add constraints'
+        assert self.switch_off is not None, f'Switch Off Variable of {self.label_full} must be defined to add constraints'
         assert self.nr_switch_on is not None, (
-            f'Nr of Switch On Variable of {self.element} must be defined to add constraints'
+            f'Nr of Switch On Variable of {self.label_full} must be defined to add constraints'
         )
-        assert self.on is not None, f'On Variable of {self.element} must be defined to add constraints'
+        assert self.on is not None, f'On Variable of {self.label_full} must be defined to add constraints'
         # % Schaltänderung aus On-Variable
         # % SwitchOn(t)-SwitchOff(t) = On(t)-On(t-1)
-        eq_switch = create_equation('Switch', self)
-        eq_switch.add_summand(self.switch_on, 1, system_model.indices[1:])  # SwitchOn(t)
-        eq_switch.add_summand(self.switch_off, -1, system_model.indices[1:])  # SwitchOff(t)
-        eq_switch.add_summand(self.on, -1, system_model.indices[1:])  # On(t)
-        eq_switch.add_summand(self.on, +1, system_model.indices[0:-1])  # On(t-1)
-
+        self.add(
+            self._model.add_constraints(
+                self.switch_on.isel(time=slice(1, None)) - self.switch_off.isel(time=slice(1, None))
+                ==
+                self.on.isel(time=slice(1,None)) - self.on.isel(time=slice(None,-1)),
+                name=f'{self.label_full}__switch_con'
+            ),
+            'switch_con'
+        )
         # Initital switch on
         # eq: SwitchOn(t=0)-SwitchOff(t=0) = On(t=0) - On(t=-1)
-        eq_initial_switch = create_equation('Initial_Switch', self)
-        eq_initial_switch.add_summand(self.switch_on, 1, indices_of_variable=0)  # SwitchOn(t=0)
-        eq_initial_switch.add_summand(self.switch_off, -1, indices_of_variable=0)  # SwitchOff(t=0)
-        eq_initial_switch.add_summand(self.on, -1, indices_of_variable=0)  # On(t=0)
-        eq_initial_switch.add_constant(-1 * self.on.previous_values[-1])  # On(t-1)
-
+        self.add(
+            self._model.add_constraints(
+                self.switch_on.isel(time=0) - self.switch_off.isel(time=0)
+                ==
+                self.on.isel(time=0), #TODO:  - self.on.previous_values[-1]
+                name=f'{self.label_full}__initial_switch_con'
+            ),
+            'initial_switch_con'
+        )
         ## Entweder SwitchOff oder SwitchOn
         # eq: SwitchOn(t) + SwitchOff(t) <= 1.1
-        eq_switch_on_or_off = create_equation('Switch_On_or_Off', self, eq_type='ineq')
-        eq_switch_on_or_off.add_summand(self.switch_on, 1)
-        eq_switch_on_or_off.add_summand(self.switch_off, 1)
-        eq_switch_on_or_off.add_constant(1.1)
+        self.add(
+            self._model.add_constraints(
+                self.switch_on + self.switch_off <= 1.1,
+                name=f'{self.label_full}__switch_on_or_off'
+            ),
+            'switch_on_or_off'
+        )
 
         ## Anzahl Starts:
         # eq: nrSwitchOn = sum(SwitchOn(t))
-        eq_nr_switch_on = create_equation('NrSwitchOn', self)
-        eq_nr_switch_on.add_summand(self.nr_switch_on, 1)
-        eq_nr_switch_on.add_summand(self.switch_on, -1, as_sum=True)
+        self.add(
+            self._model.add_constraints(
+                self.nr_switch_on == self.switch_on.sum(),
+                name=f'{self.label_full}__switch_on_nr'
+            ),
+            'switch_on_nr'
+        )
 
     def _create_shares(self, system_model: SystemModel):
         # Anfahrkosten:
