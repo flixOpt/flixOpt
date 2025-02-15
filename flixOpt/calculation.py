@@ -116,6 +116,7 @@ class Calculation:
                 width=1000,  # Verhinderung Zeilenumbruch für lange equations
                 allow_unicode=True,
                 sort_keys=False,
+                indent=4,
             )
 
         message = f' Saved Calculation: {self.name} '
@@ -162,6 +163,12 @@ class FullCalculation(Calculation):
         t_start = timeit.default_timer()
         self.flow_system.model.solve(log_fn=self._paths['log'], solver_name=solver_name, solver_options=solver_options)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
+
+        # Log the formatted output
+        logger.info(f'{" Main Results ":#^80}')
+        logger.info("\n" + yaml.dump(
+            utils.round_floats(self.flow_system.model.infos),
+            default_flow_style=False, sort_keys=False, allow_unicode=True, indent=4))
 
         if save_results:
             self._save_solve_infos()
