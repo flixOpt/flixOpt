@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 import xarray as xr
+import linopy
 
 from flixOpt.core import TimeSeries  # Adjust import based on your module structure
 
@@ -144,6 +145,22 @@ def arithmetric_operations(data1: xr.DataArray, ts1: TimeSeries):
     xr.testing.assert_equal(data1 * ts1_active, data1 * ts1, check_dim_order=True)
     xr.testing.assert_equal(data1 / ts1_active, data1 / ts1, check_dim_order=True)
 
+
+def test_operations_with_linopy():
+    index = pd.date_range("2023-01-01", periods=3, name="time")
+    period = pd.Index([2020, 2030], name="period")
+
+    m = linopy.Model()
+    var1 = m.add_variables(coords=(period, index))
+    timeseries1 = TimeSeries(
+        pd.Series([10, 20, 30,10, 20, 30], index=pd.MultiIndex.from_product([period, index]))
+    )
+    expr = timeseries1 * var1
+    expr + timeseries1
+    (expr + timeseries1) / timeseries1
+    expr = var1 * timeseries1
+
+    con = m.add_constraints((expr * timeseries1)  <= 10)
 
 
 if __name__ == "__main__":

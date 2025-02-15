@@ -74,7 +74,7 @@ class SystemModel(linopy.Model):
         return len(self.periods) if self.periods is not None else 1, len(self.timesteps)
 
 
-m = SystemModel(pd.date_range(start='2025-01-01', end='2025-01-08', freq='h'), periods=[2025, 2030])
+m = SystemModel(pd.date_range(start='2025-01-01', end='2025-01-08', freq='h', name='time'), periods=[2025, 2030])
 
 rng = np.random.default_rng(seed=42)
 random_array = rng.random(m.index_shape)
@@ -123,7 +123,7 @@ con_storage = m.add_constraints(
 
 # Start every period with 1000 kWh
 con_storage_start = m.add_constraints(
-    charge_state.isel(time=0) == 1000,
+    charge_state.isel(time=0) == xr.DataArray([1000, 2000], coords=(m.periods,)),
     name="con_storage_start"
 )
 # Start = End for every period
@@ -135,7 +135,6 @@ if start_is_end:
     )
 m.add_constraints(charge_state.isel(period=0, time=40) == 6*charge_state.isel(period=1, time=40), name="couple_periods")
 m.add_objective((x + 2 * y).sum() + z)
-m.solve()
 
 m.solve()
 
