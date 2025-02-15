@@ -18,6 +18,7 @@ from .structure import (
     ElementModel,
     InterfaceModel,
     Interface,
+    Model,
     SystemModel,
     create_equation,
     create_variable,
@@ -173,7 +174,7 @@ class InvestmentModel(ElementModel):
                 # Anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu OnOff ??
 
 
-class OnOffModel(ElementModel):
+class OnOffModel(Model):
     """
     Class for modeling the on and off state of a variable
     If defining_bounds are given, creates sufficient lower bounds
@@ -181,17 +182,19 @@ class OnOffModel(ElementModel):
 
     def __init__(
         self,
-        element: Element,
+        model: SystemModel,
         on_off_parameters: OnOffParameters,
+        label_of_parent: str,
         defining_variables: List[linopy.Variable],
         defining_bounds: List[Tuple[Numeric, Numeric]],
-        label: str = 'OnOff',
+        label: str = 'OnOffModel',
     ):
         """
         defining_bounds: a list of Numeric, that can be  used to create the bound for On/Off more efficiently
         """
-        super().__init__(element, label)
-        self.element = element
+        super().__init__(model, label_of_parent, label)
+        assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
+        self.parameters = on_off_parameters
         self.on: Optional[VariableTS] = None
         self.total_on_hours: Optional[Variable] = None
 
@@ -204,128 +207,145 @@ class OnOffModel(ElementModel):
         self.switch_off: Optional[VariableTS] = None
         self.nr_switch_on: Optional[VariableTS] = None
 
-        self._on_off_parameters = on_off_parameters
         self._defining_variables = defining_variables
         self._defining_bounds = defining_bounds
-        assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
 
     def do_modeling(self, system_model: SystemModel):
-        self.on = create_variable(
+        self.on = self.add(
+            self._model.add_variables(
+                name=f'{self.label_full}__on',
+                binary=True,
+                #TODO: previous_values=self._previous_on_values(CONFIG.modeling.EPSILON)
+            ),
             'on',
-            self,
-            system_model.nr_of_time_steps,
-            is_binary=True,
-            previous_values=self._previous_on_values(CONFIG.modeling.EPSILON),
         )
 
-        self.total_on_hours = create_variable(
-            'totalOnHours',
-            self,
-            1,
-            lower_bound=self._on_off_parameters.on_hours_total_min,
-            upper_bound=self._on_off_parameters.on_hours_total_max,
+        self.total_on_hours = self.add(
+            self._model.add_variables(
+                lower=self.parameters.on_hours_total_min,
+                upper=self.parameters.on_hours_total_max,
+                name=f'{self.label_full}__on_hours_total'
+            ),
+            'on_hours_total'
         )
-        eq_total_on = create_equation('totalOnHours', self)
-        eq_total_on.add_summand(self.on, system_model.dt_in_hours, as_sum=True)
-        eq_total_on.add_summand(self.total_on_hours, -1)
+
+        self.add(
+            self._model.add_constraints(
+                self.total_on_hours == (self.on * self._model.hours_per_step).sum(),
+                name=f'{self.label_full}__on_hours_total'
+            ),
+            'on_hours_total'
+        )
 
         self._add_on_constraints(system_model, system_model.indices)
 
-        if self._on_off_parameters.use_off:
-            self.off = create_variable(
-                'off',
-                self,
-                system_model.nr_of_time_steps,
-                is_binary=True,
-                previous_values=1 - self._previous_on_values(CONFIG.modeling.EPSILON),
+        if self.parameters.use_off:
+            self.off = self.add(
+                self._model.add_variables(
+                    name=f'{self.label_full}__off',
+                    binary=True,
+                    # TODO: previous_values=1 - self._previous_on_values(CONFIG.modeling.EPSILON),
+                ),
+                'off'
             )
 
             self._add_off_constraints(system_model, system_model.indices)
 
-        if self._on_off_parameters.use_consecutive_on_hours:
+        if self.parameters.use_consecutive_on_hours:
             self.consecutive_on_hours = self._get_duration_in_hours(
                 'consecutiveOnHours',
                 self.on,
-                self._on_off_parameters.consecutive_on_hours_min,
-                self._on_off_parameters.consecutive_on_hours_max,
+                self.parameters.consecutive_on_hours_min,
+                self.parameters.consecutive_on_hours_max,
                 system_model,
                 system_model.indices,
             )
 
-        if self._on_off_parameters.use_consecutive_off_hours:
+        if self.parameters.use_consecutive_off_hours:
             self.consecutive_off_hours = self._get_duration_in_hours(
                 'consecutiveOffHours',
                 self.off,
-                self._on_off_parameters.consecutive_off_hours_min,
-                self._on_off_parameters.consecutive_off_hours_max,
+                self.parameters.consecutive_off_hours_min,
+                self.parameters.consecutive_off_hours_max,
                 system_model,
                 system_model.indices,
             )
 
-        if self._on_off_parameters.use_switch_on:
+        if self.parameters.use_switch_on:
             self.switch_on = create_variable('switchOn', self, system_model.nr_of_time_steps, is_binary=True)
             self.switch_off = create_variable('switchOff', self, system_model.nr_of_time_steps, is_binary=True)
             self.nr_switch_on = create_variable(
-                'nrSwitchOn', self, 1, upper_bound=self._on_off_parameters.switch_on_total_max
+                'nrSwitchOn', self, 1, upper_bound=self.parameters.switch_on_total_max
             )
             self._add_switch_constraints(system_model)
 
         self._create_shares(system_model)
 
-    def _add_on_constraints(self, system_model: SystemModel, time_indices: Union[list[int], range]):
-        assert self.on is not None, f'On variable of {self.element} must be defined to add constraints'
+    def _add_on_constraints(self):
+        assert self.on is not None, f'On variable of {self.label_full} must be defined to add constraints'
         # % Bedingungen 1) und 2) müssen erfüllt sein:
 
         # % Anmerkung: Falls "abschnittsweise linear" gewählt, dann ist eigentlich nur Bedingung 1) noch notwendig
         # %            (und dann auch nur wenn erstes Segment bei Q_th=0 beginnt. Dann soll bei Q_th=0 (d.h. die Maschine ist Aus) On = 0 und segment1.onSeg = 0):)
         # %            Fazit: Wenn kein Performance-Verlust durch mehr Gleichungen, dann egal!
 
-        nr_of_defining_variables = len(self._defining_variables)
-        assert nr_of_defining_variables > 0, 'Achtung: mindestens 1 Flow notwendig'
+        nr_of_def_vars = len(self._defining_variables)
+        assert nr_of_def_vars > 0, 'Achtung: mindestens 1 Flow notwendig'
+        EPSILON = CONFIG.modeling.EPSILON
 
-        eq_on_1 = create_equation('On_Constraint_1', self, eq_type='ineq')
-        eq_on_2 = create_equation('On_Constraint_2', self, eq_type='ineq')
-        if nr_of_defining_variables == 1:
-            variable = self._defining_variables[0]
-            lower_bound, upper_bound = self._defining_bounds[0]
-            #### Bedingung 1) ####
+        if nr_of_def_vars == 1:
+            def_var = self._defining_variables[0]
+            lb, ub = self._defining_bounds[0]
+
             # eq: On(t) * max(epsilon, lower_bound) <= Q_th(t)
-            eq_on_1.add_summand(variable, -1, time_indices)
-            eq_on_1.add_summand(self.on, np.maximum(CONFIG.modeling.EPSILON, lower_bound), time_indices)
+            self.add(
+                self._model.add_constraints(
+                    self.on * np.maximum(EPSILON, lb) <= def_var,
+                    name=f'{self.label_full}__on_con1'
+                ),
+                'on_con1'
+            )
 
-            #### Bedingung 2) ####
             # eq: Q_th(t) <= Q_th_max * On(t)
-            eq_on_2.add_summand(variable, 1, time_indices)
-            eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
+            self.add(
+                self._model.add_constraints(
+                    self.on * np.maximum(EPSILON, ub) >= def_var,
+                    name=f'{self.label_full}__on_con2'
+                ),
+                'on_con2'
+            )
 
         else:  # Bei mehreren Leistungsvariablen:
-            #### Bedingung 1) ####
-            # When all defining variables are 0, On is 0
-            # eq: - sum(alle Leistungen(t)) + Epsilon * On(t) <= 0
-            for variable in self._defining_variables:
-                eq_on_1.add_summand(variable, -1, time_indices)
-            eq_on_1.add_summand(self.on, CONFIG.modeling.EPSILON, time_indices)
+            ub = sum(bound[1] for bound in self._defining_bounds)
+            lb = EPSILON
 
-            #### Bedingung 2) ####
+            # When all defining variables are 0, On is 0
+            # eq: On(t) * Epsilon <= sum(alle Leistungen(t))
+            self.add(
+                self._model.add_constraints(
+                    self.on * lb <= sum(self._defining_variables),
+                    name=f'{self.label_full}__on_con1'
+                ),
+                'on_con1'
+            )
+
             ## sum(alle Leistung) >0 -> On = 1 | On=0 -> sum(Leistung)=0
             #  eq: sum( Leistung(t,i))              - sum(Leistung_max(i))             * On(t) <= 0
             #  --> damit Gleichungswerte nicht zu groß werden, noch durch nr_of_flows geteilt:
             #  eq: sum( Leistung(t,i) / nr_of_flows ) - sum(Leistung_max(i)) / nr_of_flows * On(t) <= 0
-            absolute_maximum: Numeric = 0
-            for variable, bounds in zip(self._defining_variables, self._defining_bounds, strict=False):
-                eq_on_2.add_summand(variable, 1 / nr_of_defining_variables, time_indices)
-                absolute_maximum += bounds[
-                    1
-                ]  # der maximale Nennwert reicht als Obergrenze hier aus. (immer noch math. günster als BigM)
+            self.add(
+                self._model.add_constraints(
+                    self.on * ub >= sum([def_var / nr_of_def_vars for def_var in self._defining_variables]),
+                    name=f'{self.label_full}__on_con2'
+                ),
+                'on_con2'
+            )
 
-            upper_bound = absolute_maximum / nr_of_defining_variables
-            eq_on_2.add_summand(self.on, -1 * upper_bound, time_indices)
-
-        if np.max(upper_bound) > CONFIG.modeling.BIG_BINARY_BOUND:
+        if np.max(ub) > CONFIG.modeling.BIG_BINARY_BOUND:
             logger.warning(
-                f'In "{self.element.label_full}", a binary definition was created with a big upper bound '
-                f'({np.max(upper_bound)}). This can lead to wrong results regarding the on and off variables. '
-                f'Avoid this warning by reducing the size of {self.element.label_full} '
+                f'In "{self.label_full}", a binary definition was created with a big upper bound '
+                f'({np.max(ub)}). This can lead to wrong results regarding the on and off variables. '
+                f'Avoid this warning by reducing the size of {self.label_full} '
                 f'(or the maximum_size of the corresponding InvestParameters). '
                 f'If its a Component, you might need to adjust the sizes of all of its flows.'
             )
@@ -531,14 +551,14 @@ class OnOffModel(ElementModel):
     def _create_shares(self, system_model: SystemModel):
         # Anfahrkosten:
         effect_collection = system_model.effect_collection_model
-        effects_per_switch_on = self._on_off_parameters.effects_per_switch_on
+        effects_per_switch_on = self.parameters.effects_per_switch_on
         if effects_per_switch_on != {}:
             effect_collection.add_share_to_operation(
                 'switch_on_effects', self.element, effects_per_switch_on, 1, self.switch_on
             )
 
         # Betriebskosten:
-        effects_per_running_hour = self._on_off_parameters.effects_per_running_hour
+        effects_per_running_hour = self.parameters.effects_per_running_hour
         if effects_per_running_hour != {}:
             effect_collection.add_share_to_operation(
                 'running_hour_effects', self.element, effects_per_running_hour, system_model.dt_in_hours, self.on
