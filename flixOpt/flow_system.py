@@ -172,7 +172,9 @@ class FlowSystem:
             'Effects': {
                 effect.label: effect.model.solution_structured(use_numpy=True)
                 for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
-            }
+            },
+            'Time': self.timesteps.tolist(),
+            'Time intervals in hours': self.hours_per_step,
         }
 
     def visualize_network(

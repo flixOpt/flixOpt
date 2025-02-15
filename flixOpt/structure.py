@@ -66,7 +66,7 @@ class SystemModel(linopy.Model):
             }
         main_results['penalty'] = float(self.effects.penalty.total.solution.values)
         main_results['Objective'] = self.objective.value
-        main_results['lower bound'] = 'Not availlable'
+        main_results['lower bound'] = 'Not available'
         buses_with_excess = []
         main_results['buses with excess'] = buses_with_excess
         for bus in self.flow_system.buses.values():
