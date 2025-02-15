@@ -328,7 +328,7 @@ class Model:
             self._constraints_short[item.name] = short_name or item.name
         elif isinstance(item, Model):
             self.sub_models.append(item)
-            self._constraints_short[item.label_full] = short_name or item.label_full
+            self._sub_models_short[item.label_full] = short_name or item.label_full
         else:
             raise ValueError(
                 f'Item must be a linopy.Variable, linopy.Constraint or flixOpt.structure.Model, got {type(item)}')
