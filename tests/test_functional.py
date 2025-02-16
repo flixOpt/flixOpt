@@ -141,7 +141,7 @@ def test_minimal_model(solver_fixture, time_steps_fixture):
     )
 
     assert_allclose(
-        results.effect_results['costs'].all_results['operation']['Shares']['Gas (Gastarif)'],
+        results.effect_results['costs'].all_results['operation']['Shares']['Gastarif (Gas)'],
         [-0.0, 20.0, 40.0, -0.0, 20.0],
         rtol=1e-5,
         atol=1e-10,

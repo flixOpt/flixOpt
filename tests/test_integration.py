@@ -347,7 +347,7 @@ class TestComplex(BaseTest):
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Q_th (Kessel)'].solution.values),
+            sum(effects['costs'].model.operation.shares['Kessel (Q_th)'].solution.values),
             0.01,
             'costs doesnt match expected value',
         )
@@ -357,7 +357,7 @@ class TestComplex(BaseTest):
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Q_Gas (Gastarif)'].solution.values),
+            sum(effects['costs'].model.operation.shares['Gastarif (Q_Gas)'].solution.values),
             39.09153113079115,
             'costs doesnt match expected value',
         )
@@ -373,7 +373,7 @@ class TestComplex(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            effects['costs'].model.invest.shares['Q_th (Kessel)'].solution.values,
+            effects['costs'].model.invest.shares['Kessel (Q_th)'].solution.values,
             1000 + 500,
             'costs doesnt match expected value',
         )
