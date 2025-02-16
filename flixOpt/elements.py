@@ -326,7 +326,8 @@ class FlowModel(ElementModel):
         if self.element.on_off_parameters is not None:
             self.on_off = self.add(
                 OnOffModel(
-                    self._model, self.element.on_off_parameters, self.label_full, [self.flow_rate], [self.absolute_flow_rate_bounds]
+                    self._model, self.element.on_off_parameters, self.label_full, [self.flow_rate], [self.absolute_flow_rate_bounds],
+                    [self.element.previous_flow_rate]
                 ),
                 'on_off'
             )
@@ -526,20 +527,25 @@ class ComponentModel(ElementModel):
                 if flow.on_off_parameters is None:
                     flow.on_off_parameters = OnOffParameters()
 
-        self.sub_models.extend([flow.create_model(self._model) for flow in all_flows])
+        for flow in all_flows:
+            self.add(flow.create_model(self._model), flow.label)
+
         for sub_model in self.sub_models:
             sub_model.do_modeling(self._model)
 
         if self.element.on_off_parameters:
-            flow_rates: List[linopy.Variable] = [flow.model.flow_rate for flow in all_flows]
-            bounds: List[Tuple[Numeric, Numeric]] = [flow.model.absolute_flow_rate_bounds for flow in all_flows]
-            self.on_off = OnOffModel(self._model, self.element.on_off_parameters, self.element.label_full, flow_rates, bounds)
-            self.sub_models.append(self.on_off)
+            self.on_off = self.add(OnOffModel(
+                self._model,
+                self.element.on_off_parameters,
+                self.element.label_full,
+                defining_variables=[flow.model.flow_rate for flow in all_flows],
+                defining_bounds=[flow.model.absolute_flow_rate_bounds for flow in all_flows],
+                previous_values=[flow.previous_flow_rate for flow in all_flows]))
+
             self.on_off.do_modeling(self._model)
 
         if self.element.prevent_simultaneous_flows:
             # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
             on_variables = [flow.model.on_off.on for flow in self.element.prevent_simultaneous_flows]
-            simultaneous_use = PreventSimultaneousUsageModel(self._model, on_variables, self.label_full)
-            self.sub_models.append(simultaneous_use)
+            simultaneous_use = self.add(PreventSimultaneousUsageModel(self._model, on_variables, self.label_full))
             simultaneous_use.do_modeling(self._model)
