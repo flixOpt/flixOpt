@@ -17,7 +17,7 @@ class BaseTest(unittest.TestCase):
         fx.change_logging_level('DEBUG')
 
     def get_solver(self):
-        return fx.solvers.HighsSolver(mip_gap=0.0001, time_limit_seconds=3600, solver_output_to_console=False)
+        return 'highs'
 
     def assert_almost_equal_numeric(
         self, actual, desired, err_msg, relative_error_range_in_percent=0.011, absolute_tolerance=1e-9
@@ -45,23 +45,23 @@ class TestSimple(BaseTest):
 
     def test_model(self):
         calculation = self.model()
-        effects = calculation.flow_system.effect_collection.effects
+        effects = calculation.flow_system.effects
         comps = calculation.flow_system.components
 
         # Compare expected values with actual values
         self.assert_almost_equal_numeric(
-            effects['costs'].model.all.sum.result, 81.88394666666667, 'costs doesnt match expected value'
+            effects['costs'].model.total.solution.item(), 81.88394666666667, 'costs doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            effects['CO2'].model.all.sum.result, 255.09184, 'CO2 doesnt match expected value'
+            effects['CO2'].model.total.solution.item(), 255.09184, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            comps['Boiler'].Q_th.model.flow_rate.result,
+            comps['Boiler'].Q_th.model.flow_rate.solution.values,
             [0, 0, 0, 28.4864, 35, 0, 0, 0, 0],
             'Q_th doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            comps['CHP_unit'].Q_th.model.flow_rate.result,
+            comps['CHP_unit'].Q_th.model.flow_rate.solution.values,
             [30.0, 26.66666667, 75.0, 75.0, 75.0, 20.0, 20.0, 20.0, 20.0],
             'Q_th doesnt match expected value',
         )
@@ -94,7 +94,7 @@ class TestSimple(BaseTest):
         df = results.to_dataframe('Fernwärme', with_last_time_step=False)
         comps = calculation.flow_system.components
         self.assert_almost_equal_numeric(
-            comps['Wärmelast'].sink.model.flow_rate.result,
+            comps['Wärmelast'].sink.model.flow_rate.solution.values,
             df['Wärmelast__Q_th_Last'],
             'Loaded Results and directly used results dont match, or loading didnt work properly',
         )
@@ -226,12 +226,12 @@ class TestComponents(BaseTest):
         calculation.solve(self.get_solver())
         print(calculation.results())
         self.assert_almost_equal_numeric(
-            transmission.in1.model.on_off.on.result, np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]), 'On does not work properly'
+            transmission.in1.model.on_off.on.solution.values, np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]), 'On does not work properly'
         )
 
         self.assert_almost_equal_numeric(
-            transmission.in1.model.flow_rate.result * 0.8 - 20,
-            transmission.out1.model.flow_rate.result,
+            transmission.in1.model.flow_rate.solution.values * 0.8 - 20,
+            transmission.out1.model.flow_rate.solution.values,
             'Losses are not computed correctly',
         )
 
@@ -281,25 +281,25 @@ class TestComponents(BaseTest):
         results = fx.results.CalculationResults(calculation.name, 'results')
 
         self.assert_almost_equal_numeric(
-            transmission.in1.model.on_off.on.result, np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]), 'On does not work properly'
+            transmission.in1.model.on_off.on.solution.values, np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]), 'On does not work properly'
         )
 
         self.assert_almost_equal_numeric(
             results.to_dataframe('Rohr', with_last_time_step=False)['Rohr__Rohr1b'].values,
-            transmission.out1.model.flow_rate.result,
+            transmission.out1.model.flow_rate.solution.values,
             'Flow rate of Rohr__Rohr1b is not correct',
         )
 
         self.assert_almost_equal_numeric(
-            transmission.in1.model.flow_rate.result * 0.8
-            - np.array([20 if val > 0.1 else 0 for val in transmission.in1.model.flow_rate.result]),
-            transmission.out1.model.flow_rate.result,
+            transmission.in1.model.flow_rate.solution.values * 0.8
+            - np.array([20 if val > 0.1 else 0 for val in transmission.in1.model.flow_rate.solution.values]),
+            transmission.out1.model.flow_rate.solution.values,
             'Losses are not computed correctly',
         )
 
         self.assert_almost_equal_numeric(
-            transmission.in1.model._investment.size.result,
-            transmission.in2.model._investment.size.result,
+            transmission.in1.model._investment.size.solution.item,
+            transmission.in2.model._investment.size.solution.item,
             'THe Investments are not equated correctly',
         )
 
@@ -325,12 +325,12 @@ class TestComplex(BaseTest):
 
     def test_basic(self):
         calculation = self.basic_model()
-        effects = calculation.flow_system.effect_collection.effects
+        effects = calculation.flow_system.effects
         comps = calculation.flow_system.components
 
         # Compare expected values with actual values
         self.assert_almost_equal_numeric(
-            effects['costs'].model.all.sum.result, -11597.873624489237, 'costs doesnt match expected value'
+            effects['costs'].model.total.solution.item(), -11597.873624489237, 'costs doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
             effects['costs'].model.operation.sum_TS.result,
@@ -407,13 +407,13 @@ class TestComplex(BaseTest):
             effects['CO2'].model.all.shares['invest'].result, 0.9999999999999994, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            comps['Kessel'].Q_th.model.flow_rate.result,
+            comps['Kessel'].Q_th.model.flow_rate.solution.values,
             [0, 0, 0, 45, 0, 0, 0, 0, 0],
             'Kessel doesnt match expected value',
         )
 
         self.assert_almost_equal_numeric(
-            comps['KWK'].Q_th.model.flow_rate.result,
+            comps['KWK'].Q_th.model.flow_rate.solution.values,
             [
                 7.50000000e01,
                 6.97111111e01,
@@ -428,7 +428,7 @@ class TestComplex(BaseTest):
             'KWK Q_th doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            comps['KWK'].P_el.model.flow_rate.result,
+            comps['KWK'].P_el.model.flow_rate.solution.values,
             [
                 6.00000000e01,
                 5.57688889e01,
@@ -462,29 +462,29 @@ class TestComplex(BaseTest):
 
     def test_segments_of_flows(self):
         calculation = self.segments_of_flows_model()
-        effects = calculation.flow_system.effect_collection.effects
+        effects = calculation.flow_system.effects
         comps = calculation.flow_system.components
 
         # Compare expected values with actual values
         self.assert_almost_equal_numeric(
-            effects['costs'].model.all.sum.result, -10710.997365760755, 'costs doesnt match expected value'
+            effects['costs'].model.total.solution.item(), -10710.997365760755, 'costs doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            effects['CO2'].model.all.sum.result, 1278.7939026086956, 'CO2 doesnt match expected value'
+            effects['CO2'].model.total.solution.item(), 1278.7939026086956, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            comps['Kessel'].Q_th.model.flow_rate.result,
+            comps['Kessel'].Q_th.model.flow_rate.solution.values,
             [0, 0, 0, 45, 0, 0, 0, 0, 0],
             'Kessel doesnt match expected value',
         )
         kwk_flows = {flow.label: flow for flow in comps['KWK'].inputs + comps['KWK'].outputs}
         self.assert_almost_equal_numeric(
-            kwk_flows['Q_th'].model.flow_rate.result,
+            kwk_flows['Q_th'].model.flow_rate.solution.values,
             [45.0, 45.0, 64.5962087, 100.0, 61.3136, 45.0, 45.0, 12.86469565, 0.0],
             'KWK Q_th doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            kwk_flows['P_el'].model.flow_rate.result,
+            kwk_flows['P_el'].model.flow_rate.solution.values,
             [40.0, 40.0, 47.12589407, 60.0, 45.93221818, 40.0, 40.0, 10.91784108, -0.0],
             'KWK P_el doesnt match expected value',
         )
@@ -716,16 +716,16 @@ class TestModelingTypes(BaseTest):
 
     def test_full(self):
         calculation = self.calculate('full')
-        effects = calculation.flow_system.effect_collection.effects
+        effects = calculation.flow_system.effects
         self.assert_almost_equal_numeric(
-            effects['costs'].model.all.sum.result, 343613, 'costs doesnt match expected value'
+            effects['costs'].model.total.solution.item(), 343613, 'costs doesnt match expected value'
         )
 
     def test_aggregated(self):
         calculation = self.calculate('aggregated')
-        effects = calculation.flow_system.effect_collection.effects
+        effects = calculation.flow_system.effects
         self.assert_almost_equal_numeric(
-            effects['costs'].model.all.sum.result, 342967.0, 'costs doesnt match expected value'
+            effects['costs'].model.total.solution.item(), 342967.0, 'costs doesnt match expected value'
         )
 
     def test_segmented(self):
