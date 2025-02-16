@@ -194,17 +194,16 @@ class TimeSeries:
         if 'period' not in data.indexes and data.ndim > 1:
             raise ValueError(f'Second index of DataArray must be "period". Got {data.indexes}')
 
-        self._active_data = None
-        self._active_timesteps = None
-        self._active_periods = None
         self.name = name
         self.aggregation_weight = aggregation_weight
 
         self._stored_data = data.copy()
-
         self._backup: xr.DataArray = self.stored_data  # Single backup instance. Enables to temporarily overwrite the data.
-        self.active_timesteps = None  # Initializes the active timesteps and active data
-        self.active_periods = None  # Initializes the active timesteps and active data
+        self._active_data = None
+
+        self._active_timesteps = self.stored_data.indexes['time']
+        self._active_periods = self.stored_data.indexes['period'] if 'period' in self.stored_data.indexes else None
+        self._update_active_data()
 
     def restore_data(self):
         """Restore stored_data from the backup."""
@@ -215,7 +214,7 @@ class TimeSeries:
     def _update_active_data(self):
         """Update the active data."""
         if 'period' in self._stored_data.indexes:
-            self._active_data = self._stored_data.sel(time=self.active_timesteps, periods=self.active_periods)
+            self._active_data = self._stored_data.sel(time=self.active_timesteps, period=self.active_periods)
         else:
             self._active_data = self._stored_data.sel(time=self.active_timesteps)
 
@@ -228,7 +227,7 @@ class TimeSeries:
     def active_timesteps(self, timesteps: Optional[pd.DatetimeIndex]):
         """Set active_timesteps and refresh active_data."""
         if timesteps is None:
-            self._active_timesteps = slice(None)
+            self._active_timesteps = self.stored_data.indexes['time']
         elif isinstance(timesteps, pd.DatetimeIndex):
             self._active_timesteps = timesteps
         else:
@@ -245,7 +244,7 @@ class TimeSeries:
     def active_periods(self, periods: Optional[pd.Index]):
         """Set new active periods and refresh active_data."""
         if periods is None:
-            self._active_periods = slice(None)
+            self._active_periods = self.stored_data.indexes['period'] if 'period' in self.stored_data.indexes else None
         elif isinstance(periods, pd.Index):
             self._active_periods = periods
         else:
@@ -329,5 +328,3 @@ class TimeSeries:
         """Ensures NumPy functions like np.add(TimeSeries, xarray) work correctly."""
         inputs = [x.active_data if isinstance(x, TimeSeries) else x for x in inputs]
         return getattr(ufunc, method)(*inputs, **kwargs)
-
-
