@@ -70,13 +70,13 @@ class SystemModel(linopy.Model):
             },
             "Invest-Decisions": {
                 "Invested": {
-                    model._label_of_parent: float(model.size.solution)
+                    model.label_of_element: float(model.size.solution)
                     for component in self.flow_system.components.values()
                     for model in component.model.all_sub_models
                     if isinstance(model, InvestmentModel) and float(model.size.solution) >= CONFIG.modeling.EPSILON
                 },
                 "Not invested": {
-                    model._label_of_parent: float(model.size.solution)
+                    model.label_of_element: float(model.size.solution)
                     for component in self.flow_system.components.values()
                     for model in component.model.all_sub_models
                     if isinstance(model, InvestmentModel) and float(model.size.solution) < CONFIG.modeling.EPSILON
@@ -295,23 +295,20 @@ class Element(Interface):
 class Model:
     """Stores Variables and Constraints"""
 
-    def __init__(self, model: SystemModel, label_of_parent: Optional[str] = None, label: Optional[str] = None, label_full: Optional[str] = None):
+    def __init__(self, model: SystemModel, label_of_element: str, label: Optional[str] = None, label_full: Optional[str] = None):
         """
         Parameters
         ----------
-        label_of_parent : str
+        label_of_element : str
             The label of the parent (Element). Used to construct the full label of the model.
         label : str
             The label of the model. Used to construct the full label of the model.
         label_full : str
-            The full label of the model. Can overwrite the full label constructed from label_of_parent and label.
+            The full label of the model. Can overwrite the full label constructed from the other labels.
         """
-        if not label_full and not (label_of_parent and label):
-            raise ValueError('Either label_full or label_of_parent and label must be set. '
-                             'Got {label_full=}, {label_of_parent=}, {label=}')
         self._model = model
+        self.label_of_element = label_of_element
         self._label = label
-        self._label_of_parent = label_of_parent
         self._label_full = label_full
 
         self._variables: List[str] = []
@@ -389,15 +386,16 @@ class Model:
 
     @property
     def label(self) -> str:
-        return self._label if self._label is not None else self.label_full
+        return self._label if self._label is not None else self.label_of_element
 
     @property
     def label_full(self) -> str:
-        return self._label_full or f'{self._label_of_parent}__{self.label}'
-
-    @property
-    def label_of_parent(self) -> str:
-        return self._label_of_parent or self.label_full
+        """ Used to construct the names of variables and constraints """
+        if self._label_full is not None:
+            return self._label_full
+        elif self._label is not None:
+            return f'{self.label_of_element}__{self.label}'
+        return self.label_of_element
 
     @property
     def variables(self) -> linopy.Variables:
@@ -442,28 +440,6 @@ class Model:
         return [model for sub_model in self.sub_models for model in [sub_model] + sub_model.all_sub_models]
 
 
-class InterfaceModel(Model):
-    """Stores the mathematical Variables and Constraints related to an Interface"""
-
-    def __init__(self, model: SystemModel, interface: Optional[Interface] = None, label_of_parent: Optional[str] = None, label: Optional[str] = None):
-        """
-        Parameters
-        ----------
-        interface : Interface
-            The interface this model is created for.
-        label_of_parent : str
-            The label of the parent. Used to construct the full label of the model.
-        label : str
-            Used to construct the label of the model. If None, the interface label is used.
-        """
-        if label_of_parent is None and label is None:
-            raise ValueError('Either label_of_parent or label must be set')
-        super().__init__(model, label, f'{label_of_parent}__{label}' if label_of_parent else None)
-
-        self.interface = interface
-        logger.debug(f'Created {self.__class__.__name__}  "{self.label_full}"')
-
-
 class ElementModel(Model):
     """Interface to create the mathematical Variables and Constraints for Elements"""
 
@@ -474,7 +450,7 @@ class ElementModel(Model):
         element : Element
             The element this model is created for.
         """
-        super().__init__(model, label_full=element.label_full, label=element.label)
+        super().__init__(model, label_of_element=element.label_full, label=element.label, label_full=element.label_full)
         self.element = element
 
 

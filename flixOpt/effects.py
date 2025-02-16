@@ -166,7 +166,7 @@ class EffectModel(ElementModel):
             ShareAllocationModel(
                 self._model,
                 False,
-                self.element.label_full,
+                self.label_of_element,
                 'invest',
                 total_max=self.element.maximum_invest,
                 total_min=self.element.minimum_invest
@@ -177,7 +177,7 @@ class EffectModel(ElementModel):
             ShareAllocationModel(
                 self._model,
                 True,
-                self.element.label_full,
+                self.label_of_element,
                 'operation',
                 total_max=self.element.maximum_operation,
                 total_min=self.element.minimum_operation,
@@ -199,7 +199,7 @@ class EffectModel(ElementModel):
                 lower=self.element.minimum_total if self.element.minimum_total is not None else -np.inf,
                 upper=self.element.maximum_total if self.element.maximum_total is not None else np.inf,
                 coords=None,
-                name=f'{self.element.label_full}__total'
+                name=f'{self.label_of_element}__total'
             ),
             'total'
         )
@@ -207,7 +207,7 @@ class EffectModel(ElementModel):
         self.add(
             system_model.add_constraints(
                 self.total == self.operation.total.sum() + self.invest.total.sum(),
-                name=f'{self.element.label_full}__total'
+                name=f'{self.label_of_element}__total'
             ),
             'total'
         )
@@ -277,7 +277,7 @@ class EffectCollection(Model):
     """
 
     def __init__(self, model: SystemModel, effects: List[Effect]):
-        super().__init__(model, label_full='Effects')
+        super().__init__(model, label_of_element='Effects')
         self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
@@ -309,7 +309,7 @@ class EffectCollection(Model):
         self._model = system_model
         for effect in self.effects.values():
             effect.create_model(self._model)
-        self.penalty = self.add(ShareAllocationModel(self._model,shares_are_time_series=False, label_full='penalty'))
+        self.penalty = self.add(ShareAllocationModel(self._model, shares_are_time_series=False, label_of_element='Penalty'))
         for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
             model.do_modeling(system_model)
 

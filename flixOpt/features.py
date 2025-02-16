@@ -13,16 +13,7 @@ from .config import CONFIG
 from .core import Numeric, Skalar, TimeSeries
 from .interface import InvestParameters, OnOffParameters
 from .math_modeling import Equation, Variable, VariableTS
-from .structure import (
-    Element,
-    ElementModel,
-    InterfaceModel,
-    Interface,
-    Model,
-    SystemModel,
-    create_equation,
-    create_variable,
-)
+from .structure import Model, SystemModel
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .components import Storage
@@ -39,18 +30,18 @@ class InvestmentModel(Model):
     def __init__(
         self,
         model: SystemModel,
-        label_of_parent: str,
+        label_of_element: str,
         parameters: InvestParameters,
         defining_variable: [linopy.Variable],
         relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
         fixed_relative_profile: Optional[Numeric] = None,
-        label: str = 'Investment',
+        label: Optional[str] = 'Investment',
         on_variable: Optional[linopy.Variable] = None,
     ):
         """
         If fixed relative profile is used, the relative bounds are ignored
         """
-        super().__init__(model, label_of_parent, label)
+        super().__init__(model, label_of_element, label)
         self.size: Optional[Union[Skalar, Variable]] = None
         self.is_invested: Optional[Variable] = None
 
@@ -97,7 +88,7 @@ class InvestmentModel(Model):
         if fix_effects != {}:
             self._model.effects.add_share_to_effects(
                 system_model=self._model,
-                name=self._label_of_parent,
+                name=self.label_of_element,
                 expressions={effect: self.is_invested * factor if self.is_invested is not None else factor
                              for effect, factor in fix_effects.items()},
                 target='invest',
@@ -107,7 +98,7 @@ class InvestmentModel(Model):
             # share: divest_effects - isInvested * divest_effects
             self._model.effects.add_share_to_effects(
                 system_model=self._model,
-                name=self._label_of_parent,
+                name=self.label_of_element,
                 expressions={effect: -self.is_invested * factor + factor for effect, factor in fix_effects.items()},
                 target='invest',
             )
@@ -115,7 +106,7 @@ class InvestmentModel(Model):
         if self.parameters.specific_effects != {}:
             self._model.effects.add_share_to_effects(
                 system_model=self._model,
-                name=self._label_of_parent,
+                name=self.label_of_element,
                 expressions={effect: self.size * factor for effect, factor in self.parameters.specific_effects.items()},
                 target='invest',
             )
@@ -124,7 +115,7 @@ class InvestmentModel(Model):
             self._segments = self.add(
                 SegmentedSharesModel(
                     model=self._model,
-                    label_of_parent=self._label_of_parent,
+                    label_of_element=self.label_of_element,
                     variable_segments=(self.size, self.parameters.effects_in_segments[0]),
                     share_segments=self.parameters.effects_in_segments[1],
                     can_be_outside_segments=self.is_invested),
@@ -202,11 +193,11 @@ class OnOffModel(Model):
         self,
         model: SystemModel,
         on_off_parameters: OnOffParameters,
-        label_of_parent: str,
+        label_of_element: str,
         defining_variables: List[linopy.Variable],
         defining_bounds: List[Tuple[Numeric, Numeric]],
         previous_values: List[Optional[Numeric]],
-        label: str = 'OnOff',
+        label: Optional[str] = None,
     ):
         """
         Constructor for OnOffModel
@@ -217,7 +208,7 @@ class OnOffModel(Model):
             Reference to the SystemModel
         on_off_parameters: OnOffParameters
             Parameters for the OnOffModel
-        label_of_parent:
+        label_of_element:
             Label of the Parent
         defining_variables:
             List of Variables that are used to define the OnOffModel
@@ -228,7 +219,7 @@ class OnOffModel(Model):
         label:
             Label of the OnOffModel
         """
-        super().__init__(model, label_of_parent, label)
+        super().__init__(model, label_of_element, label)
         assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
         self.parameters = on_off_parameters
         self._defining_variables = defining_variables
@@ -585,7 +576,7 @@ class OnOffModel(Model):
         if effects_per_switch_on != {}:
             self._model.effects.add_share_to_effects(
                 system_model=self._model,
-                name=self._label_of_parent,
+                name=self.label_of_element,
                 expressions={effect: self.switch_on * factor for effect, factor in effects_per_switch_on.items()},
                 target='operation',
             )
@@ -595,7 +586,7 @@ class OnOffModel(Model):
         if effects_per_running_hour != {}:
             self._model.effects.add_share_to_effects(
                 system_model=self._model,
-                name=self._label_of_parent,
+                name=self.label_of_element,
                 expressions={effect: self.on * factor * self._model.hours_per_step
                              for effect, factor in effects_per_running_hour.items()},
                 target='operation',
@@ -707,12 +698,12 @@ class SegmentModel(Model):
     def __init__(
         self,
         model: SystemModel,
-        label_of_parent: str,
+        label_of_element: str,
         segment_index: Union[int, str],
         sample_points: Dict[str, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]],
         as_time_series: bool = True,
     ):
-        super().__init__(model, label_of_parent, f'Segment{segment_index}')
+        super().__init__(model, label_of_element, f'Segment{segment_index}')
         self.in_segment: Optional[VariableTS] = None
         self.lambda0: Optional[VariableTS] = None
         self.lambda1: Optional[VariableTS] = None
@@ -756,7 +747,7 @@ class MultipleSegmentsModel(Model):
     def __init__(
         self,
         model: SystemModel,
-        label_of_parent: str,
+        label_of_element: str,
         sample_points: Dict[str, List[Tuple[Numeric, Numeric]]],
         can_be_outside_segments: Optional[Union[bool, Variable]],
         as_time_series: bool = True,
@@ -767,7 +758,7 @@ class MultipleSegmentsModel(Model):
         ----------
         model : linopy.Model
             Model to which the segmented variable belongs.
-        label_of_parent : str
+        label_of_element : str
             Name of the parent variable.
         sample_points : dict[str, list[tuple[float, float]]]
             Dictionary mapping variables (names) to their sample points for each segment.
@@ -777,7 +768,7 @@ class MultipleSegmentsModel(Model):
             If False or None, no variable is created. If a Variable is passed, it is used.
         as_time_series : bool, optional
         """
-        super().__init__(model, label_of_parent, label)
+        super().__init__(model, label_of_element, label)
         self.outside_segments: Optional[linopy.Variable] = None
 
         self._as_time_series = as_time_series
@@ -794,7 +785,7 @@ class MultipleSegmentsModel(Model):
             self.add(
                 SegmentModel(
                     self._model,
-                    label_of_parent=self._label_of_parent,
+                    label_of_element=self.label_of_element,
                     segment_index=i,
                     sample_points=sample_points,
                     as_time_series=self._as_time_series),
@@ -849,15 +840,14 @@ class ShareAllocationModel(Model):
         self,
         model: SystemModel,
         shares_are_time_series: bool,
-        label_of_parent: Optional[str] = None,
+        label_of_element: Optional[str] = None,
         label: Optional[str] = None,
-        label_full: Optional[str] = None,
         total_max: Optional[Skalar] = None,
         total_min: Optional[Skalar] = None,
         max_per_hour: Optional[Numeric] = None,
         min_per_hour: Optional[Numeric] = None,
     ):
-        super().__init__(model, label_of_parent=label_of_parent, label=label, label_full=label_full)
+        super().__init__(model, label_of_element=label_of_element, label=label)
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, (
                 'Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False'
@@ -972,13 +962,13 @@ class SegmentedSharesModel(Model):
     def __init__(
         self,
         model: SystemModel,
-        label_of_parent: str,
+        label_of_element: str,
         variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
         share_segments: Dict['Effect', List[Tuple[Skalar, Skalar]]],
         can_be_outside_segments: Optional[Union[bool, Variable]],
         label: str = 'SegmentedShares',
     ):
-        super().__init__(model, label_of_parent, label)
+        super().__init__(model, label_of_element, label)
         assert len(variable_segments[1]) == len(list(share_segments.values())[0]), (
             'Segment length of variable_segments and share_segments must be equal'
         )
@@ -1007,7 +997,7 @@ class SegmentedSharesModel(Model):
         self._segments_model = self.add(
             MultipleSegmentsModel(
                 model=self._model,
-                label_of_parent=self._label_of_parent,
+                label_of_element=self.label_of_element,
                 sample_points=segments,
                 can_be_outside_segments=self._can_be_outside_segments,
                 as_time_series=self._as_tme_series),
@@ -1018,7 +1008,7 @@ class SegmentedSharesModel(Model):
         # Shares
         self._model.effects.add_share_to_effects(
             system_model=self._model,
-            name=self._label_of_parent,
+            name=self.label_of_element,
             expressions={effect: variable*1 for effect, variable in self._shares.items()},
             target='operation' if self._as_tme_series else 'invest',
         )
@@ -1042,8 +1032,8 @@ class PreventSimultaneousUsageModel(Model):
     # --> könnte man auch umsetzen (statt force_on_variable() für die Flows, aber sollte aufs selbe wie "new" kommen)
     """
 
-    def __init__(self, model: SystemModel, variables: List[linopy.Variable], label_of_parent: str, label: str = 'PreventSimultaneousUsage'):
-        super().__init__(model, label_of_parent, label)
+    def __init__(self, model: SystemModel, variables: List[linopy.Variable], label_of_element: str, label: str = 'PreventSimultaneousUsage'):
+        super().__init__(model, label_of_element, label)
         self._simultanious_use_variables = variables
         assert len(self._simultanious_use_variables) >= 2, f'Model {self.__class__.__name__} must get at least two variables'
         for variable in self._simultanious_use_variables:  # classic

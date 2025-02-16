@@ -475,7 +475,7 @@ class StorageModel(ComponentModel):
         if isinstance(self.element.capacity_in_flow_hours, InvestParameters):
             self._investment = InvestmentModel(
                 model=self._model,
-                label_of_parent=self.element.label_full,
+                label_of_element=self.label_of_element,
                 parameters=self.element.capacity_in_flow_hours,
                 defining_variable=self.charge_state,
                 relative_bounds_of_defining_variable=self.relative_charge_state_bounds,
