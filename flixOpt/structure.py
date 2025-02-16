@@ -257,7 +257,7 @@ class Element(Interface):
         decimals int:
             Number of decimal places to round the solution to. Defaults to None.
         """
-        vars = self.model.all_variables if all_variables else self.model.variables
+        vars = self.model.variables if all_variables else self.model.variables_direct
         if decimals is not None:
             results = {var: vars.solution[var].round(decimals).values for var in vars.solution.data_vars}
         else:
@@ -323,8 +323,8 @@ class Model:
         self._label = label
         self._label_full = label_full
 
-        self._variables: List[str] = []
-        self._constraints: List[str] = []
+        self._variables_direct: List[str] = []
+        self._constraints_direct: List[str] = []
         self.sub_models: List[Model] = []
 
         self._variables_short: Dict[str, str] = {}
@@ -349,10 +349,10 @@ class Model:
         """
         # TODO: Check uniquenes of short names
         if isinstance(item, linopy.Variable):
-            self._variables.append(item.name)
+            self._variables_direct.append(item.name)
             self._variables_short[item.name] = short_name or item.name
         elif isinstance(item, linopy.Constraint):
-            self._constraints.append(item.name)
+            self._constraints_direct.append(item.name)
             self._constraints_short[item.name] = short_name or item.name
         elif isinstance(item, Model):
             self.sub_models.append(item)
@@ -366,13 +366,13 @@ class Model:
                          filter_by: Optional[Literal['binary', 'continuous', 'integer']] = None,
                          length: Literal['scalar', 'time'] = None):
         if filter_by is None:
-            all_variables = self.all_variables
+            all_variables = self.variables
         elif filter_by == 'binary':
-            all_variables = self.all_variables.binaries
+            all_variables = self.variables.binaries
         elif filter_by == 'integer':
-            all_variables = self.all_variables.integers
+            all_variables = self.variables.integers
         elif filter_by == 'continuous':
-            all_variables = self.all_variables.continuous
+            all_variables = self.variables.continuous
         else:
             raise ValueError(f'Invalid filter_by "{filter_by}", must be one of "binary", "continous", "integer"')
         if length is None:
@@ -389,7 +389,7 @@ class Model:
     ) -> Dict[str, Union[np.ndarray, Dict]]:
         results = {
             self._variables_short[var_name]: var.values
-            for var_name, var in self.variables.solution.data_vars.items()
+            for var_name, var in self.variables_direct.solution.data_vars.items()
         }
 
         for sub_model in self.sub_models:
@@ -418,18 +418,18 @@ class Model:
         return self.label_of_element
 
     @property
-    def variables(self) -> linopy.Variables:
-        return self._model.variables[self._variables]
+    def variables_direct(self) -> linopy.Variables:
+        return self._model.variables[self._variables_direct]
 
     @property
-    def constraints(self) -> linopy.Constraints:
-        return self._model.constraints[self._constraints]
+    def constraints_direct(self) -> linopy.Constraints:
+        return self._model.constraints[self._constraints_direct]
 
     @property
-    def _all_variables(self) -> List[str]:
-        all_variables = self._variables.copy()
+    def _variables(self) -> List[str]:
+        all_variables = self._variables_direct.copy()
         for sub_model in self.sub_models:
-            for variable in sub_model._all_variables:
+            for variable in sub_model._variables:
                 if variable in all_variables:
                     raise KeyError(
                         f"Duplicate key found: '{variable}' in both {self.label_full} and {sub_model.label_full}!"
@@ -438,22 +438,22 @@ class Model:
         return all_variables
 
     @property
-    def _all_constraints(self) -> List[str]:
-        all_constraints = self._constraints.copy()
+    def _constraints(self) -> List[str]:
+        all_constraints = self._constraints_direct.copy()
         for sub_model in self.sub_models:
-            for constraint in sub_model._all_constraints:
+            for constraint in sub_model._constraints:
                 if constraint in all_constraints:
                     raise KeyError(f"Duplicate key found: '{constraint}' in both main model and submodel!")
                 all_constraints.append(constraint)
         return all_constraints
 
     @property
-    def all_variables(self) -> linopy.Variables:
-        return self._model.variables[self._all_variables]
+    def variables(self) -> linopy.Variables:
+        return self._model.variables[self._variables]
 
     @property
-    def all_constraints(self) -> linopy.Constraints:
-        return self._model.constraints[self._all_constraints]
+    def constraints(self) -> linopy.Constraints:
+        return self._model.constraints[self._constraints]
 
     @property
     def all_sub_models(self) -> List['Model']:

@@ -361,7 +361,7 @@ class AggregationModel(ElementModel):
             if isinstance(component, Storage) and not self.aggregation_parameters.fix_storage_flows:
                 continue  # Fix Nothing in The Storage
 
-            all_variables_of_component = component.model.all_variables
+            all_variables_of_component = component.model.variables
             if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
                 all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
             else:
@@ -373,7 +373,7 @@ class AggregationModel(ElementModel):
 
         penalty = self.aggregation_parameters.penalty_of_period_freedom
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
-            for label, variable in self.variables.items():
+            for label, variable in self.variables_direct.items():
                 system_model.effect_collection_model.add_share_to_penalty(
                     f'Aggregation_penalty__{label}', variable, penalty
                 )

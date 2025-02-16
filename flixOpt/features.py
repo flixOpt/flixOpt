@@ -945,11 +945,11 @@ class ShareAllocationModel(Model):
         shares_var_names = [var.name for var in self.shares.values()]
         results = {
             self._variables_short[var_name]: var.values
-            for var_name, var in self.variables.solution.data_vars.items() if var_name not in shares_var_names
+            for var_name, var in self.variables_direct.solution.data_vars.items() if var_name not in shares_var_names
         }
         results['Shares'] = {
             self._variables_short[var_name]: var.values
-            for var_name, var in self.variables.solution.data_vars.items() if var_name in shares_var_names
+            for var_name, var in self.variables_direct.solution.data_vars.items() if var_name in shares_var_names
         }
         return {
             **results,
