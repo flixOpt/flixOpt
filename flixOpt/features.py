@@ -440,7 +440,7 @@ class OnOffModel(Model):
         """
         assert binary_variable is not None, f'Duration Variable of {self.label_full} must be defined to add constraints'
 
-        mega = self._model.hours_per_step + previous_duration
+        mega = self._model.hours_per_step.sum() + previous_duration
 
         if maximum_duration is not None:
             first_step_max: Skalar = maximum_duration.isel(time=0)
@@ -473,7 +473,7 @@ class OnOffModel(Model):
         #    on(t)=0 -> duration(t-1) >= negat. value
         self.add(self._model.add_constraints(
             duration_in_hours.isel(time=slice(1, None))
-            ==
+            <=
             duration_in_hours.isel(time=slice(None, -1)) + self._model.hours_per_step.isel(time=slice(None, -1)),
             name=f'{self.label_full}__{variable_name}_con2a'),
             f'{variable_name}_con2a'
@@ -484,10 +484,12 @@ class OnOffModel(Model):
         # with BIG = dt_in_hours_total.
         #   on(t)=1 -> duration(t)- duration(t-1) >= dt(t)
         #   on(t)=0 -> duration(t)- duration(t-1) >= negat. value
+
         self.add(self._model.add_constraints(
-            (binary_variable + 1) * mega + self._model.hours_per_step.isel(time=slice(None, -1))
-            <=
-            duration_in_hours.isel(time=slice(1, None)) - duration_in_hours.isel(time=slice(None, -1)),
+            duration_in_hours.isel(time=slice(1, None))
+            >=
+            duration_in_hours.isel(time=slice(None, -1)) + self._model.hours_per_step.isel(time=slice(None, -1))
+            + (binary_variable.isel(time=slice(1, None)) - 1) * mega,
             name=f'{self.label_full}__{variable_name}_con2b'),
             f'{variable_name}_con2b'
         )
