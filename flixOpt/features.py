@@ -143,7 +143,7 @@ class InvestmentModel(Model):
         else:
             # eq1: P_invest <= isInvested * investSize_max
             self.add(self._model.add_constraints(
-                self.size == self.is_invested * self.parameters.maximum_size,
+                self.size <= self.is_invested * self.parameters.maximum_size,
                 name=f'{self.label_full}__is_invested_ub'),
                 'is_invested_ub')
 
