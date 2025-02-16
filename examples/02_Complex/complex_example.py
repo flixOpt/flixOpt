@@ -190,8 +190,8 @@ if __name__ == '__main__':
     # You can analyze results directly. But it's better to save them to a file and start from there,
     # letting you continue at any time
     # See complex_example_evaluation.py
-    used_time_series = time_series[time_indices] if time_indices else time_series
+    used_time_series = timesteps[time_indices] if time_indices else timesteps
     # Analyze results directly
     fig = fx.plotting.with_plotly(
-        data=pd.DataFrame(Gaskessel.Q_th.model.flow_rate.result, index=used_time_series), mode='bar', show=True
+        data=pd.DataFrame(Gaskessel.Q_th.model.flow_rate.solution, index=used_time_series), mode='bar', show=True
     )

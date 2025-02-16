@@ -206,7 +206,7 @@ class OnOffModel(Model):
         defining_variables: List[linopy.Variable],
         defining_bounds: List[Tuple[Numeric, Numeric]],
         previous_values: List[Optional[Numeric]],
-        label: str = 'OnOffModel',
+        label: str = 'OnOff',
     ):
         """
         Constructor for OnOffModel
