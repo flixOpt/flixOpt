@@ -19,25 +19,30 @@ Numeric = Union[int, float, np.ndarray]  # Datatype
 
 
 class DataConverter:
+    """
+    A utility class for converting various data types into an xarray.DataArray
+    with specified time and optional period indexes.
+
+    Supported input types:
+    - int or float: Generates a DataArray filled with the given scalar value.
+    - pd.Series: Index should be time steps; expands over periods if provided.
+    - pd.DataFrame: Columns represent periods, and the index represents time steps.
+      If a single column is passed but periods exist, the data is expanded over periods.
+    - np.ndarray:
+        - If 1D, attempts to reshape based on time steps and periods.
+        - If 2D, ensures dimensions match time steps and periods, transposing if necessary.
+        - Logs a warning if periods and time steps have the same length to prevent confusion.
+
+    Raises:
+    - TypeError if an unsupported data type is provided.
+    - ValueError if data dimensions do not match expected time and period indexes.
+    """
     @staticmethod
-    def as_dataarray(data: Union[Numeric, pd.Series, pd.DataFrame], time: pd.DatetimeIndex, period: Optional[pd.Index] = None) -> xr.DataArray:
+    def as_dataarray(data: Union[Numeric, pd.Series, pd.DataFrame, np.ndarray], time: pd.DatetimeIndex,
+                     period: Optional[pd.Index] = None) -> xr.DataArray:
         """
         Converts the given data to an xarray.DataArray with the specified time and period indexes.
-
-        - If period is provided, data will have both period and time coordinates.
-        - If period is not provided, data will have only time as the index.
-        - The length of the array must match the length of the time coordinate if applicable.
-        - If a 1D array is given but two indices are provided, it is reshaped to 2D automatically.
-
-        Parameters:
-        - data: The input data (scalar, array, Series, or DataFrame).
-        - time: A pd.DatetimeIndex for the time dimension.
-        - period: An optional pd.Index for the period dimension.
-
-        Returns:
-        - xr.DataArray: The resulting DataArray with time and optionally period as coordinates.
         """
-
         if period is not None:
             coords = [period, time]
             dims = ['period', 'time']
@@ -45,35 +50,51 @@ class DataConverter:
             coords = [time]
             dims = ['time']
 
-        if isinstance(data, (int, float)):  # Scalar case
+        if isinstance(data, (int, float)):
             return DataConverter._handle_scalar(data, coords, dims)
-
-        if isinstance(data, np.ndarray):
-            return DataConverter._handle_array(data, coords, dims)
-
-        if isinstance(data, pd.Series):
-            return DataConverter._handle_series(data, coords, dims)
-
         if isinstance(data, pd.DataFrame):
             return DataConverter._handle_dataframe(data, coords, dims)
+        if isinstance(data, pd.Series):
+            return DataConverter._handle_series(data, coords, dims)
+        if isinstance(data, np.ndarray):
+            return DataConverter._handle_array(data, coords, dims)
 
         raise TypeError("Unsupported data type. Must be scalar, np.ndarray, pd.Series, or pd.DataFrame.")
 
     @staticmethod
-    def _handle_scalar(data: Union[int, float], coords: list, dims: list) -> xr.DataArray:
-        """Handles scalar input."""
+    def _handle_scalar(data: Numeric, coords: list, dims: list) -> xr.DataArray:
+        """Handles scalar input by filling the array with the value."""
         return xr.DataArray(data, coords=coords, dims=dims)
+
+    @staticmethod
+    def _handle_dataframe(data: pd.DataFrame, coords: list, dims: list) -> xr.DataArray:
+        """Handles pandas DataFrame input."""
+        if len(coords) == 2:
+            if data.shape[1] == 1:
+                return DataConverter._handle_series(data.iloc[:, 0], coords, dims)
+            elif data.shape != (len(coords[1]), len(coords[0])):
+                raise ValueError("DataFrame shape does not match provided indexes")
+        return xr.DataArray(data.T, coords=coords, dims=dims)
+
+    @staticmethod
+    def _handle_series(data: pd.Series, coords: list, dims: list) -> xr.DataArray:
+        """Handles pandas Series input."""
+        if len(coords) == 2:
+            if data.shape[0] != len(coords[1]):
+                raise ValueError(f"Series index does not match the shape of the provided timsteps: {data.shape[0]= } != {len(coords[1])=}")
+            return xr.DataArray(np.tile(data.values, (len(coords[0]), 1)), coords=coords, dims=dims)
+        return xr.DataArray(data.values, coords=coords, dims=dims)
 
     @staticmethod
     def _handle_array(data: np.ndarray, coords: list, dims: list) -> xr.DataArray:
         """Handles NumPy array input."""
         expected_shape = tuple(len(coord) for coord in coords)
 
-        if data.ndim == 1 and len(coords) == 2:  # Automatically reshape 1D arrays
+        if data.ndim == 1 and len(coords) == 2:
             if data.shape[0] == len(coords[0]):
-                data = np.tile(data[:, np.newaxis], (1, len(coords[1])))  # Expand along second dimension
+                data = np.tile(data[:, np.newaxis], (1, len(coords[1])))
             elif data.shape[0] == len(coords[1]):
-                data = np.tile(data[np.newaxis, :], (len(coords[0]), 1))  # Expand along first dimension
+                data = np.tile(data[np.newaxis, :], (len(coords[0]), 1))
             else:
                 raise ValueError("1D array length does not match either dimension in coords")
 
@@ -81,31 +102,6 @@ class DataConverter:
             raise ValueError(f"Shape of data {data.shape} does not match expected shape {expected_shape}")
 
         return xr.DataArray(data, coords=coords, dims=dims)
-
-    @staticmethod
-    def _handle_series(data: pd.Series, coords: list, dims: list) -> xr.DataArray:
-        """Handles pandas Series input."""
-        if len(coords) == 1:
-            if not data.index.equals(coords[0]):
-                raise ValueError("Series index does not match the provided time index")
-            return xr.DataArray(data.values, coords=coords, dims=dims)
-
-        # Reshape if necessary and return as DataArray
-        return xr.DataArray(data.values.ravel(), coords=coords, dims=dims)
-
-    @staticmethod
-    def _handle_dataframe(data: pd.DataFrame, coords: list, dims: list) -> xr.DataArray:
-        """Handles pandas DataFrame input."""
-        if len(coords) != 2 or data.shape != (len(coords[1]), len(coords[0])):
-            raise ValueError("DataFrame shape does not match provided indexes")
-
-        # Stack and ensure columns become level 0
-        stacked = data.stack().swaplevel(0, 1).sort_index()
-        if not stacked.index.equals(coords[0]):
-            raise ValueError("Stacked DataFrame index does not match the provided index")
-
-        return xr.DataArray(stacked.values, coords=coords, dims=dims)
-
 
 
 class TimeSeriesData:
