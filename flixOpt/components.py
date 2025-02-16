@@ -410,14 +410,14 @@ class LinearConverterModel(ComponentModel):
         # (linear) segments:
         else:
             # TODO: Improve Inclusion of OnOffParameters. Instead of creating a Binary in every flow, the binary could only be part of the Segment itself
-            segments = {
-                flow.model.flow_rate: [
+            segments: Dict[str, List[Tuple[Numeric, Numeric]]] = {
+                flow.model.flow_rate.name: [
                     (ts1.active_data, ts2.active_data) for ts1, ts2 in self.element.segmented_conversion_factors[flow]
                 ]
                 for flow in self.element.inputs + self.element.outputs
             }
             linear_segments = MultipleSegmentsModel(
-                self.element, segments, self.on_off.on if self.on_off is not None else None
+                self._model, self.label_of_parent, segments, self.on_off.on if self.on_off is not None else None
             )  # TODO: Add Outside_segments Variable (On)
             linear_segments.do_modeling(system_model)
             self.sub_models.append(linear_segments)
