@@ -357,13 +357,13 @@ class Model:
                          filter_by: Optional[Literal['binary', 'continuous', 'integer']] = None,
                          length: Literal['scalar', 'time'] = None):
         if filter_by is None:
-            all_variables = self.variables
+            all_variables = self.all_variables
         elif filter_by == 'binary':
-            all_variables = self.variables.binaries
+            all_variables = self.all_variables.binaries
         elif filter_by == 'integer':
-            all_variables = self.variables.integers
+            all_variables = self.all_variables.integers
         elif filter_by == 'continuous':
-            all_variables = self.variables.continuous
+            all_variables = self.all_variables.continuous
         else:
             raise ValueError(f'Invalid filter_by "{filter_by}", must be one of "binary", "continous", "integer"')
         if length is None:
