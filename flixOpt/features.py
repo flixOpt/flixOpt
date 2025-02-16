@@ -205,10 +205,28 @@ class OnOffModel(Model):
         label_of_parent: str,
         defining_variables: List[linopy.Variable],
         defining_bounds: List[Tuple[Numeric, Numeric]],
+        previous_values: List[Numeric],
         label: str = 'OnOffModel',
     ):
         """
-        defining_bounds: a list of Numeric, that can be  used to create the bound for On/Off more efficiently
+        Constructor for OnOffModel
+
+        Parameters
+        ----------
+        model: SystemModel
+            Reference to the SystemModel
+        on_off_parameters: OnOffParameters
+            Parameters for the OnOffModel
+        label_of_parent:
+            Label of the Parent
+        defining_variables:
+            List of Variables that are used to define the OnOffModel
+        defining_bounds:
+            List of Tuples, defining the absolute bounds of each defining variable
+        previous_values:
+            List of previous values of the defining variables
+        label:
+            Label of the OnOffModel
         """
         super().__init__(model, label_of_parent, label)
         assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
@@ -227,6 +245,7 @@ class OnOffModel(Model):
 
         self._defining_variables = defining_variables
         self._defining_bounds = defining_bounds
+        self._previous_values = previous_values
 
     def do_modeling(self, system_model: SystemModel):
         self.on = self.add(
@@ -606,12 +625,31 @@ class OnOffModel(Model):
                 target='operation',
             )
 
-    def _previous_on_values(self, epsilon: float = 1e-5) -> np.ndarray:
+    @property
+    def previous_on_values(self) -> np.ndarray:
+        return self.compute_previous_on_values(self._previous_values)
+
+    @property
+    def previous_off_values(self) -> np.ndarray:
+        return 1 - self.previous_on_values
+
+    @property
+    def previous_consecutive_on_hours(self) -> np.ndarray:
+        return self.compute_consecutive_duration(self.previous_on_values, self._model.hours_per_step)
+
+    @property
+    def previous_consecutive_off_hours(self) -> np.ndarray:
+        return self.compute_consecutive_duration(self.previous_off_values, self._model.hours_per_step)
+
+    @staticmethod
+    def compute_previous_on_values(previous_values: List[Numeric], epsilon: float = 1e-5) -> np.ndarray:
         """
-        Returns the previous 'on' states of defining variables as a binary array.
+        Computes the previous 'on' states of defining variables as a binary array from their previous values.
 
         Parameters:
         ----------
+        previous_values: List[Numeric]
+            List of previous values of the defining variables. In Range [0, inf]
         epsilon : float, optional
             Tolerance for equality to determine "off" state, default is 1e-5.
 
@@ -621,7 +659,6 @@ class OnOffModel(Model):
             A binary array (0 and 1) indicating the previous on/off states of the variables.
             Returns `array([0])` if no previous values are available.
         """
-        previous_values = [var.previous_values for var in self._defining_variables if var.previous_values is not None]
 
         if not previous_values:
             return np.array([0])
@@ -632,22 +669,23 @@ class OnOffModel(Model):
             else:
                 return (~np.isclose(previous_values, 0, atol=epsilon)).astype(int)
 
-    @classmethod
-    def get_consecutive_duration(
-        cls, binary_values: Union[int, np.ndarray], dt_in_hours: Union[int, float, np.ndarray]
+    @staticmethod
+    def compute_consecutive_duration(
+        binary_values: Union[int, np.ndarray],
+        hours_per_timestep: Union[int, float, np.ndarray]
     ) -> Skalar:
         """
-        Returns the current consecutive duration in hours, computed from binary values.
-        If only one binary value is availlable, the last dt_in_hours is used.
-        Of both binary_values and dt_in_hours are arrays, checks that the length of dt_in_hours has at least as
-        many elements as the last  consecutive duration in binary_values.
+        Computes the final consecutive duration in State 'on' (=1) in hours, from a binary.
+
+        hours_per_timestep is handled in a way, that maximizes compatability.
+        Its length must only be as long as the last consecutive duration in binary_values.
 
         Parameters
         ----------
         binary_values : int, np.ndarray
             An int or 1D binary array containing only `0`s and `1`s.
-        dt_in_hours : int, float, np.ndarray
-            The duration of each time step in hours.
+        hours_per_timestep : int, float, np.ndarray
+            The duration of each timestep in hours.
 
         Returns
         -------
@@ -659,31 +697,31 @@ class OnOffModel(Model):
         TypeError
             If the length of binary_values and dt_in_hours is not equal, but None is a scalar.
         """
-        if np.isscalar(binary_values) and np.isscalar(dt_in_hours):
-            return binary_values * dt_in_hours
-        elif np.isscalar(binary_values) and not np.isscalar(dt_in_hours):
-            return binary_values * dt_in_hours[-1]
+        if np.isscalar(binary_values) and np.isscalar(hours_per_timestep):
+            return binary_values * hours_per_timestep
+        elif np.isscalar(binary_values) and not np.isscalar(hours_per_timestep):
+            return binary_values * hours_per_timestep[-1]
 
         # Find the indexes where value=`0` in a 1D-array
         zero_indices = np.where(np.isclose(binary_values, 0, atol=CONFIG.modeling.EPSILON))[0]
         length_of_last_duration = zero_indices[-1] + 1 if zero_indices.size > 0 else len(binary_values)
 
-        if not np.isscalar(binary_values) and np.isscalar(dt_in_hours):
-            return np.sum(binary_values[-length_of_last_duration:] * dt_in_hours)
+        if not np.isscalar(binary_values) and np.isscalar(hours_per_timestep):
+            return np.sum(binary_values[-length_of_last_duration:] * hours_per_timestep)
 
-        elif not np.isscalar(binary_values) and not np.isscalar(dt_in_hours):
-            if length_of_last_duration > len(dt_in_hours):  # check that lengths are compatible
+        elif not np.isscalar(binary_values) and not np.isscalar(hours_per_timestep):
+            if length_of_last_duration > len(hours_per_timestep):  # check that lengths are compatible
                 raise TypeError(
                     f'When trying to calculate the consecutive duration, the length of the last duration '
-                    f'({len(length_of_last_duration)}) is longer than the dt_in_hours ({len(dt_in_hours)}), '
+                    f'({len(length_of_last_duration)}) is longer than the hours_per_timestep ({len(hours_per_timestep)}), '
                     f'as {binary_values=}'
                 )
-            return np.sum(binary_values[-length_of_last_duration:] * dt_in_hours[-length_of_last_duration:])
+            return np.sum(binary_values[-length_of_last_duration:] * hours_per_timestep[-length_of_last_duration:])
 
         else:
             raise Exception(
                 f'Unexpected state reached in function get_consecutive_duration(). binary_values={binary_values}; '
-                f'dt_in_hours={dt_in_hours}'
+                f'hours_per_timestep={hours_per_timestep}'
             )
 
 
