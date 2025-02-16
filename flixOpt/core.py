@@ -286,7 +286,7 @@ class TimeSeries:
 
     @property
     def isel(self):
-        return self.active_data.sel
+        return self.active_data.isel
 
     # Enable arithmetic operations using active_data
     def _apply_operation(self, other, op):
