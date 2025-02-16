@@ -326,7 +326,7 @@ class TestComplex(BaseTest):
             effects['costs'].model.total.solution.item(), -11597.873624489237, 'costs doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            effects['costs'].model.operation.sum_TS.result,
+            effects['costs'].model.operation.total_per_timestep.solution.values,
             [
                 -2.38500000e03,
                 -2.21681333e03,
@@ -342,62 +342,62 @@ class TestComplex(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['CO2_operation'].result),
+            sum(effects['costs'].model.operation.shares['CO2_operation'].solution.item()),
             258.63729669618675,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Kessel__Q_th__switch_on_effects'].result),
+            sum(effects['costs'].model.operation.shares['Kessel__Q_th__switch_on_effects'].solution.values),
             0.01,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Kessel__running_hour_effects'].result),
+            sum(effects['costs'].model.operation.shares['Kessel__running_hour_effects'].solution.values),
             -0.0,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Gastarif__Q_Gas__effects_per_flow_hour'].result),
+            sum(effects['costs'].model.operation.shares['Gastarif__Q_Gas__effects_per_flow_hour'].solution.values),
             39.09153113079115,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Einspeisung__P_el__effects_per_flow_hour'].result),
+            sum(effects['costs'].model.operation.shares['Einspeisung__P_el__effects_per_flow_hour'].solution.values),
             -14196.61245231646,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['KWK__switch_on_effects'].result),
+            sum(effects['costs'].model.operation.shares['KWK__switch_on_effects'].solution.values),
             0.0,
             'costs doesnt match expected value',
         )
 
         self.assert_almost_equal_numeric(
-            effects['costs'].model.invest.shares['Kessel__Q_th__fix_effects'].result,
+            effects['costs'].model.invest.shares['Kessel__Q_th__fix_effects'].solution.values,
             1000,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            effects['costs'].model.invest.shares['Kessel__Q_th__specific_effects'].result,
+            effects['costs'].model.invest.shares['Kessel__Q_th__specific_effects'].solution.values,
             500,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            effects['costs'].model.invest.shares['Speicher__specific_effects'].result,
+            effects['costs'].model.invest.shares['Speicher__specific_effects'].solution.values,
             1,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            effects['costs'].model.invest.shares['Speicher__segmented_effects'].result,
+            effects['costs'].model.invest.shares['Speicher__segmented_effects'].solution.values,
             800,
             'costs doesnt match expected value',
         )
 
         self.assert_almost_equal_numeric(
-            effects['CO2'].model.all.shares['operation'].result, 1293.1864834809337, 'CO2 doesnt match expected value'
+            effects['CO2'].model.all.shares['operation'].solution.values, 1293.1864834809337, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            effects['CO2'].model.all.shares['invest'].result, 0.9999999999999994, 'CO2 doesnt match expected value'
+            effects['CO2'].model.all.shares['invest'].solution.values, 0.9999999999999994, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
             comps['Kessel'].Q_th.model.flow_rate.solution.values,
@@ -437,12 +437,12 @@ class TestComplex(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            comps['Speicher'].model.netto_discharge.result,
+            comps['Speicher'].model.netto_discharge.solution.values,
             [-45.0, -69.71111111, 15.0, -10.0, 36.06697198, -55.0, 20.0, 20.0, 20.0],
             'Speicher nettoFlow doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            comps['Speicher'].model.charge_state.result,
+            comps['Speicher'].model.charge_state.solution.values,
             [0.0, 40.5, 100.0, 77.0, 79.84, 37.38582802, 83.89496178, 57.18336484, 32.60869565, 10.0],
             'Speicher nettoFlow doesnt match expected value',
         )
@@ -585,7 +585,7 @@ class TestComplex(BaseTest):
         print(es)
         es.visualize_network()
 
-        aCalc = fx.FullCalculation('Sim1', es, 'pyomo', None)
+        aCalc = fx.FullCalculation('Sim1', es)
         aCalc.do_modeling()
 
         aCalc.solve(self.get_solver())
@@ -689,7 +689,7 @@ class TestComplex(BaseTest):
         print(es)
         es.visualize_network()
 
-        aCalc = fx.FullCalculation('Sim1', es, 'pyomo', None)
+        aCalc = fx.FullCalculation('Sim1', es)
         aCalc.do_modeling()
 
         aCalc.solve(self.get_solver())
@@ -724,7 +724,7 @@ class TestModelingTypes(BaseTest):
     def test_segmented(self):
         calculation = self.calculate('segmented')
         self.assert_almost_equal_numeric(
-            sum(calculation.results(combined_arrays=True)['Effects']['costs']['operation']['operation_sum_TS']),
+            sum(calculation.results(combined_arrays=True)['Effects']['costs']['operation']['total_per_timestep']),
             343613,
             'costs doesnt match expected value',
         )
