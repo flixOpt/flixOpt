@@ -392,20 +392,14 @@ class FlowModel(ElementModel):
         # eq: var_sumFlowHours <= size * dt_tot * load_factor_max
         if self.element.load_factor_max is not None:
             name_short = 'load_factor_max'
-            name = f'{self.element.label_full}__{name_short}'
-            flow_hours_per_size_max = self._model.hours_per_step * self.element.load_factor_max
+            flow_hours_per_size_max = self._model.hours_per_step.sum() * self.element.load_factor_max
+            size = self.element.size if self._investment is None else self._investment.size
 
             if self._investment is not None:
                 self.add(
                     self._model.add_constraints(
-                        self.total_flow_hours <= self._investment.size * flow_hours_per_size_max, name=name,
-                    ),
-                    name_short
-                )
-            else:
-                self.add(
-                    self._model.add_constraints(
-                        self.total_flow_hours <= self.element.size * flow_hours_per_size_max, name=name,
+                        self.total_flow_hours <= size * flow_hours_per_size_max,
+                        name=f'{self.element.label_full}__{name_short}',
                     ),
                     name_short
                 )
@@ -413,25 +407,18 @@ class FlowModel(ElementModel):
         #  eq: size * sum(dt)* load_factor_min <= var_sumFlowHours
         if self.element.load_factor_min is not None:
             name_short = 'load_factor_min'
-            name = f'{self.element.label_full}__{name_short}'
-            flow_hours_per_size_in = self._model.hours_per_step * self.element.load_factor_min
+            flow_hours_per_size_min = self._model.hours_per_step.sum() * self.element.load_factor_min
+            size = self.element.size if self._investment is None else self._investment.size
 
             if self._investment is not None:
                 self.add(
                     self._model.add_constraints(
-                        self.total_flow_hours >= self._investment.size * flow_hours_per_size_in,
-                        name=name
+                        self.total_flow_hours >= size * flow_hours_per_size_min,
+                        name=f'{self.element.label_full}__{name_short}',
                     ),
                     name_short
                 )
-            else:
-                self.add(
-                    self._model.add_constraints(
-                        self.total_flow_hours >= self.element.size * flow_hours_per_size_in,
-                        name=name
-                    ),
-                    name_short
-                )
+
 
     @property
     def with_investment(self) -> bool:
