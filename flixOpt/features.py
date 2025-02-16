@@ -231,6 +231,10 @@ class OnOffModel(Model):
         super().__init__(model, label_of_parent, label)
         assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
         self.parameters = on_off_parameters
+        self._defining_variables = defining_variables
+        self._defining_bounds = defining_bounds
+        self._previous_values = previous_values
+
         self.on: Optional[linopy.Variable] = None
         self.total_on_hours: Optional[Variable] = None
 
@@ -242,10 +246,6 @@ class OnOffModel(Model):
         self.switch_on: Optional[linopy.Variable] = None
         self.switch_off: Optional[linopy.Variable] = None
         self.switch_on_nr: Optional[linopy.Variable] = None
-
-        self._defining_variables = defining_variables
-        self._defining_bounds = defining_bounds
-        self._previous_values = previous_values
 
     def do_modeling(self, system_model: SystemModel):
         self.on = self.add(
@@ -297,10 +297,9 @@ class OnOffModel(Model):
                 self.consecutive_on_hours = self._get_duration_in_hours(
                     'consecutiveOnHours',
                     self.on,
+                    self.previous_consecutive_on_hours,
                     self.parameters.consecutive_on_hours_min,
                     self.parameters.consecutive_on_hours_max,
-                    system_model,
-                    system_model.indices,
                 )
 
         if self.parameters.use_consecutive_off_hours:
@@ -309,10 +308,9 @@ class OnOffModel(Model):
                 self.consecutive_off_hours = self._get_duration_in_hours(
                     'consecutiveOffHours',
                     self.off,
+                    self.previous_consecutive_off_hours,
                     self.parameters.consecutive_off_hours_min,
                     self.parameters.consecutive_off_hours_max,
-                    system_model,
-                    system_model.indices,
                 )
 
         if self.parameters.use_switch_on:
@@ -403,12 +401,12 @@ class OnOffModel(Model):
 
     def _get_duration_in_hours(
         self,
-        variable_label: str,
+        variable_name: str,
+        variable_name_short: str,
         binary_variable: linopy.Variable,
+        previous_duration: Skalar,
         minimum_duration: Optional[TimeSeries],
         maximum_duration: Optional[TimeSeries],
-        system_model: SystemModel,
-        time_indices: Union[list[int], range],
     ) -> linopy.Variable:
         """
         creates duration variable and adds constraints to a time-series variable to enforce duration limits based on
@@ -427,10 +425,6 @@ class OnOffModel(Model):
             maximum_duration (Optional[TimeSeries]):
                 Maximum duration the activity can remain active.
                 If None, the maximum duration is set to the total available time.
-            system_model (SystemModel):
-                The system model containing time step information.
-            time_indices (Union[list[int], range]):
-                List or range of indices to which to apply the constraints.
 
         Returns:
             linopy.Variable: The created duration variable representing consecutive active durations.
@@ -451,63 +445,59 @@ class OnOffModel(Model):
             AssertionError: If the binary_variable is None, indicating the duration constraints cannot be applied.
 
         """
-        try:
-            previous_duration: Skalar = self.get_consecutive_duration(
-                binary_variable.previous_values, system_model.previous_dt_in_hours
-            )
-        except TypeError as e:
-            raise TypeError(f'The consecutive_duration of "{variable_label}" could not be calculated. {e}') from e
-        mega = system_model.dt_in_hours_total + previous_duration
+        assert binary_variable is not None, f'Duration Variable of {self.label_full} must be defined to add constraints'
+
+        mega = self._model.hours_per_step + previous_duration
 
         if maximum_duration is not None:
-            first_step_max: Skalar = (
-                maximum_duration.active_data[0] if maximum_duration.is_array else maximum_duration.active_data
-            )
-            if previous_duration + system_model.dt_in_hours[0] > first_step_max:
+            first_step_max: Skalar = maximum_duration.isel(time=0)
+
+            if previous_duration + self._model.hours_per_step[0] > first_step_max:
                 logger.warning(
-                    f'The maximum duration of "{variable_label}" is set to {maximum_duration.active_data}h, '
+                    f'The maximum duration of "{variable_name}" is set to {maximum_duration.active_data}h, '
                     f'but the consecutive_duration previous to this model is {previous_duration}h. '
-                    f'This forces "{binary_variable.label} = 0" in the first time step '
-                    f'(dt={system_model.dt_in_hours[0]}h)!'
+                    f'This forces "{binary_variable.name} = 0" in the first time step '
+                    f'(dt={self._model.hours_per_step[0]}h)!'
                 )
 
-        duration_in_hours = create_variable(
-            variable_label,
-            self,
-            system_model.nr_of_time_steps,
-            lower_bound=0,
-            upper_bound=maximum_duration.active_data if maximum_duration is not None else mega,
-            previous_values=previous_duration,
+        duration_in_hours = self.add(self._model.add_variables(
+            lower=0,
+            upper=maximum_duration if maximum_duration is not None else mega,
+            coords=self._model.coords,
+            name=variable_name),
+            variable_name_short
         )
-        label_prefix = duration_in_hours.label
-
-        assert binary_variable is not None, f'Duration Variable of {self.element} must be defined to add constraints'
-        # TODO: Einfachere Variante von Peter umsetzen!
 
         # 1) eq: duration(t) - On(t) * BIG <= 0
-        constraint_1 = create_equation(f'{label_prefix}_constraint_1', self, eq_type='ineq')
-        constraint_1.add_summand(duration_in_hours, 1)
-        constraint_1.add_summand(binary_variable, -1 * mega)
+        self.add(self._model.add_constraints(
+            duration_in_hours <= binary_variable * mega,
+            name=f'{self.label_full}__{variable_name_short}_con1'),
+            f'{variable_name_short}_con1'
+        )
 
         # 2a) eq: duration(t) - duration(t-1) <= dt(t)
         #    on(t)=1 -> duration(t) - duration(t-1) <= dt(t)
         #    on(t)=0 -> duration(t-1) >= negat. value
-        constraint_2a = create_equation(f'{label_prefix}_constraint_2a', self, eq_type='ineq')
-        constraint_2a.add_summand(duration_in_hours, 1, time_indices[1:])  # duration(t)
-        constraint_2a.add_summand(duration_in_hours, -1, time_indices[0:-1])  # duration(t-1)
-        constraint_2a.add_constant(system_model.dt_in_hours[1:])  # dt(t)
+        self.add(self._model.add_constraints(
+            duration_in_hours.isel(time=slice(1, None))
+            ==
+            duration_in_hours.isel(time=slice(None, -1)) + self._model.hours_per_step.isel(time=slice(None, -1)),
+            name=f'{self.label_full}__{variable_name_short}_con2a'),
+            f'{variable_name_short}_con2a'
+        )
 
         # 2b) eq: dt(t) - BIG * ( 1-On(t) ) <= duration(t) - duration(t-1)
         # eq: -duration(t) + duration(t-1) + On(t) * BIG <= -dt(t) + BIG
         # with BIG = dt_in_hours_total.
         #   on(t)=1 -> duration(t)- duration(t-1) >= dt(t)
         #   on(t)=0 -> duration(t)- duration(t-1) >= negat. value
-
-        constraint_2b = create_equation(f'{label_prefix}_constraint_2b', self, eq_type='ineq')
-        constraint_2b.add_summand(duration_in_hours, -1, time_indices[1:])  # duration(t)
-        constraint_2b.add_summand(duration_in_hours, 1, time_indices[0:-1])  # duration(t-1)
-        constraint_2b.add_summand(binary_variable, mega, time_indices[1:])  # on(t)
-        constraint_2b.add_constant(-1 * system_model.dt_in_hours[1:] + mega)  # dt(t)
+        self.add(self._model.add_constraints(
+            (binary_variable + 1) * mega + self._model.hours_per_step.isel(time=slice(None, -1))
+            <=
+            duration_in_hours.isel(time=slice(1, None)) - duration_in_hours.isel(time=slice(None, -1)),
+            name=f'{self.label_full}__{variable_name_short}_con2b'),
+            f'{variable_name_short}_con2b'
+        )
 
         # 3) check minimum_duration before switchOff-step
 
@@ -517,40 +507,32 @@ class OnOffModel(Model):
             # Note: (previous values before t=1 are not recognised!)
             # eq: duration(t) >= minimum_duration(t) * [On(t) - On(t+1)] for t=1..(n-1)
             # eq: -duration(t) + minimum_duration(t) * On(t) - minimum_duration(t) * On(t+1) <= 0
-            if minimum_duration.is_scalar:
-                minimum_duration_used = minimum_duration.active_data
-            else:
-                minimum_duration_used = minimum_duration.active_data[0:-1]  # only checked for t=1...(n-1)
-            eq_min_duration = create_equation(f'{label_prefix}_minimum_duration', self, eq_type='ineq')
-            eq_min_duration.add_summand(duration_in_hours, -1, time_indices[0:-1])  # -duration(t)
-            eq_min_duration.add_summand(
-                binary_variable, -1 * minimum_duration_used, time_indices[1:]
-            )  # - minimum_duration (t) * On(t+1)
-            eq_min_duration.add_summand(
-                binary_variable, minimum_duration_used, time_indices[0:-1]
-            )  # minimum_duration * On(t)
-
-            first_step_min: Skalar = (
-                minimum_duration.active_data[0] if minimum_duration.is_array else minimum_duration.active_data
+            self.add(self._model.add_constraints(
+                duration_in_hours
+                >=
+                (binary_variable.isel(time=slice(None, -1)) - binary_variable.isel(time=slice(1, None)))
+                * minimum_duration.isel(time=slice(None, -1)),
+                name=f'{self.label_full}__{variable_name_short}_minimum_duration'),
+                f'{variable_name_short}_minimum_duration'
             )
-            if duration_in_hours.previous_values < first_step_min:
+
+            if previous_duration < minimum_duration.isel(time=0):
                 # Force the first step to be = 1, if the minimum_duration is not reached in previous_values
                 # Note: Only if the previous consecutive_duration is smaller than the minimum duration
                 # eq: On(t=0) = 1
-                eq_min_duration_inital = create_equation(f'{label_prefix}_minimum_duration_inital', self, eq_type='eq')
-                eq_min_duration_inital.add_summand(binary_variable, 1, time_indices[0])
-                eq_min_duration_inital.add_constant(1)
+                self.add(self._model.add_constraints(
+                    binary_variable.isel(time=0) == 1,
+                    name=f'{self.label_full}__{variable_name_short}_minimum_inital'),
+                    f'{variable_name_short}_minimum_inital'
+                )
 
-        # 4) first index:
-        # eq: duration(t=0)= dt(0) * On(0)
-        first_index = time_indices[0]  # only first element
-        eq_first = create_equation(f'{label_prefix}_initial', self)
-        eq_first.add_summand(duration_in_hours, 1, first_index)
-        eq_first.add_summand(
-            binary_variable,
-            -1 * (system_model.dt_in_hours[first_index] + duration_in_hours.previous_values),
-            first_index,
-        )
+            # 4) first index:
+            # eq: duration(t=0)= dt(0) * On(0)
+            self.add(self._model.add_constraints(
+                duration_in_hours.isel(time=0) == self._model.hours_per_step.isel(time=0) * binary_variable.isel(time=0),
+                name=f'{self.label_full}__{variable_name_short}_initial'),
+                f'{variable_name_short}_initial'
+            )
 
         return duration_in_hours
 
