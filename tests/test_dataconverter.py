@@ -1,121 +1,111 @@
+import pytest
 import numpy as np
 import pandas as pd
-import pytest
-from flixOpt.core import DataConverter  # Update with actual module name
+import xarray as xr
+from flixOpt.core import DataConverter  # Adjust this import to match your project structure
 
 
-def test_as_series_scalar():
-    """Test scalar input conversion."""
-    index = pd.date_range("2023-01-01", periods=3)
-    result = DataConverter.as_series(42, (index,))
+@pytest.fixture
+def sample_time_index(request):
+    return pd.date_range("2024-01-01", periods=5, freq="D")
 
-    assert isinstance(result, pd.Series)
-    assert (result == 42).all()
-    assert result.index.equals(index)
-
-def test_as_series_scalar_2dims():
-    """Test scalar input conversion."""
-    index = pd.date_range("2023-01-01", periods=3)
-    period = pd.Index([2020, 2030])
-    result = DataConverter.as_series(42, (period, index))
-
-    assert isinstance(result, pd.Series)
-    assert (result == 42).all()
-    assert result.index.equals(pd.MultiIndex.from_product([period, index]))
+@pytest.fixture
+def sample_period_index(request):
+    return pd.Index(["A", "B", "C"])
 
 
-def test_as_series_1d_array():
-    """Test 1D NumPy array conversion."""
-    index = pd.date_range("2023-01-01", periods=3)
-    data = np.array([1, 2, 3])
+def test_scalar_conversion(sample_time_index, sample_period_index):
+    # Test scalar conversion without periods
+    result = DataConverter.as_dataarray(42, sample_time_index)
+    assert isinstance(result, xr.DataArray)
+    assert result.shape == (len(sample_time_index),)
+    assert np.all(result.values == 42)
 
-    result = DataConverter.as_series(data, (index,))
-
-    assert isinstance(result, pd.Series)
-    assert (result.values == data).all()
-    assert result.index.equals(index)
-
-def test_as_series_1d_array_broadcast():
-    """Test 1D NumPy array conversion."""
-    index = pd.date_range("2023-01-01", periods=6)
-    period = pd.Index([2020, 2030])
-    data = np.array([1, 2, 3, 4, 5, 6])
-
-    result = DataConverter.as_series(data, (period, index))
-
-    assert isinstance(result, pd.Series)
-    assert (result.values == np.tile(data, 2)).all()
-    assert result.index.equals(pd.MultiIndex.from_product([period, index]))
+    # Test scalar conversion with periods
+    result = DataConverter.as_dataarray(42, sample_time_index, sample_period_index)
+    assert result.shape == (len(sample_period_index), len(sample_time_index))
+    assert np.all(result.values == 42)
 
 
-def test_as_series_2d_array():
-    """Test 2D NumPy array conversion."""
-    index1 = pd.date_range("2023-01-01", periods=2)
-    index2 = pd.Index(["A", "B", "C"])
+def test_series_conversion(sample_time_index, sample_period_index):
+    series = pd.Series([1, 2, 3, 4, 5], index=sample_time_index)
 
-    data = np.array([[1, 2, 3], [4, 5, 6]])
-    result = DataConverter.as_series(data, (index1, index2))
+    # Test Series conversion without periods
+    result = DataConverter.as_dataarray(series, sample_time_index)
+    assert isinstance(result, xr.DataArray)
+    assert result.shape == (5,)
+    assert np.array_equal(result.values, series.values)
 
-    expected_index = pd.MultiIndex.from_product([index1, index2])
-    assert isinstance(result, pd.Series)
-    assert result.index.equals(expected_index)
-    assert (result.values == data.ravel()).all()
-
-
-def test_as_series_series_matching_index():
-    """Test Pandas Series input with matching index."""
-    index = pd.date_range("2023-01-01", periods=3)
-    data = pd.Series([10, 20, 30], index=index)
-
-    result = DataConverter.as_series(data, (index,))
-
-    assert isinstance(result, pd.Series)
-    assert result.equals(data)
+    # Test Series conversion with periods (should expand)
+    result = DataConverter.as_dataarray(series, sample_time_index, sample_period_index)
+    assert result.shape == (3, 5)
+    assert np.all(result.values[:, 0] == 1)  # Ensure expansion
+    assert np.all(result.isel(period=0).values == series.values)
 
 
-def test_as_series_series_mismatching_index():
-    """Test Pandas Series with a different index should raise an error."""
-    index = pd.date_range("2023-01-01", periods=3)
-    wrong_index = pd.date_range("2023-01-02", periods=3)
-    data = pd.Series([10, 20, 30], index=wrong_index)
+def test_dataframe_conversion(sample_time_index, sample_period_index):
+    df = pd.DataFrame(
+        np.arange(15).reshape(5, 3),
+        index=sample_time_index,
+        columns=sample_period_index,
+    )
 
-    with pytest.raises(ValueError, match="Series index does not match the provided index"):
-        DataConverter.as_series(data, (index,))
-
-
-def test_as_series_dataframe():
-    """Test DataFrame conversion."""
-    index1 = pd.date_range("2023-01-01", periods=2)
-    index2 = pd.Index(["A", "B", "C"])
-
-    data = pd.DataFrame([[1, 2, 3], [4, 5, 6]], index=index1, columns=index2)
-    result = DataConverter.as_series(data, (index2, index1))
-
-    expected_index = pd.MultiIndex.from_product([index2, index1])
-    expected_series = data.stack().swaplevel(0, 1).sort_index()
-
-    assert isinstance(result, pd.Series)
-    assert result.index.equals(expected_index)
-    assert result.equals(expected_series)
+    # Test DataFrame conversion
+    result = DataConverter.as_dataarray(df, sample_time_index, sample_period_index)
+    assert isinstance(result, xr.DataArray)
+    assert result.shape == (3, 5)
+    assert np.array_equal(result.values.T, df.values)
 
 
-def test_invalid_dims():
-    """Test invalid dims input."""
-    with pytest.raises(TypeError, match="dims must be a tuple of pandas Index objects"):
-        DataConverter.as_series(10, ["not", "an", "index"])
+def test_dataframe_single_column_expansion(sample_time_index, sample_period_index):
+    df = pd.DataFrame(
+        {"A": [1, 2, 3, 4, 5]},
+        index=sample_time_index
+    )
+
+    # Test expansion
+    result = DataConverter.as_dataarray(df, sample_time_index, sample_period_index)
+    assert result.shape == (3, 5)
+    assert np.all(result.values[:, 0] == 1)
+    assert np.all(result.isel(period=0).values == df.values.flatten())
 
 
-def test_invalid_data_type():
-    """Test invalid data type handling."""
-    with pytest.raises(TypeError, match="Unsupported data type"):
-        DataConverter.as_series({"a": 1}, (pd.Index([1, 2, 3]),))
+def test_ndarray_conversion(sample_time_index, sample_period_index):
+    # Test 1D array conversion (should expand into each period)
+    arr_1d = np.array([1, 2, 3, 4, 5])
+    result = DataConverter.as_dataarray(arr_1d, sample_time_index, sample_period_index)
+    assert result.shape == (3, 5)
+
+    # Test 1D array conversion (should expand into each timestep)
+    arr_1d_period = np.array([1, 2, 3])
+    result = DataConverter.as_dataarray(arr_1d_period, sample_time_index, sample_period_index)
+    assert result.shape == (3, 5)
+
+    # Test 2D array conversion
+    arr_2d = np.random.rand(3, 5)
+    result = DataConverter.as_dataarray(arr_2d, sample_time_index, sample_period_index)
+    assert result.shape == (3, 5)
 
 
-def test_shape_mismatch():
-    """Test shape mismatch between data and index."""
-    index1 = pd.Index(["A", "B"])
-    index2 = pd.Index(["X", "Y", "Z"])
-    data = np.array([[1, 2], [3, 4]])  # Wrong shape
+def test_invalid_inputs(sample_time_index, sample_period_index):
+    # Test invalid input type
+    with pytest.raises(TypeError):
+        DataConverter.as_dataarray("invalid_string", sample_time_index)
 
-    with pytest.raises(ValueError, match="Shape of data"):
-        DataConverter.as_series(data, (index1, index2))
+    # Test mismatched Series index
+    mismatched_series = pd.Series([1, 2, 3, 4, 5, 6], index=pd.date_range("2025-01-01", periods=6, freq="D"))
+    with pytest.raises(ValueError):
+        DataConverter.as_dataarray(mismatched_series, sample_time_index)
+
+    # Test mismatched DataFrame shape
+    df_invalid = pd.DataFrame(np.random.rand(4, 2), index=sample_time_index[:4], columns=sample_period_index[:2])
+    with pytest.raises(ValueError):
+        DataConverter.as_dataarray(df_invalid, sample_time_index, sample_period_index)
+
+    with pytest.raises(ValueError):
+        # Test mismatched Shape. Array should be (3, 5)
+        DataConverter.as_dataarray(np.random.rand(5, 3), sample_time_index, sample_period_index)
+
+
+if __name__ == "__main__":
+    pytest.main()
