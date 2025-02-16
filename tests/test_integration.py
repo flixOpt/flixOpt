@@ -72,12 +72,12 @@ class TestSimple(BaseTest):
 
         # test effect results
         self.assert_almost_equal_numeric(
-            results.effect_results['costs'].all_results['all']['all_sum'],
+            results.effect_results['costs'].all_results['total'],
             81.88394666666667,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            results.effect_results['CO2'].all_results['all']['all_sum'], 255.09184, 'CO2 doesnt match expected value'
+            results.effect_results['CO2'].all_results['total'], 255.09184, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
             results.component_results['Boiler'].variables_flat['Q_th__flow_rate'],
@@ -163,12 +163,10 @@ class TestSimple(BaseTest):
         es.add_components(aStromEinspeisung)
         es.add_components(aKWK)
 
-        time_indices = None
-
         print(es)
         es.visualize_network()
 
-        aCalc = fx.FullCalculation('Test_Sim', es, 'pyomo', time_indices)
+        aCalc = fx.FullCalculation('Test_Sim', es)
         aCalc.do_modeling()
 
         aCalc.solve(self.get_solver(), save_results=save_results)
@@ -294,8 +292,8 @@ class TestComponents(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            transmission.in1.model._investment.size.solution.item,
-            transmission.in2.model._investment.size.solution.item,
+            transmission.in1.model._investment.size.solution.item(),
+            transmission.in2.model._investment.size.solution.item(),
             'THe Investments are not equated correctly',
         )
 
