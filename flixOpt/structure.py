@@ -474,7 +474,7 @@ class ElementModel(Model):
         element : Element
             The element this model is created for.
         """
-        super().__init__(model, label_full=element.label_full)
+        super().__init__(model, label_full=element.label_full, label=element.label)
         self.element = element
 
 
