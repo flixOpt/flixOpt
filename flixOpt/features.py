@@ -205,7 +205,7 @@ class OnOffModel(Model):
         label_of_parent: str,
         defining_variables: List[linopy.Variable],
         defining_bounds: List[Tuple[Numeric, Numeric]],
-        previous_values: List[Numeric],
+        previous_values: List[Optional[Numeric]],
         label: str = 'OnOffModel',
     ):
         """
@@ -253,7 +253,6 @@ class OnOffModel(Model):
                 name=f'{self.label_full}__on',
                 binary=True,
                 coords=system_model.coords,
-                #TODO: previous_values=self._previous_on_values(CONFIG.modeling.EPSILON)
             ),
             'on',
         )
@@ -283,7 +282,6 @@ class OnOffModel(Model):
                     name=f'{self.label_full}__off',
                     binary=True,
                     coords=system_model.coords,
-                    # TODO: previous_values=1 - self._previous_on_values(CONFIG.modeling.EPSILON),
                 ),
                 'off'
             )
@@ -292,26 +290,22 @@ class OnOffModel(Model):
             self.add(self._model.add_constraints(self.on + self.off == 1, name=f'{self.label_full}__off'), 'off')
 
         if self.parameters.use_consecutive_on_hours:
-            # TODO: Implement consecutive_on_hours
-            if False:
-                self.consecutive_on_hours = self._get_duration_in_hours(
-                    'consecutiveOnHours',
-                    self.on,
-                    self.previous_consecutive_on_hours,
-                    self.parameters.consecutive_on_hours_min,
-                    self.parameters.consecutive_on_hours_max,
-                )
+            self.consecutive_on_hours = self._get_duration_in_hours(
+                'consecutive_on_hours',
+                self.on,
+                self.previous_consecutive_on_hours,
+                self.parameters.consecutive_on_hours_min,
+                self.parameters.consecutive_on_hours_max,
+            )
 
         if self.parameters.use_consecutive_off_hours:
-            # TODO: Implement consecutive_on_hours
-            if False:
-                self.consecutive_off_hours = self._get_duration_in_hours(
-                    'consecutiveOffHours',
-                    self.off,
-                    self.previous_consecutive_off_hours,
-                    self.parameters.consecutive_off_hours_min,
-                    self.parameters.consecutive_off_hours_max,
-                )
+            self.consecutive_off_hours = self._get_duration_in_hours(
+                'consecutive_off_hours',
+                self.off,
+                self.previous_consecutive_off_hours,
+                self.parameters.consecutive_off_hours_min,
+                self.parameters.consecutive_off_hours_max,
+            )
 
         if self.parameters.use_switch_on:
             self.switch_on = self.add(self._model.add_variables(
@@ -402,7 +396,6 @@ class OnOffModel(Model):
     def _get_duration_in_hours(
         self,
         variable_name: str,
-        variable_name_short: str,
         binary_variable: linopy.Variable,
         previous_duration: Skalar,
         minimum_duration: Optional[TimeSeries],
@@ -462,17 +455,17 @@ class OnOffModel(Model):
 
         duration_in_hours = self.add(self._model.add_variables(
             lower=0,
-            upper=maximum_duration if maximum_duration is not None else mega,
+            upper=maximum_duration.active_data if maximum_duration is not None else mega,
             coords=self._model.coords,
-            name=variable_name),
-            variable_name_short
+            name=f'{self.label_full}__{variable_name}'),
+            variable_name
         )
 
         # 1) eq: duration(t) - On(t) * BIG <= 0
         self.add(self._model.add_constraints(
             duration_in_hours <= binary_variable * mega,
-            name=f'{self.label_full}__{variable_name_short}_con1'),
-            f'{variable_name_short}_con1'
+            name=f'{self.label_full}__{variable_name}_con1'),
+            f'{variable_name}_con1'
         )
 
         # 2a) eq: duration(t) - duration(t-1) <= dt(t)
@@ -482,8 +475,8 @@ class OnOffModel(Model):
             duration_in_hours.isel(time=slice(1, None))
             ==
             duration_in_hours.isel(time=slice(None, -1)) + self._model.hours_per_step.isel(time=slice(None, -1)),
-            name=f'{self.label_full}__{variable_name_short}_con2a'),
-            f'{variable_name_short}_con2a'
+            name=f'{self.label_full}__{variable_name}_con2a'),
+            f'{variable_name}_con2a'
         )
 
         # 2b) eq: dt(t) - BIG * ( 1-On(t) ) <= duration(t) - duration(t-1)
@@ -495,8 +488,8 @@ class OnOffModel(Model):
             (binary_variable + 1) * mega + self._model.hours_per_step.isel(time=slice(None, -1))
             <=
             duration_in_hours.isel(time=slice(1, None)) - duration_in_hours.isel(time=slice(None, -1)),
-            name=f'{self.label_full}__{variable_name_short}_con2b'),
-            f'{variable_name_short}_con2b'
+            name=f'{self.label_full}__{variable_name}_con2b'),
+            f'{variable_name}_con2b'
         )
 
         # 3) check minimum_duration before switchOff-step
@@ -512,8 +505,8 @@ class OnOffModel(Model):
                 >=
                 (binary_variable.isel(time=slice(None, -1)) - binary_variable.isel(time=slice(1, None)))
                 * minimum_duration.isel(time=slice(None, -1)),
-                name=f'{self.label_full}__{variable_name_short}_minimum_duration'),
-                f'{variable_name_short}_minimum_duration'
+                name=f'{self.label_full}__{variable_name}_minimum_duration'),
+                f'{variable_name}_minimum_duration'
             )
 
             if previous_duration < minimum_duration.isel(time=0):
@@ -522,16 +515,16 @@ class OnOffModel(Model):
                 # eq: On(t=0) = 1
                 self.add(self._model.add_constraints(
                     binary_variable.isel(time=0) == 1,
-                    name=f'{self.label_full}__{variable_name_short}_minimum_inital'),
-                    f'{variable_name_short}_minimum_inital'
+                    name=f'{self.label_full}__{variable_name}_minimum_inital'),
+                    f'{variable_name}_minimum_inital'
                 )
 
             # 4) first index:
             # eq: duration(t=0)= dt(0) * On(0)
             self.add(self._model.add_constraints(
                 duration_in_hours.isel(time=0) == self._model.hours_per_step.isel(time=0) * binary_variable.isel(time=0),
-                name=f'{self.label_full}__{variable_name_short}_initial'),
-                f'{variable_name_short}_initial'
+                name=f'{self.label_full}__{variable_name}_initial'),
+                f'{variable_name}_initial'
             )
 
         return duration_in_hours
@@ -616,22 +609,22 @@ class OnOffModel(Model):
         return 1 - self.previous_on_values
 
     @property
-    def previous_consecutive_on_hours(self) -> np.ndarray:
+    def previous_consecutive_on_hours(self) -> Skalar:
         return self.compute_consecutive_duration(self.previous_on_values, self._model.hours_per_step)
 
     @property
-    def previous_consecutive_off_hours(self) -> np.ndarray:
+    def previous_consecutive_off_hours(self) -> Skalar:
         return self.compute_consecutive_duration(self.previous_off_values, self._model.hours_per_step)
 
     @staticmethod
-    def compute_previous_on_values(previous_values: List[Numeric], epsilon: float = 1e-5) -> np.ndarray:
+    def compute_previous_on_values(previous_values: List[Optional[Numeric]], epsilon: float = 1e-5) -> np.ndarray:
         """
         Computes the previous 'on' states of defining variables as a binary array from their previous values.
 
         Parameters:
         ----------
         previous_values: List[Numeric]
-            List of previous values of the defining variables. In Range [0, inf]
+            List of previous values of the defining variables. In Range [0, inf] or None (ignored)
         epsilon : float, optional
             Tolerance for equality to determine "off" state, default is 1e-5.
 
@@ -645,7 +638,7 @@ class OnOffModel(Model):
         if not previous_values:
             return np.array([0])
         else:  # Convert to 2D-array and compute binary on/off states
-            previous_values = np.array(previous_values)
+            previous_values = np.array([values for values in previous_values if values is not None])  # Filter out None
             if previous_values.ndim > 1:
                 return np.any(~np.isclose(previous_values, 0, atol=epsilon), axis=0).astype(int)
             else:
@@ -653,7 +646,7 @@ class OnOffModel(Model):
 
     @staticmethod
     def compute_consecutive_duration(
-        binary_values: Union[int, np.ndarray],
+        binary_values: Numeric,
         hours_per_timestep: Union[int, float, np.ndarray]
     ) -> Skalar:
         """
