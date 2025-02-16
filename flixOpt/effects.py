@@ -15,7 +15,7 @@ import linopy
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries
 from .features import ShareAllocationModel
 from .math_modeling import Equation, Variable
-from .structure import Element, ElementModel, SystemModel, InterfaceModel
+from .structure import Element, ElementModel, SystemModel, Model
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -271,13 +271,13 @@ def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[Effe
         None: effect_values_user} if effect_values_user is not None else None
 
 
-class EffectCollection(InterfaceModel):
+class EffectCollection(Model):
     """
     Handling all Effects
     """
 
     def __init__(self, model: SystemModel, effects: List[Effect]):
-        super().__init__(model, label='Effects')
+        super().__init__(model, label_full='Effects')
         self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
@@ -309,7 +309,7 @@ class EffectCollection(InterfaceModel):
         self._model = system_model
         for effect in self.effects.values():
             effect.create_model(self._model)
-        self.penalty = self.add(ShareAllocationModel(self._model,shares_are_time_series=False, label='penalty'))
+        self.penalty = self.add(ShareAllocationModel(self._model,shares_are_time_series=False, label_full='penalty'))
         for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
             model.do_modeling(system_model)
 

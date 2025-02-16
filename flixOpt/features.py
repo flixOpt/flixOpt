@@ -852,12 +852,13 @@ class ShareAllocationModel(Model):
         shares_are_time_series: bool,
         label_of_parent: Optional[str] = None,
         label: Optional[str] = None,
+        label_full: Optional[str] = None,
         total_max: Optional[Skalar] = None,
         total_min: Optional[Skalar] = None,
         max_per_hour: Optional[Numeric] = None,
         min_per_hour: Optional[Numeric] = None,
     ):
-        super().__init__(model, label_of_parent=label_of_parent, label=label)
+        super().__init__(model, label_of_parent=label_of_parent, label=label, label_full=label_full)
         if not shares_are_time_series:  # If the condition is True
             assert max_per_hour is None and min_per_hour is None, (
                 'Both max_per_hour and min_per_hour cannot be used when shares_are_time_series is False'

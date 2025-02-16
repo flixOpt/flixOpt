@@ -295,20 +295,20 @@ class Element(Interface):
 class Model:
     """Stores Variables and Constraints"""
 
-    def __init__(self, model: SystemModel, label_of_parent: str, label: str, label_full: Optional[str] = None):
+    def __init__(self, model: SystemModel, label_of_parent: Optional[str] = None, label: Optional[str] = None, label_full: Optional[str] = None):
         """
         Parameters
         ----------
-        interface : Interface
-            The interface this model is created for.
         label_of_parent : str
             The label of the parent (Element). Used to construct the full label of the model.
         label : str
-            Used to construct the label of the model. If None, the interface label is used.
+            The label of the model. Used to construct the full label of the model.
         label_full : str
-            The full label of the model. If None, the full label is constructed using the other given labels.
+            The full label of the model. Can overwrite the full label constructed from label_of_parent and label.
         """
-
+        if not label_full and not (label_of_parent and label):
+            raise ValueError('Either label_full or label_of_parent and label must be set. '
+                             'Got {label_full=}, {label_of_parent=}, {label=}')
         self._model = model
         self._label = label
         self._label_of_parent = label_of_parent
@@ -389,11 +389,15 @@ class Model:
 
     @property
     def label(self) -> str:
-        return self._label
+        return self._label if self._label is not None else self.label_full
 
     @property
     def label_full(self) -> str:
         return self._label_full or f'{self._label_of_parent}__{self.label}'
+
+    @property
+    def label_of_parent(self) -> str:
+        return self._label_of_parent or self.label_full
 
     @property
     def variables(self) -> linopy.Variables:
@@ -470,7 +474,7 @@ class ElementModel(Model):
         element : Element
             The element this model is created for.
         """
-        super().__init__(model, label=element.label, label_of_parent=element.label_full)
+        super().__init__(model, label_full=element.label_full)
         self.element = element
 
 
