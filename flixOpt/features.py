@@ -555,7 +555,7 @@ class OnOffModel(Model):
             self._model.add_constraints(
                 self.switch_on.isel(time=0) - self.switch_off.isel(time=0)
                 ==
-                self.on.isel(time=0), #TODO:  - self.on.previous_values[-1]
+                self.on.isel(time=0) - self.previous_on_values[-1],
                 name=f'{self.label_full}__initial_switch_con'
             ),
             'initial_switch_con'
@@ -604,7 +604,7 @@ class OnOffModel(Model):
 
     @property
     def previous_on_values(self) -> np.ndarray:
-        return self.compute_previous_on_values(self._previous_values)
+        return self.compute_previous_on_states(self._previous_values)
 
     @property
     def previous_off_values(self) -> np.ndarray:
@@ -619,9 +619,9 @@ class OnOffModel(Model):
         return self.compute_consecutive_duration(self.previous_off_values, self._model.hours_per_step)
 
     @staticmethod
-    def compute_previous_on_values(previous_values: List[Optional[Numeric]], epsilon: float = 1e-5) -> np.ndarray:
+    def compute_previous_on_states(previous_values: List[Optional[Numeric]], epsilon: float = 1e-5) -> np.ndarray:
         """
-        Computes the previous 'on' states of defining variables as a binary array from their previous values.
+        Computes the previous 'on' states {0, 1} of defining variables as a binary array from their previous values.
 
         Parameters:
         ----------
@@ -637,7 +637,7 @@ class OnOffModel(Model):
             Returns `array([0])` if no previous values are available.
         """
 
-        if not previous_values:
+        if not previous_values or all([val is None for val in previous_values]):
             return np.array([0])
         else:  # Convert to 2D-array and compute binary on/off states
             previous_values = np.array([values for values in previous_values if values is not None])  # Filter out None
