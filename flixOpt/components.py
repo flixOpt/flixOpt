@@ -314,8 +314,8 @@ class Transmission(Component):
                     'Please use Flow in1. The size of in2 is equal to in1. THis is handled internally'
                 )
 
-    def create_model(self) -> 'TransmissionModel':
-        self.model = TransmissionModel(self)
+    def create_model(self, model) -> 'TransmissionModel':
+        self.model = TransmissionModel(model, self)
         return self.model
 
     def transform_data(self, flow_system: 'FlowSystem') -> None:
@@ -325,8 +325,8 @@ class Transmission(Component):
 
 
 class TransmissionModel(ComponentModel):
-    def __init__(self, element: Transmission):
-        super().__init__(element)
+    def __init__(self, model: SystemModel, element: Transmission):
+        super().__init__(model, element)
         self.element: Transmission = element
         self.on_off: Optional[OnOffModel] = None
 
@@ -348,30 +348,34 @@ class TransmissionModel(ComponentModel):
         super().do_modeling(system_model)
 
         # first direction
-        self.create_transmission_equation('direction_1', self.element.in1, self.element.out1)
+        self.create_transmission_equation('dir1', self.element.in1, self.element.out1)
 
         # second direction:
         if self.element.in2 is not None:
-            self.create_transmission_equation('direction_2', self.element.in2, self.element.out2)
+            self.create_transmission_equation('dir2', self.element.in2, self.element.out2)
 
         # equate size of both directions
         if isinstance(self.element.in1.size, InvestParameters) and self.element.in2 is not None:
             # eq: in1.size = in2.size
-            eq_equal_size = create_equation('equal_size_in_both_directions', self, 'eq')
-            eq_equal_size.add_summand(self.element.in1.model._investment.size, 1)
-            eq_equal_size.add_summand(self.element.in2.model._investment.size, -1)
+            self.add(self._model.add_constraints(
+                self.element.in1.model._investment.size == self.element.in2.model._investment.size,
+                name=f'{self.label_full}__same_size'),
+                'same_size'
+            )
 
-    def create_transmission_equation(self, name: str, in_flow: Flow, out_flow: Flow) -> Equation:
+    def create_transmission_equation(self, name: str, in_flow: Flow, out_flow: Flow) -> linopy.Constraint:
         """Creates an Equation for the Transmission efficiency and adds it to the model"""
-        # first direction
-        # eq: in(t)*(1-loss_rel(t)) = out(t) + on(t)*loss_abs(t)
-        eq_transmission = create_equation(name, self, 'eq')
-        efficiency = 1 if self.element.relative_losses is None else (1 - self.element.relative_losses.active_data)
-        eq_transmission.add_summand(in_flow.model.flow_rate, efficiency)
-        eq_transmission.add_summand(out_flow.model.flow_rate, -1)
+        # eq: out(t) + on(t)*loss_abs(t) = in(t)*(1 - loss_rel(t))
+        con_transmission = self.add(self._model.add_constraints(
+            out_flow.model.flow_rate == -in_flow.model.flow_rate * (self.element.relative_losses.active_data - 1),
+            name=f'{self.label_full}__{name}'),
+            name
+        )
+
         if self.element.absolute_losses is not None:
-            eq_transmission.add_summand(in_flow.model.on_off.on, -1 * self.element.absolute_losses.active_data)
-        return eq_transmission
+            con_transmission.lhs += in_flow.model.on_off.on * self.element.absolute_losses.active_data
+
+        return con_transmission
 
 
 class LinearConverterModel(ComponentModel):
