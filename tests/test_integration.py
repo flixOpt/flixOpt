@@ -40,8 +40,7 @@ class TestSimple(BaseTest):
 
         self.Q_th_Last = np.array([30.0, 0.0, 90.0, 110, 110, 20, 20, 20, 20])
         self.p_el = 1 / 1000 * np.array([80.0, 80.0, 80.0, 80, 80, 80, 80, 80, 80])
-        self.aTimeSeries = datetime.datetime(2020, 1, 1) + np.arange(len(self.Q_th_Last)) * datetime.timedelta(hours=1)
-        self.aTimeSeries = self.aTimeSeries.astype('datetime64')
+        self.timesteps = pd.date_range('2020-01-01', periods=len(self.Q_th_Last), freq='h', name='time')
 
     def test_model(self):
         calculation = self.model()
@@ -157,7 +156,7 @@ class TestSimple(BaseTest):
             'Einspeisung', sink=fx.Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * self.p_el)
         )
 
-        es = fx.FlowSystem(self.aTimeSeries, last_time_step_hours=None)
+        es = fx.FlowSystem(self.timesteps)
         es.add_components(aSpeicher)
         es.add_effects(costs, CO2)
         es.add_components(aBoiler, aWaermeLast, aGasTarif)
@@ -182,10 +181,7 @@ class TestComponents(BaseTest):
         super().setUp()
         self.Q_th_Last = np.array([np.random.random() for _ in range(10)]) * 180
         self.p_el = (np.array([np.random.random() for _ in range(10)]) + 0.5) / 1.5 * 50
-        self.datetime_array = datetime.datetime(2020, 1, 1) + np.arange(len(self.Q_th_Last)) * datetime.timedelta(
-            hours=1
-        )
-        self.datetime_array = self.datetime_array.astype('datetime64')
+        self.timesteps = pd.date_range('2020-01-01', periods=len(self.Q_th_Last), freq='h', name='time')
 
     def create_basic_elements(self):
         self.busses = {label: fx.Bus(label) for label in ['Strom', 'Fernwärme', 'Gas']}
@@ -205,7 +201,7 @@ class TestComponents(BaseTest):
 
     def test_transmission_basic(self):
         self.create_basic_elements()
-        flow_system = fx.FlowSystem(self.datetime_array, last_time_step_hours=None)
+        flow_system = fx.FlowSystem(self.timesteps)
         flow_system.add_elements(*(list(self.effects.values()) + list(self.components.values())))
         extra_bus = fx.Bus('Wärme lokal')
         boiler = fx.linear_converters.Boiler(
@@ -237,7 +233,7 @@ class TestComponents(BaseTest):
 
     def test_transmission_advanced(self):
         self.create_basic_elements()
-        flow_system = fx.FlowSystem(self.datetime_array, last_time_step_hours=None)
+        flow_system = fx.FlowSystem(self.timesteps)
         flow_system.add_elements(*(list(self.effects.values()) + list(self.components.values())))
         extra_bus = fx.Bus('Wärme lokal')
 
@@ -307,10 +303,10 @@ class TestComponents(BaseTest):
         self.busses = None
         self.effects = None
         self.components = None
-        self.datetime_array = None
+        self.timesteps = None
         self.Q_th_Last = None
         self.p_el = None
-        self.datetime_array = None
+        self.timesteps = None
 
 
 class TestComplex(BaseTest):
@@ -318,8 +314,7 @@ class TestComplex(BaseTest):
         super().setUp()
         self.Q_th_Last = np.array([30.0, 0.0, 90.0, 110, 110, 20, 20, 20, 20])
         self.P_el_Last = np.array([40.0, 40.0, 40.0, 40, 40, 40, 40, 40, 40])
-        self.aTimeSeries = datetime.datetime(2020, 1, 1) + np.arange(len(self.Q_th_Last)) * datetime.timedelta(hours=1)
-        self.aTimeSeries = self.aTimeSeries.astype('datetime64')
+        self.timesteps = pd.date_range('2020-01-01', periods=len(self.Q_th_Last), freq='h', name='time')
         self.excessCosts = None
         self.useCHPwithLinearSegments = False
 
@@ -585,7 +580,7 @@ class TestComplex(BaseTest):
             'Einspeisung', sink=fx.Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last))
         )
 
-        es = fx.FlowSystem(self.aTimeSeries, last_time_step_hours=None)
+        es = fx.FlowSystem(self.timesteps)
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
 
@@ -689,7 +684,7 @@ class TestComplex(BaseTest):
             'Einspeisung', sink=fx.Flow('P_el', bus=Strom, effects_per_flow_hour=-1 * np.array(self.P_el_Last))
         )
 
-        es = fx.FlowSystem(self.aTimeSeries, last_time_step_hours=None)
+        es = fx.FlowSystem(self.timesteps)
         es.add_effects(costs, CO2, PE)
         es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
         es.add_components(aSpeicher)
@@ -709,7 +704,7 @@ class TestModelingTypes(BaseTest):
         super().setUp()
         self.Q_th_Last = np.array([30.0, 0.0, 90.0, 110, 110, 20, 20, 20, 20])
         self.p_el = 1 / 1000 * np.array([80.0, 80.0, 80.0, 80, 80, 80, 80, 80, 80])
-        self.aTimeSeries = (
+        self.timesteps = (
             datetime.datetime(2020, 1, 1) + np.arange(len(self.Q_th_Last)) * datetime.timedelta(hours=1)
         ).astype('datetime64')
         self.max_emissions_per_hour = 1000
@@ -754,9 +749,7 @@ class TestModelingTypes(BaseTest):
             data['Strompr.€/MWh'].values,
             data['Gaspr.€/MWh'].values,
         )
-        aTimeSeries = (
-            datetime.datetime(2020, 1, 1) + np.arange(len(P_el_Last)) * datetime.timedelta(hours=0.25)
-        ).astype('datetime64')
+        timesteps = pd.date_range('2020-01-01', periods=len(P_el_Last), freq='h', name='time')
 
         Strom, Fernwaerme, Gas, Kohle = fx.Bus('Strom'), fx.Bus('Fernwärme'), fx.Bus('Gas'), fx.Bus('Kohle')
         costs, CO2, PE = (
@@ -830,7 +823,7 @@ class TestModelingTypes(BaseTest):
             ),
         )
 
-        es = fx.FlowSystem(aTimeSeries, last_time_step_hours=None)
+        es = fx.FlowSystem(timesteps)
         es.add_effects(costs, CO2, PE)
         es.add_components(
             aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher
