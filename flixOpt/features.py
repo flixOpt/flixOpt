@@ -316,8 +316,7 @@ class OnOffModel(Model):
 
             self.switch_on_nr = self.add(self._model.add_variables(
                 upper=self.parameters.switch_on_total_max if self.parameters.switch_on_total_max is not None else np.inf,
-                name=f'{self.label_full}__switch_on_nr',
-                coords=system_model.coords),
+                name=f'{self.label_full}__switch_on_nr'),
                 'switch_on_nr')
 
             self._add_switch_constraints(system_model)
