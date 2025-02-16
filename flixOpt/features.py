@@ -35,7 +35,7 @@ class InvestmentModel(Model):
         defining_variable: [linopy.Variable],
         relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
         fixed_relative_profile: Optional[Numeric] = None,
-        label: Optional[str] = 'Investment',
+        label: Optional[str] = None,
         on_variable: Optional[linopy.Variable] = None,
     ):
         """

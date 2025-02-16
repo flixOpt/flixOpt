@@ -394,15 +394,13 @@ class Model:
 
         for sub_model in self.sub_models:
             sub_solution = sub_model.solution_structured(use_numpy)
-
             if sub_model.label is None:
-                # Ensure no key conflicts when merging
-                for key, value in sub_solution.items():
-                    if key in results:
-                        raise ValueError(f"Key conflict: '{key}' already exists in the results of {self.label_full}.")
-                    results[key] = value
+                if any(key in results for key in sub_solution):
+                    conflict_keys = [key for key in sub_solution if key in results]
+                    raise ValueError(f"Key conflict in {self.label_full}: {conflict_keys}")
+                results.update(sub_solution)
             else:
-                results[sub_model.label] = sub_solution  # Keep under its label
+                results[sub_model.label] = sub_solution
 
         return results
 
