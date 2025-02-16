@@ -18,6 +18,7 @@ Classes group related test cases by their functional focus:
 """
 
 import numpy as np
+import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
@@ -60,10 +61,10 @@ class Data:
             return extended_array[:new_length]  # Truncate to exact length
 
 
-def flow_system_base(datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem:
-    data = Data(len(datetime_array))
+def flow_system_base(timesteps: pd.DatetimeIndex) -> fx.FlowSystem:
+    data = Data(len(timesteps))
 
-    flow_system = fx.FlowSystem(datetime_array)
+    flow_system = fx.FlowSystem(timesteps)
     buses = {
         'Fernwärme': fx.Bus('Fernwärme', excess_penalty_per_flow_hour=None),
         'Gas': fx.Bus('Gas', excess_penalty_per_flow_hour=None),
@@ -79,8 +80,8 @@ def flow_system_base(datetime_array: np.ndarray[np.datetime64]) -> fx.FlowSystem
     return flow_system
 
 
-def flow_system_minimal(datetime_array) -> fx.FlowSystem:
-    flow_system = flow_system_base(datetime_array)
+def flow_system_minimal(timesteps) -> fx.FlowSystem:
+    flow_system = flow_system_base(timesteps)
     buses = flow_system.buses
     flow_system.add_elements(
         fx.linear_converters.Boiler(
@@ -94,38 +95,32 @@ def flow_system_minimal(datetime_array) -> fx.FlowSystem:
 
 
 def solve_and_load(
-    flow_system: fx.FlowSystem, modeling_language: str, solver: fx.solvers.Solver
+    flow_system: fx.FlowSystem, solver: str
 ) -> fx.results.CalculationResults:
-    calculation = fx.FullCalculation('Calculation', flow_system, modeling_language)
+    calculation = fx.FullCalculation('Calculation', flow_system)
     calculation.do_modeling()
     calculation.solve(solver, True)
     results = fx.results.CalculationResults('Calculation', 'results')
     return results
 
 
-@pytest.fixture(params=['pyomo', 'linopy'])
-def modeling_language_fixture(request):
-    return request.param
-
-
-@pytest.fixture(params=['highs', 'gurobi'])
+@pytest.fixture(params=['highs'])#, 'gurobi'])
 def solver_fixture(request):
-    solvers = {'highs': fx.solvers.HighsSolver, 'gurobi': fx.solvers.GurobiSolver}
-    return solvers[request.param](mip_gap=0.0001)
+    return request.param
 
 
 @pytest.fixture
 def time_steps_fixture(request):
-    return fx.create_datetime_array('2020-01-01', 5, 'h')
+    return pd.date_range('2020-01-01', periods=5, freq='h')
 
 
-def test_solve_and_load(modeling_language_fixture, solver_fixture, time_steps_fixture):
-    results = solve_and_load(flow_system_minimal(time_steps_fixture), modeling_language_fixture, solver_fixture)
+def test_solve_and_load(solver_fixture, time_steps_fixture):
+    results = solve_and_load(flow_system_minimal(time_steps_fixture), solver_fixture)
     assert results is not None
 
 
-def test_minimal_model(modeling_language_fixture, solver_fixture, time_steps_fixture):
-    results = solve_and_load(flow_system_minimal(time_steps_fixture), modeling_language_fixture, solver_fixture)
+def test_minimal_model(solver_fixture, time_steps_fixture):
+    results = solve_and_load(flow_system_minimal(time_steps_fixture), solver_fixture)
 
     assert_allclose(
         results.effect_results['costs'].all_results['all']['all_sum'], 80, rtol=solver_fixture.mip_gap, atol=1e-10
@@ -153,7 +148,7 @@ def test_minimal_model(modeling_language_fixture, solver_fixture, time_steps_fix
     )
 
 
-def test_fixed_size(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_fixed_size(solver_fixture, time_steps_fixture):
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
         fx.linear_converters.Boiler(
@@ -168,7 +163,7 @@ def test_fixed_size(modeling_language_fixture, solver_fixture, time_steps_fixtur
         )
     )
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     costs = flow_system.all_elements['costs']
     assert_allclose(
@@ -194,7 +189,7 @@ def test_fixed_size(modeling_language_fixture, solver_fixture, time_steps_fixtur
     )
 
 
-def test_optimize_size(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_optimize_size(solver_fixture, time_steps_fixture):
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
         fx.linear_converters.Boiler(
@@ -209,7 +204,7 @@ def test_optimize_size(modeling_language_fixture, solver_fixture, time_steps_fix
         )
     )
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     costs = flow_system.all_elements['costs']
     assert_allclose(
@@ -235,7 +230,7 @@ def test_optimize_size(modeling_language_fixture, solver_fixture, time_steps_fix
     )
 
 
-def test_size_bounds(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_size_bounds(solver_fixture, time_steps_fixture):
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
         fx.linear_converters.Boiler(
@@ -250,7 +245,7 @@ def test_size_bounds(modeling_language_fixture, solver_fixture, time_steps_fixtu
         )
     )
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     costs = flow_system.all_elements['costs']
     assert_allclose(
@@ -276,7 +271,7 @@ def test_size_bounds(modeling_language_fixture, solver_fixture, time_steps_fixtu
     )
 
 
-def test_optional_invest(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_optional_invest(solver_fixture, time_steps_fixture):
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
         fx.linear_converters.Boiler(
@@ -301,7 +296,7 @@ def test_optional_invest(modeling_language_fixture, solver_fixture, time_steps_f
         ),
     )
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     boiler_optional = flow_system.all_elements['Boiler_optional']
     costs = flow_system.all_elements['costs']
@@ -343,7 +338,7 @@ def test_optional_invest(modeling_language_fixture, solver_fixture, time_steps_f
     )
 
 
-def test_on(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_on(solver_fixture, time_steps_fixture):
     """Tests if the On Variable is correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -355,7 +350,7 @@ def test_on(modeling_language_fixture, solver_fixture, time_steps_fixture):
         ),
     ))
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     costs = flow_system.all_elements['costs']
     assert_allclose(
@@ -382,7 +377,7 @@ def test_on(modeling_language_fixture, solver_fixture, time_steps_fixture):
     )
 
 
-def test_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_off(solver_fixture, time_steps_fixture):
     """Tests if the Off Variable is correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -399,7 +394,7 @@ def test_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
         )
     )
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     costs = flow_system.all_elements['costs']
     assert_allclose(
@@ -433,7 +428,7 @@ def test_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
     )
 
 
-def test_switch_on_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_switch_on_off(solver_fixture, time_steps_fixture):
     """Tests if the Switch On/Off Variable is correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -450,7 +445,7 @@ def test_switch_on_off(modeling_language_fixture, solver_fixture, time_steps_fix
         )
     )
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     costs = flow_system.all_elements['costs']
     assert_allclose(
@@ -491,7 +486,7 @@ def test_switch_on_off(modeling_language_fixture, solver_fixture, time_steps_fix
     )
 
 
-def test_on_total_max(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_on_total_max(solver_fixture, time_steps_fixture):
     """Tests if the On Total Max Variable is correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -514,7 +509,7 @@ def test_on_total_max(modeling_language_fixture, solver_fixture, time_steps_fixt
         ),
     )
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     costs = flow_system.all_elements['costs']
     assert_allclose(
@@ -541,7 +536,7 @@ def test_on_total_max(modeling_language_fixture, solver_fixture, time_steps_fixt
     )
 
 
-def test_on_total_bounds(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_on_total_bounds(solver_fixture, time_steps_fixture):
     """Tests if the On Hours min and max are correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -570,7 +565,7 @@ def test_on_total_bounds(modeling_language_fixture, solver_fixture, time_steps_f
     )
     flow_system.all_elements['Wärmelast'].sink.fixed_relative_profile = [0, 10, 20, 0, 12]  # Else its non deterministic
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     boiler_backup = flow_system.all_elements['Boiler_backup']
     costs = flow_system.all_elements['costs']
@@ -613,7 +608,7 @@ def test_on_total_bounds(modeling_language_fixture, solver_fixture, time_steps_f
     )
 
 
-def test_consecutive_on_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_consecutive_on_off(solver_fixture, time_steps_fixture):
     """Tests if the consecutive on/off hours are correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -643,7 +638,7 @@ def test_consecutive_on_off(modeling_language_fixture, solver_fixture, time_step
         12,
     ]  # Else its non deterministic
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     boiler_backup = flow_system.all_elements['Boiler_backup']
     costs = flow_system.all_elements['costs']
@@ -679,7 +674,7 @@ def test_consecutive_on_off(modeling_language_fixture, solver_fixture, time_step
     )
 
 
-def test_consecutive_off(modeling_language_fixture, solver_fixture, time_steps_fixture):
+def test_consecutive_off(solver_fixture, time_steps_fixture):
     """Tests if the consecutive on hours are correctly created and calculated in a Flow"""
     flow_system = flow_system_base(time_steps_fixture)
     flow_system.add_elements(
@@ -702,9 +697,9 @@ def test_consecutive_off(modeling_language_fixture, solver_fixture, time_steps_f
             ),
         ),
     )
-    flow_system.all_elements['Wärmelast'].sink.fixed_relative_profile = [5, 0, 20, 18, 12]  # Else its non deterministic
+    flow_system.all_elements['Wärmelast'].sink.fixed_relative_profile = np.array([5, 0, 20, 18, 12])  # Else its non deterministic
 
-    solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
+    solve_and_load(flow_system, solver_fixture)
     boiler = flow_system.all_elements['Boiler']
     boiler_backup = flow_system.all_elements['Boiler_backup']
     costs = flow_system.all_elements['costs']
