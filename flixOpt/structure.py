@@ -391,10 +391,20 @@ class Model:
             self._variables_short[var_name]: var.values
             for var_name, var in self.variables.solution.data_vars.items()
         }
-        return {
-            **results,
-            **{sub_model.label: sub_model.solution_structured(use_numpy) for sub_model in self.sub_models}
-        }
+
+        for sub_model in self.sub_models:
+            sub_solution = sub_model.solution_structured(use_numpy)
+
+            if sub_model.label is None:
+                # Ensure no key conflicts when merging
+                for key, value in sub_solution.items():
+                    if key in results:
+                        raise ValueError(f"Key conflict: '{key}' already exists in the results of {self.label_full}.")
+                    results[key] = value
+            else:
+                results[sub_model.label] = sub_solution  # Keep under its label
+
+        return results
 
     @property
     def label(self) -> str:
