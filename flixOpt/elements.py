@@ -317,7 +317,7 @@ class FlowModel(ElementModel):
             self.add(
                 self._model.add_constraints(
                     self.flow_rate == self.element.fixed_relative_profile.active_data,
-                    name=f'{self.element.label}_fix_flow_rate'
+                    name=f'{self.label_full}_fix_flow_rate'
                 ),
                 'flow_rate (fix)'
             )
