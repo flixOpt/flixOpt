@@ -244,10 +244,29 @@ class Element(Interface):
     def solution_numeric(
         self,
         use_numpy: bool = True,
-        all_variables: bool = True
+        all_variables: bool = True,
+        decimals: Optional[int] = None
     ) -> Union[Dict[str, np.ndarray], Dict[str, Union[List, int, float]]]:
+        """
+        Returns the solution of the element as a dictionary of numeric values.
+
+        Parameters:
+        -----------
+        use_numpy bool:
+            Whether to return the solution as a numpy array. Defaults to True.
+            If True, numeric numpy arrays (`np.ndarray`) are preserved as-is.
+            If False, they are converted to lists.
+        all_variables bool:
+            Whether to return the solution for all variables (including sub-models) or only the variables of the element.
+            Defaults to True.
+        decimals int:
+            Number of decimal places to round the solution to. Defaults to None.
+        """
         vars = self.model.all_variables if all_variables else self.model.variables
-        results = {var: vars.solution[var].values for var in vars.solution.data_vars}
+        if decimals is not None:
+            results = {var: vars.solution[var].round(decimals).values for var in vars.solution.data_vars}
+        else:
+            results = {var: vars.solution[var].values for var in vars.solution.data_vars}
         if use_numpy:
             return {k: v.item() if v.ndim == 0 else v for k, v in results.items()}
         return {k: v.tolist() for k, v in results.items()}
