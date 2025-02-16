@@ -92,13 +92,6 @@ def apply_formating(
     return '\n'.join(lines)
 
 
-def label_is_valid(label: str) -> bool:
-    """Function to make sure '__' is reserved for internal splitting of labels"""
-    if label.startswith('_') or label.endswith('_') or '__' in label:
-        return False
-    return True
-
-
 def convert_numeric_lists_to_arrays(
     d: Union[Dict[str, Any], List[Any], tuple],
 ) -> Union[Dict[str, Any], List[Any], tuple]:

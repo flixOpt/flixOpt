@@ -207,7 +207,7 @@ class Interface:
             return data
 
         time_series = TimeSeries.from_datasource(
-            name=f'{element.label_full}__{name}',
+            name=f'{element.label_full}|{name}',
             data=data.data if isinstance(data, TimeSeriesData) else data,
             timesteps=timesteps,
             periods=periods,
@@ -231,12 +231,7 @@ class Element(Interface):
         meta_data : Optional[Dict]
             used to store more information about the element. Is not used internally, but saved in the results
         """
-        if not utils.label_is_valid(label):
-            logger.critical(
-                f"'{label}' cannot be used as a label. Leading or Trailing '_' and '__' are reserved. "
-                f'Use any other symbol instead'
-            )
-        self.label = label
+        self.label = Element._valid_label(label)
         self.meta_data = meta_data if meta_data is not None else {}
         self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
@@ -291,6 +286,23 @@ class Element(Interface):
     ) -> Optional[TimeSeries]:
         return super()._create_time_series(self, name, data, timesteps, periods)
 
+    @staticmethod
+    def _valid_label(label: str) -> str:
+        """
+        Checks if the label is valid. If not, it is replaced by the default label
+
+        Raises
+        ------
+        ValueError
+            If the label is not valid
+        """
+        not_allowed = ['(', ')', '|', '->']
+        if any([sign in label for sign in not_allowed]):
+            raise ValueError(
+                f'Label "{label}" is not valid. Labels cannot contain the following characters: {not_allowed}'
+                f'Use any other symbol instead'
+            )
+        return label
 
 class Model:
     """Stores Variables and Constraints"""
@@ -394,7 +406,7 @@ class Model:
         if self._label_full is not None:
             return self._label_full
         elif self._label is not None:
-            return f'{self.label_of_element}__{self.label}'
+            return f'{self.label_of_element}|{self.label}'
         return self.label_of_element
 
     @property

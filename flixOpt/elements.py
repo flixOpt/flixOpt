@@ -275,7 +275,7 @@ class Flow(Element):
     def label_full(self) -> str:
         # Wenn im Erstellungsprozess comp noch nicht bekannt:
         comp_label = 'unknownComp' if self.comp is None else self.comp.label
-        return f'{self.label} ({comp_label})'
+        return f'{comp_label} ({self.label})'
 
     @property  # Richtung
     def is_input_in_comp(self) -> bool:
@@ -309,7 +309,7 @@ class FlowModel(ElementModel):
                 lower=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
                 upper=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else np.inf,
                 coords=self._model.coords,
-                name=f'{self.label_full}__flow_rate'
+                name=f'{self.label_full}|flow_rate'
             ),
             'flow_rate'
         )
@@ -317,7 +317,7 @@ class FlowModel(ElementModel):
             self.add(
                 self._model.add_constraints(
                     self.flow_rate == self.element.fixed_relative_profile.active_data,
-                    name=f'{self.label_full}_fix_flow_rate'
+                    name=f'{self.label_full}|fix_flow_rate'
                 ),
                 'flow_rate (fix)'
             )
@@ -358,7 +358,7 @@ class FlowModel(ElementModel):
                 lower=self.element.flow_hours_total_min if self.element.flow_hours_total_min is not None else -np.inf,
                 upper=self.element.flow_hours_total_max if self.element.flow_hours_total_max is not None else np.inf,
                 coords=None,
-                name=f'{self.label_of_element}__total_flow_hours'
+                name=f'{self.label_full}|total_flow_hours'
             ),
             'total_flow_hours'
         )
@@ -366,7 +366,7 @@ class FlowModel(ElementModel):
         self.add(
             self._model.add_constraints(
                 self.total_flow_hours == (self.flow_rate * self._model.hours_per_step).sum(),
-                name=f'{self.label_of_element}__total_flow_hours'
+                name=f'{self.label_full}|total_flow_hours'
             ),
             'total_flow_hours'
         )
@@ -403,7 +403,7 @@ class FlowModel(ElementModel):
                 self.add(
                     self._model.add_constraints(
                         self.total_flow_hours <= size * flow_hours_per_size_max,
-                        name=f'{self.label_full}__{name_short}',
+                        name=f'{self.label_full}|{name_short}',
                     ),
                     name_short
                 )
@@ -418,7 +418,7 @@ class FlowModel(ElementModel):
                 self.add(
                     self._model.add_constraints(
                         self.total_flow_hours >= size * flow_hours_per_size_min,
-                        name=f'{self.label_full}__{name_short}',
+                        name=f'{self.label_full}|{name_short}',
                     ),
                     name_short
                 )
@@ -473,7 +473,7 @@ class BusModel(ElementModel):
         outputs = sum([flow.model.flow_rate for flow in self.element.outputs])
         eq_bus_balance = self.add(self._model.add_constraints(
             inputs == outputs,
-            name=f'{self.label_full}__balance'
+            name=f'{self.label_full}|balance'
         ))
 
         # Fehlerplus/-minus:
@@ -482,11 +482,11 @@ class BusModel(ElementModel):
                 self._model.hours_per_step, self.element.excess_penalty_per_flow_hour.active_data
             )
             self.excess_input = self.add(self._model.add_variables(
-                lower=0, coords=self._model.coords, name=f'{self.label_full}__excess_input'),
+                lower=0, coords=self._model.coords, name=f'{self.label_full}|excess_input'),
                 'excess_input'
             )
             self.excess_output = self.add(self._model.add_variables(
-                lower=0, coords=self._model.coords, name=f'{self.label_full}__excess_output'),
+                lower=0, coords=self._model.coords, name=f'{self.label_full}|excess_output'),
                 'excess_output'
             )
             eq_bus_balance.lhs -= -self.excess_input + self.excess_output

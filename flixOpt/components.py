@@ -359,7 +359,7 @@ class TransmissionModel(ComponentModel):
             # eq: in1.size = in2.size
             self.add(self._model.add_constraints(
                 self.element.in1.model._investment.size == self.element.in2.model._investment.size,
-                name=f'{self.label_full}__same_size'),
+                name=f'{self.label_full}|same_size'),
                 'same_size'
             )
 
@@ -368,7 +368,7 @@ class TransmissionModel(ComponentModel):
         # eq: out(t) + on(t)*loss_abs(t) = in(t)*(1 - loss_rel(t))
         con_transmission = self.add(self._model.add_constraints(
             out_flow.model.flow_rate == -in_flow.model.flow_rate * (self.element.relative_losses.active_data - 1),
-            name=f'{self.label_full}__{name}'),
+            name=f'{self.label_full}|{name}'),
             name
         )
 
@@ -403,7 +403,7 @@ class LinearConverterModel(ComponentModel):
                         sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_inputs])
                         ==
                         sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_outputs]),
-                        name=f'{self.label_full}__conversion_{i}'
+                        name=f'{self.label_full}|conversion_{i}'
                     )
                 )
 
@@ -439,18 +439,18 @@ class StorageModel(ComponentModel):
         lb, ub = self.absolute_charge_state_bounds
         self.charge_state = self.add(self._model.add_variables(
             lower=lb, upper=ub, coords=self._model.coords_extra,
-            name=f'{self.label_full}__charge_state'),
+            name=f'{self.label_full}|charge_state'),
             'charge_state'
         )
         self.netto_discharge = self.add(self._model.add_variables(
-            coords=self._model.coords, name=f'{self.label_full}__netto_discharge'),
+            coords=self._model.coords, name=f'{self.label_full}|netto_discharge'),
             'netto_discharge'
         )
         # netto_discharge:
         # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
         self.add(self._model.add_constraints(
             self.netto_discharge == self.element.discharging.model.flow_rate - self.element.charging.model.flow_rate,
-            name=f'{self.label_full}__netto_discharge'),
+            name=f'{self.label_full}|netto_discharge'),
             'netto_discharge'
         )
 
@@ -468,7 +468,7 @@ class StorageModel(ComponentModel):
             charge_state.isel(time=slice(None, -1)) * (1 - rel_loss) * hours_per_step
             + charge_rate * eff_charge * hours_per_step
             - discharge_rate * eff_discharge * hours_per_step,
-            name=f'{self.label_full}__charge_state'),
+            name=f'{self.label_full}|charge_state'),
             'charge_state'
         )
 
@@ -489,7 +489,7 @@ class StorageModel(ComponentModel):
     def _initial_and_final_charge_state(self, system_model):
         if self.element.initial_charge_state is not None:
             name_short = f'initial_charge_state'
-            name = f'{self.label_full}__{name_short}'
+            name = f'{self.label_full}|{name_short}'
 
             if utils.is_number(self.element.initial_charge_state):
                 self.add(self._model.add_constraints(
@@ -509,14 +509,14 @@ class StorageModel(ComponentModel):
         if self.element.maximal_final_charge_state is not None:
             self.add(self._model.add_constraints(
                 self.charge_state.isel(time=-1) <= self.element.maximal_final_charge_state,
-                name=f'{self.label_full}__final_charge_max'),
+                name=f'{self.label_full}|final_charge_max'),
                 'final_charge_max'
             )
 
         if self.element.minimal_final_charge_state is not None:
             self.add(self._model.add_constraints(
                 self.charge_state.isel(time=-1) >= self.element.minimal_final_charge_state,
-                name=f'{self.label_full}__final_charge_min'),
+                name=f'{self.label_full}|final_charge_min'),
                 'final_charge_min'
             )
 
