@@ -449,7 +449,7 @@ class StorageModel(ComponentModel):
         # netto_discharge:
         # eq: nettoFlow(t) - discharging(t) + charging(t) = 0
         self.add(self._model.add_constraints(
-            self.netto_discharge == self.element.charging.model.flow_rate - self.element.discharging.model.flow_rate,
+            self.netto_discharge == self.element.discharging.model.flow_rate - self.element.charging.model.flow_rate,
             name=f'{self.label_full}__netto_discharge'),
             'netto_discharge'
         )
