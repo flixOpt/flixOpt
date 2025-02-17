@@ -323,10 +323,10 @@ class Element(Interface):
         ValueError
             If the label is not valid
         """
-        not_allowed = ['(', ')', '|', '->']
+        not_allowed = ['(', ')', '|', '->', '/']
         if any([sign in label for sign in not_allowed]):
             raise ValueError(
-                f'Label "{label}" is not valid. Labels cannot contain the following characters: {not_allowed}'
+                f'Label "{label}" is not valid. Labels cannot contain the following characters: {not_allowed}. '
                 f'Use any other symbol instead'
             )
         return label
