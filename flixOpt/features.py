@@ -941,19 +941,20 @@ class ShareAllocationModel(Model):
     def solution_structured(
         self,
         use_numpy: bool = True,
+        only_structure: bool = False
     ) -> Dict[str, Union[np.ndarray, Dict]]:
         shares_var_names = [var.name for var in self.shares.values()]
         results = {
-            self._variables_short[var_name]: var.values
+            self._variables_short[var_name]: var.values if not only_structure else f':::{var_name}'
             for var_name, var in self.variables_direct.solution.data_vars.items() if var_name not in shares_var_names
         }
         results['Shares'] = {
-            self._variables_short[var_name]: var.values
+            self._variables_short[var_name]: var.values if not only_structure else f':::{var_name}'
             for var_name, var in self.variables_direct.solution.data_vars.items() if var_name in shares_var_names
         }
         return {
             **results,
-            **{sub_model.label: sub_model.solution_structured(use_numpy) for sub_model in self.sub_models}
+            **{sub_model.label: sub_model.solution_structured(use_numpy, only_structure) for sub_model in self.sub_models}
         }
 
 
