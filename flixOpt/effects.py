@@ -282,7 +282,7 @@ class EffectCollection(Model):
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
 
-        self.effects: Dict[str, Effect] = effects  # Performs some validation
+        self.effects = effects  # Performs some validation
         self.penalty: Optional[ShareAllocationModel] = None
 
     def add_share_to_effects(
