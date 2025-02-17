@@ -323,12 +323,15 @@ class Element(Interface):
         ValueError
             If the label is not valid
         """
-        not_allowed = ['(', ')', '|', '->', '/']
+        not_allowed = ['(', ')', '|', '->', '/', '\\']  # \\ is needed to check for \
         if any([sign in label for sign in not_allowed]):
             raise ValueError(
                 f'Label "{label}" is not valid. Labels cannot contain the following characters: {not_allowed}. '
                 f'Use any other symbol instead'
             )
+        if label.endswith(' '):
+            logger.warning(f'Label "{label}" ends with a space. This will be removed.')
+            return label.rstrip()
         return label
 
 
