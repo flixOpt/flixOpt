@@ -433,7 +433,9 @@ class Model:
 
         for sub_model in self.sub_models:
             sub_solution = sub_model.solution_structured(use_numpy, only_structure)
-            if sub_model.label is None or sub_model.label == self.label:
+            if sub_solution == {}:  # If the submodel has no variables, skip it
+                continue
+            if sub_model.label_full == self.label_full:
                 if any(key in results for key in sub_solution):
                     conflict_keys = [key for key in sub_solution if key in results]
                     raise ValueError(f"Key conflict in {self.label_full}: {conflict_keys}")
