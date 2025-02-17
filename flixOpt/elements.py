@@ -423,7 +423,6 @@ class FlowModel(ElementModel):
                     name_short
                 )
 
-
     @property
     def with_investment(self) -> bool:
         """Checks if the element's size is investment-driven."""
@@ -498,6 +497,27 @@ class BusModel(ElementModel):
                 self._model, self.label_of_element, (self.excess_output * excess_penalty).sum()
             )
 
+    def solution_structured(
+            self,
+            use_numpy: bool = True,
+            only_structure: bool = False
+    ) -> Dict[str, Union[np.ndarray, Dict]]:
+        """
+        Return the structure of the SystemModel solution.
+
+        Parameters
+        ----------
+        use_numpy : bool, optional
+            Whether to return the solution as a dictionary of numpy arrays or dictionaries, by default True
+        """
+        # TODO: The main functionality is to return the structure. The numeric solutions are used for the old json export
+
+        results = super().solution_structured(use_numpy, only_structure)
+        results['inputs'] = [flow.label for flow in self.element.inputs]
+        results['outputs'] = [flow.label for flow in self.element.inputs]
+
+        return results
+
 
 class ComponentModel(ElementModel):
     def __init__(self, model: SystemModel, element: Component):
@@ -540,3 +560,24 @@ class ComponentModel(ElementModel):
             on_variables = [flow.model.on_off.on for flow in self.element.prevent_simultaneous_flows]
             simultaneous_use = self.add(PreventSimultaneousUsageModel(self._model, on_variables, self.label_full))
             simultaneous_use.do_modeling(self._model)
+
+    def solution_structured(
+            self,
+            use_numpy: bool = True,
+            only_structure: bool = False
+    ) -> Dict[str, Union[np.ndarray, Dict]]:
+        """
+        Return the structure of the SystemModel solution.
+
+        Parameters
+        ----------
+        use_numpy : bool, optional
+            Whether to return the solution as a dictionary of numpy arrays or dictionaries, by default True
+        """
+        # TODO: The main functionality is to return the structure. The numeric solutions are used for the old json export
+
+        results = super().solution_structured(use_numpy, only_structure)
+        results['inputs'] = [flow.label for flow in self.element.inputs]
+        results['outputs'] = [flow.label for flow in self.element.inputs]
+
+        return results

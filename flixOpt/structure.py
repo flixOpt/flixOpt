@@ -91,16 +91,22 @@ class SystemModel(linopy.Model):
     def _insert_dataarrays(dataset: xr.Dataset, structure: Dict[str, Union[str, Dict]]):
         result = {}
 
-        for key, value in structure.items():
-            if isinstance(value, dict):  # If the value is another nested dictionary
-                result[key] = SystemModel._insert_dataarrays(dataset, value)  # Recursively handle it
-            elif isinstance(value, str) and value.startswith(':::'):
-                value = value.removeprefix(':::')
-                result[key] = dataset[value]
-            elif isinstance(value, (int, float)):
-                result[key] = value
+        def insert_data(value_part):
+            if isinstance(value_part, dict):  # If the value is another nested dictionary
+                return SystemModel._insert_dataarrays(dataset, value_part)  # Recursively handle it
+            elif isinstance(value_part, list):
+                return [insert_data(v) for v in value_part]
+            elif isinstance(value_part, str) and value_part.startswith(':::'):
+                return dataset[value_part.removeprefix(':::')]
+            elif isinstance(value_part, str):
+                return value_part
+            elif isinstance(value_part, (int, float)):
+                return value_part
             else:
-                raise ValueError(f'Loading the Dataset failed. Not able to handle {value}')
+                raise ValueError(f'Loading the Dataset failed. Not able to handle {value_part}')
+
+        for key, value in structure.items():
+            result[key] = insert_data(value)
 
         return result
 
@@ -410,6 +416,16 @@ class Model:
         use_numpy: bool = True,
         only_structure: bool = False
     ) -> Dict[str, Union[np.ndarray, Dict]]:
+        """
+        Return the structure of the SystemModel solution.
+
+        Parameters
+        ----------
+        use_numpy : bool, optional
+            Whether to return the solution as a dictionary of numpy arrays or dictionaries, by default True
+        """
+        # TODO: The main functionality is to return the structure. The numeric solutions are used for the old json export
+
         results = {
             self._variables_short[var_name]: var.values if not only_structure else f':::{var_name}'
             for var_name, var in self.variables_direct.solution.data_vars.items()
@@ -417,7 +433,7 @@ class Model:
 
         for sub_model in self.sub_models:
             sub_solution = sub_model.solution_structured(use_numpy, only_structure)
-            if sub_model.label is None:
+            if sub_model.label is None or sub_model.label == self.label:
                 if any(key in results for key in sub_solution):
                     conflict_keys = [key for key in sub_solution if key in results]
                     raise ValueError(f"Key conflict in {self.label_full}: {conflict_keys}")
