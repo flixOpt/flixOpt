@@ -514,7 +514,7 @@ class BusModel(ElementModel):
 
         results = super().solution_structured(use_numpy, only_structure)
         results['inputs'] = [flow.label for flow in self.element.inputs]
-        results['outputs'] = [flow.label for flow in self.element.inputs]
+        results['outputs'] = [flow.label for flow in self.element.outputs]
 
         return results
 
@@ -578,6 +578,6 @@ class ComponentModel(ElementModel):
 
         results = super().solution_structured(use_numpy, only_structure)
         results['inputs'] = [flow.label for flow in self.element.inputs]
-        results['outputs'] = [flow.label for flow in self.element.inputs]
+        results['outputs'] = [flow.label for flow in self.element.outputs]
 
         return results
