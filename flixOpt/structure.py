@@ -76,6 +76,7 @@ class SystemModel(linopy.Model):
         Save the flow system to a netcdf file.
         """
         ds = self.solution
+        ds = ds.rename_vars({var: var.replace('/', '-slash-') for var in ds.data_vars})
         ds.attrs["structure"] = json.dumps(self.solution_structured(only_structure=True))  # Convert dict to JSON string
         ds.to_netcdf(path)
 
@@ -91,15 +92,19 @@ class SystemModel(linopy.Model):
     def _insert_dataarrays(dataset: xr.Dataset, structure: Dict[str, Union[str, Dict]]):
         result = {}
 
+        def convert_string(text):
+            text = text.replace('-slash-', '/').removeprefix(':::')
+            return text
+
         def insert_data(value_part):
             if isinstance(value_part, dict):  # If the value is another nested dictionary
                 return SystemModel._insert_dataarrays(dataset, value_part)  # Recursively handle it
             elif isinstance(value_part, list):
                 return [insert_data(v) for v in value_part]
             elif isinstance(value_part, str) and value_part.startswith(':::'):
-                return dataset[value_part.removeprefix(':::')]
+                return dataset[convert_string(value_part)]
             elif isinstance(value_part, str):
-                return value_part
+                return convert_string(value_part)
             elif isinstance(value_part, (int, float)):
                 return value_part
             else:
@@ -323,7 +328,7 @@ class Element(Interface):
         ValueError
             If the label is not valid
         """
-        not_allowed = ['(', ')', '|', '->', '/', '\\']  # \\ is needed to check for \
+        not_allowed = ['(', ')', '|', '->', '\\', '-slash-']  # \\ is needed to check for \
         if any([sign in label for sign in not_allowed]):
             raise ValueError(
                 f'Label "{label}" is not valid. Labels cannot contain the following characters: {not_allowed}. '
