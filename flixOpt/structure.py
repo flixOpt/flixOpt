@@ -90,11 +90,8 @@ class SystemModel(linopy.Model):
 
     @staticmethod
     def _insert_dataarrays(dataset: xr.Dataset, structure: Dict[str, Union[str, Dict]]):
+        dataset = dataset.rename_vars({var: var.replace('-slash-', '/') for var in dataset.data_vars})
         result = {}
-
-        def convert_string(text):
-            text = text.replace('-slash-', '/').removeprefix(':::')
-            return text
 
         def insert_data(value_part):
             if isinstance(value_part, dict):  # If the value is another nested dictionary
@@ -102,9 +99,9 @@ class SystemModel(linopy.Model):
             elif isinstance(value_part, list):
                 return [insert_data(v) for v in value_part]
             elif isinstance(value_part, str) and value_part.startswith(':::'):
-                return dataset[convert_string(value_part)]
+                return dataset[value_part.removeprefix(':::')]
             elif isinstance(value_part, str):
-                return convert_string(value_part)
+                return value_part
             elif isinstance(value_part, (int, float)):
                 return value_part
             else:
