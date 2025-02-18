@@ -162,15 +162,15 @@ class FlowSystem:
     def results(self):
         return {
             'Components': {
-                comp.label: comp.model.solution_structured(use_numpy=True)
+                comp.label: comp.model.solution_structured(mode='numpy')
                 for comp in sorted(self.components.values(), key=lambda component: component.label.upper())
             },
             'Buses': {
-                bus.label: bus.model.solution_structured(use_numpy=True)
+                bus.label: bus.model.solution_structured(mode='numpy')
                 for bus in sorted(self.buses.values(), key=lambda bus: bus.label.upper())
             },
             'Effects': {
-                effect.label: effect.model.solution_structured(use_numpy=True)
+                effect.label: effect.model.solution_structured(mode='numpy')
                 for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
             },
             'Time': self.timesteps_extra.tolist(),

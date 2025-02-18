@@ -53,35 +53,35 @@ class SystemModel(linopy.Model):
             self.effects.objective_effect.model.total + self.effects.penalty.total
         )
 
-    def solution_structured(self, use_numpy: bool = True, only_structure: bool = False):
+    def solution_structured(self, mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'numpy'):
         return {
             'Buses': {
-                bus.label_full: bus.model.solution_structured(use_numpy=use_numpy, only_structure=only_structure)
+                bus.label_full: bus.model.solution_structured(mode=mode)
                 for bus in sorted(self.flow_system.buses.values(), key=lambda bus: bus.label_full.upper())
             },
             'Components': {
-                comp.label_full: comp.model.solution_structured(use_numpy=use_numpy, only_structure=only_structure)
+                comp.label_full: comp.model.solution_structured(mode=mode)
                 for comp in sorted(self.flow_system.components.values(), key=lambda component: component.label_full.upper())
             },
             'Effects': {
-                effect.label_full: effect.model.solution_structured(use_numpy=use_numpy, only_structure=only_structure)
+                effect.label_full: effect.model.solution_structured(mode=mode)
                 for effect in sorted(self.flow_system.effects.values(), key=lambda effect: effect.label_full.upper())
             },
-            **self.effects.solution_structured(use_numpy=use_numpy, only_structure=only_structure),
+            **self.effects.solution_structured(mode=mode),
             'Objective': self.objective.value,
         }
 
-    def save_to_netcdf(self, path: Union[str, pathlib.Path] = 'flow_system.nc'):
+    def to_netcdf(self, path: Union[str, pathlib.Path] = 'flow_system.nc'):
         """
         Save the flow system to a netcdf file.
         """
         ds = self.solution
         ds = ds.rename_vars({var: var.replace('/', '-slash-') for var in ds.data_vars})
-        ds.attrs["structure"] = json.dumps(self.solution_structured(only_structure=True))  # Convert dict to JSON string
+        ds.attrs["structure"] = json.dumps(self.solution_structured(mode='structure'))  # Convert dict to JSON string
         ds.to_netcdf(path)
 
     @staticmethod
-    def load_from_netcdf(path: Union[str, pathlib.Path] = 'flow_system.nc') -> Dict[str, Union[str, Dict, xr.DataArray]]:
+    def from_netcdf(path: Union[str, pathlib.Path] = 'flow_system.nc') -> Dict[str, Union[str, Dict, xr.DataArray]]:
         results = xr.open_dataset(path)
         return {
             **SystemModel._insert_dataarrays(results, json.loads(results.attrs['structure'])),
@@ -418,26 +418,28 @@ class Model:
 
     def solution_structured(
         self,
-        use_numpy: bool = True,
-        only_structure: bool = False
+        mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'numpy',
     ) -> Dict[str, Union[np.ndarray, Dict]]:
         """
         Return the structure of the SystemModel solution.
 
         Parameters
         ----------
-        use_numpy : bool, optional
-            Whether to return the solution as a dictionary of numpy arrays or dictionaries, by default True
+        mode : Literal['py', 'numpy', 'xarray', 'structure']
+            Whether to return the solution as a dictionary of
+            - python native types (for json)
+            - numpy arrays
+            - xarray.DataArrays
+            - strings (for structure, storing variable names)
         """
-        # TODO: The main functionality is to return the structure. The numeric solutions are used for the old json export
 
         results = {
-            self._variables_short[var_name]: var.values if not only_structure else f':::{var_name}'
+            self._variables_short[var_name]: utils.convert_dataarray(var, mode)
             for var_name, var in self.variables_direct.solution.data_vars.items()
         }
 
         for sub_model in self.sub_models:
-            sub_solution = sub_model.solution_structured(use_numpy, only_structure)
+            sub_solution = sub_model.solution_structured(mode)
             if sub_solution == {}:  # If the submodel has no variables, skip it
                 continue
             if sub_model.label_full == self.label_full:

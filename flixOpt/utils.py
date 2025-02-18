@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
+import xarray as xr
 
 logger = logging.getLogger('flixOpt')
 
@@ -134,3 +135,31 @@ def convert_numeric_lists_to_arrays(
         return convert_list_to_array_if_numeric(d)
     else:
         return d
+
+
+def convert_dataarray(data: xr.DataArray, mode: Literal['py', 'numpy', 'xarray', 'structure']) -> Union[List, np.ndarray, xr.DataArray, str]:
+    """
+    Convert a DataArray to a different format.
+
+    Parameters
+    ----------
+    data : xr.DataArray
+        The data to convert.
+    mode : Literal['py', 'numpy', 'xarray', 'structure']
+        Whether to return the dataaray to
+        - python native types (for json)
+        - numpy array
+        - xarray.DataArray
+        - strings (for structure, storing variable names)
+    """
+    if mode == 'numpy':
+        return data.values
+    elif mode == 'py':
+        return data.values.tolist()
+    elif mode == 'xarray':
+        return data
+    elif mode == 'structure':
+        return f':::{data.name}'
+    else:
+        raise ValueError(f'Unknown mode {mode}')
+

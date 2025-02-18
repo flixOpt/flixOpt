@@ -3,7 +3,7 @@ This module contains the basic elements of the flixOpt framework.
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING, Literal
 
 import numpy as np
 import linopy
@@ -498,21 +498,22 @@ class BusModel(ElementModel):
             )
 
     def solution_structured(
-            self,
-            use_numpy: bool = True,
-            only_structure: bool = False
+        self,
+        mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'py',
     ) -> Dict[str, Union[np.ndarray, Dict]]:
         """
         Return the structure of the SystemModel solution.
 
         Parameters
         ----------
-        use_numpy : bool, optional
-            Whether to return the solution as a dictionary of numpy arrays or dictionaries, by default True
+        mode : Literal['py', 'numpy', 'xarray', 'structure']
+            Whether to return the solution as a dictionary of
+            - python native types (for json)
+            - numpy arrays
+            - xarray.DataArrays
+            - strings (for structure, storing variable names)
         """
-        # TODO: The main functionality is to return the structure. The numeric solutions are used for the old json export
-
-        results = super().solution_structured(use_numpy, only_structure)
+        results = super().solution_structured(mode)
         results['inputs'] = [flow.label for flow in self.element.inputs]
         results['outputs'] = [flow.label for flow in self.element.outputs]
 
@@ -562,21 +563,22 @@ class ComponentModel(ElementModel):
             simultaneous_use.do_modeling(self._model)
 
     def solution_structured(
-            self,
-            use_numpy: bool = True,
-            only_structure: bool = False
+        self,
+        mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'py',
     ) -> Dict[str, Union[np.ndarray, Dict]]:
         """
         Return the structure of the SystemModel solution.
 
         Parameters
         ----------
-        use_numpy : bool, optional
-            Whether to return the solution as a dictionary of numpy arrays or dictionaries, by default True
+        mode : Literal['py', 'numpy', 'xarray', 'structure']
+            Whether to return the solution as a dictionary of
+            - python native types (for json)
+            - numpy arrays
+            - xarray.DataArrays
+            - strings (for structure, storing variable names)
         """
-        # TODO: The main functionality is to return the structure. The numeric solutions are used for the old json export
-
-        results = super().solution_structured(use_numpy, only_structure)
+        results = super().solution_structured(mode)
         results['inputs'] = [flow.label for flow in self.element.inputs]
         results['outputs'] = [flow.label for flow in self.element.outputs]
 

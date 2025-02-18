@@ -4,7 +4,7 @@ Features extend the functionality of Elements.
 """
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, Literal
 
 import linopy
 import numpy as np
@@ -14,6 +14,7 @@ from .core import Numeric, Skalar, TimeSeries
 from .interface import InvestParameters, OnOffParameters
 from .math_modeling import Equation, Variable, VariableTS
 from .structure import Model, SystemModel
+from . import utils
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .components import Storage
@@ -940,21 +941,32 @@ class ShareAllocationModel(Model):
 
     def solution_structured(
         self,
-        use_numpy: bool = True,
-        only_structure: bool = False
+        mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'py',
     ) -> Dict[str, Union[np.ndarray, Dict]]:
+        """
+        Return the structure of the SystemModel solution.
+
+        Parameters
+        ----------
+        mode : Literal['py', 'numpy', 'xarray', 'structure']
+            Whether to return the solution as a dictionary of
+            - python native types (for json)
+            - numpy arrays
+            - xarray.DataArrays
+            - strings (for structure, storing variable names)
+        """
         shares_var_names = [var.name for var in self.shares.values()]
         results = {
-            self._variables_short[var_name]: var.values if not only_structure else f':::{var_name}'
+            self._variables_short[var_name]: utils.convert_dataarray(var, mode)
             for var_name, var in self.variables_direct.solution.data_vars.items() if var_name not in shares_var_names
         }
         results['Shares'] = {
-            self._variables_short[var_name]: var.values if not only_structure else f':::{var_name}'
+            self._variables_short[var_name]: utils.convert_dataarray(var, mode)
             for var_name, var in self.variables_direct.solution.data_vars.items() if var_name in shares_var_names
         }
         return {
             **results,
-            **{sub_model.label: sub_model.solution_structured(use_numpy, only_structure) for sub_model in self.sub_models}
+            **{sub_model.label: sub_model.solution_structured(mode) for sub_model in self.sub_models}
         }
 
 
