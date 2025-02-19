@@ -5,12 +5,12 @@ It holds all necessary classes and functions to create a mathematical model, con
 and translate it into a ModelingLanguage like Pyomo, and the solve it through a solver.
 Multiple solvers are supported.
 """
-
+from dataclasses import dataclass, field
 import logging
 import re
 import timeit
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union, ClassVar
 
 import numpy as np
 from numpy import inf
@@ -693,302 +693,53 @@ class SolverLog:
             raise Exception('SolverLog.parse_infos() is not defined for solver ' + self.solver_name)
 
 
-class Solver(ABC):
+@dataclass
+class _Solver:
     """
     Abstract base class for solvers.
 
     Attributes:
         mip_gap (float): Solver's mip gap setting. The MIP gap describes the accepted (MILP) objective,
             and the lower bound, which is the theoretically optimal solution (LP)
-        solver_output_to_console (bool): Whether to display solver output.
         logfile_name (str): Filename for saving the solver log.
-        objective (Optional[float]): Objective value from the solution.
-        best_bound (Optional[float]): Best bound from the solver.
-        termination_message (Optional[str]): Solver's termination message.
     """
+    name: ClassVar[str]
+    mip_gap: float
+    time_limit_seconds: int
+    extra_options: Dict[str, Any] = field(default_factory=dict)
 
-    def __init__(
-        self,
-        mip_gap: float,
-        solver_output_to_console: bool,
-        logfile_name: str,
-    ):
-        self.mip_gap = mip_gap
-        self.solver_output_to_console = solver_output_to_console
-        self.logfile_name = logfile_name
+    @property
+    def options(self) -> Dict[str, Any]:
+        """Return a dictionary of solver options."""
+        return {key: value for key, value in {**self._options, **self.extra_options}.items() if value is not None}
 
-        self.objective: Optional[float] = None
-        self.best_bound: Optional[float] = None
-        self.termination_message: Optional[str] = None
-        self.log: Optional[str, SolverLog] = None
-
-        self._solver = None
-        self._results: Optional[float, str] = None
-
-    @abstractmethod
-    def solve(self, modeling_language: 'ModelingLanguage'):
-        raise NotImplementedError(' Solving is not possible with this Abstract class')
-
-    def __repr__(self):
-        return (
-            f'{self.__class__.__name__}('
-            f'mip_gap={self.mip_gap}, '
-            f'solver_output_to_console={self.solver_output_to_console}, '
-            f"logfile_name='{self.logfile_name}', "
-            f'objective={self.objective!r}, '
-            f'best_bound={self.best_bound!r}, '
-            f'termination_message={self.termination_message!r})'
-        )
+    @property
+    def _options(self) -> Dict[str, Any]:
+        """Return a dictionary of solver options, translated to the solver's API."""
+        raise NotImplementedError
 
 
-class GurobiSolver(Solver):
-    """
-    Solver implementation for Gurobi.
-    Also Look in class Solver for more details
+class GurobiSolver(_Solver):
+    name: ClassVar[str] = 'gurobi'
 
-    Attributes:
-        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
-        best solution, ignoring the mip_gap.
-    """
+    @property
+    def _options(self) -> Dict[str, Any]:
+        return {
+            'MIPGap': self.mip_gap,
+            'TimeLimit': self.time_limit_seconds,
+        }
 
-    def __init__(
-        self,
-        mip_gap: float = 0.01,
-        time_limit_seconds: int = 300,
-        logfile_name: str = 'gurobi.log',
-        solver_output_to_console: bool = True,
-    ):
-        super().__init__(mip_gap, solver_output_to_console, logfile_name)
-        self.time_limit_seconds = time_limit_seconds
+class HighsSolver(_Solver):
+    threads: Optional[int] = None
+    name: ClassVar[str] = 'highs'
 
-    def solve(self, modeling_language: 'ModelingLanguage'):
-        if isinstance(modeling_language, PyomoModel):
-            self._solver = pyo.SolverFactory('gurobi')
-            self._results = self._solver.solve(
-                modeling_language.model,
-                tee=self.solver_output_to_console,
-                keepfiles=True,
-                logfile=self.logfile_name,
-                options={'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds},
-            )
-
-            self.objective = modeling_language.model.objective.expr()
-            self.termination_message = self._results.solver.termination_message
-            self.best_bound = self._results.problem.lower_bound
-
-            from pyomo.opt import SolverStatus, TerminationCondition
-
-            if not (
-                self._results.solver.status == SolverStatus.ok
-                and self._results.solver.termination_condition == TerminationCondition.optimal
-            ):
-                logger.warning(
-                    f'Solver ended with status {self._results.solver.status} and '
-                    f'termination condition {self._results.solver.termination_condition}'
-                )
-            try:
-                self.log = SolverLog('gurobi', self.logfile_name)
-            except Exception as e:
-                self.log = None
-                logger.warning(f'SolverLog could not be loaded. {e}')
-
-            try:
-                import gurobi_logtools
-
-                self.log = gurobi_logtools.get_dataframe([str(self.logfile_name)]).T.to_dict()[0]
-            except ImportError:
-                logger.info(
-                    'Evaluationg the gurobi log after the solve was not possible, due to a missing dependency '
-                    '"gurobi_logtools". For further details of the solving process, '
-                    'install the dependency via "pip install gurobi_logtools".'
-                )
-        elif isinstance(modeling_language, LinopyModel):
-            status = modeling_language.model.solve(
-                log_fn=self.logfile_name,
-                solver_name='gurobi',
-                **{'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds}
-            )
-
-            self.objective = modeling_language.model.objective.value
-            self.termination_message = status[1]
-            self.best_bound = modeling_language.model.solver_model.ObjBound
-        else:
-            raise NotImplementedError('Only Pyomo and Linopy are implemented for GUROBI solver.')
-
-
-class CplexSolver(Solver):
-    """
-    Solver implementation for CPLEX.
-    Also Look in class Solver for more details
-
-    Attributes:
-        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
-        best solution, ignoring the mip_gap.
-    """
-
-    def __init__(
-        self,
-        mip_gap: float = 0.01,
-        time_limit_seconds: int = 300,
-        logfile_name: str = 'cplex.log',
-        solver_output_to_console: bool = True,
-    ):
-        super().__init__(mip_gap, solver_output_to_console, logfile_name)
-        self.time_limit_seconds = time_limit_seconds
-
-    def solve(self, modeling_language: 'ModelingLanguage'):
-        if isinstance(modeling_language, PyomoModel):
-            self._solver = pyo.SolverFactory('cplex')
-            self._results = self._solver.solve(
-                modeling_language.model,
-                tee=self.solver_output_to_console,
-                keepfiles=True,
-                logfile=self.logfile_name,
-                options={'mipgap': self.mip_gap, 'timelimit': self.time_limit_seconds},
-            )
-
-            self.objective = modeling_language.model.objective.expr()
-            self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
-            self.best_bound = self._results['Problem'][0]['Lower bound']
-            self.log = f'Not Implemented for {self.__class__.__name__} yet'
-        else:
-            raise NotImplementedError('Only Pyomo is implemented for CPLEX solver.')
-
-
-class HighsSolver(Solver):
-    """
-    Solver implementation for HIGHS.
-    Also Look in class Solver for more details
-
-    Attributes:
-        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
-        best solution, ignoring the mip_gap.
-        threads (int): Number of threads to use for the solver.
-    """
-
-    def __init__(
-        self,
-        mip_gap: float = 0.01,
-        time_limit_seconds: int = 300,
-        logfile_name: str = 'highs.log',
-        solver_output_to_console: bool = True,
-        threads: int = 4,
-    ):
-        super().__init__(mip_gap, solver_output_to_console, logfile_name)
-        self.time_limit_seconds = time_limit_seconds
-        self.threads = threads
-
-    def solve(self, modeling_language: 'ModelingLanguage'):
-        if isinstance(modeling_language, PyomoModel):
-            from pyomo.contrib import appsi
-
-            self._solver = appsi.solvers.Highs()
-            self._solver.highs_options = {
-                'mip_rel_gap': self.mip_gap,
-                'time_limit': self.time_limit_seconds,
-                'log_file': str(self.logfile_name),
-                # "log_to_console": self.solver_output_to_console,
-                'threads': self.threads,
-                'parallel': 'on',
-                'presolve': 'on',
-                'output_flag': True,
-            }
-            self._solver.config.stream_solver = True
-
-            self._results = self._solver.solve(
-                modeling_language.model
-            )  # HiGHS writes logs to stdout/stderr, so we capture them here
-
-            self.objective = modeling_language.model.objective.expr()
-            self.termination_message: Optional[str] = self._results.termination_condition.name
-            if not self.termination_message == 'optimal':
-                logger.warning(f'Solution is not optimal. Termination Message: "{self.termination_message}"')
-            self.best_bound = self._results.best_objective_bound
-            self.log = f'Not Implemented for {self.__class__.__name__} yet'
-        elif isinstance(modeling_language, LinopyModel):
-            status = modeling_language.model.solve(
-                log_fn=self.logfile_name,
-                solver_name='highs',
-                **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds}
-            )
-
-            self.objective = modeling_language.model.objective.value
-            self.termination_message = status[1]
-            self.best_bound = None
-        else:
-            raise NotImplementedError('Only Pyomo and linopy are implemented for HIGHS solver.')
-
-
-class CbcSolver(Solver):
-    """
-    Solver implementation for CBC.
-    Also Look in class Solver for more details
-
-    Attributes:
-        time_limit_seconds (int): Time limit for the solver. After this time, the solver takes the currently
-        best solution, ignoring the mip_gap.
-    """
-
-    def __init__(
-        self,
-        mip_gap: float = 0.01,
-        time_limit_seconds: int = 300,
-        logfile_name: str = 'cbc.log',
-        solver_output_to_console: bool = True,
-    ):
-        super().__init__(mip_gap, solver_output_to_console, logfile_name)
-        self.time_limit_seconds = time_limit_seconds
-
-    def solve(self, modeling_language: 'ModelingLanguage'):
-        if isinstance(modeling_language, PyomoModel):
-            self._solver = pyo.SolverFactory('cbc')
-            self._results = self._solver.solve(
-                modeling_language.model,
-                tee=self.solver_output_to_console,
-                keepfiles=True,
-                logfile=self.logfile_name,
-                options={'ratio': self.mip_gap, 'sec': self.time_limit_seconds},
-            )
-            self.objective = modeling_language.model.objective.expr()
-            self.termination_message: Optional[str] = f'Not Implemented for {self.__class__.__name__} yet'
-            self.best_bound = self._results['Problem'][0]['Lower bound']
-            self.log = f'Not Implemented for {self.__class__.__name__} yet'
-        else:
-            raise NotImplementedError('Only Pyomo is implemented for Cbc solver.')
-
-
-class GlpkSolver(Solver):
-    """Solver implementation for Glpk. Also Look in class Solver for more details"""
-
-    def __init__(
-        self,
-        mip_gap: float = 0.01,
-        logfile_name: str = 'glpk.log',
-        solver_output_to_console: bool = True,
-    ):
-        super().__init__(mip_gap, solver_output_to_console, logfile_name)
-
-    def solve(self, modeling_language: 'ModelingLanguage'):
-        if isinstance(modeling_language, PyomoModel):
-            self._solver = pyo.SolverFactory('glpk')
-            self._results = self._solver.solve(
-                modeling_language.model,
-                tee=self.solver_output_to_console,
-                keepfiles=True,
-                logfile=self.logfile_name,
-                options={'mipgap': self.mip_gap},
-            )
-
-            self.objective = modeling_language.model.objective.expr()
-            self.termination_message = self._results['Solver'][0]['Status']
-            self.best_bound = self._results['Problem'][0]['Lower bound']
-            try:
-                self.log = SolverLog('glpk', self.logfile_name)
-            except Exception as e:
-                self.log = None
-                logger.warning(f'SolverLog could not be loaded. {e}')
-        else:
-            raise NotImplementedError('Only Pyomo is implemented for Cbc solver.')
+    @property
+    def _options(self) -> Dict[str, Any]:
+        return {
+            'mip_gap': self.mip_gap,
+            'time_limit': self.time_limit_seconds,
+            'threads': self.threads,
+        }
 
 
 class ModelingLanguage(ABC):
@@ -1003,7 +754,7 @@ class ModelingLanguage(ABC):
     def translate_model(self, model: MathModel):
         raise NotImplementedError
 
-    def solve(self, math_model: MathModel, solver: Solver):
+    def solve(self, math_model: MathModel, solver: _Solver):
         raise NotImplementedError
 
 
@@ -1029,7 +780,7 @@ class PyomoModel(ModelingLanguage):
         self.mapping: Dict[Union[Variable, Equation], Any] = {}  # Mapping to Pyomo Units
         self._counter = 0
 
-    def solve(self, math_model: MathModel, solver: Solver):
+    def solve(self, math_model: MathModel, solver: _Solver):
         if self._counter == 0:
             raise Exception(' First, call .translate_model(). Else PyomoModel cant solve()')
         solver.solve(self)
@@ -1192,7 +943,7 @@ class LinopyModel(ModelingLanguage):
         self.model = linopy.Model()
         self.mapping: Dict[Variable, linopy.Variable] = {}
 
-    def solve(self, math_model: MathModel, solver: Solver):
+    def solve(self, math_model: MathModel, solver: _Solver):
         solver.solve(self)
 
         # write results

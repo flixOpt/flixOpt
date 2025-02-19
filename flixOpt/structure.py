@@ -21,7 +21,7 @@ import pandas as pd
 from . import utils
 from .config import CONFIG
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData
-from .math_modeling import Equation, Inequation, MathModel, Solver, Variable, VariableTS
+from .math_modeling import Equation, Inequation, MathModel, _Solver, Variable, VariableTS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .elements import BusModel, ComponentModel

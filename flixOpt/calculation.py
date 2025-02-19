@@ -27,7 +27,7 @@ from .core import Numeric, Skalar
 from .elements import Component
 from .features import InvestmentModel
 from .flow_system import FlowSystem
-from .solvers import Solver
+from .solvers import _Solver
 from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
 
 logger = logging.getLogger('flixOpt')
@@ -159,10 +159,12 @@ class FullCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.flow_system.model
 
-    def solve(self, solver_name: str, save_results: Union[bool, str, pathlib.Path] = False, solver_options: dict = None):
+    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = False, solver_options: Optional[dict] = None):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
-        self.flow_system.model.solve(log_fn=self._paths['log'], solver_name=solver_name, solver_options=solver_options)
+        self.flow_system.model.solve(log_fn=self._paths['log'],
+                                     solver_name=solver.name,
+                                     **solver.options)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         # Log the formatted output
@@ -294,7 +296,7 @@ class AggregatedCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.system_model
 
-    def solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = False):
+    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = False):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
         solver.logfile_name = self._paths['log']
@@ -366,7 +368,7 @@ class SegmentedCalculation(Calculation):
         }
         self._transfered_start_values: Dict[str, Dict[str, Any]] = {}
 
-    def do_modeling_and_solve(self, solver: Solver, save_results: Union[bool, str, pathlib.Path] = True):
+    def do_modeling_and_solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = True):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Segmented Solving ":#^80}')
         self._define_path_names(save_results)
