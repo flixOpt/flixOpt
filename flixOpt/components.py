@@ -417,7 +417,7 @@ class LinearConverterModel(ComponentModel):
                 for flow in self.element.inputs + self.element.outputs
             }
             linear_segments = MultipleSegmentsModel(
-                self._model, self.label_of_parent, segments, self.on_off.on if self.on_off is not None else None
+                self._model, self.label_of_element, segments, self.on_off.on if self.on_off is not None else None
             )  # TODO: Add Outside_segments Variable (On)
             linear_segments.do_modeling(system_model)
             self.sub_models.append(linear_segments)
