@@ -41,7 +41,7 @@ class DataConverter:
     - ValueError if data dimensions do not match expected time and period indexes.
     """
     @staticmethod
-    def as_dataarray(data: Union[Numeric, pd.Series, pd.DataFrame, np.ndarray], time: pd.DatetimeIndex,
+    def as_dataarray(data: NumericData, time: pd.DatetimeIndex,
                      period: Optional[pd.Index] = None) -> xr.DataArray:
         """
         Converts the given data to an xarray.DataArray with the specified time and period indexes.
@@ -55,14 +55,18 @@ class DataConverter:
 
         if isinstance(data, (int, float)):
             return DataConverter._handle_scalar(data, coords, dims)
-        if isinstance(data, pd.DataFrame):
+        elif isinstance(data, pd.DataFrame):
             return DataConverter._handle_dataframe(data, coords, dims)
-        if isinstance(data, pd.Series):
+        elif isinstance(data, pd.Series):
             return DataConverter._handle_series(data, coords, dims)
-        if isinstance(data, np.ndarray):
+        elif isinstance(data, np.ndarray):
             return DataConverter._handle_array(data, coords, dims)
+        elif isinstance(data, xr.DataArray):
+            return data
 
-        raise TypeError("Unsupported data type. Must be scalar, np.ndarray, pd.Series, or pd.DataFrame.")
+
+        raise TypeError(f"Unsupported data type. Must be scalar, np.ndarray, pd.Series, or pd.DataFrame."
+                        f"Got {type(data)=}")
 
     @staticmethod
     def _handle_scalar(data: Numeric, coords: list, dims: list) -> xr.DataArray:
@@ -106,6 +110,17 @@ class DataConverter:
 
         return xr.DataArray(data, coords=coords, dims=dims)
 
+    @staticmethod
+    def _handle_xr_dataarray(data: xr.DataArray, coords: list, dims: list) -> xr.DataArray:
+        """Handles xr.DataArray input."""
+        if data.ndim != len(coords):
+            raise ValueError(f"DataArray must have {len(coords)} dimensions, got {data.ndim}")
+        if data.dims != dims:
+            raise ValueError(f"DataArray dimensions {data.dims} do not match expected dimensions {dims}")
+        if data.shape != tuple(coord.size for coord in coords):
+            raise ValueError(f"DataArray shape {data.shape} does not match expected shape {tuple(coord.size for coord in coords)}")
+        # TODO: This is not really thought through or tested
+        return data
 
 class TimeSeriesData:
     # TODO: Move to Interface.py
@@ -377,10 +392,10 @@ class TimeSeriesCollection:
         self.add_time_series(*timeseries)
     
     def add_time_series(self, *time_series: TimeSeries):
-        for time_series in list(time_series):
-            if len(time_series.active_timesteps) - len(self.timesteps) == 1:
-                self._timeserieses_longer.append(time_series)
-            self.time_serieses.extend(time_series)
+        for single_time_series in time_series:
+            if len(single_time_series.active_timesteps) - len(self.timesteps) == 1:
+                self._timeserieses_longer.append(single_time_series)
+        self.time_serieses.extend(list(time_series))
         self._check_unique_labels()
 
     def create_time_series(

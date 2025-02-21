@@ -10,7 +10,7 @@ import pandas as pd
 import linopy
 
 from . import utils
-from .core import Numeric, Numeric_TS, Skalar, TimeSeries
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
 from .elements import Component, ComponentModel, Flow
 from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
@@ -96,29 +96,30 @@ class LinearConverter(Component):
                         f'(in flow {flow.label_full}) do not make sense together!'
                     )
 
-    def transform_data(self, flow_system: 'FlowSystem'):
-        super().transform_data(flow_system)
+    def transform_data(self, time_series_collection: TimeSeriesCollection):
+        super().transform_data(time_series_collection)
         if self.conversion_factors:
-            self.conversion_factors = self._transform_conversion_factors(flow_system)
+            self.conversion_factors = self._transform_conversion_factors(time_series_collection)
         else:
             segmented_conversion_factors = {}
             for flow, segments in self.segmented_conversion_factors.items():
                 segmented_conversion_factors[flow] = [
                     (
-                        self._create_time_series('Stützstelle', segment[0], flow_system.timesteps, flow_system.periods),
-                        self._create_time_series('Stützstelle', segment[1], flow_system.timesteps, flow_system.periods),
+                        self._create_time_series(f'{flow.label}|Stützstelle|{idx}a', segment[0], time_series_collection),
+                        self._create_time_series(f'{flow.label}|Stützstelle|{idx}b', segment[1], time_series_collection),
                     )
-                    for segment in segments
+                    for idx, segment in enumerate(segments)
                 ]
             self.segmented_conversion_factors = segmented_conversion_factors
 
-    def _transform_conversion_factors(self, flow_system: 'FlowSystem') -> List[Dict[Flow, TimeSeries]]:
+    def _transform_conversion_factors(self, time_series_collection: TimeSeriesCollection) -> List[Dict[Flow, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
         list_of_conversion_factors = []
         for idx, conversion_factor in enumerate(self.conversion_factors):
             transformed_dict = {}
             for flow, values in conversion_factor.items():
-                transformed_dict[flow] = self._create_time_series(f'{flow.label}_factor{idx}', values, flow_system.timesteps, flow_system.periods)
+                # TODO: Might be better to use the label of the component instead of the flow
+                transformed_dict[flow] = flow._create_time_series(f'conversion_factor{idx}', values, time_series_collection)
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
 
@@ -219,19 +220,21 @@ class Storage(Component):
         self.model = StorageModel(model, self)
         return self.model
 
-    def transform_data(self, flow_system: 'FlowSystem') -> None:
-        super().transform_data(flow_system)
+    def transform_data(self, time_series_collection: TimeSeriesCollection) -> None:
+        super().transform_data(time_series_collection)
         self.relative_minimum_charge_state = self._create_time_series(
-            'relative_minimum_charge_state', self.relative_minimum_charge_state, flow_system.timesteps_extra, flow_system.periods
+            'relative_minimum_charge_state', self.relative_minimum_charge_state, time_series_collection,
+            extra_timestep=True
         )
         self.relative_maximum_charge_state = self._create_time_series(
-            'relative_maximum_charge_state', self.relative_maximum_charge_state, flow_system.timesteps_extra, flow_system.periods
+            'relative_maximum_charge_state', self.relative_maximum_charge_state, time_series_collection,
+            extra_timestep=True
         )
-        self.eta_charge = self._create_time_series('eta_charge', self.eta_charge, flow_system.timesteps, flow_system.periods)
-        self.eta_discharge = self._create_time_series('eta_discharge', self.eta_discharge, flow_system.timesteps, flow_system.periods)
-        self.relative_loss_per_hour = self._create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, flow_system.timesteps, flow_system.periods)
+        self.eta_charge = self._create_time_series('eta_charge', self.eta_charge, time_series_collection)
+        self.eta_discharge = self._create_time_series('eta_discharge', self.eta_discharge, time_series_collection)
+        self.relative_loss_per_hour = self._create_time_series('relative_loss_per_hour', self.relative_loss_per_hour, time_series_collection)
         if isinstance(self.capacity_in_flow_hours, InvestParameters):
-            self.capacity_in_flow_hours.transform_data(flow_system)
+            self.capacity_in_flow_hours.transform_data(time_series_collection)
 
 
 class Transmission(Component):
@@ -318,10 +321,10 @@ class Transmission(Component):
         self.model = TransmissionModel(model, self)
         return self.model
 
-    def transform_data(self, flow_system: 'FlowSystem') -> None:
-        super().transform_data(flow_system)
-        self.relative_losses = self._create_time_series('relative_losses', self.relative_losses, flow_system.timesteps, flow_system.periods)
-        self.absolute_losses = self._create_time_series('absolute_losses', self.absolute_losses, flow_system.timesteps, flow_system.periods)
+    def transform_data(self, time_series_collection: TimeSeriesCollection) -> None:
+        super().transform_data(time_series_collection)
+        self.relative_losses = self._create_time_series('relative_losses', self.relative_losses, time_series_collection)
+        self.absolute_losses = self._create_time_series('absolute_losses', self.absolute_losses, time_series_collection)
 
 
 class TransmissionModel(ComponentModel):

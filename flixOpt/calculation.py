@@ -244,7 +244,6 @@ class AggregatedCalculation(Calculation):
                 f'step size of {dt_min} hours). It must be a multiple of {dt_min} hours.'
             )
 
-
         logger.info(f'{"":#^80}')
         logger.info(f'{" Aggregating TimeSeries Data ":#^80}')
 
@@ -262,7 +261,7 @@ class AggregatedCalculation(Calculation):
         self.aggregation.cluster()
         self.aggregation.plot()
         if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
-            self.time_series_collection.insert_data(self.aggregation.aggregated_data)
+            self.flow_system.time_series_collection.insert_data(self.aggregation.aggregated_data)
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
         # Model the System

@@ -10,7 +10,7 @@ import linopy
 import pandas as pd
 
 from .config import CONFIG
-from .core import Numeric, Numeric_TS, Skalar
+from .core import Numeric, Numeric_TS, Skalar, TimeSeriesCollection
 from .effects import EffectValuesUser, effect_values_to_time_series
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
@@ -69,9 +69,9 @@ class Component(Element):
         self.model = ComponentModel(model, self)
         return self.model
 
-    def transform_data(self, flow_system: 'FlowSystem') -> None:
+    def transform_data(self, time_series_collection: TimeSeriesCollection) -> None:
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_data(flow_system, self)
+            self.on_off_parameters.transform_data(time_series_collection, self)
 
     def register_component_in_flows(self) -> None:
         for flow in self.inputs + self.outputs:
@@ -120,9 +120,9 @@ class Bus(Element):
         self.model = BusModel(model, self)
         return self.model
 
-    def transform_data(self, flow_system: 'FlowSystem'):
+    def transform_data(self, time_series_collection: TimeSeriesCollection):
         self.excess_penalty_per_flow_hour = self._create_time_series(
-            'excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour, flow_system.timesteps, flow_system.periods
+            'excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour, time_series_collection
         )
 
     def add_input(self, flow) -> None:
@@ -242,15 +242,15 @@ class Flow(Element):
         self.model = FlowModel(model, self)
         return self.model
 
-    def transform_data(self, flow_system: 'FlowSystem'):
-        self.relative_minimum = self._create_time_series('relative_minimum', self.relative_minimum, flow_system.timesteps, flow_system.periods)
-        self.relative_maximum = self._create_time_series('relative_maximum', self.relative_maximum, flow_system.timesteps, flow_system.periods)
-        self.fixed_relative_profile = self._create_time_series('fixed_relative_profile', self.fixed_relative_profile, flow_system.timesteps, flow_system.periods)
-        self.effects_per_flow_hour = effect_values_to_time_series('per_flow_hour', self.effects_per_flow_hour, self, flow_system.timesteps, flow_system.periods)
+    def transform_data(self, time_series_collection: TimeSeriesCollection):
+        self.relative_minimum = self._create_time_series('relative_minimum', self.relative_minimum, time_series_collection)
+        self.relative_maximum = self._create_time_series('relative_maximum', self.relative_maximum, time_series_collection)
+        self.fixed_relative_profile = self._create_time_series('fixed_relative_profile', self.fixed_relative_profile, time_series_collection)
+        self.effects_per_flow_hour = effect_values_to_time_series('per_flow_hour', self.effects_per_flow_hour, self, time_series_collection)
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_data(flow_system, self)
+            self.on_off_parameters.transform_data(time_series_collection, self)
         if isinstance(self.size, InvestParameters):
-            self.size.transform_data(flow_system)
+            self.size.transform_data(time_series_collection)
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         infos = super().infos(use_numpy, use_element_label)

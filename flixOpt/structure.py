@@ -253,7 +253,7 @@ class Interface:
         name: str,
         data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
         time_series_collection: TimeSeriesCollection,
-        extra_timestep: bool = True,
+        extra_timestep: bool = False,
     ) -> Optional[TimeSeries]:
         """
         Tries to create a TimeSeries from Numeric Data and adds it to the time_series_collection
@@ -301,6 +301,21 @@ class Element(Interface):
     @property
     def label_full(self) -> str:
         return self.label
+
+    def _create_time_series(
+        self,
+        name: str,
+        data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
+        time_series_collection: TimeSeriesCollection,
+        extra_timestep: bool = False,
+    ) -> Optional[TimeSeries]:
+        """
+        Tries to create a TimeSeries from Numeric Data and adds it to the time_series_collection
+        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
+        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
+        If the data is None, nothing happens.
+        """
+        return super()._create_time_series(f'{self.label_full}|{name}', data, time_series_collection, extra_timestep)
 
     @staticmethod
     def _valid_label(label: str) -> str:

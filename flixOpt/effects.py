@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import linopy
 
-from .core import Numeric, Numeric_TS, Skalar, TimeSeries
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
 from .math_modeling import Equation, Variable
 from .structure import Element, ElementModel, SystemModel, Model
@@ -136,20 +136,19 @@ class Effect(Element):
                 f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
             )
 
-    def transform_data(self, flow_system: 'FlowSystem'):
+    def transform_data(self, time_series_collection: TimeSeriesCollection):
         self.minimum_operation_per_hour = self._create_time_series(
-            'minimum_operation_per_hour', self.minimum_operation_per_hour, flow_system.timesteps, flow_system.periods
+            'minimum_operation_per_hour', self.minimum_operation_per_hour, time_series_collection
         )
         self.maximum_operation_per_hour = self._create_time_series(
-            'maximum_operation_per_hour', self.maximum_operation_per_hour, flow_system.timesteps, flow_system.periods
+            'maximum_operation_per_hour', self.maximum_operation_per_hour, time_series_collection
         )
 
         self.specific_share_to_other_effects_operation = effect_values_to_time_series(
             'operation_to',
             self.specific_share_to_other_effects_operation,
             self,
-            flow_system.timesteps,
-            flow_system.periods
+            time_series_collection
         )
 
     def create_model(self, model: SystemModel) -> 'EffectModel':
@@ -225,8 +224,7 @@ EffectValuesUser = Union[Numeric_TS, Dict[Optional[Union[str, Effect]], Numeric_
 def effect_values_to_time_series(label_suffix: str,
                                  effect_values: EffectValuesUser,
                                  parent_element: Element,
-                                 timesteps: pd.DatetimeIndex,
-                                 periods: Optional[pd.Index]) -> Optional[EffectValuesTS]:
+                                 time_series_collection: TimeSeriesCollection) -> Optional[EffectValuesTS]:
     """
     Transform EffectValues to EffectValuesTS.
     Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
@@ -241,10 +239,9 @@ def effect_values_to_time_series(label_suffix: str,
 
     effect_values_ts: EffectValuesTS = {
         effect: parent_element._create_time_series(
-            f'{effect.label if effect is not None else "Standard_Effect"}_{label_suffix}',
+            f'{effect.label_full if effect is not None else "Standard_Effect"}|{label_suffix}',
             value,
-            timesteps,
-            periods
+            time_series_collection
         )
         for effect, value in effect_values.items()
     }
