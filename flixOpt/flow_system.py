@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 
 from . import utils
-from .core import TimeSeries
+from .core import TimeSeries, TimeSeriesCollection
 from .effects import Effect
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
@@ -51,15 +51,11 @@ class FlowSystem:
             The periods of the model. Every period has the same timesteps.
             Usually years are used as periods.
         """
-        self.timesteps = timesteps
-        self.hours_of_last_step = hours_of_last_timestep
-        self.periods = periods
-        self._order_dimensions()
-
-        self.hours_of_previous_timesteps: Union[int, float, np.ndarray] = (
-            ((self.timesteps[1] - self.timesteps[0]) / np.timedelta64(1, 'h'))
-            if hours_of_previous_timesteps is None
-            else hours_of_previous_timesteps
+        self.time_series_collection = TimeSeriesCollection(
+            timesteps=timesteps,
+            hours_of_last_timestep=hours_of_last_timestep,
+            hours_of_previous_timesteps=hours_of_previous_timesteps,
+            periods=periods
         )
 
         # defaults:
@@ -247,69 +243,6 @@ class FlowSystem:
         if element.label_full in self.all_elements:
             raise Exception(f'Label of Element {element.label} already used in another element!')
 
-    def _order_dimensions(self):
-        self.timesteps = self.timesteps
-        self.timesteps.name = 'time'
-
-        self.periods = pd.Index(self.periods, name='period') if self.periods is not None else None
-
-        if self.hours_of_last_step:
-            last_date = pd.DatetimeIndex(
-                [self.timesteps[-1] + pd.to_timedelta(self.hours_of_last_step, 'h')])
-        else:
-            last_date = pd.DatetimeIndex([self.timesteps[-1] + (self.timesteps[-1] - self.timesteps[-2])])
-        self.timesteps_extra = self.timesteps.append(last_date)
-        self.timesteps_extra.name = 'time'
-        hours_per_step = self.timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
-        self.hours_per_step = xr.DataArray(
-            data=np.tile(hours_per_step, (len(self.periods), 1)) if self.periods is not None else hours_per_step,
-            coords=self.coords,
-            name='hours_per_step'
-        )
-
-    def get_time_data_from_indices(
-        self, time_indices: Optional[Union[List[int], range]] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.float64]:
-        """
-        Computes time series data based on the provided time indices.
-
-        Args:
-            time_indices: A list of indices or a range object indicating which time steps to extract.
-                          If None, the entire time series is used.
-
-        Returns:
-            A tuple containing:
-            - Extracted time series
-            - Time series with the "end time" appended
-            - Differences between consecutive timestamps in hours
-            - Total time in hours
-        """
-        # If time_indices is None, use the full time series range
-        if time_indices is None:
-            time_indices = range(len(self.time_series))
-
-        # Extract the time series for the provided indices
-        time_series = self.time_series[time_indices]
-
-        # Ensure the next timestamp for end time is within bounds
-        last_index = time_indices[-1]
-        if last_index + 1 < len(self.time_series_with_end):
-            end_time = self.time_series_with_end[last_index + 1]
-        else:
-            raise IndexError(f"Index {last_index + 1} out of bounds for 'self.time_series_with_end'.")
-
-        # Append end time to the time series
-        time_series_with_end = np.append(time_series, end_time)
-
-        # Calculate time differences (time deltas) in hours
-        time_deltas = time_series_with_end[1:] - time_series_with_end[:-1]
-        dt_in_hours = time_deltas / np.timedelta64(1, 'h')
-
-        # Calculate the total time in hours
-        dt_in_hours_total = np.sum(dt_in_hours)
-
-        return time_series, time_series_with_end, dt_in_hours, dt_in_hours_total
-
     def __repr__(self):
         return f'<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>'
 
@@ -334,30 +267,32 @@ class FlowSystem:
         return [ts for element in self.all_elements.values() for ts in element.used_time_series]
 
     @property
-    def snapshots(self):
-        return xr.Dataset(
-            coords={'period': list(self.periods), 'time': list(self.timesteps)} if self.periods is not None else {
-                'time': list(self.timesteps)},
-        )
+    def hours_of_previous_timesteps(self):
+        return self.time_series_collection.hours_of_previous_timesteps
 
     @property
-    def snapshots_extra(self):
-        return xr.Dataset(
-            coords={'period': list(self.periods), 'time': list(self.timesteps_extra)} if self.periods is not None else {
-                'time': list(self.timesteps_extra)},
-        )
+    def timesteps(self):
+        return self.time_series_collection.timesteps
+
+    @property
+    def timesteps_extra(self):
+        return self.time_series_collection.timesteps_extra
+
+    @property
+    def periods(self):
+        return self.time_series_collection.periods
+
+    @property
+    def hours_per_step(self):  #TODO: Rename to hours_per_timestep
+        return self.time_series_collection.hours_per_timestep
 
     @property
     def coords(self):
-        return self.snapshots.coords
+        return [self.periods, self.timesteps] if self.periods is not None else [self.timesteps]
 
     @property
     def coords_extra(self):
-        return self.snapshots_extra.coords
-
-    @property
-    def index_shape(self) -> Tuple[int, int]:
-        return len(self.periods) if self.periods is not None else 1, len(self.timesteps)
+        return [self.periods, self.timesteps_extra] if self.periods is not None else [self.timesteps_extra]
 
 
 def create_datetime_array(

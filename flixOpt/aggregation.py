@@ -16,7 +16,7 @@ import pandas as pd
 import tsam.timeseriesaggregation as tsam
 
 from .components import Storage
-from .core import Skalar, TimeSeries, TimeSeriesData, DataConverter
+from .core import Skalar, TimeSeriesData
 from .elements import Component
 from .flow_system import FlowSystem
 from .math_modeling import Equation, Variable, VariableTS
@@ -203,72 +203,6 @@ class Aggregation:
 
         # Convert lists to numpy arrays
         return np.array(idx_var1), np.array(idx_var2)
-
-
-class TimeSeriesCollection:
-    def __init__(self, *time_series):
-        self.time_serieses: List[TimeSeries] = list(time_series)
-        self._check_unique_labels()
-        self.group_weights = self._calculate_group_weights()
-        self.weights = self._calculate_aggregation_weights()
-
-        if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
-            logger.info('All Aggregation weights were set to 1')
-
-    def insert_data(self, data: pd.DataFrame):
-        for time_series in self.time_serieses:
-            if time_series.name in data.columns:
-                time_series.stored_data = data[time_series.name]
-                logger.debug(f'Inserted data for {time_series.name}')
-
-    def to_dataframe(self, with_constant_data: bool = False):
-        if with_constant_data:
-            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
-                              for time_series in self.time_serieses],
-                             axis=1)
-        
-        return pd.concat([time_series.active_data.to_dataframe(time_series.name)
-                          for time_series in self.time_serieses_non_constant],
-                         axis=1)
-    
-    @property
-    def time_serieses_non_constant(self) -> List[TimeSeries]:
-        return [time_series for time_series in self.time_serieses if not time_series.all_equal]
-
-    def description(self) -> str:
-        # TODO:
-        result = f'{len(self.time_serieses)} TimeSeries used for aggregation:\n'
-        for time_series in self.time_serieses:
-            result += f' -> {time_series.name} (weight: {self.weights[time_series.name]:.4f}; group: "{time_series.aggregation_group}")\n'
-        if self.group_weights:
-            result += f'Aggregation_Groups: {list(self.group_weights.keys())}\n'
-        else:
-            result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
-        return result
-
-    def _calculate_group_weights(self) -> Dict[str, float]:
-        """Calculates the aggregation weights of each group"""
-        groups = [
-            time_series.aggregation_group
-            for time_series in self.time_serieses
-            if time_series.aggregation_group is not None
-        ]
-        group_size = dict(Counter(groups))
-        group_weights = {group: 1 / size for group, size in group_size.items()}
-        return group_weights
-
-    def _calculate_aggregation_weights(self) -> Dict[str, float]:
-        """Calculates the aggregation weight for each TimeSeries. Default is 1"""
-        return {
-            time_series.name: self.group_weights.get(time_series.aggregation_group, time_series.aggregation_weight or 1)
-            for time_series in self.time_serieses
-        }
-
-    def _check_unique_labels(self):
-        """Makes sure every label of the TimeSeries in time_series_list is unique"""
-        label_counts = Counter([time_series.name for time_series in self.time_serieses])
-        duplicates = [label for label, count in label_counts.items() if count > 1]
-        assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))
 
 
 class AggregationParameters:

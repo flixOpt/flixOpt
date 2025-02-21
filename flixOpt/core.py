@@ -5,7 +5,8 @@ It provides Datatypes, logging functionality, and some functions to transform da
 
 import inspect
 import logging
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union, Tuple, Literal
+from collections import Counter
 
 import numpy as np
 import xarray as xr
@@ -349,3 +350,208 @@ class TimeSeries:
         """Ensures NumPy functions like np.add(TimeSeries, xarray) work correctly."""
         inputs = [x.active_data if isinstance(x, TimeSeries) else x for x in inputs]
         return getattr(ufunc, method)(*inputs, **kwargs)
+
+
+class TimeSeriesCollection:
+    def __init__(self,
+                 timesteps: pd.DatetimeIndex,
+                 hours_of_last_timestep: Optional[float],
+                 hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]],
+                 periods: Optional[List[int]], *timeseries: TimeSeries):
+        (
+            self.timesteps,
+            self.timesteps_extra,
+            self.hours_per_timestep,
+            self.hours_of_previous_timesteps,
+            self.periods) = TimeSeriesCollection.allign_dimensions(
+            timesteps, periods, hours_of_last_timestep, hours_of_previous_timesteps
+        )
+
+        self.group_weights: Dict[str, float] = {}
+        self.weights: Dict[str, float] = {}
+        self.time_serieses: List[TimeSeries] = []
+        self._timeserieses_longer: List[TimeSeries] = []
+
+        self.add_time_series(*timeseries)
+    
+    def add_time_series(self, *time_series: TimeSeries):
+        for time_series in list(time_series):
+            if len(time_series.active_timesteps) - len(self.timesteps) == 1:
+                self._timeserieses_longer.append(time_series)
+            self.time_serieses.extend(time_series)
+        self._check_unique_labels()
+
+    def create_time_series(
+        self,
+        data: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray],
+        name: str,
+        additional_step:bool=False
+    ) -> TimeSeries:
+        """
+        Creates a TimeSeries from the given data and adds it to the list of time_serieses of an Element.
+        If the data already is a TimeSeries, nothing happens.
+
+        Parameters
+        ----------
+        data: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
+            The data to create the TimeSeries from.
+        name: str
+            The name of the TimeSeries.
+        additional_step: bool, optional
+            Whether to create an additional timestep at the end of the timesteps.
+
+        Returns
+        -------
+        TimeSeries
+            The created TimeSeries.
+
+        """
+        if isinstance(data, TimeSeries):
+            if data not in self.time_serieses:
+                self.add_time_series(data)
+            return data
+        else:
+            time_series = TimeSeries.from_datasource(
+                name=f'{name}',
+                data=data,
+                timesteps=self.timesteps if not additional_step else self.timesteps_extra,
+                periods=self.periods)
+        self.add_time_series(time_series)
+        return time_series
+    
+    def calculate_aggregation_weights(self) -> Dict[str, float]:
+        self.group_weights = self._calculate_group_weights()
+        self.weights = self._calculate_aggregation_weights()
+        
+        if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
+            logger.info('All Aggregation weights were set to 1')
+
+        return self.weights
+
+    def insert_data(self, data: pd.DataFrame):
+        for time_series in self.time_serieses:
+            if time_series.name in data.columns:
+                time_series.stored_data = data[time_series.name]
+                logger.debug(f'Inserted data for {time_series.name}')
+
+    def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant'):
+        if filtered == 'all':
+            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
+                              for time_series in self.time_serieses],
+                             axis=1)
+        elif filtered == 'constant':
+            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
+                              for time_series in self.constants],
+                             axis=1)
+        elif filtered == 'non_constant':
+            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
+                              for time_series in self.non_constants],
+                             axis=1)
+        else:
+            raise ValueError('Not supported argument for "filtered".')
+
+    @staticmethod
+    def allign_dimensions(
+        timesteps: pd.DatetimeIndex,
+        periods: Optional[pd.Index] = None,
+        hours_of_last_timestep: Optional[float] = None,
+        hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None
+    ) -> Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Union[int, float, np.ndarray], Optional[pd.Index]]:
+        """ Converts the given timesteps, periods and hours_of_last_timestep to the right format
+
+        Parameters
+        ----------
+        timesteps : pd.DatetimeIndex
+            The timesteps of the model.
+        hours_of_last_timestep : Optional[float], optional
+            The duration of the last time step. Uses the last time interval if not specified
+        hours_of_previous_timesteps: Un
+        periods : Optional[pd.Index], optional
+            The periods of the model. Every period has the same timesteps.
+            Usually years are used as periods.
+
+        Returns
+        -------
+        Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Optional[pd.Index]]
+            The timesteps, timesteps_extra, hours_per_timestep and periods
+
+            - timesteps: pd.DatetimeIndex
+                The timesteps of the model.
+            - timesteps_extra: pd.DatetimeIndex
+                The timesteps of the model, including an extra timestep at the end.
+            - hours_per_timestep: xr.DataArray
+                The duration of each timestep in hours.
+            - hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]]
+                The duration of the previous timesteps in hours.
+            - periods: Optional[pd.Index]
+                The periods of the model. Every period has the same timesteps.
+                Usually years are used as periods.
+        """
+        timesteps = pd.DatetimeIndex(timesteps, name='time')
+        periods = pd.Index(periods, name='period') if periods is not None else None
+
+        if hours_of_last_timestep:
+            last_date = pd.DatetimeIndex(
+                [timesteps[-1] + pd.to_timedelta(hours_of_last_timestep, 'h')])
+        else:
+            last_date = pd.DatetimeIndex([timesteps[-1] + (timesteps[-1] - timesteps[-2])])
+
+        timesteps_extra = pd.DatetimeIndex(timesteps.append(last_date), name='time')
+
+        hours_of_previous_timesteps: Union[int, float, np.ndarray] = (
+            ((timesteps[1] - timesteps[0]) / np.timedelta64(1, 'h'))
+            if hours_of_previous_timesteps is None
+            else hours_of_previous_timesteps
+        )
+
+        hours_per_step = timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
+        hours_per_step = xr.DataArray(
+            data=np.tile(hours_per_step, (len(periods), 1)) if periods is not None else hours_per_step,
+            coords=(periods, timesteps) if periods is not None else (timesteps,),
+            dims=('period', 'time') if periods is not None else ('time',),
+            name='hours_per_step'
+        )
+        return timesteps, timesteps_extra , hours_per_step, hours_of_previous_timesteps, periods
+
+    @property
+    def non_constants(self) -> List[TimeSeries]:
+        return [time_series for time_series in self.time_serieses if not time_series.all_equal]
+
+    @property
+    def constants(self) -> List[TimeSeries]:
+        return [time_series for time_series in self.time_serieses if time_series.all_equal]
+
+    def description(self) -> str:
+        # TODO:
+        result = f'{len(self.time_serieses)} TimeSeries used for aggregation:\n'
+        for time_series in self.time_serieses:
+            result += f' -> {time_series.name} (weight: {self.weights[time_series.name]:.4f}; group: "{time_series.aggregation_group}")\n'
+        if self.group_weights:
+            result += f'Aggregation_Groups: {list(self.group_weights.keys())}\n'
+        else:
+            result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
+        return result
+
+    def _calculate_group_weights(self) -> Dict[str, float]:
+        """Calculates the aggregation weights of each group"""
+        groups = [
+            time_series.aggregation_group
+            for time_series in self.time_serieses
+            if time_series.aggregation_group is not None
+        ]
+        group_size = dict(Counter(groups))
+        group_weights = {group: 1 / size for group, size in group_size.items()}
+        return group_weights
+
+    def _calculate_aggregation_weights(self) -> Dict[str, float]:
+        """Calculates the aggregation weight for each TimeSeries. Default is 1"""
+        return {
+            time_series.name: self.group_weights.get(time_series.aggregation_group, time_series.aggregation_weight or 1)
+            for time_series in self.time_serieses
+        }
+
+    def _check_unique_labels(self):
+        """Makes sure every label of the TimeSeries in time_series_list is unique"""
+        label_counts = Counter([time_series.name for time_series in self.time_serieses])
+        duplicates = [label for label, count in label_counts.items() if count > 1]
+        assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))

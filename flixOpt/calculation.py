@@ -21,7 +21,7 @@ import pandas as pd
 import yaml
 
 from . import utils as utils
-from .aggregation import AggregationModel, AggregationParameters, TimeSeriesCollection
+from .aggregation import AggregationModel, AggregationParameters
 from .components import Storage
 from .core import Numeric, Skalar
 from .elements import Component
@@ -212,11 +212,12 @@ class AggregatedCalculation(Calculation):
             list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
         super().__init__(name, flow_system, active_timesteps)
+        if flow_system.periods is not None:
+            raise NotImplementedError(f'Multiple Periods are currently not supported in AggregatedCalculation')
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
         self.time_series_for_aggregation = None
         self.aggregation = None
-        self.time_series_collection: Optional[TimeSeriesCollection] = None
 
     def do_modeling(self) -> SystemModel:
         self.flow_system.transform_data()
@@ -247,15 +248,13 @@ class AggregatedCalculation(Calculation):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Aggregating TimeSeries Data ":#^80}')
 
-        self.time_series_collection = TimeSeriesCollection(*self.flow_system.all_time_series)
-
         # Aggregation - creation of aggregated timeseries:
         self.aggregation = Aggregation(
-            original_data=self.time_series_collection.to_dataframe(),
+            original_data=self.flow_system.time_series_collection.to_dataframe(),
             hours_per_time_step=float(dt_min),
             hours_per_period=self.aggregation_parameters.hours_per_period,
             nr_of_periods=self.aggregation_parameters.nr_of_periods,
-            weights=self.time_series_collection.weights,
+            weights=self.flow_system.time_series_collection.calculate_aggregation_weights(),
             time_series_for_high_peaks=self.aggregation_parameters.labels_for_high_peaks,
             time_series_for_low_peaks=self.aggregation_parameters.labels_for_low_peaks,
         )
@@ -304,8 +303,7 @@ class SegmentedCalculation(Calculation):
         flow_system: FlowSystem,
         segment_length: int,
         overlap_length: int,
-        modeling_language: Literal['pyomo', 'linopy'] = 'pyomo',
-        time_indices: Optional[Union[range, list[int]]] = None,
+        active_timesteps: Optional[Union[List[int], pd.DatetimeIndex]] = None,
     ):
         """
         Dividing and Modeling the problem in (overlapping) segments.
@@ -329,16 +327,13 @@ class SegmentedCalculation(Calculation):
         overlap_length : int
             The number of time_steps that are added to each individual model. Used for better
             results of storages)
-        modeling_language : 'pyomo', 'linopy' (not implemeted yet)
-            choose optimization modeling language
-        time_indices : List[int] or None
-            list with indices, which should be used for calculation. If None, then all timesteps are used.
-
         """
-        super().__init__(name, flow_system, modeling_language, time_indices)
+        super().__init__(name, flow_system, active_timesteps)
+        if flow_system.periods is not None:
+            raise NotImplementedError(f'Multiple Periods are currently not supported in SegmentedCalculation')
         self.segment_length = segment_length
         self.overlap_length = overlap_length
-        self._total_length = len(self.time_indices) if self.time_indices is not None else len(flow_system.time_series)
+        self._total_length = len(self.flow_system.timesteps) if self.time_indices is not None else len(flow_system.time_series)
         self.number_of_segments = math.ceil(self._total_length / self.segment_length)
         self.sub_calculations: List[FullCalculation] = []
 
