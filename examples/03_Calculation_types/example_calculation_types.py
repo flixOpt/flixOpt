@@ -14,7 +14,7 @@ import flixOpt as fx
 
 if __name__ == '__main__':
     # Calculation Types
-    full, segmented, aggregated = True, True, True
+    full, segmented, aggregated = True, False, False
 
     # Segmented Properties
     segment_length, overlap_length = 96, 1
@@ -157,15 +157,15 @@ if __name__ == '__main__':
     results: dict = {key: None for key in kinds}
 
     if full:
-        calculation = fx.FullCalculation('fullModel', flow_system, 'pyomo')
+        calculation = fx.FullCalculation('fullModel', flow_system)
         calculation.do_modeling()
-        calculation.solve(fx.solvers.HighsSolver())
+        calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations['Full'] = calculation
         results['Full'] = calculations['Full'].results()
 
     if segmented:
         calculation = fx.SegmentedCalculation('segModel', flow_system, segment_length, overlap_length)
-        calculation.do_modeling_and_solve(fx.solvers.HighsSolver())
+        calculation.do_modeling_and_solve(fx.solvers.HighsSolver(0, 60))
         calculations['Segmented'] = calculation
         results['Segmented'] = calculations['Segmented'].results(combined_arrays=True)
 
@@ -175,7 +175,7 @@ if __name__ == '__main__':
             aggregation_parameters.time_series_for_low_peaks = [TS_electricity_demand, TS_heat_demand]
         calculation = fx.AggregatedCalculation('aggModel', flow_system, aggregation_parameters)
         calculation.do_modeling()
-        calculation.solve(fx.solvers.HighsSolver())
+        calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations['Aggregated'] = calculation
         results['Aggregated'] = calculations['Aggregated'].results()
     pprint(results)
