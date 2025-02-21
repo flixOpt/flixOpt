@@ -247,7 +247,7 @@ class TimeSeries:
         self._update_active_data()  # Refresh view
 
     @property
-    def active_periods(self) -> pd.Index:
+    def active_periods(self) -> Optional[pd.Index]:
         """Return the current active index."""
         return self._active_periods
 
@@ -279,10 +279,17 @@ class TimeSeries:
         return self._stored_data.copy()
 
     @stored_data.setter
-    def stored_data(self, value: xr.DataArray):
-        """Set stored_data and refresh active_index and active_data."""
+    def stored_data(self, value: Union[pd.Series, pd.DataFrame, xr.DataArray]):
+        """
+        Update stored_data and refresh active_index and active_data.
+
+        Parameters
+        ----------
+        value: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
+            Data to update stored_data with.
+        """
         self._backup = self._stored_data
-        self._stored_data = value
+        self._stored_data = DataConverter.as_dataarray(value, time=self.active_timesteps, period=self.active_periods)
         self.active_timesteps = None
         self.active_periods = None
 
