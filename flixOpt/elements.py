@@ -307,7 +307,7 @@ class FlowModel(ElementModel):
         self.flow_rate = self.add(
             self._model.add_variables(
                 lower=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
-                upper=self.absolute_flow_rate_bounds[1] if self.element.on_off_parameters is None else np.inf,
+                upper=self.absolute_flow_rate_bounds[1],
                 coords=self._model.coords,
                 name=f'{self.label_full}|flow_rate'
             ),
