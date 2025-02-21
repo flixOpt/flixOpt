@@ -182,7 +182,7 @@ if __name__ == '__main__':
     calculation.do_modeling()
 
     calculation.solve(
-        'highs',
+        fx.solvers.HighsSolver(0.01, 60),
         save_results='results',  # If and where to save results
     )
 

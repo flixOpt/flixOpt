@@ -104,9 +104,12 @@ def solve_and_load(
     return results
 
 
-@pytest.fixture(params=['highs'])#, 'gurobi'])
+@pytest.fixture(params=['highs', 'gurobi'])
 def solver_fixture(request):
-    return request.param
+    return {
+        'highs': fx.solvers.HighsSolver(0.01, 60),
+        'gurobi': fx.solvers.GurobiSolver(0.01, 60),
+    }[request.param]
 
 
 @pytest.fixture
