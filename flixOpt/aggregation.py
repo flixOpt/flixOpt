@@ -218,11 +218,7 @@ class TimeSeriesCollection:
     def insert_data(self, data: pd.DataFrame):
         for time_series in self.time_serieses:
             if time_series.name in data.columns:
-                time_series.stored_data = DataConverter.as_dataarray(
-                    data[time_series.name],
-                    time_series.active_timesteps,
-                    time_series.active_periods
-                )
+                time_series.stored_data = data[time_series.name]
                 logger.debug(f'Inserted data for {time_series.name}')
 
     def to_dataframe(self, with_constant_data: bool = False):
