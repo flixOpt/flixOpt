@@ -352,7 +352,7 @@ class AggregationModel(Model):
         """
         Modeling-Element for "index-equating"-equations
         """
-        super().__init__(model, label_of_element='No Element', label_full='Aggregation')
+        super().__init__(model, label_of_element='Aggregation', label_full='Aggregation')
         self.flow_system = flow_system
         self.aggregation_parameters = aggregation_parameters
         self.aggregation_data = aggregation_data
