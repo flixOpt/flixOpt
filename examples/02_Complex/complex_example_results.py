@@ -35,8 +35,8 @@ if __name__ == '__main__':
     # --- Plotting internal variables manually ---
     on_data = pd.DataFrame(
         {
-            'BHKW2 On': results.component_results['BHKW2'].variables['Q_th']['OnOff']['on'],
-            'Kessel On': results.component_results['Kessel'].variables['Q_th']['OnOff']['on'],
+            'BHKW2 On': results.component_results['BHKW2'].variables['Q_th']['on'],
+            'Kessel On': results.component_results['Kessel'].variables['Q_th']['on'],
         },
         index=results.time,
     )
