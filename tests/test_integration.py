@@ -822,13 +822,11 @@ class TestModelingTypes(BaseTest):
         es.visualize_network()
 
         if doFullCalc:
-            calc = fx.FullCalculation('fullModel', es, 'pyomo')
+            calc = fx.FullCalculation('fullModel', es)
             calc.do_modeling()
             calc.solve(self.get_solver(), save_results=True)
         elif doSegmentedCalc:
-            calc = fx.SegmentedCalculation(
-                'segModel', es, segment_length=96, overlap_length=1, modeling_language='pyomo'
-            )
+            calc = fx.SegmentedCalculation('segModel', es, segment_length=96, overlap_length=1)
             calc.do_modeling_and_solve(self.get_solver(), save_results=True)
         elif doAggregatedCalc:
             calc = fx.AggregatedCalculation(

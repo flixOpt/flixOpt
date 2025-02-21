@@ -127,7 +127,7 @@ con_storage_start = m.add_constraints(
     name="con_storage_start"
 )
 # Start = End for every period
-start_is_end = True
+start_is_end = False
 if start_is_end:
     con_storage_start_end = m.add_constraints(
         charge_state.isel(time=0) == charge_state.isel(time=-1),
