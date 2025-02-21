@@ -288,8 +288,11 @@ class TimeSeries:
         value: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
             Data to update stored_data with.
         """
+        new_data = DataConverter.as_dataarray(value, time=self.active_timesteps, period=self.active_periods)
+        if new_data.equals(self._stored_data):
+            return  # No change in stored_data. Do nothing. This prevents pushing out the backup
         self._backup = self._stored_data
-        self._stored_data = DataConverter.as_dataarray(value, time=self.active_timesteps, period=self.active_periods)
+        self._stored_data = new_data
         self.active_timesteps = None
         self.active_periods = None
 
@@ -301,8 +304,8 @@ class TimeSeries:
     def isel(self):
         return self.active_data.isel
 
-    # Enable arithmetic operations using active_data
     def _apply_operation(self, other, op):
+        # Enable arithmetic operations using active_data
         if isinstance(other, TimeSeries):
             other = other.active_data
         return op(self.active_data, other)
