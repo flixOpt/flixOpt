@@ -17,7 +17,7 @@ class BaseTest(unittest.TestCase):
         fx.change_logging_level('DEBUG')
 
     def get_solver(self):
-        return 'highs'
+        return fx.solvers.HighsSolver(mip_gap=0, time_limit_seconds=300)
 
     def assert_almost_equal_numeric(
         self, actual, desired, err_msg, relative_error_range_in_percent=0.011, absolute_tolerance=1e-9
@@ -362,7 +362,7 @@ class TestComplex(BaseTest):
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['P_el (Einspeisung)'].solution.values),
+            sum(effects['costs'].model.operation.shares['Einspeisung (P_el)'].solution.values),
             -14196.61245231646,
             'costs doesnt match expected value',
         )
@@ -439,7 +439,7 @@ class TestComplex(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            comps['Speicher'].model.all_variables['Speicher__SegmentedShares__costs'].solution.values,
+            comps['Speicher'].model.variables['Speicher|SegmentedShares|costs'].solution.values,
             800,
             'Speicher investCosts_segmented_costs doesnt match expected value',
         )
@@ -480,7 +480,7 @@ class TestComplex(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            comps['Speicher'].model.all_variables['Speicher__SegmentedShares__costs'].solution.values,
+            comps['Speicher'].model.variables['Speicher|SegmentedShares|costs'].solution.values,
             454.74666666666667,
             'Speicher investCosts_segmented_costs doesnt match expected value',
         )

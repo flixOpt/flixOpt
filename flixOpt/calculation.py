@@ -42,7 +42,7 @@ class Calculation:
         self,
         name: str,
         flow_system: FlowSystem,
-        active_timesteps:    Optional[Union[List[int], pd.DatetimeIndex]] = None,
+        active_timesteps: Optional[Union[List[int], pd.DatetimeIndex]] = None,
     ):
         """
         Parameters
@@ -149,7 +149,7 @@ class FullCalculation(Calculation):
 
         self.flow_system.transform_data()
         for time_series in self.flow_system.all_time_series:
-            pass  # TODO: This must work for timeseriews that are always one step longer
+            pass  # TODO: This must work for timeseries that are always one step longer
             # time_series.active_periods = self.flow_system.periods
             #time_series.active_timesteps = self.flow_system.timesteps
 

@@ -104,7 +104,7 @@ if __name__ == '__main__':
     calculation.do_modeling()  # Translate the model to a solvable form, creating equations and Variables
 
     # --- Solve the Calculation and Save Results ---
-    calculation.solve('highs', save_results=True)
+    calculation.solve(fx.solvers.HighsSolver(mip_gap=0, time_limit_seconds=30), save_results=True)
 
     # --- Load and Analyze Results ---
     # Load the results and plot the operation of the District Heating Bus

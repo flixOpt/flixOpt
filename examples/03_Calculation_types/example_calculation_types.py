@@ -36,7 +36,7 @@ if __name__ == '__main__':
     # filtered_data = data_import[0:500]  # Alternatively filter by index
 
     filtered_data.index = pd.to_datetime(filtered_data.index)
-    datetime_series = np.array(filtered_data.index).astype('datetime64')
+    datetime_series = filtered_data.index
 
     # Access specific columns and convert to 1D-numpy array
     electricity_demand = filtered_data['P_Netz/MW'].to_numpy()
