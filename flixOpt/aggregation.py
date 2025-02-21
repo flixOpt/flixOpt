@@ -8,7 +8,7 @@ import logging
 import timeit
 import warnings
 from collections import Counter
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Set
 
 import linopy
 import numpy as np
@@ -52,11 +52,6 @@ class Aggregation:
     ):
         """
         Write a docstring please
-
-        Parameters
-        ----------
-        timeseries: pd.DataFrame
-            timeseries of the data with a datetime index
         """
         self.original_data = copy.deepcopy(original_data)
         self.hours_per_time_step = hours_per_time_step
@@ -86,7 +81,7 @@ class Aggregation:
             extremePeriodMethod='new_cluster_center'
             if self.use_extreme_periods
             else 'None',  # Wenn Extremperioden eingebunden werden sollen, nutze die Methode 'new_cluster_center' aus tsam
-            weightDict=self.weights,
+            weightDict={name: weight for name, weight in self.weights.items() if name in self.original_data.columns},
             addPeakMax=self.time_series_for_high_peaks,
             addPeakMin=self.time_series_for_low_peaks,
         )
@@ -230,6 +225,20 @@ class TimeSeriesCollection:
                 )
                 logger.debug(f'Inserted data for {time_series.name}')
 
+    def to_dataframe(self, with_constant_data: bool = False):
+        if with_constant_data:
+            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
+                              for time_series in self.time_serieses],
+                             axis=1)
+        
+        return pd.concat([time_series.active_data.to_dataframe(time_series.name)
+                          for time_series in self.time_serieses_non_constant],
+                         axis=1)
+    
+    @property
+    def time_serieses_non_constant(self) -> List[TimeSeries]:
+        return [time_series for time_series in self.time_serieses if not time_series.all_equal]
+
     def description(self) -> str:
         # TODO:
         result = f'{len(self.time_serieses)} TimeSeries used for aggregation:\n'
@@ -353,7 +362,7 @@ class AggregationModel(Model):
         self.aggregation_data = aggregation_data
         self.components_to_clusterize = components_to_clusterize
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         if not self.components_to_clusterize:
             components = self.flow_system.components.values()
         else:
@@ -361,36 +370,33 @@ class AggregationModel(Model):
 
         indices = self.aggregation_data.get_equation_indices(skip_first_index_of_period=True)
 
-        time_variables: List[str] = [k for k, v in self._model.variables.data.items() if 'time' in v.indexes]
-        binary_time_variables: List[str] = [
-            k for k, v in self._model.variables.data.items() if 'time' in v.indexes and k in self._model.binaries
-        ]
+        time_variables: Set[str] = {k for k, v in self._model.variables.data.items() if 'time' in v.indexes}
+        binary_variables: Set[str] = {k for k, v in self._model.variables.data.items() if k in self._model.binaries}
+        binary_time_variables: Set[str] = time_variables & binary_variables
 
         for component in components:
             if isinstance(component, Storage) and not self.aggregation_parameters.fix_storage_flows:
                 continue  # Fix Nothing in The Storage
 
-            all_variables_of_component = component.model.variables
-            if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
+            all_variables_of_component = set(component.model.variables)
 
-                relevant_variables = all_variables_of_component[v for v in all_variables_of_component if v in self._model.]
+            if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
+                relevant_variables = component.model.variables[all_variables_of_component & time_variables]
             else:
-                relevant_variables = [
-                    v for v in all_variables_of_component.values() if isinstance(v, VariableTS) and v.is_binary
-                ]
+                relevant_variables = component.model.variables[all_variables_of_component & binary_time_variables]
             for variable in relevant_variables:
-                self.equate_indices(variable, indices)
+                self._equate_indices(component.model.variables[variable], indices)
 
         penalty = self.aggregation_parameters.penalty_of_period_freedom
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
             for label, variable in self.variables_direct.items():
-                system_model.effects.add_share_to_penalty(
-                    system_model,
+                self._model.effects.add_share_to_penalty(
+                    self._model,
                     f'Aggregation_penalty__{label}',
                     variable * penalty
                 )
 
-    def equate_indices(self, variable: linopy.Variable, indices: Tuple[np.ndarray, np.ndarray]) -> None:
+    def _equate_indices(self, variable: linopy.Variable, indices: Tuple[np.ndarray, np.ndarray]) -> None:
         assert len(indices[0]) == len(indices[1]), 'The length of the indices must match!!'
         length = len(indices[0])
 
@@ -402,7 +408,7 @@ class AggregationModel(Model):
             variable.name)
 
         # Korrektur: (bisher nur für Binärvariablen:)
-        if variable in self._model.binaries and self.aggregation_parameters.percentage_of_period_freedom > 0:
+        if variable.name in self._model.variables.binaries and self.aggregation_parameters.percentage_of_period_freedom > 0:
             var_k1 = self.add(self._model.add_variables(
                 binary=True,
                 coords={'time': variable.isel(time=indices[0]).indexes['time']},

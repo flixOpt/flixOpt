@@ -159,7 +159,7 @@ class FullCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.flow_system.model
 
-    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = False, solver_options: Optional[dict] = None):
+    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = False):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
         self.flow_system.model.solve(log_fn=self._paths['log'],
@@ -236,27 +236,23 @@ class AggregatedCalculation(Calculation):
                 f'delta_t varies from {dt_min} to {dt_max} hours.'
             )
         steps_per_period = self.aggregation_parameters.hours_per_period / self.flow_system.hours_per_step.max()
-        if not steps_per_period.is_integer():
+        is_integer = (self.aggregation_parameters.hours_per_period % self.flow_system.hours_per_step.max()).item() == 0
+        if not (steps_per_period.size == 1 and is_integer):
             raise Exception(
                 f'The selected {self.aggregation_parameters.hours_per_period=} does not match the time '
                 f'step size of {dt_min} hours). It must be a multiple of {dt_min} hours.'
             )
 
+
         logger.info(f'{"":#^80}')
         logger.info(f'{" Aggregating TimeSeries Data ":#^80}')
 
-        self.time_series_collection = TimeSeriesCollection(
-            [ts for ts in self.flow_system.all_time_series if ts.is_array]
-        )
-
-        import pandas as pd
-
-        original_data = pd.DataFrame(self.time_series_collection.data, index=chosen_time_series)
+        self.time_series_collection = TimeSeriesCollection(*self.flow_system.all_time_series)
 
         # Aggregation - creation of aggregated timeseries:
         self.aggregation = Aggregation(
-            original_data=original_data,
-            hours_per_time_step=dt_min,
+            original_data=self.time_series_collection.to_dataframe(),
+            hours_per_time_step=float(dt_min),
             hours_per_period=self.aggregation_parameters.hours_per_period,
             nr_of_periods=self.aggregation_parameters.nr_of_periods,
             weights=self.time_series_collection.weights,
@@ -267,37 +263,35 @@ class AggregatedCalculation(Calculation):
         self.aggregation.cluster()
         self.aggregation.plot()
         if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
-            self.time_series_collection.insert_data(  # Converting it into a dict with labels as keys
-                {
-                    col: np.array(values)
-                    for col, values in self.aggregation.aggregated_data.to_dict(orient='list').items()
-                }
-            )
+            self.time_series_collection.insert_data(self.aggregation.aggregated_data)
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
         # Model the System
         t_start = timeit.default_timer()
 
-        self.system_model = SystemModel(self.name, self.modeling_language, self.flow_system, self.time_indices)
-        self.system_model.do_modeling()
+        self.flow_system.create_model()
+        self.flow_system.model.do_modeling()
         # Add Aggregation Model after modeling the rest
-        aggregation_model = AggregationModel(
-            self.aggregation_parameters, self.flow_system, self.aggregation, self.components_to_clusterize
+        self.aggregation = AggregationModel(
+            self.flow_system.model, self.aggregation_parameters, self.flow_system, self.aggregation, self.components_to_clusterize
         )
-        self.system_model.other_models.append(aggregation_model)
-        aggregation_model.do_modeling(self.system_model)
-
-        self.system_model.translate_to_modeling_language()
-
+        self.aggregation.do_modeling()
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
-        return self.system_model
+        return self.flow_system.model
 
     def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = False):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
-        solver.logfile_name = self._paths['log']
-        self.system_model.solve(solver)
+        self.flow_system.model.solve(log_fn=self._paths['log'],
+                                     solver_name=solver.name,
+                                     **solver.options)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
+
+        # Log the formatted output
+        logger.info(f'{" Main Results ":#^80}')
+        logger.info("\n" + yaml.dump(
+            utils.round_floats(self.flow_system.model.infos),
+            default_flow_style=False, sort_keys=False, allow_unicode=True, indent=4))
 
         if save_results:
             self._save_solve_infos()
