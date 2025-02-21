@@ -166,7 +166,9 @@ class TimeSeries:
                         name: str,
                         timesteps: pd.DatetimeIndex = None,
                         periods: Optional[pd.Index] = None,
-                        aggregation_weight: Optional[float] = None) -> 'TimeSeries':
+                        aggregation_weight: Optional[float] = None,
+                        aggregation_group: Optional[str] = None
+                        ) -> 'TimeSeries':
         """
         Initialize the TimeSeries from multiple datasources.
 
@@ -174,20 +176,23 @@ class TimeSeries:
         - data (pd.Series): A Series with a DatetimeIndex and possibly a MultiIndex.
         - dims (Tuple[pd.Index, ...]): The dimensions of the TimeSeries.
         - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
+        - aggregation_group (str, optional): The group this TimeSeries is a part of. agg_weight is split between members of a group. Default is None.
         """
-        data = cls(DataConverter.as_dataarray(data, timesteps, periods), name, aggregation_weight)
+        data = cls(DataConverter.as_dataarray(data, timesteps, periods), name, aggregation_weight, aggregation_group)
         return data
 
     def __init__(self,
                  data: xr.DataArray,
                  name: str,
-                 aggregation_weight: Optional[float] = None):
+                 aggregation_weight: Optional[float] = None,
+                 aggregation_group: Optional[str] = None):
         """
         Initialize a TimeSeries with a DataArray.
 
         Parameters:
         - data (xr.DataArray): A Series with a DatetimeIndex and possibly a MultiIndex.
         - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
+        - aggregation_group (str, optional): The group this TimeSeries is a part of. agg_weight is split between members of a group. Default is None.
         """
         if 'time' not in data.indexes:
             raise ValueError(f'DataArray must have a "time" index. Got {data.indexes}')
@@ -196,6 +201,7 @@ class TimeSeries:
 
         self.name = name
         self.aggregation_weight = aggregation_weight
+        self.aggregation_group = aggregation_group
 
         self._stored_data = data.copy()
         self._backup: xr.DataArray = self.stored_data  # Single backup instance. Enables to temporarily overwrite the data.

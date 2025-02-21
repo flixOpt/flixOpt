@@ -184,12 +184,11 @@ class AggregatedCalculation(Calculation):
 
     def __init__(
         self,
-        name,
+        name: str,
         flow_system: FlowSystem,
         aggregation_parameters: AggregationParameters,
         components_to_clusterize: Optional[List[Component]] = None,
-        modeling_language: Literal['pyomo', 'linopy'] = 'pyomo',
-        time_indices: Optional[Union[range, List[int]]] = None,
+        active_timesteps: Optional[Union[List[int], pd.DatetimeIndex]] = None,
     ):
         """
         Class for Optimizing the FLowSystem including:
@@ -212,7 +211,7 @@ class AggregatedCalculation(Calculation):
         time_indices : List[int] or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
-        super().__init__(name, flow_system, modeling_language, time_indices)
+        super().__init__(name, flow_system, active_timesteps)
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
         self.time_series_for_aggregation = None
@@ -222,28 +221,25 @@ class AggregatedCalculation(Calculation):
     def do_modeling(self) -> SystemModel:
         self.flow_system.transform_data()
         for time_series in self.flow_system.all_time_series:
-            time_series.activate_indices(self.time_indices)
+            pass  #TODO: This must work for timeseries that are always one step longer
+            #time_series.activate_indices(self.time_indices)
 
         from .aggregation import Aggregation
-
-        (chosen_time_series, chosen_time_series_with_end, dt_in_hours, dt_in_hours_total) = (
-            self.flow_system.get_time_data_from_indices(self.time_indices)
-        )
 
         t_start_agg = timeit.default_timer()
 
         # Validation
-        dt_min, dt_max = np.min(dt_in_hours), np.max(dt_in_hours)
+        dt_min, dt_max = np.min(self.flow_system.hours_per_step), np.max(self.flow_system.hours_per_step)
         if not dt_min == dt_max:
             raise ValueError(
                 f'Aggregation failed due to inconsistent time step sizes:'
                 f'delta_t varies from {dt_min} to {dt_max} hours.'
             )
-        steps_per_period = self.aggregation_parameters.hours_per_period / dt_in_hours[0]
+        steps_per_period = self.aggregation_parameters.hours_per_period / self.flow_system.hours_per_step.max()
         if not steps_per_period.is_integer():
             raise Exception(
                 f'The selected {self.aggregation_parameters.hours_per_period=} does not match the time '
-                f'step size of {dt_in_hours[0]} hours). It must be a multiple of {dt_in_hours[0]} hours.'
+                f'step size of {dt_min} hours). It must be a multiple of {dt_min} hours.'
             )
 
         logger.info(f'{"":#^80}')
