@@ -20,7 +20,7 @@ import pandas as pd
 
 from . import utils
 from .config import CONFIG
-from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData
+from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData, TimeSeriesCollection, NumericData
 from .math_modeling import Equation, Inequation, MathModel, _Solver, Variable, VariableTS
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -181,7 +181,7 @@ class Interface:
     This class is used to collect arguments about a Model.
     """
 
-    def transform_data(self, flow_system: 'FlowSystem'):
+    def transform_data(self, time_series_collection: TimeSeriesCollection):
         """ Transforms the data of the interface to match the FlowSystem's dimensions"""
         raise NotImplementedError('Every Interface needs a transform_data() method')
 
@@ -250,32 +250,28 @@ class Interface:
 
     @staticmethod
     def _create_time_series(
-        element: 'Element',
         name: str,
-        data: Optional[Union[Numeric_TS, TimeSeries]],
-        timesteps: pd.DatetimeIndex,
-        periods: Optional[pd.Index],
+        data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
+        time_series_collection: TimeSeriesCollection,
+        extra_timestep: bool = True,
     ) -> Optional[TimeSeries]:
-        """Creates a TimeSeries from Numeric Data and adds it to the list of time_series of an Element.
-        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned"""
+        """
+        Tries to create a TimeSeries from Numeric Data and adds it to the time_series_collection
+        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
+        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
+        If the data is None, nothing happens.
+        """
 
         if data is None:
             return None
         elif isinstance(data, TimeSeries):
             data.restore_data()
             return data
-
-        time_series = TimeSeries.from_datasource(
-            name=f'{element.label_full}|{name}',
-            data=data.data if isinstance(data, TimeSeriesData) else data,
-            timesteps=timesteps,
-            periods=periods,
-            aggregation_weight=data.agg_weight if isinstance(data, TimeSeriesData) else None,
+        return time_series_collection.create_time_series(
+            data=data,
+            name=name,
+            extra_timestep=extra_timestep,
         )
-        element.used_time_series.append(time_series)
-        if isinstance(data, TimeSeriesData):
-            data.label = time_series.name  # Connecting User_time_series to TimeSeries
-        return time_series
 
 
 class Element(Interface):
@@ -305,15 +301,6 @@ class Element(Interface):
     @property
     def label_full(self) -> str:
         return self.label
-
-    def _create_time_series(
-        self,
-        name: str,
-        data: Optional[Union[Numeric_TS, TimeSeries]],
-        timesteps: pd.DatetimeIndex,
-        periods: Optional[pd.Index],
-    ) -> Optional[TimeSeries]:
-        return super()._create_time_series(self, name, data, timesteps, periods)
 
     @staticmethod
     def _valid_label(label: str) -> str:

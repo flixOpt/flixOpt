@@ -18,6 +18,8 @@ logger = logging.getLogger('flixOpt')
 Skalar = Union[int, float]  # Datatype
 Numeric = Union[int, float, np.ndarray]  # Datatype
 
+NumericData = Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
+
 
 class DataConverter:
     """
@@ -383,9 +385,9 @@ class TimeSeriesCollection:
 
     def create_time_series(
         self,
-        data: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray],
+        data: Union[NumericData, TimeSeriesData],
         name: str,
-        additional_step:bool=False
+        extra_timestep: bool=False
     ) -> TimeSeries:
         """
         Creates a TimeSeries from the given data and adds it to the list of time_serieses of an Element.
@@ -397,7 +399,7 @@ class TimeSeriesCollection:
             The data to create the TimeSeries from.
         name: str
             The name of the TimeSeries.
-        additional_step: bool, optional
+        extra_timestep: bool, optional
             Whether to create an additional timestep at the end of the timesteps.
 
         Returns
@@ -410,12 +412,19 @@ class TimeSeriesCollection:
             if data not in self.time_serieses:
                 self.add_time_series(data)
             return data
-        else:
-            time_series = TimeSeries.from_datasource(
-                name=f'{name}',
-                data=data,
-                timesteps=self.timesteps if not additional_step else self.timesteps_extra,
-                periods=self.periods)
+
+        time_series = TimeSeries.from_datasource(
+            name=name,
+            data=data if not isinstance(data, TimeSeriesData) else data.data,
+            timesteps=self.timesteps if not extra_timestep else self.timesteps_extra,
+            periods=self.periods,
+            aggregation_weight=data.agg_weight if isinstance(data, TimeSeriesData) else None,
+            aggregation_group=data.agg_group if isinstance(data, TimeSeriesData) else None
+        )
+
+        if isinstance(data, TimeSeriesData):
+            data.label = time_series.name  # Connecting User_time_series to TimeSeries
+
         self.add_time_series(time_series)
         return time_series
     
