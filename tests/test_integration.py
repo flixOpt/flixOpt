@@ -738,7 +738,7 @@ class TestModelingTypes(BaseTest):
             data['Strompr.€/MWh'].values,
             data['Gaspr.€/MWh'].values,
         )
-        timesteps = pd.date_range('2020-01-01', periods=len(P_el_Last), freq='h', name='time')
+        timesteps = pd.DatetimeIndex(data.index)
 
         Strom, Fernwaerme, Gas, Kohle = fx.Bus('Strom'), fx.Bus('Fernwärme'), fx.Bus('Gas'), fx.Bus('Kohle')
         costs, CO2, PE = (
