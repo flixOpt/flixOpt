@@ -41,8 +41,7 @@ class DataConverter:
     - ValueError if data dimensions do not match expected time and period indexes.
     """
     @staticmethod
-    def as_dataarray(data: NumericData, time: pd.DatetimeIndex,
-                     period: Optional[pd.Index] = None) -> xr.DataArray:
+    def as_dataarray(data: NumericData, time: pd.DatetimeIndex, period: Optional[pd.Index] = None) -> xr.DataArray:
         """
         Converts the given data to an xarray.DataArray with the specified time and period indexes.
         """
@@ -63,7 +62,6 @@ class DataConverter:
             return DataConverter._handle_array(data, coords, dims)
         elif isinstance(data, xr.DataArray):
             return data
-
 
         raise TypeError(f"Unsupported data type. Must be scalar, np.ndarray, pd.Series, or pd.DataFrame."
                         f"Got {type(data)=}")
@@ -121,6 +119,7 @@ class DataConverter:
             raise ValueError(f"DataArray shape {data.shape} does not match expected shape {tuple(coord.size for coord in coords)}")
         # TODO: This is not really thought through or tested
         return data
+
 
 class TimeSeriesData:
     # TODO: Move to Interface.py
