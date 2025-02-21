@@ -10,6 +10,7 @@ import warnings
 from collections import Counter
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
+import linopy
 import numpy as np
 import pandas as pd
 import tsam.timeseriesaggregation as tsam
@@ -21,7 +22,7 @@ from .flow_system import FlowSystem
 from .math_modeling import Equation, Variable, VariableTS
 from .structure import (
     Element,
-    ElementModel,
+    Model,
     SystemModel,
     create_equation,
     create_variable,
@@ -330,13 +331,14 @@ class AggregationParameters:
         return self.time_series_for_low_peaks is not None
 
 
-class AggregationModel(ElementModel):
+class AggregationModel(Model):
     """The AggregationModel holds equations and variables related to the Aggregation of a FLowSystem.
     It creates Equations that equates indices of variables, and introduces penalties related to binary variables, that
     escape the equation to their related binaries in other periods"""
 
     def __init__(
         self,
+        model: SystemModel,
         aggregation_parameters: AggregationParameters,
         flow_system: FlowSystem,
         aggregation_data: Aggregation,
@@ -345,7 +347,7 @@ class AggregationModel(ElementModel):
         """
         Modeling-Element for "index-equating"-equations
         """
-        super().__init__(Element('Aggregation'), 'Model')
+        super().__init__(model, label_of_element='No Element', label_full='Aggregation')
         self.flow_system = flow_system
         self.aggregation_parameters = aggregation_parameters
         self.aggregation_data = aggregation_data
@@ -359,66 +361,78 @@ class AggregationModel(ElementModel):
 
         indices = self.aggregation_data.get_equation_indices(skip_first_index_of_period=True)
 
+        time_variables: List[str] = [k for k, v in self._model.variables.data.items() if 'time' in v.indexes]
+        binary_time_variables: List[str] = [
+            k for k, v in self._model.variables.data.items() if 'time' in v.indexes and k in self._model.binaries
+        ]
+
         for component in components:
             if isinstance(component, Storage) and not self.aggregation_parameters.fix_storage_flows:
                 continue  # Fix Nothing in The Storage
 
             all_variables_of_component = component.model.variables
             if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
-                all_relevant_variables = [v for v in all_variables_of_component.values() if isinstance(v, VariableTS)]
+
+                relevant_variables = all_variables_of_component[v for v in all_variables_of_component if v in self._model.]
             else:
-                all_relevant_variables = [
+                relevant_variables = [
                     v for v in all_variables_of_component.values() if isinstance(v, VariableTS) and v.is_binary
                 ]
-            for variable in all_relevant_variables:
-                self.equate_indices(variable, indices, system_model)
+            for variable in relevant_variables:
+                self.equate_indices(variable, indices)
 
         penalty = self.aggregation_parameters.penalty_of_period_freedom
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
             for label, variable in self.variables_direct.items():
-                system_model.effect_collection_model.add_share_to_penalty(
-                    f'Aggregation_penalty__{label}', variable, penalty
+                system_model.effects.add_share_to_penalty(
+                    system_model,
+                    f'Aggregation_penalty__{label}',
+                    variable * penalty
                 )
 
-    def equate_indices(
-        self, variable: Variable, indices: Tuple[np.ndarray, np.ndarray], system_model: SystemModel
-    ) -> Equation:
+    def equate_indices(self, variable: linopy.Variable, indices: Tuple[np.ndarray, np.ndarray]) -> None:
+        assert len(indices[0]) == len(indices[1]), 'The length of the indices must match!!'
+        length = len(indices[0])
+
         # Gleichung:
         # eq1: x(p1,t) - x(p3,t) = 0 # wobei p1 und p3 im gleichen Cluster sind und t = 0..N_p
-        length = len(indices[0])
-        assert len(indices[0]) == len(indices[1]), 'The length of the indices must match!!'
-
-        eq = create_equation(f'Equate_indices_of_{variable.label}', self)
-        eq.add_summand(variable, 1, indices_of_variable=indices[0])
-        eq.add_summand(variable, -1, indices_of_variable=indices[1])
+        con = self.add(self._model.add_constraints(
+            variable.isel(time=indices[0]) - variable.isel(time=indices[1]) == 0,
+            name=f'Equate_indices_of_{variable.name}'),
+            variable.name)
 
         # Korrektur: (bisher nur für Binärvariablen:)
-        if variable.is_binary and self.aggregation_parameters.percentage_of_period_freedom > 0:
-            # correction-vars (so viele wie Indexe in eq:)
-            var_k1 = create_variable(f'Korr1_{variable.label}', self, length, is_binary=True)
-            var_k0 = create_variable(f'Korr0_{variable.label}', self, length, is_binary=True)
+        if variable in self._model.binaries and self.aggregation_parameters.percentage_of_period_freedom > 0:
+            var_k1 = self.add(self._model.add_variables(
+                binary=True,
+                coords={'time': variable.isel(time=indices[0]).indexes['time']},
+                name=f'{self.label_full}|Korr1|{variable.name}'), f'Korr1|{variable.name}')
+
+            var_k0 = self.add(self._model.add_variables(
+                binary=True,
+                coords={'time': variable.isel(time=indices[0]).indexes['time']},
+                name=f'{self.label_full}|Korr0|{variable.name}'), f'Korr0|{variable.name}')
+
             # equation extends ...
             # --> On(p3) can be 0/1 independent of On(p1,t)!
             # eq1: On(p1,t) - On(p3,t) + K1(p3,t) - K0(p3,t) = 0
             # --> correction On(p3) can be:
             #  On(p1,t) = 1 -> On(p3) can be 0 -> K0=1 (,K1=0)
             #  On(p1,t) = 0 -> On(p3) can be 1 -> K1=1 (,K0=1)
-            eq.add_summand(var_k1, +1)
-            eq.add_summand(var_k0, -1)
+            con.lhs += 1 * var_k1 - 1 * var_k0
 
             # interlock var_k1 and var_K2:
             # eq: var_k0(t)+var_k1(t) <= 1.1
-            eq_lock = create_equation(f'lock_K0andK1_{variable.label}', self, eq_type='ineq')
-            eq_lock.add_summand(var_k0, 1)
-            eq_lock.add_summand(var_k1, 1)
-            eq_lock.add_constant(1.1)
+            self.add(self._model.add_constraints(
+                var_k0 + var_k1 <= 1.1,
+                name=f'{self.label_full}|lock_K0andK1|{variable.name}'),
+                f'lock_K0andK1|{variable.name}'
+            )
 
             # Begrenzung der Korrektur-Anzahl:
             # eq: sum(K) <= n_Corr_max
-            eq_max = create_equation(f'Nr_of_Corrections_{variable.label}', self, eq_type='ineq')
-            eq_max.add_summand(var_k1, 1, as_sum=True)
-            eq_max.add_summand(var_k0, 1, as_sum=True)
-            eq_max.add_constant(
-                round(self.aggregation_parameters.percentage_of_period_freedom / 100 * var_k1.length)
-            )  # Maximum
-        return eq
+            self.add(self._model.add_constraints(
+                sum(var_k0) + sum(var_k1) <= round(self.aggregation_parameters.percentage_of_period_freedom / 100 * length),
+                name=f'{self.label_full}|Nr_of_Corrections|{variable.name}'),
+                f'Nr_of_Corrections|{variable.name}'
+            )
