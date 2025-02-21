@@ -115,10 +115,10 @@ class LinearConverter(Component):
     def _transform_conversion_factors(self, flow_system: 'FlowSystem') -> List[Dict[Flow, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
         list_of_conversion_factors = []
-        for conversion_factor in self.conversion_factors:
+        for idx, conversion_factor in enumerate(self.conversion_factors):
             transformed_dict = {}
             for flow, values in conversion_factor.items():
-                transformed_dict[flow] = self._create_time_series(f'{flow.label}_factor', values, flow_system.timesteps, flow_system.periods)
+                transformed_dict[flow] = self._create_time_series(f'{flow.label}_factor{idx}', values, flow_system.timesteps, flow_system.periods)
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
 
