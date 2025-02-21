@@ -225,6 +225,11 @@ class TimeSeries:
             self._active_data = self._stored_data.sel(time=self.active_timesteps)
 
     @property
+    def all_equal(self) -> bool:
+        """ Checks for all values in the being equal"""
+        return np.unique(self.active_data.values).size == 1
+
+    @property
     def active_timesteps(self) -> pd.DatetimeIndex:
         """Return the current active index."""
         return self._active_timesteps
