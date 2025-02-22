@@ -398,8 +398,8 @@ class TimeSeriesCollection:
 
         self.group_weights: Dict[str, float] = {}
         self.weights: Dict[str, float] = {}
-        self.time_serieses: List[TimeSeries] = []
-        self._timeserieses_longer: List[TimeSeries] = []  # All part of self.time_serieses, but with extra timestep
+        self.time_series_data: List[TimeSeries] = []
+        self._time_series_data_with_extra_step: List[TimeSeries] = []  # All part of self.time_series_data, but with extra timestep
 
     def create_time_series(
         self,
@@ -408,7 +408,7 @@ class TimeSeriesCollection:
         extra_timestep: bool=False
     ) -> TimeSeries:
         """
-        Creates a TimeSeries from the given data and adds it to the list of time_serieses of an Element.
+        Creates a TimeSeries from the given data and adds it to the time_series_data.
         If the data already is a TimeSeries, nothing happens.
 
         Parameters
@@ -427,7 +427,7 @@ class TimeSeriesCollection:
 
         """
         if isinstance(data, TimeSeries):
-            if data not in self.time_serieses:
+            if data not in self.time_series_data:
                 self._add_time_series(data, extra_timestep)
             return data
 
@@ -501,12 +501,12 @@ class TimeSeriesCollection:
         self._active_timesteps_extra = None
         self._active_hours_per_timestep = None
         self._active_periods = None
-        for time_series in self.time_serieses:
+        for time_series in self.time_series_data:
             time_series.reset()
 
     def restore_data(self):
         """Restore stored_data from the backup."""
-        for time_series in self.time_serieses:
+        for time_series in self.time_series_data:
             time_series.restore_data()
 
     def insert_new_data(self, data: pd.DataFrame):
@@ -520,15 +520,15 @@ class TimeSeriesCollection:
             Must have the same index as the timesteps of the TimeSeriesCollection.
         """
         #TODO: Sanitize the values for timeseries that are one step longer!
-        for time_series in self.time_serieses:
+        for time_series in self.time_series_data:
             if time_series.name in data.columns:
                 time_series.stored_data = data[time_series.name]
                 logger.debug(f'Inserted data for {time_series.name}')
 
     def _activate_timeserieses(self):
-        for time_series in self.time_serieses:
+        for time_series in self.time_series_data:
             time_series.active_periods = self.periods
-            if time_series in self._timeserieses_longer:
+            if time_series in self._time_series_data_with_extra_step:
                 time_series.active_timesteps = self.timesteps_extra
             else:
                 time_series.active_timesteps = self.timesteps
@@ -536,7 +536,7 @@ class TimeSeriesCollection:
     def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant'):
         if filtered == 'all':
             return pd.concat([time_series.active_data.to_dataframe(time_series.name)
-                              for time_series in self.time_serieses],
+                              for time_series in self.time_series_data],
                              axis=1)
         elif filtered == 'constant':
             return pd.concat([time_series.active_data.to_dataframe(time_series.name)
@@ -622,16 +622,16 @@ class TimeSeriesCollection:
         return timesteps, timesteps_extra , hours_per_step, hours_of_previous_timesteps, periods
 
     def _add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
-        self.time_serieses.append(time_series)
+        self.time_series_data.append(time_series)
         if extra_timestep:
-            self._timeserieses_longer.append(time_series)
+            self._time_series_data_with_extra_step.append(time_series)
         self._check_unique_labels()
 
     def _calculate_group_weights(self) -> Dict[str, float]:
         """Calculates the aggregation weights of each group"""
         groups = [
             time_series.aggregation_group
-            for time_series in self.time_serieses
+            for time_series in self.time_series_data
             if time_series.aggregation_group is not None
         ]
         group_size = dict(Counter(groups))
@@ -642,22 +642,22 @@ class TimeSeriesCollection:
         """Calculates the aggregation weight for each TimeSeries. Default is 1"""
         return {
             time_series.name: self.group_weights.get(time_series.aggregation_group, time_series.aggregation_weight or 1)
-            for time_series in self.time_serieses
+            for time_series in self.time_series_data
         }
 
     def _check_unique_labels(self):
         """Makes sure every label of the TimeSeries in time_series_list is unique"""
-        label_counts = Counter([time_series.name for time_series in self.time_serieses])
+        label_counts = Counter([time_series.name for time_series in self.time_series_data])
         duplicates = [label for label, count in label_counts.items() if count > 1]
         assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))
 
     @property
     def non_constants(self) -> List[TimeSeries]:
-        return [time_series for time_series in self.time_serieses if not time_series.all_equal]
+        return [time_series for time_series in self.time_series_data if not time_series.all_equal]
 
     @property
     def constants(self) -> List[TimeSeries]:
-        return [time_series for time_series in self.time_serieses if time_series.all_equal]
+        return [time_series for time_series in self.time_series_data if time_series.all_equal]
 
     @property
     def coords(self):
@@ -683,13 +683,21 @@ class TimeSeriesCollection:
     def hours_per_timestep(self):
         return self._hours_per_timestep if self._active_hours_per_timestep is None else self._active_hours_per_timestep
 
-    def description(self) -> str:
-        # TODO:
-        result = f'{len(self.time_serieses)} TimeSeries used for aggregation:\n'
-        for time_series in self.time_serieses:
-            result += f' -> {time_series.name} (weight: {self.weights[time_series.name]:.4f}; group: "{time_series.aggregation_group}")\n'
-        if self.group_weights:
-            result += f'Aggregation_Groups: {list(self.group_weights.keys())}\n'
-        else:
-            result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
-        return result
+    def __repr__(self):
+        return (
+            f"TimeSeriesCollection(timesteps={len(self._timesteps)}, "
+            f"periods={len(self._periods) if self._periods is not None else None}, "
+            f"time_series_data={len(self.time_series_data)} ({len(self._time_series_data_with_extra_step)} with an extra step))"
+        )
+
+    def __str__(self):
+        details = (
+            f"TimeSeriesCollection with {len(self._timesteps)} timesteps "
+            f"and {len(self._periods) if self._periods is not None else 0} periods.\n"
+            f"- {len(self.time_series_data)} time series stored."
+            f"- {len(self._time_series_data_with_extra_step)} of which with an extra timestep).\n"
+            f"- Aggregation parameters:\n"
+            f"  - Group weights: {self.group_weights if self.group_weights else 'None'}\n"
+            f"  - Individual weights: {self.weights if self.weights else 'None'}\n"
+        )
+        return details
