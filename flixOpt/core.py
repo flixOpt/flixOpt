@@ -685,19 +685,17 @@ class TimeSeriesCollection:
 
     def __repr__(self):
         return (
-            f"TimeSeriesCollection(timesteps={len(self._timesteps)}, "
-            f"periods={len(self._periods) if self._periods is not None else None}, "
-            f"time_series_data={len(self.time_series_data)} ({len(self._time_series_data_with_extra_step)} with an extra step))"
+            f"TimeSeriesCollection("
+            f"timesteps={len(self._timesteps)}, "
+            f"periods={len(self._periods) if self._periods is not None else 'None'}, "
+            f"time_series_count={len(self.time_series_data)}, "
+            f"time_series_with_extra_step_count={len(self._time_series_data_with_extra_step)}, "
+            f")"
         )
 
     def __str__(self):
-        details = (
-            f"TimeSeriesCollection with {len(self._timesteps)} timesteps "
-            f"and {len(self._periods) if self._periods is not None else 0} periods.\n"
-            f"- {len(self.time_series_data)} time series stored."
-            f"- {len(self._time_series_data_with_extra_step)} of which with an extra timestep).\n"
-            f"- Aggregation parameters:\n"
-            f"  - Group weights: {self.group_weights if self.group_weights else 'None'}\n"
-            f"  - Individual weights: {self.weights if self.weights else 'None'}\n"
+        return (
+            f"TimeSeriesCollection with {len(self.time_series_data)} time series, "
+            f"{len(self._timesteps)} timesteps, "
+            f"{len(self._periods) if self._periods is not None else 'no'} periods."
         )
-        return details
