@@ -534,20 +534,19 @@ class TimeSeriesCollection:
                 time_series.active_timesteps = self.timesteps
 
     def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant'):
-        if filtered == 'all':
-            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
-                              for time_series in self.time_series_data],
-                             axis=1)
-        elif filtered == 'constant':
-            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
-                              for time_series in self.constants],
-                             axis=1)
-        elif filtered == 'non_constant':
-            return pd.concat([time_series.active_data.to_dataframe(time_series.name)
-                              for time_series in self.non_constants],
-                             axis=1)
+        df = self.to_dataset().to_dataframe()
+        if filtered == 'all':  # Return all time series
+            return df
+        elif filtered == 'constant':  # Return only constant time series
+            return df.loc[:, df.nunique() ==1]
+        elif filtered == 'non_constant':  # Return only non-constant time series
+            return df.loc[:, df.nunique() > 1]
         else:
             raise ValueError('Not supported argument for "filtered".')
+
+    def to_dataset(self) -> xr.Dataset:
+        """Combine all stored DataArrays into a single Dataset."""
+        return xr.Dataset({time_series.name: time_series.active_data for time_series in self.time_series_data})
 
     @staticmethod
     def allign_dimensions(
@@ -684,18 +683,51 @@ class TimeSeriesCollection:
         return self._hours_per_timestep if self._active_hours_per_timestep is None else self._active_hours_per_timestep
 
     def __repr__(self):
+        timestep_range = f"{self._timesteps[0]} to {self._timesteps[-1]}" if len(self.timesteps) > 1 else str(
+            self.timesteps[0])
+        periods_str = f"Periods: {len(self.periods)}" if self.periods is not None else "No periods"
+        time_series_count = len(self.time_series_data)
+
         return (
-            f"TimeSeriesCollection("
-            f"timesteps={len(self._timesteps)}, "
-            f"periods={len(self._periods) if self._periods is not None else 'None'}, "
-            f"time_series_count={len(self.time_series_data)}, "
-            f"time_series_with_extra_step_count={len(self._time_series_data_with_extra_step)}, "
+            f"TimeSeriesCollection(\n"
+            f"  nr_of_timesteps={len(self.timesteps)},\n"
+            f"  timesteps={timestep_range},\n"
+            f"  active_timesteps={np.array(self._active_timesteps) if self._active_timesteps is not None else 'None'}\n"
+            f"  hours_of_last_timestep={self.hours_of_last_timestep},\n"
+            f"  hours_per_timestep={get_numeric_stats(self._hours_per_timestep)},\n"
+            f"  nr_of_periods={len(self.periods) if self.periods is not None else 'None'},\n"
+            f"  periods={periods_str},\n"
+            f"  active_periods={self._active_periods if self._active_periods is not None else 'None'}\n"
+            f"  time_series_count={time_series_count},\n"
             f")"
         )
 
     def __str__(self):
-        return (
-            f"TimeSeriesCollection with {len(self.time_series_data)} time series, "
-            f"{len(self._timesteps)} timesteps, "
-            f"{len(self._periods) if self._periods is not None else 'no'} periods."
+        longest_name = max([time_series.name for time_series in self.time_series_data], key=len)
+
+        stats_summary = "\n".join(
+            [f"  - {time_series.name:<{len(longest_name)}}: {get_numeric_stats(time_series.active_data)}"
+             for time_series in self.time_series_data]
         )
+
+        return (
+            f"TimeSeriesCollection with {len(self.time_series_data)} series\n"
+            f"  Time Range: {self.timesteps[0]} -> {self.timesteps[-1]}\n"
+            f"  No. of timesteps: {len(self.timesteps)}\n"
+            f"  Hours per timestep: {get_numeric_stats(self.hours_per_timestep)}"
+            f"  Periods: {list(self.periods) if self.periods is not None else 'None'}\n"
+            f"  TimeSeriesData:\n"
+            f"{stats_summary}"
+        )
+
+def get_numeric_stats(data: xr.DataArray, decimals: int = 2, padd: int = 10) -> str:
+    """Calculates the mean, median, min, max, and standard deviation of a numeric DataArray."""
+    format_spec = f">{padd}.{decimals}f" if padd else f".{decimals}f"
+    if np.unique(data).size == 1:
+        return f"{data.max().item():{format_spec}} (constant)"
+    mean = data.mean().item()
+    median = data.median().item()
+    min_val = data.min().item()
+    max_val = data.max().item()
+    std = data.std().item()
+    return f"{mean:{format_spec}} (mean), {median:{format_spec}} (median), {min_val:{format_spec}} (min), {max_val:{format_spec}} (max), {std:{format_spec}} (std)"
