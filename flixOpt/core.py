@@ -522,7 +522,13 @@ class TimeSeriesCollection:
         #TODO: Sanitize the values for timeseries that are one step longer!
         for time_series in self.time_series_data:
             if time_series.name in data.columns:
-                time_series.stored_data = data[time_series.name]
+                if time_series in self._time_series_data_with_extra_step:
+                    extra_step_value = data[time_series.name].iloc[-1]
+                    time_series.stored_data = pd.concat(
+                        [data[time_series.name], pd.Series(
+                            extra_step_value, index=[data.index[-1] + pd.Timedelta(hours=self.hours_of_last_timestep)])
+                         ]
+                    )
                 logger.debug(f'Inserted data for {time_series.name}')
 
     def _activate_timeserieses(self):
