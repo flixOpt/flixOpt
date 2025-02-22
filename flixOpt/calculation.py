@@ -135,7 +135,7 @@ class Calculation:
     def infos(self):
         return {
             'Name': self.name,
-            'Number of indices': len(self.active_timesteps) if self.active_timesteps else 'all',
+            'Number of indices': len(self.active_timesteps) if self.active_timesteps is not None else 'all',
             'Calculation Type': self.__class__.__name__,
             'Durations': self.durations,
         }
@@ -160,7 +160,7 @@ class FullCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.flow_system.model
 
-    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = False):
+    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = True):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
         self.flow_system.model.solve(log_fn=self._paths['log'],
@@ -247,7 +247,7 @@ class AggregatedCalculation(FullCalculation):
 
         # Aggregation - creation of aggregated timeseries:
         self.aggregation = Aggregation(
-            original_data=self.flow_system.time_series_collection.to_dataframe(),
+            original_data=self.flow_system.time_series_collection.to_dataframe().iloc[:-1,:],  # Exclude last row (NaN)
             hours_per_time_step=float(dt_min),
             hours_per_period=self.aggregation_parameters.hours_per_period,
             nr_of_periods=self.aggregation_parameters.nr_of_periods,
@@ -259,7 +259,7 @@ class AggregatedCalculation(FullCalculation):
         self.aggregation.cluster()
         self.aggregation.plot()
         if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
-            self.flow_system.time_series_collection.insert_data(self.aggregation.aggregated_data)
+            self.flow_system.time_series_collection.insert_new_data(self.aggregation.aggregated_data)
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
         # Model the System
