@@ -285,9 +285,10 @@ class SegmentedCalculation(Calculation):
         self,
         name,
         flow_system: FlowSystem,
-        segment_length: int,
-        overlap_length: int,
-        active_timesteps: Optional[Union[List[int], pd.DatetimeIndex]] = None,
+        timesteps_per_segment: int,
+        overlap_timesteps: int,
+        active_timesteps: Optional[pd.DatetimeIndex] = None,
+        nr_of_previous_values: int = 1,
     ):
         """
         Dividing and Modeling the problem in (overlapping) segments.
@@ -306,22 +307,24 @@ class SegmentedCalculation(Calculation):
             name of calculation
         flow_system : FlowSystem
             flow_system which should be calculated
-        segment_length : int
+        timesteps_per_segment : int
             The number of time_steps per individual segment (without the overlap)
-        overlap_length : int
+        overlap_timesteps : int
             The number of time_steps that are added to each individual model. Used for better
             results of storages)
         """
         super().__init__(name, flow_system, active_timesteps)
         if flow_system.periods is not None:
             raise NotImplementedError('Multiple Periods are currently not supported in SegmentedCalculation')
-        self.segment_length = segment_length
-        self.overlap_length = overlap_length
-        self._total_length = len(self.flow_system.timesteps) if self.time_indices is not None else len(flow_system.time_series)
-        self.number_of_segments = math.ceil(self._total_length / self.segment_length)
+        self.timesteps_per_segment = timesteps_per_segment
+        self.overlap_timesteps = overlap_timesteps
+        self.all_timesteps = self.flow_system.timesteps if self.active_timesteps is None else self.active_timesteps
+        self._total_length = len(self.all_timesteps)
+        self.number_of_segments = math.ceil(self._total_length / self.timesteps_per_segment)
+        self.nr_of_previous_values = nr_of_previous_values
         self.sub_calculations: List[FullCalculation] = []
 
-        assert segment_length > 2, 'The Segment length must be greater 2, due to unwanted internal side effects'
+        assert timesteps_per_segment > 2, 'The Segment length must be greater 2, due to unwanted internal side effects'
         assert self.segment_length_with_overlap <= self._total_length, (
             f'{self.segment_length_with_overlap=} cant be greater than the total length {self._total_length}'
         )
@@ -346,21 +349,21 @@ class SegmentedCalculation(Calculation):
             name_of_segment = f'Segment_{i + 1}'
             if self.sub_calculations:
                 self._transfer_start_values(name_of_segment)
-            time_indices = self._get_indices(i)
-            logger.info(f'{name_of_segment}. (flow_system indices {time_indices.start}...{time_indices.stop - 1}):')
-            calculation = FullCalculation(name_of_segment, self.flow_system, self.modeling_language, time_indices)
-            # TODO: Add Before Values if available
+            timesteps_of_segment = self._get_timesteps_of_segment(i)
+            logger.info(f'{name_of_segment} ({timesteps_of_segment[0]} -> {timesteps_of_segment[-1]}):')
+            calculation = FullCalculation(name_of_segment, self.flow_system, active_timesteps=timesteps_of_segment)
             self.sub_calculations.append(calculation)
             calculation.do_modeling()
             invest_elements = [
-                model.element.label_full
-                for model in calculation.system_model.sub_models
+                model.label_full
+                for component in self.flow_system.components.values()
+                for model in component.model.all_sub_models
                 if isinstance(model, InvestmentModel)
             ]
             if invest_elements:
                 logger.critical(
                     f'Investments are not supported in Segmented Calculation! '
-                    f'Following elements Contain Investments: {invest_elements}'
+                    f'Following InvestmentModels were found: {invest_elements}'
                 )
             calculation.solve(solver, save_results=False)
 
@@ -394,11 +397,11 @@ class SegmentedCalculation(Calculation):
         """
         options_chosen = combined_arrays + combined_scalars + individual_results
         assert options_chosen == 1, (
-            'Exactly one of the three options to retrieve the results needs to be chosen! You chose {options_chosen}!'
+            f'Exactly one of the three options to retrieve the results needs to be chosen! You chose {options_chosen}!'
         )
         all_results = {f'Segment_{i + 1}': calculation.results() for i, calculation in enumerate(self.sub_calculations)}
         if combined_arrays:
-            return _combine_nested_arrays(*list(all_results.values()), length_per_array=self.segment_length)
+            return _combine_nested_arrays(*list(all_results.values()), length_per_array=self.timesteps_per_segment)
         elif combined_scalars:
             return _combine_nested_scalars(*list(all_results.values()))
         else:
@@ -406,7 +409,7 @@ class SegmentedCalculation(Calculation):
 
     def _save_solve_infos(self):
         t_start = timeit.default_timer()
-        indent = 4 if len(self.flow_system.time_series) < 50 else None
+        indent = 4 if len(self.flow_system.timesteps) < 50 else None
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = copy_and_convert_datatypes(
                 self.results(combined_arrays=True), use_numpy=False, use_element_label=False
@@ -455,18 +458,18 @@ class SegmentedCalculation(Calculation):
     def _transfer_start_values(self, segment_name: str):
         """
         This function gets the last values of the previous solved segment and
-        inserts them as start values for the nest segment
+        inserts them as start values for the next segment
         """
-        final_index_of_prior_segment = -(1 + self.overlap_length)
+        final_index_of_prior_segment = -(1 + self.overlap_timesteps)
+        first_index_of_previous_values = final_index_of_prior_segment - self.nr_of_previous_values
+        logger.debug(f'Using The following indices for the start values: {first_index_of_previous_values=}')
         start_values_of_this_segment = {}
         for flow in self.flow_system.flows.values():
-            flow.previous_flow_rate = flow.model.flow_rate.result[
-                final_index_of_prior_segment
-            ]  # TODO: maybe more values?
+            flow.previous_flow_rate = flow.model.flow_rate.solution.values[first_index_of_previous_values:final_index_of_prior_segment]
             start_values_of_this_segment[flow.label_full] = flow.previous_flow_rate
         for comp in self.flow_system.components.values():
             if isinstance(comp, Storage):
-                comp.initial_charge_state = comp.model.charge_state.result[final_index_of_prior_segment]
+                comp.initial_charge_state = comp.model.charge_state.solution.isel(time=final_index_of_prior_segment).item()
                 start_values_of_this_segment[comp.label_full] = comp.initial_charge_state
 
         self._transfered_start_values[segment_name] = start_values_of_this_segment
@@ -479,13 +482,14 @@ class SegmentedCalculation(Calculation):
             if isinstance(comp, Storage):
                 comp.initial_charge_state = self._original_start_values[comp]
 
-    def _get_indices(self, segment_index: int) -> range:
-        start = segment_index * self.segment_length
-        return range(start, min(start + self.segment_length + self.overlap_length, self._total_length))
+    def _get_timesteps_of_segment(self, segment_index: int) -> pd.DatetimeIndex:
+        start = segment_index * self.timesteps_per_segment
+        end = min(start + self.timesteps_per_segment + self.overlap_timesteps, self._total_length)
+        return self.all_timesteps[start:end]
 
     @property
     def segment_length_with_overlap(self):
-        return self.segment_length + self.overlap_length
+        return self.timesteps_per_segment + self.overlap_timesteps
 
     @property
     def start_values_of_segments(self) -> Dict[str, Dict[str, Any]]:
