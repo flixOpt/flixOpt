@@ -63,6 +63,6 @@ if __name__ == '__main__':
     results.plot_operation('District Heating', 'area')
 
     # Print results to the console. Check Results in file or perform more plotting
-    pprint(calculation.results())
+    pprint(calculation.results)
     pprint('Look into .yaml and .json file for results')
     pprint(calculation.flow_system.model.main_results)

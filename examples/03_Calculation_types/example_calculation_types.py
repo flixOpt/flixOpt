@@ -14,7 +14,7 @@ import flixOpt as fx
 
 if __name__ == '__main__':
     # Calculation Types
-    full, segmented, aggregated = True, False, False
+    full, segmented, aggregated = True, True, True
 
     # Segmented Properties
     segment_length, overlap_length = 96, 1
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations['Full'] = calculation
-        results['Full'] = calculations['Full'].results()
+        results['Full'] = calculations['Full'].results
 
     if segmented:
         calculation = fx.SegmentedCalculation('segModel', flow_system, segment_length, overlap_length)
@@ -177,7 +177,7 @@ if __name__ == '__main__':
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations['Aggregated'] = calculation
-        results['Aggregated'] = calculations['Aggregated'].results()
+        results['Aggregated'] = calculations['Aggregated'].results
     pprint(results)
 
     def extract_result(results_data: dict[str, dict], keys: List[str]) -> Dict[str, Union[int, float, np.ndarray]]:
