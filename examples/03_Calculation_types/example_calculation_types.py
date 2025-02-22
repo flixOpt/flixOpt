@@ -178,7 +178,6 @@ if __name__ == '__main__':
         calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations['Aggregated'] = calculation
         results['Aggregated'] = calculations['Aggregated'].results
-    pprint(results)
 
     def extract_result(results_data: dict[str, dict], keys: List[str]) -> Dict[str, Union[int, float, np.ndarray]]:
         """
@@ -198,11 +197,11 @@ if __name__ == '__main__':
         return {kind: get_nested_value(results_data.get(kind, {}), keys) for kind in results_data.keys()}
 
     if calculations['Full'] is not None:
-        time_series_used = calculations['Full'].system_model.time_series
-        time_series_used_w_end = calculations['Full'].system_model.time_series_with_end
+        time_series_used = calculations['Full'].flow_system.timesteps
+        time_series_used_w_end = calculations['Full'].flow_system.timesteps_extra
     else:
-        time_series_used = calculations['Aggregated'].system_model.time_series
-        time_series_used_w_end = calculations['Aggregated'].system_model.time_series_with_end
+        time_series_used = calculations['Aggregated'].flow_system.timesteps
+        time_series_used_w_end = calculations['Aggregated'].flow_system.timesteps_extra
 
     data = pd.DataFrame(
         extract_result(results, ['Components', 'Speicher', 'charge_state']), index=time_series_used_w_end
@@ -217,15 +216,15 @@ if __name__ == '__main__':
     fig.write_html('results/BHKW2 Thermal Power.html')
 
     data = pd.DataFrame(
-        extract_result(results, ['Effects', 'costs', 'operation', 'operation_sum_TS']),
-        index=calculations['Full'].system_model.time_series,
+        extract_result(results, ['Effects', 'costs', 'operation', 'total_per_timestep']),
+        index=time_series_used,
     )
     fig = fx.plotting.with_plotly(data, 'line')
     fig.update_layout(title='Cost Comparison', xaxis_title='Time', yaxis_title='Costs (€)')
     fig.write_html('results/Operation Costs.html')
 
     data = pd.DataFrame(
-        extract_result(results, ['Effects', 'costs', 'operation', 'operation_sum_TS']), index=time_series_used
+        extract_result(results, ['Effects', 'costs', 'operation', 'total_per_timestep']), index=time_series_used
     )
     data = pd.DataFrame(data.sum()).T
     fig = fx.plotting.with_plotly(data, 'bar')
