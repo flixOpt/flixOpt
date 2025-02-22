@@ -436,7 +436,7 @@ class SegmentedCalculation(Calculation):
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {
             'Calculation': self.infos,
-            'Model': self.sub_calculations[0].system_model.infos,
+            'Model': self.sub_calculations[0].model.infos,
             'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
             'Network': {'Nodes': nodes_info, 'Edges': edges_info},
         }
@@ -557,7 +557,7 @@ def _combine_nested_arrays(
         if all(isinstance(val, dict) for val in values):  # If all values are dictionaries, recursively combine each key
             return {key: combine_arrays_recursively(*(val[key] for val in values)) for key in values[0]}
 
-        if all(isinstance(val, np.ndarray) for val in values):
+        if all(isinstance(val, np.ndarray) for val in values) and all(val.ndim != 0 for val in values):
 
             def limit(idx: int, arr: np.ndarray) -> np.ndarray:
                 # Performs the trimming of the arrays. Doesn't trim the last array!
