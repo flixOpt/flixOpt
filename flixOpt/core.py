@@ -528,6 +528,8 @@ class TimeSeriesCollection:
                             extra_step_value, index=[data.index[-1] + pd.Timedelta(hours=self.hours_of_last_timestep)])
                          ]
                     )
+                else:
+                    time_series.stored_data = data[time_series.name]
                 logger.debug(f'Inserted data for {time_series.name}')
 
     def _activate_timeserieses(self):
