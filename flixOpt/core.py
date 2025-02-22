@@ -311,7 +311,6 @@ class TimeSeries:
         new_data = DataConverter.as_dataarray(value, time=self.active_timesteps, period=self.active_periods)
         if new_data.equals(self._stored_data):
             return  # No change in stored_data. Do nothing. This prevents pushing out the backup
-        self._backup = self._stored_data
         self._stored_data = new_data
         self.active_timesteps = None
         self.active_periods = None
@@ -428,6 +427,7 @@ class TimeSeriesCollection:
         if isinstance(data, TimeSeries):
             if data not in self.time_series_data:
                 self._add_time_series(data, extra_timestep)
+            data.restore_data()
             return data
 
         time_series = TimeSeries.from_datasource(
