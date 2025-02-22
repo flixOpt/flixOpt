@@ -677,15 +677,15 @@ class TimeSeriesCollection:
         return self._timesteps if self._active_timesteps is None else self._active_timesteps
 
     @property
-    def timesteps_extra(self):
+    def timesteps_extra(self) -> pd.DatetimeIndex:
         return self._timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
 
     @property
-    def periods(self):
+    def periods(self) -> pd.Index:
         return self._periods if self._active_periods is None else self._active_periods
 
     @property
-    def hours_per_timestep(self):
+    def hours_per_timestep(self) -> xr.DataArray:
         return self._hours_per_timestep if self._active_hours_per_timestep is None else self._active_hours_per_timestep
 
     def __repr__(self):
