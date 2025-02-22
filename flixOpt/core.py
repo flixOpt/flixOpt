@@ -379,7 +379,6 @@ class TimeSeriesCollection:
             hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]],
             periods: Optional[List[int]]
     ):
-        self.hours_of_last_timestep = hours_of_last_timestep
         (
             self._timesteps,
             self._timesteps_extra,
@@ -665,15 +664,15 @@ class TimeSeriesCollection:
         return [time_series for time_series in self.time_series_data if time_series.all_equal]
 
     @property
-    def coords(self):
-        return [self.periods, self.timesteps] if self.periods is not None else [self.timesteps]
+    def coords(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
+        return (self.periods, self.timesteps) if self.periods is not None else (self.timesteps,)
 
     @property
-    def coords_extra(self):
-        return [self.periods, self.timesteps_extra] if self.periods is not None else [self.timesteps_extra]
+    def coords_extra(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
+        return (self.periods, self.timesteps_extra) if self.periods is not None else (self.timesteps_extra,)
 
     @property
-    def timesteps(self):
+    def timesteps(self) -> pd.DatetimeIndex:
         return self._timesteps if self._active_timesteps is None else self._active_timesteps
 
     @property
@@ -687,6 +686,10 @@ class TimeSeriesCollection:
     @property
     def hours_per_timestep(self) -> xr.DataArray:
         return self._hours_per_timestep if self._active_hours_per_timestep is None else self._active_hours_per_timestep
+
+    @property
+    def hours_of_last_timestep(self) -> float:
+        return self.hours_per_timestep[-1].item()
 
     def __repr__(self):
         timestep_range = f"{self._timesteps[0]} to {self._timesteps[-1]}" if len(self.timesteps) > 1 else str(
