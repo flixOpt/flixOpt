@@ -38,6 +38,9 @@ class SystemModel(linopy.Model):
         self.flow_system = flow_system
         self.effects: Optional[EffectCollection] = None
 
+        self._solution_structure = None
+        self.solution_structured = None
+
     def do_modeling(self):
         from .effects import EffectCollection
         self.effects = EffectCollection(self, list(self.flow_system.effects.values()))
@@ -53,7 +56,12 @@ class SystemModel(linopy.Model):
             self.effects.objective_effect.model.total + self.effects.penalty.total
         )
 
-    def solution_structured(self, mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'numpy'):
+    def store_solution(self):
+        self._solution_structure = self._get_solution_structured(mode='structure')
+        solution = self.variables.solution
+        self.solution_structured = SystemModel._insert_dataarrays(solution, self._solution_structure)
+
+    def _get_solution_structured(self, mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'numpy'):
         return {
             'Buses': {
                 bus.label_full: bus.model.solution_structured(mode=mode)
@@ -77,7 +85,7 @@ class SystemModel(linopy.Model):
         """
         ds = self.solution
         ds = ds.rename_vars({var: var.replace('/', '-slash-') for var in ds.data_vars})
-        ds.attrs["structure"] = json.dumps(self.solution_structured(mode='structure'))  # Convert dict to JSON string
+        ds.attrs["structure"] = json.dumps(self._solution_structure)  # Convert dict to JSON string
         ds.to_netcdf(path)
 
     @staticmethod

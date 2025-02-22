@@ -94,7 +94,7 @@ class Calculation:
         t_start = timeit.default_timer()
         indent = 4 if len(self.flow_system.timesteps) < 50 else None
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = copy_and_convert_datatypes(self.results(), use_numpy=False, use_element_label=False)
+            results = copy_and_convert_datatypes(self.results, use_numpy=False, use_element_label=False)
             json.dump(results, f, indent=indent)
 
         with open(self._paths['data'], 'w', encoding='utf-8') as f:
@@ -107,7 +107,7 @@ class Calculation:
         nodes_info, edges_info = self.flow_system.network_infos()
         infos = {
             'Calculation': self.infos,
-            'Model': self.flow_system.model.infos,
+            'Model': self.model.infos,
             'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
             'Network': {'Nodes': nodes_info, 'Edges': edges_info},
         }
@@ -127,9 +127,8 @@ class Calculation:
         logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
         logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
 
+    @property
     def results(self):
-        if self._results is None:
-            self._results = self.flow_system.results()
         return self._results
 
     @property
@@ -163,6 +162,8 @@ class FullCalculation(Calculation):
         self.model.solve(log_fn=self._paths['log'],
                          solver_name=solver.name,
                          **solver.options)
+        self.model.store_solution()
+        self._results = self.flow_system.results()
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         # Log the formatted output
@@ -368,6 +369,7 @@ class SegmentedCalculation(Calculation):
                     f'Following InvestmentModels were found: {invest_elements}'
                 )
             calculation.solve(solver, save_results=False)
+            calculation.model.store_solution()
 
         self._reset_start_values()
 
@@ -401,7 +403,7 @@ class SegmentedCalculation(Calculation):
         assert options_chosen == 1, (
             f'Exactly one of the three options to retrieve the results needs to be chosen! You chose {options_chosen}!'
         )
-        all_results = {calculation.name: calculation.results() for calculation in self.sub_calculations}
+        all_results = {calculation.name: calculation.results for calculation in self.sub_calculations}
         if combined_arrays:
             return _combine_nested_arrays(*list(all_results.values()), length_per_array=self.timesteps_per_segment)
         elif combined_scalars:
