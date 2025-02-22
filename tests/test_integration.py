@@ -218,7 +218,7 @@ class TestComponents(BaseTest):
         calculation = fx.FullCalculation('Test_Sim', flow_system)
         calculation.do_modeling()
         calculation.solve(self.get_solver())
-        print(calculation.results())
+        print(calculation.results)
         self.assert_almost_equal_numeric(
             transmission.in1.model.on_off.on.solution.values, np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]), 'On does not work properly'
         )
@@ -826,7 +826,7 @@ class TestModelingTypes(BaseTest):
             calc.do_modeling()
             calc.solve(self.get_solver(), save_results=True)
         elif doSegmentedCalc:
-            calc = fx.SegmentedCalculation('segModel', es, segment_length=96, overlap_length=1)
+            calc = fx.SegmentedCalculation('segModel', es, timesteps_per_segment=96, overlap_timesteps=1)
             calc.do_modeling_and_solve(self.get_solver(), save_results=True)
         elif doAggregatedCalc:
             calc = fx.AggregatedCalculation(
