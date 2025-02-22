@@ -156,7 +156,10 @@ class FullCalculation(Calculation):
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.model
 
-    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = True):
+    def solve(self,
+              solver: _Solver,
+              save_results: Union[bool, str, pathlib.Path] = True,
+              log_main_results: bool = True):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
         self.model.solve(log_fn=self._paths['log'],
@@ -167,10 +170,11 @@ class FullCalculation(Calculation):
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         # Log the formatted output
-        logger.info(f'{" Main Results ":#^80}')
-        logger.info("\n" + yaml.dump(
-            utils.round_floats(self.flow_system.model.infos),
-            default_flow_style=False, sort_keys=False, allow_unicode=True, indent=4))
+        if log_main_results:
+            logger.info(f'{" Main Results ":#^80}')
+            logger.info("\n" + yaml.dump(
+                utils.round_floats(self.flow_system.model.infos),
+                default_flow_style=False, sort_keys=False, allow_unicode=True, indent=4))
 
         if save_results:
             self._save_solve_infos()
@@ -343,7 +347,11 @@ class SegmentedCalculation(Calculation):
         }
         self._transfered_start_values: List[Dict[str, Any]] = []
 
-    def do_modeling_and_solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = True):
+    def do_modeling_and_solve(
+            self,
+            solver: _Solver,
+            save_results: Union[bool, str, pathlib.Path] = True,
+            log_main_results: bool = False):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Segmented Solving ":#^80}')
         self._define_path_names(save_results)
@@ -352,7 +360,8 @@ class SegmentedCalculation(Calculation):
             if self.sub_calculations:
                 self._transfer_start_values(i)
 
-            logger.info(f'{segment_name} ({timesteps_of_segment[0]} -> {timesteps_of_segment[-1]}):')
+            logger.info(f'{segment_name} [{i+1:>2}/{len(self.segment_names):<2}] '
+                        f'({timesteps_of_segment[0]} -> {timesteps_of_segment[-1]}):')
 
             calculation = FullCalculation(segment_name, self.flow_system, active_timesteps=timesteps_of_segment)
             self.sub_calculations.append(calculation)
@@ -368,8 +377,7 @@ class SegmentedCalculation(Calculation):
                     f'Investments are not supported in Segmented Calculation! '
                     f'Following InvestmentModels were found: {invest_elements}'
                 )
-            calculation.solve(solver, save_results=False)
-            calculation.model.store_solution()
+            calculation.solve(solver, save_results=False, log_main_results=log_main_results)
 
         self._reset_start_values()
 
