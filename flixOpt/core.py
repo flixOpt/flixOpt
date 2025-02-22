@@ -401,12 +401,6 @@ class TimeSeriesCollection:
         self.time_serieses: List[TimeSeries] = []
         self._timeserieses_longer: List[TimeSeries] = []  # All part of self.time_serieses, but with extra timestep
 
-    def _add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
-        self.time_serieses.append(time_series)
-        if extra_timestep:
-            self._timeserieses_longer.append(time_series)
-        self._check_unique_labels()
-
     def create_time_series(
         self,
         data: Union[NumericData, TimeSeriesData],
@@ -461,11 +455,12 @@ class TimeSeriesCollection:
 
         return self.weights
 
-    def update_data(self,
-                    active_timesteps: Optional[pd.DatetimeIndex] = None,
-                    active_periods: Optional[pd.Index] = None):
+    def activate_indices(self,
+                         active_timesteps: Optional[pd.DatetimeIndex] = None,
+                         active_periods: Optional[pd.Index] = None):
         """
         Update active timesteps, periods, and data of the TimeSeriesCollection.
+        If no arguments are provided, the active timesteps and periods are reset.
 
         Parameters
         ----------
@@ -478,17 +473,15 @@ class TimeSeriesCollection:
         """
 
         if active_timesteps is None and active_periods is None:
-            raise ValueError('Either active_timesteps or active_periods must be provided.'
-                             'Else use .reset() to reset the active timesteps and periods.')
+            return self.reset()
 
         active_timesteps = active_timesteps if active_timesteps is not None else self._timesteps
         active_periods = active_periods if active_periods is not None else self._periods
 
-        if not active_timesteps.isin(self._timesteps):
+        if not np.all(active_timesteps.isin(self._timesteps)):
             raise ValueError('active_timesteps must be a subset of the timesteps of the TimeSeriesCollection')
-        if not active_periods.isin(self._periods):
+        if active_periods is not None and not np.all(active_periods.isin(self._periods)):
             raise ValueError('active_periods must be a subset of the periods of the TimeSeriesCollection')
-
 
         (
             self._active_timesteps,
@@ -500,7 +493,7 @@ class TimeSeriesCollection:
             active_timesteps, active_periods, self.hours_of_last_timestep, self._hours_of_previous_timesteps
         )
 
-        self._active_timeserieses()
+        self._activate_timeserieses()
 
     def reset(self):
         """Reset active timesteps and periods of all TimeSeries."""
@@ -510,6 +503,11 @@ class TimeSeriesCollection:
         self._active_periods = None
         for time_series in self.time_serieses:
             time_series.reset()
+
+    def restore_data(self):
+        """Restore stored_data from the backup."""
+        for time_series in self.time_serieses:
+            time_series.restore_data()
 
     def insert_new_data(self, data: pd.DataFrame):
         """Insert new data into the TimeSeriesCollection.
@@ -527,7 +525,7 @@ class TimeSeriesCollection:
                 time_series.stored_data = data[time_series.name]
                 logger.debug(f'Inserted data for {time_series.name}')
 
-    def _active_timeserieses(self):
+    def _activate_timeserieses(self):
         for time_series in self.time_serieses:
             time_series.active_periods = self.periods
             if time_series in self._timeserieses_longer:
@@ -623,6 +621,36 @@ class TimeSeriesCollection:
         )
         return timesteps, timesteps_extra , hours_per_step, hours_of_previous_timesteps, periods
 
+    def _add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
+        self.time_serieses.append(time_series)
+        if extra_timestep:
+            self._timeserieses_longer.append(time_series)
+        self._check_unique_labels()
+
+    def _calculate_group_weights(self) -> Dict[str, float]:
+        """Calculates the aggregation weights of each group"""
+        groups = [
+            time_series.aggregation_group
+            for time_series in self.time_serieses
+            if time_series.aggregation_group is not None
+        ]
+        group_size = dict(Counter(groups))
+        group_weights = {group: 1 / size for group, size in group_size.items()}
+        return group_weights
+
+    def _calculate_aggregation_weights(self) -> Dict[str, float]:
+        """Calculates the aggregation weight for each TimeSeries. Default is 1"""
+        return {
+            time_series.name: self.group_weights.get(time_series.aggregation_group, time_series.aggregation_weight or 1)
+            for time_series in self.time_serieses
+        }
+
+    def _check_unique_labels(self):
+        """Makes sure every label of the TimeSeries in time_series_list is unique"""
+        label_counts = Counter([time_series.name for time_series in self.time_serieses])
+        duplicates = [label for label, count in label_counts.items() if count > 1]
+        assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))
+
     @property
     def non_constants(self) -> List[TimeSeries]:
         return [time_series for time_series in self.time_serieses if not time_series.all_equal]
@@ -665,27 +693,3 @@ class TimeSeriesCollection:
         else:
             result += 'Warning!: no agg_types defined, i.e. all TS have weight 1 (or explicitly given weight)!\n'
         return result
-
-    def _calculate_group_weights(self) -> Dict[str, float]:
-        """Calculates the aggregation weights of each group"""
-        groups = [
-            time_series.aggregation_group
-            for time_series in self.time_serieses
-            if time_series.aggregation_group is not None
-        ]
-        group_size = dict(Counter(groups))
-        group_weights = {group: 1 / size for group, size in group_size.items()}
-        return group_weights
-
-    def _calculate_aggregation_weights(self) -> Dict[str, float]:
-        """Calculates the aggregation weight for each TimeSeries. Default is 1"""
-        return {
-            time_series.name: self.group_weights.get(time_series.aggregation_group, time_series.aggregation_weight or 1)
-            for time_series in self.time_serieses
-        }
-
-    def _check_unique_labels(self):
-        """Makes sure every label of the TimeSeries in time_series_list is unique"""
-        label_counts = Counter([time_series.name for time_series in self.time_serieses])
-        duplicates = [label for label, count in label_counts.items() if count > 1]
-        assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))
