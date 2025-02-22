@@ -318,15 +318,17 @@ class SegmentedCalculation(Calculation):
             raise NotImplementedError('Multiple Periods are currently not supported in SegmentedCalculation')
         self.timesteps_per_segment = timesteps_per_segment
         self.overlap_timesteps = overlap_timesteps
-        self.all_timesteps = self.flow_system.timesteps if self.active_timesteps is None else self.active_timesteps
-        self._total_length = len(self.all_timesteps)
-        self.number_of_segments = math.ceil(self._total_length / self.timesteps_per_segment)
         self.nr_of_previous_values = nr_of_previous_values
         self.sub_calculations: List[FullCalculation] = []
 
+        self.all_timesteps = self.flow_system.timesteps if self.active_timesteps is None else self.active_timesteps
+
+        self.segment_names = [f'Segment_{i + 1}' for i in range(math.ceil(len(self.all_timesteps) / self.timesteps_per_segment))]
+        self.active_timesteps_per_segment = self._calculate_timesteps_of_segment()
+
         assert timesteps_per_segment > 2, 'The Segment length must be greater 2, due to unwanted internal side effects'
-        assert self.segment_length_with_overlap <= self._total_length, (
-            f'{self.segment_length_with_overlap=} cant be greater than the total length {self._total_length}'
+        assert self.timesteps_per_segment_with_overlap <= len(self.all_timesteps), (
+            f'{self.timesteps_per_segment_with_overlap=} cant be greater than the total length {len(self.all_timesteps)}'
         )
 
         # Storing all original start values
@@ -338,20 +340,20 @@ class SegmentedCalculation(Calculation):
                 if isinstance(comp, Storage)
             },
         }
-        self._transfered_start_values: Dict[str, Dict[str, Any]] = {}
+        self._transfered_start_values: List[Dict[str, Any]] = []
 
     def do_modeling_and_solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = True):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Segmented Solving ":#^80}')
         self._define_path_names(save_results)
 
-        for i in range(self.number_of_segments):
-            name_of_segment = f'Segment_{i + 1}'
+        for i, (segment_name, timesteps_of_segment) in enumerate(zip(self.segment_names, self.active_timesteps_per_segment)):
             if self.sub_calculations:
-                self._transfer_start_values(name_of_segment)
-            timesteps_of_segment = self._get_timesteps_of_segment(i)
-            logger.info(f'{name_of_segment} ({timesteps_of_segment[0]} -> {timesteps_of_segment[-1]}):')
-            calculation = FullCalculation(name_of_segment, self.flow_system, active_timesteps=timesteps_of_segment)
+                self._transfer_start_values(i)
+
+            logger.info(f'{segment_name} ({timesteps_of_segment[0]} -> {timesteps_of_segment[-1]}):')
+
+            calculation = FullCalculation(segment_name, self.flow_system, active_timesteps=timesteps_of_segment)
             self.sub_calculations.append(calculation)
             calculation.do_modeling()
             invest_elements = [
@@ -399,7 +401,7 @@ class SegmentedCalculation(Calculation):
         assert options_chosen == 1, (
             f'Exactly one of the three options to retrieve the results needs to be chosen! You chose {options_chosen}!'
         )
-        all_results = {f'Segment_{i + 1}': calculation.results() for i, calculation in enumerate(self.sub_calculations)}
+        all_results = {calculation.name: calculation.results() for calculation in self.sub_calculations}
         if combined_arrays:
             return _combine_nested_arrays(*list(all_results.values()), length_per_array=self.timesteps_per_segment)
         elif combined_scalars:
@@ -455,24 +457,28 @@ class SegmentedCalculation(Calculation):
         logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
         logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
 
-    def _transfer_start_values(self, segment_name: str):
+    def _transfer_start_values(self, segment_index: int):
         """
         This function gets the last values of the previous solved segment and
         inserts them as start values for the next segment
         """
-        final_index_of_prior_segment = -(1 + self.overlap_timesteps)
-        first_index_of_previous_values = final_index_of_prior_segment - self.nr_of_previous_values
-        logger.debug(f'Using The following indices for the start values: {first_index_of_previous_values=}')
+        timesteps_of_prior_segment = self.active_timesteps_per_segment[segment_index-1]
+
+        start = self.active_timesteps_per_segment[segment_index][0]
+        start_previous_values = timesteps_of_prior_segment[self.timesteps_per_segment - self.nr_of_previous_values]
+        end_previous_values = timesteps_of_prior_segment[self.timesteps_per_segment-1]
+
+        logger.debug(f'start of next segment: {start}. indices of previous values: {start_previous_values}:{end_previous_values}')
         start_values_of_this_segment = {}
         for flow in self.flow_system.flows.values():
-            flow.previous_flow_rate = flow.model.flow_rate.solution.values[first_index_of_previous_values:final_index_of_prior_segment]
+            flow.previous_flow_rate = flow.model.flow_rate.solution.sel(time=slice(start_previous_values, end_previous_values)).values
             start_values_of_this_segment[flow.label_full] = flow.previous_flow_rate
         for comp in self.flow_system.components.values():
             if isinstance(comp, Storage):
-                comp.initial_charge_state = comp.model.charge_state.solution.isel(time=final_index_of_prior_segment).item()
+                comp.initial_charge_state = comp.model.charge_state.solution.sel(time=start).item()
                 start_values_of_this_segment[comp.label_full] = comp.initial_charge_state
 
-        self._transfered_start_values[segment_name] = start_values_of_this_segment
+        self._transfered_start_values.append(start_values_of_this_segment)
 
     def _reset_start_values(self):
         """This resets the start values of all Elements to its original state"""
@@ -482,23 +488,26 @@ class SegmentedCalculation(Calculation):
             if isinstance(comp, Storage):
                 comp.initial_charge_state = self._original_start_values[comp]
 
-    def _get_timesteps_of_segment(self, segment_index: int) -> pd.DatetimeIndex:
-        start = segment_index * self.timesteps_per_segment
-        end = min(start + self.timesteps_per_segment + self.overlap_timesteps, self._total_length)
-        return self.all_timesteps[start:end]
+    def _calculate_timesteps_of_segment(self) -> List[pd.DatetimeIndex]:
+        active_timesteps_per_segment = []
+        for i, segment_name in enumerate(self.segment_names):
+            start = self.timesteps_per_segment * i
+            end = min(start + self.timesteps_per_segment_with_overlap, len(self.all_timesteps))
+            active_timesteps_per_segment.append(self.all_timesteps[start:end])
+        return active_timesteps_per_segment
 
     @property
-    def segment_length_with_overlap(self):
+    def timesteps_per_segment_with_overlap(self):
         return self.timesteps_per_segment + self.overlap_timesteps
 
     @property
-    def start_values_of_segments(self) -> Dict[str, Dict[str, Any]]:
+    def start_values_of_segments(self) -> Dict[int, Dict[str, Any]]:
         """Gives an overview of the start values of all Segments"""
         return {
-            self.sub_calculations[0].name: {
+            0: {
                 element.label_full: value for element, value in self._original_start_values.items()
             },
-            **self._transfered_start_values,
+            **{i: start_values for i, start_values in enumerate(self._transfered_start_values, 1)},
         }
 
 
