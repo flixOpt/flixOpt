@@ -292,7 +292,6 @@ class SegmentedCalculation(Calculation):
         flow_system: FlowSystem,
         timesteps_per_segment: int,
         overlap_timesteps: int,
-        active_timesteps: Optional[pd.DatetimeIndex] = None,
         nr_of_previous_values: int = 1,
     ):
         """
@@ -318,7 +317,7 @@ class SegmentedCalculation(Calculation):
             The number of time_steps that are added to each individual model. Used for better
             results of storages)
         """
-        super().__init__(name, flow_system, active_timesteps)
+        super().__init__(name, flow_system)
         if flow_system.periods is not None:
             raise NotImplementedError('Multiple Periods are currently not supported in SegmentedCalculation')
         self.timesteps_per_segment = timesteps_per_segment
@@ -326,7 +325,7 @@ class SegmentedCalculation(Calculation):
         self.nr_of_previous_values = nr_of_previous_values
         self.sub_calculations: List[FullCalculation] = []
 
-        self.all_timesteps = self.flow_system.timesteps if self.active_timesteps is None else self.active_timesteps
+        self.all_timesteps = self.flow_system.timesteps
 
         self.segment_names = [f'Segment_{i + 1}' for i in range(math.ceil(len(self.all_timesteps) / self.timesteps_per_segment))]
         self.active_timesteps_per_segment = self._calculate_timesteps_of_segment()
@@ -413,7 +412,11 @@ class SegmentedCalculation(Calculation):
         )
         all_results = {calculation.name: calculation.results for calculation in self.sub_calculations}
         if combined_arrays:
-            return _combine_nested_arrays(*list(all_results.values()), length_per_array=self.timesteps_per_segment)
+            return {
+                **_combine_nested_arrays(*list(all_results.values()), length_per_array=self.timesteps_per_segment),
+                'Time': self.flow_system.time_series_collection._timesteps_extra.tolist(),
+                'Time intervals in hours': self.flow_system.time_series_collection._hours_per_timestep,
+            }
         elif combined_scalars:
             return _combine_nested_scalars(*list(all_results.values()))
         else:
