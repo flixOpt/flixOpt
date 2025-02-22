@@ -3,8 +3,8 @@ This script shows how to use the flixOpt framework to model a super minimalistic
 """
 
 import numpy as np
-from rich.pretty import pprint
 import pandas as pd
+from rich.pretty import pprint
 
 import flixOpt as fx
 
