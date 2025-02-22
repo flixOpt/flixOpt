@@ -42,7 +42,8 @@ class Calculation:
         self,
         name: str,
         flow_system: FlowSystem,
-        active_timesteps: Optional[Union[List[int], pd.DatetimeIndex]] = None,
+        active_timesteps: Optional[pd.DatetimeIndex] = None,
+        active_periods: Optional[pd.Index] = None,
     ):
         """
         Parameters
@@ -57,6 +58,7 @@ class Calculation:
         self.name = name
         self.flow_system = flow_system
         self.active_timesteps = active_timesteps
+        self.active_periods = active_periods
 
         self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}
 
@@ -148,10 +150,9 @@ class FullCalculation(Calculation):
         t_start = timeit.default_timer()
 
         self.flow_system.transform_data()
-        for time_series in self.flow_system.all_time_series:
-            pass  # TODO: This must work for timeseries that are always one step longer
-            # time_series.active_periods = self.flow_system.periods
-            #time_series.active_timesteps = self.flow_system.timesteps
+        self.flow_system.time_series_collection.activate_indices(
+            active_timesteps=self.active_timesteps, active_periods=self.active_periods
+        )
 
         self.flow_system.create_model()
         self.flow_system.model.do_modeling()
@@ -177,7 +178,7 @@ class FullCalculation(Calculation):
             self._save_solve_infos()
 
 
-class AggregatedCalculation(Calculation):
+class AggregatedCalculation(FullCalculation):
     """
     class for defined way of solving a flow_system optimization
     """
@@ -211,19 +212,16 @@ class AggregatedCalculation(Calculation):
         time_indices : List[int] or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
-        super().__init__(name, flow_system, active_timesteps)
         if flow_system.periods is not None:
             raise NotImplementedError('Multiple Periods are currently not supported in AggregatedCalculation')
+        super().__init__(name, flow_system, active_timesteps)
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
         self.time_series_for_aggregation = None
         self.aggregation = None
 
     def do_modeling(self) -> SystemModel:
-        self.flow_system.transform_data()
-        for time_series in self.flow_system.all_time_series:
-            pass  #TODO: This must work for timeseries that are always one step longer
-            #time_series.activate_indices(self.time_indices)
+        super().do_modeling()
 
         from .aggregation import Aggregation
 
@@ -276,23 +274,6 @@ class AggregatedCalculation(Calculation):
         self.aggregation.do_modeling()
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
         return self.flow_system.model
-
-    def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = False):
-        self._define_path_names(save_results)
-        t_start = timeit.default_timer()
-        self.flow_system.model.solve(log_fn=self._paths['log'],
-                                     solver_name=solver.name,
-                                     **solver.options)
-        self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
-
-        # Log the formatted output
-        logger.info(f'{" Main Results ":#^80}')
-        logger.info("\n" + yaml.dump(
-            utils.round_floats(self.flow_system.model.infos),
-            default_flow_style=False, sort_keys=False, allow_unicode=True, indent=4))
-
-        if save_results:
-            self._save_solve_infos()
 
 
 class SegmentedCalculation(Calculation):
