@@ -23,7 +23,7 @@ if __name__ == '__main__':
     aggregation_parameters = fx.AggregationParameters(
         hours_per_period=6,
         nr_of_periods=4,
-        fix_storage_flows=True,
+        fix_storage_flows=False,
         aggregate_data_and_fix_non_binary_vars=True,
         percentage_of_period_freedom=0,
         penalty_of_period_freedom=0,
@@ -157,77 +157,56 @@ if __name__ == '__main__':
     results: dict = {key: None for key in kinds}
 
     if full:
-        calculation = fx.FullCalculation('fullModel', flow_system)
+        calculation = fx.FullCalculation('Full', flow_system)
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations['Full'] = calculation
-        results['Full'] = calculations['Full'].results
+        results['Full'] = fx.results.CalculationResults('Full', folder='results')
 
     if segmented:
-        calculation = fx.SegmentedCalculation('segModel', flow_system, segment_length, overlap_length)
+        calculation = fx.SegmentedCalculation('Segmented', flow_system, segment_length, overlap_length)
         calculation.do_modeling_and_solve(fx.solvers.HighsSolver(0, 60))
         calculations['Segmented'] = calculation
-        results['Segmented'] = calculations['Segmented'].results(combined_arrays=True)
+        results['Segmented'] = fx.results.CalculationResults('Segmented', folder='results')
 
     if aggregated:
         if keep_extreme_periods:
             aggregation_parameters.time_series_for_high_peaks = [TS_heat_demand]
             aggregation_parameters.time_series_for_low_peaks = [TS_electricity_demand, TS_heat_demand]
-        calculation = fx.AggregatedCalculation('aggModel', flow_system, aggregation_parameters)
+        calculation = fx.AggregatedCalculation('Aggregated', flow_system, aggregation_parameters)
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations['Aggregated'] = calculation
-        results['Aggregated'] = calculations['Aggregated'].results
+        results['Aggregated'] = fx.results.CalculationResults('Aggregated', folder='results')
 
-    def extract_result(results_data: dict[str, dict], keys: List[str]) -> Dict[str, Union[int, float, np.ndarray]]:
-        """
-        Function to retrieve values from a nested dictionary.
-        Tries to get the wanted value for eachnkey in the first layer of the dict.
-        Returns a dict with one key value pair for each dict it found a value in.
-        """
 
-        def get_nested_value(d, ks):
-            for k in ks:
-                if isinstance(d, dict):
-                    d = d.get(k, None)
-                else:
-                    return None
-            return d
-
-        return {kind: get_nested_value(results_data.get(kind, {}), keys) for kind in results_data.keys()}
-
-    if calculations['Full'] is not None:
-        time_series_used = calculations['Full'].flow_system.timesteps
-        time_series_used_w_end = calculations['Full'].flow_system.timesteps_extra
-    else:
-        time_series_used = calculations['Aggregated'].flow_system.timesteps
-        time_series_used_w_end = calculations['Aggregated'].flow_system.timesteps_extra
+    time_series_used = flow_system.timesteps
+    time_series_used_w_end = flow_system.timesteps_extra
 
     data = pd.DataFrame(
-        extract_result(results, ['Components', 'Speicher', 'charge_state']), index=time_series_used_w_end
+        {mode: results[mode].component_results['Speicher'].all_results['charge_state'] for mode in results},
+        index=time_series_used_w_end
     )
     fig = fx.plotting.with_plotly(data, 'line')
     fig.update_layout(title='Charge State Comparison', xaxis_title='Time', yaxis_title='Charge state')
     fig.write_html('results/Charge State.html')
 
-    data = pd.DataFrame(extract_result(results, ['Components', 'BHKW2', 'Q_th', 'flow_rate']), index=time_series_used)
+    data = pd.DataFrame(
+        {mode: results[mode].component_results['BHKW2'].all_results['Q_th']['flow_rate'] for mode in results},
+        index=time_series_used
+    )
     fig = fx.plotting.with_plotly(data, 'line')
     fig.update_layout(title='BHKW2 Q_th Flow Rate Comparison', xaxis_title='Time', yaxis_title='Flow rate')
     fig.write_html('results/BHKW2 Thermal Power.html')
 
     data = pd.DataFrame(
-        extract_result(results, ['Effects', 'costs', 'operation', 'total_per_timestep']),
-        index=time_series_used,
+        {mode: results[mode].effect_results['costs'].all_results['operation']['total_per_timestep'] for mode in results},
+        index=time_series_used
     )
     fig = fx.plotting.with_plotly(data, 'line')
     fig.update_layout(title='Cost Comparison', xaxis_title='Time', yaxis_title='Costs (€)')
     fig.write_html('results/Operation Costs.html')
-
-    data = pd.DataFrame(
-        extract_result(results, ['Effects', 'costs', 'operation', 'total_per_timestep']), index=time_series_used
-    )
-    data = pd.DataFrame(data.sum()).T
-    fig = fx.plotting.with_plotly(data, 'bar')
+    fig = fx.plotting.with_plotly(pd.DataFrame(data.sum()).T, 'bar')
     fig.update_layout(title='Total Cost Comparison', yaxis_title='Costs (€)', barmode='group')
     fig.write_html('results/Total Costs.html')
 
