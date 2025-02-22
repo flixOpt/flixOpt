@@ -40,9 +40,9 @@ class FlowSystem:
         ----------
         timesteps : pd.DatetimeIndex
             The timesteps of the model.
-        hours_of_last_step : Optional[float], optional
+        hours_of_last_timestep : Optional[float], optional
             The duration of the last time step. Uses the last time interval if not specified
-        previous_dt_in_hours : Union[int, float, np.ndarray]
+        hours_of_previous_timesteps : Union[int, float, np.ndarray]
             The duration of previous timesteps.
             If None, the first time increment of time_series is used.
             This is needed to calculate previous durations (for example consecutive_on_hours).
