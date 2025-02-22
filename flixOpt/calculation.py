@@ -57,6 +57,7 @@ class Calculation:
         """
         self.name = name
         self.flow_system = flow_system
+        self.model: Optional[SystemModel] = None
         self.active_timesteps = active_timesteps
         self.active_periods = active_periods
 
@@ -148,24 +149,20 @@ class FullCalculation(Calculation):
 
     def do_modeling(self) -> SystemModel:
         t_start = timeit.default_timer()
+        self._activate_time_series()
 
-        self.flow_system.transform_data()
-        self.flow_system.time_series_collection.activate_indices(
-            active_timesteps=self.active_timesteps, active_periods=self.active_periods
-        )
-
-        self.flow_system.create_model()
-        self.flow_system.model.do_modeling()
+        self.model = self.flow_system.create_model()
+        self.model.do_modeling()
 
         self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
-        return self.flow_system.model
+        return self.model
 
     def solve(self, solver: _Solver, save_results: Union[bool, str, pathlib.Path] = True):
         self._define_path_names(save_results)
         t_start = timeit.default_timer()
-        self.flow_system.model.solve(log_fn=self._paths['log'],
-                                     solver_name=solver.name,
-                                     **solver.options)
+        self.model.solve(log_fn=self._paths['log'],
+                         solver_name=solver.name,
+                         **solver.options)
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         # Log the formatted output
@@ -176,6 +173,12 @@ class FullCalculation(Calculation):
 
         if save_results:
             self._save_solve_infos()
+
+    def _activate_time_series(self):
+        self.flow_system.transform_data()
+        self.flow_system.time_series_collection.activate_indices(
+            active_timesteps=self.active_timesteps, active_periods=self.active_periods
+        )
 
 
 class AggregatedCalculation(FullCalculation):
@@ -221,8 +224,22 @@ class AggregatedCalculation(FullCalculation):
         self.aggregation = None
 
     def do_modeling(self) -> SystemModel:
-        super().do_modeling()
+        t_start = timeit.default_timer()
+        self._activate_time_series()
+        self._perform_aggregation()
 
+        # Model the System
+        self.model = self.flow_system.create_model()
+        self.model.do_modeling()
+        # Add Aggregation Model after modeling the rest
+        self.aggregation = AggregationModel(
+            self.model, self.aggregation_parameters, self.flow_system, self.aggregation, self.components_to_clusterize
+        )
+        self.aggregation.do_modeling()
+        self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
+        return self.model
+
+    def _perform_aggregation(self):
         from .aggregation import Aggregation
 
         t_start_agg = timeit.default_timer()
@@ -261,19 +278,6 @@ class AggregatedCalculation(FullCalculation):
         if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
             self.flow_system.time_series_collection.insert_new_data(self.aggregation.aggregated_data)
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
-
-        # Model the System
-        t_start = timeit.default_timer()
-
-        self.flow_system.create_model()
-        self.flow_system.model.do_modeling()
-        # Add Aggregation Model after modeling the rest
-        self.aggregation = AggregationModel(
-            self.flow_system.model, self.aggregation_parameters, self.flow_system, self.aggregation, self.components_to_clusterize
-        )
-        self.aggregation.do_modeling()
-        self.durations['modeling'] = round(timeit.default_timer() - t_start, 2)
-        return self.flow_system.model
 
 
 class SegmentedCalculation(Calculation):
