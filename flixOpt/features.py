@@ -4,17 +4,17 @@ Features extend the functionality of Elements.
 """
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, Literal
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import linopy
 import numpy as np
 
+from . import utils
 from .config import CONFIG
 from .core import Numeric, Skalar, TimeSeries
 from .interface import InvestParameters, OnOffParameters
 from .math_modeling import Equation, Variable, VariableTS
 from .structure import Model, SystemModel
-from . import utils
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .components import Storage
@@ -325,7 +325,6 @@ class OnOffModel(Model):
 
         nr_of_def_vars = len(self._defining_variables)
         assert nr_of_def_vars > 0, 'Achtung: mindestens 1 Flow notwendig'
-        EPSILON = CONFIG.modeling.EPSILON
 
         if nr_of_def_vars == 1:
             def_var = self._defining_variables[0]
@@ -334,7 +333,7 @@ class OnOffModel(Model):
             # eq: On(t) * max(epsilon, lower_bound) <= Q_th(t)
             self.add(
                 self._model.add_constraints(
-                    self.on * np.maximum(EPSILON, lb) <= def_var,
+                    self.on * np.maximum(CONFIG.modeling.EPSILON, lb) <= def_var,
                     name=f'{self.label_full}|on_con1'
                 ),
                 'on_con1'
@@ -343,7 +342,7 @@ class OnOffModel(Model):
             # eq: Q_th(t) <= Q_th_max * On(t)
             self.add(
                 self._model.add_constraints(
-                    self.on * np.maximum(EPSILON, ub) >= def_var,
+                    self.on * np.maximum(CONFIG.modeling.EPSILON, ub) >= def_var,
                     name=f'{self.label_full}|on_con2'
                 ),
                 'on_con2'
@@ -351,7 +350,7 @@ class OnOffModel(Model):
 
         else:  # Bei mehreren Leistungsvariablen:
             ub = sum(bound[1] for bound in self._defining_bounds)
-            lb = EPSILON
+            lb = CONFIG.modeling.EPSILON
 
             # When all defining variables are 0, On is 0
             # eq: On(t) * Epsilon <= sum(alle Leistungen(t))
@@ -828,7 +827,7 @@ class MultipleSegmentsModel(Model):
             self.add(self._model.add_constraints(
                 sum([segment.in_segment for segment in self._segment_models]) <= rhs,
                 name=f'{self.label_full}|{variable.name}_single_segment'),
-                f'single_segment'
+                'single_segment'
             )
 
     @property

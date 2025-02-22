@@ -5,12 +5,12 @@ It holds all necessary classes and functions to create a mathematical model, con
 and translate it into a ModelingLanguage like Pyomo, and the solve it through a solver.
 Multiple solvers are supported.
 """
-from dataclasses import dataclass, field
 import logging
 import re
 import timeit
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Literal, Optional, Union, ClassVar
+from dataclasses import dataclass, field
+from typing import Any, ClassVar, Dict, List, Literal, Optional, Union
 
 import numpy as np
 from numpy import inf

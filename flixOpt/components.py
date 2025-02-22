@@ -3,11 +3,11 @@ This module contains the basic components of the flixOpt framework.
 """
 
 import logging
-from typing import Dict, List, Literal, Optional, Set, Tuple, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Set, Tuple, Union
 
+import linopy
 import numpy as np
 import pandas as pd
-import linopy
 
 from . import utils
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
@@ -491,7 +491,7 @@ class StorageModel(ComponentModel):
 
     def _initial_and_final_charge_state(self, system_model):
         if self.element.initial_charge_state is not None:
-            name_short = f'initial_charge_state'
+            name_short = 'initial_charge_state'
             name = f'{self.label_full}|{name_short}'
 
             if utils.is_number(self.element.initial_charge_state):

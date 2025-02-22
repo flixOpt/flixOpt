@@ -5,13 +5,12 @@ It provides Datatypes, logging functionality, and some functions to transform da
 
 import inspect
 import logging
-from typing import Any, Dict, List, Optional, Union, Tuple, Literal
 from collections import Counter
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
-import xarray as xr
 import pandas as pd
-
+import xarray as xr
 
 logger = logging.getLogger('flixOpt')
 

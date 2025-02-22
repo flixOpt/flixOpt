@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 import pandas as pd
 
 from flixOpt.core import TimeSeriesCollection
+
 from .config import CONFIG
 from .core import Numeric, Numeric_TS, Skalar
 from .structure import Element, Interface

@@ -213,7 +213,7 @@ class AggregatedCalculation(Calculation):
         """
         super().__init__(name, flow_system, active_timesteps)
         if flow_system.periods is not None:
-            raise NotImplementedError(f'Multiple Periods are currently not supported in AggregatedCalculation')
+            raise NotImplementedError('Multiple Periods are currently not supported in AggregatedCalculation')
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
         self.time_series_for_aggregation = None
@@ -329,7 +329,7 @@ class SegmentedCalculation(Calculation):
         """
         super().__init__(name, flow_system, active_timesteps)
         if flow_system.periods is not None:
-            raise NotImplementedError(f'Multiple Periods are currently not supported in SegmentedCalculation')
+            raise NotImplementedError('Multiple Periods are currently not supported in SegmentedCalculation')
         self.segment_length = segment_length
         self.overlap_length = overlap_length
         self._total_length = len(self.flow_system.timesteps) if self.time_indices is not None else len(flow_system.time_series)

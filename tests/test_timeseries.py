@@ -1,9 +1,10 @@
-import pytest
-import pandas as pd
-import xarray as xr
 import linopy
+import pandas as pd
+import pytest
+import xarray as xr
 
 from flixOpt.core import TimeSeries  # Adjust import based on your module structure
+
 
 # Helper function to create a test TimeSeries object
 def create_test_timeseries():

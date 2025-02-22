@@ -6,16 +6,16 @@ which are then transformed into the internal data structure.
 """
 
 import logging
-from typing import Dict, Literal, Optional, Union, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union
 
+import linopy
 import numpy as np
 import pandas as pd
-import linopy
 
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
 from .math_modeling import Equation, Variable
-from .structure import Element, ElementModel, SystemModel, Model
+from .structure import Element, ElementModel, Model, SystemModel
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -338,10 +338,7 @@ class EffectCollection(Model):
             KeyError: If no standard effect is specified.
         """
         if effect is None:
-            try:
-                return self.standard_effect
-            except:
-                raise KeyError(f'No Standard-effect specified!')
+            return self.standard_effect
         if isinstance(effect, Effect):
             if effect in self:
                 return effect
@@ -349,8 +346,8 @@ class EffectCollection(Model):
                 raise KeyError(f'Effect {effect} not found!')
         try:
             return self.effects[effect]
-        except:
-            raise KeyError(f'No effect with label {effect} found!')
+        except KeyError as e:
+            raise KeyError(f'No effect with label {effect} found!') from e
 
     def __contains__(self, item: Union[str, 'Effect']) -> bool:
         """Check if the effect exists. Checks for label or object"""
@@ -378,7 +375,7 @@ class EffectCollection(Model):
     @property
     def standard_effect(self) -> Effect:
         if self._standard_effect is None:
-            raise KeyError(f'No standard-effect specified!')
+            raise KeyError('No standard-effect specified!')
         return self._standard_effect
 
     @standard_effect.setter
@@ -390,7 +387,7 @@ class EffectCollection(Model):
     @property
     def objective_effect(self) -> Effect:
         if self._objective_effect is None:
-            raise KeyError(f'No objective-effect specified!')
+            raise KeyError('No objective-effect specified!')
         return self._objective_effect
 
     @objective_effect.setter

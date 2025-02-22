@@ -8,7 +8,7 @@ import logging
 import timeit
 import warnings
 from collections import Counter
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Set
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 
 import linopy
 import numpy as np
@@ -319,7 +319,7 @@ class AggregationModel(Model):
 
         penalty = self.aggregation_parameters.penalty_of_period_freedom
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
-            for label, variable in self.variables_direct.items():
+            for variable in self.variables_direct.values():
                 self._model.effects.add_share_to_penalty(
                     self._model,
                     'Aggregation',

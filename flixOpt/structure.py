@@ -9,24 +9,24 @@ import logging
 import pathlib
 from datetime import datetime
 from io import StringIO
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union
 
+import linopy
 import numpy as np
+import pandas as pd
+import xarray as xr
 from rich.console import Console
 from rich.pretty import Pretty
-import xarray as xr
-import linopy
-import pandas as pd
 
 from . import utils
 from .config import CONFIG
-from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesData, TimeSeriesCollection, NumericData
-from .math_modeling import Equation, Inequation, MathModel, _Solver, Variable, VariableTS
+from .core import Numeric, Numeric_TS, NumericData, Skalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
+from .math_modeling import Equation, Inequation, MathModel, Variable, VariableTS, _Solver
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
+    from .effects import EffectCollection
     from .elements import BusModel, ComponentModel
     from .flow_system import FlowSystem
-    from .effects import EffectCollection
 
 logger = logging.getLogger('flixOpt')
 

@@ -3,10 +3,10 @@ This module contains the basic elements of the flixOpt framework.
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
-import numpy as np
 import linopy
+import numpy as np
 import pandas as pd
 
 from .config import CONFIG
