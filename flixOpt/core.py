@@ -385,7 +385,7 @@ class TimeSeriesCollection:
             self._hours_per_timestep,
             self._hours_of_previous_timesteps,
             self._periods
-        ) = TimeSeriesCollection.allign_dimensions(timesteps,
+        ) = TimeSeriesCollection.align_dimensions(timesteps,
                                                    periods,
                                                    hours_of_last_timestep,
                                                    hours_of_previous_timesteps)
@@ -488,7 +488,7 @@ class TimeSeriesCollection:
             self._active_hours_per_timestep,
             _,
             self._active_periods
-        ) = TimeSeriesCollection.allign_dimensions(
+        ) = TimeSeriesCollection.align_dimensions(
             active_timesteps, active_periods, self.hours_of_last_timestep, self._hours_of_previous_timesteps
         )
 
@@ -518,7 +518,9 @@ class TimeSeriesCollection:
             Must have the same columns as the TimeSeries in the TimeSeriesCollection.
             Must have the same index as the timesteps of the TimeSeriesCollection.
         """
-        #TODO: Sanitize the values for timeseries that are one step longer!
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError(f"data must be a pandas DataFrame. Got {type(data)=}")
+
         for time_series in self.time_series_data:
             if time_series.name in data.columns:
                 if time_series in self._time_series_data_with_extra_step:
@@ -532,37 +534,14 @@ class TimeSeriesCollection:
                     time_series.stored_data = data[time_series.name]
                 logger.debug(f'Inserted data for {time_series.name}')
 
-    def _activate_timeserieses(self):
-        for time_series in self.time_series_data:
-            time_series.active_periods = self.periods
-            if time_series in self._time_series_data_with_extra_step:
-                time_series.active_timesteps = self.timesteps_extra
-            else:
-                time_series.active_timesteps = self.timesteps
-
-    def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant'):
-        df = self.to_dataset().to_dataframe()
-        if filtered == 'all':  # Return all time series
-            return df
-        elif filtered == 'constant':  # Return only constant time series
-            return df.loc[:, df.nunique() ==1]
-        elif filtered == 'non_constant':  # Return only non-constant time series
-            return df.loc[:, df.nunique() > 1]
-        else:
-            raise ValueError('Not supported argument for "filtered".')
-
-    def to_dataset(self) -> xr.Dataset:
-        """Combine all stored DataArrays into a single Dataset."""
-        return xr.Dataset({time_series.name: time_series.active_data for time_series in self.time_series_data})
-
     @staticmethod
-    def allign_dimensions(
-        timesteps: pd.DatetimeIndex,
-        periods: Optional[pd.Index] = None,
-        hours_of_last_timestep: Optional[float] = None,
-        hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None
+    def align_dimensions(
+            timesteps: pd.DatetimeIndex,
+            periods: Optional[pd.Index] = None,
+            hours_of_last_timestep: Optional[float] = None,
+            hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None
     ) -> Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Union[int, float, np.ndarray], Optional[pd.Index]]:
-        """ Converts the given timesteps, periods and hours_of_last_timestep to the right format
+        """Converts the given timesteps, periods and hours_of_last_timestep to the right format
 
         Parameters
         ----------
@@ -592,6 +571,7 @@ class TimeSeriesCollection:
                 The periods of the model. Every period has the same timesteps.
                 Usually years are used as periods.
         """
+
         if not isinstance(timesteps, pd.DatetimeIndex):
             raise TypeError('timesteps must be a pandas DatetimeIndex')
         if not timesteps.name == 'time':
@@ -604,34 +584,80 @@ class TimeSeriesCollection:
             logger.warning('periods must be a pandas Index with name "period". Renamed it.')
             periods.name = 'period'
 
-        if hours_of_last_timestep:
-            last_date = pd.DatetimeIndex(
-                [timesteps[-1] + pd.to_timedelta(hours_of_last_timestep, 'h')])
-        else:
-            last_date = pd.DatetimeIndex([timesteps[-1] + (timesteps[-1] - timesteps[-2])])
-
-        timesteps_extra = pd.DatetimeIndex(timesteps.append(last_date), name='time')
-
-        hours_of_previous_timesteps: Union[int, float, np.ndarray] = (
-            ((timesteps[1] - timesteps[0]) / np.timedelta64(1, 'h'))
-            if hours_of_previous_timesteps is None
-            else hours_of_previous_timesteps
+        timesteps_extra = TimeSeriesCollection._create_extra_timestep(timesteps, hours_of_last_timestep)
+        hours_of_previous_timesteps = TimeSeriesCollection._calculate_hours_of_previous_timesteps(
+            timesteps, hours_of_previous_timesteps
         )
+        hours_per_step = TimeSeriesCollection._create_hours_per_timestep(timesteps_extra, periods)
 
-        hours_per_step = timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
-        hours_per_step = xr.DataArray(
-            data=np.tile(hours_per_step, (len(periods), 1)) if periods is not None else hours_per_step,
-            coords=(periods, timesteps) if periods is not None else (timesteps,),
-            dims=('period', 'time') if periods is not None else ('time',),
-            name='hours_per_step'
-        )
-        return timesteps, timesteps_extra , hours_per_step, hours_of_previous_timesteps, periods
+        return timesteps, timesteps_extra, hours_per_step, hours_of_previous_timesteps, periods
 
     def _add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
         self.time_series_data.append(time_series)
         if extra_timestep:
             self._time_series_data_with_extra_step.append(time_series)
         self._check_unique_labels()
+
+    def _activate_timeserieses(self):
+        for time_series in self.time_series_data:
+            time_series.active_periods = self.periods
+            if time_series in self._time_series_data_with_extra_step:
+                time_series.active_timesteps = self.timesteps_extra
+            else:
+                time_series.active_timesteps = self.timesteps
+
+    def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant'):
+        df = self.to_dataset().to_dataframe()
+        if filtered == 'all':  # Return all time series
+            return df
+        elif filtered == 'constant':  # Return only constant time series
+            return df.loc[:, df.nunique() ==1]
+        elif filtered == 'non_constant':  # Return only non-constant time series
+            return df.loc[:, df.nunique() > 1]
+        else:
+            raise ValueError('Not supported argument for "filtered".')
+
+    def to_dataset(self) -> xr.Dataset:
+        """Combine all stored DataArrays into a single Dataset."""
+        return xr.Dataset({time_series.name: time_series.active_data for time_series in self.time_series_data})
+
+    @staticmethod
+    def _create_extra_timestep(timesteps: pd.DatetimeIndex,
+                               hours_of_last_timestep: Optional[float]) -> pd.DatetimeIndex:
+        """Creates an extra timestep at the end of the timesteps."""
+        if hours_of_last_timestep:
+            last_date = pd.DatetimeIndex(
+                [timesteps[-1] + pd.to_timedelta(hours_of_last_timestep, 'h')])
+        else:
+            last_date = pd.DatetimeIndex([timesteps[-1] + (timesteps[-1] - timesteps[-2])])
+
+        return pd.DatetimeIndex(timesteps.append(last_date), name='time')
+
+    @staticmethod
+    def _calculate_hours_of_previous_timesteps(
+            timesteps: pd.DatetimeIndex,
+            hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]]
+    ) -> Union[int, float, np.ndarray]:
+        """Calculates the duration of the previous timesteps in hours."""
+        return (
+            ((timesteps[1] - timesteps[0]) / np.timedelta64(1, 'h'))
+            if hours_of_previous_timesteps is None
+            else hours_of_previous_timesteps
+        )
+
+    @staticmethod
+    def _create_hours_per_timestep(
+            timesteps_extra: pd.DatetimeIndex,
+            periods: Optional[pd.Index]
+    ) -> xr.DataArray:
+        """Creates a DataArray representing the duration of each timestep in hours."""
+        hours_per_step = timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
+        return xr.DataArray(
+            data=np.tile(hours_per_step, (len(periods), 1)) if periods is not None else hours_per_step,
+            coords=(periods, timesteps_extra[:-1]) if periods is not None else (timesteps_extra[:-1],),
+            dims=('period', 'time') if periods is not None else ('time',),
+            name='hours_per_step'
+        )
 
     def _calculate_group_weights(self) -> Dict[str, float]:
         """Calculates the aggregation weights of each group"""
