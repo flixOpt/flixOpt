@@ -42,13 +42,13 @@ class SystemModel(linopy.Model):
     def do_modeling(self):
         from .effects import EffectCollection
         self.effects = EffectCollection(self, list(self.flow_system.effects.values()))
-        self.effects.do_modeling(self)
+        self.effects.do_modeling()
         component_models = [component.create_model(self) for component in self.flow_system.components.values()]
         bus_models = [bus.create_model(self) for bus in self.flow_system.buses.values()]
         for component_model in component_models:
-            component_model.do_modeling(self)
+            component_model.do_modeling()
         for bus_model in bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
-            bus_model.do_modeling(self)
+            bus_model.do_modeling()
 
         self.add_objective(
             self.effects.objective_effect.model.total + self.effects.penalty.total
@@ -372,6 +372,9 @@ class Model:
         self._constraints_short: Dict[str, str] = {}
         self._sub_models_short: Dict[str, str] = {}
         logger.debug(f'Created {self.__class__.__name__}  "{self._label}"')
+
+    def do_modeling(self):
+        raise NotImplementedError('Every Model needs a do_modeling() method')
 
     def add(
         self,

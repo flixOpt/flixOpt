@@ -293,9 +293,9 @@ class FlowModel(ElementModel):
         self.on_off: Optional[OnOffModel] = None
         self._investment: Optional[InvestmentModel] = None
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         # eq relative_minimum(t) * size <= flow_rate(t) <= relative_maximum(t) * size
-        self.flow_rate = self.add(
+        self.flow_rate: linopy.Variable = self.add(
             self._model.add_variables(
                 lower=self.absolute_flow_rate_bounds[0] if self.element.on_off_parameters is None else 0,
                 upper=self.absolute_flow_rate_bounds[1],
@@ -315,7 +315,7 @@ class FlowModel(ElementModel):
 
         # OnOff
         if self.element.on_off_parameters is not None:
-            self.on_off = self.add(
+            self.on_off: OnOffModel = self.add(
                 OnOffModel(
                     model=self._model,
                     label_of_element=self.label_of_element,
@@ -326,11 +326,11 @@ class FlowModel(ElementModel):
                 ),
                 'on_off'
             )
-            self.on_off.do_modeling(self._model)
+            self.on_off.do_modeling()
 
         # Investment
         if isinstance(self.element.size, InvestParameters):
-            self._investment = self.add(
+            self._investment: InvestmentModel = self.add(
                 InvestmentModel(
                     model=self._model,
                     label_of_element=self.label_of_element,
@@ -342,7 +342,7 @@ class FlowModel(ElementModel):
                 ),
                 'investment'
             )
-            self._investment.do_modeling(system_model)
+            self._investment.do_modeling()
 
         self.total_flow_hours = self.add(
             self._model.add_variables(
@@ -363,16 +363,15 @@ class FlowModel(ElementModel):
         )
 
         # Load factor
-        self._create_bounds_for_load_factor(system_model)
+        self._create_bounds_for_load_factor()
 
         # Shares
-        self._create_shares(system_model)
+        self._create_shares()
 
-    def _create_shares(self, system_model: SystemModel):
+    def _create_shares(self):
         # Arbeitskosten:
         if self.element.effects_per_flow_hour != {}:
             self._model.effects.add_share_to_effects(
-                self._model,
                 name=self.label_full,  # Use the full label of the element
                 expressions={
                     effect: self.flow_rate * self._model.hours_per_step * factor.active_data
@@ -381,7 +380,7 @@ class FlowModel(ElementModel):
                 target='operation',
             )
 
-    def _create_bounds_for_load_factor(self, system_model: SystemModel):
+    def _create_bounds_for_load_factor(self):
         # TODO: Add Variable load_factor for better evaluation?
 
         # eq: var_sumFlowHours <= size * dt_tot * load_factor_max
@@ -457,7 +456,7 @@ class BusModel(ElementModel):
         self.excess_input: Optional[linopy.Variable] = None
         self.excess_output: Optional[linopy.Variable] = None
 
-    def do_modeling(self, system_model: SystemModel) -> None:
+    def do_modeling(self) -> None:
         # inputs == outputs
         inputs = sum([flow.model.flow_rate for flow in self.element.inputs])
         outputs = sum([flow.model.flow_rate for flow in self.element.outputs])
@@ -517,7 +516,7 @@ class ComponentModel(ElementModel):
         self.element: Component = element
         self.on_off: Optional[OnOffModel] = None
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         """Initiates all FlowModels"""
         all_flows = self.element.inputs + self.element.outputs
         if self.element.on_off_parameters:
@@ -534,7 +533,7 @@ class ComponentModel(ElementModel):
             self.add(flow.create_model(self._model), flow.label)
 
         for sub_model in self.sub_models:
-            sub_model.do_modeling(self._model)
+            sub_model.do_modeling()
 
         if self.element.on_off_parameters:
             self.on_off = self.add(OnOffModel(
@@ -545,13 +544,13 @@ class ComponentModel(ElementModel):
                 defining_bounds=[flow.model.absolute_flow_rate_bounds for flow in all_flows],
                 previous_values=[flow.previous_flow_rate for flow in all_flows]))
 
-            self.on_off.do_modeling(self._model)
+            self.on_off.do_modeling()
 
         if self.element.prevent_simultaneous_flows:
             # Simultanious Useage --> Only One FLow is On at a time, but needs a Binary for every flow
             on_variables = [flow.model.on_off.on for flow in self.element.prevent_simultaneous_flows]
             simultaneous_use = self.add(PreventSimultaneousUsageModel(self._model, on_variables, self.label_full))
-            simultaneous_use.do_modeling(self._model)
+            simultaneous_use.do_modeling()
 
     def solution_structured(
         self,

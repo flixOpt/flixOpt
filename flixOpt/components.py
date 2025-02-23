@@ -332,7 +332,7 @@ class TransmissionModel(ComponentModel):
         self.element: Transmission = element
         self.on_off: Optional[OnOffModel] = None
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         """Initiates all FlowModels"""
         # Force On Variable if absolute losses are present
         if (self.element.absolute_losses is not None) and np.any(self.element.absolute_losses.active_data != 0):
@@ -347,7 +347,7 @@ class TransmissionModel(ComponentModel):
             ):
                 self.element.in2.size = InvestParameters(maximum_size=self.element.in1.size.maximum_size)
 
-        super().do_modeling(system_model)
+        super().do_modeling()
 
         # first direction
         self.create_transmission_equation('dir1', self.element.in1, self.element.out1)
@@ -386,8 +386,8 @@ class LinearConverterModel(ComponentModel):
         self.element: LinearConverter = element
         self.on_off: Optional[OnOffModel] = None
 
-    def do_modeling(self, system_model: SystemModel):
-        super().do_modeling(system_model)
+    def do_modeling(self):
+        super().do_modeling()
 
         # conversion_factors:
         if self.element.conversion_factors:
@@ -401,7 +401,7 @@ class LinearConverterModel(ComponentModel):
                 used_outputs: Set = all_output_flows & used_flows
 
                 self.add(
-                    system_model.add_constraints(
+                    self._model.add_constraints(
                         sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_inputs])
                         ==
                         sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_outputs]),
@@ -421,7 +421,7 @@ class LinearConverterModel(ComponentModel):
             linear_segments = MultipleSegmentsModel(
                 self._model, self.label_of_element, segments, self.on_off.on if self.on_off is not None else None
             )  # TODO: Add Outside_segments Variable (On)
-            linear_segments.do_modeling(system_model)
+            linear_segments.do_modeling()
             self.sub_models.append(linear_segments)
 
 
@@ -435,8 +435,8 @@ class StorageModel(ComponentModel):
         self.netto_discharge: Optional[linopy.Variable] = None
         self._investment: Optional[InvestmentModel] = None
 
-    def do_modeling(self, system_model):
-        super().do_modeling(system_model)
+    def do_modeling(self):
+        super().do_modeling()
 
         lb, ub = self.absolute_charge_state_bounds
         self.charge_state = self.add(self._model.add_variables(
@@ -458,7 +458,7 @@ class StorageModel(ComponentModel):
 
         charge_state = self.charge_state
         rel_loss = self.element.relative_loss_per_hour.active_data
-        hours_per_step = system_model.hours_per_step
+        hours_per_step = self._model.hours_per_step
         charge_rate = self.element.charging.model.flow_rate
         discharge_rate = self.element.discharging.model.flow_rate
         eff_charge = self.element.eta_charge.active_data
@@ -483,12 +483,12 @@ class StorageModel(ComponentModel):
                 relative_bounds_of_defining_variable=self.relative_charge_state_bounds,
             )
             self.sub_models.append(self._investment)
-            self._investment.do_modeling(system_model)
+            self._investment.do_modeling()
 
         # Initial charge state
-        self._initial_and_final_charge_state(system_model)
+        self._initial_and_final_charge_state()
 
-    def _initial_and_final_charge_state(self, system_model):
+    def _initial_and_final_charge_state(self):
         if self.element.initial_charge_state is not None:
             name_short = 'initial_charge_state'
             name = f'{self.label_full}|{name_short}'

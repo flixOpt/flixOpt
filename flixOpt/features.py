@@ -53,7 +53,7 @@ class InvestmentModel(Model):
         self._fixed_relative_profile = fixed_relative_profile
         self.parameters = parameters
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         if self.parameters.fixed_size and not self.parameters.optional:
             self.size = self.add(self._model.add_variables(
                 lower=self.parameters.fixed_size,
@@ -79,15 +79,14 @@ class InvestmentModel(Model):
         # Bounds for defining variable
         self._create_bounds_for_defining_variable()
 
-        self._create_shares(system_model)
+        self._create_shares()
 
-    def _create_shares(self, system_model: SystemModel):
+    def _create_shares(self):
 
         # fix_effects:
         fix_effects = self.parameters.fix_effects
         if fix_effects != {}:
             self._model.effects.add_share_to_effects(
-                system_model=self._model,
                 name=self.label_of_element,
                 expressions={effect: self.is_invested * factor if self.is_invested is not None else factor
                              for effect, factor in fix_effects.items()},
@@ -97,7 +96,6 @@ class InvestmentModel(Model):
         if self.parameters.divest_effects != {} and self.parameters.optional:
             # share: divest_effects - isInvested * divest_effects
             self._model.effects.add_share_to_effects(
-                system_model=self._model,
                 name=self.label_of_element,
                 expressions={effect: -self.is_invested * factor + factor for effect, factor in fix_effects.items()},
                 target='invest',
@@ -105,7 +103,6 @@ class InvestmentModel(Model):
 
         if self.parameters.specific_effects != {}:
             self._model.effects.add_share_to_effects(
-                system_model=self._model,
                 name=self.label_of_element,
                 expressions={effect: self.size * factor for effect, factor in self.parameters.specific_effects.items()},
                 target='invest',
@@ -121,7 +118,7 @@ class InvestmentModel(Model):
                     can_be_outside_segments=self.is_invested),
                 'segments'
             )
-            self._segments.do_modeling(self._model)
+            self._segments.do_modeling()
 
     def _create_bounds_for_optional_investment(self):
         if self.parameters.fixed_size:
@@ -238,12 +235,12 @@ class OnOffModel(Model):
         self.switch_off: Optional[linopy.Variable] = None
         self.switch_on_nr: Optional[linopy.Variable] = None
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         self.on = self.add(
             self._model.add_variables(
                 name=f'{self.label_full}|on',
                 binary=True,
-                coords=system_model.coords,
+                coords=self._model.coords,
             ),
             'on',
         )
@@ -272,7 +269,7 @@ class OnOffModel(Model):
                 self._model.add_variables(
                     name=f'{self.label_full}|off',
                     binary=True,
-                    coords=system_model.coords,
+                    coords=self._model.coords,
                 ),
                 'off'
             )
@@ -300,19 +297,19 @@ class OnOffModel(Model):
 
         if self.parameters.use_switch_on:
             self.switch_on = self.add(self._model.add_variables(
-                binary=True, name=f'{self.label_full}|switch_on', coords=system_model.coords),'switch_on')
+                binary=True, name=f'{self.label_full}|switch_on', coords=self._model.coords),'switch_on')
 
             self.switch_off = self.add(self._model.add_variables(
-                binary=True, name=f'{self.label_full}|switch_off', coords=system_model.coords), 'switch_off')
+                binary=True, name=f'{self.label_full}|switch_off', coords=self._model.coords), 'switch_off')
 
             self.switch_on_nr = self.add(self._model.add_variables(
                 upper=self.parameters.switch_on_total_max if self.parameters.switch_on_total_max is not None else np.inf,
                 name=f'{self.label_full}|switch_on_nr'),
                 'switch_on_nr')
 
-            self._add_switch_constraints(system_model)
+            self._add_switch_constraints()
 
-        self._create_shares(system_model)
+        self._create_shares()
 
     def _add_on_constraints(self):
         assert self.on is not None, f'On variable of {self.label_full} must be defined to add constraints'
@@ -520,7 +517,7 @@ class OnOffModel(Model):
 
         return duration_in_hours
 
-    def _add_switch_constraints(self, system_model: SystemModel):
+    def _add_switch_constraints(self):
         assert self.switch_on is not None, f'Switch On Variable of {self.label_full} must be defined to add constraints'
         assert self.switch_off is not None, f'Switch Off Variable of {self.label_full} must be defined to add constraints'
         assert self.switch_on_nr is not None, (
@@ -569,12 +566,11 @@ class OnOffModel(Model):
             'switch_on_nr'
         )
 
-    def _create_shares(self, system_model: SystemModel):
+    def _create_shares(self):
         # Anfahrkosten:
         effects_per_switch_on = self.parameters.effects_per_switch_on
         if effects_per_switch_on != {}:
             self._model.effects.add_share_to_effects(
-                system_model=self._model,
                 name=self.label_of_element,
                 expressions={effect: self.switch_on * factor for effect, factor in effects_per_switch_on.items()},
                 target='operation',
@@ -584,7 +580,6 @@ class OnOffModel(Model):
         effects_per_running_hour = self.parameters.effects_per_running_hour
         if effects_per_running_hour != {}:
             self._model.effects.add_share_to_effects(
-                system_model=self._model,
                 name=self.label_of_element,
                 expressions={effect: self.on * factor * self._model.hours_per_step
                              for effect, factor in effects_per_running_hour.items()},
@@ -711,25 +706,25 @@ class SegmentModel(Model):
         self._as_time_series = as_time_series
         self.sample_points = sample_points
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         self.in_segment = self.add(self._model.add_variables(
             binary=True,
             name=f'{self.label_full}|in_segment',
-            coords=system_model.coords if self._as_time_series else None),
+            coords=self._model.coords if self._as_time_series else None),
             'in_segment'
         )
 
         self.lambda0 = self.add(self._model.add_variables(
             lower=0, upper=1,
             name=f'{self.label_full}|lambda0',
-            coords=system_model.coords if self._as_time_series else None),
+            coords=self._model.coords if self._as_time_series else None),
             'lambda0'
         )
 
         self.lambda1 = self.add(self._model.add_variables(
             lower=0, upper=1,
             name=f'{self.label_full}|lambda1',
-            coords=system_model.coords if self._as_time_series else None),
+            coords=self._model.coords if self._as_time_series else None),
             'lambda1'
         )
 
@@ -775,7 +770,7 @@ class MultipleSegmentsModel(Model):
         self._sample_points = sample_points
         self._segment_models: List[SegmentModel] = []
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         restructured_variables_with_segments: List[Dict[str, Tuple[NumericData, NumericData]]] = [
             {key: values[i] for key, values in self._sample_points.items()} for i in range(self._nr_of_segments)
         ]
@@ -866,29 +861,29 @@ class ShareAllocationModel(Model):
         self._max_per_hour = max_per_hour if max_per_hour is not None else np.inf
         self._min_per_hour = min_per_hour if min_per_hour is not None else -np.inf
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         self.total = self.add(
-            system_model.add_variables(
+            self._model.add_variables(
                 lower=self._total_min, upper=self._total_max, coords=None, name=f'{self.label_full}|total'
             ),
             'total'
         )
         # eq: sum = sum(share_i) # skalar
-        self._eq_total = self.add(system_model.add_constraints(self.total == 0, name=f'{self.label_full}|total'), 'total')
+        self._eq_total = self.add(self._model.add_constraints(self.total == 0, name=f'{self.label_full}|total'), 'total')
 
         if self._shares_are_time_series:
             self.total_per_timestep = self.add(
-                    system_model.add_variables(
-                    lower=-np.inf if (self._min_per_hour is None) else np.multiply(self._min_per_hour, system_model.hours_per_step),
-                    upper=np.inf if (self._max_per_hour is None) else np.multiply(self._max_per_hour, system_model.hours_per_step),
-                    coords=system_model.coords,
+                    self._model.add_variables(
+                    lower=-np.inf if (self._min_per_hour is None) else np.multiply(self._min_per_hour, self._model.hours_per_step),
+                    upper=np.inf if (self._max_per_hour is None) else np.multiply(self._max_per_hour, self._model.hours_per_step),
+                    coords=self._model.coords,
                     name=f'{self.label_full}|total_per_timestep'
                 ),
                 'total_per_timestep'
             )
 
             self._eq_total_per_timestep = self.add(
-                system_model.add_constraints(self.total_per_timestep == 0, name=f'{self.label_full}|total_per_timestep'),
+                self._model.add_constraints(self.total_per_timestep == 0, name=f'{self.label_full}|total_per_timestep'),
                 'total_per_timestep'
             )
 
@@ -897,7 +892,6 @@ class ShareAllocationModel(Model):
 
     def add_share(
         self,
-        system_model: SystemModel,
         name: str,
         expression: linopy.LinearExpression,
     ):
@@ -920,14 +914,14 @@ class ShareAllocationModel(Model):
             self.share_constraints[name].lhs -= expression
         else:
             self.shares[name] = self.add(
-                system_model.add_variables(
-                    coords=None if isinstance(expression, linopy.LinearExpression) and expression.ndim == 0 or not isinstance(expression, linopy.LinearExpression) else system_model.coords,
+                self._model.add_variables(
+                    coords=None if isinstance(expression, linopy.LinearExpression) and expression.ndim == 0 or not isinstance(expression, linopy.LinearExpression) else self._model.coords,
                     name=f'{name}->{self.label_full}'
                 ),
                 name
             )
             self.share_constraints[name] = self.add(
-                system_model.add_constraints(
+                self._model.add_constraints(
                     self.shares[name] == expression, name=f'{name}->{self.label_full}'
                 ),
                 name
@@ -990,7 +984,7 @@ class SegmentedSharesModel(Model):
         self._segments_model: Optional[MultipleSegmentsModel] = None
         self._as_tme_series: bool = 'time' in self._variable_segments[0].indexes
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         self._shares = {
             effect: self.add(self._model.add_variables(
                 coords=self._model.coords if self._as_tme_series else None,
@@ -1014,11 +1008,10 @@ class SegmentedSharesModel(Model):
                 as_time_series=self._as_tme_series),
             'segments'
         )
-        self._segments_model.do_modeling(system_model)
+        self._segments_model.do_modeling()
 
         # Shares
         self._model.effects.add_share_to_effects(
-            system_model=self._model,
             name=self.label_of_element,
             expressions={effect: variable*1 for effect, variable in self._shares.items()},
             target='operation' if self._as_tme_series else 'invest',
@@ -1050,7 +1043,6 @@ class PreventSimultaneousUsageModel(Model):
         for variable in self._simultanious_use_variables:  # classic
             assert variable.attrs['binary'], f'Variable {variable} must be binary for use in {self.__class__.__name__}'
 
-    def do_modeling(self, system_model: SystemModel):
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
         self.add(self._model.add_constraints(sum(self._simultanious_use_variables) <= 1.1,
                                              name=f'{self.label_full}|prevent_simultaneous_use'),

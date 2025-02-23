@@ -188,12 +188,12 @@ class EffectModel(ElementModel):
             )
         )
 
-    def do_modeling(self, system_model: SystemModel):
+    def do_modeling(self):
         for model in self.sub_models:
-            model.do_modeling(system_model)
+            model.do_modeling()
 
         self.total = self.add(
-            system_model.add_variables(
+            self._model.add_variables(
                 lower=self.element.minimum_total if self.element.minimum_total is not None else -np.inf,
                 upper=self.element.maximum_total if self.element.maximum_total is not None else np.inf,
                 coords=None,
@@ -203,7 +203,7 @@ class EffectModel(ElementModel):
         )
 
         self.add(
-            system_model.add_constraints(
+            self._model.add_constraints(
                 self.total == self.operation.total.sum() + self.invest.total.sum(),
                 name=f'{self.label_full}|total'
             ),
@@ -282,47 +282,43 @@ class EffectCollection(Model):
 
     def add_share_to_effects(
         self,
-        system_model: SystemModel,
         name: str,
         expressions: EffectValuesExpr,
         target: Literal['operation', 'invest'],
     ) -> None:
         for effect, expression in expressions.items():
             if target == 'operation':
-                self[effect].model.operation.add_share(system_model, name, expression)
+                self[effect].model.operation.add_share(name, expression)
             elif target =='invest':
-                self[effect].model.invest.add_share(system_model, name, expression)
+                self[effect].model.invest.add_share(name, expression)
             else:
                 raise ValueError(f'Target {target} not supported!')
 
     def add_share_to_penalty(self, system_model: SystemModel, name: str, expression: linopy.LinearExpression) -> None:
         if expression.ndim != 0:
             raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
-        self.penalty.add_share(system_model, name, expression)
+        self.penalty.add_share(name, expression)
 
-    def do_modeling(self, system_model: SystemModel):
-        self._model = system_model
+    def do_modeling(self):
         for effect in self.effects.values():
             effect.create_model(self._model)
         self.penalty = self.add(ShareAllocationModel(self._model, shares_are_time_series=False, label_of_element='Penalty'))
         for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
-            model.do_modeling(system_model)
+            model.do_modeling()
 
-        self._add_share_between_effects(system_model)
+        self._add_share_between_effects()
 
-    def _add_share_between_effects(self, system_model: SystemModel):
+    def _add_share_between_effects(self):
         for origin_effect in self.effects.values():
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
                 target_effect.model.operation.add_share(
-                    system_model,
                     origin_effect.label_full,
                     origin_effect.model.operation.total_per_timestep * time_series.active_data,
                 )
             # 2. invest:    -> hier ist es Scalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_effect.model.invest.add_share(
-                    system_model,
                     origin_effect.label_full,
                     origin_effect.model.invest.total * factor,
                 )
