@@ -30,12 +30,21 @@ if __name__ == '__main__':
 
     # --- Define Energy Buses ---
     # Represent different energy carriers (electricity, heat, gas) in the system
-    Strom = fx.Bus('Strom', excess_penalty_per_flow_hour=excess_penalty,
-                   medium=fx.Medium('electricity', 'kWh', categories=[fx.MediumCategories.electricity]))
-    Fernwaerme = fx.Bus('Fernwärme', excess_penalty_per_flow_hour=excess_penalty,
-                        medium=fx.Medium('heat', 'kWh', categories=[fx.MediumCategories.heat]))
-    Gas = fx.Bus('Gas', excess_penalty_per_flow_hour=excess_penalty,
-                 medium=fx.Medium('gas', 'kWh', categories=[fx.MediumCategories.fuel]))
+    Strom = fx.Bus(
+        'Strom',
+        excess_penalty_per_flow_hour=excess_penalty,
+        medium=fx.Medium('electricity', 'kWh', categories=[fx.MediumCategories.electricity]),
+    )
+    Fernwaerme = fx.Bus(
+        'Fernwärme',
+        excess_penalty_per_flow_hour=excess_penalty,
+        medium=fx.Medium('heat', 'kWh', categories=[fx.MediumCategories.heat]),
+    )
+    Gas = fx.Bus(
+        'Gas',
+        excess_penalty_per_flow_hour=excess_penalty,
+        medium=fx.Medium('gas', 'kWh', categories=[fx.MediumCategories.fuel]),
+    )
 
     # --- Define Effects ---
     # Specify effects related to costs, CO2 emissions, and primary energy consumption

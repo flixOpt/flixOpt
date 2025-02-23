@@ -290,12 +290,16 @@ class CalculationResults:
         )
         if mode == 'heatmap':
             if not np.all(self.time_intervals_in_hours == self.time_intervals_in_hours[0]):
-                logger.warning('Heat map plotting with irregular time intervals in time series can lead to unwanted effects')
+                logger.warning(
+                    'Heat map plotting with irregular time intervals in time series can lead to unwanted effects'
+                )
                 if colors is None:
                     colors = self.default_color_map
                 if not isinstance(colors, str):
-                    raise ValueError(f'For a heatmap, you need to pass the colors as a valid name of a colormap, not '
-                                     f'{colors=}. Try "Turbo", "Hot", or "Viridis" instead.')
+                    raise ValueError(
+                        f'For a heatmap, you need to pass the colors as a valid name of a colormap, not '
+                        f'{colors=}. Try "Turbo", "Hot", or "Viridis" instead.'
+                    )
 
             heatmap_data = plotting.heat_map_data_from_df(data, heatmap_periods, heatmap_steps_per_period, 'ffill')
             if engine == 'plotly':
@@ -303,10 +307,9 @@ class CalculationResults:
                     heatmap_data, title=title, color_map=colors, show=show, save=save, path=path
                 )
             else:
-                return plotting.heat_map_matplotlib(heatmap_data,
-                                                    color_map=colors,
-                                                    show=show,
-                                                    path=path if save else None)
+                return plotting.heat_map_matplotlib(
+                    heatmap_data, color_map=colors, show=show, path=path if save else None
+                )
 
         else:
             if colors is None:
@@ -315,19 +318,13 @@ class CalculationResults:
                     colors = self.default_color_map
 
             if engine == 'plotly':
-                return plotting.with_plotly(data=data,
-                                            mode=mode,
-                                            show=show,
-                                            title=title,
-                                            colors=colors,
-                                            save=save,
-                                            path=path)
+                return plotting.with_plotly(
+                    data=data, mode=mode, show=show, title=title, colors=colors, save=save, path=path
+                )
             else:
-                return plotting.with_matplotlib(data=data,
-                                                mode=mode,
-                                                colors=colors,
-                                                show=show,
-                                                path=path if save else None)
+                return plotting.with_matplotlib(
+                    data=data, mode=mode, colors=colors, show=show, path=path if save else None
+                )
 
     def plot_storage(
         self,
@@ -434,9 +431,11 @@ class CalculationResults:
     @property
     def colors(self) -> Dict[str, str]:
         """Returns a dictionary of colors for all elements in the flow system."""
-        return {**{label: flow.color for label, flow in self.flow_results().items()},
-                **{label: bus.color for label, bus in self.bus_results.items()},
-                **{label: comp.color for label, comp in self.component_results.items()}}
+        return {
+            **{label: flow.color for label, flow in self.flow_results().items()},
+            **{label: bus.color for label, bus in self.bus_results.items()},
+            **{label: comp.color for label, comp in self.component_results.items()},
+        }
 
     def _assign_colors(self, labels: List[str], element_label: str) -> List[str]:
         if element_label in self.component_results:
@@ -446,8 +445,10 @@ class CalculationResults:
             try:
                 comp_labels = [flow_results[flow].component_label for flow in labels]
             except KeyError:
-                logger.warning('When trying to retrive colors for plotting, not all component colors could be '
-                               'retrieved for the bus plot. Using default colors.')
+                logger.warning(
+                    'When trying to retrive colors for plotting, not all component colors could be '
+                    'retrieved for the bus plot. Using default colors.'
+                )
                 return [self.default_color] * len(labels)
             return [self.colors[label] for label in comp_labels]
         elif element_label in self.flow_results():
@@ -473,9 +474,7 @@ class CalculationResults:
         -------
         None
         """
-        all_elements = {**self.flow_results(),
-                        **self.bus_results,
-                        **self.component_results}
+        all_elements = {**self.flow_results(), **self.bus_results, **self.component_results}
 
         for label, color in colors.items():
             previous_color = all_elements[label].color

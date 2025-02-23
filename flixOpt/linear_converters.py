@@ -338,6 +338,7 @@ def check_bounds(
             f'    {parameter_label}.max={np.max(value)};    {parameter_label}={value}'
         )
 
+
 def assign_medium_category(flow: Flow, medium_category: str) -> None:
     """
     Assigns a medium category to a flow.
@@ -354,8 +355,10 @@ def assign_medium_category(flow: Flow, medium_category: str) -> None:
     None
     """
     if flow.medium is not None:
-        logger.warning(f'Flow {flow.label} already has a medium category assigned ({flow.medium}). '
-                       f'The new medium category {medium_category} will be ignored.')
+        logger.warning(
+            f'Flow {flow.label} already has a medium category assigned ({flow.medium}). '
+            f'The new medium category {medium_category} will be ignored.'
+        )
     else:
         flow.medium = medium_category
         logger.debug(f'Automatically assigned {medium_category=} to flow {flow.label_full}.')

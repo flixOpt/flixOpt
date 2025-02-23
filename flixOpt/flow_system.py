@@ -25,11 +25,14 @@ class FlowSystem:
     """
     A FlowSystem organizes the high level Elements (Components & Effects).
     """
+
     default_color = MediumColors.default
-    def __init__(self,
-                 time_series: np.ndarray[np.datetime64],
-                 last_time_step_hours: Optional[Union[int, float]] = None,
-                 previous_dt_in_hours: Optional[Union[int, float, np.ndarray]] = None,
+
+    def __init__(
+        self,
+        time_series: np.ndarray[np.datetime64],
+        last_time_step_hours: Optional[Union[int, float]] = None,
+        previous_dt_in_hours: Optional[Union[int, float, np.ndarray]] = None,
     ):
         """
         Parameters
@@ -295,10 +298,13 @@ class FlowSystem:
 
     def colors(self) -> Dict[str, str]:
         """Returns a dictionary of colors for all elements in the flow system."""
-        return {element.label_full: element.medium.color
-        if (isinstance(element, (Bus, Flow)) and element.medium is not None)
-        else self.default_color
-                for element in self.all_elements.values()}
+        return {
+            element.label_full: element.medium.color
+            if (isinstance(element, (Bus, Flow)) and element.medium is not None)
+            else self.default_color
+            for element in self.all_elements.values()
+        }
+
 
 def create_datetime_array(
     start: str, steps: Optional[int] = None, freq: str = '1h', end: Optional[str] = None

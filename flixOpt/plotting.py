@@ -674,12 +674,14 @@ def visualize_network(
         )
 
     for edge in edge_infos.values():
-        net.add_edge(edge['start'],
-                     edge['end'],
-                     label=edge['label'],
-                     title=edge['infos'].replace(')', '\n)'),
-                     font={"color": "#4D4D4D", "size": 14},
-                     color=edge['color'])
+        net.add_edge(
+            edge['start'],
+            edge['end'],
+            label=edge['label'],
+            title=edge['infos'].replace(')', '\n)'),
+            font={'color': '#4D4D4D', 'size': 14},
+            color=edge['color'],
+        )
 
     # Enhanced physics settings
     net.barnes_hut(central_gravity=0.8, spring_length=50, spring_strength=0.05, gravity=-10000)

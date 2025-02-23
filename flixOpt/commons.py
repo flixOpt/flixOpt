@@ -47,5 +47,5 @@ __all__ = [
     'results',
     'linear_converters',
     'solvers',
-    'math_modeling'
+    'math_modeling',
 ]

@@ -31,6 +31,7 @@ class MediumCategories:
     """
     A centralized class to define standard medium categories.
     """
+
     heat = 'heat'
     electricity = 'electricity'
     fuel = 'fuel'
@@ -41,6 +42,7 @@ class MediumColors:
     A centralized class to define default colors for medium categories.
     Change values before creating new mediums!
     """
+
     colors = {
         MediumCategories.heat: 'orange',
         MediumCategories.electricity: 'steelblue',
@@ -190,11 +192,12 @@ class Bus(Element):
     """
 
     def __init__(
-            self,
-            label: str,
-            medium: Optional[Medium] = None,
-            excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5,
-            meta_data: Optional[Dict] = None):
+        self,
+        label: str,
+        medium: Optional[Medium] = None,
+        excess_penalty_per_flow_hour: Optional[Numeric_TS] = 1e5,
+        meta_data: Optional[Dict] = None,
+    ):
         """
         Parameters
         ----------
@@ -248,7 +251,8 @@ class Bus(Element):
                 f'"{self.medium.label}", according to medium categories: {flow.medium=}, '
                 f'bus.medium.categories={self.medium.categories}. This might be the cause of connecting a Flow to the '
                 f'wrong bus. Further, this might lead to inconsistent plotting regarding units and colors '
-                f'(which doesnt interfere with the calculation itself!).')
+                f'(which doesnt interfere with the calculation itself!).'
+            )
         flow.medium = self.medium
 
     def _plausibility_checks(self) -> None:
