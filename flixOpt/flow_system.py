@@ -141,6 +141,9 @@ class FlowSystem:
         }
         return infos
 
+    def infos_compact(self):
+        return get_compact_representation(self.infos(use_numpy=True, use_element_label=True)),
+
     def to_json(self, path: Union[str, pathlib.Path]):
         """
         Saves the flow system to a json file.
@@ -151,28 +154,8 @@ class FlowSystem:
         path : Union[str, pathlib.Path]
             The path to the json file.
         """
-        data = get_compact_representation(self.infos(use_numpy=True, use_element_label=True))
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-
-    def results(self):
-        #TODO: Remove this function, as access through the FLowSystem is not correct if another calucaltion was made.
-        return {
-            'Components': {
-                comp.label: comp.model.solution_structured(mode='numpy')
-                for comp in sorted(self.components.values(), key=lambda component: component.label.upper())
-            },
-            'Buses': {
-                bus.label: bus.model.solution_structured(mode='numpy')
-                for bus in sorted(self.buses.values(), key=lambda bus: bus.label.upper())
-            },
-            'Effects': {
-                effect.label: effect.model.solution_structured(mode='numpy')
-                for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
-            },
-            'Time': self.time_series_collection.timesteps_extra.tolist(),
-            'Time intervals in hours': self.time_series_collection.hours_per_timestep,
-        }
+            json.dump(self.infos_compact(), f, indent=4, ensure_ascii=False)
 
     def visualize_network(
         self,

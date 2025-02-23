@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import pathlib
-from typing import Dict, List, Literal, Union, Optional
+from typing import Dict, List, Literal, Union, Optional, TYPE_CHECKING
 
 import linopy
 import numpy as np
@@ -13,7 +13,10 @@ from . import plotting, utils
 from .core import TimeSeriesCollection
 
 from .io import _results_structure
-from .calculation import Calculation
+
+if TYPE_CHECKING:
+    from .calculation import Calculation
+
 
 logger = logging.getLogger('flixOpt')
 
@@ -68,7 +71,7 @@ class CalculationResults:
         return cls(model, flow_system_structure, name)
 
     @classmethod
-    def from_calculation(cls, calculation: Calculation):
+    def from_calculation(cls, calculation: 'Calculation'):
         """Create CalculationResults directly from a Calculation"""
         return cls(calculation.model, _results_structure(calculation.flow_system), calculation.name)
 

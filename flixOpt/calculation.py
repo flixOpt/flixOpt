@@ -8,7 +8,6 @@ There are three different Calculation types:
     3. SegmentedCalculation: Solves a SystemModel for each individual Segment of the FlowSystem.
 """
 
-import datetime
 import json
 import logging
 import math
@@ -29,6 +28,8 @@ from .features import InvestmentModel
 from .flow_system import FlowSystem
 from .solvers import _Solver
 from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
+from .config import CONFIG
+from .results_linopy import CalculationResults
 
 logger = logging.getLogger('flixOpt')
 
@@ -62,82 +63,68 @@ class Calculation:
         self.active_periods = active_periods
 
         self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}
+        self.folder = pathlib.Path.cwd() / 'results'
+        self.results: Optional[CalculationResults] = None
 
-        self._paths: Dict[str, Optional[Union[pathlib.Path, List[pathlib.Path]]]] = {
-            'log': None,
-            'data': None,
-            'info': None,
-        }
-        self._results = None
-
-    def _define_path_names(self, save_results: Union[bool, str, pathlib.Path], include_timestamp: bool = False):
-        """
-        Creates the path for saving results and alters the name of the calculation to have a timestamp
-        """
-        if include_timestamp:
-            timestamp = datetime.datetime.now()
-            self.name = f'{timestamp.strftime("%Y-%m-%d")}_{self.name.replace(" ", "")}'
-
-        if save_results:
-            if not isinstance(save_results, (str, pathlib.Path)):
-                save_results = 'results/'  # Standard path for results
-            path = pathlib.Path.cwd() / save_results  # absoluter Pfad:
-
-            path.mkdir(parents=True, exist_ok=True)  # Pfad anlegen, fall noch nicht vorhanden:
-
-            self._paths['log'] = path / f'{self.name}_solver.log'
-            self._paths['data'] = path / f'{self.name}_data.json'
-            self._paths['results'] = path / f'{self.name}_results.json'
-            self._paths['infos'] = path / f'{self.name}_infos.yaml'
-
-    def _save_solve_infos(self):
-        t_start = timeit.default_timer()
-        indent = 4 if len(self.flow_system.time_series_collection.timesteps) < 50 else None
-        with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = copy_and_convert_datatypes(self.results, use_numpy=False, use_element_label=False)
-            json.dump(results, f, indent=indent)
-
-        with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-            json.dump(data, f, indent=indent)
-
-        self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
-
-        t_start = timeit.default_timer()
-        nodes_info, edges_info = self.flow_system.network_infos()
-        infos = {
-            'Calculation': self.infos,
-            'Model': self.model.infos,
-            'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
-            'Network': {'Nodes': nodes_info, 'Edges': edges_info},
-        }
-
-        with open(self._paths['infos'], 'w', encoding='utf-8') as f:
-            yaml.dump(
-                infos,
-                f,
-                width=1000,  # Verhinderung Zeilenumbruch für lange equations
-                allow_unicode=True,
-                sort_keys=False,
-                indent=4,
-            )
-
-        message = f' Saved Calculation: {self.name} '
-        logger.info(f'{"":#^80}\n{message:#^80}\n{"":#^80}')
-        logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
-        logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
+    def to_yaml(self):
+        """Save the results to a yaml file"""
+        path = self.folder / self.name
+        path.mkdir(parents=True, exist_ok=True)
+        with open(self.folder / f'{self.name}_infos.yaml', 'w', encoding='utf-8') as f:
+            yaml.dump(self.infos, f, allow_unicode=True, sort_keys=False, indent=4)
 
     @property
-    def results(self):
-        return self._results
+    def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
+        from flixOpt.features import InvestmentModel
+
+        return {
+            "Objective": self.model.objective.value,
+            "Penalty": float(self.model.effects.penalty.total.solution.values),
+            "Effects": {
+                f"{effect.label} [{effect.unit}]": {
+                    "operation": float(effect.model.operation.total.solution.values),
+                    "invest": float(effect.model.invest.total.solution.values),
+                    "total": float(effect.model.total.solution.values),
+                }
+                for effect in self.flow_system.effects.values()
+            },
+            "Invest-Decisions": {
+                "Invested": {
+                    model.label_of_element: float(model.size.solution)
+                    for component in self.flow_system.components.values()
+                    for model in component.model.all_sub_models
+                    if isinstance(model, InvestmentModel) and float(model.size.solution) >= CONFIG.modeling.EPSILON
+                },
+                "Not invested": {
+                    model.label_of_element: float(model.size.solution)
+                    for component in self.flow_system.components.values()
+                    for model in component.model.all_sub_models
+                    if isinstance(model, InvestmentModel) and float(model.size.solution) < CONFIG.modeling.EPSILON
+                },
+            },
+            "Buses with excess": [
+                {bus.label_full: {
+                    "input": float(np.sum(bus.model.excess_input.solution.values)),
+                    "output": float(np.sum(bus.model.excess_output.solution.values))
+                }}
+                for bus in self.flow_system.buses.values()
+                if bus.with_excess and (float(np.sum(bus.model.excess_input.solution.values)) > 1e-3 or
+                                        float(np.sum(bus.model.excess_output.solution.values)) > 1e-3)
+            ],
+        }
 
     @property
     def infos(self):
         return {
             'Name': self.name,
-            'Number of indices': len(self.active_timesteps) if self.active_timesteps is not None else 'all',
+            'Number of timesteps': len(self.flow_system.time_series_collection.timesteps),
+            'Periods': self.flow_system.time_series_collection.periods,
             'Calculation Type': self.__class__.__name__,
+            'Constraints': self.model.constraints.ncons,
+            'Variables': self.model.variables.nvars,
+            'Main Results': self.main_results,
             'Durations': self.durations,
+            'Config': CONFIG.to_dict(),
         }
 
 
@@ -159,24 +146,27 @@ class FullCalculation(Calculation):
     def solve(self,
               solver: _Solver,
               save_results: Union[bool, str, pathlib.Path] = True,
+              log_file: Optional[pathlib.Path] = None,
               log_main_results: bool = True):
-        self._define_path_names(save_results)
         t_start = timeit.default_timer()
-        self.model.solve(log_fn=self._paths['log'],
+        self.model.solve(log_fn=pathlib.Path(log_file) if log_file is not None else self.folder / f'{self.name}.log',
                          solver_name=solver.name,
                          **solver.options)
-        self._results = self.flow_system.results()
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
         # Log the formatted output
         if log_main_results:
             logger.info(f'{" Main Results ":#^80}')
-            logger.info("\n" + yaml.dump(
-                utils.round_floats(self.flow_system.model.infos),
-                default_flow_style=False, sort_keys=False, allow_unicode=True, indent=4))
+            logger.info(
+                "\n" + yaml.dump(utils.round_floats(self.main_results),
+                                 default_flow_style=False, sort_keys=False, allow_unicode=True, indent=4
+                                 )
+            )
 
+        self.results = CalculationResults.from_calculation(self)
         if save_results:
-            self._save_solve_infos()
+            path = self.folder if save_results is True else pathlib.Path(save_results)
+            self.results.to_file(path, self.name)
 
     def _activate_time_series(self):
         self.flow_system.transform_data()
@@ -222,7 +212,6 @@ class AggregatedCalculation(FullCalculation):
         super().__init__(name, flow_system, active_timesteps)
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
-        self.time_series_for_aggregation = None
         self.aggregation = None
 
     def do_modeling(self) -> SystemModel:
