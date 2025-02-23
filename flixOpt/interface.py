@@ -6,8 +6,6 @@ These are tightly connected to features.py
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
-import pandas as pd
-
 from flixOpt.core import TimeSeriesCollection
 
 from .config import CONFIG
@@ -15,8 +13,7 @@ from .core import NumericData, NumericDataTS, Scalar
 from .structure import Element, Interface
 
 if TYPE_CHECKING:
-    from .effects import Effect, EffectValuesUser
-    from .flow_system import FlowSystem
+    from .effects import Effect, EffectValuesUser, EffectValuesUserScalar
 
 logger = logging.getLogger('flixOpt')
 
@@ -32,12 +29,12 @@ class InvestParameters(Interface):
         minimum_size: Union[int, float] = 0,  # TODO: Use EPSILON?
         maximum_size: Optional[Union[int, float]] = None,
         optional: bool = True,  # Investition ist weglassbar
-        fix_effects: Union[Dict, int, float] = None,
-        specific_effects: Union[Dict, int, float] = None,  # costs per Flow-Unit/Storage-Size/...
+        fix_effects: Optional['EffectValuesUserScalar'] = None,
+        specific_effects: Optional['EffectValuesUserScalar'] = None,  # costs per Flow-Unit/Storage-Size/...
         effects_in_segments: Optional[
             Tuple[List[Tuple[Scalar, Scalar]], Dict['Effect', List[Tuple[Scalar, Scalar]]]]
         ] = None,
-        divest_effects: Union[Dict, int, float] = None,
+        divest_effects: Optional['EffectValuesUserScalar'] = None,
     ):
         """
         Parameters
@@ -102,8 +99,8 @@ class InvestParameters(Interface):
 class OnOffParameters(Interface):
     def __init__(
         self,
-        effects_per_switch_on: Union[Dict, NumericData] = None,
-        effects_per_running_hour: Union[Dict, NumericData] = None,
+        effects_per_switch_on: Optional['EffectValuesUser'] = None,
+        effects_per_running_hour: Optional['EffectValuesUser'] = None,
         on_hours_total_min: Optional[int] = None,
         on_hours_total_max: Optional[int] = None,
         consecutive_on_hours_min: Optional[NumericData] = None,
@@ -144,8 +141,8 @@ class OnOffParameters(Interface):
         force_switch_on : bool
             force creation of switch on variable, even if there is no switch_on_total_max
         """
-        self.effects_per_switch_on: Union[EffectValues, EffectTimeSeries] = effects_per_switch_on or {}
-        self.effects_per_running_hour: Union[EffectValues, EffectTimeSeries] = effects_per_running_hour or {}
+        self.effects_per_switch_on: EffectValuesUser = effects_per_switch_on or {}
+        self.effects_per_running_hour: EffectValuesUser = effects_per_running_hour or {}
         self.on_hours_total_min: Scalar = on_hours_total_min
         self.on_hours_total_max: Scalar = on_hours_total_max
         self.consecutive_on_hours_min: NumericDataTS = consecutive_on_hours_min

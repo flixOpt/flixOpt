@@ -217,6 +217,7 @@ EffectValuesExpr = Dict[EffectKey, linopy.LinearExpression]  # Used to create Sh
 EffectValuesTS = Dict[EffectKey, TimeSeries]  # Used internally to index values
 EffectValuesDict = Dict[EffectKey, NumericDataTS]  # How effect values are stored
 EffectValuesUser = Union[NumericDataTS, Dict[EffectKey, NumericDataTS]]  # User-specified Shares to Effects
+EffectValuesUserScalar = Union[Scalar, Dict[EffectKey, Scalar]]  # User-specified Shares to Effects
 
 def effect_values_to_time_series(label_suffix: str,
                                  effect_values: EffectValuesUser,

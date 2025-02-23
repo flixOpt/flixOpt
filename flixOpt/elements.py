@@ -9,12 +9,11 @@ import linopy
 import numpy as np
 
 from .config import CONFIG
-from .core import Scalar, NumericData, NumericDataTS, TimeSeriesCollection
+from .core import NumericData, NumericDataTS, Scalar, TimeSeriesCollection
 from .effects import EffectValuesUser, effect_values_to_time_series
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
 from .structure import Element, ElementModel, SystemModel
-
 
 logger = logging.getLogger('flixOpt')
 
@@ -156,7 +155,7 @@ class Flow(Element):
         fixed_relative_profile: Optional[NumericDataTS] = None,
         relative_minimum: NumericDataTS = 0,
         relative_maximum: NumericDataTS = 1,
-        effects_per_flow_hour: EffectValuesUser = None,
+        effects_per_flow_hour: Optional[EffectValuesUser] = None,
         on_off_parameters: Optional[OnOffParameters] = None,
         flow_hours_total_max: Optional[Scalar] = None,
         flow_hours_total_min: Optional[Scalar] = None,
