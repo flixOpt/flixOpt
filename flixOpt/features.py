@@ -11,7 +11,7 @@ import numpy as np
 
 from . import utils
 from .config import CONFIG
-from .core import Numeric, Skalar, TimeSeries
+from .core import Numeric, Scalar, TimeSeries
 from .interface import InvestParameters, OnOffParameters
 from .structure import Model, SystemModel
 
@@ -42,7 +42,7 @@ class InvestmentModel(Model):
         If fixed relative profile is used, the relative bounds are ignored
         """
         super().__init__(model, label_of_element, label)
-        self.size: Optional[Union[Skalar, linopy.Variable]] = None
+        self.size: Optional[Union[Scalar, linopy.Variable]] = None
         self.is_invested: Optional[linopy.Variable] = None
 
         self._segments: Optional[SegmentedSharesModel] = None
@@ -386,7 +386,7 @@ class OnOffModel(Model):
         self,
         variable_name: str,
         binary_variable: linopy.Variable,
-        previous_duration: Skalar,
+        previous_duration: Scalar,
         minimum_duration: Optional[TimeSeries],
         maximum_duration: Optional[TimeSeries],
     ) -> linopy.Variable:
@@ -432,7 +432,7 @@ class OnOffModel(Model):
         mega = self._model.hours_per_step.sum() + previous_duration
 
         if maximum_duration is not None:
-            first_step_max: Skalar = maximum_duration.isel(time=0)
+            first_step_max: Scalar = maximum_duration.isel(time=0)
 
             if previous_duration + self._model.hours_per_step[0] > first_step_max:
                 logger.warning(
@@ -600,11 +600,11 @@ class OnOffModel(Model):
         return 1 - self.previous_on_values
 
     @property
-    def previous_consecutive_on_hours(self) -> Skalar:
+    def previous_consecutive_on_hours(self) -> Scalar:
         return self.compute_consecutive_duration(self.previous_on_values, self._model.hours_per_step)
 
     @property
-    def previous_consecutive_off_hours(self) -> Skalar:
+    def previous_consecutive_off_hours(self) -> Scalar:
         return self.compute_consecutive_duration(self.previous_off_values, self._model.hours_per_step)
 
     @staticmethod
@@ -639,7 +639,7 @@ class OnOffModel(Model):
     def compute_consecutive_duration(
         binary_values: Numeric,
         hours_per_timestep: Union[int, float, np.ndarray]
-    ) -> Skalar:
+    ) -> Scalar:
         """
         Computes the final consecutive duration in State 'on' (=1) in hours, from a binary.
 
@@ -841,8 +841,8 @@ class ShareAllocationModel(Model):
         shares_are_time_series: bool,
         label_of_element: Optional[str] = None,
         label: Optional[str] = None,
-        total_max: Optional[Skalar] = None,
-        total_min: Optional[Skalar] = None,
+        total_max: Optional[Scalar] = None,
+        total_min: Optional[Scalar] = None,
         max_per_hour: Optional[Numeric] = None,
         min_per_hour: Optional[Numeric] = None,
     ):
@@ -974,8 +974,8 @@ class SegmentedSharesModel(Model):
         self,
         model: SystemModel,
         label_of_element: str,
-        variable_segments: Tuple[linopy.Variable, List[Tuple[Skalar, Skalar]]],
-        share_segments: Dict['Effect', List[Tuple[Skalar, Skalar]]],
+        variable_segments: Tuple[linopy.Variable, List[Tuple[Scalar, Scalar]]],
+        share_segments: Dict['Effect', List[Tuple[Scalar, Scalar]]],
         can_be_outside_segments: Optional[Union[bool, linopy.Variable]],
         label: str = 'SegmentedShares',
     ):
@@ -1000,7 +1000,7 @@ class SegmentedSharesModel(Model):
         }
 
         # Mapping variable names to segments
-        segments: Dict[str, List[Tuple[Skalar, Skalar]]] = {
+        segments: Dict[str, List[Tuple[Scalar, Scalar]]] = {
             **{self._shares[effect].name: segment for effect, segment in self._share_segments.items()},
             **{self._variable_segments[0].name: self._variable_segments[1]},
         }

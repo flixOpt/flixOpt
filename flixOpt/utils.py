@@ -13,8 +13,8 @@ logger = logging.getLogger('flixOpt')
 
 def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.ndarray:
     """
-    Macht aus Skalar einen Vektor. Vektor bleibt Vektor.
-    -> Idee dahinter: Aufruf aus abgespeichertem Vektor schneller, als für jede i-te Gleichung zu Checken ob Vektor oder Skalar)
+    Macht aus Scalar einen Vektor. Vektor bleibt Vektor.
+    -> Idee dahinter: Aufruf aus abgespeichertem Vektor schneller, als für jede i-te Gleichung zu Checken ob Vektor oder Scalar)
 
     Parameters
     ----------
@@ -25,7 +25,7 @@ def as_vector(value: Union[int, float, np.ndarray, List], length: int) -> np.nda
     # dtype = 'float64' # -> muss mit übergeben werden, sonst entstehen evtl. int32 Reihen (dort ist kein +/-inf möglich)
     # TODO: as_vector() -> int32 Vektoren möglich machen
 
-    # Wenn Skalar oder None, return directly as array
+    # Wenn Scalar oder None, return directly as array
     if value is None:
         return np.array([None] * length)
     if np.isscalar(value):

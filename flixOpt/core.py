@@ -14,9 +14,7 @@ import xarray as xr
 
 logger = logging.getLogger('flixOpt')
 
-Skalar = Union[int, float]  # Datatype
-Numeric = Union[int, float, np.ndarray]  # Datatype
-
+Scalar = Union[int, float]  # Datatype
 NumericData = Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
 
 
@@ -66,7 +64,7 @@ class DataConverter:
                         f"Got {type(data)=}")
 
     @staticmethod
-    def _handle_scalar(data: Numeric, coords: list, dims: list) -> xr.DataArray:
+    def _handle_scalar(data: Scalar, coords: list, dims: list) -> xr.DataArray:
         """Handles scalar input by filling the array with the value."""
         return xr.DataArray(data, coords=coords, dims=dims)
 
@@ -122,7 +120,7 @@ class DataConverter:
 
 class TimeSeriesData:
     # TODO: Move to Interface.py
-    def __init__(self, data: Numeric, agg_group: Optional[str] = None, agg_weight: Optional[float] = None):
+    def __init__(self, data: NumericData, agg_group: Optional[str] = None, agg_weight: Optional[float] = None):
         """
         timeseries class for transmit timeseries AND special characteristics of timeseries,
         i.g. to define weights needed in calculation_type 'aggregated'
@@ -167,11 +165,6 @@ class TimeSeriesData:
 
     def __str__(self):
         return str(self.data)
-
-
-Numeric_TS = Union[
-    Skalar, np.ndarray, TimeSeriesData
-]  # TODO: This is not really correct throughozt the codebase. Sometimes its used for TimeSeries aswell?
 
 
 class TimeSeries:
@@ -756,6 +749,7 @@ class TimeSeriesCollection:
             f"  TimeSeriesData:\n"
             f"{stats_summary}"
         )
+
 
 def get_numeric_stats(data: xr.DataArray, decimals: int = 2, padd: int = 10) -> str:
     """Calculates the mean, median, min, max, and standard deviation of a numeric DataArray."""

@@ -11,7 +11,7 @@ import pandas as pd
 from flixOpt.core import TimeSeriesCollection
 
 from .config import CONFIG
-from .core import Numeric, Numeric_TS, Skalar
+from .core import Numeric, Numeric_TS, Scalar
 from .structure import Element, Interface
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class InvestParameters(Interface):
         fix_effects: Union[Dict, int, float] = None,
         specific_effects: Union[Dict, int, float] = None,  # costs per Flow-Unit/Storage-Size/...
         effects_in_segments: Optional[
-            Tuple[List[Tuple[Skalar, Skalar]], Dict['Effect', List[Tuple[Skalar, Skalar]]]]
+            Tuple[List[Tuple[Scalar, Scalar]], Dict['Effect', List[Tuple[Scalar, Scalar]]]]
         ] = None,
         divest_effects: Union[Dict, int, float] = None,
     ):
@@ -146,13 +146,13 @@ class OnOffParameters(Interface):
         """
         self.effects_per_switch_on: Union[EffectValues, EffectTimeSeries] = effects_per_switch_on or {}
         self.effects_per_running_hour: Union[EffectValues, EffectTimeSeries] = effects_per_running_hour or {}
-        self.on_hours_total_min: Skalar = on_hours_total_min
-        self.on_hours_total_max: Skalar = on_hours_total_max
+        self.on_hours_total_min: Scalar = on_hours_total_min
+        self.on_hours_total_max: Scalar = on_hours_total_max
         self.consecutive_on_hours_min: Numeric_TS = consecutive_on_hours_min
         self.consecutive_on_hours_max: Numeric_TS = consecutive_on_hours_max
         self.consecutive_off_hours_min: Numeric_TS = consecutive_off_hours_min
         self.consecutive_off_hours_max: Numeric_TS = consecutive_off_hours_max
-        self.switch_on_total_max: Skalar = switch_on_total_max
+        self.switch_on_total_max: Scalar = switch_on_total_max
         self.force_switch_on: bool = force_switch_on
 
     def transform_data(self, time_series_collection: TimeSeriesCollection, name_prefix: str):

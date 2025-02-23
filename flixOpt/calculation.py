@@ -23,7 +23,7 @@ import yaml
 from . import utils as utils
 from .aggregation import AggregationModel, AggregationParameters
 from .components import Storage
-from .core import Numeric, Skalar
+from .core import Numeric, Scalar
 from .elements import Component
 from .features import InvestmentModel
 from .flow_system import FlowSystem
@@ -355,7 +355,7 @@ class SegmentedCalculation(Calculation):
         logger.info(f'{" Segmented Solving ":#^80}')
         self._define_path_names(save_results)
 
-        for i, (segment_name, timesteps_of_segment) in enumerate(zip(self.segment_names, self.active_timesteps_per_segment)):
+        for i, (segment_name, timesteps_of_segment) in enumerate(zip(self.segment_names, self.active_timesteps_per_segment, strict=False)):
             if self.sub_calculations:
                 self._transfer_start_values(i)
 
@@ -440,7 +440,7 @@ class SegmentedCalculation(Calculation):
                 'Individual Results': copy_and_convert_datatypes(
                     self.results(individual_results=True), use_numpy=False, use_element_label=False
                 ),
-                'Skalar Results': copy_and_convert_datatypes(
+                'Scalar Results': copy_and_convert_datatypes(
                     self.results(combined_scalars=True), use_numpy=False, use_element_label=False
                 ),
             }
@@ -503,7 +503,7 @@ class SegmentedCalculation(Calculation):
 
     def _calculate_timesteps_of_segment(self) -> List[pd.DatetimeIndex]:
         active_timesteps_per_segment = []
-        for i, segment_name in enumerate(self.segment_names):
+        for i, _ in enumerate(self.segment_names):
             start = self.timesteps_per_segment * i
             end = min(start + self.timesteps_per_segment_with_overlap, len(self.all_timesteps))
             active_timesteps_per_segment.append(self.all_timesteps[start:end])
@@ -600,7 +600,7 @@ def _combine_nested_arrays(
     return _remove_empty_dicts(combined_arrays)
 
 
-def _combine_nested_scalars(*dicts: Dict[str, Union[Numeric, dict]]) -> Dict[str, Union[List[Skalar], dict]]:
+def _combine_nested_scalars(*dicts: Dict[str, Union[Numeric, dict]]) -> Dict[str, Union[List[Scalar], dict]]:
     """
     Combines multiple dictionaries with identical structures by combining its skalar values to a list.
     Filters out all other values.
@@ -613,7 +613,7 @@ def _combine_nested_scalars(*dicts: Dict[str, Union[Numeric, dict]]) -> Dict[str
 
     def combine_scalars_recursively(
         *values: Union[Numeric, Dict[str, Numeric], Any],
-    ) -> Optional[Union[List[Skalar], Dict[str, Union[List[Skalar], dict]]]]:
+    ) -> Optional[Union[List[Scalar], Dict[str, Union[List[Scalar], dict]]]]:
         # If all values are dictionaries, recursively combine each key
         if all(isinstance(val, dict) for val in values):
             return {key: combine_scalars_recursively(*(val[key] for val in values)) for key in values[0]}

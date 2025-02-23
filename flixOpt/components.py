@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from . import utils
-from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
+from .core import Numeric, Numeric_TS, Scalar, TimeSeries, TimeSeriesCollection
 from .elements import Component, ComponentModel, Flow
 from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
@@ -143,12 +143,12 @@ class Storage(Component):
         label: str,
         charging: Flow,
         discharging: Flow,
-        capacity_in_flow_hours: Union[Skalar, InvestParameters],
+        capacity_in_flow_hours: Union[Scalar, InvestParameters],
         relative_minimum_charge_state: Numeric = 0,
         relative_maximum_charge_state: Numeric = 1,
-        initial_charge_state: Optional[Union[Skalar, Literal['lastValueOfSim']]] = 0,
-        minimal_final_charge_state: Optional[Skalar] = None,
-        maximal_final_charge_state: Optional[Skalar] = None,
+        initial_charge_state: Optional[Union[Scalar, Literal['lastValueOfSim']]] = 0,
+        minimal_final_charge_state: Optional[Scalar] = None,
+        maximal_final_charge_state: Optional[Scalar] = None,
         eta_charge: Numeric = 1,
         eta_discharge: Numeric = 1,
         relative_loss_per_hour: Numeric = 0,
@@ -168,7 +168,7 @@ class Storage(Component):
             ingoing flow.
         discharging : Flow
             outgoing flow.
-        capacity_in_flow_hours : Skalar or InvestParameter
+        capacity_in_flow_hours : Scalar or InvestParameter
             nominal capacity of the storage
         relative_minimum_charge_state : float or TS, optional
             minimum relative charge state. The default is 0.

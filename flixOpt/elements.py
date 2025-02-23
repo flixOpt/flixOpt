@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .config import CONFIG
-from .core import Numeric, Numeric_TS, Skalar, TimeSeriesCollection
+from .core import Numeric, Numeric_TS, Scalar, TimeSeriesCollection
 from .effects import EffectValuesUser, effect_values_to_time_series
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
@@ -160,16 +160,16 @@ class Flow(Element):
         self,
         label: str,
         bus: Bus,
-        size: Union[Skalar, InvestParameters] = None,
+        size: Union[Scalar, InvestParameters] = None,
         fixed_relative_profile: Optional[Numeric_TS] = None,
         relative_minimum: Numeric_TS = 0,
         relative_maximum: Numeric_TS = 1,
         effects_per_flow_hour: EffectValuesUser = None,
         on_off_parameters: Optional[OnOffParameters] = None,
-        flow_hours_total_max: Optional[Skalar] = None,
-        flow_hours_total_min: Optional[Skalar] = None,
-        load_factor_min: Optional[Skalar] = None,
-        load_factor_max: Optional[Skalar] = None,
+        flow_hours_total_max: Optional[Scalar] = None,
+        flow_hours_total_min: Optional[Scalar] = None,
+        load_factor_min: Optional[Scalar] = None,
+        load_factor_max: Optional[Scalar] = None,
         previous_flow_rate: Optional[Numeric] = None,
         meta_data: Optional[Dict] = None,
     ):

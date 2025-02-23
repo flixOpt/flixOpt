@@ -20,7 +20,7 @@ from rich.pretty import Pretty
 
 from . import utils
 from .config import CONFIG
-from .core import Numeric, Numeric_TS, NumericData, Skalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
+from .core import Numeric, Numeric_TS, NumericData, Scalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .effects import EffectCollection
@@ -120,7 +120,7 @@ class SystemModel(linopy.Model):
         return result
 
     @property
-    def main_results(self) -> Dict[str, Union[Skalar, Dict]]:
+    def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
         from flixOpt.features import InvestmentModel
 
         return {

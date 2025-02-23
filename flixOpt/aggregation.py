@@ -16,7 +16,7 @@ import pandas as pd
 import tsam.timeseriesaggregation as tsam
 
 from .components import Storage
-from .core import Skalar, TimeSeriesData
+from .core import Scalar, TimeSeriesData
 from .elements import Component
 from .flow_system import FlowSystem
 from .structure import (
@@ -40,8 +40,8 @@ class Aggregation:
     def __init__(
         self,
         original_data: pd.DataFrame,
-        hours_per_time_step: Skalar,
-        hours_per_period: Skalar,
+        hours_per_time_step: Scalar,
+        hours_per_period: Scalar,
         nr_of_periods: int = 8,
         weights: Dict[str, float] = None,
         time_series_for_high_peaks: List[str] = None,

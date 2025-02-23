@@ -12,7 +12,7 @@ import linopy
 import numpy as np
 import pandas as pd
 
-from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
+from .core import Numeric, Numeric_TS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
 from .structure import Element, ElementModel, Model, SystemModel
 
@@ -38,14 +38,14 @@ class Effect(Element):
         is_objective: bool = False,
         specific_share_to_other_effects_operation: Optional['EffectValuesUser'] = None,
         specific_share_to_other_effects_invest: Optional['EffectValuesUser'] = None,
-        minimum_operation: Optional[Skalar] = None,
-        maximum_operation: Optional[Skalar] = None,
-        minimum_invest: Optional[Skalar] = None,
-        maximum_invest: Optional[Skalar] = None,
+        minimum_operation: Optional[Scalar] = None,
+        maximum_operation: Optional[Scalar] = None,
+        minimum_invest: Optional[Scalar] = None,
+        maximum_invest: Optional[Scalar] = None,
         minimum_operation_per_hour: Optional[Numeric_TS] = None,
         maximum_operation_per_hour: Optional[Numeric_TS] = None,
-        minimum_total: Optional[Skalar] = None,
-        maximum_total: Optional[Skalar] = None,
+        minimum_total: Optional[Scalar] = None,
+        maximum_total: Optional[Scalar] = None,
     ):
         """
         Parameters
@@ -320,7 +320,7 @@ class EffectCollection(Model):
                     origin_effect.label_full,
                     origin_effect.model.operation.total_per_timestep * time_series.active_data,
                 )
-            # 2. invest:    -> hier ist es Skalar (share)
+            # 2. invest:    -> hier ist es Scalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
                 target_effect.model.invest.add_share(
                     system_model,
