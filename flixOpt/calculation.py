@@ -165,7 +165,6 @@ class FullCalculation(Calculation):
         self.model.solve(log_fn=self._paths['log'],
                          solver_name=solver.name,
                          **solver.options)
-        self.model.store_solution()
         self._results = self.flow_system.results()
         self.durations['solving'] = round(timeit.default_timer() - t_start, 2)
 
