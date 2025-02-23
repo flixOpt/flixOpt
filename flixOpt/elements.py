@@ -3,25 +3,17 @@ This module contains the basic elements of the flixOpt framework.
 """
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import linopy
 import numpy as np
-import pandas as pd
 
 from .config import CONFIG
-from .core import Scalar, NumericData, TimeSeriesCollection
+from .core import Scalar, NumericData, NumericDataTS, TimeSeriesCollection
 from .effects import EffectValuesUser, effect_values_to_time_series
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
-from .structure import (
-    Element,
-    ElementModel,
-    SystemModel,
-)
-
-if TYPE_CHECKING:
-    from .flow_system import FlowSystem
+from .structure import Element, ElementModel, SystemModel
 
 
 logger = logging.getLogger('flixOpt')
