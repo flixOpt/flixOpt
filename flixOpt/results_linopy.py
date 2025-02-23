@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import pathlib
-from typing import Dict, List, Literal, Union
+from typing import Dict, List, Literal, Union, Optional
 
 import linopy
 import numpy as np
@@ -12,20 +12,70 @@ import xarray as xr
 from . import plotting, utils
 from .core import TimeSeriesCollection
 
+from .io import _results_structure
+from .calculation import Calculation
+
+logger = logging.getLogger('flixOpt')
+
 
 class CalculationResults:
+    """
+    Results for a Calculation.
+    This class is used to collect the results of a Calculation.
+    It is used to analyze the results and to visualize the results.
+
+    Parameters
+    ----------
+    model : linopy.Model
+        The linopy model that was used to solve the calculation.
+    flow_system_structure : Dict[str, Dict[str, Dict]]
+        The structure of the flow_system that was used to solve the calculation.
+
+    Attributes
+    ----------
+    model : linopy.Model
+        The linopy model that was used to solve the calculation.
+    components : Dict[str, ComponentResults]
+        A dictionary of ComponentResults for each component in the flow_system.
+    buses : Dict[str, BusResults]
+        A dictionary of BusResults for each bus in the flow_system.
+    effects : Dict[str, EffectResults]
+        A dictionary of EffectResults for each effect in the flow_system.
+    timesteps_extra : pd.DatetimeIndex
+        The extra timesteps of the flow_system.
+    periods : pd.Index
+        The periods of the flow_system.
+    hours_per_timestep : xr.DataArray
+        The duration of each timestep in hours.
+
+    Class Methods
+    -------
+    from_file(folder: Union[str, pathlib.Path], name: str)
+        Create CalculationResults directly from file.
+    from_calculation(calculation: Calculation)
+        Create CalculationResults directly from a Calculation.
+
+    """
     @classmethod
-    def read_from_file(cls, folder: Union[str, pathlib.Path], name: str):
+    def from_file(cls, folder: Union[str, pathlib.Path], name: str):
+        """ Create CalculationResults directly from file"""
         folder = pathlib.Path(folder)
         path = folder / name
         model = linopy.read_netcdf(path.with_suffix('.nc'))
         with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
             flow_system_structure = json.load(f)
-        return cls(model, flow_system_structure)
+        logger.info(f'Loaded calculation "{name}" from file ({path})')
+        return cls(model, flow_system_structure, name)
 
-    def __init__(self, model: linopy.Model, flow_system_structure: Dict[str, Dict[str, Dict]]):
+    @classmethod
+    def from_calculation(cls, calculation: Calculation):
+        """Create CalculationResults directly from a Calculation"""
+        return cls(calculation.model, _results_structure(calculation.flow_system), calculation.name)
+
+    def __init__(self, model: linopy.Model, flow_system_structure: Dict[str, Dict[str, Dict]], name: str):
         self.model = model
         self._flow_system_structure = flow_system_structure
+        self.name = name
         self.components = {label: ComponentResults.from_json(self, infos)
                            for label, infos in flow_system_structure['Components'].items()}
 
@@ -47,6 +97,17 @@ class CalculationResults:
         if key in self.effects:
             return self.effects[key]
         raise KeyError(f'No element with label {key} found.')
+
+    def to_file(self, folder: Union[str, pathlib.Path], name: Optional[str] = None, *args, **kwargs):
+        """Save the results to a file"""
+        folder = pathlib.Path(folder)
+        name = self.name if name is None else name
+        path = folder / name
+
+        self.model.to_netcdf(path, *args, **kwargs)
+        with open(path.with_suffix('.json'), 'w', encoding='utf-8') as f:
+            json.dump(self._flow_system_structure, f, indent=4, ensure_ascii=False)
+        logger.info(f'Saved calculation "{name}" to {path}')
 
 
 class _ElementResults:
@@ -124,3 +185,4 @@ class EffectResults(_ElementResults):
 
     def get_shares_from(self, element: str):
         return self.variables[[name for name in self._variables if name.startswith(f'{element}->')]]
+
