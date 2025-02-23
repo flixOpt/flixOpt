@@ -111,6 +111,14 @@ if __name__ == '__main__':
     # --- Load and Analyze Results ---
     # Load the results and plot the operation of the District Heating Bus
     results = fx.results.CalculationResults(calculation.name, folder='results')
+    results.change_colors({
+        'Boiler': 'darkorange',
+        'CHP': 'blue',
+        'Storage': 'green',
+        'Heat Demand': 'orange',
+        'Gastarif': 'yellow',
+        'Einspeisung': 'lightblue'
+    })
     results.plot_operation('Fernwärme', 'area')
     results.plot_storage('Storage')
     results.plot_operation('Fernwärme', 'bar')
