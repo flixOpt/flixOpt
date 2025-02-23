@@ -489,6 +489,11 @@ class BusModel(ElementModel):
                 self._model, self.label_of_element, (self.excess_output * excess_penalty).sum()
             )
 
+    def results_structure(self):
+        return {**super().results_structure(),
+                'inputs': [flow.label for flow in self.element.inputs],
+                'outputs': [flow.label for flow in self.element.outputs]}
+
     def solution_structured(
         self,
         mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'py',
@@ -553,6 +558,11 @@ class ComponentModel(ElementModel):
             on_variables = [flow.model.on_off.on for flow in self.element.prevent_simultaneous_flows]
             simultaneous_use = self.add(PreventSimultaneousUsageModel(self._model, on_variables, self.label_full))
             simultaneous_use.do_modeling()
+
+    def results_structure(self):
+        return {**super().results_structure(),
+                'inputs': [flow.label for flow in self.element.inputs],
+                'outputs': [flow.label for flow in self.element.outputs]}
 
     def solution_structured(
         self,

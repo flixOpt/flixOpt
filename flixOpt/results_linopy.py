@@ -5,15 +5,23 @@ import xarray as xr
 from typing import Dict, Union, List, Literal
 import logging
 
-from pyparsing import Literal
-
 
 class CalculationResults:
+    @classmethod
+    def read_from_file(cls, folder: Union[str, pathlib.Path], name: str):
+        folder = pathlib.Path(folder)
+        path = folder / name
+        model = linopy.read_netcdf(path.with_suffix('.nc'))
+        with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
+            flow_system_structure = json.load(f)
+        return cls(model, flow_system_structure)
+
     def __init__(self, model: linopy.Model, flow_system_structure: Dict[str, Dict[str, str]]):
         self.model = model
         self._flow_system_structure = flow_system_structure
-        self.components = {label: ComponentResults(self, label, variables, constraints)
-                           for label, variables, constraints in flow_system_structure['Components'].items()}
+        if False:
+            self.components = {label: ComponentResults(self, label, variables, constraints)
+                               for label, variables, constraints in flow_system_structure['Components'].items()}
 
 
 class ElementResults:
