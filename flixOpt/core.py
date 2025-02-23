@@ -16,7 +16,7 @@ logger = logging.getLogger('flixOpt')
 
 Scalar = Union[int, float]  # Datatype
 NumericData = Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
-
+NumericDataTS = Union[NumericData, 'TimeSeriesData']
 
 class DataConverter:
     """

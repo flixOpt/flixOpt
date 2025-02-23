@@ -211,14 +211,12 @@ class EffectModel(ElementModel):
         )
 
 
-EffectValuesExpr = Dict[Optional[Union[str, Effect]], linopy.LinearExpression]  # This is used to create Shares
+EffectKey = Optional[Union[str, Effect]]  # Common key type for effect-related dicts
 
-EffectValuesTS = Dict[Optional[Union[str, Effect]], TimeSeries]  # This is used internally to index the values
-
-EffectValuesDict = Dict[Optional[Union[str, Effect]], Numeric_TS]  # This is how The effect values are stored
-
-EffectValuesUser = Union[Numeric_TS, Dict[Optional[Union[str, Effect]], Numeric_TS]]  # This is how the User can specify Shares to Effects
-
+EffectValuesExpr = Dict[EffectKey, linopy.LinearExpression]  # Used to create Shares
+EffectValuesTS = Dict[EffectKey, TimeSeries]  # Used internally to index values
+EffectValuesDict = Dict[EffectKey, Numeric_TS]  # How effect values are stored
+EffectValuesUser = Union[Numeric_TS, Dict[EffectKey, Numeric_TS]]  # User-specified Shares to Effects
 
 def effect_values_to_time_series(label_suffix: str,
                                  effect_values: EffectValuesUser,
