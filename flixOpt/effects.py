@@ -12,7 +12,7 @@ import linopy
 import numpy as np
 import pandas as pd
 
-from .core import Numeric, Numeric_TS, Scalar, TimeSeries, TimeSeriesCollection
+from .core import Numeric, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
 from .structure import Element, ElementModel, Model, SystemModel
 
@@ -42,8 +42,8 @@ class Effect(Element):
         maximum_operation: Optional[Scalar] = None,
         minimum_invest: Optional[Scalar] = None,
         maximum_invest: Optional[Scalar] = None,
-        minimum_operation_per_hour: Optional[Numeric_TS] = None,
-        maximum_operation_per_hour: Optional[Numeric_TS] = None,
+        minimum_operation_per_hour: Optional[NumericDataTS] = None,
+        maximum_operation_per_hour: Optional[NumericDataTS] = None,
         minimum_total: Optional[Scalar] = None,
         maximum_total: Optional[Scalar] = None,
     ):
@@ -104,8 +104,8 @@ class Effect(Element):
         )
         self.minimum_operation = minimum_operation
         self.maximum_operation = maximum_operation
-        self.minimum_operation_per_hour: Numeric_TS = minimum_operation_per_hour
-        self.maximum_operation_per_hour: Numeric_TS = maximum_operation_per_hour
+        self.minimum_operation_per_hour: NumericDataTS = minimum_operation_per_hour
+        self.maximum_operation_per_hour: NumericDataTS = maximum_operation_per_hour
         self.minimum_invest = minimum_invest
         self.maximum_invest = maximum_invest
         self.minimum_total = minimum_total
@@ -215,8 +215,8 @@ EffectKey = Optional[Union[str, Effect]]  # Common key type for effect-related d
 
 EffectValuesExpr = Dict[EffectKey, linopy.LinearExpression]  # Used to create Shares
 EffectValuesTS = Dict[EffectKey, TimeSeries]  # Used internally to index values
-EffectValuesDict = Dict[EffectKey, Numeric_TS]  # How effect values are stored
-EffectValuesUser = Union[Numeric_TS, Dict[EffectKey, Numeric_TS]]  # User-specified Shares to Effects
+EffectValuesDict = Dict[EffectKey, NumericDataTS]  # How effect values are stored
+EffectValuesUser = Union[NumericDataTS, Dict[EffectKey, NumericDataTS]]  # User-specified Shares to Effects
 
 def effect_values_to_time_series(label_suffix: str,
                                  effect_values: EffectValuesUser,

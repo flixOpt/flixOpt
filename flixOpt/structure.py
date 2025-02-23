@@ -20,7 +20,7 @@ from rich.pretty import Pretty
 
 from . import utils
 from .config import CONFIG
-from .core import Numeric, Numeric_TS, NumericData, Scalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
+from .core import Numeric, NumericDataTS, NumericData, Scalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .effects import EffectCollection

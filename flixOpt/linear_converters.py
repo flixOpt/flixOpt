@@ -8,7 +8,7 @@ from typing import Dict, Optional
 import numpy as np
 
 from .components import LinearConverter
-from .core import Numeric_TS, TimeSeriesData
+from .core import NumericDataTS, TimeSeriesData
 from .elements import Flow
 from .interface import OnOffParameters
 
@@ -19,7 +19,7 @@ class Boiler(LinearConverter):
     def __init__(
         self,
         label: str,
-        eta: Numeric_TS,
+        eta: NumericDataTS,
         Q_fu: Flow,
         Q_th: Flow,
         on_off_parameters: OnOffParameters = None,
@@ -61,7 +61,7 @@ class Power2Heat(LinearConverter):
     def __init__(
         self,
         label: str,
-        eta: Numeric_TS,
+        eta: NumericDataTS,
         P_el: Flow,
         Q_th: Flow,
         on_off_parameters: OnOffParameters = None,
@@ -102,7 +102,7 @@ class HeatPump(LinearConverter):
     def __init__(
         self,
         label: str,
-        COP: Numeric_TS,
+        COP: NumericDataTS,
         P_el: Flow,
         Q_th: Flow,
         on_off_parameters: OnOffParameters = None,
@@ -142,7 +142,7 @@ class CoolingTower(LinearConverter):
     def __init__(
         self,
         label: str,
-        specific_electricity_demand: Numeric_TS,
+        specific_electricity_demand: NumericDataTS,
         P_el: Flow,
         Q_th: Flow,
         on_off_parameters: OnOffParameters = None,
@@ -183,8 +183,8 @@ class CHP(LinearConverter):
     def __init__(
         self,
         label: str,
-        eta_th: Numeric_TS,
-        eta_el: Numeric_TS,
+        eta_th: NumericDataTS,
+        eta_el: NumericDataTS,
         Q_fu: Flow,
         P_el: Flow,
         Q_th: Flow,
@@ -239,7 +239,7 @@ class HeatPumpWithSource(LinearConverter):
     def __init__(
         self,
         label: str,
-        COP: Numeric_TS,
+        COP: NumericDataTS,
         P_el: Flow,
         Q_ab: Flow,
         Q_th: Flow,
@@ -285,22 +285,22 @@ class HeatPumpWithSource(LinearConverter):
 
 
 def check_bounds(
-    value: Numeric_TS, parameter_label: str, element_label: str, lower_bound: Numeric_TS, upper_bound: Numeric_TS
+    value: NumericDataTS, parameter_label: str, element_label: str, lower_bound: NumericDataTS, upper_bound: NumericDataTS
 ):
     """
     Check if the value is within the bounds. The bounds are exclusive.
     If not, log a warning.
     Parameters
     ----------
-    value: Numeric_TS
+    value: NumericDataTS
         The value to check.
     parameter_label: str
         The label of the value.
     element_label: str
         The label of the element.
-    lower_bound: Numeric_TS
+    lower_bound: NumericDataTS
         The lower bound.
-    upper_bound: Numeric_TS
+    upper_bound: NumericDataTS
         The upper bound.
 
     Returns

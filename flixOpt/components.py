@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from . import utils
-from .core import Numeric, Numeric_TS, Scalar, TimeSeries, TimeSeriesCollection
+from .core import Numeric, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .elements import Component, ComponentModel, Flow
 from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
@@ -33,8 +33,8 @@ class LinearConverter(Component):
         inputs: List[Flow],
         outputs: List[Flow],
         on_off_parameters: OnOffParameters = None,
-        conversion_factors: List[Dict[Flow, Numeric_TS]] = None,
-        segmented_conversion_factors: Dict[Flow, List[Tuple[Numeric_TS, Numeric_TS]]] = None,
+        conversion_factors: List[Dict[Flow, NumericDataTS]] = None,
+        segmented_conversion_factors: Dict[Flow, List[Tuple[NumericDataTS, NumericDataTS]]] = None,
         meta_data: Optional[Dict] = None,
     ):
         """
@@ -204,16 +204,16 @@ class Storage(Component):
         self.charging = charging
         self.discharging = discharging
         self.capacity_in_flow_hours = capacity_in_flow_hours
-        self.relative_minimum_charge_state: Numeric_TS = relative_minimum_charge_state
-        self.relative_maximum_charge_state: Numeric_TS = relative_maximum_charge_state
+        self.relative_minimum_charge_state: NumericDataTS = relative_minimum_charge_state
+        self.relative_maximum_charge_state: NumericDataTS = relative_maximum_charge_state
 
         self.initial_charge_state = initial_charge_state
         self.minimal_final_charge_state = minimal_final_charge_state
         self.maximal_final_charge_state = maximal_final_charge_state
 
-        self.eta_charge: Numeric_TS = eta_charge
-        self.eta_discharge: Numeric_TS = eta_discharge
-        self.relative_loss_per_hour: Numeric_TS = relative_loss_per_hour
+        self.eta_charge: NumericDataTS = eta_charge
+        self.eta_discharge: NumericDataTS = eta_discharge
+        self.relative_loss_per_hour: NumericDataTS = relative_loss_per_hour
 
     def create_model(self, model: SystemModel) -> 'StorageModel':
         self.model = StorageModel(model, self)
@@ -250,8 +250,8 @@ class Transmission(Component):
         out1: Flow,
         in2: Optional[Flow] = None,
         out2: Optional[Flow] = None,
-        relative_losses: Optional[Numeric_TS] = None,
-        absolute_losses: Optional[Numeric_TS] = None,
+        relative_losses: Optional[NumericDataTS] = None,
+        absolute_losses: Optional[NumericDataTS] = None,
         on_off_parameters: OnOffParameters = None,
         prevent_simultaneous_flows_in_both_directions: bool = True,
     ):
@@ -272,9 +272,9 @@ class Transmission(Component):
             If in1 got Investmentparameters, the size of this Flow will be equal to in1 (with no extra effects!)
         out2 : Optional[Flow], optional
             The optional outflow at side A.
-        relative_losses : Optional[Numeric_TS], optional
+        relative_losses : Optional[NumericDataTS], optional
             The relative loss between inflow and outflow, e.g., 0.02 for 2% loss.
-        absolute_losses : Optional[Numeric_TS], optional
+        absolute_losses : Optional[NumericDataTS], optional
             The absolute loss, occur only when the Flow is on. Induces the creation of the ON-Variable
         on_off_parameters : OnOffParameters, optional
             Parameters defining the on/off behavior of the component.
