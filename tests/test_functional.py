@@ -351,9 +351,9 @@ def test_on(modeling_language_fixture, solver_fixture, time_steps_fixture):
             'Boiler',
             0.5,
             Q_fu=fx.Flow('Q_fu', bus=flow_system.buses['Gas']),
-            Q_th=fx.Flow('Q_th', bus=flow_system.buses['Fernwärme'], size=100, on_off_parameters=fx.OnOffParameters()
-        ),
-    ))
+            Q_th=fx.Flow('Q_th', bus=flow_system.buses['Fernwärme'], size=100, on_off_parameters=fx.OnOffParameters()),
+        )
+    )
 
     solve_and_load(flow_system, modeling_language_fixture, solver_fixture)
     boiler = flow_system.all_elements['Boiler']

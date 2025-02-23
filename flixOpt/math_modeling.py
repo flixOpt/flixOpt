@@ -809,7 +809,7 @@ class GurobiSolver(Solver):
             status = modeling_language.model.solve(
                 log_fn=self.logfile_name,
                 solver_name='gurobi',
-                **{'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds}
+                **{'mipgap': self.mip_gap, 'TimeLimit': self.time_limit_seconds},
             )
 
             self.objective = modeling_language.model.objective.value
@@ -912,7 +912,7 @@ class HighsSolver(Solver):
             status = modeling_language.model.solve(
                 log_fn=self.logfile_name,
                 solver_name='highs',
-                **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds}
+                **{'mip_rel_gap': self.mip_gap, 'time_limit': self.time_limit_seconds},
             )
 
             self.objective = modeling_language.model.objective.value
