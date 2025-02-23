@@ -16,7 +16,7 @@ from .components import (
 from .config import CONFIG, change_logging_level
 from .core import TimeSeriesData
 from .effects import Effect
-from .elements import Bus, Flow
+from .elements import Bus, Flow, Medium, MediumCategories
 from .flow_system import FlowSystem, create_datetime_array
 from .interface import InvestParameters, OnOffParameters
 
@@ -25,6 +25,8 @@ __all__ = [
     'CONFIG',
     'change_logging_level',
     'Flow',
+    'Medium',
+    'MediumCategories',
     'Bus',
     'Effect',
     'Source',
@@ -45,5 +47,5 @@ __all__ = [
     'results',
     'linear_converters',
     'solvers',
-    'math_modeling'
+    'math_modeling',
 ]
