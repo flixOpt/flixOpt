@@ -127,23 +127,6 @@ class Calculation:
         logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
         logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
 
-    def save_linopy(self, folder: Optional[Union[str, pathlib.Path]] = None):
-        """
-        Save the calculation to file.
-        """
-        from .io import model_to_netcdf, structure_to_json
-        folder = pathlib.Path(folder) if folder is not None else pathlib.Path.cwd() / 'results'
-        path = folder / self.name
-        if not folder.exists():
-            try:
-                folder.mkdir()
-            except FileNotFoundError as e:
-                raise FileNotFoundError(f'Parent directory of {path} does not exist.'
-                                        f'Please create the directory or specify a valid path.') from e
-        model_to_netcdf(self.model, path.with_suffix('.nc'))
-        structure_to_json(self.flow_system, path.with_suffix('.json'))
-        logger.info(f'Saved calculation to {path}')
-
     @property
     def results(self):
         return self._results
