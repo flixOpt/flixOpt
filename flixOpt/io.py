@@ -4,6 +4,7 @@ import pathlib
 import xarray as xr
 from typing import Dict, Union
 import logging
+import datetime
 
 from .flow_system import FlowSystem
 
@@ -24,7 +25,9 @@ def _results_structure(flow_system: FlowSystem) -> Dict[str, Dict[str, str]]:
         'Effects': {
             effect.label_full: effect.model.results_structure()
             for effect in sorted(flow_system.effects.values(), key=lambda effect: effect.label_full.upper())
-        }
+        },
+        'Time': [datetime.datetime.isoformat(date) for date in flow_system.time_series_collection.timesteps_extra],
+        'Periods': flow_system.time_series_collection.periods.tolist() if flow_system.time_series_collection.periods is not None else None
     }
 
 

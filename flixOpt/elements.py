@@ -491,8 +491,8 @@ class BusModel(ElementModel):
 
     def results_structure(self):
         return {**super().results_structure(),
-                'inputs': [flow.label for flow in self.element.inputs],
-                'outputs': [flow.label for flow in self.element.outputs]}
+                'inputs': [flow.model.flow_rate.name for flow in self.element.inputs],
+                'outputs': [flow.model.flow_rate.name for flow in self.element.outputs]}
 
     def solution_structured(
         self,
@@ -561,8 +561,8 @@ class ComponentModel(ElementModel):
 
     def results_structure(self):
         return {**super().results_structure(),
-                'inputs': [flow.label for flow in self.element.inputs],
-                'outputs': [flow.label for flow in self.element.outputs]}
+                'inputs': [flow.model.flow_rate.name for flow in self.element.inputs],
+                'outputs': [flow.model.flow_rate.name for flow in self.element.outputs]}
 
     def solution_structured(
         self,

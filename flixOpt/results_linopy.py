@@ -1,9 +1,16 @@
 import linopy
 import json
 import pathlib
+
+import pandas as pd
 import xarray as xr
 from typing import Dict, Union, List, Literal
 import logging
+import datetime
+import numpy as np
+from .core import TimeSeriesCollection
+
+from . import plotting, utils
 
 
 class CalculationResults:
@@ -28,6 +35,10 @@ class CalculationResults:
         self.effects = {label: EffectResults.from_json(self, infos)
                         for label, infos in flow_system_structure['Effects'].items()}
 
+        self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in flow_system_structure['Time']])
+        self.periods = pd.Index(flow_system_structure['Periods']) if flow_system_structure['Periods'] is not None else None
+        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.timesteps_extra, self.periods)
+
     def __getitem__(self, key: str) -> Union['ComponentResults', 'BusResults', 'EffectResults']:
         if key in self.components:
             return self.components[key]
@@ -40,7 +51,7 @@ class CalculationResults:
 
 class _ElementResults:
     @classmethod
-    def from_json(cls, calculation_results, json_data: Dict):
+    def from_json(cls, calculation_results, json_data: Dict) -> '_ElementResults':
         return cls(calculation_results,
                    json_data['label'],
                    json_data['variables'],
@@ -59,10 +70,14 @@ class _ElementResults:
         self.variables = self._calculation_results.model.variables[self._variables]
         self.constraints = self._calculation_results.model.constraints[self._constraints]
 
+    @property
+    def variables_time(self):
+        return self.variables[[name for name in self._variables if 'time' in self.variables[name].dims]]
+
 
 class _NodeResults(_ElementResults):
     @classmethod
-    def from_json(cls, calculation_results, json_data: Dict):
+    def from_json(cls, calculation_results, json_data: Dict)  -> '_NodeResults':
         return cls(calculation_results,
                    json_data['label'],
                    json_data['variables'],
@@ -81,6 +96,20 @@ class _NodeResults(_ElementResults):
         self.inputs = inputs
         self.outputs = outputs
 
+    def plot_balance(self, show: bool = True):
+        return plotting.with_plotly(self.operation_balance(),
+                                    mode='area',
+                                    title=f'Operation Balance of {self.label}',
+                                    show=show)
+
+    def operation_balance(self, negate_inputs: bool = True, negate_outputs: bool = False):
+        df = self.variables_time.solution.to_dataframe()
+        if negate_outputs:
+            df[self.outputs] = -df[self.outputs]
+        if negate_inputs:
+            df[self.inputs] = -df[self.inputs]
+        return df
+
 
 class BusResults(_NodeResults):
     """Results for a Bus"""
@@ -92,3 +121,6 @@ class ComponentResults(_NodeResults):
 
 class EffectResults(_ElementResults):
     """Results for an Effect"""
+
+    def get_shares_from(self, element: str):
+        return self.variables[[name for name in self._variables if name.startswith(f'{element}->')]]

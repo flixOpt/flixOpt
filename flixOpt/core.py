@@ -581,7 +581,7 @@ class TimeSeriesCollection:
         hours_of_previous_timesteps = TimeSeriesCollection._calculate_hours_of_previous_timesteps(
             timesteps, hours_of_previous_timesteps
         )
-        hours_per_step = TimeSeriesCollection._create_hours_per_timestep(timesteps_extra, periods)
+        hours_per_step = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra, periods)
 
         return timesteps, timesteps_extra, hours_per_step, hours_of_previous_timesteps, periods
 
@@ -639,7 +639,7 @@ class TimeSeriesCollection:
         )
 
     @staticmethod
-    def _create_hours_per_timestep(
+    def create_hours_per_timestep(
             timesteps_extra: pd.DatetimeIndex,
             periods: Optional[pd.Index]
     ) -> xr.DataArray:
