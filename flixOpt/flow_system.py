@@ -156,6 +156,7 @@ class FlowSystem:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
     def results(self):
+        #TODO: Remove this function, as access through the FLowSystem is not correct if another calucaltion was made.
         return {
             'Components': {
                 comp.label: comp.model.solution_structured(mode='numpy')
@@ -169,8 +170,8 @@ class FlowSystem:
                 effect.label: effect.model.solution_structured(mode='numpy')
                 for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
             },
-            'Time': self.timesteps_extra.tolist(),
-            'Time intervals in hours': self.hours_per_step,
+            'Time': self.time_series_collection.timesteps_extra.tolist(),
+            'Time intervals in hours': self.time_series_collection.hours_per_timestep,
         }
 
     def visualize_network(
@@ -265,31 +266,3 @@ class FlowSystem:
     @property
     def all_time_series(self) -> List[TimeSeries]:
         return [ts for element in self.all_elements.values() for ts in element.used_time_series]
-
-    @property
-    def hours_of_previous_timesteps(self):
-        return self.time_series_collection.hours_of_previous_timesteps
-
-    @property
-    def timesteps(self):
-        return self.time_series_collection.timesteps
-
-    @property
-    def timesteps_extra(self):
-        return self.time_series_collection.timesteps_extra
-
-    @property
-    def periods(self):
-        return self.time_series_collection.periods
-
-    @property
-    def hours_per_step(self):  #TODO: Rename to hours_per_timestep
-        return self.time_series_collection.hours_per_timestep
-
-    @property
-    def coords(self):
-        return [self.periods, self.timesteps] if self.periods is not None else [self.timesteps]
-
-    @property
-    def coords_extra(self):
-        return [self.periods, self.timesteps_extra] if self.periods is not None else [self.timesteps_extra]

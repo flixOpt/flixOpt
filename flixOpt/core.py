@@ -372,11 +372,11 @@ class TimeSeriesCollection:
             periods: Optional[List[int]]
     ):
         (
-            self._timesteps,
-            self._timesteps_extra,
-            self._hours_per_timestep,
-            self._hours_of_previous_timesteps,
-            self._periods
+            self.all_timesteps,
+            self.all_timesteps_extra,
+            self.all_hours_per_timestep,
+            self.hours_of_previous_timesteps,
+            self.all_periods
         ) = TimeSeriesCollection.align_dimensions(timesteps,
                                                    periods,
                                                    hours_of_last_timestep,
@@ -467,12 +467,12 @@ class TimeSeriesCollection:
         if active_timesteps is None and active_periods is None:
             return self.reset()
 
-        active_timesteps = active_timesteps if active_timesteps is not None else self._timesteps
-        active_periods = active_periods if active_periods is not None else self._periods
+        active_timesteps = active_timesteps if active_timesteps is not None else self.all_timesteps
+        active_periods = active_periods if active_periods is not None else self.all_periods
 
-        if not np.all(active_timesteps.isin(self._timesteps)):
+        if not np.all(active_timesteps.isin(self.all_timesteps)):
             raise ValueError('active_timesteps must be a subset of the timesteps of the TimeSeriesCollection')
-        if active_periods is not None and not np.all(active_periods.isin(self._periods)):
+        if active_periods is not None and not np.all(active_periods.isin(self.all_periods)):
             raise ValueError('active_periods must be a subset of the periods of the TimeSeriesCollection')
 
         (
@@ -482,7 +482,7 @@ class TimeSeriesCollection:
             _,
             self._active_periods
         ) = TimeSeriesCollection.align_dimensions(
-            active_timesteps, active_periods, self.hours_of_last_timestep, self._hours_of_previous_timesteps
+            active_timesteps, active_periods, self.hours_of_last_timestep, self.hours_of_previous_timesteps
         )
 
         self._activate_timeserieses()
@@ -694,26 +694,26 @@ class TimeSeriesCollection:
 
     @property
     def timesteps(self) -> pd.DatetimeIndex:
-        return self._timesteps if self._active_timesteps is None else self._active_timesteps
+        return self.all_timesteps if self._active_timesteps is None else self._active_timesteps
 
     @property
     def timesteps_extra(self) -> pd.DatetimeIndex:
-        return self._timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
+        return self.all_timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
 
     @property
     def periods(self) -> pd.Index:
-        return self._periods if self._active_periods is None else self._active_periods
+        return self.all_periods if self._active_periods is None else self._active_periods
 
     @property
     def hours_per_timestep(self) -> xr.DataArray:
-        return self._hours_per_timestep if self._active_hours_per_timestep is None else self._active_hours_per_timestep
+        return self.all_hours_per_timestep if self._active_hours_per_timestep is None else self._active_hours_per_timestep
 
     @property
     def hours_of_last_timestep(self) -> float:
         return self.hours_per_timestep[-1].item()
 
     def __repr__(self):
-        timestep_range = f"{self._timesteps[0]} to {self._timesteps[-1]}" if len(self.timesteps) > 1 else str(
+        timestep_range = f"{self.all_timesteps[0]} to {self.all_timesteps[-1]}" if len(self.timesteps) > 1 else str(
             self.timesteps[0])
         periods_str = f"Periods: {len(self.periods)}" if self.periods is not None else "No periods"
         time_series_count = len(self.time_series_data)
@@ -724,7 +724,7 @@ class TimeSeriesCollection:
             f"  timesteps={timestep_range},\n"
             f"  active_timesteps={np.array(self._active_timesteps) if self._active_timesteps is not None else 'None'}\n"
             f"  hours_of_last_timestep={self.hours_of_last_timestep},\n"
-            f"  hours_per_timestep={get_numeric_stats(self._hours_per_timestep)},\n"
+            f"  hours_per_timestep={get_numeric_stats(self.hours_per_timestep)},\n"
             f"  nr_of_periods={len(self.periods) if self.periods is not None else 'None'},\n"
             f"  periods={periods_str},\n"
             f"  active_periods={self._active_periods if self._active_periods is not None else 'None'}\n"

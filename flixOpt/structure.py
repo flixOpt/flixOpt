@@ -34,6 +34,8 @@ class SystemModel(linopy.Model):
     def __init__(self, flow_system: 'FlowSystem'):
         super().__init__(force_dim_names=True)
         self.flow_system = flow_system
+        self.time_series_collection = flow_system.time_series_collection
+
         self.effects: Optional[EffectCollection] = None
 
         self._solution_structure = None
@@ -167,19 +169,19 @@ class SystemModel(linopy.Model):
 
     @property
     def hours_per_step(self):
-        return self.flow_system.hours_per_step
+        return self.time_series_collection.hours_per_timestep
 
     @property
     def hours_of_previous_timesteps(self):
-        return self.flow_system.hours_of_previous_timesteps
+        return self.time_series_collection.hours_of_previous_timesteps
 
     @property
     def coords(self):
-        return self.flow_system.coords
+        return self.time_series_collection.coords
 
     @property
     def coords_extra(self):
-        return self.flow_system.coords_extra
+        return self.time_series_collection.coords_extra
 
 
 class Interface:
