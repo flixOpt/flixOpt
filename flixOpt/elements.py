@@ -13,7 +13,10 @@ from .effects import EffectValues, effect_values_to_time_series
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
 from .math_modeling import Variable, VariableTS
-from .structure import ( Element, Interface, ElementModel,
+from .structure import (
+    Element,
+    ElementModel,
+    Interface,
     SystemModel,
     _create_time_series,
     copy_and_convert_datatypes,

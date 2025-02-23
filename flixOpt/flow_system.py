@@ -11,9 +11,8 @@ import numpy as np
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel
-from .elements import Bus, Flow, Component, MediumColors
 from .effects import Effect, EffectCollection
+from .elements import Bus, Component, Flow, MediumColors
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
 if TYPE_CHECKING:

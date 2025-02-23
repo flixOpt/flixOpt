@@ -13,8 +13,8 @@ if __name__ == '__main__':
     # --- Load Results ---
     try:
         results = fx.results.CalculationResults('Sim1', folder='results')
-    except FileNotFoundError:
-        raise FileNotFoundError('Results file was not found. Did you run complex_example.py already?')
+    except FileNotFoundError as e:
+        raise FileNotFoundError('Results file was not found. Did you run complex_example.py already?') from e
 
     # --- You can change colors for plotting ---
     if use_custom_colors:

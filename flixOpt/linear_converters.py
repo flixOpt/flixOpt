@@ -8,9 +8,8 @@ from typing import Dict, Optional
 import numpy as np
 
 from .components import LinearConverter
-from .elements import MediumCategories
 from .core import Numeric_TS, TimeSeriesData
-from .elements import Flow
+from .elements import Flow, MediumCategories
 from .interface import OnOffParameters
 
 logger = logging.getLogger('flixOpt')

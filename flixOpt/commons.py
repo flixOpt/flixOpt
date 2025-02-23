@@ -14,10 +14,9 @@ from .components import (
     Transmission,
 )
 from .config import CONFIG, change_logging_level
-
-from .elements import Flow, Bus, Medium, MediumCategories
 from .core import TimeSeriesData
 from .effects import Effect
+from .elements import Bus, Flow, Medium, MediumCategories
 from .flow_system import FlowSystem, create_datetime_array
 from .interface import InvestParameters, OnOffParameters
 

@@ -673,7 +673,7 @@ def visualize_network(
             font={'size': 14},
         )
 
-    for id, edge in edge_infos.items():
+    for edge in edge_infos.values():
         net.add_edge(edge['start'],
                      edge['end'],
                      label=edge['label'],

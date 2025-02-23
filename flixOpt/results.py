@@ -446,8 +446,8 @@ class CalculationResults:
             try:
                 comp_labels = [flow_results[flow].component_label for flow in labels]
             except KeyError:
-                logger.warning(f'When trying to retrive colors for plotting, not all component colors could be '
-                               f'retrieved for the bus plot. Using default colors.')
+                logger.warning('When trying to retrive colors for plotting, not all component colors could be '
+                               'retrieved for the bus plot. Using default colors.')
                 return [self.default_color] * len(labels)
             return [self.colors[label] for label in comp_labels]
         elif element_label in self.flow_results():
