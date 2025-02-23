@@ -14,8 +14,7 @@ from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
 from .elements import Component, ComponentModel, Flow
 from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
-from .math_modeling import Equation, VariableTS
-from .structure import SystemModel, create_equation, create_variable
+from .structure import SystemModel
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem

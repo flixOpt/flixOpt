@@ -14,7 +14,6 @@ import pandas as pd
 
 from .core import Numeric, Numeric_TS, Skalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
-from .math_modeling import Equation, Variable
 from .structure import Element, ElementModel, Model, SystemModel
 
 if TYPE_CHECKING:

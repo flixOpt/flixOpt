@@ -13,7 +13,6 @@ from . import utils
 from .config import CONFIG
 from .core import Numeric, Skalar, TimeSeries
 from .interface import InvestParameters, OnOffParameters
-from .math_modeling import Equation, Variable, VariableTS
 from .structure import Model, SystemModel
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
@@ -43,8 +42,8 @@ class InvestmentModel(Model):
         If fixed relative profile is used, the relative bounds are ignored
         """
         super().__init__(model, label_of_element, label)
-        self.size: Optional[Union[Skalar, Variable]] = None
-        self.is_invested: Optional[Variable] = None
+        self.size: Optional[Union[Skalar, linopy.Variable]] = None
+        self.is_invested: Optional[linopy.Variable] = None
 
         self._segments: Optional[SegmentedSharesModel] = None
 
@@ -228,7 +227,7 @@ class OnOffModel(Model):
         self._previous_values = previous_values
 
         self.on: Optional[linopy.Variable] = None
-        self.total_on_hours: Optional[Variable] = None
+        self.total_on_hours: Optional[linopy.Variable] = None
 
         self.consecutive_on_hours: Optional[linopy.Variable] = None
         self.consecutive_off_hours: Optional[linopy.Variable] = None
@@ -704,9 +703,9 @@ class SegmentModel(Model):
         as_time_series: bool = True,
     ):
         super().__init__(model, label_of_element, f'Segment{segment_index}')
-        self.in_segment: Optional[VariableTS] = None
-        self.lambda0: Optional[VariableTS] = None
-        self.lambda1: Optional[VariableTS] = None
+        self.in_segment: Optional[linopy.Variable] = None
+        self.lambda0: Optional[linopy.Variable] = None
+        self.lambda1: Optional[linopy.Variable] = None
 
         self._segment_index = segment_index
         self._as_time_series = as_time_series
@@ -749,7 +748,7 @@ class MultipleSegmentsModel(Model):
         model: SystemModel,
         label_of_element: str,
         sample_points: Dict[str, List[Tuple[Numeric, Numeric]]],
-        can_be_outside_segments: Optional[Union[bool, Variable]],
+        can_be_outside_segments: Optional[Union[bool, linopy.Variable]],
         as_time_series: bool = True,
         label: str = 'MultipleSegments',
     ):
@@ -975,9 +974,9 @@ class SegmentedSharesModel(Model):
         self,
         model: SystemModel,
         label_of_element: str,
-        variable_segments: Tuple[Variable, List[Tuple[Skalar, Skalar]]],
+        variable_segments: Tuple[linopy.Variable, List[Tuple[Skalar, Skalar]]],
         share_segments: Dict['Effect', List[Tuple[Skalar, Skalar]]],
-        can_be_outside_segments: Optional[Union[bool, Variable]],
+        can_be_outside_segments: Optional[Union[bool, linopy.Variable]],
         label: str = 'SegmentedShares',
     ):
         super().__init__(model, label_of_element, label)
@@ -989,7 +988,7 @@ class SegmentedSharesModel(Model):
         self._share_segments = share_segments
         self._shares: Dict['Effect', linopy.Variable] = {}
         self._segments_model: Optional[MultipleSegmentsModel] = None
-        self._as_tme_series: bool = isinstance(self._variable_segments[0], VariableTS)
+        self._as_tme_series: bool = 'time' in self._variable_segments[0].indexes
 
     def do_modeling(self, system_model: SystemModel):
         self._shares = {

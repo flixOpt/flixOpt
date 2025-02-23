@@ -21,7 +21,6 @@ from rich.pretty import Pretty
 from . import utils
 from .config import CONFIG
 from .core import Numeric, Numeric_TS, NumericData, Skalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
-from .math_modeling import Equation, Inequation, MathModel, Variable, VariableTS, _Solver
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .effects import EffectCollection
@@ -560,43 +559,6 @@ class ElementModel(Model):
         """
         super().__init__(model, label_of_element=element.label_full, label=element.label, label_full=element.label_full)
         self.element = element
-
-
-def create_equation(
-    label: str, element_model: ElementModel, eq_type: Literal['eq', 'ineq'] = 'eq'
-) -> Union[Equation, Inequation]:
-    """Creates an Equation and adds it to the model of the Element"""
-    if eq_type == 'eq':
-        constr = Equation(f'{element_model.label_full}_{label}', label)
-    elif eq_type == 'ineq':
-        constr = Inequation(f'{element_model.label_full}_{label}', label)
-    element_model.add_constraints(constr)
-    return constr
-
-
-def create_variable(
-    label: str,
-    element_model: ElementModel,
-    length: int,
-    is_binary: bool = False,
-    fixed_value: Optional[Numeric] = None,
-    lower_bound: Optional[Numeric] = None,
-    upper_bound: Optional[Numeric] = None,
-    previous_values: Optional[Numeric] = None,
-    avoid_use_of_variable_ts: bool = False,
-) -> VariableTS:
-    """Creates a VariableTS and adds it to the model of the Element"""
-    variable_label = f'{element_model.label_full}_{label}'
-    if length > 1 and not avoid_use_of_variable_ts:
-        var = VariableTS(
-            variable_label, length, label, is_binary, fixed_value, lower_bound, upper_bound, previous_values
-        )
-        logger.debug(f'Created VariableTS "{variable_label}": [{length}]')
-    else:
-        var = Variable(variable_label, length, label, is_binary, fixed_value, lower_bound, upper_bound)
-        logger.debug(f'Created Variable "{variable_label}": [{length}]')
-    element_model.add_variables(var)
-    return var
 
 
 def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_label: bool = False) -> Any:

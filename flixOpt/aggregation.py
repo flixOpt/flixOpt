@@ -19,13 +19,10 @@ from .components import Storage
 from .core import Skalar, TimeSeriesData
 from .elements import Component
 from .flow_system import FlowSystem
-from .math_modeling import Equation, Variable, VariableTS
 from .structure import (
     Element,
     Model,
     SystemModel,
-    create_equation,
-    create_variable,
 )
 
 if TYPE_CHECKING:
