@@ -148,7 +148,7 @@ class _Constraint:
         factor: Numeric,
         indices_of_variable: Optional[Union[int, np.ndarray, range, List[int]]] = None,
         as_sum: bool = False,
-    ) -> None:
+    ) -> '_Constraint':
         """
         Adds a summand to the left side of the equation.
 
@@ -196,8 +196,9 @@ class _Constraint:
                 f'Length of Summand with variable "{variable.label}" does not fit equation "{self.label}": {e}'
             ) from e
         self.summands.append(summand)
+        return self
 
-    def add_constant(self, value: Numeric) -> None:
+    def add_constant(self, value: Numeric) -> '_Constraint':
         """
         Adds a constant value to the rigth side of the equation
 
@@ -224,6 +225,8 @@ class _Constraint:
             self._update_length(length)
         except ValueError as e:
             raise ValueError(f'Length of Constant {value=} does not fit: {e}') from e
+
+        return self
 
     def description(self, at_index: int = 0) -> str:
         raise NotImplementedError('Not implemented for Abstract class <_Constraint>')
