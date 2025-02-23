@@ -12,7 +12,7 @@ import linopy
 import numpy as np
 import pandas as pd
 
-from .core import Numeric, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
+from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
 from .structure import Element, ElementModel, Model, SystemModel
 

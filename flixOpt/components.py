@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from . import utils
-from .core import Numeric, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
+from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .elements import Component, ComponentModel, Flow
 from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
@@ -144,14 +144,14 @@ class Storage(Component):
         charging: Flow,
         discharging: Flow,
         capacity_in_flow_hours: Union[Scalar, InvestParameters],
-        relative_minimum_charge_state: Numeric = 0,
-        relative_maximum_charge_state: Numeric = 1,
+        relative_minimum_charge_state: NumericData = 0,
+        relative_maximum_charge_state: NumericData = 1,
         initial_charge_state: Optional[Union[Scalar, Literal['lastValueOfSim']]] = 0,
         minimal_final_charge_state: Optional[Scalar] = None,
         maximal_final_charge_state: Optional[Scalar] = None,
-        eta_charge: Numeric = 1,
-        eta_discharge: Numeric = 1,
-        relative_loss_per_hour: Numeric = 0,
+        eta_charge: NumericData = 1,
+        eta_discharge: NumericData = 1,
+        relative_loss_per_hour: NumericData = 0,
         prevent_simultaneous_charge_and_discharge: bool = True,
         meta_data: Optional[Dict] = None,
     ):
@@ -412,7 +412,7 @@ class LinearConverterModel(ComponentModel):
         # (linear) segments:
         else:
             # TODO: Improve Inclusion of OnOffParameters. Instead of creating a Binary in every flow, the binary could only be part of the Segment itself
-            segments: Dict[str, List[Tuple[Numeric, Numeric]]] = {
+            segments: Dict[str, List[Tuple[NumericData, NumericData]]] = {
                 flow.model.flow_rate.name: [
                     (ts1.active_data, ts2.active_data) for ts1, ts2 in self.element.segmented_conversion_factors[flow]
                 ]
@@ -523,7 +523,7 @@ class StorageModel(ComponentModel):
             )
 
     @property
-    def absolute_charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
+    def absolute_charge_state_bounds(self) -> Tuple[NumericData, NumericData]:
         relative_lower_bound, relative_upper_bound = self.relative_charge_state_bounds
         if not isinstance(self.element.capacity_in_flow_hours, InvestParameters):
             return (
@@ -537,7 +537,7 @@ class StorageModel(ComponentModel):
             )
 
     @property
-    def relative_charge_state_bounds(self) -> Tuple[Numeric, Numeric]:
+    def relative_charge_state_bounds(self) -> Tuple[NumericData, NumericData]:
         return (
             self.element.relative_minimum_charge_state.active_data,
             self.element.relative_maximum_charge_state.active_data,

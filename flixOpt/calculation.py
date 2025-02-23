@@ -23,7 +23,7 @@ import yaml
 from . import utils as utils
 from .aggregation import AggregationModel, AggregationParameters
 from .components import Storage
-from .core import Numeric, Scalar
+from .core import NumericData, Scalar
 from .elements import Component
 from .features import InvestmentModel
 from .flow_system import FlowSystem
@@ -389,7 +389,7 @@ class SegmentedCalculation(Calculation):
 
     def results(
         self, combined_arrays: bool = False, combined_scalars: bool = False, individual_results: bool = False
-    ) -> Dict[str, Union[Numeric, Dict[str, Numeric]]]:
+    ) -> Dict[str, Union[NumericData, Dict[str, NumericData]]]:
         """
         Retrieving the results of a Segmented Calculation is not as straight forward as with other Calculation types.
         You have 3 options:
@@ -539,7 +539,7 @@ def _remove_empty_dicts(d: Dict[Any, Any]) -> Dict[Any, Any]:
 
 
 def _combine_nested_arrays(
-    *dicts: Dict[str, Union[Numeric, dict]],
+    *dicts: Dict[str, Union[NumericData, dict]],
     trim: Optional[int] = None,
     length_per_array: Optional[int] = None,
 ) -> Dict[str, Union[np.ndarray, dict]]:
@@ -550,7 +550,7 @@ def _combine_nested_arrays(
     Parameters
     ----------
     *dicts : Dict[str, Union[np.ndarray, dict]]
-        Dictionaries with matching structures and Numeric values.
+        Dictionaries with matching structures and NumericData values.
     trim : int, optional
         Number of elements to trim from the end of each array except the last. Defaults to None.
     length_per_array : int, optional
@@ -574,7 +574,7 @@ def _combine_nested_arrays(
     )
 
     def combine_arrays_recursively(
-        *values: Union[Numeric, Dict[str, Numeric], Any],
+        *values: Union[NumericData, Dict[str, NumericData], Any],
     ) -> Optional[Union[np.ndarray, Dict[str, Union[np.ndarray, dict]]]]:
         if all(isinstance(val, dict) for val in values):  # If all values are dictionaries, recursively combine each key
             return {key: combine_arrays_recursively(*(val[key] for val in values)) for key in values[0]}
@@ -600,7 +600,7 @@ def _combine_nested_arrays(
     return _remove_empty_dicts(combined_arrays)
 
 
-def _combine_nested_scalars(*dicts: Dict[str, Union[Numeric, dict]]) -> Dict[str, Union[List[Scalar], dict]]:
+def _combine_nested_scalars(*dicts: Dict[str, Union[NumericData, dict]]) -> Dict[str, Union[List[Scalar], dict]]:
     """
     Combines multiple dictionaries with identical structures by combining its skalar values to a list.
     Filters out all other values.
@@ -608,11 +608,11 @@ def _combine_nested_scalars(*dicts: Dict[str, Union[Numeric, dict]]) -> Dict[str
     Parameters
     ----------
     *dicts : Dict[str, Union[np.ndarray, dict]]
-        Dictionaries with matching structures and Numeric values.
+        Dictionaries with matching structures and NumericData values.
     """
 
     def combine_scalars_recursively(
-        *values: Union[Numeric, Dict[str, Numeric], Any],
+        *values: Union[NumericData, Dict[str, NumericData], Any],
     ) -> Optional[Union[List[Scalar], Dict[str, Union[List[Scalar], dict]]]]:
         # If all values are dictionaries, recursively combine each key
         if all(isinstance(val, dict) for val in values):

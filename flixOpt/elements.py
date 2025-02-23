@@ -170,7 +170,7 @@ class Flow(Element):
         flow_hours_total_min: Optional[Scalar] = None,
         load_factor_min: Optional[Scalar] = None,
         load_factor_max: Optional[Scalar] = None,
-        previous_flow_rate: Optional[Numeric] = None,
+        previous_flow_rate: Optional[NumericData] = None,
         meta_data: Optional[Dict] = None,
     ):
         r"""
@@ -436,7 +436,7 @@ class FlowModel(ElementModel):
         return None
 
     @property
-    def absolute_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
+    def absolute_flow_rate_bounds(self) -> Tuple[NumericData, NumericData]:
         """Returns absolute flow rate bounds. Iportant for OnOffModel"""
         rel_min, rel_max = self.relative_flow_rate_bounds
         size = self.element.size
@@ -448,7 +448,7 @@ class FlowModel(ElementModel):
             return rel_min * size, rel_max * size
 
     @property
-    def relative_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
+    def relative_flow_rate_bounds(self) -> Tuple[NumericData, NumericData]:
         """Returns relative flow rate bounds."""
         fixed_profile = self.element.fixed_relative_profile
         if fixed_profile is None:

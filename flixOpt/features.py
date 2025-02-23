@@ -11,7 +11,7 @@ import numpy as np
 
 from . import utils
 from .config import CONFIG
-from .core import Numeric, Scalar, TimeSeries
+from .core import NumericData, Scalar, TimeSeries
 from .interface import InvestParameters, OnOffParameters
 from .structure import Model, SystemModel
 
@@ -33,8 +33,8 @@ class InvestmentModel(Model):
         label_of_element: str,
         parameters: InvestParameters,
         defining_variable: [linopy.Variable],
-        relative_bounds_of_defining_variable: Tuple[Numeric, Numeric],
-        fixed_relative_profile: Optional[Numeric] = None,
+        relative_bounds_of_defining_variable: Tuple[NumericData, NumericData],
+        fixed_relative_profile: Optional[NumericData] = None,
         label: Optional[str] = None,
         on_variable: Optional[linopy.Variable] = None,
     ):
@@ -195,8 +195,8 @@ class OnOffModel(Model):
         on_off_parameters: OnOffParameters,
         label_of_element: str,
         defining_variables: List[linopy.Variable],
-        defining_bounds: List[Tuple[Numeric, Numeric]],
-        previous_values: List[Optional[Numeric]],
+        defining_bounds: List[Tuple[NumericData, NumericData]],
+        previous_values: List[Optional[NumericData]],
         label: Optional[str] = None,
     ):
         """
@@ -608,13 +608,13 @@ class OnOffModel(Model):
         return self.compute_consecutive_duration(self.previous_off_values, self._model.hours_per_step)
 
     @staticmethod
-    def compute_previous_on_states(previous_values: List[Optional[Numeric]], epsilon: float = 1e-5) -> np.ndarray:
+    def compute_previous_on_states(previous_values: List[Optional[NumericData]], epsilon: float = 1e-5) -> np.ndarray:
         """
         Computes the previous 'on' states {0, 1} of defining variables as a binary array from their previous values.
 
         Parameters:
         ----------
-        previous_values: List[Numeric]
+        previous_values: List[NumericData]
             List of previous values of the defining variables. In Range [0, inf] or None (ignored)
         epsilon : float, optional
             Tolerance for equality to determine "off" state, default is 1e-5.
@@ -637,7 +637,7 @@ class OnOffModel(Model):
 
     @staticmethod
     def compute_consecutive_duration(
-        binary_values: Numeric,
+        binary_values: NumericData,
         hours_per_timestep: Union[int, float, np.ndarray]
     ) -> Scalar:
         """
@@ -699,7 +699,7 @@ class SegmentModel(Model):
         model: SystemModel,
         label_of_element: str,
         segment_index: Union[int, str],
-        sample_points: Dict[str, Tuple[Union[Numeric, TimeSeries], Union[Numeric, TimeSeries]]],
+        sample_points: Dict[str, Tuple[Union[NumericData, TimeSeries], Union[NumericData, TimeSeries]]],
         as_time_series: bool = True,
     ):
         super().__init__(model, label_of_element, f'Segment{segment_index}')
@@ -747,7 +747,7 @@ class MultipleSegmentsModel(Model):
         self,
         model: SystemModel,
         label_of_element: str,
-        sample_points: Dict[str, List[Tuple[Numeric, Numeric]]],
+        sample_points: Dict[str, List[Tuple[NumericData, NumericData]]],
         can_be_outside_segments: Optional[Union[bool, linopy.Variable]],
         as_time_series: bool = True,
         label: str = 'MultipleSegments',
@@ -776,7 +776,7 @@ class MultipleSegmentsModel(Model):
         self._segment_models: List[SegmentModel] = []
 
     def do_modeling(self, system_model: SystemModel):
-        restructured_variables_with_segments: List[Dict[str, Tuple[Numeric, Numeric]]] = [
+        restructured_variables_with_segments: List[Dict[str, Tuple[NumericData, NumericData]]] = [
             {key: values[i] for key, values in self._sample_points.items()} for i in range(self._nr_of_segments)
         ]
 
@@ -843,8 +843,8 @@ class ShareAllocationModel(Model):
         label: Optional[str] = None,
         total_max: Optional[Scalar] = None,
         total_min: Optional[Scalar] = None,
-        max_per_hour: Optional[Numeric] = None,
-        min_per_hour: Optional[Numeric] = None,
+        max_per_hour: Optional[NumericData] = None,
+        min_per_hour: Optional[NumericData] = None,
     ):
         super().__init__(model, label_of_element=label_of_element, label=label)
         if not shares_are_time_series:  # If the condition is True

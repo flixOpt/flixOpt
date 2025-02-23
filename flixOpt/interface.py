@@ -11,7 +11,7 @@ import pandas as pd
 from flixOpt.core import TimeSeriesCollection
 
 from .config import CONFIG
-from .core import Numeric, NumericDataTS, Scalar
+from .core import NumericData, NumericDataTS, Scalar
 from .structure import Element, Interface
 
 if TYPE_CHECKING:
@@ -102,14 +102,14 @@ class InvestParameters(Interface):
 class OnOffParameters(Interface):
     def __init__(
         self,
-        effects_per_switch_on: Union[Dict, Numeric] = None,
-        effects_per_running_hour: Union[Dict, Numeric] = None,
+        effects_per_switch_on: Union[Dict, NumericData] = None,
+        effects_per_running_hour: Union[Dict, NumericData] = None,
         on_hours_total_min: Optional[int] = None,
         on_hours_total_max: Optional[int] = None,
-        consecutive_on_hours_min: Optional[Numeric] = None,
-        consecutive_on_hours_max: Optional[Numeric] = None,
-        consecutive_off_hours_min: Optional[Numeric] = None,
-        consecutive_off_hours_max: Optional[Numeric] = None,
+        consecutive_on_hours_min: Optional[NumericData] = None,
+        consecutive_on_hours_max: Optional[NumericData] = None,
+        consecutive_off_hours_min: Optional[NumericData] = None,
+        consecutive_off_hours_max: Optional[NumericData] = None,
         switch_on_total_max: Optional[int] = None,
         force_switch_on: bool = False,
     ):
