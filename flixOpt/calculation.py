@@ -92,7 +92,7 @@ class Calculation:
 
     def _save_solve_infos(self):
         t_start = timeit.default_timer()
-        indent = 4 if len(self.flow_system.timesteps) < 50 else None
+        indent = 4 if len(self.flow_system.time_series_collection.timesteps) < 50 else None
         with open(self._paths['results'], 'w', encoding='utf-8') as f:
             results = copy_and_convert_datatypes(self.results, use_numpy=False, use_element_label=False)
             json.dump(results, f, indent=indent)
@@ -197,7 +197,7 @@ class AggregatedCalculation(FullCalculation):
         flow_system: FlowSystem,
         aggregation_parameters: AggregationParameters,
         components_to_clusterize: Optional[List[Component]] = None,
-        active_timesteps: Optional[Union[List[int], pd.DatetimeIndex]] = None,
+        active_timesteps: Optional[pd.DatetimeIndex] = None,
     ):
         """
         Class for Optimizing the FLowSystem including:
@@ -207,20 +207,18 @@ class AggregatedCalculation(FullCalculation):
         ----------
         name : str
             name of calculation
+        flow_system : FlowSystem
+            flow_system which should be calculated
         aggregation_parameters : AggregationParameters
             Parameters for aggregation. See documentation of AggregationParameters class.
         components_to_clusterize: List[Component] or None
             List of Components to perform aggregation on. If None, then all components are aggregated.
             This means, teh variables in the components are equalized to each other, according to the typical periods
             computed in the DataAggregation
-        flow_system : FlowSystem
-            flow_system which should be calculated
-        modeling_language : 'pyomo', 'linopy'
-            choose optimization modeling language
-        time_indices : List[int] or None
+        active_timesteps : pd.DatetimeIndex or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
         """
-        if flow_system.periods is not None:
+        if flow_system.time_series_collection.periods is not None:
             raise NotImplementedError('Multiple Periods are currently not supported in AggregatedCalculation')
         super().__init__(name, flow_system, active_timesteps)
         self.aggregation_parameters = aggregation_parameters
@@ -250,14 +248,14 @@ class AggregatedCalculation(FullCalculation):
         t_start_agg = timeit.default_timer()
 
         # Validation
-        dt_min, dt_max = np.min(self.flow_system.hours_per_step), np.max(self.flow_system.hours_per_step)
+        dt_min, dt_max = np.min(self.flow_system.time_series_collection.hours_per_step), np.max(self.flow_system.time_series_collection.hours_per_step)
         if not dt_min == dt_max:
             raise ValueError(
                 f'Aggregation failed due to inconsistent time step sizes:'
                 f'delta_t varies from {dt_min} to {dt_max} hours.'
             )
-        steps_per_period = self.aggregation_parameters.hours_per_period / self.flow_system.hours_per_step.max()
-        is_integer = (self.aggregation_parameters.hours_per_period % self.flow_system.hours_per_step.max()).item() == 0
+        steps_per_period = self.aggregation_parameters.hours_per_period / self.flow_system.time_series_collection.hours_per_timestep.max()
+        is_integer = (self.aggregation_parameters.hours_per_period % self.flow_system.time_series_collection.hours_per_timestep.max()).item() == 0
         if not (steps_per_period.size == 1 and is_integer):
             raise Exception(
                 f'The selected {self.aggregation_parameters.hours_per_period=} does not match the time '
