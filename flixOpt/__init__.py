@@ -8,6 +8,8 @@ from .commons import (
     AggregationParameters,
     Bus,
     Effect,
+    Medium,
+    MediumCategories,
     Flow,
     FlowSystem,
     FullCalculation,

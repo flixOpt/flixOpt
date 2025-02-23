@@ -11,7 +11,7 @@ import numpy as np
 
 from . import utils
 from .core import TimeSeries
-from .structure import Element, SystemModel, get_object_infos_as_dict
+from .structure import Element, SystemModel
 from .elements import Bus, Flow, Component, MediumColors
 from .effects import Effect, EffectCollection
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
