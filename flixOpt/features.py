@@ -788,7 +788,7 @@ class MultipleSegmentsModel(Model):
         ]
 
         for segment_model in self._segment_models:
-            segment_model.do_modeling(system_model)
+            segment_model.do_modeling()
 
         #  eq: - v(t) + (v_0_0 * lambda_0_0 + v_0_1 * lambda_0_1) + (v_1_0 * lambda_1_0 + v_1_1 * lambda_1_1) ... = 0
         #  -> v_0_0, v_0_1 = Stützstellen des Segments 0
@@ -1043,6 +1043,7 @@ class PreventSimultaneousUsageModel(Model):
         for variable in self._simultanious_use_variables:  # classic
             assert variable.attrs['binary'], f'Variable {variable} must be binary for use in {self.__class__.__name__}'
 
+    def do_modeling(self):
         # eq: sum(flow_i.on(t)) <= 1.1 (1 wird etwas größer gewählt wg. Binärvariablengenauigkeit)
         self.add(self._model.add_constraints(sum(self._simultanious_use_variables) <= 1.1,
                                              name=f'{self.label_full}|prevent_simultaneous_use'),

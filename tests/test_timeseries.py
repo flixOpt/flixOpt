@@ -139,7 +139,7 @@ def test_operations_with_linopy():
     (expr + timeseries1) / timeseries1
     expr = var1 * timeseries1
 
-    con = m.add_constraints((expr * timeseries1)  <= 10)
+    m.add_constraints((expr * timeseries1)  <= 10)
 
 
 if __name__ == "__main__":
