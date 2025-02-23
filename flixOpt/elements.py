@@ -458,6 +458,8 @@ class BusModel(ElementModel):
 
     def do_modeling(self) -> None:
         # inputs == outputs
+        for flow in self.element.inputs + self.element.outputs:
+            self.add(flow.model.flow_rate, flow.label_full)
         inputs = sum([flow.model.flow_rate for flow in self.element.inputs])
         outputs = sum([flow.model.flow_rate for flow in self.element.outputs])
         eq_bus_balance = self.add(self._model.add_constraints(
