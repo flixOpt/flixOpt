@@ -1,13 +1,13 @@
-import linopy
-import json
-import pathlib
-import xarray as xr
-from typing import Dict, Union
-import logging
 import datetime
+import json
+import logging
+import pathlib
+from typing import Dict, Union
+
+import linopy
+import xarray as xr
 
 from .flow_system import FlowSystem
-
 
 logger = logging.getLogger('flixOpt')
 

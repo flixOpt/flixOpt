@@ -1,16 +1,16 @@
-import linopy
+import datetime
 import json
+import logging
 import pathlib
+from typing import Dict, List, Literal, Union
 
+import linopy
+import numpy as np
 import pandas as pd
 import xarray as xr
-from typing import Dict, Union, List, Literal
-import logging
-import datetime
-import numpy as np
-from .core import TimeSeriesCollection
 
 from . import plotting, utils
+from .core import TimeSeriesCollection
 
 
 class CalculationResults:
