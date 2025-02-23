@@ -203,7 +203,8 @@ class OnOffModel(ElementModel):
 
         self._on_off_parameters = on_off_parameters
         self._defining_variables = defining_variables
-        self._defining_bounds = defining_bounds
+        # Ensure that no lower bound is below a certain threshold
+        self._defining_bounds = [(np.maximum(lb, CONFIG.modeling.EPSILON), ub) for lb, ub in defining_bounds]
         assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
 
     def do_modeling(self, system_model: SystemModel):
