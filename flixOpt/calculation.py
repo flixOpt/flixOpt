@@ -45,6 +45,7 @@ class Calculation:
         flow_system: FlowSystem,
         active_timesteps: Optional[pd.DatetimeIndex] = None,
         active_periods: Optional[pd.Index] = None,
+        folder: Optional[pathlib.Path] = None,
     ):
         """
         Parameters
@@ -55,6 +56,8 @@ class Calculation:
             flow_system which should be calculated
         active_timesteps : List[int] or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
+        folder : pathlib.Path or None
+            folder where results should be saved. If None, then the current working directory is used.
         """
         self.name = name
         self.flow_system = flow_system
@@ -63,13 +66,17 @@ class Calculation:
         self.active_periods = active_periods
 
         self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}
-        self.folder = pathlib.Path.cwd() / 'results'
+        self.folder = pathlib.Path.cwd() if folder is None else pathlib.Path(folder)
         self.results: Optional[CalculationResults] = None
+
+        if not self.folder.exists():
+            try:
+                self.folder.mkdir(parents=False)
+            except FileNotFoundError as e:
+                raise FileNotFoundError(f'Folder {self.folder} and its parent do not exist. Please create them first.') from e
 
     def to_yaml(self):
         """Save the results to a yaml file"""
-        path = self.folder / self.name
-        path.mkdir(parents=True, exist_ok=True)
         with open(self.folder / f'{self.name}_infos.yaml', 'w', encoding='utf-8') as f:
             yaml.dump(self.infos, f, allow_unicode=True, sort_keys=False, indent=4)
 
@@ -145,10 +152,11 @@ class FullCalculation(Calculation):
 
     def solve(self,
               solver: _Solver,
-              save_results: Union[bool, str, pathlib.Path] = True,
+              save_results: bool = True,
               log_file: Optional[pathlib.Path] = None,
               log_main_results: bool = True):
         t_start = timeit.default_timer()
+
         self.model.solve(log_fn=pathlib.Path(log_file) if log_file is not None else self.folder / f'{self.name}.log',
                          solver_name=solver.name,
                          **solver.options)
@@ -165,8 +173,7 @@ class FullCalculation(Calculation):
 
         self.results = CalculationResults.from_calculation(self)
         if save_results:
-            path = self.folder if save_results is True else pathlib.Path(save_results)
-            self.results.to_file(path, self.name)
+            self.results.to_file(self.folder, self.name)
 
     def _activate_time_series(self):
         self.flow_system.transform_data()
@@ -187,6 +194,7 @@ class AggregatedCalculation(FullCalculation):
         aggregation_parameters: AggregationParameters,
         components_to_clusterize: Optional[List[Component]] = None,
         active_timesteps: Optional[pd.DatetimeIndex] = None,
+        folder: Optional[pathlib.Path] = None
     ):
         """
         Class for Optimizing the FLowSystem including:
@@ -206,10 +214,12 @@ class AggregatedCalculation(FullCalculation):
             computed in the DataAggregation
         active_timesteps : pd.DatetimeIndex or None
             list with indices, which should be used for calculation. If None, then all timesteps are used.
+        folder : pathlib.Path or None
+            folder where results should be saved. If None, then the current working directory is used.
         """
         if flow_system.time_series_collection.periods is not None:
             raise NotImplementedError('Multiple Periods are currently not supported in AggregatedCalculation')
-        super().__init__(name, flow_system, active_timesteps)
+        super().__init__(name, flow_system, active_timesteps, folder=folder)
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
         self.aggregation = None
@@ -236,7 +246,7 @@ class AggregatedCalculation(FullCalculation):
         t_start_agg = timeit.default_timer()
 
         # Validation
-        dt_min, dt_max = np.min(self.flow_system.time_series_collection.hours_per_step), np.max(self.flow_system.time_series_collection.hours_per_step)
+        dt_min, dt_max = np.min(self.flow_system.time_series_collection.hours_per_timestep), np.max(self.flow_system.time_series_collection.hours_per_timestep)
         if not dt_min == dt_max:
             raise ValueError(
                 f'Aggregation failed due to inconsistent time step sizes:'
@@ -279,6 +289,7 @@ class SegmentedCalculation(Calculation):
         timesteps_per_segment: int,
         overlap_timesteps: int,
         nr_of_previous_values: int = 1,
+        folder: Optional[pathlib.Path] = None
     ):
         """
         Dividing and Modeling the problem in (overlapping) segments.
@@ -302,16 +313,18 @@ class SegmentedCalculation(Calculation):
         overlap_timesteps : int
             The number of time_steps that are added to each individual model. Used for better
             results of storages)
+        folder : pathlib.Path or None
+            folder where results should be saved. If None, then the current working directory is used.
         """
-        super().__init__(name, flow_system)
-        if flow_system.periods is not None:
+        super().__init__(name, flow_system, folder=folder)
+        if flow_system.time_series_collection.periods is not None:
             raise NotImplementedError('Multiple Periods are currently not supported in SegmentedCalculation')
         self.timesteps_per_segment = timesteps_per_segment
         self.overlap_timesteps = overlap_timesteps
         self.nr_of_previous_values = nr_of_previous_values
         self.sub_calculations: List[FullCalculation] = []
 
-        self.all_timesteps = self.flow_system.timesteps
+        self.all_timesteps = self.flow_system.time_series_collection.all_timesteps
 
         self.segment_names = [f'Segment_{i + 1}' for i in range(math.ceil(len(self.all_timesteps) / self.timesteps_per_segment))]
         self.active_timesteps_per_segment = self._calculate_timesteps_of_segment()
@@ -335,11 +348,11 @@ class SegmentedCalculation(Calculation):
     def do_modeling_and_solve(
             self,
             solver: _Solver,
-            save_results: Union[bool, str, pathlib.Path] = True,
+            save_results: bool = True,
+            log_file: Optional[pathlib.Path] = None,
             log_main_results: bool = False):
         logger.info(f'{"":#^80}')
         logger.info(f'{" Segmented Solving ":#^80}')
-        self._define_path_names(save_results)
 
         for i, (segment_name, timesteps_of_segment) in enumerate(zip(self.segment_names, self.active_timesteps_per_segment, strict=False)):
             if self.sub_calculations:
@@ -362,99 +375,15 @@ class SegmentedCalculation(Calculation):
                     f'Investments are not supported in Segmented Calculation! '
                     f'Following InvestmentModels were found: {invest_elements}'
                 )
-            calculation.solve(solver, save_results=False, log_main_results=log_main_results)
+            calculation.solve(solver, save_results=save_results,
+                              log_file=pathlib.Path(log_file) if log_file is not None else self.folder / f'{self.name}.log',
+                              log_main_results=log_main_results)
 
         self._reset_start_values()
 
         for calc in self.sub_calculations:
             for key, value in calc.durations.items():
                 self.durations[key] += value
-
-        if save_results:
-            self._save_solve_infos()
-
-    def results(
-        self, combined_arrays: bool = False, combined_scalars: bool = False, individual_results: bool = False
-    ) -> Dict[str, Union[NumericData, Dict[str, NumericData]]]:
-        """
-        Retrieving the results of a Segmented Calculation is not as straight forward as with other Calculation types.
-        You have 3 options:
-        1.  combined_arrays:
-            Retrieve the combined array Results of all Segments as 'combined_arrays'. All result arrays ar concatenated,
-            taking care of removing the overlap. These results can be directly compared to other Calculation results.
-            Unfortunately, Scalar values like the total of effects can not be combined in a deterministic way.
-            Rather convert the time series effect results to a sum yourself.
-        2.  combined_scalars:
-            Retrieve the combined scalar Results of all Segments. All Scalar Values like the total of effects are
-            combined and stored in a List. Take care that the total of multiple Segment is not equivalent to the
-            total of the total timeSeries, as it includes the Overlap!
-        3.  individual_results:
-            Retrieve the individual results of each Segment
-
-        """
-        options_chosen = combined_arrays + combined_scalars + individual_results
-        assert options_chosen == 1, (
-            f'Exactly one of the three options to retrieve the results needs to be chosen! You chose {options_chosen}!'
-        )
-        all_results = {calculation.name: calculation.results for calculation in self.sub_calculations}
-        if combined_arrays:
-            return {
-                **_combine_nested_arrays(*list(all_results.values()), length_per_array=self.timesteps_per_segment),
-                'Time': self.flow_system.time_series_collection._timesteps_extra.tolist(),
-                'Time intervals in hours': self.flow_system.time_series_collection._hours_per_timestep,
-            }
-        elif combined_scalars:
-            return _combine_nested_scalars(*list(all_results.values()))
-        else:
-            return all_results
-
-    def _save_solve_infos(self):
-        t_start = timeit.default_timer()
-        indent = 4 if len(self.flow_system.timesteps) < 50 else None
-        with open(self._paths['results'], 'w', encoding='utf-8') as f:
-            results = copy_and_convert_datatypes(
-                self.results(combined_arrays=True), use_numpy=False, use_element_label=False
-            )
-            json.dump(results, f, indent=indent)
-
-        with open(self._paths['data'], 'w', encoding='utf-8') as f:
-            data = copy_and_convert_datatypes(self.flow_system.infos(), use_numpy=False, use_element_label=False)
-            json.dump(data, f, indent=indent)
-
-        with open(self._paths['results'].parent / f'{self.name}_results_extra.json', 'w', encoding='utf-8') as f:
-            results = {
-                'Individual Results': copy_and_convert_datatypes(
-                    self.results(individual_results=True), use_numpy=False, use_element_label=False
-                ),
-                'Scalar Results': copy_and_convert_datatypes(
-                    self.results(combined_scalars=True), use_numpy=False, use_element_label=False
-                ),
-            }
-            json.dump(results, f, indent=indent)
-        self.durations['saving'] = round(timeit.default_timer() - t_start, 2)
-
-        t_start = timeit.default_timer()
-        nodes_info, edges_info = self.flow_system.network_infos()
-        infos = {
-            'Calculation': self.infos,
-            'Model': self.sub_calculations[0].model.infos,
-            'FlowSystem': get_compact_representation(self.flow_system.infos(use_numpy=True, use_element_label=True)),
-            'Network': {'Nodes': nodes_info, 'Edges': edges_info},
-        }
-
-        with open(self._paths['infos'], 'w', encoding='utf-8') as f:
-            yaml.dump(
-                infos,
-                f,
-                width=1000,  # Verhinderung Zeilenumbruch für lange equations
-                allow_unicode=True,
-                sort_keys=False,
-            )
-
-        message = f' Saved Calculation: {self.name} '
-        logger.info(f'{"":#^80}\n{message:#^80}\n{"":#^80}')
-        logger.info(f'Saving calculation to .json took {self.durations["saving"]:>8.2f} seconds')
-        logger.info(f'Saving calculation to .yaml took {(timeit.default_timer() - t_start):>8.2f} seconds')
 
     def _transfer_start_values(self, segment_index: int):
         """
