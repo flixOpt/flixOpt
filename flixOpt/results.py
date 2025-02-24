@@ -228,16 +228,18 @@ class ComponentResults(_NodeResults):
     def charge_state(self) -> linopy.Variable:
         return self.variables[self._charge_state]
 
-    def plot_charge_state_and_flow_rates(self, show: bool = True) -> plotly.graph_objs._figure.Figure:
+    def plot_charge_state(self, show: bool = True) -> plotly.graph_objs._figure.Figure:
         fig = plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
                                     mode='area',
                                     title=f'Operation Balance of {self.label}',
-                                    show=show)
+                                    show=False)
         charge_state = self.charge_state.solution.to_dataframe()
         fig.add_trace(plotly.graph_objs.Scatter(x=charge_state.index,
-                                                y=charge_state.values,
+                                                y=charge_state.values.flatten(),
                                                 mode='lines',
                                                 name=self.charge_state.name))
+        if show:
+            fig.show()
         return fig
 
     def charge_state_and_flow_rates(self,
