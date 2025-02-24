@@ -124,6 +124,7 @@ def with_plotly(
         # Split columns into positive, negative, and mixed categories
         positive_columns = list(data.columns[(data >= 0).all()])
         negative_columns = list(data.columns[(data <= 0).all()])
+        negative_columns = [column for column in negative_columns if column not in positive_columns]
         mixed_columns = list(set(data.columns) - set(positive_columns + negative_columns))
         if mixed_columns:
             logger.warning(
