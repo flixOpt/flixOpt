@@ -88,8 +88,8 @@ class CalculationResults:
         self.effects = {label: EffectResults.from_json(self, infos)
                         for label, infos in flow_system_structure['Effects'].items()}
 
-        self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in flow_system_structure['Time']])
-        self.periods = pd.Index(flow_system_structure['Periods']) if flow_system_structure['Periods'] is not None else None
+        self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in flow_system_structure['Time']], name='time')
+        self.periods = pd.Index(flow_system_structure['Periods'], name = 'period') if flow_system_structure['Periods'] is not None else None
         self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.timesteps_extra, self.periods)
 
     def __getitem__(self, key: str) -> Union['ComponentResults', 'BusResults', 'EffectResults']:
@@ -159,8 +159,8 @@ class _NodeResults(_ElementResults):
                  label: str,
                  variables: List[str],
                  constraints: List[str],
-                 inputs: Dict[str, xr.DataArray],
-                 outputs: Dict[str, xr.DataArray]):
+                 inputs: List[str],
+                 outputs: List[str]):
         super().__init__(calculation_results, label, variables, constraints)
         self.inputs = inputs
         self.outputs = outputs
