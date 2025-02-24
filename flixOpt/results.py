@@ -118,6 +118,22 @@ class CalculationResults:
             json.dump(self._flow_system_structure, f, indent=4, ensure_ascii=False)
         logger.info(f'Saved calculation "{name}" to {path}')
 
+    def plot_heatmap(self,
+                     variable: str,
+                     heatmap_timeframes: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
+                     heatmap_timesteps_per_frame: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
+                     color_map: str = 'portland',
+                     ):
+        variable = self.model.variables[variable]
+        data = variable.solution.to_dataframe()
+        heatmap_data = plotting.heat_map_data_from_df(data, heatmap_timeframes, heatmap_timesteps_per_frame, 'ffill')
+        fig = plotting.heat_map_plotly(
+            heatmap_data, title=variable.name, color_map=color_map,
+            xlabel=f'timeframe [{heatmap_timeframes}]', ylabel=f'timesteps [{heatmap_timesteps_per_frame}]'
+        )
+        fig.show()
+        return fig
+
 
 class _ElementResults:
     @classmethod
