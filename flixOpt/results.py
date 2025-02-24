@@ -8,6 +8,7 @@ import linopy
 import numpy as np
 import pandas as pd
 import xarray as xr
+import plotly
 
 from . import plotting, utils
 from .core import TimeSeriesCollection
@@ -165,19 +166,48 @@ class _NodeResults(_ElementResults):
         self.inputs = inputs
         self.outputs = outputs
 
-    def plot_balance(self, show: bool = True):
-        return plotting.with_plotly(self.operation_balance(),
+    def plot_flow_rates(self, show: bool = True):
+        return plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
                                     mode='area',
                                     title=f'Operation Balance of {self.label}',
                                     show=show)
 
-    def operation_balance(self, negate_inputs: bool = True, negate_outputs: bool = False):
-        df = self.variables_time.solution.to_dataframe()
+    def flow_rates(self,
+                   negate_inputs: bool = True,
+                   negate_outputs: bool = False,
+                   threshold: Optional[float] = 1e-5,
+                   with_last_timestep: bool = False) -> xr.Dataset:
+        variables = [name for name in self.variables if name.endswith(('|flow_rate', '|excess_input', '|excess_output'))]
+        ds = self._sanitize_dataset(
+            ds=self.variables[variables].solution,
+            threshold=threshold,
+            with_last_timestep=with_last_timestep
+        )
+        self._negate_flows(ds, negate_inputs, negate_outputs)
+        return ds
+
+    def _sanitize_dataset(self,
+                            ds: xr.Dataset,
+                            threshold: Optional[float] = 1e-5,
+                            with_last_timestep: bool = False) -> xr.Dataset:
+        if threshold is not None:
+            abs_ds = xr.apply_ufunc(np.abs, ds)
+            vars_to_drop = [var for var in ds.data_vars if (abs_ds[var] <= threshold).all()]
+            ds = ds.drop_vars(vars_to_drop)
+        if with_last_timestep and not ds.indexes['time'].equals(self._calculation_results.timesteps_extra):
+            ds = ds.reindex({'time': self._calculation_results.timesteps_extra}, fill_value=np.nan)
+        return ds
+
+    def _negate_flows(self, ds: xr.Dataset, negate_outputs: bool = False, negate_inputs: bool = True) -> xr.Dataset:
         if negate_outputs:
-            df[self.outputs] = -df[self.outputs]
+            for name in self.outputs:
+                if name in ds:
+                    ds[name] = -ds[name]
         if negate_inputs:
-            df[self.inputs] = -df[self.inputs]
-        return df
+            for name in self.inputs:
+                if name in ds:
+                    ds[name] = -ds[name]
+        return ds
 
 
 class BusResults(_NodeResults):
@@ -186,6 +216,42 @@ class BusResults(_NodeResults):
 
 class ComponentResults(_NodeResults):
     """Results for a Component"""
+
+    def is_storage(self):
+        return self._charge_state in self.variables
+
+    @property
+    def _charge_state(self) -> str:
+        return f'{self.label}|charge_state'
+
+    @property
+    def charge_state(self) -> linopy.Variable:
+        return self.variables[self._charge_state]
+
+    def plot_charge_state_and_flow_rates(self, show: bool = True) -> plotly.graph_objs._figure.Figure:
+        fig = plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
+                                    mode='area',
+                                    title=f'Operation Balance of {self.label}',
+                                    show=show)
+        charge_state = self.charge_state.solution.to_dataframe()
+        fig.add_trace(plotly.graph_objs.Scatter(x=charge_state.index,
+                                                y=charge_state.values,
+                                                mode='lines',
+                                                name=self.charge_state.name))
+        return fig
+
+    def charge_state_and_flow_rates(self,
+                                    negate_inputs: bool = True,
+                                    negate_outputs: bool = False,
+                                    threshold: Optional[float] = 1e-5) -> xr.Dataset:
+        variables = self.inputs + self.outputs + [self._charge_state]
+        ds = self._sanitize_dataset(
+            ds=self.variables[variables].solution,
+            threshold=threshold,
+            with_last_timestep=True
+        )
+        self._negate_flows(ds, negate_inputs, negate_outputs)
+        return ds
 
 
 class EffectResults(_ElementResults):
