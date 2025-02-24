@@ -10,7 +10,7 @@ import pandas as pd
 import xarray as xr
 import plotly
 
-from . import plotting, utils
+from . import plotting
 from .core import TimeSeriesCollection
 
 from .io import _results_structure
@@ -134,6 +134,10 @@ class CalculationResults:
         fig.show()
         return fig
 
+    @property
+    def storages(self) -> List['ComponentResults']:
+        return [comp for comp in self.components.values() if comp.is_storage]
+
 
 class _ElementResults:
     @classmethod
@@ -233,7 +237,8 @@ class BusResults(_NodeResults):
 class ComponentResults(_NodeResults):
     """Results for a Component"""
 
-    def is_storage(self):
+    @property
+    def is_storage(self) -> bool:
         return self._charge_state in self.variables
 
     @property
@@ -242,9 +247,13 @@ class ComponentResults(_NodeResults):
 
     @property
     def charge_state(self) -> linopy.Variable:
+        if not self.is_storage:
+            raise ValueError(f'Cant get charge_state. "{self.label}" is not a storage')
         return self.variables[self._charge_state]
 
     def plot_charge_state(self, show: bool = True) -> plotly.graph_objs._figure.Figure:
+        if not self.is_storage:
+            raise ValueError(f'Cant plot charge_state. "{self.label}" is not a storage')
         fig = plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
                                     mode='area',
                                     title=f'Operation Balance of {self.label}',
@@ -262,6 +271,8 @@ class ComponentResults(_NodeResults):
                                     negate_inputs: bool = True,
                                     negate_outputs: bool = False,
                                     threshold: Optional[float] = 1e-5) -> xr.Dataset:
+        if not self.is_storage:
+            raise ValueError(f'Cant get charge_state. "{self.label}" is not a storage')
         variables = self.inputs + self.outputs + [self._charge_state]
         ds = self._sanitize_dataset(
             ds=self.variables[variables].solution,
@@ -277,4 +288,3 @@ class EffectResults(_ElementResults):
 
     def get_shares_from(self, element: str):
         return self.variables[[name for name in self._variables if name.startswith(f'{element}->')]]
-
