@@ -66,7 +66,7 @@ class Calculation:
         self.active_periods = active_periods
 
         self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}
-        self.folder = pathlib.Path.cwd() if folder is None else pathlib.Path(folder)
+        self.folder = pathlib.Path.cwd() / 'results' if folder is None else pathlib.Path(folder)
         self.results: Optional[CalculationResults] = None
 
         if not self.folder.exists():
