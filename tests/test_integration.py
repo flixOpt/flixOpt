@@ -68,33 +68,32 @@ class TestSimple(BaseTest):
     def test_from_results(self):
         calculation = self.model(save_results=True)
 
-        results = fx.results.CalculationResults(calculation.name, 'results')
+        results = calculation.results
 
         # test effect results
         self.assert_almost_equal_numeric(
-            results.effect_results['costs'].all_results['total'],
+            results.model.variables['costs|total'].solution.values,
             81.88394666666667,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            results.effect_results['CO2'].all_results['total'], 255.09184, 'CO2 doesnt match expected value'
+            results.model.variables['CO2|total'].solution.values, 255.09184, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            results.component_results['Boiler'].variables_flat['Q_th__flow_rate'],
+            results.model.variables['Boiler (Q_th)|flow_rate'].solution.values,
             [0, 0, 0, 28.4864, 35, 0, 0, 0, 0],
             'Q_th doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            results.component_results['CHP_unit'].variables_flat['Q_th__flow_rate'],
+            results.model.variables['CHP_unit (Q_th)|flow_rate'].solution.values,
             [30.0, 26.66666667, 75.0, 75.0, 75.0, 20.0, 20.0, 20.0, 20.0],
             'Q_th doesnt match expected value',
         )
 
-        df = results.to_dataframe('Fernwärme', with_last_time_step=False)
-        comps = calculation.flow_system.components
+        df = results['Fernwärme'].operation_balance()
         self.assert_almost_equal_numeric(
-            comps['Wärmelast'].sink.model.flow_rate.solution.values,
-            df['Wärmelast__Q_th_Last'],
+            calculation.flow_system.components['Wärmelast'].sink.model.flow_rate.solution.values,
+            df['Wärmelast (Q_th_Last)|flow_rate'].values,
             'Loaded Results and directly used results dont match, or loading didnt work properly',
         )
 
