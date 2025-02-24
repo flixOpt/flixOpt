@@ -96,7 +96,7 @@ def flow_system_minimal(timesteps) -> fx.FlowSystem:
 
 def solve_and_load(
     flow_system: fx.FlowSystem, solver
-) -> fx.results_linopy.CalculationResults:
+) -> fx.results.CalculationResults:
     calculation = fx.FullCalculation('Calculation', flow_system)
     calculation.do_modeling()
     calculation.solve(solver, True)

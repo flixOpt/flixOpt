@@ -25,7 +25,6 @@ from .commons import (
     linear_converters,
     plotting,
     results,
-    results_linopy,
     solvers,
 )
 

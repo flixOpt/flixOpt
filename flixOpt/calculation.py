@@ -29,7 +29,7 @@ from .flow_system import FlowSystem
 from .solvers import _Solver
 from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
 from .config import CONFIG
-from .results_linopy import CalculationResults
+from .results import CalculationResults
 
 logger = logging.getLogger('flixOpt')
 
