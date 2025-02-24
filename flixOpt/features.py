@@ -469,10 +469,11 @@ class OnOffModel(ElementModel):
             first_step_min: Skalar = (
                 minimum_duration.active_data[0] if minimum_duration.is_array else minimum_duration.active_data
             )
-            if duration_in_hours.previous_values < first_step_min:
+            if 0 < duration_in_hours.previous_values < first_step_min:
                 # Force the first step to be = 1, if the minimum_duration is not reached in previous_values
-                # Note: Only if the previous consecutive_duration is smaller than the minimum duration
-                # eq: On(t=0) = 1
+                # Note: Only if the previous consecutive_duration is smaller than the minimum duration,
+                # and the previous_values is greater 0!
+                # eq: duration(t=0) = duration(t=-1) + dt(0)
                 eq_min_duration_inital = create_equation(f'{label_prefix}_minimum_duration_inital', self, eq_type='eq')
                 eq_min_duration_inital.add_summand(binary_variable, 1, time_indices[0])
                 eq_min_duration_inital.add_constant(1)
