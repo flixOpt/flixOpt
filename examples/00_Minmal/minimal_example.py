@@ -55,7 +55,7 @@ if __name__ == '__main__':
     calculation.do_modeling()
 
     # --- Solve the Calculation and Save Results ---
-    calculation.solve(fx.solvers.HighsSolver(0.01, 60), save_results=True)
+    calculation.solve(fx.solvers.HighsSolver(0.01, 60))
 
     # --- Analyze Results ---
     # Access the results of an element
