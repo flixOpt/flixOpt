@@ -490,9 +490,13 @@ class BusModel(ElementModel):
             )
 
     def results_structure(self):
-        return {**super().results_structure(),
-                'inputs': [flow.model.flow_rate.name for flow in self.element.inputs],
-                'outputs': [flow.model.flow_rate.name for flow in self.element.outputs]}
+        inputs = [flow.model.flow_rate.name for flow in self.element.inputs]
+        outputs = [flow.model.flow_rate.name for flow in self.element.outputs]
+        if self.excess_input is not None:
+            inputs.append(self.excess_input.name)
+        if self.excess_output is not None:
+            outputs.append(self.excess_output.name)
+        return {**super().results_structure(), 'inputs': inputs, 'outputs': outputs}
 
     def solution_structured(
         self,
