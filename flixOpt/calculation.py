@@ -75,11 +75,6 @@ class Calculation:
             except FileNotFoundError as e:
                 raise FileNotFoundError(f'Folder {self.folder} and its parent do not exist. Please create them first.') from e
 
-    def to_yaml(self):
-        """Save the results to a yaml file"""
-        with open(self.folder / f'{self.name}_infos.yaml', 'w', encoding='utf-8') as f:
-            yaml.dump(self.infos, f, allow_unicode=True, sort_keys=False, indent=4)
-
     @property
     def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
         from flixOpt.features import InvestmentModel
@@ -152,7 +147,6 @@ class FullCalculation(Calculation):
 
     def solve(self,
               solver: _Solver,
-              save_results: bool = True,
               log_file: Optional[pathlib.Path] = None,
               log_main_results: bool = True):
         t_start = timeit.default_timer()
@@ -172,8 +166,18 @@ class FullCalculation(Calculation):
             )
 
         self.results = CalculationResults.from_calculation(self)
-        if save_results:
-            self.results.to_file(self.folder, self.name)
+
+    def save_results(self):
+        """
+        Saves the results of the calculation to a folder with the name of the calculation.
+        The folder is created if it does not exist.
+
+        The CalculationResults are saved as a .nc and a .json file.
+        The calculation infos are saved as a .yaml file.
+        """
+        with open(self.folder / f'{self.name}_infos.yaml', 'w', encoding='utf-8') as f:
+            yaml.dump(self.infos, f, allow_unicode=True, sort_keys=False, indent=4)
+        self.results.to_file(self.folder, self.name)
 
     def _activate_time_series(self):
         self.flow_system.transform_data()
