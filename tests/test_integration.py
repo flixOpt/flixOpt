@@ -714,7 +714,7 @@ class TestModelingTypes(BaseTest):
     def test_segmented(self):
         calculation = self.calculate('segmented')
         self.assert_almost_equal_numeric(
-            sum(calculation.results(combined_arrays=True)['Effects']['costs']['operation']['total_per_timestep']),
+            sum(calculation.results.solution_without_overlap('costs|operation|total_per_timestep')),
             343613,
             'costs doesnt match expected value',
         )
@@ -826,7 +826,7 @@ class TestModelingTypes(BaseTest):
             calc.solve(self.get_solver(), save_results=True)
         elif doSegmentedCalc:
             calc = fx.SegmentedCalculation('segModel', es, timesteps_per_segment=96, overlap_timesteps=1)
-            calc.do_modeling_and_solve(self.get_solver(), save_results=True)
+            calc.do_modeling_and_solve(self.get_solver())
         elif doAggregatedCalc:
             calc = fx.AggregatedCalculation(
                 'aggModel',
