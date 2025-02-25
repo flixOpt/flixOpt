@@ -118,7 +118,7 @@ class Effect(Element):
         )
 
         self.specific_share_to_other_effects_operation = flow_system.create_effect_time_series(
-            f'{self.label_full}|operation_to',
+            f'{self.label_full}|operation->',
             self.specific_share_to_other_effects_operation,
             'operation'
         )
