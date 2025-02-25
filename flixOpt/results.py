@@ -65,10 +65,11 @@ class CalculationResults:
         """ Create CalculationResults directly from file"""
         folder = pathlib.Path(folder)
         path = folder / name
-        model = linopy.read_netcdf(path.with_suffix('.nc'))
+        nc_file = path.with_suffix('.nc')
+        logger.info(f'loading calculation "{name}" from file ("{nc_file}")')
+        model = linopy.read_netcdf(nc_file)
         with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
             flow_system_structure = json.load(f)
-        logger.info(f'Loaded calculation "{name}" from file ({path})')
         return cls(model=model, flow_system_structure=flow_system_structure, name=name, folder=folder)
 
     @classmethod
@@ -128,7 +129,7 @@ class CalculationResults:
                      heatmap_timeframes: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
                      heatmap_timesteps_per_frame: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
                      color_map: str = 'portland',
-                     save: Union[bool, pathlib.Path] = True,
+                     save: Union[bool, pathlib.Path] = False,
                      show: bool = True
                      ) -> plotly.graph_objs.Figure:
         return plot_heatmap(
@@ -194,7 +195,7 @@ class _NodeResults(_ElementResults):
         self.outputs = outputs
 
     def plot_flow_rates(self,
-                        save: Union[bool, pathlib.Path] = True,
+                        save: Union[bool, pathlib.Path] = False,
                         show: bool = True):
         fig = plotting.with_plotly(
             self.flow_rates(with_last_timestep=True).to_dataframe(), mode='area', title=f'Flow rates of {self.label}'
@@ -246,7 +247,7 @@ class ComponentResults(_NodeResults):
         return self.variables[self._charge_state]
 
     def plot_charge_state(self,
-                          save: Union[bool, pathlib.Path] = True,
+                          save: Union[bool, pathlib.Path] = False,
                           show: bool = True) -> plotly.graph_objs._figure.Figure:
         if not self.is_storage:
             raise ValueError(f'Cant plot charge_state. "{self.label}" is not a storage')
@@ -309,9 +310,10 @@ class SegmentedCalculationResults:
         """ Create SegmentedCalculationResults directly from file"""
         folder = pathlib.Path(folder)
         path = folder / name
+        nc_file = path.with_suffix('.nc')
+        logger.info(f'loading calculation "{name}" from file ("{nc_file}")')
         with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
             meta_data = json.load(f)
-        logger.info(f'Loaded calculation "{name}" from file ({path})')
         return cls(
             [CalculationResults.from_file(folder, name) for name in meta_data['sub_calculations']],
             all_timesteps=pd.DatetimeIndex([datetime.datetime.fromisoformat(date)
@@ -351,7 +353,7 @@ class SegmentedCalculationResults:
         heatmap_timeframes: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
         heatmap_timesteps_per_frame: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
         color_map: str = 'portland',
-        save: Union[bool, pathlib.Path] = True,
+        save: Union[bool, pathlib.Path] = False,
         show: bool = True
     ) -> plotly.graph_objs.Figure:
         return plot_heatmap(
@@ -430,7 +432,7 @@ def plot_heatmap(
     heatmap_timeframes: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
     heatmap_timesteps_per_frame: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
     color_map: str = 'portland',
-    save: Union[bool, pathlib.Path] = True,
+    save: Union[bool, pathlib.Path] = False,
     show: bool = True
 ):
     heatmap_data = plotting.heat_map_data_from_df(
