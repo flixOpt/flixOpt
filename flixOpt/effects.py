@@ -6,7 +6,7 @@ which are then transformed into the internal data structure.
 """
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union, Iterator
 
 import linopy
 import numpy as np
@@ -14,7 +14,7 @@ import pandas as pd
 
 from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
-from .structure import Element, ElementModel, Model, SystemModel
+from .structure import Element, ElementModel, Model, SystemModel, Interface
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -242,64 +242,24 @@ def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[Effe
         None: effect_values_user} if effect_values_user is not None else None
 
 
-class EffectCollection(Model):
+class EffectCollection:
     """
     Handling all Effects
     """
 
-    def __init__(self, model: SystemModel, effects: List[Effect]):
-        super().__init__(model, label_of_element='Effects')
+    def __init__(self, effects: List[Effect]):
         self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
 
         self.effects = effects  # Performs some validation
-        self.penalty: Optional[ShareAllocationModel] = None
+        self.model: Optional[EffectCollectionModel] = None
 
         self._plausibility_checks()
 
-    def add_share_to_effects(
-        self,
-        name: str,
-        expressions: EffectValuesExpr,
-        target: Literal['operation', 'invest'],
-    ) -> None:
-        for effect, expression in expressions.items():
-            if target == 'operation':
-                self[effect].model.operation.add_share(name, expression)
-            elif target =='invest':
-                self[effect].model.invest.add_share(name, expression)
-            else:
-                raise ValueError(f'Target {target} not supported!')
-
-    def add_share_to_penalty(self, name: str, expression: linopy.LinearExpression) -> None:
-        if expression.ndim != 0:
-            raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
-        self.penalty.add_share(name, expression)
-
-    def do_modeling(self):
-        for effect in self.effects.values():
-            effect.create_model(self._model)
-        self.penalty = self.add(ShareAllocationModel(self._model, shares_are_time_series=False, label_of_element='Penalty'))
-        for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
-            model.do_modeling()
-
-        self._add_share_between_effects()
-
-    def _add_share_between_effects(self):
-        for origin_effect in self.effects.values():
-            # 1. operation: -> hier sind es Zeitreihen (share_TS)
-            for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
-                target_effect.model.operation.add_share(
-                    origin_effect.label_full,
-                    origin_effect.model.operation.total_per_timestep * time_series.active_data,
-                )
-            # 2. invest:    -> hier ist es Scalar (share)
-            for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
-                target_effect.model.invest.add_share(
-                    origin_effect.label_full,
-                    origin_effect.model.invest.total * factor,
-                )
+    def create_model(self, model: SystemModel) -> 'EffectCollectionModel':
+        self.model = EffectCollectionModel(model, self)
+        return self.model
 
     def _plausibility_checks(self) -> None:
         # Check circular loops in effects:
@@ -342,6 +302,9 @@ class EffectCollection(Model):
             return self.effects[effect]
         except KeyError as e:
             raise KeyError(f'No effect with label {effect} found!') from e
+
+    def __iter__(self) -> Iterator[Effect]:
+        return iter(self._effects.values())
 
     def __contains__(self, item: Union[str, 'Effect']) -> bool:
         """Check if the effect exists. Checks for label or object"""
@@ -389,3 +352,57 @@ class EffectCollection(Model):
         if self._objective_effect is not None:
             raise ValueError(f'An objective-effect already exists! ({self._objective_effect.label=})')
         self._objective_effect = value
+
+
+class EffectCollectionModel(Model):
+    """
+    Handling all Effects
+    """
+
+    def __init__(self, model: SystemModel, effects: EffectCollection):
+        super().__init__(model, label_of_element='Effects')
+        self.effects = effects
+        self.penalty: Optional[ShareAllocationModel] = None
+
+    def add_share_to_effects(
+        self,
+        name: str,
+        expressions: EffectValuesExpr,
+        target: Literal['operation', 'invest'],
+    ) -> None:
+        for effect, expression in expressions.items():
+            if target == 'operation':
+                self.effects[effect].model.operation.add_share(name, expression)
+            elif target =='invest':
+                self.effects[effect].model.invest.add_share(name, expression)
+            else:
+                raise ValueError(f'Target {target} not supported!')
+
+    def add_share_to_penalty(self, name: str, expression: linopy.LinearExpression) -> None:
+        if expression.ndim != 0:
+            raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
+        self.penalty.add_share(name, expression)
+
+    def do_modeling(self):
+        for effect in self.effects:
+            effect.create_model(self._model)
+        self.penalty = self.add(ShareAllocationModel(self._model, shares_are_time_series=False, label_of_element='Penalty'))
+        for model in [effect.model for effect in self.effects] + [self.penalty]:
+            model.do_modeling()
+
+        self._add_share_between_effects()
+
+    def _add_share_between_effects(self):
+        for origin_effect in self.effects:
+            # 1. operation: -> hier sind es Zeitreihen (share_TS)
+            for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
+                target_effect.model.operation.add_share(
+                    origin_effect.label_full,
+                    origin_effect.model.operation.total_per_timestep * time_series.active_data,
+                )
+            # 2. invest:    -> hier ist es Scalar (share)
+            for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
+                target_effect.model.invest.add_share(
+                    origin_effect.label_full,
+                    origin_effect.model.invest.total * factor,
+                )
