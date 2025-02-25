@@ -99,7 +99,7 @@ def solve_and_load(
 ) -> fx.results.CalculationResults:
     calculation = fx.FullCalculation('Calculation', flow_system)
     calculation.do_modeling()
-    calculation.solve(solver, True)
+    calculation.solve(solver)
     return calculation.results
 
 
