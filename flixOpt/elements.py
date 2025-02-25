@@ -4,17 +4,19 @@ This module contains the basic elements of the flixOpt framework.
 
 import logging
 import warnings
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import linopy
 import numpy as np
 
 from .config import CONFIG
 from .core import NumericData, NumericDataTS, Scalar, TimeSeriesCollection
-from .effects import EffectValuesUser, effect_values_to_time_series
+from .effects import EffectValuesUser
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
 from .structure import Element, ElementModel, SystemModel
+if TYPE_CHECKING:
+    from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
 
@@ -61,9 +63,9 @@ class Component(Element):
         self.model = ComponentModel(model, self)
         return self.model
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection) -> None:
+    def transform_data(self, flow_system: 'FlowSystem') -> None:
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_data(time_series_collection, self)
+            self.on_off_parameters.transform_data(flow_system, self.label_full)
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         infos = super().infos(use_numpy, use_element_label)
@@ -102,9 +104,9 @@ class Bus(Element):
         self.model = BusModel(model, self)
         return self.model
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection):
-        self.excess_penalty_per_flow_hour = self._create_time_series(
-            'excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour, time_series_collection
+    def transform_data(self, flow_system: 'FlowSystem'):
+        self.excess_penalty_per_flow_hour = flow_system.create_time_series(
+            f'{self.label_full}|excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour
         )
 
     def _plausibility_checks(self) -> None:
@@ -225,15 +227,23 @@ class Flow(Element):
         self.model = FlowModel(model, self)
         return self.model
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection):
-        self.relative_minimum = self._create_time_series('relative_minimum', self.relative_minimum, time_series_collection)
-        self.relative_maximum = self._create_time_series('relative_maximum', self.relative_maximum, time_series_collection)
-        self.fixed_relative_profile = self._create_time_series('fixed_relative_profile', self.fixed_relative_profile, time_series_collection)
-        self.effects_per_flow_hour = effect_values_to_time_series('per_flow_hour', self.effects_per_flow_hour, self, time_series_collection)
+    def transform_data(self, flow_system: 'FlowSystem'):
+        self.relative_minimum = flow_system.create_time_series(
+            f'{self.label_full}|relative_minimum', self.relative_minimum
+        )
+        self.relative_maximum = flow_system.create_time_series(
+            f'{self.label_full}|relative_maximum', self.relative_maximum
+        )
+        self.fixed_relative_profile = flow_system.create_time_series(
+            f'{self.label_full}|fixed_relative_profile', self.fixed_relative_profile
+        )
+        self.effects_per_flow_hour = flow_system.create_effect_time_series(
+            self.label_full, self.effects_per_flow_hour, 'per_flow_hour'
+        )
         if self.on_off_parameters is not None:
-            self.on_off_parameters.transform_data(time_series_collection, self)
+            self.on_off_parameters.transform_data(flow_system, self.label_full)
         if isinstance(self.size, InvestParameters):
-            self.size.transform_data(time_series_collection)
+            self.size.transform_data(flow_system)
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         infos = super().infos(use_numpy, use_element_label)

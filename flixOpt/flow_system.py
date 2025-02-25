@@ -12,8 +12,8 @@ import pandas as pd
 import xarray as xr
 
 from . import utils
-from .core import TimeSeries, TimeSeriesCollection
-from .effects import Effect
+from .core import TimeSeries, TimeSeriesCollection, NumericData, NumericDataTS, TimeSeriesData
+from .effects import Effect, EffectCollection, EffectValuesTS, EffectValuesUser, effect_values_to_dict, EffectValuesDict
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
@@ -123,7 +123,56 @@ class FlowSystem:
     def transform_data(self):
         self._connect_network()
         for element in self.all_elements.values():
-            element.transform_data(self.time_series_collection)
+            element.transform_data(self)
+
+    def create_time_series(
+            self,
+            name: str,
+            data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
+            extra_timestep: bool = False,
+    ) -> Optional[TimeSeries]:
+        """
+        Tries to create a TimeSeries from NumericData Data and adds it to the time_series_collection
+        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
+        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
+        If the data is None, nothing happens.
+        """
+
+        if data is None:
+            return None
+        elif isinstance(data, TimeSeries):
+            data.restore_data()
+            return data
+        return self.time_series_collection.create_time_series(
+            data=data,
+            name=name,
+            extra_timestep=extra_timestep
+        )
+
+    def create_effect_time_series(self,
+                                  label_prefix: Optional[str],
+                                  effect_values: EffectValuesUser,
+                                  label_suffix: Optional[str] = None,
+                                  ) -> Optional[EffectValuesTS]:
+        """
+        Transform EffectValues to EffectValuesTS.
+        Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
+
+        The resulting label of the TimeSeries is the label of the parent_element,
+        followed by the label of the Effect in the nested_values and the label_suffix.
+        If the key in the EffectValues is None, the alias 'Standard_Effect' is used
+        """
+        effect_values: Optional[EffectValuesDict] = effect_values_to_dict(effect_values)
+        if effect_values is None:
+            return None
+
+        return {
+            effect: self.create_time_series(
+                '|'.join(filter(None, [label_prefix, f'{self.effects[effect].label_full}', label_suffix])),
+                value
+            )
+            for effect, value in effect_values.items()
+        }
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
         self._connect_network()

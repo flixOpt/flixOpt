@@ -109,19 +109,18 @@ class Effect(Element):
         self.minimum_total = minimum_total
         self.maximum_total = maximum_total
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection):
-        self.minimum_operation_per_hour = self._create_time_series(
-            'minimum_operation_per_hour', self.minimum_operation_per_hour, time_series_collection
+    def transform_data(self, flow_system: 'FlowSystem'):
+        self.minimum_operation_per_hour = flow_system.create_time_series(
+            f'{self.label_full}|minimum_operation_per_hour', self.minimum_operation_per_hour
         )
-        self.maximum_operation_per_hour = self._create_time_series(
-            'maximum_operation_per_hour', self.maximum_operation_per_hour, time_series_collection
+        self.maximum_operation_per_hour = flow_system.create_time_series(
+            f'{self.label_full}|maximum_operation_per_hour', self.maximum_operation_per_hour, flow_system
         )
 
-        self.specific_share_to_other_effects_operation = effect_values_to_time_series(
-            'operation_to',
+        self.specific_share_to_other_effects_operation = flow_system.create_effect_time_series(
+            f'{self.label_full}|operation_to',
             self.specific_share_to_other_effects_operation,
-            self,
-            time_series_collection
+            'operation'
         )
 
     def create_model(self, model: SystemModel) -> 'EffectModel':
@@ -192,33 +191,6 @@ EffectValuesTS = Dict[EffectKey, TimeSeries]  # Used internally to index values
 EffectValuesDict = Dict[EffectKey, NumericDataTS]  # How effect values are stored
 EffectValuesUser = Union[NumericDataTS, Dict[EffectKey, NumericDataTS]]  # User-specified Shares to Effects
 EffectValuesUserScalar = Union[Scalar, Dict[EffectKey, Scalar]]  # User-specified Shares to Effects
-
-def effect_values_to_time_series(label_suffix: str,
-                                 effect_values: EffectValuesUser,
-                                 parent_element: Element,
-                                 time_series_collection: TimeSeriesCollection) -> Optional[EffectValuesTS]:
-    """
-    Transform EffectValues to EffectValuesTS.
-    Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
-
-    The resulting label of the TimeSeries is the label of the parent_element,
-    followed by the label of the Effect in the nested_values and the label_suffix.
-    If the key in the EffectValues is None, the alias 'Standard_Effect' is used
-    """
-    effect_values: Optional[EffectValuesDict] = effect_values_to_dict(effect_values)
-    if effect_values is None:
-        return None
-
-    effect_values_ts: EffectValuesTS = {
-        effect: parent_element._create_time_series(
-            f'{effect.label_full if effect is not None else "Standard_Effect"}|{label_suffix}',
-            value,
-            time_series_collection
-        )
-        for effect, value in effect_values.items()
-    }
-
-    return effect_values_ts
 
 
 def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[EffectValuesDict]:

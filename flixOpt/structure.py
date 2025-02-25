@@ -121,7 +121,7 @@ class Interface:
     This class is used to collect arguments about a Model.
     """
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection):
+    def transform_data(self, flow_system: 'FlowSystem'):
         """ Transforms the data of the interface to match the FlowSystem's dimensions"""
         raise NotImplementedError('Every Interface needs a transform_data() method')
 
@@ -188,31 +188,6 @@ class Interface:
     def __str__(self):
         return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
 
-    @staticmethod
-    def _create_time_series(
-        name: str,
-        data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
-        time_series_collection: TimeSeriesCollection,
-        extra_timestep: bool = False,
-    ) -> Optional[TimeSeries]:
-        """
-        Tries to create a TimeSeries from NumericData Data and adds it to the time_series_collection
-        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
-        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
-        If the data is None, nothing happens.
-        """
-
-        if data is None:
-            return None
-        elif isinstance(data, TimeSeries):
-            data.restore_data()
-            return data
-        return time_series_collection.create_time_series(
-            data=data,
-            name=name,
-            extra_timestep=extra_timestep,
-        )
-
 
 class Element(Interface):
     """Basic Element of flixOpt"""
@@ -241,21 +216,6 @@ class Element(Interface):
     @property
     def label_full(self) -> str:
         return self.label
-
-    def _create_time_series(
-        self,
-        name: str,
-        data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
-        time_series_collection: TimeSeriesCollection,
-        extra_timestep: bool = False,
-    ) -> Optional[TimeSeries]:
-        """
-        Tries to create a TimeSeries from NumericData Data and adds it to the time_series_collection
-        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
-        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
-        If the data is None, nothing happens.
-        """
-        return super()._create_time_series(f'{self.label_full}|{name}', data, time_series_collection, extra_timestep)
 
     @staticmethod
     def _valid_label(label: str) -> str:
