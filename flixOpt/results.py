@@ -69,17 +69,22 @@ class CalculationResults:
         with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
             flow_system_structure = json.load(f)
         logger.info(f'Loaded calculation "{name}" from file ({path})')
-        return cls(model, flow_system_structure, name)
+        return cls(model=model, flow_system_structure=flow_system_structure, name=name, folder=folder)
 
     @classmethod
     def from_calculation(cls, calculation: 'Calculation'):
         """Create CalculationResults directly from a Calculation"""
-        return cls(calculation.model, _results_structure(calculation.flow_system), calculation.name)
+        return cls(model=calculation.model, 
+                   flow_system_structure=_results_structure(calculation.flow_system), 
+                   name=calculation.name, 
+                   folder = calculation.folder)
 
-    def __init__(self, model: linopy.Model, flow_system_structure: Dict[str, Dict[str, Dict]], name: str):
+    def __init__(self, model: linopy.Model, flow_system_structure: Dict[str, Dict[str, Dict]], name: str, 
+                 folder: Optional[pathlib.Path] = None):
         self.model = model
         self._flow_system_structure = flow_system_structure
         self.name = name
+        self.folder = pathlib.Path(folder) if folder is not None else pathlib.Path.cwd() / 'results'
         self.components = {label: ComponentResults.from_json(self, infos)
                            for label, infos in flow_system_structure['Components'].items()}
 
@@ -123,6 +128,8 @@ class CalculationResults:
                      heatmap_timeframes: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
                      heatmap_timesteps_per_frame: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
                      color_map: str = 'portland',
+                     save: Union[bool, pathlib.Path] = True,
+                     show: bool = True
                      ):
         variable = self.model.variables[variable]
         data = variable.solution.to_dataframe()
@@ -131,8 +138,12 @@ class CalculationResults:
             heatmap_data, title=variable.name, color_map=color_map,
             xlabel=f'timeframe [{heatmap_timeframes}]', ylabel=f'timesteps [{heatmap_timesteps_per_frame}]'
         )
-        fig.show()
-        return fig
+        return plotly_save_and_show(
+            fig, 
+            self.folder / f'{variable.name} ({heatmap_timeframes}-{heatmap_timesteps_per_frame}).html',
+            user_filename=None if isinstance(save, bool) else pathlib.Path(save),
+            show=show,
+            save=True if save else False)
 
     @property
     def storages(self) -> List['ComponentResults']:
@@ -186,11 +197,18 @@ class _NodeResults(_ElementResults):
         self.inputs = inputs
         self.outputs = outputs
 
-    def plot_flow_rates(self, show: bool = True):
-        return plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
-                                    mode='area',
-                                    title=f'Operation Balance of {self.label}',
-                                    show=show)
+    def plot_flow_rates(self,
+                        save: Union[bool, pathlib.Path] = True,
+                        show: bool = True):
+        fig = plotting.with_plotly(
+            self.flow_rates(with_last_timestep=True).to_dataframe(), mode='area', title=f'Flow rates of {self.label}'
+        )
+        return plotly_save_and_show(
+            fig, 
+            self._calculation_results.folder / f'{self.label} (flow rates).html',
+            user_filename=None if isinstance(save, bool) else pathlib.Path(save),
+            show=show,
+            save=True if save else False)
 
     def flow_rates(self,
                    negate_inputs: bool = True,
@@ -251,7 +269,9 @@ class ComponentResults(_NodeResults):
             raise ValueError(f'Cant get charge_state. "{self.label}" is not a storage')
         return self.variables[self._charge_state]
 
-    def plot_charge_state(self, show: bool = True) -> plotly.graph_objs._figure.Figure:
+    def plot_charge_state(self,
+                          save: Union[bool, pathlib.Path] = True,
+                          show: bool = True) -> plotly.graph_objs._figure.Figure:
         if not self.is_storage:
             raise ValueError(f'Cant plot charge_state. "{self.label}" is not a storage')
         fig = plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
@@ -259,13 +279,15 @@ class ComponentResults(_NodeResults):
                                     title=f'Operation Balance of {self.label}',
                                     show=False)
         charge_state = self.charge_state.solution.to_dataframe()
-        fig.add_trace(plotly.graph_objs.Scatter(x=charge_state.index,
-                                                y=charge_state.values.flatten(),
-                                                mode='lines',
-                                                name=self.charge_state.name))
-        if show:
-            fig.show()
-        return fig
+        fig.add_trace(plotly.graph_objs.Scatter(
+            x=charge_state.index, y=charge_state.values.flatten(), mode='lines', name=self.charge_state.name))
+        
+        return plotly_save_and_show(
+            fig,
+            self._calculation_results.folder / f'{self.label} (charge state).html',
+            user_filename=None if isinstance(save, bool) else pathlib.Path(save),
+            show=show,
+            save=True if save else False)
 
     def charge_state_and_flow_rates(self,
                                     negate_inputs: bool = True,
@@ -288,3 +310,31 @@ class EffectResults(_ElementResults):
 
     def get_shares_from(self, element: str):
         return self.variables[[name for name in self._variables if name.startswith(f'{element}->')]]
+
+
+def plotly_save_and_show(fig: plotly.graph_objs.Figure,
+                         default_filename: pathlib.Path,
+                         user_filename: Optional[pathlib.Path] = None,
+                         show: bool = True,
+                         save: bool = False) -> plotly.graph_objs.Figure:
+    """
+    Optionally saves and/or displays a Plotly figure.
+
+    Parameters:
+    - fig (go.Figure): The Plotly figure to display or save.
+    - default_filename (Path): The default file path if no user filename is provided.
+    - user_filename (Optional[Path]): An optional user-specified file path.
+    - show (bool): Whether to display the figure (default: True).
+    - save (bool): Whether to save the figure (default: False).
+
+    Returns:
+    - go.Figure: The input figure.
+    """
+    filename = user_filename or default_filename
+    if show and not save:
+        fig.show()
+    elif save and show:
+        plotly.offline.plot(fig, filename=str(filename))
+    elif save and not show:
+        fig.write_html(filename)
+    return fig
