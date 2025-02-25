@@ -107,9 +107,9 @@ class CalculationResults:
             return self.effects[key]
         raise KeyError(f'No element with label {key} found.')
 
-    def to_file(self, folder: Union[str, pathlib.Path], name: Optional[str] = None, *args, **kwargs):
+    def to_file(self, folder: Optional[Union[str, pathlib.Path]] = None, name: Optional[str] = None, *args, **kwargs):
         """Save the results to a file"""
-        folder = pathlib.Path(folder)
+        folder = self.folder if folder is None else pathlib.Path(folder)
         name = self.name if name is None else name
         path = folder / name
         if not folder.exists():
