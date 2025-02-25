@@ -213,7 +213,7 @@ class _NodeResults(_ElementResults):
                    threshold: Optional[float] = 1e-5,
                    with_last_timestep: bool = False) -> xr.Dataset:
         variables = [name for name in self.variables if name.endswith(('|flow_rate', '|excess_input', '|excess_output'))]
-        return _sanitize_dataset(
+        return sanitize_dataset(
             ds=self.variables[variables].solution,
             threshold=threshold,
             timesteps=self._calculation_results.timesteps_extra if with_last_timestep else None,
@@ -273,7 +273,7 @@ class ComponentResults(_NodeResults):
         if not self.is_storage:
             raise ValueError(f'Cant get charge_state. "{self.label}" is not a storage')
         variables = self.inputs + self.outputs + [self._charge_state]
-        return _sanitize_dataset(
+        return sanitize_dataset(
             ds=self.variables[variables].solution,
             threshold=threshold,
             timesteps=self._calculation_results.timesteps_extra,
@@ -449,7 +449,7 @@ def plot_heatmap(
         save=True if save else False)
 
 
-def _sanitize_dataset(
+def sanitize_dataset(
         ds: xr.Dataset,
         timesteps: Optional[pd.DatetimeIndex] = None,
         threshold: Optional[float] = 1e-5,
