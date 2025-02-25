@@ -212,24 +212,12 @@ class _NodeResults(_ElementResults):
                    threshold: Optional[float] = 1e-5,
                    with_last_timestep: bool = False) -> xr.Dataset:
         variables = [name for name in self.variables if name.endswith(('|flow_rate', '|excess_input', '|excess_output'))]
-        ds = self._sanitize_dataset(
+        ds = _sanitize_dataset(
             ds=self.variables[variables].solution,
             threshold=threshold,
-            with_last_timestep=with_last_timestep
+            timesteps=self._calculation_results.timesteps_extra if with_last_timestep else None,
         )
         self._negate_flows(ds, negate_inputs, negate_outputs)
-        return ds
-
-    def _sanitize_dataset(self,
-                            ds: xr.Dataset,
-                            threshold: Optional[float] = 1e-5,
-                            with_last_timestep: bool = False) -> xr.Dataset:
-        if threshold is not None:
-            abs_ds = xr.apply_ufunc(np.abs, ds)
-            vars_to_drop = [var for var in ds.data_vars if (abs_ds[var] <= threshold).all()]
-            ds = ds.drop_vars(vars_to_drop)
-        if with_last_timestep and not ds.indexes['time'].equals(self._calculation_results.timesteps_extra):
-            ds = ds.reindex({'time': self._calculation_results.timesteps_extra}, fill_value=np.nan)
         return ds
 
     def _negate_flows(self, ds: xr.Dataset, negate_outputs: bool = False, negate_inputs: bool = True) -> xr.Dataset:
@@ -292,10 +280,10 @@ class ComponentResults(_NodeResults):
         if not self.is_storage:
             raise ValueError(f'Cant get charge_state. "{self.label}" is not a storage')
         variables = self.inputs + self.outputs + [self._charge_state]
-        ds = self._sanitize_dataset(
+        ds = _sanitize_dataset(
             ds=self.variables[variables].solution,
             threshold=threshold,
-            with_last_timestep=True
+            timesteps=self._calculation_results.timesteps_extra,
         )
         self._negate_flows(ds, negate_inputs, negate_outputs)
         return ds
@@ -360,6 +348,7 @@ class SegmentedCalculationResults:
                       for result in self.segment_results[:-1]
                       ] + [self.segment_results[-1].model.variables[variable].solution]
         return xr.concat(dataarrays, dim='time')
+
 
     def plot_heatmap(
         self,
@@ -438,6 +427,7 @@ def plotly_save_and_show(fig: plotly.graph_objs.Figure,
         fig.write_html(filename)
     return fig
 
+
 def plot_heatmap(
     dataarray: xr.DataArray,
     name: str,
@@ -460,3 +450,27 @@ def plot_heatmap(
         user_filename=None if isinstance(save, bool) else pathlib.Path(save),
         show=show,
         save=True if save else False)
+
+
+def _sanitize_dataset(
+        ds: xr.Dataset,
+        timesteps: Optional[pd.DatetimeIndex] = None,
+        threshold: Optional[float] = 1e-5) -> xr.Dataset:
+    """
+    Sanitizes a dataset by dropping variables with small values and optionally reindexing the time axis.
+
+    Parameters:
+    - ds (xr.Dataset): The dataset to sanitize.
+    - timesteps (Optional[pd.DatetimeIndex]): The timesteps to reindex the dataset to. If None, the original timesteps are kept.
+    - threshold (Optional[float]): The threshold for dropping variables. If None, no variables are dropped.
+
+    Returns:
+    - xr.Dataset: The sanitized dataset.
+    """
+    if threshold is not None:
+        abs_ds = xr.apply_ufunc(np.abs, ds)
+        vars_to_drop = [var for var in ds.data_vars if (abs_ds[var] <= threshold).all()]
+        ds = ds.drop_vars(vars_to_drop)
+    if timesteps is not None and not ds.indexes['time'].equals(timesteps):
+        ds = ds.reindex({'time': timesteps}, fill_value=np.nan)
+    return ds
