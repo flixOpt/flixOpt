@@ -178,7 +178,7 @@ if __name__ == '__main__':
     pprint(flow_system)  # Get a string representation of the FlowSystem
 
     # --- Solve FlowSystem ---
-    calculation = fx.FullCalculation('Sim1', flow_system, time_indices)
+    calculation = fx.FullCalculation('complex example', flow_system, time_indices)
     calculation.do_modeling()
 
     calculation.solve(fx.solvers.HighsSolver(0.01, 60))
