@@ -362,17 +362,21 @@ class EffectCollectionModel(Model):
 
         self._add_share_between_effects()
 
+        self._model.add_objective(
+            self.effects.objective_effect.model.total + self.penalty.total
+        )
+
     def _add_share_between_effects(self):
         for origin_effect in self.effects:
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
-                target_effect.model.operation.add_share(
+                self.effects[target_effect].model.operation.add_share(
                     origin_effect.label_full,
                     origin_effect.model.operation.total_per_timestep * time_series.active_data,
                 )
             # 2. invest:    -> hier ist es Scalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
-                target_effect.model.invest.add_share(
+                self.effects[target_effect].model.invest.add_share(
                     origin_effect.label_full,
                     origin_effect.model.invest.total * factor,
                 )

@@ -23,7 +23,7 @@ from .config import CONFIG
 from .core import NumericData, Scalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from .effects import EffectCollection
+    from .effects import EffectCollectionModel
     from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
@@ -35,11 +35,10 @@ class SystemModel(linopy.Model):
         super().__init__(force_dim_names=True)
         self.flow_system = flow_system
         self.time_series_collection = flow_system.time_series_collection
-        self.effects: Optional[EffectCollection] = None
+        self.effects: Optional[EffectCollectionModel] = None
 
     def do_modeling(self):
-        from .effects import EffectCollection
-        self.effects = EffectCollection(self, list(self.flow_system.effects.values()))
+        self.effects = self.flow_system.effects.create_model(self)
         self.effects.do_modeling()
         component_models = [component.create_model(self) for component in self.flow_system.components.values()]
         bus_models = [bus.create_model(self) for bus in self.flow_system.buses.values()]
@@ -47,10 +46,6 @@ class SystemModel(linopy.Model):
             component_model.do_modeling()
         for bus_model in bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
             bus_model.do_modeling()
-
-        self.add_objective(
-            self.effects.objective_effect.model.total + self.effects.penalty.total
-        )
 
     @property
     def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
