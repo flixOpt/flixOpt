@@ -16,7 +16,7 @@ from .core import TimeSeriesCollection
 from .io import _results_structure
 
 if TYPE_CHECKING:
-    from .calculation import Calculation
+    from .calculation import Calculation, SegmentedCalculation
 
 
 logger = logging.getLogger('flixOpt')
@@ -338,3 +338,86 @@ def plotly_save_and_show(fig: plotly.graph_objs.Figure,
     elif save and not show:
         fig.write_html(filename)
     return fig
+
+class SegmentedCalculationResults:
+    """
+    Class to store the results of a SegmentedCalculation.
+    """
+    @classmethod
+    def from_calculation(cls, calculation: SegmentedCalculation):
+        return cls([CalculationResults.from_calculation(calc) for calc in calculation.sub_calculations],
+                   all_timesteps=calculation.all_timesteps,
+                   timesteps_per_segment=calculation.timesteps_per_segment,
+                   overlap_timesteps=calculation.overlap_timesteps,
+                   name=calculation.name,
+                   folder=calculation.folder)
+
+    @classmethod
+    def from_file(cls, folder: Union[str, pathlib.Path], name: str):
+        """ Create SegmentedCalculationResults directly from file"""
+        folder = pathlib.Path(folder)
+        path = folder / name
+        with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
+            meta_data = json.load(f)
+        logger.info(f'Loaded calculation "{name}" from file ({path})')
+        return cls(
+            [CalculationResults.from_file(folder, name) for name in meta_data['sub_calculations']],
+            all_timesteps=pd.DatetimeIndex([datetime.datetime.fromisoformat(date)
+                                            for date in meta_data['all_timesteps']], name='time'),
+            timesteps_per_segment=meta_data['timesteps_per_segment'],
+            overlap_timesteps=meta_data['overlap_timesteps'],
+            name=name,
+            folder=folder
+        )
+
+    def __init__(self,
+                 segment_results: List[CalculationResults],
+                 all_timesteps: pd.DatetimeIndex,
+                 timesteps_per_segment: int,
+                 overlap_timesteps: int,
+                 name: str,
+                 folder: Optional[pathlib.Path] = None):
+        self.segment_results = segment_results
+        self.all_timesteps = all_timesteps
+        self.timesteps_per_segment = timesteps_per_segment
+        self.overlap_timesteps = overlap_timesteps
+        self.name = name
+        self.folder = pathlib.Path(folder) if folder is not None else pathlib.Path.cwd() / 'results'
+        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.all_timesteps, None)
+
+    def solution_without_overlap(self, variable: str) -> xr.DataArray:
+        """Returns the solution of a variable without overlap"""
+        dataarrays = [result.model.variables[variable].solution.isel(time=slice(None, self.timesteps_per_segment))
+                      for result in self.segment_results[:-1]
+                      ] + [self.segment_results[-1].model.variables[variable].solution]
+        return xr.concat(dataarrays, dim='time')
+
+    def to_file(self, folder: Optional[Union[str, pathlib.Path]] = None, name: Optional[str] = None, *args, **kwargs):
+        """Save the results to a file"""
+        folder = self.folder if folder is None else pathlib.Path(folder)
+        name = self.name if name is None else name
+        path = folder / name
+        if not folder.exists():
+            try:
+                folder.mkdir(parents=False)
+            except FileNotFoundError as e:
+                raise FileNotFoundError(f'Folder {folder} and its parent do not exist. Please create them first.') from e
+        for segment in self.segment_results:
+            segment.to_file(folder, f'{name}-{segment.name}')
+
+        with open(path.with_suffix('.json'), 'w', encoding='utf-8') as f:
+            json.dump(self.meta_data, f, indent=4, ensure_ascii=False)
+        logger.info(f'Saved calculation "{name}" to {path}')
+
+    @property
+    def meta_data(self) -> Dict[str, Union[int, List[str]]]:
+        return {
+            'all_timesteps': [datetime.datetime.isoformat(date) for date in self.all_timesteps],
+            'timesteps_per_segment': self.timesteps_per_segment,
+            'overlap_timesteps': self.overlap_timesteps,
+            'sub_calculations': [calc.name for calc in self.segment_results]
+        }
+
+    @property
+    def segment_names(self) -> List[str]:
+        return [segment.name for segment in self.segment_results]
