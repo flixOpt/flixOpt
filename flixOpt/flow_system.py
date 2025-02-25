@@ -110,8 +110,15 @@ class FlowSystem:
                 flow.component = component.label_full
                 flow.is_input_in_component = True if flow in component.inputs else False
 
+                # Add Bus if not already added (deprecated)
+                if flow._bus_object is not None and flow._bus_object not in self.buses.values():
+                    self.add_buses(flow._bus_object)
+
                 # Connect Buses
-                bus = flow.bus if isinstance(flow.bus, Bus) else self.buses[flow.bus]
+                bus = self.buses.get(flow.bus)
+                if bus is None:
+                    raise KeyError(f'Bus {flow.bus} not found in the FlowSystem, but used by "{flow.label_full}". '
+                                   f'Please add it first.')
                 if flow.is_input_in_component and flow not in bus.outputs:
                     bus.outputs.append(flow)
                 elif not flow.is_input_in_component and flow not in bus.inputs:

@@ -3,6 +3,7 @@ This module contains the basic elements of the flixOpt framework.
 """
 
 import logging
+import warnings
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import linopy
@@ -206,9 +207,17 @@ class Flow(Element):
 
         self.previous_flow_rate = previous_flow_rate
 
-        self.bus: str = bus.label if isinstance(bus, Bus) else bus
         self.component: str = 'UnknownComponent'
         self.is_input_in_component: Optional[bool] = None
+        if isinstance(bus, Bus):
+            self.bus = bus.label_full
+            warnings.warn(
+                f'Bus {bus.label} is passed as a Bus object to {self.label}. This is deprecated and will be removed '
+                f'in the future. Add the Bus to the FlowSystem instead and pass its label to the Flow.')
+            self._bus_object = bus
+        else:
+            self.bus = bus
+            self._bus_object = None
 
         self._plausibility_checks()
 
