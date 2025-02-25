@@ -29,7 +29,7 @@ from .flow_system import FlowSystem
 from .solvers import _Solver
 from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
 from .config import CONFIG
-from .results import CalculationResults
+from .results import CalculationResults, SegmentedCalculationResults
 
 logger = logging.getLogger('flixOpt')
 
@@ -388,6 +388,8 @@ class SegmentedCalculation(Calculation):
         for calc in self.sub_calculations:
             for key, value in calc.durations.items():
                 self.durations[key] += value
+
+        self.results = SegmentedCalculationResults.from_calculation(self)
 
     def _transfer_start_values(self, segment_index: int):
         """
