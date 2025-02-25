@@ -66,10 +66,10 @@ class TestSimple(BaseTest):
         )
 
     def test_from_results(self):
-        calculation = self.model(save_results=True)
+        calculation = self.model()
+        calculation.results.to_file()
 
-        results = calculation.results
-
+        results = fx.results.CalculationResults.from_file(calculation.folder, calculation.name)
         # test effect results
         self.assert_almost_equal_numeric(
             results.model.variables['costs|total'].solution.values,
@@ -90,14 +90,14 @@ class TestSimple(BaseTest):
             'Q_th doesnt match expected value',
         )
 
-        df = results['Fernwärme'].operation_balance()
+        df = results['Fernwärme'].flow_rates()
         self.assert_almost_equal_numeric(
             calculation.flow_system.components['Wärmelast'].sink.model.flow_rate.solution.values,
             df['Wärmelast (Q_th_Last)|flow_rate'].values,
             'Loaded Results and directly used results dont match, or loading didnt work properly',
         )
 
-    def model(self, save_results=False) -> fx.FullCalculation:
+    def model(self) -> fx.FullCalculation:
         # Define the components and flow_system
         Strom = fx.Bus('Strom')
         Fernwaerme = fx.Bus('Fernwärme')
@@ -168,7 +168,7 @@ class TestSimple(BaseTest):
         aCalc = fx.FullCalculation('Test_Sim', es)
         aCalc.do_modeling()
 
-        aCalc.solve(self.get_solver(), save_results=save_results)
+        aCalc.solve(self.get_solver())
 
         return aCalc
 
@@ -270,15 +270,14 @@ class TestComponents(BaseTest):
         flow_system.add_elements(transmission, boiler, boiler2, last2)
         calculation = fx.FullCalculation('Test_Transmission', flow_system)
         calculation.do_modeling()
-        calculation.solve(self.get_solver(), save_results=True)
-        results = fx.results.CalculationResults(calculation.name, 'results')
+        calculation.solve(self.get_solver())
 
         self.assert_almost_equal_numeric(
             transmission.in1.model.on_off.on.solution.values, np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]), 'On does not work properly'
         )
 
         self.assert_almost_equal_numeric(
-            results.to_dataframe('Rohr', with_last_time_step=False)['Rohr__Rohr1b'].values,
+            calculation.results.model.variables['Rohr (Rohr1b)|flow_rate'].solution.values,
             transmission.out1.model.flow_rate.solution.values,
             'Flow rate of Rohr__Rohr1b is not correct',
         )
@@ -823,7 +822,7 @@ class TestModelingTypes(BaseTest):
         if doFullCalc:
             calc = fx.FullCalculation('fullModel', es)
             calc.do_modeling()
-            calc.solve(self.get_solver(), save_results=True)
+            calc.solve(self.get_solver())
         elif doSegmentedCalc:
             calc = fx.SegmentedCalculation('segModel', es, timesteps_per_segment=96, overlap_timesteps=1)
             calc.do_modeling_and_solve(self.get_solver())
@@ -845,7 +844,7 @@ class TestModelingTypes(BaseTest):
             calc.do_modeling()
             print(es)
             es.visualize_network()
-            calc.solve(self.get_solver(), save_results=True)
+            calc.solve(self.get_solver())
         else:
             raise Exception('Wrong Modeling Type')
 
