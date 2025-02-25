@@ -16,10 +16,11 @@ if __name__ == '__main__':
 
     # Create datetime array starting from '2020-01-01' for the given time period
     timesteps = pd.date_range('2020-01-01', periods=len(heat_demand_per_h), freq='h')
+    flow_system = fx.FlowSystem(timesteps=timesteps)
 
     # --- Define Energy Buses ---
     # These represent nodes, where the used medias are balanced (electricity, heat, and gas)
-    Strom, Fernwaerme, Gas = fx.Bus(label='Strom'), fx.Bus(label='Fernwärme'), fx.Bus(label='Gas')
+    flow_system.add_elements(fx.Bus(label='Strom'), fx.Bus(label='Fernwärme'), fx.Bus(label='Gas'))
 
     # --- Define Effects (Objective and CO2 Emissions) ---
     # Cost effect: used as the optimization objective --> minimizing costs
@@ -45,8 +46,8 @@ if __name__ == '__main__':
     boiler = fx.linear_converters.Boiler(
         label='Boiler',
         eta=0.5,
-        Q_th=fx.Flow(label='Q_th', bus=Fernwaerme, size=50, relative_minimum=0.1, relative_maximum=1),
-        Q_fu=fx.Flow(label='Q_fu', bus=Gas),
+        Q_th=fx.Flow(label='Q_th', bus='Fernwärme', size=50, relative_minimum=0.1, relative_maximum=1),
+        Q_fu=fx.Flow(label='Q_fu', bus='Gas'),
     )
 
     # Combined Heat and Power (CHP): Generates both electricity and heat from fuel
@@ -54,16 +55,16 @@ if __name__ == '__main__':
         label='CHP',
         eta_th=0.5,
         eta_el=0.4,
-        P_el=fx.Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60),
-        Q_th=fx.Flow('Q_th', bus=Fernwaerme),
-        Q_fu=fx.Flow('Q_fu', bus=Gas),
+        P_el=fx.Flow('P_el', bus='Strom', size=60, relative_minimum=5 / 60),
+        Q_th=fx.Flow('Q_th', bus='Fernwärme'),
+        Q_fu=fx.Flow('Q_fu', bus='Gas'),
     )
 
     # Storage: Energy storage system with charging and discharging capabilities
     storage = fx.Storage(
         label='Storage',
-        charging=fx.Flow('Q_th_load', bus=Fernwaerme, size=1000),
-        discharging=fx.Flow('Q_th_unload', bus=Fernwaerme, size=1000),
+        charging=fx.Flow('Q_th_load', bus='Fernwärme', size=1000),
+        discharging=fx.Flow('Q_th_unload', bus='Fernwärme', size=1000),
         capacity_in_flow_hours=fx.InvestParameters(fix_effects=20, fixed_size=30, optional=False),
         initial_charge_state=0,  # Initial storage state: empty
         relative_maximum_charge_state=1 / 100 * np.array([80, 70, 80, 80, 80, 80, 80, 80, 80, 80]),
@@ -76,23 +77,22 @@ if __name__ == '__main__':
     # Heat Demand Sink: Represents a fixed heat demand profile
     heat_sink = fx.Sink(
         label='Heat Demand',
-        sink=fx.Flow(label='Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_profile=heat_demand_per_h),
+        sink=fx.Flow(label='Q_th_Last', bus='Fernwärme', size=1, fixed_relative_profile=heat_demand_per_h),
     )
 
     # Gas Source: Gas tariff source with associated costs and CO2 emissions
     gas_source = fx.Source(
         label='Gastarif',
-        source=fx.Flow(label='Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}),
+        source=fx.Flow(label='Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}),
     )
 
     # Power Sink: Represents the export of electricity to the grid
     power_sink = fx.Sink(
-        label='Einspeisung', sink=fx.Flow(label='P_el', bus=Strom, effects_per_flow_hour=-1 * power_prices)
+        label='Einspeisung', sink=fx.Flow(label='P_el', bus='Strom', effects_per_flow_hour=-1 * power_prices)
     )
 
     # --- Build the Flow System ---
-    # Create the flow system and add all defined components and effects
-    flow_system = fx.FlowSystem(timesteps=timesteps)
+    # Add all defined components and effects to the flow system
     flow_system.add_elements(costs, CO2, boiler, storage, chp, heat_sink, gas_source, power_sink)
 
     # Visualize the flow system for validation purposes

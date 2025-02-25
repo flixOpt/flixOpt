@@ -30,6 +30,7 @@ if __name__ == '__main__':
         penalty_of_period_freedom=0,
     )
     keep_extreme_periods = True
+    excess_penalty = 1e5  # or set to None if not needed
 
     # Data Import
     data_import = pd.read_csv(pathlib.Path('Zeitreihen2020.csv'), index_col=0).sort_index()
@@ -51,12 +52,13 @@ if __name__ == '__main__':
     TS_electricity_price_sell = fx.TimeSeriesData(-(electricity_demand - 0.5), agg_group='p_el')
     TS_electricity_price_buy = fx.TimeSeriesData(electricity_price + 0.5, agg_group='p_el')
 
-    # Bus Definitions
-    excess_penalty = 1e5  # or set to None if not needed
-    Strom = fx.Bus('Strom', excess_penalty_per_flow_hour=excess_penalty)
-    Fernwaerme = fx.Bus('Fernwärme', excess_penalty_per_flow_hour=excess_penalty)
-    Gas = fx.Bus('Gas', excess_penalty_per_flow_hour=excess_penalty)
-    Kohle = fx.Bus('Kohle', excess_penalty_per_flow_hour=excess_penalty)
+    flow_system = fx.FlowSystem(timesteps)
+    flow_system.add_elements(
+        fx.Bus('Strom', excess_penalty_per_flow_hour=excess_penalty),
+        fx.Bus('Fernwärme', excess_penalty_per_flow_hour=excess_penalty),
+        fx.Bus('Gas', excess_penalty_per_flow_hour=excess_penalty),
+        fx.Bus('Kohle', excess_penalty_per_flow_hour=excess_penalty),
+    )
 
     # Effects
     costs = fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
@@ -69,10 +71,10 @@ if __name__ == '__main__':
     a_gaskessel = fx.linear_converters.Boiler(
         'Kessel',
         eta=0.85,
-        Q_th=fx.Flow(label='Q_th', bus=Fernwaerme),
+        Q_th=fx.Flow(label='Q_th', bus='Fernwärme'),
         Q_fu=fx.Flow(
             label='Q_fu',
-            bus=Gas,
+            bus='Gas',
             size=95,
             relative_minimum=12 / 95,
             previous_flow_rate=20,
@@ -86,9 +88,9 @@ if __name__ == '__main__':
         eta_th=0.58,
         eta_el=0.22,
         on_off_parameters=fx.OnOffParameters(effects_per_switch_on=24000),
-        P_el=fx.Flow('P_el', bus=Strom, size=200),
-        Q_th=fx.Flow('Q_th', bus=Fernwaerme, size=200),
-        Q_fu=fx.Flow('Q_fu', bus=Kohle, size=288, relative_minimum=87 / 288, previous_flow_rate=100),
+        P_el=fx.Flow('P_el', bus='Strom', size=200),
+        Q_th=fx.Flow('Q_th', bus='Fernwärme', size=200),
+        Q_fu=fx.Flow('Q_fu', bus='Kohle', size=288, relative_minimum=87 / 288, previous_flow_rate=100),
     )
 
     # 3. Storage
@@ -102,43 +104,42 @@ if __name__ == '__main__':
         eta_discharge=1,
         relative_loss_per_hour=0.001,
         prevent_simultaneous_charge_and_discharge=True,
-        charging=fx.Flow('Q_th_load', size=137, bus=Fernwaerme),
-        discharging=fx.Flow('Q_th_unload', size=158, bus=Fernwaerme),
+        charging=fx.Flow('Q_th_load', size=137, bus='Fernwärme'),
+        discharging=fx.Flow('Q_th_unload', size=158, bus='Fernwärme'),
     )
 
     # 4. Sinks and Sources
     # Heat Load Profile
     a_waermelast = fx.Sink(
-        'Wärmelast', sink=fx.Flow('Q_th_Last', bus=Fernwaerme, size=1, fixed_relative_profile=TS_heat_demand)
+        'Wärmelast', sink=fx.Flow('Q_th_Last', bus='Fernwärme', size=1, fixed_relative_profile=TS_heat_demand)
     )
 
     # Electricity Feed-in
     a_strom_last = fx.Sink(
-        'Stromlast', sink=fx.Flow('P_el_Last', bus=Strom, size=1, fixed_relative_profile=TS_electricity_demand)
+        'Stromlast', sink=fx.Flow('P_el_Last', bus='Strom', size=1, fixed_relative_profile=TS_electricity_demand)
     )
 
     # Gas Tariff
     a_gas_tarif = fx.Source(
-        'Gastarif', source=fx.Flow('Q_Gas', bus=Gas, size=1000, effects_per_flow_hour={costs: gas_price, CO2: 0.3})
+        'Gastarif', source=fx.Flow('Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs: gas_price, CO2: 0.3})
     )
 
     # Coal Tariff
     a_kohle_tarif = fx.Source(
-        'Kohletarif', source=fx.Flow('Q_Kohle', bus=Kohle, size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3})
+        'Kohletarif', source=fx.Flow('Q_Kohle', bus='Kohle', size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3})
     )
 
     # Electricity Tariff and Feed-in
     a_strom_einspeisung = fx.Sink(
-        'Einspeisung', sink=fx.Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour=TS_electricity_price_sell)
+        'Einspeisung', sink=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour=TS_electricity_price_sell)
     )
 
     a_strom_tarif = fx.Source(
         'Stromtarif',
-        source=fx.Flow('P_el', bus=Strom, size=1000, effects_per_flow_hour={costs: TS_electricity_price_buy, CO2: 0.3}),
+        source=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour={costs: TS_electricity_price_buy, CO2: 0.3}),
     )
 
     # Flow System Setup
-    flow_system = fx.FlowSystem(timesteps)
     flow_system.add_effects(costs, CO2, PE)
     flow_system.add_components(
         a_gaskessel,
