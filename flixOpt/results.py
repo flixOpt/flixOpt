@@ -130,20 +130,16 @@ class CalculationResults:
                      color_map: str = 'portland',
                      save: Union[bool, pathlib.Path] = True,
                      show: bool = True
-                     ):
-        variable = self.model.variables[variable]
-        data = variable.solution.to_dataframe()
-        heatmap_data = plotting.heat_map_data_from_df(data, heatmap_timeframes, heatmap_timesteps_per_frame, 'ffill')
-        fig = plotting.heat_map_plotly(
-            heatmap_data, title=variable.name, color_map=color_map,
-            xlabel=f'timeframe [{heatmap_timeframes}]', ylabel=f'timesteps [{heatmap_timesteps_per_frame}]'
-        )
-        return plotly_save_and_show(
-            fig, 
-            self.folder / f'{variable.name} ({heatmap_timeframes}-{heatmap_timesteps_per_frame}).html',
-            user_filename=None if isinstance(save, bool) else pathlib.Path(save),
-            show=show,
-            save=True if save else False)
+                     ) -> plotly.graph_objs.Figure:
+        return plot_heatmap(
+            dataarray=self.model.variables[variable].solution,
+            name=variable,
+            folder=self.folder,
+            heatmap_timeframes=heatmap_timeframes,
+            heatmap_timesteps_per_frame=heatmap_timesteps_per_frame,
+            color_map=color_map,
+            save=save,
+            show=show)
 
     @property
     def storages(self) -> List['ComponentResults']:
@@ -312,39 +308,12 @@ class EffectResults(_ElementResults):
         return self.variables[[name for name in self._variables if name.startswith(f'{element}->')]]
 
 
-def plotly_save_and_show(fig: plotly.graph_objs.Figure,
-                         default_filename: pathlib.Path,
-                         user_filename: Optional[pathlib.Path] = None,
-                         show: bool = True,
-                         save: bool = False) -> plotly.graph_objs.Figure:
-    """
-    Optionally saves and/or displays a Plotly figure.
-
-    Parameters:
-    - fig (go.Figure): The Plotly figure to display or save.
-    - default_filename (Path): The default file path if no user filename is provided.
-    - user_filename (Optional[Path]): An optional user-specified file path.
-    - show (bool): Whether to display the figure (default: True).
-    - save (bool): Whether to save the figure (default: False).
-
-    Returns:
-    - go.Figure: The input figure.
-    """
-    filename = user_filename or default_filename
-    if show and not save:
-        fig.show()
-    elif save and show:
-        plotly.offline.plot(fig, filename=str(filename))
-    elif save and not show:
-        fig.write_html(filename)
-    return fig
-
 class SegmentedCalculationResults:
     """
     Class to store the results of a SegmentedCalculation.
     """
     @classmethod
-    def from_calculation(cls, calculation: SegmentedCalculation):
+    def from_calculation(cls, calculation: 'SegmentedCalculation'):
         return cls([CalculationResults.from_calculation(calc) for calc in calculation.sub_calculations],
                    all_timesteps=calculation.all_timesteps,
                    timesteps_per_segment=calculation.timesteps_per_segment,
@@ -392,6 +361,25 @@ class SegmentedCalculationResults:
                       ] + [self.segment_results[-1].model.variables[variable].solution]
         return xr.concat(dataarrays, dim='time')
 
+    def plot_heatmap(
+        self,
+        variable: str,
+        heatmap_timeframes: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
+        heatmap_timesteps_per_frame: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
+        color_map: str = 'portland',
+        save: Union[bool, pathlib.Path] = True,
+        show: bool = True
+    ) -> plotly.graph_objs.Figure:
+        return plot_heatmap(
+            dataarray=self.solution_without_overlap(variable),
+            name=variable,
+            folder=self.folder,
+            heatmap_timeframes=heatmap_timeframes,
+            heatmap_timesteps_per_frame=heatmap_timesteps_per_frame,
+            color_map=color_map,
+            save=save,
+            show=show)
+
     def to_file(self, folder: Optional[Union[str, pathlib.Path]] = None, name: Optional[str] = None, *args, **kwargs):
         """Save the results to a file"""
         folder = self.folder if folder is None else pathlib.Path(folder)
@@ -421,3 +409,54 @@ class SegmentedCalculationResults:
     @property
     def segment_names(self) -> List[str]:
         return [segment.name for segment in self.segment_results]
+
+
+def plotly_save_and_show(fig: plotly.graph_objs.Figure,
+                         default_filename: pathlib.Path,
+                         user_filename: Optional[pathlib.Path] = None,
+                         show: bool = True,
+                         save: bool = False) -> plotly.graph_objs.Figure:
+    """
+    Optionally saves and/or displays a Plotly figure.
+
+    Parameters:
+    - fig (go.Figure): The Plotly figure to display or save.
+    - default_filename (Path): The default file path if no user filename is provided.
+    - user_filename (Optional[Path]): An optional user-specified file path.
+    - show (bool): Whether to display the figure (default: True).
+    - save (bool): Whether to save the figure (default: False).
+
+    Returns:
+    - go.Figure: The input figure.
+    """
+    filename = user_filename or default_filename
+    if show and not save:
+        fig.show()
+    elif save and show:
+        plotly.offline.plot(fig, filename=str(filename))
+    elif save and not show:
+        fig.write_html(filename)
+    return fig
+
+def plot_heatmap(
+    dataarray: xr.DataArray,
+    name: str,
+    folder: pathlib.Path,
+    heatmap_timeframes: Literal['YS', 'MS', 'W', 'D', 'h', '15min', 'min'] = 'D',
+    heatmap_timesteps_per_frame: Literal['W', 'D', 'h', '15min', 'min'] = 'h',
+    color_map: str = 'portland',
+    save: Union[bool, pathlib.Path] = True,
+    show: bool = True
+):
+    heatmap_data = plotting.heat_map_data_from_df(
+        dataarray.to_dataframe(name), heatmap_timeframes, heatmap_timesteps_per_frame, 'ffill')
+    fig = plotting.heat_map_plotly(
+        heatmap_data, title=name, color_map=color_map,
+        xlabel=f'timeframe [{heatmap_timeframes}]', ylabel=f'timesteps [{heatmap_timesteps_per_frame}]'
+    )
+    return plotly_save_and_show(
+        fig,
+        folder / f'{name} ({heatmap_timeframes}-{heatmap_timesteps_per_frame}).html',
+        user_filename=None if isinstance(save, bool) else pathlib.Path(save),
+        show=show,
+        save=True if save else False)
