@@ -78,12 +78,10 @@ class Effect(Element):
             minimal sum (only invest) of the effect
         maximum_invest : scalar, optional
             maximal sum (only invest) of the effect
-        minimum_total : sclalar, optional
+        minimum_total : scalar, optional
             min sum of effect (invest+operation).
         maximum_total : scalar, optional
             max sum of effect (invest+operation).
-        **kwargs : TYPE
-            DESCRIPTION.
 
         Returns
         -------
@@ -247,19 +245,30 @@ class EffectCollection:
     Handling all Effects
     """
 
-    def __init__(self, effects: List[Effect]):
+    def __init__(self, *effects: List[Effect]):
         self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
 
-        self.effects = effects  # Performs some validation
         self.model: Optional[EffectCollectionModel] = None
-
-        self._plausibility_checks()
+        self.add_effects(*effects)
 
     def create_model(self, model: SystemModel) -> 'EffectCollectionModel':
         self.model = EffectCollectionModel(model, self)
         return self.model
+
+    def add_effects(self, *effects: Effect) -> None:
+        for effect in list(effects):
+            if effect in self:
+                raise Exception(f'Effect with label "{effect.label=}" already added!')
+            if effect.is_standard:
+                self.standard_effect = effect
+            if effect.is_objective:
+                self.objective_effect = effect
+            self._effects[effect.label] = effect
+            logger.info(f'Registered new Effect: {effect.label}')
+
+        self._plausibility_checks()
 
     def _plausibility_checks(self) -> None:
         # Check circular loops in effects:
@@ -274,12 +283,12 @@ class EffectCollection:
             # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
             # operation:
             for target_effect in effect.specific_share_to_other_effects_operation.keys():
-                assert self not in target_effect.specific_share_to_other_effects_operation.keys(), (
+                assert effect not in self[target_effect].specific_share_to_other_effects_operation.keys(), (
                     f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
                 )
             # invest:
             for target_effect in effect.specific_share_to_other_effects_invest.keys():
-                assert self not in target_effect.specific_share_to_other_effects_invest.keys(), (
+                assert effect not in self[target_effect].specific_share_to_other_effects_invest.keys(), (
                     f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
                 )
 
@@ -317,17 +326,6 @@ class EffectCollection:
     @property
     def effects(self) -> Dict[str, Effect]:
         return self._effects
-
-    @effects.setter
-    def effects(self, value: List[Effect]):
-        for effect in value:
-            if effect.is_standard:
-                self.standard_effect = effect
-            if effect.is_objective:
-                self.objective_effect = effect
-            if effect in self:
-                raise Exception(f'Effect with label "{effect.label=}" already added!')
-            self._effects[effect.label] = effect
 
     @property
     def standard_effect(self) -> Effect:

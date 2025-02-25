@@ -61,15 +61,11 @@ class FlowSystem:
         # defaults:
         self.components: Dict[str, Component] = {}
         self.buses: Dict[str, Bus] = {}
-        self.effects: Dict[str, Effect] = {}
+        self.effects: EffectCollection = EffectCollection()
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
-        for new_effect in list(args):
-            if new_effect.label in self.effects:
-                raise Exception(f'Effect with label "{new_effect.label=}" already added!')
-            self.effects[new_effect.label] = new_effect
-            logger.info(f'Registered new Effect: {new_effect.label}')
+        self.effects.add_effects(*args)
 
     def add_components(self, *components: Component) -> None:
         for new_component in list(components):
@@ -268,8 +264,4 @@ class FlowSystem:
 
     @property
     def all_elements(self) -> Dict[str, Element]:
-        return {**self.components, **self.effects, **self.flows, **self.buses}
-
-    @property
-    def all_time_series(self) -> List[TimeSeries]:
-        return [ts for element in self.all_elements.values() for ts in element.used_time_series]
+        return {**self.components, **self.effects.effects, **self.flows, **self.buses}
