@@ -34,10 +34,8 @@ class SystemModel(linopy.Model):
     def __init__(self, flow_system: 'FlowSystem'):
         super().__init__(force_dim_names=True)
         self.flow_system = flow_system
+        self.time_series_collection = flow_system.time_series_collection
         self.effects: Optional[EffectCollection] = None
-
-        self._solution_structure = None
-        self.solution_structured = None
 
     def do_modeling(self):
         from .effects import EffectCollection
@@ -53,70 +51,6 @@ class SystemModel(linopy.Model):
         self.add_objective(
             self.effects.objective_effect.model.total + self.effects.penalty.total
         )
-
-    def store_solution(self):
-        self._solution_structure = self._get_solution_structured(mode='structure')
-        solution = self.variables.solution
-        self.solution_structured = SystemModel._insert_dataarrays(solution, self._solution_structure)
-
-    def _get_solution_structured(self, mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'numpy'):
-        return {
-            'Buses': {
-                bus.label_full: bus.model.solution_structured(mode=mode)
-                for bus in sorted(self.flow_system.buses.values(), key=lambda bus: bus.label_full.upper())
-            },
-            'Components': {
-                comp.label_full: comp.model.solution_structured(mode=mode)
-                for comp in sorted(self.flow_system.components.values(), key=lambda component: component.label_full.upper())
-            },
-            'Effects': {
-                effect.label_full: effect.model.solution_structured(mode=mode)
-                for effect in sorted(self.flow_system.effects.values(), key=lambda effect: effect.label_full.upper())
-            },
-            **self.effects.solution_structured(mode=mode),
-            'Objective': self.objective.value,
-        }
-
-    def to_netcdf(self, path: Union[str, pathlib.Path] = 'flow_system.nc'):
-        """
-        Save the flow system to a netcdf file.
-        """
-        ds = self.solution
-        ds = ds.rename_vars({var: var.replace('/', '-slash-') for var in ds.data_vars})
-        ds.attrs["structure"] = json.dumps(self._solution_structure)  # Convert dict to JSON string
-        ds.to_netcdf(path)
-
-    @staticmethod
-    def from_netcdf(path: Union[str, pathlib.Path] = 'flow_system.nc') -> Dict[str, Union[str, Dict, xr.DataArray]]:
-        results = xr.open_dataset(path)
-        return {
-            **SystemModel._insert_dataarrays(results, json.loads(results.attrs['structure'])),
-            'Solution': results
-        }
-
-    @staticmethod
-    def _insert_dataarrays(dataset: xr.Dataset, structure: Dict[str, Union[str, Dict]]):
-        dataset = dataset.rename_vars({var: var.replace('-slash-', '/') for var in dataset.data_vars})
-        result = {}
-
-        def insert_data(value_part):
-            if isinstance(value_part, dict):  # If the value is another nested dictionary
-                return SystemModel._insert_dataarrays(dataset, value_part)  # Recursively handle it
-            elif isinstance(value_part, list):
-                return [insert_data(v) for v in value_part]
-            elif isinstance(value_part, str) and value_part.startswith(':::'):
-                return dataset[value_part.removeprefix(':::')]
-            elif isinstance(value_part, str):
-                return value_part
-            elif isinstance(value_part, (int, float)):
-                return value_part
-            else:
-                raise ValueError(f'Loading the Dataset failed. Not able to handle {value_part}')
-
-        for key, value in structure.items():
-            result[key] = insert_data(value)
-
-        return result
 
     @property
     def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
@@ -167,19 +101,19 @@ class SystemModel(linopy.Model):
 
     @property
     def hours_per_step(self):
-        return self.flow_system.hours_per_step
+        return self.time_series_collection.hours_per_timestep
 
     @property
     def hours_of_previous_timesteps(self):
-        return self.flow_system.hours_of_previous_timesteps
+        return self.time_series_collection.hours_of_previous_timesteps
 
     @property
     def coords(self):
-        return self.flow_system.coords
+        return self.time_series_collection.coords
 
     @property
     def coords_extra(self):
-        return self.flow_system.coords_extra
+        return self.time_series_collection.coords_extra
 
 
 class Interface:
@@ -561,6 +495,14 @@ class ElementModel(Model):
         """
         super().__init__(model, label_of_element=element.label_full, label=element.label, label_full=element.label_full)
         self.element = element
+
+    def results_structure(self):
+        return {
+            'label': self.label,
+            'label_full': self.label_full,
+            'variables': list(self.variables),
+            'constraints': list(self.constraints),
+        }
 
 
 def copy_and_convert_datatypes(data: Any, use_numpy: bool = True, use_element_label: bool = False) -> Any:

@@ -55,14 +55,18 @@ if __name__ == '__main__':
     calculation.do_modeling()
 
     # --- Solve the Calculation and Save Results ---
-    calculation.solve(fx.solvers.HighsSolver(0.01, 60), save_results=True)
+    calculation.solve(fx.solvers.HighsSolver(0.01, 60))
 
-    # --- Load and Analyze Results ---
-    # Load results and plot the operation of the District Heating Bus
-    results = fx.results.CalculationResults(calculation.name, folder='results')
-    results.plot_operation('District Heating', 'area')
+    # --- Analyze Results ---
+    # Access the results of an element
+    df = calculation.results['costs'].variables_time.solution.to_dataframe()
 
-    # Print results to the console. Check Results in file or perform more plotting
-    pprint(calculation.results)
-    pprint('Look into .yaml and .json file for results')
-    pprint(calculation.flow_system.model.main_results)
+    # Plot the results of a specific element
+    calculation.results['District Heating'].plot_flow_rates()
+
+    # Save results to a file
+    df = calculation.results['costs'].variables_time.solution.to_dataframe()
+    # df.to_csv('results/District Heating.csv')  # Save results to csv
+
+    # Print infos to the console.
+    pprint(calculation.infos)

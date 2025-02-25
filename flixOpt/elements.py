@@ -458,6 +458,8 @@ class BusModel(ElementModel):
 
     def do_modeling(self) -> None:
         # inputs == outputs
+        for flow in self.element.inputs + self.element.outputs:
+            self.add(flow.model.flow_rate, flow.label_full)
         inputs = sum([flow.model.flow_rate for flow in self.element.inputs])
         outputs = sum([flow.model.flow_rate for flow in self.element.outputs])
         eq_bus_balance = self.add(self._model.add_constraints(
@@ -486,6 +488,15 @@ class BusModel(ElementModel):
             self._model.effects.add_share_to_penalty(
                 self._model, self.label_of_element, (self.excess_output * excess_penalty).sum()
             )
+
+    def results_structure(self):
+        inputs = [flow.model.flow_rate.name for flow in self.element.inputs]
+        outputs = [flow.model.flow_rate.name for flow in self.element.outputs]
+        if self.excess_input is not None:
+            inputs.append(self.excess_input.name)
+        if self.excess_output is not None:
+            outputs.append(self.excess_output.name)
+        return {**super().results_structure(), 'inputs': inputs, 'outputs': outputs}
 
     def solution_structured(
         self,
@@ -551,6 +562,11 @@ class ComponentModel(ElementModel):
             on_variables = [flow.model.on_off.on for flow in self.element.prevent_simultaneous_flows]
             simultaneous_use = self.add(PreventSimultaneousUsageModel(self._model, on_variables, self.label_full))
             simultaneous_use.do_modeling()
+
+    def results_structure(self):
+        return {**super().results_structure(),
+                'inputs': [flow.model.flow_rate.name for flow in self.element.inputs],
+                'outputs': [flow.model.flow_rate.name for flow in self.element.outputs]}
 
     def solution_structured(
         self,

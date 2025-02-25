@@ -66,39 +66,38 @@ class TestSimple(BaseTest):
         )
 
     def test_from_results(self):
-        calculation = self.model(save_results=True)
+        calculation = self.model()
+        calculation.results.to_file()
 
-        results = fx.results.CalculationResults(calculation.name, 'results')
-
+        results = fx.results.CalculationResults.from_file(calculation.folder, calculation.name)
         # test effect results
         self.assert_almost_equal_numeric(
-            results.effect_results['costs'].all_results['total'],
+            results.model.variables['costs|total'].solution.values,
             81.88394666666667,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            results.effect_results['CO2'].all_results['total'], 255.09184, 'CO2 doesnt match expected value'
+            results.model.variables['CO2|total'].solution.values, 255.09184, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            results.component_results['Boiler'].variables_flat['Q_th__flow_rate'],
+            results.model.variables['Boiler (Q_th)|flow_rate'].solution.values,
             [0, 0, 0, 28.4864, 35, 0, 0, 0, 0],
             'Q_th doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            results.component_results['CHP_unit'].variables_flat['Q_th__flow_rate'],
+            results.model.variables['CHP_unit (Q_th)|flow_rate'].solution.values,
             [30.0, 26.66666667, 75.0, 75.0, 75.0, 20.0, 20.0, 20.0, 20.0],
             'Q_th doesnt match expected value',
         )
 
-        df = results.to_dataframe('Fernwärme', with_last_time_step=False)
-        comps = calculation.flow_system.components
+        df = results['Fernwärme'].flow_rates()
         self.assert_almost_equal_numeric(
-            comps['Wärmelast'].sink.model.flow_rate.solution.values,
-            df['Wärmelast__Q_th_Last'],
+            calculation.flow_system.components['Wärmelast'].sink.model.flow_rate.solution.values,
+            df['Wärmelast (Q_th_Last)|flow_rate'].values,
             'Loaded Results and directly used results dont match, or loading didnt work properly',
         )
 
-    def model(self, save_results=False) -> fx.FullCalculation:
+    def model(self) -> fx.FullCalculation:
         # Define the components and flow_system
         Strom = fx.Bus('Strom')
         Fernwaerme = fx.Bus('Fernwärme')
@@ -169,7 +168,7 @@ class TestSimple(BaseTest):
         aCalc = fx.FullCalculation('Test_Sim', es)
         aCalc.do_modeling()
 
-        aCalc.solve(self.get_solver(), save_results=save_results)
+        aCalc.solve(self.get_solver())
 
         return aCalc
 
@@ -271,15 +270,14 @@ class TestComponents(BaseTest):
         flow_system.add_elements(transmission, boiler, boiler2, last2)
         calculation = fx.FullCalculation('Test_Transmission', flow_system)
         calculation.do_modeling()
-        calculation.solve(self.get_solver(), save_results=True)
-        results = fx.results.CalculationResults(calculation.name, 'results')
+        calculation.solve(self.get_solver())
 
         self.assert_almost_equal_numeric(
             transmission.in1.model.on_off.on.solution.values, np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]), 'On does not work properly'
         )
 
         self.assert_almost_equal_numeric(
-            results.to_dataframe('Rohr', with_last_time_step=False)['Rohr__Rohr1b'].values,
+            calculation.results.model.variables['Rohr (Rohr1b)|flow_rate'].solution.values,
             transmission.out1.model.flow_rate.solution.values,
             'Flow rate of Rohr__Rohr1b is not correct',
         )
@@ -715,7 +713,7 @@ class TestModelingTypes(BaseTest):
     def test_segmented(self):
         calculation = self.calculate('segmented')
         self.assert_almost_equal_numeric(
-            sum(calculation.results(combined_arrays=True)['Effects']['costs']['operation']['total_per_timestep']),
+            sum(calculation.results.solution_without_overlap('costs|operation|total_per_timestep')),
             343613,
             'costs doesnt match expected value',
         )
@@ -824,10 +822,10 @@ class TestModelingTypes(BaseTest):
         if doFullCalc:
             calc = fx.FullCalculation('fullModel', es)
             calc.do_modeling()
-            calc.solve(self.get_solver(), save_results=True)
+            calc.solve(self.get_solver())
         elif doSegmentedCalc:
             calc = fx.SegmentedCalculation('segModel', es, timesteps_per_segment=96, overlap_timesteps=1)
-            calc.do_modeling_and_solve(self.get_solver(), save_results=True)
+            calc.do_modeling_and_solve(self.get_solver())
         elif doAggregatedCalc:
             calc = fx.AggregatedCalculation(
                 'aggModel',
@@ -846,7 +844,7 @@ class TestModelingTypes(BaseTest):
             calc.do_modeling()
             print(es)
             es.visualize_network()
-            calc.solve(self.get_solver(), save_results=True)
+            calc.solve(self.get_solver())
         else:
             raise Exception('Wrong Modeling Type')
 

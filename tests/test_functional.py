@@ -95,13 +95,12 @@ def flow_system_minimal(timesteps) -> fx.FlowSystem:
 
 
 def solve_and_load(
-    flow_system: fx.FlowSystem, solver: str
+    flow_system: fx.FlowSystem, solver
 ) -> fx.results.CalculationResults:
     calculation = fx.FullCalculation('Calculation', flow_system)
     calculation.do_modeling()
-    calculation.solve(solver, True)
-    results = fx.results.CalculationResults('Calculation', 'results')
-    return results
+    calculation.solve(solver)
+    return calculation.results
 
 
 @pytest.fixture(params=['highs', 'gurobi'])
@@ -124,27 +123,24 @@ def test_solve_and_load(solver_fixture, time_steps_fixture):
 
 def test_minimal_model(solver_fixture, time_steps_fixture):
     results = solve_and_load(flow_system_minimal(time_steps_fixture), solver_fixture)
+    assert_allclose(results.model.variables['costs|total'].solution.values, 80, rtol=1e-5, atol=1e-10)
 
     assert_allclose(
-        results.effect_results['costs'].all_results['total'], 80, rtol=1e-5, atol=1e-10
-    )
-
-    assert_allclose(
-        results.component_results['Boiler'].all_results['Q_th']['flow_rate'],
+        results.model.variables['Boiler (Q_th)|flow_rate'].solution.values,
         [-0.0, 10.0, 20.0, -0.0, 10.0],
         rtol=1e-5,
         atol=1e-10,
     )
 
     assert_allclose(
-        results.effect_results['costs'].all_results['operation']['total_per_timestep'],
+        results.model.variables['costs|operation|total_per_timestep'].solution.values,
         [-0.0, 20.0, 40.0, -0.0, 20.0],
         rtol=1e-5,
         atol=1e-10,
     )
 
     assert_allclose(
-        results.effect_results['costs'].all_results['operation']['Shares']['Gastarif (Gas)'],
+        results.model.variables['Gastarif (Gas)->costs|operation'].solution.values,
         [-0.0, 20.0, 40.0, -0.0, 20.0],
         rtol=1e-5,
         atol=1e-10,

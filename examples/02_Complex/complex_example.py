@@ -178,20 +178,16 @@ if __name__ == '__main__':
     pprint(flow_system)  # Get a string representation of the FlowSystem
 
     # --- Solve FlowSystem ---
-    calculation = fx.FullCalculation('Sim1', flow_system, time_indices)
+    calculation = fx.FullCalculation('complex example', flow_system, time_indices)
     calculation.do_modeling()
 
-    calculation.solve(
-        fx.solvers.HighsSolver(0.01, 60),
-        save_results='results',  # If and where to save results
-    )
+    calculation.solve(fx.solvers.HighsSolver(0.01, 60))
 
     # --- Results ---
-    # You can analyze results directly. But it's better to save them to a file and start from there,
-    # letting you continue at any time
-    # See complex_example_evaluation.py
-    used_time_series = timesteps[time_indices] if time_indices else timesteps
-    # Analyze results directly
-    fig = fx.plotting.with_plotly(
-        data=pd.DataFrame(Gaskessel.Q_th.model.flow_rate.solution, index=used_time_series), mode='bar', show=True
-    )
+    # You can analyze results directly or save them to file and reload them later.
+    calculation.results.to_file()
+
+    # But let's plot some results anyway
+    calculation.results.plot_heatmap('BHKW2 (Q_th)|flow_rate')
+    calculation.results['BHKW2'].plot_flow_rates()
+    calculation.results['Speicher'].plot_charge_state()

@@ -141,6 +141,9 @@ class FlowSystem:
         }
         return infos
 
+    def infos_compact(self):
+        return get_compact_representation(self.infos(use_numpy=True, use_element_label=True)),
+
     def to_json(self, path: Union[str, pathlib.Path]):
         """
         Saves the flow system to a json file.
@@ -151,27 +154,8 @@ class FlowSystem:
         path : Union[str, pathlib.Path]
             The path to the json file.
         """
-        data = get_compact_representation(self.infos(use_numpy=True, use_element_label=True))
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-
-    def results(self):
-        return {
-            'Components': {
-                comp.label: comp.model.solution_structured(mode='numpy')
-                for comp in sorted(self.components.values(), key=lambda component: component.label.upper())
-            },
-            'Buses': {
-                bus.label: bus.model.solution_structured(mode='numpy')
-                for bus in sorted(self.buses.values(), key=lambda bus: bus.label.upper())
-            },
-            'Effects': {
-                effect.label: effect.model.solution_structured(mode='numpy')
-                for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
-            },
-            'Time': self.timesteps_extra.tolist(),
-            'Time intervals in hours': self.hours_per_step,
-        }
+            json.dump(self.infos_compact(), f, indent=4, ensure_ascii=False)
 
     def visualize_network(
         self,
@@ -265,90 +249,3 @@ class FlowSystem:
     @property
     def all_time_series(self) -> List[TimeSeries]:
         return [ts for element in self.all_elements.values() for ts in element.used_time_series]
-
-    @property
-    def hours_of_previous_timesteps(self):
-        return self.time_series_collection.hours_of_previous_timesteps
-
-    @property
-    def timesteps(self):
-        return self.time_series_collection.timesteps
-
-    @property
-    def timesteps_extra(self):
-        return self.time_series_collection.timesteps_extra
-
-    @property
-    def periods(self):
-        return self.time_series_collection.periods
-
-    @property
-    def hours_per_step(self):  #TODO: Rename to hours_per_timestep
-        return self.time_series_collection.hours_per_timestep
-
-    @property
-    def coords(self):
-        return [self.periods, self.timesteps] if self.periods is not None else [self.timesteps]
-
-    @property
-    def coords_extra(self):
-        return [self.periods, self.timesteps_extra] if self.periods is not None else [self.timesteps_extra]
-
-
-def create_datetime_array(
-    start: str, steps: Optional[int] = None, freq: str = '1h', end: Optional[str] = None
-) -> np.ndarray[np.datetime64]:
-    """
-    Create a NumPy array with datetime64 values.
-
-    Parameters
-    ----------
-    start : str
-        Start date in 'YYYY-MM-DD' format or a full timestamp (e.g., 'YYYY-MM-DD HH:MM').
-    steps : int, optional
-        Number of steps in the datetime array. If `end` is provided, `steps` is ignored.
-    freq : str, optional
-        Frequency for the datetime64 array. Supports flexible intervals:
-        - 'Y', 'M', 'W', 'D', 'h', 'm', 's' (e.g., '1h', '15m', '2h').
-        Defaults to 'h' (hourly).
-    end : str, optional
-        End date in 'YYYY-MM-DD' format or a full timestamp (e.g., 'YYYY-MM-DD HH:MM').
-        If provided, the function generates an array from `start` to `end` using `freq`.
-
-    Returns
-    -------
-    np.ndarray
-        NumPy array of datetime64 values.
-
-    Examples
-    --------
-    Create an array with 15-minute intervals:
-    >>> create_datetime_array('2023-01-01', steps=5, freq='15m')
-    array(['2023-01-01T00:00', '2023-01-01T00:15', '2023-01-01T00:30', ...], dtype='datetime64[m]')
-
-    Create 2-hour intervals:
-    >>> create_datetime_array('2023-01-01T00', steps=4, freq='2h')
-    array(['2023-01-01T00', '2023-01-01T02', '2023-01-01T04', ...], dtype='datetime64[h]')
-
-    Generate minute intervals until a specified end time:
-    >>> create_datetime_array('2023-01-01T00:00', end='2023-01-01T01:00', freq='m')
-    array(['2023-01-01T00:00', '2023-01-01T00:01', ..., '2023-01-01T00:59'], dtype='datetime64[m]')
-    """
-    # Parse the frequency and interval
-    unit = freq[-1]  # Get the time unit (e.g., 'h', 'm', 's')
-    interval = int(freq[:-1]) if freq[:-1].isdigit() else 1  # Default to interval=1 if not specified
-    step_size = np.timedelta64(interval, unit)  # Create the timedelta step size
-
-    # Convert the start time to a datetime64 object
-    start_dt = np.datetime64(start)
-
-    # Generate the array based on the parameters
-    if end:  # If `end` is specified, create a range from start to end
-        end_dt = np.datetime64(end)
-        return np.arange(start_dt, end_dt, step_size)
-
-    elif steps:  # If `steps` is specified, create a range with the given number of steps
-        return np.array([start_dt + i * step_size for i in range(steps)], dtype='datetime64')
-
-    else:  # If neither `steps` nor `end` is provided, raise an error
-        raise ValueError('Either `steps` or `end` must be provided.')
