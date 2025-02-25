@@ -60,6 +60,7 @@ class FlowSystem:
 
         # defaults:
         self.components: Dict[str, Component] = {}
+        self.buses: Dict[str, Bus] = {}
         self.effects: Dict[str, Effect] = {}
         self.model: Optional[SystemModel] = None
 
@@ -70,39 +71,59 @@ class FlowSystem:
             self.effects[new_effect.label] = new_effect
             logger.info(f'Registered new Effect: {new_effect.label}')
 
-    def add_components(self, *args: Component) -> None:
-        # Komponenten registrieren:
-        new_components = list(args)
-        for new_component in new_components:
+    def add_components(self, *components: Component) -> None:
+        for new_component in list(components):
             logger.info(f'Registered new Component: {new_component.label}')
             self._check_if_element_is_unique(new_component)  # check if already exists:
-            new_component.register_component_in_flows()  # Komponente in Flow registrieren
-            new_component.register_flows_in_bus()  # Flows in Bus registrieren:
             self.components[new_component.label] = new_component  # Add to existing components
 
-    def add_elements(self, *args: Element) -> None:
+    def add_elements(self, *elements: Element) -> None:
         """
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
 
         Parameters
         ----------
-        *args : childs of  Element like Boiler, HeatPump, Bus,...
+        *elements : childs of  Element like Boiler, HeatPump, Bus,...
             modeling Elements
 
         """
-        for new_element in list(args):
+        for new_element in list(elements):
             if isinstance(new_element, Component):
                 self.add_components(new_element)
             elif isinstance(new_element, Effect):
                 self.add_effects(new_element)
+            elif isinstance(new_element, Bus):
+                self.add_buses(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
+    def add_buses(self, *buses: Bus):
+        for new_bus in list(buses):
+            logger.info(f'Registered new Bus: {new_bus.label}')
+            self._check_if_element_is_unique(new_bus)  # check if already exists:
+            self.buses[new_bus.label] = new_bus  # Add to existing components
+
+    def _connect_network(self):
+        """Connects the network of components and buses. Can be rerun without changes if no elements were added"""
+        for component in self.components.values():
+            for flow in component.inputs + component.outputs:
+                flow.component = component.label_full
+                flow.is_input_in_component = True if flow in component.inputs else False
+
+                # Connect Buses
+                bus = flow.bus if isinstance(flow.bus, Bus) else self.buses[flow.bus]
+                if flow.is_input_in_component and flow not in bus.outputs:
+                    bus.outputs.append(flow)
+                elif not flow.is_input_in_component and flow not in bus.inputs:
+                    bus.inputs.append(flow)
+
     def transform_data(self):
+        self._connect_network()
         for element in self.all_elements.values():
             element.transform_data(self.time_series_collection)
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
+        self._connect_network()
         nodes = {
             node.label_full: {
                 'label': node.label,
@@ -115,8 +136,8 @@ class FlowSystem:
         edges = {
             flow.label_full: {
                 'label': flow.label,
-                'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
-                'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
+                'start': flow.bus if flow.is_input_in_component else flow.component,
+                'end': flow.component if flow.is_input_in_component else flow.bus,
                 'infos': flow.__str__(),
             }
             for flow in self.flows.values()
@@ -237,10 +258,6 @@ class FlowSystem:
     def flows(self) -> Dict[str, Flow]:
         set_of_flows = {flow for comp in self.components.values() for flow in comp.inputs + comp.outputs}
         return {flow.label_full: flow for flow in set_of_flows}
-
-    @property
-    def buses(self) -> Dict[str, Bus]:
-        return {flow.bus.label: flow.bus for flow in self.flows.values()}
 
     @property
     def all_elements(self) -> Dict[str, Element]:

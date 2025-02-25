@@ -64,16 +64,6 @@ class Component(Element):
         if self.on_off_parameters is not None:
             self.on_off_parameters.transform_data(time_series_collection, self)
 
-    def register_component_in_flows(self) -> None:
-        for flow in self.inputs + self.outputs:
-            flow.comp = self
-
-    def register_flows_in_bus(self) -> None:
-        for flow in self.inputs:
-            flow.bus.add_output(flow)
-        for flow in self.outputs:
-            flow.bus.add_input(flow)
-
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         infos = super().infos(use_numpy, use_element_label)
         infos['inputs'] = [flow.infos(use_numpy, use_element_label) for flow in self.inputs]
@@ -116,14 +106,6 @@ class Bus(Element):
             'excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour, time_series_collection
         )
 
-    def add_input(self, flow) -> None:
-        flow: Flow
-        self.inputs.append(flow)
-
-    def add_output(self, flow) -> None:
-        flow: Flow
-        self.outputs.append(flow)
-
     def _plausibility_checks(self) -> None:
         if self.excess_penalty_per_flow_hour == 0:
             logger.warning(f'In Bus {self.label}, the excess_penalty_per_flow_hour is 0. Use "None" or a value > 0.')
@@ -150,7 +132,7 @@ class Flow(Element):
     def __init__(
         self,
         label: str,
-        bus: Bus,
+        bus: str,
         size: Union[Scalar, InvestParameters] = None,
         fixed_relative_profile: Optional[NumericDataTS] = None,
         relative_minimum: NumericDataTS = 0,
@@ -224,8 +206,9 @@ class Flow(Element):
 
         self.previous_flow_rate = previous_flow_rate
 
-        self.bus = bus
-        self.comp: Optional[Component] = None
+        self.bus: str = bus.label if isinstance(bus, Bus) else bus
+        self.component: str = 'UnknownComponent'
+        self.is_input_in_component: Optional[bool] = None
 
         self._plausibility_checks()
 
@@ -245,7 +228,7 @@ class Flow(Element):
 
     def infos(self, use_numpy=True, use_element_label=False) -> Dict:
         infos = super().infos(use_numpy, use_element_label)
-        infos['is_input_in_component'] = self.is_input_in_comp
+        infos['is_input_in_component'] = self.is_input_in_component
         return infos
 
     def _plausibility_checks(self) -> None:
@@ -264,13 +247,7 @@ class Flow(Element):
 
     @property
     def label_full(self) -> str:
-        # Wenn im Erstellungsprozess comp noch nicht bekannt:
-        comp_label = 'unknownComp' if self.comp is None else self.comp.label
-        return f'{comp_label} ({self.label})'
-
-    @property  # Richtung
-    def is_input_in_comp(self) -> bool:
-        return True if self in self.comp.inputs else False
+        return f'{self.component} ({self.label})'
 
     @property
     def size_is_fixed(self) -> bool:
