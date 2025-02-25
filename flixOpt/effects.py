@@ -111,30 +111,6 @@ class Effect(Element):
         self.minimum_total = minimum_total
         self.maximum_total = maximum_total
 
-        self._plausibility_checks()
-
-    def _plausibility_checks(self) -> None:
-        # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
-        # TODO: Improve checks!! Only most basic case covered...
-
-        def error_str(effect_label: str, share_ffect_label: str):
-            return (
-                f'  {effect_label} -> has share in: {share_ffect_label}\n'
-                f'  {share_ffect_label} -> has share in: {effect_label}'
-            )
-
-        # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-        # operation:
-        for target_effect in self.specific_share_to_other_effects_operation.keys():
-            assert self not in target_effect.specific_share_to_other_effects_operation.keys(), (
-                f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
-            )
-        # invest:
-        for target_effect in self.specific_share_to_other_effects_invest.keys():
-            assert self not in target_effect.specific_share_to_other_effects_invest.keys(), (
-                f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
-            )
-
     def transform_data(self, time_series_collection: TimeSeriesCollection):
         self.minimum_operation_per_hour = self._create_time_series(
             'minimum_operation_per_hour', self.minimum_operation_per_hour, time_series_collection
@@ -280,6 +256,8 @@ class EffectCollection(Model):
         self.effects = effects  # Performs some validation
         self.penalty: Optional[ShareAllocationModel] = None
 
+        self._plausibility_checks()
+
     def add_share_to_effects(
         self,
         name: str,
@@ -321,6 +299,28 @@ class EffectCollection(Model):
                 target_effect.model.invest.add_share(
                     origin_effect.label_full,
                     origin_effect.model.invest.total * factor,
+                )
+
+    def _plausibility_checks(self) -> None:
+        # Check circular loops in effects:
+        # TODO: Improve checks!! Only most basic case covered...
+
+        def error_str(effect_label: str, share_ffect_label: str):
+            return (
+                f'  {effect_label} -> has share in: {share_ffect_label}\n'
+                f'  {share_ffect_label} -> has share in: {effect_label}'
+            )
+        for effect in self.effects.values():
+            # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
+            # operation:
+            for target_effect in effect.specific_share_to_other_effects_operation.keys():
+                assert self not in target_effect.specific_share_to_other_effects_operation.keys(), (
+                    f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
+                )
+            # invest:
+            for target_effect in effect.specific_share_to_other_effects_invest.keys():
+                assert self not in target_effect.specific_share_to_other_effects_invest.keys(), (
+                    f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
                 )
 
     def __getitem__(self, effect: Union[str, Effect]) -> 'Effect':
