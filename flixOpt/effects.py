@@ -282,7 +282,7 @@ class EffectCollection:
         try:
             return self.effects[effect]
         except KeyError as e:
-            raise KeyError(f'No effect with label {effect} found!') from e
+            raise KeyError(f'Effect "{effect}" not found! Add it to the FlowSystem first!') from e
 
     def __iter__(self) -> Iterator[Effect]:
         return iter(self._effects.values())
