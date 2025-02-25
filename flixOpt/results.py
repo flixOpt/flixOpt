@@ -212,24 +212,16 @@ class _NodeResults(_ElementResults):
                    threshold: Optional[float] = 1e-5,
                    with_last_timestep: bool = False) -> xr.Dataset:
         variables = [name for name in self.variables if name.endswith(('|flow_rate', '|excess_input', '|excess_output'))]
-        ds = _sanitize_dataset(
+        return _sanitize_dataset(
             ds=self.variables[variables].solution,
             threshold=threshold,
             timesteps=self._calculation_results.timesteps_extra if with_last_timestep else None,
+            negate=(
+                self.outputs + self.inputs if negate_outputs and negate_inputs
+                else self.outputs if negate_outputs
+                else self.inputs if negate_inputs
+                else None),
         )
-        self._negate_flows(ds, negate_inputs, negate_outputs)
-        return ds
-
-    def _negate_flows(self, ds: xr.Dataset, negate_outputs: bool = False, negate_inputs: bool = True) -> xr.Dataset:
-        if negate_outputs:
-            for name in self.outputs:
-                if name in ds:
-                    ds[name] = -ds[name]
-        if negate_inputs:
-            for name in self.inputs:
-                if name in ds:
-                    ds[name] = -ds[name]
-        return ds
 
 
 class BusResults(_NodeResults):
@@ -280,13 +272,16 @@ class ComponentResults(_NodeResults):
         if not self.is_storage:
             raise ValueError(f'Cant get charge_state. "{self.label}" is not a storage')
         variables = self.inputs + self.outputs + [self._charge_state]
-        ds = _sanitize_dataset(
+        return _sanitize_dataset(
             ds=self.variables[variables].solution,
             threshold=threshold,
             timesteps=self._calculation_results.timesteps_extra,
+            negate=(
+                self.outputs + self.inputs if negate_outputs and negate_inputs
+                else self.outputs if negate_outputs
+                else self.inputs if negate_inputs
+                else None),
         )
-        self._negate_flows(ds, negate_inputs, negate_outputs)
-        return ds
 
 
 class EffectResults(_ElementResults):
@@ -455,7 +450,9 @@ def plot_heatmap(
 def _sanitize_dataset(
         ds: xr.Dataset,
         timesteps: Optional[pd.DatetimeIndex] = None,
-        threshold: Optional[float] = 1e-5) -> xr.Dataset:
+        threshold: Optional[float] = 1e-5,
+        negate: Optional[List[str]] = None,
+) -> xr.Dataset:
     """
     Sanitizes a dataset by dropping variables with small values and optionally reindexing the time axis.
 
@@ -463,10 +460,14 @@ def _sanitize_dataset(
     - ds (xr.Dataset): The dataset to sanitize.
     - timesteps (Optional[pd.DatetimeIndex]): The timesteps to reindex the dataset to. If None, the original timesteps are kept.
     - threshold (Optional[float]): The threshold for dropping variables. If None, no variables are dropped.
+    - negate (Optional[List[str]]): The variables to negate. If None, no variables are negated.
 
     Returns:
     - xr.Dataset: The sanitized dataset.
     """
+    if negate is not None:
+        for var in negate:
+            ds[var] = -ds[var]
     if threshold is not None:
         abs_ds = xr.apply_ufunc(np.abs, ds)
         vars_to_drop = [var for var in ds.data_vars if (abs_ds[var] <= threshold).all()]
