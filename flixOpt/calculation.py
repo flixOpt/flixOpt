@@ -329,6 +329,7 @@ class SegmentedCalculation(Calculation):
         self.sub_calculations: List[FullCalculation] = []
 
         self.all_timesteps = self.flow_system.time_series_collection.all_timesteps
+        self.all_timesteps_extra = self.flow_system.time_series_collection.all_timesteps_extra
 
         self.segment_names = [f'Segment_{i + 1}' for i in range(math.ceil(len(self.all_timesteps) / self.timesteps_per_segment))]
         self.active_timesteps_per_segment = self._calculate_timesteps_of_segment()
@@ -352,7 +353,6 @@ class SegmentedCalculation(Calculation):
     def do_modeling_and_solve(
             self,
             solver: _Solver,
-            save_results: bool = True,
             log_file: Optional[pathlib.Path] = None,
             log_main_results: bool = False):
         logger.info(f'{"":#^80}')
@@ -365,7 +365,7 @@ class SegmentedCalculation(Calculation):
             logger.info(f'{segment_name} [{i+1:>2}/{len(self.segment_names):<2}] '
                         f'({timesteps_of_segment[0]} -> {timesteps_of_segment[-1]}):')
 
-            calculation = FullCalculation(segment_name, self.flow_system, active_timesteps=timesteps_of_segment)
+            calculation = FullCalculation(f'{self.name}-{segment_name}', self.flow_system, active_timesteps=timesteps_of_segment)
             self.sub_calculations.append(calculation)
             calculation.do_modeling()
             invest_elements = [
@@ -379,7 +379,7 @@ class SegmentedCalculation(Calculation):
                     f'Investments are not supported in Segmented Calculation! '
                     f'Following InvestmentModels were found: {invest_elements}'
                 )
-            calculation.solve(solver, save_results=save_results,
+            calculation.solve(solver,
                               log_file=pathlib.Path(log_file) if log_file is not None else self.folder / f'{self.name}.log',
                               log_main_results=log_main_results)
 
@@ -441,108 +441,3 @@ class SegmentedCalculation(Calculation):
             },
             **{i: start_values for i, start_values in enumerate(self._transfered_start_values, 1)},
         }
-
-
-def _remove_none_values(d: Dict[Any, Optional[Any]]) -> Dict[Any, Any]:
-    # Remove None values from a dictionary
-    return {k: _remove_none_values(v) if isinstance(v, dict) else v for k, v in d.items() if v is not None}
-
-
-def _remove_empty_dicts(d: Dict[Any, Any]) -> Dict[Any, Any]:
-    """Recursively removes empty dictionaries from a nested dictionary."""
-    return {
-        k: _remove_empty_dicts(v) if isinstance(v, dict) else v
-        for k, v in d.items()
-        if not isinstance(v, dict) or _remove_empty_dicts(v)
-    }
-
-
-def _combine_nested_arrays(
-    *dicts: Dict[str, Union[NumericData, dict]],
-    trim: Optional[int] = None,
-    length_per_array: Optional[int] = None,
-) -> Dict[str, Union[np.ndarray, dict]]:
-    """
-    Combines multiple dictionaries with identical structures by concatenating their arrays,
-    with optional trimming. Filters out all other values.
-
-    Parameters
-    ----------
-    *dicts : Dict[str, Union[np.ndarray, dict]]
-        Dictionaries with matching structures and NumericData values.
-    trim : int, optional
-        Number of elements to trim from the end of each array except the last. Defaults to None.
-    length_per_array : int, optional
-        Trims the arrays to the desired length. Defaults to None.
-        If None, then trim is used.
-
-    Returns
-    -------
-    Dict[str, Union[np.ndarray, dict]]
-        A single dictionary with concatenated arrays at each key, ignoring non-array values.
-
-    Example
-    -------
-    >>> dict1 = {'a': np.array([1, 2, 3]), 'b': {'c': np.array([4, 5, 6])}}
-    >>> dict2 = {'a': np.array([7, 8, 9]), 'b': {'c': np.array([10, 11, 12])}}
-    >>> _combine_nested_arrays(dict1, dict2, trim=1)
-    {'a': array([1, 2, 7, 8, 9]), 'b': {'c': array([4, 5, 10, 11, 12])}}
-    """
-    assert (trim is None) != (length_per_array is None), (
-        'Either trim or length_per_array must be provided,But not both!'
-    )
-
-    def combine_arrays_recursively(
-        *values: Union[NumericData, Dict[str, NumericData], Any],
-    ) -> Optional[Union[np.ndarray, Dict[str, Union[np.ndarray, dict]]]]:
-        if all(isinstance(val, dict) for val in values):  # If all values are dictionaries, recursively combine each key
-            return {key: combine_arrays_recursively(*(val[key] for val in values)) for key in values[0]}
-
-        if all(isinstance(val, np.ndarray) for val in values) and all(val.ndim != 0 for val in values):
-
-            def limit(idx: int, arr: np.ndarray) -> np.ndarray:
-                # Performs the trimming of the arrays. Doesn't trim the last array!
-                if trim and idx < len(values) - 1:
-                    return arr[:-trim]
-                elif length_per_array and idx < len(values) - 1:
-                    return arr[:length_per_array]
-                return arr
-
-            values: List[np.ndarray]
-            return np.concatenate([limit(idx, arr) for idx, arr in enumerate(values)])
-
-        else:  # Ignore non-array values
-            return None
-
-    combined_arrays = combine_arrays_recursively(*dicts)
-    combined_arrays = _remove_none_values(combined_arrays)
-    return _remove_empty_dicts(combined_arrays)
-
-
-def _combine_nested_scalars(*dicts: Dict[str, Union[NumericData, dict]]) -> Dict[str, Union[List[Scalar], dict]]:
-    """
-    Combines multiple dictionaries with identical structures by combining its skalar values to a list.
-    Filters out all other values.
-
-    Parameters
-    ----------
-    *dicts : Dict[str, Union[np.ndarray, dict]]
-        Dictionaries with matching structures and NumericData values.
-    """
-
-    def combine_scalars_recursively(
-        *values: Union[NumericData, Dict[str, NumericData], Any],
-    ) -> Optional[Union[List[Scalar], Dict[str, Union[List[Scalar], dict]]]]:
-        # If all values are dictionaries, recursively combine each key
-        if all(isinstance(val, dict) for val in values):
-            return {key: combine_scalars_recursively(*(val[key] for val in values)) for key in values[0]}
-
-        # Concatenate arrays with optional trimming
-        if all(np.isscalar(val) for val in values):
-            return [val for val in values]
-        else:  # Ignore non-skalar values
-            return None
-
-    combined_scalars = combine_scalars_recursively(*dicts)
-    combined_scalars = _remove_none_values(combined_scalars)
-    return _remove_empty_dicts(combined_scalars)
