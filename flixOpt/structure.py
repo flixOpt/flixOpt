@@ -60,7 +60,7 @@ class SystemModel(linopy.Model):
                     "invest": float(effect.model.invest.total.solution.values),
                     "total": float(effect.model.total.solution.values),
                 }
-                for effect in self.flow_system.effects.values()
+                for effect in self.flow_system.effects
             },
             "Invest-Decisions": {
                 "Invested": {

@@ -209,7 +209,7 @@ class FlowSystem:
             },
             'Effects': {
                 effect.label: effect.infos(use_numpy, use_element_label)
-                for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
+                for effect in sorted(self.effects, key=lambda effect: effect.label.upper())
             },
         }
         return infos
