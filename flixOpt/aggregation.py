@@ -318,7 +318,6 @@ class AggregationModel(Model):
         if (self.aggregation_parameters.percentage_of_period_freedom > 0) and penalty != 0:
             for variable in self.variables_direct.values():
                 self._model.effects.add_share_to_penalty(
-                    self._model,
                     'Aggregation',
                     variable * penalty
                 )

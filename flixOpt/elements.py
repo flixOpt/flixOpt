@@ -468,12 +468,8 @@ class BusModel(ElementModel):
             )
             eq_bus_balance.lhs -= -self.excess_input + self.excess_output
 
-            self._model.effects.add_share_to_penalty(
-                self._model, self.label_of_element, (self.excess_input * excess_penalty).sum()
-            )
-            self._model.effects.add_share_to_penalty(
-                self._model, self.label_of_element, (self.excess_output * excess_penalty).sum()
-            )
+            self._model.effects.add_share_to_penalty(self.label_of_element, (self.excess_input * excess_penalty).sum())
+            self._model.effects.add_share_to_penalty(self.label_of_element, (self.excess_output * excess_penalty).sum())
 
     def results_structure(self):
         inputs = [flow.model.flow_rate.name for flow in self.element.inputs]

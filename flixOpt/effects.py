@@ -294,7 +294,7 @@ class EffectCollection(Model):
             else:
                 raise ValueError(f'Target {target} not supported!')
 
-    def add_share_to_penalty(self, system_model: SystemModel, name: str, expression: linopy.LinearExpression) -> None:
+    def add_share_to_penalty(self, name: str, expression: linopy.LinearExpression) -> None:
         if expression.ndim != 0:
             raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
         self.penalty.add_share(name, expression)
