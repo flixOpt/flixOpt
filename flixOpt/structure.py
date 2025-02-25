@@ -23,7 +23,7 @@ from .config import CONFIG
 from .core import NumericData, Scalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from .effects import EffectCollection
+    from .effects import EffectCollectionModel
     from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
@@ -35,11 +35,10 @@ class SystemModel(linopy.Model):
         super().__init__(force_dim_names=True)
         self.flow_system = flow_system
         self.time_series_collection = flow_system.time_series_collection
-        self.effects: Optional[EffectCollection] = None
+        self.effects: Optional[EffectCollectionModel] = None
 
     def do_modeling(self):
-        from .effects import EffectCollection
-        self.effects = EffectCollection(self, list(self.flow_system.effects.values()))
+        self.effects = self.flow_system.effects.create_model(self)
         self.effects.do_modeling()
         component_models = [component.create_model(self) for component in self.flow_system.components.values()]
         bus_models = [bus.create_model(self) for bus in self.flow_system.buses.values()]
@@ -47,10 +46,6 @@ class SystemModel(linopy.Model):
             component_model.do_modeling()
         for bus_model in bus_models:  # Buses after Components, because FlowModels are created in ComponentModels
             bus_model.do_modeling()
-
-        self.add_objective(
-            self.effects.objective_effect.model.total + self.effects.penalty.total
-        )
 
     @property
     def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
@@ -65,7 +60,7 @@ class SystemModel(linopy.Model):
                     "invest": float(effect.model.invest.total.solution.values),
                     "total": float(effect.model.total.solution.values),
                 }
-                for effect in self.flow_system.effects.values()
+                for effect in self.flow_system.effects
             },
             "Invest-Decisions": {
                 "Invested": {
@@ -121,7 +116,7 @@ class Interface:
     This class is used to collect arguments about a Model.
     """
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection):
+    def transform_data(self, flow_system: 'FlowSystem'):
         """ Transforms the data of the interface to match the FlowSystem's dimensions"""
         raise NotImplementedError('Every Interface needs a transform_data() method')
 
@@ -188,31 +183,6 @@ class Interface:
     def __str__(self):
         return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
 
-    @staticmethod
-    def _create_time_series(
-        name: str,
-        data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
-        time_series_collection: TimeSeriesCollection,
-        extra_timestep: bool = False,
-    ) -> Optional[TimeSeries]:
-        """
-        Tries to create a TimeSeries from NumericData Data and adds it to the time_series_collection
-        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
-        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
-        If the data is None, nothing happens.
-        """
-
-        if data is None:
-            return None
-        elif isinstance(data, TimeSeries):
-            data.restore_data()
-            return data
-        return time_series_collection.create_time_series(
-            data=data,
-            name=name,
-            extra_timestep=extra_timestep,
-        )
-
 
 class Element(Interface):
     """Basic Element of flixOpt"""
@@ -241,21 +211,6 @@ class Element(Interface):
     @property
     def label_full(self) -> str:
         return self.label
-
-    def _create_time_series(
-        self,
-        name: str,
-        data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
-        time_series_collection: TimeSeriesCollection,
-        extra_timestep: bool = False,
-    ) -> Optional[TimeSeries]:
-        """
-        Tries to create a TimeSeries from NumericData Data and adds it to the time_series_collection
-        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
-        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
-        If the data is None, nothing happens.
-        """
-        return super()._create_time_series(f'{self.label_full}|{name}', data, time_series_collection, extra_timestep)
 
     @staticmethod
     def _valid_label(label: str) -> str:

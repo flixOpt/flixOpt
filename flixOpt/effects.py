@@ -6,7 +6,7 @@ which are then transformed into the internal data structure.
 """
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union, Iterator
 
 import linopy
 import numpy as np
@@ -14,7 +14,7 @@ import pandas as pd
 
 from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
-from .structure import Element, ElementModel, Model, SystemModel
+from .structure import Element, ElementModel, Model, SystemModel, Interface
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -78,12 +78,10 @@ class Effect(Element):
             minimal sum (only invest) of the effect
         maximum_invest : scalar, optional
             maximal sum (only invest) of the effect
-        minimum_total : sclalar, optional
+        minimum_total : scalar, optional
             min sum of effect (invest+operation).
         maximum_total : scalar, optional
             max sum of effect (invest+operation).
-        **kwargs : TYPE
-            DESCRIPTION.
 
         Returns
         -------
@@ -111,43 +109,18 @@ class Effect(Element):
         self.minimum_total = minimum_total
         self.maximum_total = maximum_total
 
-        self._plausibility_checks()
-
-    def _plausibility_checks(self) -> None:
-        # Check circular loops in effects: (Effekte fügen sich gegenseitig Shares hinzu):
-        # TODO: Improve checks!! Only most basic case covered...
-
-        def error_str(effect_label: str, share_ffect_label: str):
-            return (
-                f'  {effect_label} -> has share in: {share_ffect_label}\n'
-                f'  {share_ffect_label} -> has share in: {effect_label}'
-            )
-
-        # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
-        # operation:
-        for target_effect in self.specific_share_to_other_effects_operation.keys():
-            assert self not in target_effect.specific_share_to_other_effects_operation.keys(), (
-                f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
-            )
-        # invest:
-        for target_effect in self.specific_share_to_other_effects_invest.keys():
-            assert self not in target_effect.specific_share_to_other_effects_invest.keys(), (
-                f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
-            )
-
-    def transform_data(self, time_series_collection: TimeSeriesCollection):
-        self.minimum_operation_per_hour = self._create_time_series(
-            'minimum_operation_per_hour', self.minimum_operation_per_hour, time_series_collection
+    def transform_data(self, flow_system: 'FlowSystem'):
+        self.minimum_operation_per_hour = flow_system.create_time_series(
+            f'{self.label_full}|minimum_operation_per_hour', self.minimum_operation_per_hour
         )
-        self.maximum_operation_per_hour = self._create_time_series(
-            'maximum_operation_per_hour', self.maximum_operation_per_hour, time_series_collection
+        self.maximum_operation_per_hour = flow_system.create_time_series(
+            f'{self.label_full}|maximum_operation_per_hour', self.maximum_operation_per_hour, flow_system
         )
 
-        self.specific_share_to_other_effects_operation = effect_values_to_time_series(
-            'operation_to',
+        self.specific_share_to_other_effects_operation = flow_system.create_effect_time_series(
+            f'{self.label_full}|operation->',
             self.specific_share_to_other_effects_operation,
-            self,
-            time_series_collection
+            'operation'
         )
 
     def create_model(self, model: SystemModel) -> 'EffectModel':
@@ -219,33 +192,6 @@ EffectValuesDict = Dict[EffectKey, NumericDataTS]  # How effect values are store
 EffectValuesUser = Union[NumericDataTS, Dict[EffectKey, NumericDataTS]]  # User-specified Shares to Effects
 EffectValuesUserScalar = Union[Scalar, Dict[EffectKey, Scalar]]  # User-specified Shares to Effects
 
-def effect_values_to_time_series(label_suffix: str,
-                                 effect_values: EffectValuesUser,
-                                 parent_element: Element,
-                                 time_series_collection: TimeSeriesCollection) -> Optional[EffectValuesTS]:
-    """
-    Transform EffectValues to EffectValuesTS.
-    Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
-
-    The resulting label of the TimeSeries is the label of the parent_element,
-    followed by the label of the Effect in the nested_values and the label_suffix.
-    If the key in the EffectValues is None, the alias 'Standard_Effect' is used
-    """
-    effect_values: Optional[EffectValuesDict] = effect_values_to_dict(effect_values)
-    if effect_values is None:
-        return None
-
-    effect_values_ts: EffectValuesTS = {
-        effect: parent_element._create_time_series(
-            f'{effect.label_full if effect is not None else "Standard_Effect"}|{label_suffix}',
-            value,
-            time_series_collection
-        )
-        for effect, value in effect_values.items()
-    }
-
-    return effect_values_ts
-
 
 def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[EffectValuesDict]:
     """
@@ -266,61 +212,56 @@ def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[Effe
         None: effect_values_user} if effect_values_user is not None else None
 
 
-class EffectCollection(Model):
+class EffectCollection:
     """
     Handling all Effects
     """
 
-    def __init__(self, model: SystemModel, effects: List[Effect]):
-        super().__init__(model, label_of_element='Effects')
+    def __init__(self, *effects: List[Effect]):
         self._effects = {}
         self._standard_effect: Optional[Effect] = None
         self._objective_effect: Optional[Effect] = None
 
-        self.effects = effects  # Performs some validation
-        self.penalty: Optional[ShareAllocationModel] = None
+        self.model: Optional[EffectCollectionModel] = None
+        self.add_effects(*effects)
 
-    def add_share_to_effects(
-        self,
-        name: str,
-        expressions: EffectValuesExpr,
-        target: Literal['operation', 'invest'],
-    ) -> None:
-        for effect, expression in expressions.items():
-            if target == 'operation':
-                self[effect].model.operation.add_share(name, expression)
-            elif target =='invest':
-                self[effect].model.invest.add_share(name, expression)
-            else:
-                raise ValueError(f'Target {target} not supported!')
+    def create_model(self, model: SystemModel) -> 'EffectCollectionModel':
+        self.model = EffectCollectionModel(model, self)
+        return self.model
 
-    def add_share_to_penalty(self, system_model: SystemModel, name: str, expression: linopy.LinearExpression) -> None:
-        if expression.ndim != 0:
-            raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
-        self.penalty.add_share(name, expression)
+    def add_effects(self, *effects: Effect) -> None:
+        for effect in list(effects):
+            if effect in self:
+                raise Exception(f'Effect with label "{effect.label=}" already added!')
+            if effect.is_standard:
+                self.standard_effect = effect
+            if effect.is_objective:
+                self.objective_effect = effect
+            self._effects[effect.label] = effect
+            logger.info(f'Registered new Effect: {effect.label}')
 
-    def do_modeling(self):
+        self._plausibility_checks()
+
+    def _plausibility_checks(self) -> None:
+        # Check circular loops in effects:
+        # TODO: Improve checks!! Only most basic case covered...
+
+        def error_str(effect_label: str, share_ffect_label: str):
+            return (
+                f'  {effect_label} -> has share in: {share_ffect_label}\n'
+                f'  {share_ffect_label} -> has share in: {effect_label}'
+            )
         for effect in self.effects.values():
-            effect.create_model(self._model)
-        self.penalty = self.add(ShareAllocationModel(self._model, shares_are_time_series=False, label_of_element='Penalty'))
-        for model in [effect.model for effect in self.effects.values()] + [self.penalty]:
-            model.do_modeling()
-
-        self._add_share_between_effects()
-
-    def _add_share_between_effects(self):
-        for origin_effect in self.effects.values():
-            # 1. operation: -> hier sind es Zeitreihen (share_TS)
-            for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
-                target_effect.model.operation.add_share(
-                    origin_effect.label_full,
-                    origin_effect.model.operation.total_per_timestep * time_series.active_data,
+            # Effekt darf nicht selber als Share in seinen ShareEffekten auftauchen:
+            # operation:
+            for target_effect in effect.specific_share_to_other_effects_operation.keys():
+                assert effect not in self[target_effect].specific_share_to_other_effects_operation.keys(), (
+                    f'Error: circular operation-shares \n{error_str(target_effect.label, target_effect.label)}'
                 )
-            # 2. invest:    -> hier ist es Scalar (share)
-            for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
-                target_effect.model.invest.add_share(
-                    origin_effect.label_full,
-                    origin_effect.model.invest.total * factor,
+            # invest:
+            for target_effect in effect.specific_share_to_other_effects_invest.keys():
+                assert effect not in self[target_effect].specific_share_to_other_effects_invest.keys(), (
+                    f'Error: circular invest-shares \n{error_str(target_effect.label, target_effect.label)}'
                 )
 
     def __getitem__(self, effect: Union[str, Effect]) -> 'Effect':
@@ -341,7 +282,10 @@ class EffectCollection(Model):
         try:
             return self.effects[effect]
         except KeyError as e:
-            raise KeyError(f'No effect with label {effect} found!') from e
+            raise KeyError(f'Effect "{effect}" not found! Add it to the FlowSystem first!') from e
+
+    def __iter__(self) -> Iterator[Effect]:
+        return iter(self._effects.values())
 
     def __contains__(self, item: Union[str, 'Effect']) -> bool:
         """Check if the effect exists. Checks for label or object"""
@@ -354,17 +298,6 @@ class EffectCollection(Model):
     @property
     def effects(self) -> Dict[str, Effect]:
         return self._effects
-
-    @effects.setter
-    def effects(self, value: List[Effect]):
-        for effect in value:
-            if effect.is_standard:
-                self.standard_effect = effect
-            if effect.is_objective:
-                self.objective_effect = effect
-            if effect in self:
-                raise Exception(f'Effect with label "{effect.label=}" already added!')
-            self._effects[effect.label] = effect
 
     @property
     def standard_effect(self) -> Effect:
@@ -389,3 +322,61 @@ class EffectCollection(Model):
         if self._objective_effect is not None:
             raise ValueError(f'An objective-effect already exists! ({self._objective_effect.label=})')
         self._objective_effect = value
+
+
+class EffectCollectionModel(Model):
+    """
+    Handling all Effects
+    """
+
+    def __init__(self, model: SystemModel, effects: EffectCollection):
+        super().__init__(model, label_of_element='Effects')
+        self.effects = effects
+        self.penalty: Optional[ShareAllocationModel] = None
+
+    def add_share_to_effects(
+        self,
+        name: str,
+        expressions: EffectValuesExpr,
+        target: Literal['operation', 'invest'],
+    ) -> None:
+        for effect, expression in expressions.items():
+            if target == 'operation':
+                self.effects[effect].model.operation.add_share(name, expression)
+            elif target =='invest':
+                self.effects[effect].model.invest.add_share(name, expression)
+            else:
+                raise ValueError(f'Target {target} not supported!')
+
+    def add_share_to_penalty(self, name: str, expression: linopy.LinearExpression) -> None:
+        if expression.ndim != 0:
+            raise Exception(f'Penalty shares must be scalar expressions! ({expression.ndim=})')
+        self.penalty.add_share(name, expression)
+
+    def do_modeling(self):
+        for effect in self.effects:
+            effect.create_model(self._model)
+        self.penalty = self.add(ShareAllocationModel(self._model, shares_are_time_series=False, label_of_element='Penalty'))
+        for model in [effect.model for effect in self.effects] + [self.penalty]:
+            model.do_modeling()
+
+        self._add_share_between_effects()
+
+        self._model.add_objective(
+            self.effects.objective_effect.model.total + self.penalty.total
+        )
+
+    def _add_share_between_effects(self):
+        for origin_effect in self.effects:
+            # 1. operation: -> hier sind es Zeitreihen (share_TS)
+            for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
+                self.effects[target_effect].model.operation.add_share(
+                    origin_effect.label_full,
+                    origin_effect.model.operation.total_per_timestep * time_series.active_data,
+                )
+            # 2. invest:    -> hier ist es Scalar (share)
+            for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
+                self.effects[target_effect].model.invest.add_share(
+                    origin_effect.label_full,
+                    origin_effect.model.invest.total * factor,
+                )

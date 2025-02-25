@@ -12,8 +12,8 @@ import pandas as pd
 import xarray as xr
 
 from . import utils
-from .core import TimeSeries, TimeSeriesCollection
-from .effects import Effect
+from .core import TimeSeries, TimeSeriesCollection, NumericData, NumericDataTS, TimeSeriesData
+from .effects import Effect, EffectCollection, EffectValuesTS, EffectValuesUser, effect_values_to_dict, EffectValuesDict
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
@@ -60,49 +60,122 @@ class FlowSystem:
 
         # defaults:
         self.components: Dict[str, Component] = {}
-        self.effects: Dict[str, Effect] = {}
+        self.buses: Dict[str, Bus] = {}
+        self.effects: EffectCollection = EffectCollection()
         self.model: Optional[SystemModel] = None
 
     def add_effects(self, *args: Effect) -> None:
-        for new_effect in list(args):
-            if new_effect.label in self.effects:
-                raise Exception(f'Effect with label "{new_effect.label=}" already added!')
-            self.effects[new_effect.label] = new_effect
-            logger.info(f'Registered new Effect: {new_effect.label}')
+        self.effects.add_effects(*args)
 
-    def add_components(self, *args: Component) -> None:
-        # Komponenten registrieren:
-        new_components = list(args)
-        for new_component in new_components:
+    def add_components(self, *components: Component) -> None:
+        for new_component in list(components):
             logger.info(f'Registered new Component: {new_component.label}')
             self._check_if_element_is_unique(new_component)  # check if already exists:
-            new_component.register_component_in_flows()  # Komponente in Flow registrieren
-            new_component.register_flows_in_bus()  # Flows in Bus registrieren:
             self.components[new_component.label] = new_component  # Add to existing components
 
-    def add_elements(self, *args: Element) -> None:
+    def add_elements(self, *elements: Element) -> None:
         """
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
 
         Parameters
         ----------
-        *args : childs of  Element like Boiler, HeatPump, Bus,...
+        *elements : childs of  Element like Boiler, HeatPump, Bus,...
             modeling Elements
 
         """
-        for new_element in list(args):
+        for new_element in list(elements):
             if isinstance(new_element, Component):
                 self.add_components(new_element)
             elif isinstance(new_element, Effect):
                 self.add_effects(new_element)
+            elif isinstance(new_element, Bus):
+                self.add_buses(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
+    def add_buses(self, *buses: Bus):
+        for new_bus in list(buses):
+            logger.info(f'Registered new Bus: {new_bus.label}')
+            self._check_if_element_is_unique(new_bus)  # check if already exists:
+            self.buses[new_bus.label] = new_bus  # Add to existing components
+
+    def _connect_network(self):
+        """Connects the network of components and buses. Can be rerun without changes if no elements were added"""
+        for component in self.components.values():
+            for flow in component.inputs + component.outputs:
+                flow.component = component.label_full
+                flow.is_input_in_component = True if flow in component.inputs else False
+
+                # Add Bus if not already added (deprecated)
+                if flow._bus_object is not None and flow._bus_object not in self.buses.values():
+                    self.add_buses(flow._bus_object)
+
+                # Connect Buses
+                bus = self.buses.get(flow.bus)
+                if bus is None:
+                    raise KeyError(f'Bus {flow.bus} not found in the FlowSystem, but used by "{flow.label_full}". '
+                                   f'Please add it first.')
+                if flow.is_input_in_component and flow not in bus.outputs:
+                    bus.outputs.append(flow)
+                elif not flow.is_input_in_component and flow not in bus.inputs:
+                    bus.inputs.append(flow)
+
     def transform_data(self):
+        self._connect_network()
         for element in self.all_elements.values():
-            element.transform_data(self.time_series_collection)
+            element.transform_data(self)
+
+    def create_time_series(
+            self,
+            name: str,
+            data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
+            extra_timestep: bool = False,
+    ) -> Optional[TimeSeries]:
+        """
+        Tries to create a TimeSeries from NumericData Data and adds it to the time_series_collection
+        If the data already is a TimeSeries, nothing happens and the TimeSeries gets reset and returned
+        If the data is a TimeSeriesData, it is converted to a TimeSeries, and the aggregation weights are applied.
+        If the data is None, nothing happens.
+        """
+
+        if data is None:
+            return None
+        elif isinstance(data, TimeSeries):
+            data.restore_data()
+            return data
+        return self.time_series_collection.create_time_series(
+            data=data,
+            name=name,
+            extra_timestep=extra_timestep
+        )
+
+    def create_effect_time_series(self,
+                                  label_prefix: Optional[str],
+                                  effect_values: EffectValuesUser,
+                                  label_suffix: Optional[str] = None,
+                                  ) -> Optional[EffectValuesTS]:
+        """
+        Transform EffectValues to EffectValuesTS.
+        Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
+
+        The resulting label of the TimeSeries is the label of the parent_element,
+        followed by the label of the Effect in the nested_values and the label_suffix.
+        If the key in the EffectValues is None, the alias 'Standard_Effect' is used
+        """
+        effect_values: Optional[EffectValuesDict] = effect_values_to_dict(effect_values)
+        if effect_values is None:
+            return None
+
+        return {
+            effect: self.create_time_series(
+                '|'.join(filter(None, [label_prefix, f'{self.effects[effect].label_full}', label_suffix])),
+                value
+            )
+            for effect, value in effect_values.items()
+        }
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
+        self._connect_network()
         nodes = {
             node.label_full: {
                 'label': node.label,
@@ -115,8 +188,8 @@ class FlowSystem:
         edges = {
             flow.label_full: {
                 'label': flow.label,
-                'start': flow.bus.label_full if flow.is_input_in_comp else flow.comp.label_full,
-                'end': flow.comp.label_full if flow.is_input_in_comp else flow.bus.label_full,
+                'start': flow.bus if flow.is_input_in_component else flow.component,
+                'end': flow.component if flow.is_input_in_component else flow.bus,
                 'infos': flow.__str__(),
             }
             for flow in self.flows.values()
@@ -136,7 +209,7 @@ class FlowSystem:
             },
             'Effects': {
                 effect.label: effect.infos(use_numpy, use_element_label)
-                for effect in sorted(self.effects.values(), key=lambda effect: effect.label.upper())
+                for effect in sorted(self.effects, key=lambda effect: effect.label.upper())
             },
         }
         return infos
@@ -239,13 +312,5 @@ class FlowSystem:
         return {flow.label_full: flow for flow in set_of_flows}
 
     @property
-    def buses(self) -> Dict[str, Bus]:
-        return {flow.bus.label: flow.bus for flow in self.flows.values()}
-
-    @property
     def all_elements(self) -> Dict[str, Element]:
-        return {**self.components, **self.effects, **self.flows, **self.buses}
-
-    @property
-    def all_time_series(self) -> List[TimeSeries]:
-        return [ts for element in self.all_elements.values() for ts in element.used_time_series]
+        return {**self.components, **self.effects.effects, **self.flows, **self.buses}

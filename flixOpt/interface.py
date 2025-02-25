@@ -12,6 +12,9 @@ from .config import CONFIG
 from .core import NumericData, NumericDataTS, Scalar
 from .structure import Element, Interface
 
+if TYPE_CHECKING:  # for type checking and preventing circular imports
+    from .flow_system import FlowSystem
+
 if TYPE_CHECKING:
     from .effects import Effect, EffectValuesUser, EffectValuesUserScalar
 
@@ -80,7 +83,7 @@ class InvestParameters(Interface):
         self._minimum_size = minimum_size
         self._maximum_size = maximum_size or CONFIG.modeling.BIG  # default maximum
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection):
+    def transform_data(self, flow_system: 'FlowSystem'):
         from .effects import effect_values_to_dict
 
         self.fix_effects = effect_values_to_dict(self.fix_effects)
@@ -152,26 +155,24 @@ class OnOffParameters(Interface):
         self.switch_on_total_max: Scalar = switch_on_total_max
         self.force_switch_on: bool = force_switch_on
 
-    def transform_data(self, time_series_collection: TimeSeriesCollection, name_prefix: str):
-        from .effects import effect_values_to_time_series
-
-        self.effects_per_switch_on = effect_values_to_time_series(
-            'per_switch_on', self.effects_per_switch_on, name_prefix, time_series_collection
+    def transform_data(self, flow_system: 'FlowSystem', name_prefix: str):
+        self.effects_per_switch_on = flow_system.create_effect_time_series(
+            name_prefix, self.effects_per_switch_on, 'per_switch_on'
         )
-        self.effects_per_running_hour = effect_values_to_time_series(
-            'per_running_hour', self.effects_per_running_hour, name_prefix, time_series_collection
+        self.effects_per_running_hour = flow_system.create_effect_time_series(
+            name_prefix, self.effects_per_running_hour, 'per_running_hour'
         )
-        self.consecutive_on_hours_min = self._create_time_series(
-            'consecutive_on_hours_min', self.consecutive_on_hours_min, time_series_collection
+        self.consecutive_on_hours_min = flow_system.create_time_series(
+            f'{name_prefix}|consecutive_on_hours_min', self.consecutive_on_hours_min
         )
-        self.consecutive_on_hours_max = self._create_time_series(
-            'consecutive_on_hours_max', self.consecutive_on_hours_max, time_series_collection
+        self.consecutive_on_hours_max = flow_system.create_time_series(
+            f'{name_prefix}|consecutive_on_hours_max', self.consecutive_on_hours_max
         )
-        self.consecutive_off_hours_min = self._create_time_series(
-            'consecutive_off_hours_min', self.consecutive_off_hours_min, time_series_collection
+        self.consecutive_off_hours_min = flow_system.create_time_series(
+            f'{name_prefix}|consecutive_off_hours_min', self.consecutive_off_hours_min
         )
-        self.consecutive_off_hours_max = self._create_time_series(
-            'consecutive_off_hours_max', self.consecutive_off_hours_max, time_series_collection
+        self.consecutive_off_hours_max = flow_system.create_time_series(
+            f'{name_prefix}|consecutive_off_hours_max', self.consecutive_off_hours_max
         )
 
     @property

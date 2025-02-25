@@ -26,13 +26,17 @@ if __name__ == '__main__':
     )
     electricity_price = np.array([40, 40, 40, 40, 40, 40, 40, 40, 40])
 
+    # --- Define the Flow System, that will hold all elements, and the time steps you want to model ---
     timesteps = pd.date_range('2020-01-01', periods=len(heat_demand), freq='h')
-
+    flow_system = fx.FlowSystem(timesteps)  # Create FlowSystem
+    
     # --- Define Energy Buses ---
-    # Represent different energy carriers (electricity, heat, gas) in the system
-    Strom = fx.Bus('Strom', excess_penalty_per_flow_hour=excess_penalty)
-    Fernwaerme = fx.Bus('Fernwärme', excess_penalty_per_flow_hour=excess_penalty)
-    Gas = fx.Bus('Gas', excess_penalty_per_flow_hour=excess_penalty)
+    # Represent node balances (inputs=outputs) for the different energy carriers (electricity, heat, gas) in the system
+    flow_system.add_elements(
+        fx.Bus('Strom', excess_penalty_per_flow_hour=excess_penalty),
+        fx.Bus('Fernwärme', excess_penalty_per_flow_hour=excess_penalty),
+        fx.Bus('Gas', excess_penalty_per_flow_hour=excess_penalty),
+    )
 
     # --- Define Effects ---
     # Specify effects related to costs, CO2 emissions, and primary energy consumption
@@ -49,7 +53,7 @@ if __name__ == '__main__':
         on_off_parameters=fx.OnOffParameters(effects_per_running_hour={Costs: 0, CO2: 1000}),  # CO2 emissions per hour
         Q_th=fx.Flow(
             label='Q_th',  # Thermal output
-            bus=Fernwaerme,  # Linked bus
+            bus='Fernwärme',  # Linked bus
             size=fx.InvestParameters(
                 fix_effects=1000,  # Fixed investment costs
                 fixed_size=50,  # Fixed size
@@ -73,7 +77,7 @@ if __name__ == '__main__':
                 switch_on_total_max=1000,  # Max number of starts
             ),
         ),
-        Q_fu=fx.Flow(label='Q_fu', bus=Gas, size=200),
+        Q_fu=fx.Flow(label='Q_fu', bus='Gas', size=200),
     )
 
     # 2. Define CHP Unit
@@ -83,16 +87,16 @@ if __name__ == '__main__':
         eta_th=0.5,
         eta_el=0.4,
         on_off_parameters=fx.OnOffParameters(effects_per_switch_on=0.01),
-        P_el=fx.Flow('P_el', bus=Strom, size=60, relative_minimum=5 / 60),
-        Q_th=fx.Flow('Q_th', bus=Fernwaerme, size=1e3),
-        Q_fu=fx.Flow('Q_fu', bus=Gas, size=1e3, previous_flow_rate=20),  # The CHP was ON previously
+        P_el=fx.Flow('P_el', bus='Strom', size=60, relative_minimum=5 / 60),
+        Q_th=fx.Flow('Q_th', bus='Fernwärme', size=1e3),
+        Q_fu=fx.Flow('Q_fu', bus='Gas', size=1e3, previous_flow_rate=20),  # The CHP was ON previously
     )
 
     # 3. Define CHP with Linear Segments
     # This CHP unit uses linear segments for more dynamic behavior over time
-    P_el = fx.Flow('P_el', bus=Strom, size=60, previous_flow_rate=20)
-    Q_th = fx.Flow('Q_th', bus=Fernwaerme)
-    Q_fu = fx.Flow('Q_fu', bus=Gas)
+    P_el = fx.Flow('P_el', bus='Strom', size=60, previous_flow_rate=20)
+    Q_th = fx.Flow('Q_th', bus='Fernwärme')
+    Q_fu = fx.Flow('Q_fu', bus='Gas')
     segmented_conversion_factors = {
         P_el: [(5, 30), (40, 60)],  # Similar to eta_th, each factor here can be an array
         Q_th: [(6, 35), (45, 100)],
@@ -119,8 +123,8 @@ if __name__ == '__main__':
 
     speicher = fx.Storage(
         'Speicher',
-        charging=fx.Flow('Q_th_load', bus=Fernwaerme, size=1e4),
-        discharging=fx.Flow('Q_th_unload', bus=Fernwaerme, size=1e4),
+        charging=fx.Flow('Q_th_load', bus='Fernwärme', size=1e4),
+        discharging=fx.Flow('Q_th_unload', bus='Fernwärme', size=1e4),
         capacity_in_flow_hours=fx.InvestParameters(
             effects_in_segments=segmented_investment_effects,  # Investment effects
             optional=False,  # Forced investment
@@ -141,7 +145,7 @@ if __name__ == '__main__':
         'Wärmelast',
         sink=fx.Flow(
             'Q_th_Last',  # Heat sink
-            bus=Fernwaerme,  # Linked bus
+            bus='Fernwärme',  # Linked bus
             size=1,
             fixed_relative_profile=heat_demand,  # Fixed demand profile
         ),
@@ -152,7 +156,7 @@ if __name__ == '__main__':
         'Gastarif',
         source=fx.Flow(
             'Q_Gas',
-            bus=Gas,  # Gas source
+            bus='Gas',  # Gas source
             size=1000,  # Nominal size
             effects_per_flow_hour={Costs: 0.04, CO2: 0.3},
         ),
@@ -163,15 +167,13 @@ if __name__ == '__main__':
         'Einspeisung',
         sink=fx.Flow(
             'P_el',
-            bus=Strom,  # Feed-in tariff for electricity
+            bus='Strom',  # Feed-in tariff for electricity
             effects_per_flow_hour=-1 * electricity_price,  # Negative price for feed-in
         ),
     )
 
     # --- Build FlowSystem ---
-    # Select components to be included in the final system model
-    flow_system = fx.FlowSystem(timesteps)  # Create FlowSystem
-
+    # Select components to be included in the flow system
     flow_system.add_elements(Costs, CO2, PE, Gaskessel, Waermelast, Gasbezug, Stromverkauf, speicher)
     flow_system.add_elements(bhkw_2) if use_chp_with_segments else flow_system.add_components(bhkw)
 
