@@ -8,6 +8,7 @@ from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from rich.pretty import pprint  # Used for pretty printing
 
 import flixOpt as fx
@@ -36,7 +37,7 @@ if __name__ == '__main__':
     # filtered_data = data_import[0:500]  # Alternatively filter by index
 
     filtered_data.index = pd.to_datetime(filtered_data.index)
-    datetime_series = filtered_data.index
+    timesteps = filtered_data.index
 
     # Access specific columns and convert to 1D-numpy array
     electricity_demand = filtered_data['P_Netz/MW'].to_numpy()
@@ -137,7 +138,7 @@ if __name__ == '__main__':
     )
 
     # Flow System Setup
-    flow_system = fx.FlowSystem(datetime_series)
+    flow_system = fx.FlowSystem(timesteps)
     flow_system.add_effects(costs, CO2, PE)
     flow_system.add_components(
         a_gaskessel,
@@ -151,23 +152,20 @@ if __name__ == '__main__':
         a_speicher,
     )
     flow_system.visualize_network(controls=False)
+
     # Calculations
-    kinds = ['Full', 'Segmented', 'Aggregated']
-    calculations: dict = {key: None for key in kinds}
-    results: dict = {key: None for key in kinds}
+    calculations: List[Union[fx.FullCalculation, fx.AggregatedCalculation, fx.SegmentedCalculation]] = []
 
     if full:
         calculation = fx.FullCalculation('Full', flow_system)
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver(0, 60))
-        calculations['Full'] = calculation
-        results['Full'] = fx.results.CalculationResults('Full', folder='results')
-
+        calculations.append(calculation)
+    
     if segmented:
         calculation = fx.SegmentedCalculation('Segmented', flow_system, segment_length, overlap_length)
         calculation.do_modeling_and_solve(fx.solvers.HighsSolver(0, 60))
-        calculations['Segmented'] = calculation
-        results['Segmented'] = fx.results.CalculationResults('Segmented', folder='results')
+        calculations.append(calculation)
 
     if aggregated:
         if keep_extreme_periods:
@@ -176,52 +174,41 @@ if __name__ == '__main__':
         calculation = fx.AggregatedCalculation('Aggregated', flow_system, aggregation_parameters)
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver(0, 60))
-        calculations['Aggregated'] = calculation
-        results['Aggregated'] = fx.results.CalculationResults('Aggregated', folder='results')
+        calculations.append(calculation)
 
+    # Get solutions for plotting for different calculations
+    def get_solutions(calcs: List, variable: str) -> xr.Dataset:
+        dataarrays = []
+        for calc in calcs:
+            if calc.name == 'Segmented':
+                dataarrays.append(calc.results.solution_without_overlap(variable).rename(calc.name))
+            else:
+                dataarrays.append(calc.results.model.variables[variable].solution.rename(calc.name))
+        return xr.merge(dataarrays)
 
-    time_series_used = flow_system.timesteps
-    time_series_used_w_end = flow_system.timesteps_extra
-
-    data = pd.DataFrame(
-        {mode: results[mode].component_results['Speicher'].all_results['charge_state'] for mode in results},
-        index=time_series_used_w_end
+    # --- Plotting for comparison ---
+    fx.plotting.with_plotly(
+        get_solutions(calculations, 'Speicher|charge_state').to_dataframe(),
+        mode='line', title='Charge State Comparison', ylabel='Charge state', path='results/Charge State.html', save=True
     )
-    fig = fx.plotting.with_plotly(data, 'line')
-    fig.update_layout(title='Charge State Comparison', xaxis_title='Time', yaxis_title='Charge state')
-    fig.write_html('results/Charge State.html')
 
-    data = pd.DataFrame(
-        {mode: results[mode].component_results['BHKW2'].all_results['Q_th']['flow_rate'] for mode in results},
-        index=time_series_used
+    fx.plotting.with_plotly(
+        get_solutions(calculations, 'BHKW2 (Q_th)|flow_rate').to_dataframe(),
+        mode='line', title='BHKW2 (Q_th) Flow Rate Comparison', ylabel='Flow rate', path='results/BHKW2 Thermal Power.html', save=True
     )
-    fig = fx.plotting.with_plotly(data, 'line')
-    fig.update_layout(title='BHKW2 Q_th Flow Rate Comparison', xaxis_title='Time', yaxis_title='Flow rate')
-    fig.write_html('results/BHKW2 Thermal Power.html')
 
-    data = pd.DataFrame(
-        {mode: results[mode].effect_results['costs'].all_results['operation']['total_per_timestep'] for mode in results},
-        index=time_series_used
+    fx.plotting.with_plotly(
+        get_solutions(calculations, 'costs|operation|total_per_timestep').to_dataframe(),
+        mode='line', title='Operation Cost Comparison', ylabel='Costs [€]', path='results/Operation Costs.html', save=True
     )
-    fig = fx.plotting.with_plotly(data, 'line')
-    fig.update_layout(title='Cost Comparison', xaxis_title='Time', yaxis_title='Costs (€)')
-    fig.write_html('results/Operation Costs.html')
-    fig = fx.plotting.with_plotly(pd.DataFrame(data.sum()).T, 'bar')
-    fig.update_layout(title='Total Cost Comparison', yaxis_title='Costs (€)', barmode='group')
-    fig.write_html('results/Total Costs.html')
 
-    duration_data = pd.DataFrame(
-        {
-            'Full': [calculations['Full'].durations.get(key, 0) for key in calculations['Aggregated'].durations],
-            'Aggregated': [
-                calculations['Aggregated'].durations.get(key, 0) for key in calculations['Aggregated'].durations
-            ],
-            'Segmented': [
-                calculations['Segmented'].durations.get(key, 0) for key in calculations['Aggregated'].durations
-            ],
-        },
-        index=list(calculations['Aggregated'].durations.keys()),
-    ).T
-    fig = fx.plotting.with_plotly(duration_data, 'bar')
-    fig.update_layout(title='Duration Comparison', xaxis_title='Calculation type', yaxis_title='Time (s)')
-    fig.write_html('results/Speed Comparison.html')
+    fx.plotting.with_plotly(
+        pd.DataFrame(get_solutions(calculations, 'costs|operation|total_per_timestep').to_dataframe().sum()).T,
+        mode='bar', title='Total Cost Comparison', ylabel='Costs [€]'
+    ).update_layout(barmode='group').write_html('results/Total Costs.html')
+
+    fx.plotting.with_plotly(
+        pd.DataFrame([calc.durations for calc in calculations], index=[calc.name for calc in calculations]), 'bar'
+    ).update_layout(
+        title='Duration Comparison', xaxis_title='Calculation type', yaxis_title='Time (s)'
+    ).write_html('results/Speed Comparison.html')
