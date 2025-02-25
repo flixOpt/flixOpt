@@ -104,17 +104,13 @@ if __name__ == '__main__':
     calculation.do_modeling()  # Translate the model to a solvable form, creating equations and Variables
 
     # --- Solve the Calculation and Save Results ---
-    calculation.solve(fx.solvers.HighsSolver(mip_gap=0, time_limit_seconds=30), save_results=True)
+    calculation.solve(fx.solvers.HighsSolver(mip_gap=0, time_limit_seconds=30))
 
-    # --- Load and Analyze Results ---
-    # Load the results and plot the operation of the District Heating Bus
-    results = fx.results.CalculationResults(calculation.name, folder='results')
-    results.plot_operation('Fernwärme', 'area')
-    results.plot_storage('Storage')
-    results.plot_operation('Fernwärme', 'bar')
-    results.plot_operation('Fernwärme', 'line')
-    results.plot_operation('CHP__Q_th', 'line')
-    results.plot_operation('CHP__Q_th', 'heatmap')
+    # --- Analyze Results ---
+    calculation.results['Fernwärme'].plot_flow_rates()
+    calculation.results['Storage'].plot_flow_rates()
+    calculation.results.plot_heatmap('CHP (Q_th)|flow_rate')
 
     # Convert the results for the storage component to a dataframe and display
-    results.to_dataframe('Storage')
+    df = calculation.results['Storage'].charge_state_and_flow_rates()
+    print(df)

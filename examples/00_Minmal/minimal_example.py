@@ -62,7 +62,7 @@ if __name__ == '__main__':
     df = calculation.results['costs'].variables_time.solution.to_dataframe()
 
     # Plot the results of a specific element
-    calculation.results['District Heating'].plot_balance()
+    calculation.results['District Heating'].plot_flow_rates()
 
     # Save results to a file
     df = calculation.results['costs'].variables_time.solution.to_dataframe()
