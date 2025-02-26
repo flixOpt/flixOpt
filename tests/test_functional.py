@@ -648,7 +648,7 @@ class TestOnOff(BaseTest):
             err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
         )
 
-    def test_consecutive_on_off(self):
+    def test_consecutive_on(self):
         """Tests if the consecutive on/off hours are correctly created and calculated in a Flow"""
         self.flow_system = self.create_model(self.datetime_array)
         self.flow_system.add_elements(
@@ -769,6 +769,90 @@ class TestOnOff(BaseTest):
         assert_allclose(
             boiler.Q_th.model.flow_rate.result,
             [5, 0, 20 - 1e-5, 18, 12],
+            rtol=self.mip_gap,
+            atol=1e-10,
+            err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
+        )
+
+    def test_consecutive_on_off(self):
+        """Tests if the consecutive on/off hours are correctly created and calculated in a Flow"""
+        self.flow_system = self.create_model(self.datetime_array)
+        self.flow_system.add_elements(
+            fx.linear_converters.Boiler(
+                'Boiler',
+                0.5,
+                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+                Q_th=fx.Flow(
+                    'Q_th',
+                    bus=self.get_element('Fernwärme'),
+                    size=100,
+                    on_off_parameters=fx.OnOffParameters(consecutive_on_hours_min=2,
+                                                         consecutive_off_hours_min=2),
+                    # Previous flow_rate is 0 by default
+                ),
+            ),
+            fx.linear_converters.Boiler(
+                'Boiler_backup',
+                0.2,
+                Q_fu=fx.Flow('Q_fu', bus=self.get_element('Gas')),
+                Q_th=fx.Flow('Q_th', bus=self.get_element('Fernwärme'), size=100),
+            ),
+        )
+        self.get_element('Wärmelast').sink.fixed_relative_profile = [5, 10, 20, 18, 12]  # Else its non deterministic
+
+        self.solve_and_load(self.flow_system)
+        boiler = self.get_element('Boiler')
+        boiler_backup = self.get_element('Boiler_backup')
+        costs = self.get_element('costs')
+        assert_allclose(
+            costs.model.all.sum.result,
+            145,
+            rtol=self.mip_gap,
+            atol=1e-10,
+            err_msg='The total costs does not have the right value',
+        )
+
+        assert_allclose(
+            boiler.Q_th.model._on.on.result,
+            [0, 1, 1, 1, 1],  # Still of for second timestep!
+            rtol=self.mip_gap,
+            atol=1e-10,
+            err_msg='"Boiler__Q_th__on" does not have the right value',
+        )
+        assert_allclose(
+            boiler.Q_th.model._on.off.result,
+            [1, 0, 0, 0, 0],  # Still of for second timestep!
+            rtol=self.mip_gap,
+            atol=1e-10,
+            err_msg='"Boiler__Q_th__off" does not have the right value',
+        )
+        assert_allclose(
+            boiler.Q_th.model._on.consecutive_on_hours.result,
+            [0, 1, 2, 3, 4],  # Still of for second timestep!
+            rtol=self.mip_gap,
+            atol=1e-10,
+            err_msg='"Boiler__Q_th__consecutive_on_hours" does not have the right value',
+        )
+
+        assert_allclose(
+            boiler.Q_th.model._on.consecutive_off_hours.result,
+            [2, 0, 0, 0, 0],  # Still of for second timestep!
+            rtol=self.mip_gap,
+            atol=1e-10,
+            err_msg='"Boiler__Q_th__consecutive_off_hours" does not have the right value',
+        )
+
+        assert_allclose(
+            boiler.Q_th.model.flow_rate.result,
+            [0, 10, 20, 18, 12],
+            rtol=self.mip_gap,
+            atol=1e-10,
+            err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
+        )
+
+        assert_allclose(
+            boiler_backup.Q_th.model.flow_rate.result,
+            [5, 0, 0, 0, 0],
             rtol=self.mip_gap,
             atol=1e-10,
             err_msg='"Boiler__Q_th__flow_rate" does not have the right value',
