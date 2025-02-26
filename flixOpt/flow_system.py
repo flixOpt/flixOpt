@@ -168,7 +168,7 @@ class FlowSystem:
 
         return {
             effect: self.create_time_series(
-                '|'.join(filter(None, [label_prefix, f'{effect.label_full}', label_suffix])),
+                '|'.join(filter(None, [label_prefix, effect, label_suffix])),
                 value
             )
             for effect, value in effect_values.items()

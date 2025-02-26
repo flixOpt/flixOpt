@@ -6,6 +6,7 @@ which are then transformed into the internal data structure.
 """
 
 import logging
+import warnings
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union, Iterator
 
 import linopy
@@ -183,14 +184,11 @@ class EffectModel(ElementModel):
             'total'
         )
 
-
-EffectKey = Optional[Union[str, Effect]]  # Common key type for effect-related dicts
-
-EffectValuesExpr = Dict[EffectKey, linopy.LinearExpression]  # Used to create Shares
-EffectTimeSeries = Dict[Effect, TimeSeries]  # Used internally to index values
-EffectValuesDict = Dict[Effect, NumericDataTS]  # How effect values are stored
-EffectValuesUser = Union[NumericDataTS, Dict[EffectKey, NumericDataTS]]  # User-specified Shares to Effects
-EffectValuesUserScalar = Union[Scalar, Dict[EffectKey, Scalar]]  # User-specified Shares to Effects
+EffectValuesExpr = Dict[str, linopy.LinearExpression]  # Used to create Shares
+EffectTimeSeries = Dict[str, TimeSeries]  # Used internally to index values
+EffectValuesDict = Dict[str, NumericDataTS]  # How effect values are stored
+EffectValuesUser = Union[NumericDataTS, Dict[str, NumericDataTS]]  # User-specified Shares to Effects
+EffectValuesUserScalar = Union[Scalar, Dict[str, Scalar]]  # User-specified Shares to Effects
 
 
 class EffectCollection:
@@ -238,11 +236,20 @@ class EffectCollection:
         dict or None
             A dictionary with None or Effect as the key, or None if input is None.
         """
+
+        def get_effect_label(eff: Union[Effect, str]) -> str:
+            """ Temporary function to get the label of an effect and warn for deprecation """
+            if isinstance(eff, Effect):
+                warnings.deprecated(f'The use of effect objects in EffectValues is deprecated. Use the label of the effect instead.')
+                return eff.label_full
+            else:
+                return eff
+
         if effect_values_user is None:
             return None
         if isinstance(effect_values_user, dict):
-            return {self[effect]: value for effect, value in effect_values_user.items()}
-        return {self.standard_effect: effect_values_user}
+            return {get_effect_label(effect): value for effect, value in effect_values_user.items()}
+        return {self.standard_effect.label_full: effect_values_user}
 
     def _plausibility_checks(self) -> None:
         # Check circular loops in effects:
