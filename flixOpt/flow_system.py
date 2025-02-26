@@ -3,6 +3,7 @@ This module contains the FlowSystem class, which is used to collect instances of
 """
 
 import json
+import warnings
 import logging
 import pathlib
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
@@ -109,6 +110,11 @@ class FlowSystem:
                 # Add Bus if not already added (deprecated)
                 if flow._bus_object is not None and flow._bus_object not in self.buses.values():
                     self._add_buses(flow._bus_object)
+                    warnings.warn(
+                        f'Bus {flow._bus_object.label} was passed as a Bus object to {flow.label_full} and not added to the FlowSystem.'
+                        f' Add the Bus to the FlowSystem instead and pass its label to the Flow.',
+                        DeprecationWarning,
+                        stacklevel=2)
 
                 # Connect Buses
                 bus = self.buses.get(flow.bus)
