@@ -13,7 +13,7 @@ import xarray as xr
 
 from . import utils
 from .core import TimeSeries, TimeSeriesCollection, NumericData, NumericDataTS, TimeSeriesData
-from .effects import Effect, EffectCollection, EffectValuesTS, EffectValuesUser, effect_values_to_dict, EffectValuesDict
+from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesUser, EffectValuesDict
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
@@ -153,22 +153,22 @@ class FlowSystem:
                                   label_prefix: Optional[str],
                                   effect_values: EffectValuesUser,
                                   label_suffix: Optional[str] = None,
-                                  ) -> Optional[EffectValuesTS]:
+                                  ) -> Optional[EffectTimeSeries]:
         """
-        Transform EffectValues to EffectValuesTS.
+        Transform EffectValues to EffectTimeSeries.
         Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
 
         The resulting label of the TimeSeries is the label of the parent_element,
         followed by the label of the Effect in the nested_values and the label_suffix.
         If the key in the EffectValues is None, the alias 'Standard_Effect' is used
         """
-        effect_values: Optional[EffectValuesDict] = effect_values_to_dict(effect_values)
+        effect_values: Optional[EffectValuesDict] = self.effects.create_effect_values_dict(effect_values)
         if effect_values is None:
             return None
 
         return {
             effect: self.create_time_series(
-                '|'.join(filter(None, [label_prefix, f'{self.effects[effect].label_full}', label_suffix])),
+                '|'.join(filter(None, [label_prefix, f'{effect.label_full}', label_suffix])),
                 value
             )
             for effect, value in effect_values.items()

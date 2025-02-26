@@ -84,11 +84,9 @@ class InvestParameters(Interface):
         self._maximum_size = maximum_size or CONFIG.modeling.BIG  # default maximum
 
     def transform_data(self, flow_system: 'FlowSystem'):
-        from .effects import effect_values_to_dict
-
-        self.fix_effects = effect_values_to_dict(self.fix_effects)
-        self.divest_effects = effect_values_to_dict(self.divest_effects)
-        self.specific_effects = effect_values_to_dict(self.specific_effects)
+        self.fix_effects = flow_system.effects.create_effect_values_dict(self.fix_effects)
+        self.divest_effects = flow_system.effects.create_effect_values_dict(self.divest_effects)
+        self.specific_effects = flow_system.effects.create_effect_values_dict(self.specific_effects)
 
     @property
     def minimum_size(self):
