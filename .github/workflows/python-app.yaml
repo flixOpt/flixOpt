@@ -23,9 +23,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Ensure full Git history for setuptools_scm
-          fetch-tags: true  # Ensure tags are fetched for versioning
 
       - name: Set up Python
         uses: actions/setup-python@v4
