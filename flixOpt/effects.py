@@ -187,29 +187,10 @@ class EffectModel(ElementModel):
 EffectKey = Optional[Union[str, Effect]]  # Common key type for effect-related dicts
 
 EffectValuesExpr = Dict[EffectKey, linopy.LinearExpression]  # Used to create Shares
-EffectValuesTS = Dict[EffectKey, TimeSeries]  # Used internally to index values
-EffectValuesDict = Dict[EffectKey, NumericDataTS]  # How effect values are stored
+EffectTimeSeries = Dict[Effect, TimeSeries]  # Used internally to index values
+EffectValuesDict = Dict[Effect, NumericDataTS]  # How effect values are stored
 EffectValuesUser = Union[NumericDataTS, Dict[EffectKey, NumericDataTS]]  # User-specified Shares to Effects
 EffectValuesUserScalar = Union[Scalar, Dict[EffectKey, Scalar]]  # User-specified Shares to Effects
-
-
-def effect_values_to_dict(effect_values_user: EffectValuesUser) -> Optional[EffectValuesDict]:
-    """
-    Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
-
-    Examples
-    --------
-    effect_values_user = 20                             -> {None: 20}
-    effect_values_user = None                           -> None
-    effect_values_user = {effect1: 20, effect2: 0.3}    -> {effect1: 20, effect2: 0.3}
-
-    Returns
-    -------
-    dict or None
-        A dictionary with None or Effect as the key, or None if input is None.
-    """
-    return effect_values_user if isinstance(effect_values_user, dict) else {
-        None: effect_values_user} if effect_values_user is not None else None
 
 
 class EffectCollection:
@@ -241,6 +222,27 @@ class EffectCollection:
             logger.info(f'Registered new Effect: {effect.label}')
 
         self._plausibility_checks()
+
+    def create_effect_values_dict(self, effect_values_user: EffectValuesUser) -> Optional[EffectValuesDict]:
+        """
+        Converts effect values into a dictionary. If a scalar is provided, it is associated with a default effect type.
+
+        Examples
+        --------
+        effect_values_user = 20                             -> {None: 20}
+        effect_values_user = None                           -> None
+        effect_values_user = {effect1: 20, effect2: 0.3}    -> {effect1: 20, effect2: 0.3}
+
+        Returns
+        -------
+        dict or None
+            A dictionary with None or Effect as the key, or None if input is None.
+        """
+        if effect_values_user is None:
+            return None
+        if isinstance(effect_values_user, dict):
+            return {self[effect]: value for effect, value in effect_values_user.items()}
+        return {self.standard_effect: effect_values_user}
 
     def _plausibility_checks(self) -> None:
         # Check circular loops in effects:
