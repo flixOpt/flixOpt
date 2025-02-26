@@ -240,7 +240,11 @@ class EffectCollection:
         def get_effect_label(eff: Union[Effect, str]) -> str:
             """ Temporary function to get the label of an effect and warn for deprecation """
             if isinstance(eff, Effect):
-                warnings.deprecated(f'The use of effect objects in EffectValues is deprecated. Use the label of the effect instead.')
+                warnings.warn(
+                    "The use of effect objects when specifying EffectValues is deprecated. Use the label of the effect instead.",
+                    DeprecationWarning,
+                    stacklevel=2
+                )
                 return eff.label_full
             else:
                 return eff
