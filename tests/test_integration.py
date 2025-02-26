@@ -153,11 +153,11 @@ class TestSimple(BaseTest):
 
         es = fx.FlowSystem(self.timesteps)
         es.add_elements(fx.Bus('Strom'), fx.Bus('Fernwärme'), fx.Bus('Gas'))
-        es.add_components(aSpeicher)
-        es.add_effects(costs, CO2)
-        es.add_components(aBoiler, aWaermeLast, aGasTarif)
-        es.add_components(aStromEinspeisung)
-        es.add_components(aKWK)
+        es._add_components(aSpeicher)
+        es._add_effects(costs, CO2)
+        es._add_components(aBoiler, aWaermeLast, aGasTarif)
+        es._add_components(aStromEinspeisung)
+        es._add_components(aKWK)
 
         print(es)
         es.visualize_network()
@@ -561,8 +561,8 @@ class TestComplex(BaseTest):
         )
 
         es = fx.FlowSystem(self.timesteps)
-        es.add_effects(costs, CO2, PE)
-        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
+        es._add_effects(costs, CO2, PE)
+        es._add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
         es.add_elements(fx.Bus('Strom', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Fernwärme', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Gas', excess_penalty_per_flow_hour=self.excessCosts)
@@ -664,9 +664,9 @@ class TestComplex(BaseTest):
         )
 
         es = fx.FlowSystem(self.timesteps)
-        es.add_effects(costs, CO2, PE)
-        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
-        es.add_components(aSpeicher)
+        es._add_effects(costs, CO2, PE)
+        es._add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
+        es._add_components(aSpeicher)
         es.add_elements(fx.Bus('Strom', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Fernwärme', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Gas', excess_penalty_per_flow_hour=self.excessCosts)
@@ -807,8 +807,8 @@ class TestModelingTypes(BaseTest):
         )
 
         es = fx.FlowSystem(timesteps)
-        es.add_effects(costs, CO2, PE)
-        es.add_components(
+        es._add_effects(costs, CO2, PE)
+        es._add_components(
             aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher
         )
         es.add_elements(fx.Bus('Strom'), fx.Bus('Fernwärme'), fx.Bus('Gas'), fx.Bus('Kohle'))

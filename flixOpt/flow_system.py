@@ -64,15 +64,6 @@ class FlowSystem:
         self.effects: EffectCollection = EffectCollection()
         self.model: Optional[SystemModel] = None
 
-    def add_effects(self, *args: Effect) -> None:
-        self.effects.add_effects(*args)
-
-    def add_components(self, *components: Component) -> None:
-        for new_component in list(components):
-            logger.info(f'Registered new Component: {new_component.label}')
-            self._check_if_element_is_unique(new_component)  # check if already exists:
-            self.components[new_component.label] = new_component  # Add to existing components
-
     def add_elements(self, *elements: Element) -> None:
         """
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
@@ -85,15 +76,24 @@ class FlowSystem:
         """
         for new_element in list(elements):
             if isinstance(new_element, Component):
-                self.add_components(new_element)
+                self._add_components(new_element)
             elif isinstance(new_element, Effect):
-                self.add_effects(new_element)
+                self._add_effects(new_element)
             elif isinstance(new_element, Bus):
-                self.add_buses(new_element)
+                self._add_buses(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def add_buses(self, *buses: Bus):
+    def _add_effects(self, *args: Effect) -> None:
+        self.effects.add_effects(*args)
+
+    def _add_components(self, *components: Component) -> None:
+        for new_component in list(components):
+            logger.info(f'Registered new Component: {new_component.label}')
+            self._check_if_element_is_unique(new_component)  # check if already exists:
+            self.components[new_component.label] = new_component  # Add to existing components
+
+    def _add_buses(self, *buses: Bus):
         for new_bus in list(buses):
             logger.info(f'Registered new Bus: {new_bus.label}')
             self._check_if_element_is_unique(new_bus)  # check if already exists:
@@ -108,7 +108,7 @@ class FlowSystem:
 
                 # Add Bus if not already added (deprecated)
                 if flow._bus_object is not None and flow._bus_object not in self.buses.values():
-                    self.add_buses(flow._bus_object)
+                    self._add_buses(flow._bus_object)
 
                 # Connect Buses
                 bus = self.buses.get(flow.bus)
