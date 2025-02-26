@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flixOpt"
+dynamic = ["version"]
 description = "Vector based energy and material flow optimization framework in Python."
 readme = "README.md"
 requires-python = ">=3.10, <3.13"
