@@ -162,7 +162,7 @@ if __name__ == '__main__':
         calculation.do_modeling()
         calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations.append(calculation)
-    
+
     if segmented:
         calculation = fx.SegmentedCalculation('Segmented', flow_system, segment_length, overlap_length)
         calculation.do_modeling_and_solve(fx.solvers.HighsSolver(0, 60))

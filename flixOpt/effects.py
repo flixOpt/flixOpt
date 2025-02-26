@@ -7,7 +7,7 @@ which are then transformed into the internal data structure.
 
 import logging
 import warnings
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Union, Iterator
+from typing import TYPE_CHECKING, Dict, Iterator, List, Literal, Optional, Union
 
 import linopy
 import numpy as np
@@ -15,7 +15,7 @@ import pandas as pd
 
 from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
-from .structure import Element, ElementModel, Model, SystemModel, Interface
+from .structure import Element, ElementModel, Interface, Model, SystemModel
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem

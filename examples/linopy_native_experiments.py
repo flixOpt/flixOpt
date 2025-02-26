@@ -1,13 +1,12 @@
-import pandas as pd
-import xarray as xr
-import numpy as np
+from typing import Dict, List, Literal, Optional, Tuple
 
 import linopy
-import plotly.express as px
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import xarray as xr
 
-
-from typing import List, Optional, Tuple, Literal, Dict
 
 class SystemModel(linopy.Model):
     def __init__(

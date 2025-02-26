@@ -2,17 +2,16 @@ import datetime
 import json
 import logging
 import pathlib
-from typing import Dict, List, Literal, Union, Optional, TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import linopy
 import numpy as np
 import pandas as pd
-import xarray as xr
 import plotly
+import xarray as xr
 
 from . import plotting
 from .core import TimeSeriesCollection
-
 from .io import _results_structure
 
 if TYPE_CHECKING:
@@ -77,11 +76,11 @@ class CalculationResults:
     @classmethod
     def from_calculation(cls, calculation: 'Calculation'):
         """Create CalculationResults directly from a Calculation"""
-        return cls(model=calculation.model, 
+        return cls(model=calculation.model,
                    results_structure=_results_structure(calculation.flow_system),
                    infos=calculation.infos,
                    network_infos=calculation.flow_system.network_infos(),
-                   name=calculation.name, 
+                   name=calculation.name,
                    folder=calculation.folder)
 
     def __init__(self,
@@ -219,7 +218,7 @@ class _NodeResults(_ElementResults):
             self.flow_rates(with_last_timestep=True).to_dataframe(), mode='area', title=f'Flow rates of {self.label}'
         )
         return plotly_save_and_show(
-            fig, 
+            fig,
             self._calculation_results.folder / f'{self.label} (flow rates).html',
             user_filename=None if isinstance(save, bool) else pathlib.Path(save),
             show=show,
@@ -276,7 +275,7 @@ class ComponentResults(_NodeResults):
         charge_state = self.charge_state.solution.to_dataframe()
         fig.add_trace(plotly.graph_objs.Scatter(
             x=charge_state.index, y=charge_state.values.flatten(), mode='lines', name=self.charge_state.name))
-        
+
         return plotly_save_and_show(
             fig,
             self._calculation_results.folder / f'{self.label} (charge state).html',

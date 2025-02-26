@@ -22,14 +22,14 @@ import yaml
 from . import utils as utils
 from .aggregation import AggregationModel, AggregationParameters
 from .components import Storage
+from .config import CONFIG
 from .core import NumericData, Scalar
 from .elements import Component
 from .features import InvestmentModel
 from .flow_system import FlowSystem
+from .results import CalculationResults, SegmentedCalculationResults
 from .solvers import _Solver
 from .structure import SystemModel, copy_and_convert_datatypes, get_compact_representation
-from .config import CONFIG
-from .results import CalculationResults, SegmentedCalculationResults
 
 logger = logging.getLogger('flixOpt')
 

@@ -3,9 +3,9 @@ This module contains the FlowSystem class, which is used to collect instances of
 """
 
 import json
-import warnings
 import logging
 import pathlib
+import warnings
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
@@ -13,8 +13,8 @@ import pandas as pd
 import xarray as xr
 
 from . import utils
-from .core import TimeSeries, TimeSeriesCollection, NumericData, NumericDataTS, TimeSeriesData
-from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesUser, EffectValuesDict
+from .core import NumericData, NumericDataTS, TimeSeries, TimeSeriesCollection, TimeSeriesData
+from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesDict, EffectValuesUser
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 

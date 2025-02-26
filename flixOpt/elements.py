@@ -15,6 +15,7 @@ from .effects import EffectValuesUser
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
 from .structure import Element, ElementModel, SystemModel
+
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
 

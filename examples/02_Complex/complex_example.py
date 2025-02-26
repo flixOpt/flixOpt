@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # --- Define the Flow System, that will hold all elements, and the time steps you want to model ---
     timesteps = pd.date_range('2020-01-01', periods=len(heat_demand), freq='h')
     flow_system = fx.FlowSystem(timesteps)  # Create FlowSystem
-    
+
     # --- Define Energy Buses ---
     # Represent node balances (inputs=outputs) for the different energy carriers (electricity, heat, gas) in the system
     flow_system.add_elements(
