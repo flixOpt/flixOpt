@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import pathlib
-from typing import Dict, List, Literal, Union, Optional, TYPE_CHECKING
+from typing import Dict, List, Literal, Union, Optional, TYPE_CHECKING, Tuple
 
 import linopy
 import numpy as np
@@ -32,7 +32,9 @@ class CalculationResults:
     ----------
     model : linopy.Model
         The linopy model that was used to solve the calculation.
-    flow_system_structure : Dict[str, Dict[str, Dict]]
+    infos : Dict
+        Information about the calculation,
+    results_structure : Dict[str, Dict[str, Dict]]
         The structure of the flow_system that was used to solve the calculation.
 
     Attributes
@@ -69,34 +71,43 @@ class CalculationResults:
         logger.info(f'loading calculation "{name}" from file ("{nc_file}")')
         model = linopy.read_netcdf(nc_file)
         with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
-            flow_system_structure = json.load(f)
-        return cls(model=model, flow_system_structure=flow_system_structure, name=name, folder=folder)
+            meta_data = json.load(f)
+        return cls(model=model, name=name, folder= folder, **meta_data)
 
     @classmethod
     def from_calculation(cls, calculation: 'Calculation'):
         """Create CalculationResults directly from a Calculation"""
         return cls(model=calculation.model, 
-                   flow_system_structure=_results_structure(calculation.flow_system), 
+                   results_structure=_results_structure(calculation.flow_system),
+                   infos=calculation.infos,
+                   network_infos=calculation.flow_system.network_infos(),
                    name=calculation.name, 
-                   folder = calculation.folder)
+                   folder=calculation.folder)
 
-    def __init__(self, model: linopy.Model, flow_system_structure: Dict[str, Dict[str, Dict]], name: str, 
+    def __init__(self,
+                 model: linopy.Model,
+                 results_structure: Dict[str, Dict[str, Dict]],
+                 name: str,
+                 infos: Dict,
+                 network_infos: Dict,
                  folder: Optional[pathlib.Path] = None):
         self.model = model
-        self._flow_system_structure = flow_system_structure
+        self._results_structure = results_structure
+        self.infos = infos
+        self.network_infos = network_infos
         self.name = name
         self.folder = pathlib.Path(folder) if folder is not None else pathlib.Path.cwd() / 'results'
         self.components = {label: ComponentResults.from_json(self, infos)
-                           for label, infos in flow_system_structure['Components'].items()}
+                           for label, infos in results_structure['Components'].items()}
 
         self.buses = {label: BusResults.from_json(self, infos)
-                      for label, infos in flow_system_structure['Buses'].items()}
+                      for label, infos in results_structure['Buses'].items()}
 
         self.effects = {label: EffectResults.from_json(self, infos)
-                        for label, infos in flow_system_structure['Effects'].items()}
+                        for label, infos in results_structure['Effects'].items()}
 
-        self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in flow_system_structure['Time']], name='time')
-        self.periods = pd.Index(flow_system_structure['Periods'], name = 'period') if flow_system_structure['Periods'] is not None else None
+        self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in results_structure['Time']], name='time')
+        self.periods = pd.Index(results_structure['Periods'], name = 'period') if results_structure['Periods'] is not None else None
         self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.timesteps_extra, self.periods)
 
     def __getitem__(self, key: str) -> Union['ComponentResults', 'BusResults', 'EffectResults']:
@@ -121,8 +132,15 @@ class CalculationResults:
 
         self.model.to_netcdf(path.with_suffix('.nc'), *args, **kwargs)
         with open(path.with_suffix('.json'), 'w', encoding='utf-8') as f:
-            json.dump(self._flow_system_structure, f, indent=4, ensure_ascii=False)
+            json.dump(self._get_meta_data(), f, indent=4, ensure_ascii=False)
         logger.info(f'Saved calculation "{name}" to {path}')
+
+    def _get_meta_data(self) -> Dict:
+        return {
+            'results_structure': self._results_structure,
+            'infos': self.infos,
+            'network_infos': self.network_infos,
+        }
 
     def plot_heatmap(self,
                      variable: str,

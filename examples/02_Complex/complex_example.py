@@ -175,7 +175,7 @@ if __name__ == '__main__':
     # --- Build FlowSystem ---
     # Select components to be included in the flow system
     flow_system.add_elements(Costs, CO2, PE, Gaskessel, Waermelast, Gasbezug, Stromverkauf, speicher)
-    flow_system.add_elements(bhkw_2) if use_chp_with_segments else flow_system.add_components(bhkw)
+    flow_system.add_elements(bhkw_2) if use_chp_with_segments else flow_system.add_elements(bhkw)
 
     pprint(flow_system)  # Get a string representation of the FlowSystem
 

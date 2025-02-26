@@ -48,53 +48,6 @@ class SystemModel(linopy.Model):
             bus_model.do_modeling()
 
     @property
-    def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
-        from flixOpt.features import InvestmentModel
-
-        return {
-            "Objective": self.objective.value,
-            "Penalty": float(self.effects.penalty.total.solution.values),
-            "Effects": {
-                f"{effect.label} [{effect.unit}]": {
-                    "operation": float(effect.model.operation.total.solution.values),
-                    "invest": float(effect.model.invest.total.solution.values),
-                    "total": float(effect.model.total.solution.values),
-                }
-                for effect in self.flow_system.effects
-            },
-            "Invest-Decisions": {
-                "Invested": {
-                    model.label_of_element: float(model.size.solution)
-                    for component in self.flow_system.components.values()
-                    for model in component.model.all_sub_models
-                    if isinstance(model, InvestmentModel) and float(model.size.solution) >= CONFIG.modeling.EPSILON
-                },
-                "Not invested": {
-                    model.label_of_element: float(model.size.solution)
-                    for component in self.flow_system.components.values()
-                    for model in component.model.all_sub_models
-                    if isinstance(model, InvestmentModel) and float(model.size.solution) < CONFIG.modeling.EPSILON
-                },
-            },
-            "Buses with excess": [
-                {bus.label_full: {
-                    "input": float(np.sum(bus.model.excess_input.solution.values)),
-                    "output": float(np.sum(bus.model.excess_output.solution.values))
-                }}
-                for bus in self.flow_system.buses.values()
-                if bus.with_excess and (float(np.sum(bus.model.excess_input.solution.values)) > 1e-3 or
-                                        float(np.sum(bus.model.excess_output.solution.values)) > 1e-3)
-            ],
-        }
-
-    @property
-    def infos(self) -> Dict:
-        return {'Main Results': self.main_results,
-                'Constraints': self.constraints.ncons,
-                'Variables': self.variables.nvars,
-                'Config': CONFIG.to_dict()}
-
-    @property
     def hours_per_step(self):
         return self.time_series_collection.hours_per_timestep
 

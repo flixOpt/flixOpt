@@ -140,8 +140,8 @@ if __name__ == '__main__':
     )
 
     # Flow System Setup
-    flow_system.add_effects(costs, CO2, PE)
-    flow_system.add_components(
+    flow_system.add_elements(costs, CO2, PE)
+    flow_system.add_elements(
         a_gaskessel,
         a_waermelast,
         a_strom_last,
@@ -152,7 +152,7 @@ if __name__ == '__main__':
         a_kwk,
         a_speicher,
     )
-    flow_system.visualize_network(controls=False)
+    flow_system.plot_network(controls=False, show=True)
 
     # Calculations
     calculations: List[Union[fx.FullCalculation, fx.AggregatedCalculation, fx.SegmentedCalculation]] = []

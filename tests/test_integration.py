@@ -153,14 +153,14 @@ class TestSimple(BaseTest):
 
         es = fx.FlowSystem(self.timesteps)
         es.add_elements(fx.Bus('Strom'), fx.Bus('Fernwärme'), fx.Bus('Gas'))
-        es.add_components(aSpeicher)
-        es.add_effects(costs, CO2)
-        es.add_components(aBoiler, aWaermeLast, aGasTarif)
-        es.add_components(aStromEinspeisung)
-        es.add_components(aKWK)
+        es.add_elements(aSpeicher)
+        es.add_elements(costs, CO2)
+        es.add_elements(aBoiler, aWaermeLast, aGasTarif)
+        es.add_elements(aStromEinspeisung)
+        es.add_elements(aKWK)
 
         print(es)
-        es.visualize_network()
+        es.plot_network()
 
         aCalc = fx.FullCalculation('Test_Sim', es)
         aCalc.do_modeling()
@@ -561,14 +561,14 @@ class TestComplex(BaseTest):
         )
 
         es = fx.FlowSystem(self.timesteps)
-        es.add_effects(costs, CO2, PE)
-        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
+        es.add_elements(costs, CO2, PE)
+        es.add_elements(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK, aSpeicher)
         es.add_elements(fx.Bus('Strom', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Fernwärme', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Gas', excess_penalty_per_flow_hour=self.excessCosts)
                         )
         print(es)
-        es.visualize_network()
+        es.plot_network()
 
         aCalc = fx.FullCalculation('Sim1', es)
         aCalc.do_modeling()
@@ -664,16 +664,16 @@ class TestComplex(BaseTest):
         )
 
         es = fx.FlowSystem(self.timesteps)
-        es.add_effects(costs, CO2, PE)
-        es.add_components(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
-        es.add_components(aSpeicher)
+        es.add_elements(costs, CO2, PE)
+        es.add_elements(aGaskessel, aWaermeLast, aGasTarif, aStromEinspeisung, aKWK)
+        es.add_elements(aSpeicher)
         es.add_elements(fx.Bus('Strom', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Fernwärme', excess_penalty_per_flow_hour=self.excessCosts),
                         fx.Bus('Gas', excess_penalty_per_flow_hour=self.excessCosts)
                         )
 
         print(es)
-        es.visualize_network()
+        es.plot_network()
 
         aCalc = fx.FullCalculation('Sim1', es)
         aCalc.do_modeling()
@@ -807,14 +807,14 @@ class TestModelingTypes(BaseTest):
         )
 
         es = fx.FlowSystem(timesteps)
-        es.add_effects(costs, CO2, PE)
-        es.add_components(
+        es.add_elements(costs, CO2, PE)
+        es.add_elements(
             aGaskessel, aWaermeLast, aStromLast, aGasTarif, aKohleTarif, aStromEinspeisung, aStromTarif, aKWK, aSpeicher
         )
         es.add_elements(fx.Bus('Strom'), fx.Bus('Fernwärme'), fx.Bus('Gas'), fx.Bus('Kohle'))
 
         print(es)
-        es.visualize_network()
+        es.plot_network()
 
         if doFullCalc:
             calc = fx.FullCalculation('fullModel', es)
@@ -840,7 +840,7 @@ class TestModelingTypes(BaseTest):
             )
             calc.do_modeling()
             print(es)
-            es.visualize_network()
+            es.plot_network()
             calc.solve(self.get_solver())
         else:
             raise Exception('Wrong Modeling Type')

@@ -19,7 +19,7 @@ if __name__ == '__main__':
         ) from e
 
     # --- Basic overview ---
-    # TODO: Add visualize_network()
+    fx.plotting.plot_network(*results.network_infos, show=True)
     results['Fernwärme'].plot_flow_rates()
 
     # --- Detailed Plots ---

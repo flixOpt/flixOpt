@@ -3,6 +3,7 @@ This module contains the FlowSystem class, which is used to collect instances of
 """
 
 import json
+import warnings
 import logging
 import pathlib
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
@@ -13,7 +14,7 @@ import xarray as xr
 
 from . import utils
 from .core import TimeSeries, TimeSeriesCollection, NumericData, NumericDataTS, TimeSeriesData
-from .effects import Effect, EffectCollection, EffectValuesTS, EffectValuesUser, effect_values_to_dict, EffectValuesDict
+from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesUser, EffectValuesDict
 from .elements import Bus, Component, Flow
 from .structure import Element, SystemModel, get_compact_representation, get_str_representation
 
@@ -64,15 +65,6 @@ class FlowSystem:
         self.effects: EffectCollection = EffectCollection()
         self.model: Optional[SystemModel] = None
 
-    def add_effects(self, *args: Effect) -> None:
-        self.effects.add_effects(*args)
-
-    def add_components(self, *components: Component) -> None:
-        for new_component in list(components):
-            logger.info(f'Registered new Component: {new_component.label}')
-            self._check_if_element_is_unique(new_component)  # check if already exists:
-            self.components[new_component.label] = new_component  # Add to existing components
-
     def add_elements(self, *elements: Element) -> None:
         """
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
@@ -85,15 +77,24 @@ class FlowSystem:
         """
         for new_element in list(elements):
             if isinstance(new_element, Component):
-                self.add_components(new_element)
+                self._add_components(new_element)
             elif isinstance(new_element, Effect):
-                self.add_effects(new_element)
+                self._add_effects(new_element)
             elif isinstance(new_element, Bus):
-                self.add_buses(new_element)
+                self._add_buses(new_element)
             else:
                 raise Exception('argument is not instance of a modeling Element (Element)')
 
-    def add_buses(self, *buses: Bus):
+    def _add_effects(self, *args: Effect) -> None:
+        self.effects.add_effects(*args)
+
+    def _add_components(self, *components: Component) -> None:
+        for new_component in list(components):
+            logger.info(f'Registered new Component: {new_component.label}')
+            self._check_if_element_is_unique(new_component)  # check if already exists:
+            self.components[new_component.label] = new_component  # Add to existing components
+
+    def _add_buses(self, *buses: Bus):
         for new_bus in list(buses):
             logger.info(f'Registered new Bus: {new_bus.label}')
             self._check_if_element_is_unique(new_bus)  # check if already exists:
@@ -108,7 +109,12 @@ class FlowSystem:
 
                 # Add Bus if not already added (deprecated)
                 if flow._bus_object is not None and flow._bus_object not in self.buses.values():
-                    self.add_buses(flow._bus_object)
+                    self._add_buses(flow._bus_object)
+                    warnings.warn(
+                        f'Bus {flow._bus_object.label} was passed as a Bus object to {flow.label_full} and not added to the FlowSystem.'
+                        f' Add the Bus to the FlowSystem instead and pass its label to the Flow.',
+                        DeprecationWarning,
+                        stacklevel=2)
 
                 # Connect Buses
                 bus = self.buses.get(flow.bus)
@@ -153,22 +159,22 @@ class FlowSystem:
                                   label_prefix: Optional[str],
                                   effect_values: EffectValuesUser,
                                   label_suffix: Optional[str] = None,
-                                  ) -> Optional[EffectValuesTS]:
+                                  ) -> Optional[EffectTimeSeries]:
         """
-        Transform EffectValues to EffectValuesTS.
+        Transform EffectValues to EffectTimeSeries.
         Creates a TimeSeries for each key in the nested_values dictionary, using the value as the data.
 
         The resulting label of the TimeSeries is the label of the parent_element,
         followed by the label of the Effect in the nested_values and the label_suffix.
         If the key in the EffectValues is None, the alias 'Standard_Effect' is used
         """
-        effect_values: Optional[EffectValuesDict] = effect_values_to_dict(effect_values)
+        effect_values: Optional[EffectValuesDict] = self.effects.create_effect_values_dict(effect_values)
         if effect_values is None:
             return None
 
         return {
             effect: self.create_time_series(
-                '|'.join(filter(None, [label_prefix, f'{self.effects[effect].label_full}', label_suffix])),
+                '|'.join(filter(None, [label_prefix, effect, label_suffix])),
                 value
             )
             for effect, value in effect_values.items()
@@ -230,7 +236,7 @@ class FlowSystem:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.infos_compact(), f, indent=4, ensure_ascii=False)
 
-    def visualize_network(
+    def plot_network(
         self,
         path: Union[bool, str, pathlib.Path] = 'flow_system.html',
         controls: Union[
@@ -239,7 +245,7 @@ class FlowSystem:
                 Literal['nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer']
             ],
         ] = True,
-        show: bool = True,
+        show: bool = False,
     ) -> Optional['pyvis.network.Network']:
         """
         Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.
@@ -264,13 +270,13 @@ class FlowSystem:
 
         Usage:
         - Visualize and open the network with default options:
-          >>> self.visualize_network()
+          >>> self.plot_network()
 
         - Save the visualization without opening:
-          >>> self.visualize_network(show=False)
+          >>> self.plot_network(show=False)
 
         - Visualize with custom controls and path:
-          >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+          >>> self.plot_network(path='output/custom_network.html', controls=['nodes', 'layout'])
 
         Notes:
         - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
@@ -279,7 +285,7 @@ class FlowSystem:
         from . import plotting
 
         node_infos, edge_infos = self.network_infos()
-        return plotting.visualize_network(node_infos, edge_infos, path, controls, show)
+        return plotting.plot_network(node_infos, edge_infos, path, controls, show)
 
     def create_model(self) -> SystemModel:
         self.model = SystemModel(self)
