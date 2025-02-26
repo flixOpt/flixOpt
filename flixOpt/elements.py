@@ -493,28 +493,6 @@ class BusModel(ElementModel):
             outputs.append(self.excess_output.name)
         return {**super().results_structure(), 'inputs': inputs, 'outputs': outputs}
 
-    def solution_structured(
-        self,
-        mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'py',
-    ) -> Dict[str, Union[np.ndarray, Dict]]:
-        """
-        Return the structure of the SystemModel solution.
-
-        Parameters
-        ----------
-        mode : Literal['py', 'numpy', 'xarray', 'structure']
-            Whether to return the solution as a dictionary of
-            - python native types (for json)
-            - numpy arrays
-            - xarray.DataArrays
-            - strings (for structure, storing variable names)
-        """
-        results = super().solution_structured(mode)
-        results['inputs'] = [flow.label for flow in self.element.inputs]
-        results['outputs'] = [flow.label for flow in self.element.outputs]
-
-        return results
-
 
 class ComponentModel(ElementModel):
     def __init__(self, model: SystemModel, element: Component):
@@ -562,25 +540,3 @@ class ComponentModel(ElementModel):
         return {**super().results_structure(),
                 'inputs': [flow.model.flow_rate.name for flow in self.element.inputs],
                 'outputs': [flow.model.flow_rate.name for flow in self.element.outputs]}
-
-    def solution_structured(
-        self,
-        mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'py',
-    ) -> Dict[str, Union[np.ndarray, Dict]]:
-        """
-        Return the structure of the SystemModel solution.
-
-        Parameters
-        ----------
-        mode : Literal['py', 'numpy', 'xarray', 'structure']
-            Whether to return the solution as a dictionary of
-            - python native types (for json)
-            - numpy arrays
-            - xarray.DataArrays
-            - strings (for structure, storing variable names)
-        """
-        results = super().solution_structured(mode)
-        results['inputs'] = [flow.label for flow in self.element.inputs]
-        results['outputs'] = [flow.label for flow in self.element.outputs]
-
-        return results

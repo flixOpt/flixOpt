@@ -931,36 +931,6 @@ class ShareAllocationModel(Model):
             else:
                 self._eq_total_per_timestep.lhs -= self.shares[name]
 
-    def solution_structured(
-        self,
-        mode: Literal['py', 'numpy', 'xarray', 'structure'] = 'py',
-    ) -> Dict[str, Union[np.ndarray, Dict]]:
-        """
-        Return the structure of the SystemModel solution.
-
-        Parameters
-        ----------
-        mode : Literal['py', 'numpy', 'xarray', 'structure']
-            Whether to return the solution as a dictionary of
-            - python native types (for json)
-            - numpy arrays
-            - xarray.DataArrays
-            - strings (for structure, storing variable names)
-        """
-        shares_var_names = [var.name for var in self.shares.values()]
-        results = {
-            self._variables_short[var_name]: utils.convert_dataarray(var, mode)
-            for var_name, var in self.variables_direct.solution.data_vars.items() if var_name not in shares_var_names
-        }
-        results['Shares'] = {
-            self._variables_short[var_name]: utils.convert_dataarray(var, mode)
-            for var_name, var in self.variables_direct.solution.data_vars.items() if var_name in shares_var_names
-        }
-        return {
-            **results,
-            **{sub_model.label: sub_model.solution_structured(mode) for sub_model in self.sub_models}
-        }
-
 
 class SegmentedSharesModel(Model):
     # TODO: Length...
