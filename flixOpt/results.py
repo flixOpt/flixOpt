@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import pathlib
-from typing import Dict, List, Literal, Union, Optional, TYPE_CHECKING
+from typing import Dict, List, Literal, Union, Optional, TYPE_CHECKING, Tuple
 
 import linopy
 import numpy as np
@@ -71,21 +71,30 @@ class CalculationResults:
         logger.info(f'loading calculation "{name}" from file ("{nc_file}")')
         model = linopy.read_netcdf(nc_file)
         with open(path.with_suffix('.json'), 'r', encoding='utf-8') as f:
-            results_structure = json.load(f)
-        return cls(model=model, results_structure=results_structure, name=name, folder=folder)
+            meta_data = json.load(f)
+        return cls(model=model, name=name, folder= folder, **meta_data)
 
     @classmethod
     def from_calculation(cls, calculation: 'Calculation'):
         """Create CalculationResults directly from a Calculation"""
         return cls(model=calculation.model, 
                    results_structure=_results_structure(calculation.flow_system),
+                   infos=calculation.infos,
+                   network_infos=calculation.flow_system.network_infos(),
                    name=calculation.name, 
                    folder=calculation.folder)
 
-    def __init__(self, model: linopy.Model, results_structure: Dict[str, Dict[str, Dict]], name: str,
+    def __init__(self,
+                 model: linopy.Model,
+                 results_structure: Dict[str, Dict[str, Dict]],
+                 name: str,
+                 infos: Dict,
+                 network_infos: Dict,
                  folder: Optional[pathlib.Path] = None):
         self.model = model
         self._results_structure = results_structure
+        self.infos = infos
+        self.network_infos = network_infos
         self.name = name
         self.folder = pathlib.Path(folder) if folder is not None else pathlib.Path.cwd() / 'results'
         self.components = {label: ComponentResults.from_json(self, infos)
@@ -123,8 +132,15 @@ class CalculationResults:
 
         self.model.to_netcdf(path.with_suffix('.nc'), *args, **kwargs)
         with open(path.with_suffix('.json'), 'w', encoding='utf-8') as f:
-            json.dump(self._results_structure, f, indent=4, ensure_ascii=False)
+            json.dump(self._get_meta_data(), f, indent=4, ensure_ascii=False)
         logger.info(f'Saved calculation "{name}" to {path}')
+
+    def _get_meta_data(self) -> Dict:
+        return {
+            'results_structure': self._results_structure,
+            'infos': self.infos,
+            'network_infos': self.network_infos,
+        }
 
     def plot_heatmap(self,
                      variable: str,

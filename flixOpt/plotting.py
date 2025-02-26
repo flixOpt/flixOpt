@@ -607,7 +607,7 @@ def heat_map_data_from_df(
     return df_pivoted
 
 
-def visualize_network(
+def plot_network(
     node_infos: dict,
     edge_infos: dict,
     path: Optional[Union[str, pathlib.Path]] = None,
@@ -644,13 +644,13 @@ def visualize_network(
 
     Usage:
     - Visualize and open the network with default options:
-      >>> self.visualize_network()
+      >>> self.plot_network()
 
     - Save the visualization with opening:
-      >>> self.visualize_network(show=True)
+      >>> self.plot_network(show=True)
 
     - Visualize with custom controls and path:
-      >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+      >>> self.plot_network(path='output/custom_network.html', controls=['nodes', 'layout'])
 
     Notes:
     - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.

@@ -236,7 +236,7 @@ class FlowSystem:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.infos_compact(), f, indent=4, ensure_ascii=False)
 
-    def visualize_network(
+    def plot_network(
         self,
         path: Union[bool, str, pathlib.Path] = 'flow_system.html',
         controls: Union[
@@ -270,13 +270,13 @@ class FlowSystem:
 
         Usage:
         - Visualize and open the network with default options:
-          >>> self.visualize_network()
+          >>> self.plot_network()
 
         - Save the visualization without opening:
-          >>> self.visualize_network(show=False)
+          >>> self.plot_network(show=False)
 
         - Visualize with custom controls and path:
-          >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+          >>> self.plot_network(path='output/custom_network.html', controls=['nodes', 'layout'])
 
         Notes:
         - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
@@ -285,7 +285,7 @@ class FlowSystem:
         from . import plotting
 
         node_infos, edge_infos = self.network_infos()
-        return plotting.visualize_network(node_infos, edge_infos, path, controls, show)
+        return plotting.plot_network(node_infos, edge_infos, path, controls, show)
 
     def create_model(self) -> SystemModel:
         self.model = SystemModel(self)
