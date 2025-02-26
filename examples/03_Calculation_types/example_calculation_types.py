@@ -152,7 +152,7 @@ if __name__ == '__main__':
         a_kwk,
         a_speicher,
     )
-    flow_system.visualize_network(controls=False)
+    flow_system.visualize_network(controls=False, show=True)
 
     # Calculations
     calculations: List[Union[fx.FullCalculation, fx.AggregatedCalculation, fx.SegmentedCalculation]] = []

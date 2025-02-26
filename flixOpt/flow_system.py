@@ -239,7 +239,7 @@ class FlowSystem:
                 Literal['nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer']
             ],
         ] = True,
-        show: bool = True,
+        show: bool = False,
     ) -> Optional['pyvis.network.Network']:
         """
         Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.

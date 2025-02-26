@@ -96,7 +96,7 @@ if __name__ == '__main__':
     flow_system.add_elements(costs, CO2, boiler, storage, chp, heat_sink, gas_source, power_sink)
 
     # Visualize the flow system for validation purposes
-    flow_system.visualize_network()
+    flow_system.visualize_network(show=True)
 
     # --- Define and Run Calculation ---
     # Create a calculation object to model the Flow System

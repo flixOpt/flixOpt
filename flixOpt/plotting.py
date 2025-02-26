@@ -615,7 +615,7 @@ def visualize_network(
         bool,
         List[Literal['nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer']],
     ] = True,
-    show: bool = True,
+    show: bool = False,
 ) -> Optional['pyvis.network.Network']:
     """
     Visualizes the network structure of a FlowSystem using PyVis, using info-dictionaries.
@@ -646,8 +646,8 @@ def visualize_network(
     - Visualize and open the network with default options:
       >>> self.visualize_network()
 
-    - Save the visualization without opening:
-      >>> self.visualize_network(show=False)
+    - Save the visualization with opening:
+      >>> self.visualize_network(show=True)
 
     - Visualize with custom controls and path:
       >>> self.visualize_network(path='output/custom_network.html', controls=['nodes', 'layout'])
