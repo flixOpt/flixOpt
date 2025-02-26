@@ -1,10 +1,9 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=61.0.0", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "flixOpt"
-version = "1.0.7"
 description = "Vector based energy and material flow optimization framework in Python."
 readme = "README.md"
 requires-python = ">=3.10, <3.13"
@@ -62,6 +61,9 @@ exclude = ["tests", "docs", "examples", "examples.*", "Tutorials", ".git", ".vsc
 
 [tool.setuptools.package-data]
 "flixOpt" = ["config.yaml"]
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
 
 [tool.ruff]
 # Files or directories to exclude (e.g., virtual environments, cache, build artifacts)
