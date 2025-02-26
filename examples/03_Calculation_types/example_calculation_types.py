@@ -140,8 +140,8 @@ if __name__ == '__main__':
     )
 
     # Flow System Setup
-    flow_system._add_effects(costs, CO2, PE)
-    flow_system._add_components(
+    flow_system.add_elements(costs, CO2, PE)
+    flow_system.add_elements(
         a_gaskessel,
         a_waermelast,
         a_strom_last,
