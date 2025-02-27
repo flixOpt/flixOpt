@@ -612,7 +612,14 @@ class TimeSeriesCollection:
 
     def to_dataset(self) -> xr.Dataset:
         """Combine all stored DataArrays into a single Dataset."""
-        return xr.Dataset({time_series.name: time_series.active_data for time_series in self.time_series_data})
+        ds = xr.Dataset({time_series.name: time_series.active_data for time_series in self.time_series_data})
+
+        ds.attrs.update({
+            "timesteps": f"{self.all_timesteps[0]} ... {self.all_timesteps[-1]} | len={len(self.timesteps)}",
+            "hours_per_timestep": get_numeric_stats(self.hours_per_timestep),
+            "periods": f"{self.periods[0]} ... {self.periods[-1]} | len={len(self.periods)}" if self.periods is not None else None,
+        })
+        return ds
 
     @staticmethod
     def _create_extra_timestep(timesteps: pd.DatetimeIndex,
@@ -713,17 +720,7 @@ class TimeSeriesCollection:
         return self.hours_per_timestep[-1].item()
 
     def __repr__(self):
-        ds = self.to_dataset()
-
-        # Store metadata as attributes in the Dataset
-        ds.attrs.update({
-            "timesteps": f"{self.all_timesteps[0]} ... {self.all_timesteps[-1]} | len={len(self.timesteps)}",
-            "hours_of_last_timestep": self.hours_of_last_timestep,
-            "hours_per_timestep": get_numeric_stats(self.hours_per_timestep),
-            "periods": f"{self.periods[0]} ... {self.periods[-1]} | len={len(self.periods)}" if self.periods is not None else None,
-        })
-
-        return f"TimeSeriesCollection:\n{ds}"
+        return f"TimeSeriesCollection:\n{self.to_dataset()}"
 
     def __str__(self):
         longest_name = max([time_series.name for time_series in self.time_series_data], key=len)
