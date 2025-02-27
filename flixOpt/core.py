@@ -4,9 +4,11 @@ It provides Datatypes, logging functionality, and some functions to transform da
 """
 
 import inspect
+import json
 import logging
+import pathlib
 from collections import Counter
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union, Iterator
 
 import numpy as np
 import pandas as pd
@@ -682,6 +684,33 @@ class TimeSeriesCollection:
         label_counts = Counter([time_series.name for time_series in self.time_series_data])
         duplicates = [label for label, count in label_counts.items() if count > 1]
         assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))
+
+    def __getitem__(self, name: str) -> 'TimeSeries':
+        """
+        Get a time_series by label
+
+        Raises:
+            KeyError: If no time_series with the given label is found.
+        """
+        #TODO: This is not efficient! Use a dict instead
+        for time_series in self.time_series_data:  # TODO: This is not efficient! Use a dict instead
+            if time_series.name == name:
+                return time_series
+        raise KeyError(f'TimeSeries "{name}" not found!')
+
+    def __iter__(self) -> Iterator[TimeSeries]:
+        return iter(self.time_series_data)
+
+    def __len__(self) -> int:
+        return len(self.time_series_data)
+
+    def __contains__(self, item: Union[str, TimeSeries]) -> bool:
+        """Check if the effect exists. Checks for label or object"""
+        if isinstance(item, str):
+            return item in [ts.name for ts in self.time_series_data]  # Check if the label exists
+        elif isinstance(item, TimeSeries):
+            return item in self.time_series_data  # Check if the object exists
+        return False
 
     @property
     def non_constants(self) -> List[TimeSeries]:
