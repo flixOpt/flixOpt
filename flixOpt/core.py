@@ -713,24 +713,17 @@ class TimeSeriesCollection:
         return self.hours_per_timestep[-1].item()
 
     def __repr__(self):
-        timestep_range = f"{self.all_timesteps[0]} to {self.all_timesteps[-1]}" if len(self.timesteps) > 1 else str(
-            self.timesteps[0])
-        periods_str = f"Periods: {len(self.periods)}" if self.periods is not None else "No periods"
-        time_series_count = len(self.time_series_data)
+        ds = self.to_dataset()
 
-        return (
-            f"TimeSeriesCollection(\n"
-            f"  nr_of_timesteps={len(self.timesteps)},\n"
-            f"  timesteps={timestep_range},\n"
-            f"  active_timesteps={np.array(self._active_timesteps) if self._active_timesteps is not None else 'None'}\n"
-            f"  hours_of_last_timestep={self.hours_of_last_timestep},\n"
-            f"  hours_per_timestep={get_numeric_stats(self.hours_per_timestep)},\n"
-            f"  nr_of_periods={len(self.periods) if self.periods is not None else 'None'},\n"
-            f"  periods={periods_str},\n"
-            f"  active_periods={self._active_periods if self._active_periods is not None else 'None'}\n"
-            f"  time_series_count={time_series_count},\n"
-            f")"
-        )
+        # Store metadata as attributes in the Dataset
+        ds.attrs.update({
+            "timesteps": f"{self.all_timesteps[0]} ... {self.all_timesteps[-1]} | len={len(self.timesteps)}",
+            "hours_of_last_timestep": self.hours_of_last_timestep,
+            "hours_per_timestep": get_numeric_stats(self.hours_per_timestep),
+            "periods": f"{self.periods[0]} ... {self.periods[-1]} | len={len(self.periods)}" if self.periods is not None else None,
+        })
+
+        return f"TimeSeriesCollection:\n{ds}"
 
     def __str__(self):
         longest_name = max([time_series.name for time_series in self.time_series_data], key=len)
