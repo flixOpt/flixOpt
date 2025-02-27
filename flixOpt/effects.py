@@ -300,6 +300,9 @@ class EffectCollection:
     def __iter__(self) -> Iterator[Effect]:
         return iter(self._effects.values())
 
+    def __len__(self) -> int:
+        return len(self._effects)
+
     def __contains__(self, item: Union[str, 'Effect']) -> bool:
         """Check if the effect exists. Checks for label or object"""
         if isinstance(item, str):
