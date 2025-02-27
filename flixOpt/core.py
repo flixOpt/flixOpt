@@ -192,6 +192,24 @@ class TimeSeries:
         data = cls(DataConverter.as_dataarray(data, timesteps, periods), name, aggregation_weight, aggregation_group)
         return data
 
+    @classmethod
+    def from_json(cls, data: Optional[Dict[str, Any]] = None, path: Optional[str] = None) -> 'TimeSeries':
+        """
+        Load a TimeSeries from a dictionary or json file
+        """
+        if path is not None and data is not None:
+            raise ValueError("Only one of path and data can be provided")
+        if path is not None:
+            with open(path, 'r') as f:
+                data = json.load(f)
+        data["data"]["coords"]["time"]["data"] = pd.to_datetime(data["data"]["coords"]["time"]["data"])
+        return cls(
+            data=xr.DataArray.from_dict(data["data"]),
+            name=data["name"],
+            aggregation_weight=data["aggregation_weight"],
+            aggregation_group=data["aggregation_group"],
+        )
+
     def __init__(self,
                  data: xr.DataArray,
                  name: str,
@@ -231,6 +249,22 @@ class TimeSeries:
         """Restore stored_data from the backup."""
         self._stored_data = self._backup.copy()
         self.reset()
+
+    def to_json(self, path: Optional[pathlib.Path] = None) -> Dict[str, Any]:
+        """
+        Save the TimeSeries to a dictionary or json file
+        """
+        data = {
+            "name": self.name,
+            "aggregation_weight": self.aggregation_weight,
+            "aggregation_group": self.aggregation_group,
+            "data": self.active_data.to_dict(),
+        }
+        data["data"]["coords"]["time"]["data"] = [date.isoformat() for date in data["data"]["coords"]["time"]["data"]]
+        if path is not None:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4 if len(self.active_timesteps) <= 480 else None, ensure_ascii=False)
+        return data
 
     def _update_active_data(self):
         """Update the active data."""
