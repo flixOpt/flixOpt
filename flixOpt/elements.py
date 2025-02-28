@@ -269,7 +269,7 @@ class Flow(Element):
 
     @property
     def label_full(self) -> str:
-        return f'{self.component} ({self.label})'
+        return f'{self.component}({self.label})'
 
     @property
     def size_is_fixed(self) -> bool:
