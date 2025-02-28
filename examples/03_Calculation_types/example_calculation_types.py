@@ -194,17 +194,17 @@ if __name__ == '__main__':
     )
 
     fx.plotting.with_plotly(
-        get_solutions(calculations, 'BHKW2 (Q_th)|flow_rate').to_dataframe(),
-        mode='line', title='BHKW2 (Q_th) Flow Rate Comparison', ylabel='Flow rate', path='results/BHKW2 Thermal Power.html', save=True
+        get_solutions(calculations, 'BHKW2(Q_th)|flow_rate').to_dataframe(),
+        mode='line', title='BHKW2(Q_th) Flow Rate Comparison', ylabel='Flow rate', path='results/BHKW2 Thermal Power.html', save=True
     )
 
     fx.plotting.with_plotly(
-        get_solutions(calculations, 'costs|operation|total_per_timestep').to_dataframe(),
+        get_solutions(calculations, 'costs(operation)|total_per_timestep').to_dataframe(),
         mode='line', title='Operation Cost Comparison', ylabel='Costs [€]', path='results/Operation Costs.html', save=True
     )
 
     fx.plotting.with_plotly(
-        pd.DataFrame(get_solutions(calculations, 'costs|operation|total_per_timestep').to_dataframe().sum()).T,
+        pd.DataFrame(get_solutions(calculations, 'costs(operation)|total_per_timestep').to_dataframe().sum()).T,
         mode='bar', title='Total Cost Comparison', ylabel='Costs [€]'
     ).update_layout(barmode='group').write_html('results/Total Costs.html')
 

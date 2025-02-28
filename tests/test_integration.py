@@ -80,12 +80,12 @@ class TestSimple(BaseTest):
             results.model.variables['CO2|total'].solution.values, 255.09184, 'CO2 doesnt match expected value'
         )
         self.assert_almost_equal_numeric(
-            results.model.variables['Boiler (Q_th)|flow_rate'].solution.values,
+            results.model.variables['Boiler(Q_th)|flow_rate'].solution.values,
             [0, 0, 0, 28.4864, 35, 0, 0, 0, 0],
             'Q_th doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            results.model.variables['CHP_unit (Q_th)|flow_rate'].solution.values,
+            results.model.variables['CHP_unit(Q_th)|flow_rate'].solution.values,
             [30.0, 26.66666667, 75.0, 75.0, 75.0, 20.0, 20.0, 20.0, 20.0],
             'Q_th doesnt match expected value',
         )
@@ -93,7 +93,7 @@ class TestSimple(BaseTest):
         df = results['Fernwärme'].flow_rates()
         self.assert_almost_equal_numeric(
             calculation.flow_system.components['Wärmelast'].sink.model.flow_rate.solution.values,
-            df['Wärmelast (Q_th_Last)|flow_rate'].values,
+            df['Wärmelast(Q_th_Last)|flow_rate'].values,
             'Loaded Results and directly used results dont match, or loading didnt work properly',
         )
 
@@ -274,7 +274,7 @@ class TestComponents(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            calculation.results.model.variables['Rohr (Rohr1b)|flow_rate'].solution.values,
+            calculation.results.model.variables['Rohr(Rohr1b)|flow_rate'].solution.values,
             transmission.out1.model.flow_rate.solution.values,
             'Flow rate of Rohr__Rohr1b is not correct',
         )
@@ -337,12 +337,12 @@ class TestComplex(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['CO2'].solution.values),
+            sum(effects['costs'].model.operation.shares['CO2(operation)'].solution.values),
             258.63729669618675,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Kessel (Q_th)'].solution.values),
+            sum(effects['costs'].model.operation.shares['Kessel(Q_th)'].solution.values),
             0.01,
             'costs doesnt match expected value',
         )
@@ -352,12 +352,12 @@ class TestComplex(BaseTest):
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Gastarif (Q_Gas)'].solution.values),
+            sum(effects['costs'].model.operation.shares['Gastarif(Q_Gas)'].solution.values),
             39.09153113079115,
             'costs doesnt match expected value',
         )
         self.assert_almost_equal_numeric(
-            sum(effects['costs'].model.operation.shares['Einspeisung (P_el)'].solution.values),
+            sum(effects['costs'].model.operation.shares['Einspeisung(P_el)'].solution.values),
             -14196.61245231646,
             'costs doesnt match expected value',
         )
@@ -368,7 +368,7 @@ class TestComplex(BaseTest):
         )
 
         self.assert_almost_equal_numeric(
-            effects['costs'].model.invest.shares['Kessel (Q_th)'].solution.values,
+            effects['costs'].model.invest.shares['Kessel(Q_th)'].solution.values,
             1000 + 500,
             'costs doesnt match expected value',
         )
@@ -710,7 +710,7 @@ class TestModelingTypes(BaseTest):
     def test_segmented(self):
         calculation = self.calculate('segmented')
         self.assert_almost_equal_numeric(
-            sum(calculation.results.solution_without_overlap('costs|operation|total_per_timestep')),
+            sum(calculation.results.solution_without_overlap('costs(operation)|total_per_timestep')),
             343613,
             'costs doesnt match expected value',
         )

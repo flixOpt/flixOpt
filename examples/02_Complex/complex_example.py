@@ -190,6 +190,6 @@ if __name__ == '__main__':
     calculation.results.to_file()
 
     # But let's plot some results anyway
-    calculation.results.plot_heatmap('BHKW2 (Q_th)|flow_rate')
+    calculation.results.plot_heatmap('BHKW2(Q_th)|flow_rate')
     calculation.results['BHKW2'].plot_flow_rates()
     calculation.results['Speicher'].plot_charge_state()
