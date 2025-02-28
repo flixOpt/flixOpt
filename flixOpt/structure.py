@@ -127,6 +127,10 @@ class Interface:
         """Convert the object to a dictionary representation."""
         raise NotImplementedError('Every Interface needs a to_dict() method')
 
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Interface':
+        return cls(**data)
+
     def __repr__(self):
         # Get the constructor arguments and their current values
         init_signature = inspect.signature(self.__init__)
@@ -169,11 +173,6 @@ class Element(Interface):
             "label": self.label,
             "meta_data": self.meta_data,
         }
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Element':
-        """Create an Element from a dictionary representation."""
-        return cls(label=data['label'], meta_data=data['meta_data'])
 
     @property
     def label_full(self) -> str:

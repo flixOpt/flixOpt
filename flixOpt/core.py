@@ -398,6 +398,12 @@ class TimeSeries:
     def __abs__(self):
         return abs(self.active_data)
 
+    def __gt__(self, other):
+        """Compare two TimeSeries instances based on their xarray.DataArray."""
+        if isinstance(other, TimeSeries):
+            return (self.active_data > other.active_data).all()
+        return NotImplemented  # In case the comparison is with something else
+
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Ensures NumPy functions like np.add(TimeSeries, xarray) work correctly."""
         inputs = [x.active_data if isinstance(x, TimeSeries) else x for x in inputs]

@@ -2,6 +2,7 @@
 This module contains the FlowSystem class, which is used to collect instances of many other classes by the end User.
 """
 
+from io import StringIO
 import json
 import logging
 import pathlib
@@ -10,7 +11,8 @@ from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import xarray as xr
+from rich.pretty import Pretty
+from rich.console import Console
 
 from . import io
 from .core import NumericData, NumericDataTS, TimeSeries, TimeSeriesCollection, TimeSeriesData
@@ -236,7 +238,7 @@ class FlowSystem:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.infos_compact(), f, indent=4, ensure_ascii=False)
 
-    def to_dict(self, data_mode: Literal['name', 'stats'] = 'name') -> Dict:
+    def to_dict(self, data_mode: Literal['data', 'name', 'stats'] = 'data') -> Dict:
         """Convert the object to a dictionary representation."""
         data = {
             "components": {
@@ -253,8 +255,40 @@ class FlowSystem:
             },
             "timesteps_extra": self.time_series_collection.timesteps_extra,
             "periods": self.time_series_collection.periods,
+            "hours_of_previous_timesteps": self.time_series_collection.hours_of_previous_timesteps,
         }
-        return io.remove_none_and_empty(io.replace_timeseries(data, data_mode))
+        if data_mode == 'data':
+            return data
+        else:
+            return io.replace_timeseries(data, data_mode)
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'FlowSystem':
+        timesteps_extra = data['timesteps_extra']
+        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(
+            timesteps_extra, None
+        ).isel(time=-1).item()
+
+        flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
+                                 hours_of_last_timestep=hours_of_last_timestep,
+                                 hours_of_previous_timesteps=data['hours_of_previous_timesteps'],
+                                 periods=data['periods'])
+
+        flow_system.add_elements(
+            *[Bus.from_dict(bus) for bus in data['buses'].values()]
+        )
+
+        flow_system.add_elements(
+            *[Effect.from_dict(effect) for effect in data['effects'].values()]
+        )
+
+        flow_system.add_elements(
+            *[Component.from_dict(comp) for comp in data['components'].values()]
+        )
+
+        flow_system.transform_data()
+
+        return flow_system
 
     def plot_network(
         self,
@@ -330,7 +364,10 @@ class FlowSystem:
         return f'<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>'
 
     def __str__(self):
-        return get_str_representation(self.infos(use_numpy=True, use_element_label=True))
+        with StringIO() as output_buffer:
+            console = Console(file=output_buffer, width=1000)  # Adjust width as needed
+            console.print(Pretty(io.remove_none_and_empty(self.to_dict('stats')), expand_all=True, indent_guides=True))
+            return output_buffer.getvalue()
 
     @property
     def flows(self) -> Dict[str, Flow]:

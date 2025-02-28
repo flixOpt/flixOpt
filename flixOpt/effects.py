@@ -147,6 +147,10 @@ class Effect(Element):
 
         return data
 
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Effect':
+        return cls(**data)
+
     def create_model(self, model: SystemModel) -> 'EffectModel':
         self.model = EffectModel(model, self)
         return self.model

@@ -85,6 +85,15 @@ class Component(Element):
         })
         return data
 
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Component':
+        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get('on_off_parameters') is not None else None
+        data['inputs'] = [Flow.from_dict(flow) for flow in data['inputs']]
+        data['outputs'] = [Flow.from_dict(flow) for flow in data['outputs']]
+        flows = {flow.label: flow for flow in data['inputs'] + data['outputs']}
+        data['prevent_simultaneous_flows'] = [flows[label] for label in data['prevent_simultaneous_flows']] if data['prevent_simultaneous_flows'] else None
+        return cls(**data)
+
 
 class Bus(Element):
     """
@@ -136,6 +145,10 @@ class Bus(Element):
     @property
     def with_excess(self) -> bool:
         return False if self.excess_penalty_per_flow_hour is None else True
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Bus':
+        return cls(**data)
 
 
 class Connection:
@@ -294,6 +307,11 @@ class Flow(Element):
             'previous_flow_rate': self.previous_flow_rate,
         })
         return data
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Flow':
+        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get('on_off_parameters') is not None else None
+        return cls(**data)
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
