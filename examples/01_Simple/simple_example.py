@@ -109,7 +109,7 @@ if __name__ == '__main__':
     # --- Analyze Results ---
     calculation.results['Fernwärme'].plot_flow_rates()
     calculation.results['Storage'].plot_flow_rates()
-    calculation.results.plot_heatmap('CHP (Q_th)|flow_rate')
+    calculation.results.plot_heatmap('CHP(Q_th)|flow_rate')
 
     # Convert the results for the storage component to a dataframe and display
     df = calculation.results['Storage'].charge_state_and_flow_rates()
