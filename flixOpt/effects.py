@@ -244,7 +244,7 @@ class EffectCollection:
             if isinstance(eff, Effect):
                 warnings.warn(
                     f"The use of effect objects when specifying EffectValues is deprecated. "
-                    f"Use the label of the effect instead. Used effect: {effect.label_full}",
+                    f"Use the label of the effect instead. Used effect: {eff.label_full}",
                     UserWarning,
                     stacklevel=2,
                 )
@@ -389,15 +389,13 @@ class EffectCollectionModel(Model):
         for origin_effect in self.effects:
             # 1. operation: -> hier sind es Zeitreihen (share_TS)
             for target_effect, time_series in origin_effect.specific_share_to_other_effects_operation.items():
-                model = self.effects[target_effect].model.operation
-                model.add_share(
-                    model.label_full,
+                self.effects[target_effect].model.operation.add_share(
+                    origin_effect.model.operation.label_full,
                     origin_effect.model.operation.total_per_timestep * time_series.active_data,
                 )
             # 2. invest:    -> hier ist es Scalar (share)
             for target_effect, factor in origin_effect.specific_share_to_other_effects_invest.items():
-                model = self.effects[target_effect].model.invest.operation
-                model.add_share(
-                    model.label_full,
+                self.effects[target_effect].model.invest.add_share(
+                    origin_effect.model.invest.label_full,
                     origin_effect.model.invest.total * factor,
                 )
