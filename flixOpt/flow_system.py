@@ -367,7 +367,8 @@ class FlowSystem:
         with StringIO() as output_buffer:
             console = Console(file=output_buffer, width=1000)  # Adjust width as needed
             console.print(Pretty(io.remove_none_and_empty(self.to_dict('stats')), expand_all=True, indent_guides=True))
-            return output_buffer.getvalue()
+            value = output_buffer.getvalue()
+        return value
 
     @property
     def flows(self) -> Dict[str, Flow]:
