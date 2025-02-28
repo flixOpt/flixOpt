@@ -151,7 +151,6 @@ class Element(Interface):
         """
         self.label = Element._valid_label(label)
         self.meta_data = meta_data if meta_data is not None else {}
-        self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 
     def _plausibility_checks(self) -> None:
