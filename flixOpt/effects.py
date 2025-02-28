@@ -124,6 +124,29 @@ class Effect(Element):
             'operation'
         )
 
+    def to_dict(self) -> Dict:
+        data = super().to_dict()
+
+        # Add attributes
+        data.update({
+            "unit": self.unit,
+            "description": self.description,
+            "is_standard": self.is_standard,
+            "is_objective": self.is_objective,
+            "specific_share_to_other_effects_operation": self.specific_share_to_other_effects_operation,
+            "specific_share_to_other_effects_invest": self.specific_share_to_other_effects_invest,
+            "minimum_operation": self.minimum_operation,
+            "maximum_operation": self.maximum_operation,
+            "minimum_operation_per_hour": self.minimum_operation_per_hour,
+            "maximum_operation_per_hour": self.maximum_operation_per_hour,
+            "minimum_invest": self.minimum_invest,
+            "maximum_invest": self.maximum_invest,
+            "minimum_total": self.minimum_total,
+            "maximum_total": self.maximum_total,
+        })
+
+        return data
+
     def create_model(self, model: SystemModel) -> 'EffectModel':
         self.model = EffectModel(model, self)
         return self.model

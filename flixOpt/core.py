@@ -266,6 +266,11 @@ class TimeSeries:
                 json.dump(data, f, indent=4 if len(self.active_timesteps) <= 480 else None, ensure_ascii=False)
         return data
 
+    @property
+    def stats(self) -> str:
+        """Return a statistical summary of the active data, considering periods if available."""
+        return get_numeric_stats(self.active_data, padd=0)
+
     def _update_active_data(self):
         """Update the active data."""
         if 'period' in self._stored_data.indexes:

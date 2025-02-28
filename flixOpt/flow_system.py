@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from . import utils
+from . import io
 from .core import NumericData, NumericDataTS, TimeSeries, TimeSeriesCollection, TimeSeriesData
 from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesDict, EffectValuesUser
 from .elements import Bus, Component, Flow
@@ -235,6 +235,26 @@ class FlowSystem:
         """
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(self.infos_compact(), f, indent=4, ensure_ascii=False)
+
+    def to_dict(self, data_mode: Literal['name', 'stats'] = 'name') -> Dict:
+        """Convert the object to a dictionary representation."""
+        data = {
+            "components": {
+                comp.label: comp.to_dict()
+                for comp in sorted(self.components.values(), key=lambda component: component.label.upper())
+            },
+            "buses": {
+                bus.label: bus.to_dict()
+                for bus in sorted(self.buses.values(), key=lambda bus: bus.label.upper())
+            },
+            "effects": {
+                effect.label: effect.to_dict()
+                for effect in sorted(self.effects, key=lambda effect: effect.label.upper())
+            },
+            "timesteps_extra": self.time_series_collection.timesteps_extra,
+            "periods": self.time_series_collection.periods,
+        }
+        return io.remove_none_and_empty(io.replace_timeseries(data, data_mode))
 
     def plot_network(
         self,

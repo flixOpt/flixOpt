@@ -18,7 +18,6 @@ import xarray as xr
 from rich.console import Console
 from rich.pretty import Pretty
 
-from . import utils
 from .config import CONFIG
 from .core import NumericData, Scalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
 
@@ -124,6 +123,10 @@ class Interface:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
+    def to_dict(self) -> Dict:
+        """Convert the object to a dictionary representation."""
+        raise NotImplementedError('Every Interface needs a to_dict() method')
+
     def __repr__(self):
         # Get the constructor arguments and their current values
         init_signature = inspect.signature(self.__init__)
@@ -159,6 +162,18 @@ class Element(Interface):
 
     def create_model(self, model: SystemModel) -> 'ElementModel':
         raise NotImplementedError('Every Element needs a create_model() method')
+
+    def to_dict(self) -> Dict:
+        """Convert the object to a dictionary representation."""
+        return {
+            "label": self.label,
+            "meta_data": self.meta_data,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Element':
+        """Create an Element from a dictionary representation."""
+        return cls(label=data['label'], meta_data=data['meta_data'])
 
     @property
     def label_full(self) -> str:
