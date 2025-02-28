@@ -243,9 +243,10 @@ class EffectCollection:
             """ Temporary function to get the label of an effect and warn for deprecation """
             if isinstance(eff, Effect):
                 warnings.warn(
-                    "The use of effect objects when specifying EffectValues is deprecated. Use the label of the effect instead.",
-                    DeprecationWarning,
-                    stacklevel=2
+                    f"The use of effect objects when specifying EffectValues is deprecated. "
+                    f"Use the label of the effect instead. Used effect: {effect.label_full}",
+                    UserWarning,
+                    stacklevel=2,
                 )
                 return eff.label_full
             else:
