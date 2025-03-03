@@ -28,6 +28,18 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 logger = logging.getLogger('flixOpt')
 
 
+class_registry = {}
+
+def register_class_for_io(cls):
+    """Register a class for serialization/deserialization."""
+    name = cls.__name__
+    if name in class_registry:
+        raise ValueError(f'Class {name} already registered! Use a different Name for the class! '
+                         f'This error should only happen in developement')
+    class_registry[name] = cls
+    return cls
+
+
 class SystemModel(linopy.Model):
 
     def __init__(self, flow_system: 'FlowSystem'):
@@ -125,11 +137,17 @@ class Interface:
 
     def to_dict(self) -> Dict:
         """Convert the object to a dictionary representation."""
-        raise NotImplementedError('Every Interface needs a to_dict() method')
+        return {"__class__": self.__class__.__name__}
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'Interface':
-        return cls(**data)
+        data.pop('__class__')
+        return cls(**cls._from_dict(data))
+
+    @classmethod
+    def _from_dict(cls, data: Dict) -> Dict:
+        """ Load data from a dict to initialize an object"""
+        return data
 
     def __repr__(self):
         # Get the constructor arguments and their current values
@@ -169,10 +187,9 @@ class Element(Interface):
 
     def to_dict(self) -> Dict:
         """Convert the object to a dictionary representation."""
-        return {
-            "label": self.label,
-            "meta_data": self.meta_data,
-        }
+        return {**super().to_dict(),
+                **{"label": self.label,"meta_data": self.meta_data}
+                }
 
     @property
     def label_full(self) -> str:

@@ -15,7 +15,7 @@ import pandas as pd
 
 from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
-from .structure import Element, ElementModel, Interface, Model, SystemModel
+from .structure import Element, ElementModel, Interface, Model, SystemModel, register_class_for_io
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('flixOpt')
 
 
+@register_class_for_io
 class Effect(Element):
     """
     Effect, i.g. costs, CO2 emissions, area, ...
@@ -146,10 +147,6 @@ class Effect(Element):
         })
 
         return data
-
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Effect':
-        return cls(**data)
 
     def create_model(self, model: SystemModel) -> 'EffectModel':
         self.model = EffectModel(model, self)

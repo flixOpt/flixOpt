@@ -18,7 +18,7 @@ from . import io
 from .core import NumericData, NumericDataTS, TimeSeries, TimeSeriesCollection, TimeSeriesData
 from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesDict, EffectValuesUser
 from .elements import Bus, Component, Flow
-from .structure import Element, SystemModel, get_compact_representation, get_str_representation
+from .structure import Element, SystemModel, get_compact_representation, get_str_representation, class_registry
 
 if TYPE_CHECKING:
     import pyvis
@@ -150,7 +150,13 @@ class FlowSystem:
             return None
         elif isinstance(data, TimeSeries):
             data.restore_data()
-            return data
+            if data in self.time_series_collection:
+                return data
+            return self.time_series_collection.create_time_series(
+                data=data.active_data,
+                name=name,
+                extra_timestep=extra_timestep
+            )
         return self.time_series_collection.create_time_series(
             data=data,
             name=name,
@@ -253,18 +259,19 @@ class FlowSystem:
                 effect.label: effect.to_dict()
                 for effect in sorted(self.effects, key=lambda effect: effect.label.upper())
             },
-            "timesteps_extra": self.time_series_collection.timesteps_extra,
+            "timesteps_extra": [date.isoformat() for date in self.time_series_collection.timesteps_extra],
             "periods": self.time_series_collection.periods,
             "hours_of_previous_timesteps": self.time_series_collection.hours_of_previous_timesteps,
         }
         if data_mode == 'data':
             return data
-        else:
-            return io.replace_timeseries(data, data_mode)
+        elif data_mode == 'stats':
+            return io.remove_none_and_empty(io.replace_timeseries(data, data_mode))
+        return io.replace_timeseries(data, data_mode)
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'FlowSystem':
-        timesteps_extra = data['timesteps_extra']
+        timesteps_extra = pd.DatetimeIndex(data['timesteps_extra'], name='time')
         hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(
             timesteps_extra, None
         ).isel(time=-1).item()
@@ -272,7 +279,7 @@ class FlowSystem:
         flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
                                  hours_of_last_timestep=hours_of_last_timestep,
                                  hours_of_previous_timesteps=data['hours_of_previous_timesteps'],
-                                 periods=data['periods'])
+                                 periods=pd.Index(data['periods'], name='period') if data.get('periods') is not None else None)
 
         flow_system.add_elements(
             *[Bus.from_dict(bus) for bus in data['buses'].values()]
@@ -283,7 +290,7 @@ class FlowSystem:
         )
 
         flow_system.add_elements(
-            *[Component.from_dict(comp) for comp in data['components'].values()]
+            *[class_registry[comp['__class__']].from_dict(comp) for comp in data['components'].values()]
         )
 
         flow_system.transform_data()

@@ -14,7 +14,7 @@ from .core import NumericData, NumericDataTS, Scalar, TimeSeriesCollection
 from .effects import EffectValuesUser
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
-from .structure import Element, ElementModel, SystemModel
+from .structure import Element, ElementModel, SystemModel, register_class_for_io
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('flixOpt')
 
 
+@register_class_for_io
 class Component(Element):
     """
     basic component class for all components
@@ -86,15 +87,20 @@ class Component(Element):
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Component':
+    def _from_dict(cls, data: Dict) -> Dict:
+        """ Load data from a dict to initialize an object"""
+        data = super()._from_dict(data)
         data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get('on_off_parameters') is not None else None
         data['inputs'] = [Flow.from_dict(flow) for flow in data['inputs']]
         data['outputs'] = [Flow.from_dict(flow) for flow in data['outputs']]
         flows = {flow.label: flow for flow in data['inputs'] + data['outputs']}
-        data['prevent_simultaneous_flows'] = [flows[label] for label in data['prevent_simultaneous_flows']] if data['prevent_simultaneous_flows'] else None
-        return cls(**data)
+        data['prevent_simultaneous_flows'] = [
+            flows[label] for label in data['prevent_simultaneous_flows']
+        ] if data['prevent_simultaneous_flows'] is not None else None
+        return data
 
 
+@register_class_for_io
 class Bus(Element):
     """
     realizing balance of all linked flows
@@ -146,11 +152,8 @@ class Bus(Element):
     def with_excess(self) -> bool:
         return False if self.excess_penalty_per_flow_hour is None else True
 
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Bus':
-        return cls(**data)
 
-
+@register_class_for_io
 class Connection:
     # input/output-dock (TODO:
     # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
@@ -160,6 +163,7 @@ class Connection:
         raise NotImplementedError()
 
 
+@register_class_for_io
 class Flow(Element):
     """
     flows are inputs and outputs of components
@@ -309,9 +313,12 @@ class Flow(Element):
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Flow':
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get('on_off_parameters') is not None else None
-        return cls(**data)
+    def _from_dict(cls, data: Dict) -> Dict:
+        """ Load data from a dict to initialize an object"""
+        data = super()._from_dict(data)
+        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
+            'on_off_parameters') is not None else None
+        return data
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound
