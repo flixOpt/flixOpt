@@ -75,6 +75,12 @@ class Calculation:
             except FileNotFoundError as e:
                 raise FileNotFoundError(f'Folder {self.folder} and its parent do not exist. Please create them first.') from e
 
+    def flow_system_to_netcdf(self):
+        """
+        Saves the flow_system to .netcdf file.
+        """
+        self.flow_system.to_netcdf(self.folder / f'{self.name}_flowsystem.nc')
+
     @property
     def main_results(self) -> Dict[str, Union[Scalar, Dict]]:
         from flixOpt.features import InvestmentModel

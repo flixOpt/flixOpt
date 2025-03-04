@@ -116,6 +116,16 @@ class FlowSystem:
 
         return flow_system
 
+    @classmethod
+    def from_netcdf(cls, path: Union[str, pathlib.Path]):
+        """
+        Load a FlowSystem from a netcdf file
+        """
+        with xr.open_dataset(path) as ds:
+            ds = ds.load()
+        ds.attrs = json.loads(ds.attrs['flow_system'])
+        return cls.from_dataset(ds)
+
     def add_elements(self, *elements: Element) -> None:
         """
         add all modeling elements, like storages, boilers, heatpumps, buses, ...
@@ -179,6 +189,12 @@ class FlowSystem:
         ds = self.time_series_collection.to_dataset(include_constants=constants_in_dataset)
         ds.attrs = self.as_dict(data_mode='name')
         return ds
+
+    def to_netcdf(self, path: Union[str, pathlib.Path]):
+        ds = self.as_dataset()
+        ds.attrs = {'flow_system': json.dumps(ds.attrs)}
+        ds.to_netcdf(path)
+        logger.info(f'Saved FlowSystem to {path}')
 
     def plot_network(
         self,
