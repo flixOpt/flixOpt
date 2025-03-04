@@ -206,6 +206,133 @@ class TestFlowSystem:
             'CO2 doesnt match expected value'
         )
 
+
+class TestComponents:
+    @pytest.fixture
+    def basic_flow_system(self) -> fx.FlowSystem:
+        """Create basic elements for component testing"""
+        flow_system = fx.FlowSystem(pd.date_range('2020-01-01', periods=10, freq='h', name='time'))
+        Q_th_Last = np.array([np.random.random() for _ in range(10)]) * 180
+        p_el = (np.array([np.random.random() for _ in range(10)]) + 0.5) / 1.5 * 50
+
+        flow_system.add_elements(
+            fx.Bus('Strom'),
+            fx.Bus('Fernwärme'),
+            fx.Bus('Gas'),
+            fx.Effect('Costs', '€', 'Kosten', is_standard=True, is_objective=True),
+            fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=Q_th_Last)),
+            fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour=0.04)),
+            fx.Sink('Einspeisung', sink=fx.Flow('P_el', 'Strom', effects_per_flow_hour=-1 * p_el)),
+        )
+
+        return flow_system
+
+    def test_transmission_basic(self, basic_flow_system):
+        """Test basic transmission functionality"""
+        flow_system = basic_flow_system
+        flow_system.add_elements(fx.Bus('Wärme lokal'))
+
+        boiler = fx.linear_converters.Boiler(
+            'Boiler',
+            eta=0.5,
+            Q_th=fx.Flow('Q_th', bus='Wärme lokal'),
+            Q_fu=fx.Flow('Q_fu', bus='Gas')
+        )
+
+        transmission = fx.Transmission(
+            'Rohr',
+            relative_losses=0.2,
+            absolute_losses=20,
+            in1=fx.Flow('Rohr1', 'Wärme lokal', size=fx.InvestParameters(specific_effects=5, maximum_size=1e6)),
+            out1=fx.Flow('Rohr2', 'Fernwärme', size=1000),
+        )
+
+        flow_system.add_elements(transmission, boiler)
+        calculation = fx.FullCalculation('Test_Sim', flow_system)
+        calculation.do_modeling()
+        calculation.solve(get_solver())
+
+        # Assertions
+        assert_almost_equal_numeric(
+            transmission.in1.model.on_off.on.solution.values,
+            np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            'On does not work properly'
+        )
+
+        assert_almost_equal_numeric(
+            transmission.in1.model.flow_rate.solution.values * 0.8 - 20,
+            transmission.out1.model.flow_rate.solution.values,
+            'Losses are not computed correctly',
+        )
+
+    def test_transmission_advanced(self, basic_flow_system):
+        """Test advanced transmission functionality"""
+        flow_system = basic_flow_system
+        flow_system.add_elements(fx.Bus('Wärme lokal'))
+
+        boiler = fx.linear_converters.Boiler(
+            'Boiler_Standard',
+            eta=0.9,
+            Q_th=fx.Flow(
+                'Q_th', bus='Fernwärme', relative_maximum=np.array([0, 0, 0, 1, 1, 1, 1, 1, 1, 1])
+            ),
+            Q_fu=fx.Flow('Q_fu', bus='Gas'),
+        )
+
+        boiler2 = fx.linear_converters.Boiler(
+            'Boiler_backup', eta=0.4, Q_th=fx.Flow('Q_th', bus='Wärme lokal'), Q_fu=fx.Flow('Q_fu', bus='Gas')
+        )
+
+        last2 = fx.Sink(
+            'Wärmelast2',
+            sink=fx.Flow(
+                'Q_th_Last',
+                bus='Wärme lokal',
+                size=1,
+                fixed_relative_profile=flow_system.components['Wärmelast'].sink.fixed_relative_profile * np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1]),
+            ),
+        )
+
+        transmission = fx.Transmission(
+            'Rohr',
+            relative_losses=0.2,
+            absolute_losses=20,
+            in1=fx.Flow('Rohr1a', bus='Wärme lokal', size=fx.InvestParameters(specific_effects=5, maximum_size=1000)),
+            out1=fx.Flow('Rohr1b', 'Fernwärme', size=1000),
+            in2=fx.Flow('Rohr2a', 'Fernwärme', size=1000),
+            out2=fx.Flow('Rohr2b', bus='Wärme lokal', size=1000),
+        )
+
+        flow_system.add_elements(transmission, boiler, boiler2, last2)
+        calculation = fx.FullCalculation('Test_Transmission', flow_system)
+        calculation.do_modeling()
+        calculation.solve(get_solver())
+
+        # Assertions
+        assert_almost_equal_numeric(
+            transmission.in1.model.on_off.on.solution.values,
+            np.array([1, 1, 1, 0, 0, 0, 0, 0, 0, 0]),
+            'On does not work properly'
+        )
+
+        assert_almost_equal_numeric(
+            calculation.results.model.variables['Rohr(Rohr1b)|flow_rate'].solution.values,
+            transmission.out1.model.flow_rate.solution.values,
+            'Flow rate of Rohr__Rohr1b is not correct',
+        )
+
+        assert_almost_equal_numeric(
+            transmission.in1.model.flow_rate.solution.values * 0.8
+            - np.array([20 if val > 0.1 else 0 for val in transmission.in1.model.flow_rate.solution.values]),
+            transmission.out1.model.flow_rate.solution.values,
+            'Losses are not computed correctly',
+        )
+
+        assert_almost_equal_numeric(
+            transmission.in1.model._investment.size.solution.item(),
+            transmission.in2.model._investment.size.solution.item(),
+            'The Investments are not equated correctly',
+        )
 # Advanced Modeling Types Test
 class TestModelingTypes:
     @pytest.fixture(params=['full', 'segmented', 'aggregated'])
