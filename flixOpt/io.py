@@ -52,14 +52,17 @@ def replace_timeseries(obj, mode: Literal['name', 'stats'] = 'name'):
     else:
         return obj
 
-def insert_timeseries(obj, ds: xr.Dataset):
+def insert_dataarray(obj, ds: xr.Dataset):
     """Recursively inserts TimeSeries objects into a dataset."""
     if isinstance(obj, dict):
-        return {k: insert_timeseries(v, ds) for k, v in obj.items()}
+        return {k: insert_dataarray(v, ds) for k, v in obj.items()}
     elif isinstance(obj, list):
-        return [insert_timeseries(v, ds) for v in obj]
+        return [insert_dataarray(v, ds) for v in obj]
     elif isinstance(obj, str) and obj.startswith("::::"):
-        return ds[obj[4:]]
+        da = ds[obj[4:]]
+        if da.isel(time=-1).isnull():
+            return da.isel(time=slice(0, -1))
+        return da
     else:
         return obj
 

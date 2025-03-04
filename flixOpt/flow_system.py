@@ -287,7 +287,7 @@ class FlowSystem:
                                  hours_of_previous_timesteps=ds.attrs['hours_of_previous_timesteps'],
                                  periods=pd.Index(ds.attrs['periods'], name='period') if ds.attrs.get('periods') is not None else None)
 
-        structure = io.insert_timeseries({key: ds.attrs[key] for key in ['components', 'buses', 'effects']}, ds)
+        structure = io.insert_dataarray({key: ds.attrs[key] for key in ['components', 'buses', 'effects']}, ds)
         flow_system.add_elements(
             * [Bus.from_dict(bus) for bus in structure['buses'].values()]
             + [Effect.from_dict(effect) for effect in structure['effects'].values()]
