@@ -28,15 +28,15 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
 logger = logging.getLogger('flixOpt')
 
 
-class_registry = {}
+CLASS_REGISTRY = {}
 
 def register_class_for_io(cls):
     """Register a class for serialization/deserialization."""
     name = cls.__name__
-    if name in class_registry:
+    if name in CLASS_REGISTRY:
         raise ValueError(f'Class {name} already registered! Use a different Name for the class! '
                          f'This error should only happen in developement')
-    class_registry[name] = cls
+    CLASS_REGISTRY[name] = cls
     return cls
 
 
@@ -173,43 +173,41 @@ class Interface:
         return {k: self._serialize_value(v) for k, v in d.items()}
 
     @classmethod
-    def from_dict(cls, data: Dict):
-        """Create an instance from a dictionary representation."""
-        # Remove class name if present
-        data = data.copy()
-
-        # For child classes that need custom deserialization
-        init_args = cls._prepare_init_args(data)
-
-        return cls(**init_args)
+    def _deserialize_dict(cls, data: Dict) -> Union[Dict, 'Interface']:
+        if '__class__' in data:
+            class_name = data.pop('__class__')
+            try:
+                class_type = CLASS_REGISTRY[class_name]
+                if issubclass(class_type, Interface):
+                    # Use _deserialize_dict to process the arguments
+                    processed_data = {k: cls._deserialize_value(v) for k, v in data.items()}
+                    return class_type(**processed_data)
+                else:
+                    raise ValueError(f'Class "{class_name}" is not an Interface.')
+            except (AttributeError, KeyError) as e:
+                raise ValueError(f'Class "{class_name}" could not get reconstructed.') from e
+        else:
+            return {k: cls._deserialize_value(v) for k, v in data.items()}
 
     @classmethod
-    def _prepare_init_args(cls, data: Dict):
-        """Recursively deserialize nested objects."""
-        result = {}
+    def _deserialize_list(cls, data: List) -> List:
+        return [cls._deserialize_value(value) for value in data]
 
-        for key, value in data.items():
-            if isinstance(value, dict) and '__class__' in value:
-                class_name = value.pop('__class__')
-                try:
-                    class_type = class_registry[class_name]
-                    if issubclass(class_registry[class_name], Interface):
-                        result[key] = class_type.from_dict(value)
-                    else:
-                        raise ValueError(f'Class "{class_name}" is not an Interface.')
-                except (AttributeError, KeyError) as e:
-                    raise ValueError(f'Class "{class_name}" could not get reconstructed.') from e
-            elif isinstance(value, dict):
-                result[key] = cls._prepare_init_args(value)
-            elif isinstance(value, list):
-                result[key] = [
-                    cls._prepare_init_args(item) if isinstance(item, dict) and '__class__' in item
-                    else item
-                    for item in value
-                ]
-            else:
-                result[key] = value
-        return result
+    @classmethod
+    def _deserialize_value(cls, value: Any):
+        """Helper method to deserialize a value based on its type."""
+        if value is None:
+            return None
+        elif isinstance(value, dict):
+            return cls._deserialize_dict(value)
+        elif isinstance(value, list):
+            return cls._deserialize_list(value)
+        return value
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Interface':
+        """Create an instance from a dictionary representation."""
+        return cls._deserialize_dict(data)
 
     def __repr__(self):
         # Get the constructor arguments and their current values

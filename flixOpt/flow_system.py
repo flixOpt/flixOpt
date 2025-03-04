@@ -18,7 +18,7 @@ from . import io
 from .core import NumericData, NumericDataTS, TimeSeries, TimeSeriesCollection, TimeSeriesData
 from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesDict, EffectValuesUser
 from .elements import Bus, Component, Flow
-from .structure import Element, SystemModel, get_compact_representation, get_str_representation, class_registry
+from .structure import Element, SystemModel, get_compact_representation, get_str_representation, CLASS_REGISTRY
 
 if TYPE_CHECKING:
     import pyvis
@@ -290,7 +290,7 @@ class FlowSystem:
         )
 
         flow_system.add_elements(
-            *[class_registry[comp['__class__']].from_dict(comp) for comp in data['components'].values()]
+            *[CLASS_REGISTRY[comp['__class__']].from_dict(comp) for comp in data['components'].values()]
         )
 
         flow_system.transform_data()
