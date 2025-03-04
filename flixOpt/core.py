@@ -51,7 +51,7 @@ class DataConverter:
             coords = [time]
             dims = ['time']
 
-        if isinstance(data, (int, float)):
+        if isinstance(data, (int, float, np.integer, np.floating)):
             return DataConverter._handle_scalar(data, coords, dims)
         elif isinstance(data, pd.DataFrame):
             return DataConverter._handle_dataframe(data, coords, dims)
@@ -447,7 +447,6 @@ class TimeSeriesCollection:
     ) -> TimeSeries:
         """
         Creates a TimeSeries from the given data and adds it to the time_series_data.
-        If the data already is a TimeSeries, nothing happens.
 
         Parameters
         ----------
@@ -464,12 +463,6 @@ class TimeSeriesCollection:
             The created TimeSeries.
 
         """
-        if isinstance(data, TimeSeries):
-            if data not in self.time_series_data:
-                self._add_time_series(data, extra_timestep)
-            data.restore_data()
-            return data
-
         time_series = TimeSeries.from_datasource(
             name=name,
             data=data if not isinstance(data, TimeSeriesData) else data.data,
@@ -482,7 +475,7 @@ class TimeSeriesCollection:
         if isinstance(data, TimeSeriesData):
             data.label = time_series.name  # Connecting User_time_series to TimeSeries
 
-        self._add_time_series(time_series, extra_timestep)
+        self.add_time_series(time_series, extra_timestep)
         return time_series
 
     def calculate_aggregation_weights(self) -> Dict[str, float]:
@@ -632,7 +625,7 @@ class TimeSeriesCollection:
 
         return timesteps, timesteps_extra, hours_per_step, hours_of_previous_timesteps, periods
 
-    def _add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
+    def add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
         self.time_series_data.append(time_series)
         if extra_timestep:
             self._time_series_data_with_extra_step.append(time_series)
@@ -657,9 +650,11 @@ class TimeSeriesCollection:
         else:
             raise ValueError('Not supported argument for "filtered".')
 
-    def to_dataset(self) -> xr.Dataset:
+    def to_dataset(self, include_constants: bool = True) -> xr.Dataset:
         """Combine all stored DataArrays into a single Dataset."""
-        ds = xr.Dataset({time_series.name: time_series.active_data for time_series in self.time_series_data})
+        ds = xr.Dataset({time_series.name: time_series.active_data
+                         for time_series in self.time_series_data
+                         if not time_series.all_equal or (time_series.all_equal and include_constants)})
 
         ds.attrs.update({
             "timesteps": f"{self.all_timesteps[0]} ... {self.all_timesteps[-1]} | len={len(self.timesteps)}",
