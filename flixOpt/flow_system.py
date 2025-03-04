@@ -266,13 +266,13 @@ class FlowSystem:
             "hours_of_previous_timesteps": self.time_series_collection.hours_of_previous_timesteps,
         }
         if data_mode == 'data':
-            return data
+            return io.replace_timeseries(data, 'data')
         elif data_mode == 'stats':
             return io.remove_none_and_empty(io.replace_timeseries(data, data_mode))
         return io.replace_timeseries(data, data_mode)
 
-    def as_dataset(self) -> xr.Dataset:
-        ds = self.time_series_collection.to_dataset()
+    def as_dataset(self, constants_in_dataset: bool = False) -> xr.Dataset:
+        ds = self.time_series_collection.to_dataset(include_constants=constants_in_dataset)
         ds.attrs = self.to_dict(data_mode='name')
         return ds
 

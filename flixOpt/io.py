@@ -36,17 +36,21 @@ def structure_to_json(flow_system: FlowSystem, path: Union[str, pathlib.Path] = 
         json.dump(_results_structure(flow_system), f, indent=4, ensure_ascii=False)
 
 
-def replace_timeseries(obj, mode: Literal['name', 'stats'] = 'name'):
+def replace_timeseries(obj, mode: Literal['name', 'stats', 'data'] = 'name'):
     """Recursively replaces TimeSeries objects with their names prefixed by '::::'."""
     if isinstance(obj, dict):
         return {k: replace_timeseries(v, mode) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [replace_timeseries(v, mode) for v in obj]
     elif isinstance(obj, TimeSeries):  # Adjust this based on the actual class
-        if mode == 'name':
+        if obj.all_equal:
+            return obj.active_data.values[0]
+        elif mode == 'name':
             return f"::::{obj.name}"
         elif mode == 'stats':
             return obj.stats
+        elif mode == 'data':
+            return obj
         else:
             raise ValueError(f"Invalid mode {mode}")
     else:
