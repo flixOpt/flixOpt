@@ -51,19 +51,17 @@ class Boiler(LinearConverter):
             on_off_parameters=on_off_parameters,
             meta_data=meta_data,
         )
-
         self.Q_fu = Q_fu
         self.Q_th = Q_th
-        check_bounds(eta, 'eta', self.label_full, 0, 1)
 
     @property
     def eta(self):
-        return self.conversion_factors[0][self.Q_th.label]
+        return self.conversion_factors[0][self.Q_fu.label]
 
     @eta.setter
     def eta(self, value):
         check_bounds(value, 'eta', self.label_full, 0, 1)
-        self.conversion_factors[0][self.Q_th.label] = value
+        self.conversion_factors[0][self.Q_fu.label] = value
 
 
 @register_class_for_io
@@ -103,16 +101,15 @@ class Power2Heat(LinearConverter):
 
         self.P_el = P_el
         self.Q_th = Q_th
-        check_bounds(eta, 'eta', self.label_full, 0, 1)
 
     @property
     def eta(self):
-        return self.conversion_factors[0][self.Q_th.label]
+        return self.conversion_factors[0][self.P_el.label]
 
     @eta.setter
     def eta(self, value):
         check_bounds(value, 'eta', self.label_full, 0, 1)
-        self.conversion_factors[0][self.Q_th.label] = value
+        self.conversion_factors[0][self.P_el.label] = value
 
 
 @register_class_for_io
@@ -148,21 +145,18 @@ class HeatPump(LinearConverter):
             on_off_parameters=on_off_parameters,
             meta_data=meta_data,
         )
-
-        self.COP = COP
         self.P_el = P_el
         self.Q_th = Q_th
-
-        check_bounds(COP, 'COP', self.label_full, 1, 20)
+        self.COP = COP
 
     @property
     def COP(self):
-        return self.conversion_factors[0][self.Q_th.label]
+        return self.conversion_factors[0][self.P_el.label]
 
     @COP.setter
     def COP(self, value):
         check_bounds(value, 'COP', self.label_full, 1, 20)
-        self.conversion_factors[0][self.Q_th.label] = value
+        self.conversion_factors[0][self.P_el.label] = value
 
 
 @register_class_for_io
@@ -200,7 +194,6 @@ class CoolingTower(LinearConverter):
             meta_data=meta_data,
         )
 
-        self.specific_electricity_demand = specific_electricity_demand
         self.P_el = P_el
         self.Q_th = Q_th
 
@@ -265,8 +258,6 @@ class CHP(LinearConverter):
         self.P_el = P_el
         self.Q_th = Q_th
 
-        check_bounds(eta_th, 'eta_th', self.label_full, 0, 1)
-        check_bounds(eta_el, 'eta_el', self.label_full, 0, 1)
         check_bounds(eta_el + eta_th, 'eta_th+eta_el', self.label_full, 0, 1)
 
     @property
@@ -329,13 +320,9 @@ class HeatPumpWithSource(LinearConverter):
             on_off_parameters=on_off_parameters,
             meta_data=meta_data,
         )
-
-        self.COP = COP
         self.P_el = P_el
         self.Q_ab = Q_ab
         self.Q_th = Q_th
-
-        check_bounds(COP, 'COP', self.label_full, 1, 20)
 
     @property
     def COP(self):

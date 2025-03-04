@@ -208,6 +208,7 @@ class EffectCollection:
         self.add_effects(*effects)
 
     def create_model(self, model: SystemModel) -> 'EffectCollectionModel':
+        self._plausibility_checks()
         self.model = EffectCollectionModel(model, self)
         return self.model
 
@@ -221,8 +222,6 @@ class EffectCollection:
                 self.objective_effect = effect
             self._effects[effect.label] = effect
             logger.info(f'Registered new Effect: {effect.label}')
-
-        self._plausibility_checks()
 
     def create_effect_values_dict(self, effect_values_user: EffectValuesUser) -> Optional[EffectValuesDict]:
         """

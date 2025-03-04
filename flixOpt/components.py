@@ -217,6 +217,7 @@ class Storage(Component):
         self.eta_charge: NumericDataTS = eta_charge
         self.eta_discharge: NumericDataTS = eta_discharge
         self.relative_loss_per_hour: NumericDataTS = relative_loss_per_hour
+        self.prevent_simultaneous_charge_and_discharge = prevent_simultaneous_charge_and_discharge
 
     def create_model(self, model: SystemModel) -> 'StorageModel':
         self.model = StorageModel(model, self)

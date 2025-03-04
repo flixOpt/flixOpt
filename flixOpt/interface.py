@@ -10,7 +10,7 @@ from flixOpt.core import TimeSeriesCollection
 
 from .config import CONFIG
 from .core import NumericData, NumericDataTS, Scalar
-from .structure import Element, Interface
+from .structure import Element, Interface, register_class_for_io
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .flow_system import FlowSystem
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('flixOpt')
 
 
+@register_class_for_io
 class InvestParameters(Interface):
     """
     collects arguments for invest-stuff
@@ -88,18 +89,6 @@ class InvestParameters(Interface):
         self.divest_effects = flow_system.effects.create_effect_values_dict(self.divest_effects)
         self.specific_effects = flow_system.effects.create_effect_values_dict(self.specific_effects)
 
-    def to_dict(self) -> Dict:
-        return {
-            "divest_effects": self.divest_effects,
-            "effects_in_segments": self.effects_in_segments,
-            "fix_effects": self.fix_effects,
-            "fixed_size": self.fixed_size,
-            "maximum_size": self._maximum_size,
-            "minimum_size": self._minimum_size,
-            "optional": self.optional,
-            "specific_effects": self.specific_effects,
-        }
-
     @property
     def minimum_size(self):
         return self.fixed_size or self._minimum_size
@@ -108,7 +97,7 @@ class InvestParameters(Interface):
     def maximum_size(self):
         return self.fixed_size or self._maximum_size
 
-
+@register_class_for_io
 class OnOffParameters(Interface):
     def __init__(
         self,
@@ -184,20 +173,6 @@ class OnOffParameters(Interface):
         self.consecutive_off_hours_max = flow_system.create_time_series(
             f'{name_prefix}|consecutive_off_hours_max', self.consecutive_off_hours_max
         )
-
-    def to_dict(self):
-        return {
-            "effects_per_switch_on": self.effects_per_switch_on,
-            "effects_per_running_hour": self.effects_per_running_hour,
-            "on_hours_total_min": self.on_hours_total_min,
-            "on_hours_total_max": self.on_hours_total_max,
-            "consecutive_on_hours_min": self.consecutive_on_hours_min,
-            "consecutive_on_hours_max": self.consecutive_on_hours_max,
-            "consecutive_off_hours_min": self.consecutive_off_hours_min,
-            "consecutive_off_hours_max": self.consecutive_off_hours_max,
-            "switch_on_total_max": self.switch_on_total_max,
-            "force_switch_on": self.force_switch_on,
-    }
 
     @property
     def use_off(self) -> bool:
