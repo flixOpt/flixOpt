@@ -277,10 +277,10 @@ class TestModelingTypes:
         coal_tariff, gas_tariff = (
             fx.Source(
                 'Kohletarif',
-                source=fx.Flow('Q_Kohle', bus='Kohle', size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3}),
+                source=fx.Flow('Q_Kohle', bus='Kohle', size=1000, effects_per_flow_hour={costs.label: 4.6, CO2.label: 0.3}),
             ),
             fx.Source(
-                'Gastarif', source=fx.Flow('Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs: gP, CO2: 0.3})
+                'Gastarif', source=fx.Flow('Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs.label: gP, CO2.label: 0.3})
             ),
         )
 
@@ -292,7 +292,7 @@ class TestModelingTypes:
             fx.Sink('Einspeisung', sink=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour=p_feed_in)),
             fx.Source(
                 'Stromtarif',
-                source=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour={costs: p_sell, CO2: 0.3}),
+                source=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour={costs.label: p_sell, CO2.label: 0.3}),
             ),
         )
 
@@ -363,4 +363,4 @@ class TestModelingTypes:
             )
 
 if __name__ == '__main__':
-    pytest.main(['-v', '--disable-warnings'])
+    pytest.main(['-v'])
