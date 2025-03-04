@@ -150,11 +150,11 @@ class HeatPump(LinearConverter):
         self.COP = COP
 
     @property
-    def COP(self):
+    def COP(self):  # noqa: N802
         return self.conversion_factors[0][self.P_el.label]
 
     @COP.setter
-    def COP(self, value):
+    def COP(self, value):  # noqa: N802
         check_bounds(value, 'COP', self.label_full, 1, 20)
         self.conversion_factors[0][self.P_el.label] = value
 
@@ -325,11 +325,11 @@ class HeatPumpWithSource(LinearConverter):
         self.Q_th = Q_th
 
     @property
-    def COP(self):
+    def COP(self):  # noqa: N802
         return self.conversion_factors[0][self.Q_th.label]
 
     @COP.setter
-    def COP(self, value):
+    def COP(self, value):  # noqa: N802
         check_bounds(value, 'COP', self.label_full, 1, 20)
         self.conversion_factors[0][self.Q_th.label] = value
         self.conversion_factors[1][self.Q_th.label] = value / (value - 1)

@@ -8,7 +8,7 @@ import json
 import logging
 import pathlib
 from collections import Counter
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union, Iterator
+from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd

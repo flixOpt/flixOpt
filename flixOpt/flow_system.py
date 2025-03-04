@@ -2,24 +2,24 @@
 This module contains the FlowSystem class, which is used to collect instances of many other classes by the end User.
 """
 
-from io import StringIO
 import json
 import logging
 import pathlib
 import warnings
+from io import StringIO
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from rich.pretty import Pretty
-from rich.console import Console
 import xarray as xr
+from rich.console import Console
+from rich.pretty import Pretty
 
 from . import io
 from .core import NumericData, NumericDataTS, TimeSeries, TimeSeriesCollection, TimeSeriesData
 from .effects import Effect, EffectCollection, EffectTimeSeries, EffectValuesDict, EffectValuesUser
 from .elements import Bus, Component, Flow
-from .structure import Element, SystemModel, get_compact_representation, get_str_representation, CLASS_REGISTRY
+from .structure import CLASS_REGISTRY, Element, SystemModel, get_compact_representation, get_str_representation
 
 if TYPE_CHECKING:
     import pyvis
@@ -117,7 +117,8 @@ class FlowSystem:
                         f'The Bus {flow._bus_object.label} was added to the FlowSystem from {flow.label_full}.'
                         f'This is deprecated and will be removed in the future. '
                         f'Please pass the Bus.label to the Flow and the Bus to the FlowSystem instead.',
-                        UserWarning)
+                        UserWarning,
+                        stacklevel=1)
 
                 # Connect Buses
                 bus = self.buses.get(flow.bus)

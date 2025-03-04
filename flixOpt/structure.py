@@ -142,7 +142,7 @@ class Interface:
         # Get the constructor parameters
         init_params = inspect.signature(self.__init__).parameters
 
-        for name, param in init_params.items():
+        for name in init_params:
             if name == 'self':
                 continue
 

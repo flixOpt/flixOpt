@@ -2,12 +2,12 @@ import datetime
 import json
 import logging
 import pathlib
-from typing import Dict, Union, Literal
+from typing import Dict, Literal, Union
 
 import xarray as xr
 
-from .flow_system import FlowSystem
 from .core import TimeSeries
+from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
 
