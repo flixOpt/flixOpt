@@ -4,6 +4,8 @@ import logging
 import pathlib
 from typing import Dict, Union, Literal
 
+import xarray as xr
+
 from .flow_system import FlowSystem
 from .core import TimeSeries
 
@@ -47,6 +49,17 @@ def replace_timeseries(obj, mode: Literal['name', 'stats'] = 'name'):
             return obj.stats
         else:
             raise ValueError(f"Invalid mode {mode}")
+    else:
+        return obj
+
+def insert_timeseries(obj, ds: xr.Dataset):
+    """Recursively inserts TimeSeries objects into a dataset."""
+    if isinstance(obj, dict):
+        return {k: insert_timeseries(v, ds) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [insert_timeseries(v, ds) for v in obj]
+    elif isinstance(obj, str) and obj.startswith("::::"):
+        return ds[obj[4:]]
     else:
         return obj
 

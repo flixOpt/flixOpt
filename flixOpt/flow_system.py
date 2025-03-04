@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from rich.pretty import Pretty
 from rich.console import Console
+import xarray as xr
 
 from . import io
 from .core import NumericData, NumericDataTS, TimeSeries, TimeSeriesCollection, TimeSeriesData
@@ -268,6 +269,31 @@ class FlowSystem:
         elif data_mode == 'stats':
             return io.remove_none_and_empty(io.replace_timeseries(data, data_mode))
         return io.replace_timeseries(data, data_mode)
+
+    def as_dataset(self) -> xr.Dataset:
+        ds = self.time_series_collection.to_dataset()
+        ds.attrs = self.to_dict(data_mode='name')
+        return ds
+
+    @classmethod
+    def from_dataset(cls, ds: xr.Dataset):
+        timesteps_extra = pd.DatetimeIndex(ds.attrs['timesteps_extra'], name='time')
+        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(
+            timesteps_extra, None
+        ).isel(time=-1).item()
+
+        flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
+                                 hours_of_last_timestep=hours_of_last_timestep,
+                                 hours_of_previous_timesteps=ds.attrs['hours_of_previous_timesteps'],
+                                 periods=pd.Index(ds.attrs['periods'], name='period') if ds.attrs.get('periods') is not None else None)
+
+        structure = io.insert_timeseries({key: ds.attrs[key] for key in ['components', 'buses', 'effects']}, ds)
+        flow_system.add_elements(
+            * [Bus.from_dict(bus) for bus in structure['buses'].values()]
+            + [Effect.from_dict(effect) for effect in structure['effects'].values()]
+            + [CLASS_REGISTRY[comp['__class__']].from_dict(comp) for comp in structure['components'].values()]
+        )
+        return flow_system
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'FlowSystem':
