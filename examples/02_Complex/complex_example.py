@@ -50,7 +50,7 @@ if __name__ == '__main__':
     Gaskessel = fx.linear_converters.Boiler(
         'Kessel',
         eta=0.5,  # Efficiency ratio
-        on_off_parameters=fx.OnOffParameters(effects_per_running_hour={Costs: 0, CO2: 1000}),  # CO2 emissions per hour
+        on_off_parameters=fx.OnOffParameters(effects_per_running_hour={Costs.label: 0, CO2.label: 1000}),  # CO2 emissions per hour
         Q_th=fx.Flow(
             label='Q_th',  # Thermal output
             bus='Fernwärme',  # Linked bus
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                 fix_effects=1000,  # Fixed investment costs
                 fixed_size=50,  # Fixed size
                 optional=False,  # Forced investment
-                specific_effects={Costs: 10, PE: 2},  # Specific costs
+                specific_effects={Costs.label: 10, PE.label: 2},  # Specific costs
             ),
             load_factor_max=1.0,  # Maximum load factor (50 kW)
             load_factor_min=0.1,  # Minimum load factor (5 kW)
@@ -98,9 +98,9 @@ if __name__ == '__main__':
     Q_th = fx.Flow('Q_th', bus='Fernwärme')
     Q_fu = fx.Flow('Q_fu', bus='Gas')
     segmented_conversion_factors = {
-        P_el: [(5, 30), (40, 60)],  # Similar to eta_th, each factor here can be an array
-        Q_th: [(6, 35), (45, 100)],
-        Q_fu: [(12, 70), (90, 200)],
+        P_el.label: [(5, 30), (40, 60)],  # Similar to eta_th, each factor here can be an array
+        Q_th.label: [(6, 35), (45, 100)],
+        Q_fu.label: [(12, 70), (90, 200)],
     }
 
     bhkw_2 = fx.LinearConverter(
@@ -116,8 +116,8 @@ if __name__ == '__main__':
     segmented_investment_effects = (
         [(5, 25), (25, 100)],  # Investment size
         {
-            Costs: [(50, 250), (250, 800)],  # Investment costs
-            PE: [(5, 25), (25, 100)],  # Primary energy costs
+            Costs.label: [(50, 250), (250, 800)],  # Investment costs
+            PE.label: [(5, 25), (25, 100)],  # Primary energy costs
         },
     )
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
             'Q_Gas',
             bus='Gas',  # Gas source
             size=1000,  # Nominal size
-            effects_per_flow_hour={Costs: 0.04, CO2: 0.3},
+            effects_per_flow_hour={Costs.label: 0.04, CO2.label: 0.3},
         ),
     )
 
