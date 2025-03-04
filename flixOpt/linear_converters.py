@@ -65,25 +65,6 @@ class Boiler(LinearConverter):
         check_bounds(value, 'eta', self.label_full, 0, 1)
         self.conversion_factors[0][self.Q_th] = value
 
-    def to_dict(self) -> Dict:
-        return {
-            '__class__': 'Boiler',
-            'label': self.label,
-            "eta": self.eta,
-            'Q_th': self.Q_th.to_dict(),
-            'Q_fu': self.Q_fu.to_dict(),
-            'on_off_parameters': self.on_off_parameters.to_dict() if isinstance(self.on_off_parameters,
-                                                                               OnOffParameters) else self.on_off_parameters,
-            'meta_data': self.meta_data,
-        }
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
-            'on_off_parameters') is not None else None
-        data['Q_fu'] = Flow.from_dict(data['Q_fu'])
-        data['Q_th'] = Flow.from_dict(data['Q_th'])
-        return data
 
 @register_class_for_io
 class Power2Heat(LinearConverter):
@@ -132,26 +113,6 @@ class Power2Heat(LinearConverter):
     def eta(self, value):
         check_bounds(value, 'eta', self.label_full, 0, 1)
         self.conversion_factors[0][self.Q_th] = value
-
-    def to_dict(self) -> Dict:
-        return {
-            '__class__': 'Boiler',
-            'label': self.label,
-            "eta": self.eta,
-            'Q_th': self.Q_th.to_dict(),
-            'P_el': self.P_el.to_dict(),
-            'on_off_parameters': self.on_off_parameters.to_dict() if isinstance(self.on_off_parameters,
-                                                                               OnOffParameters) else self.on_off_parameters,
-            'meta_data': self.meta_data,
-        }
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
-            'on_off_parameters') is not None else None
-        data['P_el'] = Flow.from_dict(data['P_el'])
-        data['Q_th'] = Flow.from_dict(data['Q_th'])
-        return data
 
 
 @register_class_for_io
@@ -203,26 +164,6 @@ class HeatPump(LinearConverter):
         check_bounds(value, 'COP', self.label_full, 1, 20)
         self.conversion_factors[0][self.Q_th] = value
 
-    def to_dict(self) -> Dict:
-        return {
-            '__class__': 'Boiler',
-            'label': self.label,
-            "COP": self.COP,
-            'Q_th': self.Q_th.to_dict(),
-            'P_el': self.P_el.to_dict(),
-            'on_off_parameters': self.on_off_parameters.to_dict() if isinstance(self.on_off_parameters,
-                                                                               OnOffParameters) else self.on_off_parameters,
-            'meta_data': self.meta_data,
-        }
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
-            'on_off_parameters') is not None else None
-        data['P_el'] = Flow.from_dict(data['P_el'])
-        data['Q_th'] = Flow.from_dict(data['Q_th'])
-        return data
-
 
 @register_class_for_io
 class CoolingTower(LinearConverter):
@@ -273,26 +214,6 @@ class CoolingTower(LinearConverter):
     def specific_electricity_demand(self, value):
         check_bounds(value, 'specific_electricity_demand', self.label_full, 0, 1)
         self.conversion_factors[0][self.Q_th] = -value
-
-    def to_dict(self) -> Dict:
-        return {
-            '__class__': 'Boiler',
-            'label': self.label,
-            "specific_electricity_demand": self.specific_electricity_demand,
-            'Q_th': self.Q_th.to_dict(),
-            'P_el': self.P_el.to_dict(),
-            'on_off_parameters': self.on_off_parameters.to_dict() if isinstance(self.on_off_parameters,
-                                                                               OnOffParameters) else self.on_off_parameters,
-            'meta_data': self.meta_data,
-        }
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
-            'on_off_parameters') is not None else None
-        data['P_el'] = Flow.from_dict(data['P_el'])
-        data['Q_th'] = Flow.from_dict(data['Q_th'])
-        return data
 
 
 @register_class_for_io
@@ -366,28 +287,6 @@ class CHP(LinearConverter):
         check_bounds(value, 'eta_el', self.label_full, 0, 1)
         self.conversion_factors[1][self.Q_fu] = value
 
-    def to_dict(self) -> Dict:
-        return {
-            '__class__': 'Boiler',
-            'label': self.label,
-            "eta_th": self.eta_th,
-            "eta_el": self.eta_el,
-            'Q_fu': self.Q_fu.to_dict(),
-            'Q_th': self.Q_th.to_dict(),
-            'P_el': self.P_el.to_dict(),
-            'on_off_parameters': self.on_off_parameters.to_dict() if isinstance(self.on_off_parameters,
-                                                                               OnOffParameters) else self.on_off_parameters,
-            'meta_data': self.meta_data,
-        }
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
-            'on_off_parameters') is not None else None
-        data['P_el'] = Flow.from_dict(data['P_el'])
-        data['Q_th'] = Flow.from_dict(data['Q_th'])
-        data['Q_fu'] = Flow.from_dict(data['Q_fu'])
-        return data
 
 @register_class_for_io
 class HeatPumpWithSource(LinearConverter):
@@ -447,28 +346,6 @@ class HeatPumpWithSource(LinearConverter):
         check_bounds(value, 'COP', self.label_full, 1, 20)
         self.conversion_factors[0][self.Q_th] = value
         self.conversion_factors[1][self.Q_th] = value / (value - 1)
-
-    def to_dict(self) -> Dict:
-        return {
-            '__class__': 'Boiler',
-            'label': self.label,
-            "COP": self.COP,
-            'Q_th': self.Q_th.to_dict(),
-            'P_el': self.P_el.to_dict(),
-            'Q_ab': self.Q_ab.to_dict(),
-            'on_off_parameters': self.on_off_parameters.to_dict() if isinstance(self.on_off_parameters,
-                                                                                OnOffParameters) else self.on_off_parameters,
-            'meta_data': self.meta_data,
-        }
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
-            'on_off_parameters') is not None else None
-        data['P_el'] = Flow.from_dict(data['P_el'])
-        data['Q_th'] = Flow.from_dict(data['Q_th'])
-        data['Q_ab'] = Flow.from_dict(data['Q_ab'])
-        return data
 
 
 def check_bounds(

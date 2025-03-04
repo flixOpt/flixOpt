@@ -111,35 +111,6 @@ class LinearConverter(Component):
                 ]
             self.segmented_conversion_factors = segmented_conversion_factors
 
-    def to_dict(self) -> Dict:
-        data = super().to_dict()
-        data.update({
-            "conversion_factors": [
-                {flow.label: value for flow, value in conversion_factor.items()}
-                for conversion_factor in self.conversion_factors
-            ],
-            "segmented_conversion_factors": {
-                flow.label: [segment for segment in segments]
-                for flow, segments in self.segmented_conversion_factors.items()
-            }
-        })
-        return data
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        """ Load data from a dict to initialize an object"""
-        data = super()._from_dict(data)
-        flows = {flow.label: flow for flow in data['inputs'] + data['outputs']}
-        data['conversion_factors'] = [
-            {flows[flow]: factor for flow, factor in conversion_factor.items()}
-            for conversion_factor in data['conversion_factors']
-        ]
-        data['segmented_conversion_factors'] = {
-            flows[flow]: [segment for segment in segments]
-            for flow, segments in data['segmented_conversion_factors'].items()
-        }
-        return data
-
     def _transform_conversion_factors(self, flow_system: 'FlowSystem') -> List[Dict[Flow, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
         list_of_conversion_factors = []
@@ -266,28 +237,6 @@ class Storage(Component):
         )
         if isinstance(self.capacity_in_flow_hours, InvestParameters):
             self.capacity_in_flow_hours.transform_data(flow_system)
-
-    def to_dict(self) -> Dict:
-        data = super().to_dict()
-        data.update({
-            "relative_minimum_charge_state": self.relative_minimum_charge_state,
-            "relative_maximum_charge_state": self.relative_maximum_charge_state,
-            "initial_charge_state": self.initial_charge_state,
-            "minimal_final_charge_state": self.minimal_final_charge_state,
-            "maximal_final_charge_state": self.maximal_final_charge_state,
-            "eta_charge": self.eta_charge,
-            "eta_discharge": self.eta_discharge,
-            "relative_loss_per_hour": self.relative_loss_per_hour,
-            "capacity_in_flow_hours": self.capacity_in_flow_hours.to_dict() if isinstance(self.capacity_in_flow_hours, InvestParameters) else self.capacity_in_flow_hours,
-        })
-        return data
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        """ Load data from a dict to initialize an object"""
-        data = super()._from_dict(data)
-        data['capacity_in_flow_hours'] = InvestParameters.from_dict(data['capacity_in_flow_hours']) if data.get('capacity_in_flow_hours') is not None else data['capacity_in_flow_hours']
-        return data
 
 
 @register_class_for_io

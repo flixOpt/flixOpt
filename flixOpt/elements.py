@@ -75,30 +75,6 @@ class Component(Element):
         infos['outputs'] = [flow.infos(use_numpy, use_element_label) for flow in self.outputs]
         return infos
 
-    def to_dict(self) -> Dict:
-        """Convert the object to a dictionary representation."""
-        data = super().to_dict()
-        data.update({
-            "inputs": [flow.to_dict() for flow in self.inputs],
-            "outputs": [flow.to_dict() for flow in self.outputs],
-            "on_off_parameters": self.on_off_parameters.to_dict() if self.on_off_parameters else None,
-            "prevent_simultaneous_flows": [flow.label_full for flow in self.prevent_simultaneous_flows],
-        })
-        return data
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        """ Load data from a dict to initialize an object"""
-        data = super()._from_dict(data)
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get('on_off_parameters') is not None else None
-        data['inputs'] = [Flow.from_dict(flow) for flow in data['inputs']]
-        data['outputs'] = [Flow.from_dict(flow) for flow in data['outputs']]
-        flows = {flow.label: flow for flow in data['inputs'] + data['outputs']}
-        data['prevent_simultaneous_flows'] = [
-            flows[label] for label in data['prevent_simultaneous_flows']
-        ] if data['prevent_simultaneous_flows'] is not None else None
-        return data
-
 
 @register_class_for_io
 class Bus(Element):
@@ -135,14 +111,6 @@ class Bus(Element):
         self.excess_penalty_per_flow_hour = flow_system.create_time_series(
             f'{self.label_full}|excess_penalty_per_flow_hour', self.excess_penalty_per_flow_hour
         )
-
-    def to_dict(self) -> Dict:
-        """Convert the object to a dictionary representation."""
-        data = super().to_dict()
-        data.update({
-            "excess_penalty_per_flow_hour": self.excess_penalty_per_flow_hour,
-        })
-        return data
 
     def _plausibility_checks(self) -> None:
         if self.excess_penalty_per_flow_hour == 0:
@@ -288,37 +256,6 @@ class Flow(Element):
         infos = super().infos(use_numpy, use_element_label)
         infos['is_input_in_component'] = self.is_input_in_component
         return infos
-
-    def to_dict(self):
-        """
-        Exports the Element to a format that can be saved and loaded from and to file.
-        Probably a combination of json for sturcture and xr.Dataset for data.
-        """
-        data = super().to_dict()
-        data.update({
-            'bus': self.bus,
-            'size': self.size.to_dict() if isinstance(self.size, InvestParameters) else self.size,
-            'fixed_relative_profile': self.fixed_relative_profile,
-            'relative_minimum': self.relative_minimum,
-            'relative_maximum': self.relative_maximum,
-            'on_off_parameters': self.on_off_parameters.to_dict() if isinstance(self.on_off_parameters,
-                                                                               OnOffParameters) else self.on_off_parameters,
-            'load_factor_min': self.load_factor_min,
-            'load_factor_max': self.load_factor_max,
-            'effects_per_flow_hour': self.effects_per_flow_hour,
-            'flow_hours_total_max': self.flow_hours_total_max,
-            'flow_hours_total_min': self.flow_hours_total_min,
-            'previous_flow_rate': self.previous_flow_rate,
-        })
-        return data
-
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        """ Load data from a dict to initialize an object"""
-        data = super()._from_dict(data)
-        data['on_off_parameters'] = OnOffParameters.from_dict(data['on_off_parameters']) if data.get(
-            'on_off_parameters') is not None else None
-        return data
 
     def _plausibility_checks(self) -> None:
         # TODO: Incorporate into Variable? (Lower_bound can not be greater than upper bound

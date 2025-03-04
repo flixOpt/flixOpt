@@ -137,17 +137,79 @@ class Interface:
 
     def to_dict(self) -> Dict:
         """Convert the object to a dictionary representation."""
-        return {"__class__": self.__class__.__name__}
+        data = {'__class__': self.__class__.__name__}
 
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Interface':
-        data.pop('__class__')
-        return cls(**cls._from_dict(data))
+        # Get the constructor parameters
+        init_params = inspect.signature(self.__init__).parameters
 
-    @classmethod
-    def _from_dict(cls, data: Dict) -> Dict:
-        """ Load data from a dict to initialize an object"""
+        for name, param in init_params.items():
+            if name == 'self':
+                continue
+
+            value = getattr(self, name, None)
+            data[name] = self._serialize_value(value)
+
         return data
+
+    def _serialize_value(self, value: Any):
+        """Helper method to serialize a value based on its type."""
+        if value is None:
+            return None
+        elif isinstance(value, Interface):
+            return value.to_dict()
+        elif isinstance(value, (list, tuple)):
+            return self._serialize_list(value)
+        elif isinstance(value, dict):
+            return self._serialize_dict(value)
+        else:
+            return value
+
+    def _serialize_list(self, items):
+        """Serialize a list of items."""
+        return [self._serialize_value(item) for item in items]
+
+    def _serialize_dict(self, d):
+        """Serialize a dictionary of items."""
+        return {k: self._serialize_value(v) for k, v in d.items()}
+
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create an instance from a dictionary representation."""
+        # Remove class name if present
+        data = data.copy()
+
+        # For child classes that need custom deserialization
+        init_args = cls._prepare_init_args(data)
+
+        return cls(**init_args)
+
+    @classmethod
+    def _prepare_init_args(cls, data: Dict):
+        """Recursively deserialize nested objects."""
+        result = {}
+
+        for key, value in data.items():
+            if isinstance(value, dict) and '__class__' in value:
+                class_name = value.pop('__class__')
+                try:
+                    class_type = class_registry[class_name]
+                    if issubclass(class_registry[class_name], Interface):
+                        result[key] = class_type.from_dict(value)
+                    else:
+                        raise ValueError(f'Class "{class_name}" is not an Interface.')
+                except (AttributeError, KeyError) as e:
+                    raise ValueError(f'Class "{class_name}" could not get reconstructed.') from e
+            elif isinstance(value, dict):
+                result[key] = cls._prepare_init_args(value)
+            elif isinstance(value, list):
+                result[key] = [
+                    cls._prepare_init_args(item) if isinstance(item, dict) and '__class__' in item
+                    else item
+                    for item in value
+                ]
+            else:
+                result[key] = value
+        return result
 
     def __repr__(self):
         # Get the constructor arguments and their current values
@@ -184,12 +246,6 @@ class Element(Interface):
 
     def create_model(self, model: SystemModel) -> 'ElementModel':
         raise NotImplementedError('Every Element needs a create_model() method')
-
-    def to_dict(self) -> Dict:
-        """Convert the object to a dictionary representation."""
-        return {**super().to_dict(),
-                **{"label": self.label,"meta_data": self.meta_data}
-                }
 
     @property
     def label_full(self) -> str:
