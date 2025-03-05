@@ -121,12 +121,7 @@ def simple_flow_system() -> fx.FlowSystem:
     )
     flow_system.add_elements(storage, costs, CO2, boiler, heat_load, gas_tariff, electricity_feed_in, chp)
 
-    # Create and solve calculation
-    calculation = fx.FullCalculation('Test_Sim', flow_system)
-    calculation.do_modeling()
-    calculation.solve(get_solver())
-
-    return calculation
+    return flow_system
 
 
 @pytest.fixture
@@ -319,3 +314,10 @@ def flow_system_segments_of_flows() -> fx.FlowSystem:
     flow_system.add_elements(aGaskessel, aKWK, aSpeicher)
 
     return flow_system
+
+
+def create_calculation_and_solve(flow_system: fx.FlowSystem, solver, name: str) -> fx.FullCalculation:
+    calculation = fx.FullCalculation(name, flow_system)
+    calculation.do_modeling()
+    calculation.solve(solver)
+    return calculation
