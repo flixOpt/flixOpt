@@ -327,7 +327,9 @@ class FlowModel(ElementModel):
                 self.element.size,
                 self.flow_rate,
                 self.relative_flow_rate_bounds,
-                fixed_relative_profile=self.fixed_relative_flow_rate,
+                fixed_relative_profile=(None
+                                        if self.element.fixed_relative_profile is None
+                                        else self.element.fixed_relative_profile.active_data),
                 on_variable=self._on.on if self._on is not None else None,
             )
             self._investment.do_modeling(system_model)
@@ -392,23 +394,16 @@ class FlowModel(ElementModel):
         return isinstance(self.element.size, InvestParameters)
 
     @property
-    def fixed_relative_flow_rate(self) -> Optional[np.ndarray]:
-        """Returns a fixed flow rate if defined by the element."""
-        if self.element.fixed_relative_profile is not None:
-            return self.element.fixed_relative_profile.active_data
-        return None
-
-    @property
     def absolute_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
         """Returns absolute flow rate bounds. Important for OnOffModel"""
         rel_min, rel_max = self.relative_flow_rate_bounds
         size = self.element.size
-        if self.with_investment:
-            if size.fixed_size is not None:
-                return rel_min * size.fixed_size, rel_max * size.fixed_size
-            return rel_min * size.minimum_size, rel_max * size.maximum_size
-        else:
+        if not self.with_investment:
             return rel_min * size, rel_max * size
+        if size.fixed_size is not None:
+            return rel_min * size.fixed_size, rel_max * size.fixed_size
+        return rel_min * size.minimum_size, rel_max * size.maximum_size
+
 
     @property
     def relative_flow_rate_bounds(self) -> Tuple[Numeric, Numeric]:
