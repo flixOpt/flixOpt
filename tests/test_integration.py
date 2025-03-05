@@ -354,7 +354,7 @@ class TestComplex:
             fx.Bus('Fernwärme'),
             fx.Bus('Gas'),
             fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=Q_th_Last)),
-            fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour=0.04)),
+            fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour={'costs': 0.04, 'CO2': 0.3})),
             fx.Sink('Einspeisung', sink=fx.Flow('P_el', 'Strom', effects_per_flow_hour=-1 * P_el_Last)),
         )
 
@@ -438,7 +438,7 @@ class TestComplex:
             fx.Bus('Fernwärme'),
             fx.Bus('Gas'),
             fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=Q_th_Last)),
-            fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour=0.04)),
+            fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour={'costs': 0.04, 'CO2': 0.3})),
             fx.Sink('Einspeisung', sink=fx.Flow('P_el', 'Strom', effects_per_flow_hour=-1 * P_el_Last)),
         )
         aGaskessel = fx.linear_converters.Boiler(
@@ -546,7 +546,7 @@ class TestComplex:
             'costs doesnt match expected value',
         )
         assert_almost_equal_numeric(
-            sum(calculation.results.model['Kessel->costs(operation)']),
+            sum(calculation.results.model['Kessel->costs(operation)'].solution.values),
             -0.0,
             'costs doesnt match expected value',
         )
@@ -579,7 +579,7 @@ class TestComplex:
         )
 
         assert_almost_equal_numeric(
-            calculation.results.model['CO2(operation)->costs(operation)'].solution.values, 1293.1864834809337,
+            calculation.results.model['CO2(operation)|total'].solution.values, 1293.1864834809337,
             'CO2 doesnt match expected value'
         )
         assert_almost_equal_numeric(
