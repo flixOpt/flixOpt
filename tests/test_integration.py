@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from .conftest import assert_almost_equal_numeric, get_solver, basic_flow_system, simple_flow_system
+from .conftest import assert_almost_equal_numeric, get_solver, basic_flow_system, simple_flow_system, create_calculation_and_solve
 
 
 class TestFlowSystem:
@@ -15,7 +15,9 @@ class TestFlowSystem:
         """
         Test the effects of the simple energy system model
         """
-        effects = simple_flow_system.flow_system.effects
+        calculation = create_calculation_and_solve(simple_flow_system, get_solver(), 'test_simple_flow_system')
+
+        effects = calculation.flow_system.effects
 
         # Cost assertions
         assert_almost_equal_numeric(
@@ -35,7 +37,8 @@ class TestFlowSystem:
         """
         Test the component flows of the simple energy system model
         """
-        comps = simple_flow_system.flow_system.components
+        calculation = create_calculation_and_solve(simple_flow_system, get_solver(), 'test_model_components')
+        comps = calculation.flow_system.components
 
         # Boiler assertions
         assert_almost_equal_numeric(
@@ -56,12 +59,14 @@ class TestFlowSystem:
         Test saving and loading results
         """
         # Save results to file
-        simple_flow_system.results.to_file()
+        calculation = create_calculation_and_solve(simple_flow_system, get_solver(), 'test_model_components')
+
+        calculation.results.to_file()
 
         # Load results from file
         results = fx.results.CalculationResults.from_file(
-            simple_flow_system.folder,
-            simple_flow_system.name
+            calculation.folder,
+            calculation.name
         )
 
         # Verify key variables from loaded results
@@ -99,9 +104,8 @@ class TestComponents:
         )
 
         flow_system.add_elements(transmission, boiler)
-        calculation = fx.FullCalculation('Test_Sim', flow_system)
-        calculation.do_modeling()
-        calculation.solve(get_solver())
+
+        calculation = create_calculation_and_solve(flow_system, get_solver(), 'test_transmission_basic')
 
         # Assertions
         assert_almost_equal_numeric(
@@ -155,9 +159,8 @@ class TestComponents:
         )
 
         flow_system.add_elements(transmission, boiler, boiler2, last2)
-        calculation = fx.FullCalculation('Test_Transmission', flow_system)
-        calculation.do_modeling()
-        calculation.solve(get_solver())
+
+        calculation = create_calculation_and_solve(flow_system, get_solver(), 'test_transmission_advanced')
 
         # Assertions
         assert_almost_equal_numeric(
@@ -189,10 +192,7 @@ class TestComponents:
 class TestComplex:
 
     def test_basic_flow_system(self, flow_system_base):
-        flow_system = flow_system_base
-        calculation = fx.FullCalculation('Test_Complex-Basic', flow_system)
-        calculation.do_modeling()
-        calculation.solve(get_solver())
+        calculation = create_calculation_and_solve(flow_system_base, get_solver(), 'test_basic_flow_system')
 
         # Assertions
         assert_almost_equal_numeric(
@@ -322,10 +322,8 @@ class TestComplex:
         )
 
     def test_segments_of_flows(self, flow_system_segments_of_flows):
-        flow_system = flow_system_segments_of_flows
-        calculation = fx.FullCalculation('Test_Complex-Segments', flow_system)
-        calculation.do_modeling()
-        calculation.solve(get_solver())
+        calculation = create_calculation_and_solve(flow_system_segments_of_flows, get_solver(), 'test_segments_of_flows')
+
         effects = calculation.flow_system.effects
         comps = calculation.flow_system.components
 
