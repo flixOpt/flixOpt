@@ -1,6 +1,7 @@
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
+
 import flixOpt as fx
 
 
@@ -52,7 +53,7 @@ def simple_flow_system() -> fx.FlowSystem:
     base_timesteps = pd.date_range('2020-01-01', periods=9, freq='h', name='time')
     # Define effects
     costs = fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
-    CO2 = fx.Effect(
+    co2 = fx.Effect(
         'CO2',
         'kg',
         'CO2_e-Emissionen',
@@ -119,7 +120,7 @@ def simple_flow_system() -> fx.FlowSystem:
         fx.Bus('Fernwärme'),
         fx.Bus('Gas')
     )
-    flow_system.add_elements(storage, costs, CO2, boiler, heat_load, gas_tariff, electricity_feed_in, chp)
+    flow_system.add_elements(storage, costs, co2, boiler, heat_load, gas_tariff, electricity_feed_in, chp)
 
     return flow_system
 
@@ -128,7 +129,7 @@ def simple_flow_system() -> fx.FlowSystem:
 def basic_flow_system() -> fx.FlowSystem:
     """Create basic elements for component testing"""
     flow_system = fx.FlowSystem(pd.date_range('2020-01-01', periods=10, freq='h', name='time'))
-    Q_th_Last = np.array([np.random.random() for _ in range(10)]) * 180
+    thermal_load = np.array([np.random.random() for _ in range(10)]) * 180
     p_el = (np.array([np.random.random() for _ in range(10)]) + 0.5) / 1.5 * 50
 
     flow_system.add_elements(
@@ -136,7 +137,7 @@ def basic_flow_system() -> fx.FlowSystem:
         fx.Bus('Fernwärme'),
         fx.Bus('Gas'),
         fx.Effect('Costs', '€', 'Kosten', is_standard=True, is_objective=True),
-        fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=Q_th_Last)),
+        fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=thermal_load)),
         fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour=0.04)),
         fx.Sink('Einspeisung', sink=fx.Flow('P_el', 'Strom', effects_per_flow_hour=-1 * p_el)),
     )
@@ -149,8 +150,8 @@ def flow_system_complex() -> fx.FlowSystem:
     """
     Helper method to create a base model with configurable parameters
     """
-    Q_th_Last = np.array([30, 0, 90, 110, 110, 20, 20, 20, 20])
-    P_el_Last = np.array([40, 40, 40, 40, 40, 40, 40, 40, 40])
+    thermal_load = np.array([30, 0, 90, 110, 110, 20, 20, 20, 20])
+    electrical_load = np.array([40, 40, 40, 40, 40, 40, 40, 40, 40])
     flow_system = fx.FlowSystem(pd.date_range('2020-01-01', periods=9, freq='h', name='time'))
     # Define the components and flow_system
     flow_system.add_elements(
@@ -160,12 +161,12 @@ def flow_system_complex() -> fx.FlowSystem:
         fx.Bus('Strom'),
         fx.Bus('Fernwärme'),
         fx.Bus('Gas'),
-        fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=Q_th_Last)),
+        fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=thermal_load)),
         fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour={'costs': 0.04, 'CO2': 0.3})),
-        fx.Sink('Einspeisung', sink=fx.Flow('P_el', 'Strom', effects_per_flow_hour=-1 * P_el_Last)),
+        fx.Sink('Einspeisung', sink=fx.Flow('P_el', 'Strom', effects_per_flow_hour=-1 * electrical_load)),
     )
 
-    aGaskessel = fx.linear_converters.Boiler(
+    boiler = fx.linear_converters.Boiler(
         'Kessel',
         eta=0.5,
         on_off_parameters=fx.OnOffParameters(effects_per_running_hour={'costs': 0, 'CO2': 1000}),
@@ -194,7 +195,7 @@ def flow_system_complex() -> fx.FlowSystem:
         Q_fu=fx.Flow('Q_fu', bus='Gas', size=200, relative_minimum=0, relative_maximum=1),
     )
 
-    invest_Speicher = fx.InvestParameters(
+    invest_speicher = fx.InvestParameters(
         fix_effects=0,
         effects_in_segments=([(5, 25), (25, 100)],
                              {'costs': [(50, 250), (250, 800)], 'PE': [(5, 25), (25, 100)]}
@@ -204,11 +205,11 @@ def flow_system_complex() -> fx.FlowSystem:
         minimum_size=0,
         maximum_size=1000,
     )
-    aSpeicher = fx.Storage(
+    speicher = fx.Storage(
         'Speicher',
         charging=fx.Flow('Q_th_load', bus='Fernwärme', size=1e4),
         discharging=fx.Flow('Q_th_unload', bus='Fernwärme', size=1e4),
-        capacity_in_flow_hours=invest_Speicher,
+        capacity_in_flow_hours=invest_speicher,
         initial_charge_state=0,
         maximal_final_charge_state=10,
         eta_charge=0.9,
@@ -217,7 +218,7 @@ def flow_system_complex() -> fx.FlowSystem:
         prevent_simultaneous_charge_and_discharge=True,
     )
 
-    flow_system.add_elements(aGaskessel, aSpeicher)
+    flow_system.add_elements(boiler, speicher)
 
     return flow_system
 

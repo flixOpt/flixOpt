@@ -1,13 +1,16 @@
-import datetime
 import os
-from typing import Any, Dict, List, Literal
 
-import flixOpt as fx
 import numpy as np
 import pandas as pd
 import pytest
 
-from .conftest import assert_almost_equal_numeric, get_solver, basic_flow_system, simple_flow_system, create_calculation_and_solve
+import flixOpt as fx
+
+from .conftest import (
+    assert_almost_equal_numeric,
+    create_calculation_and_solve,
+    get_solver,
+)
 
 
 class TestFlowSystem:
@@ -105,7 +108,7 @@ class TestComponents:
 
         flow_system.add_elements(transmission, boiler)
 
-        calculation = create_calculation_and_solve(flow_system, get_solver(), 'test_transmission_basic')
+        _ = create_calculation_and_solve(flow_system, get_solver(), 'test_transmission_basic')
 
         # Assertions
         assert_almost_equal_numeric(

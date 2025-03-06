@@ -1,9 +1,10 @@
+from typing import Dict, List, Optional, Union
+
 import pytest
-from typing import Dict, List, Union, Optional
+from conftest import assert_almost_equal_numeric, flow_system_base, flow_system_segments_of_flows, simple_flow_system
 
 import flixOpt as fx
 
-from conftest import flow_system_base, flow_system_segments_of_flows, simple_flow_system, assert_almost_equal_numeric
 
 @pytest.fixture(params=[flow_system_base, flow_system_segments_of_flows, simple_flow_system])
 def flow_system(request):
@@ -18,7 +19,7 @@ def test_flow_system_io(flow_system):
     calculation_0.flow_system_to_netcdf()
     flow_system_1 = fx.FlowSystem.from_netcdf(f'results/{calculation_0.name}_flowsystem.nc')
 
-    calculation_1 = fx.FullCalculation(f'Loaded_IO', flow_system=flow_system_1)
+    calculation_1 = fx.FullCalculation('Loaded_IO', flow_system=flow_system_1)
     calculation_1.do_modeling()
     calculation_1.solve(fx.solvers.HighsSolver(mip_gap=0.001, time_limit_seconds=30))
 
