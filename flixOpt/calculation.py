@@ -345,11 +345,12 @@ class SegmentedCalculation(Calculation):
             f'{self.timesteps_per_segment_with_overlap=} cant be greater than the total length {len(self.all_timesteps)}'
         )
 
+        self.flow_system._connect_network()  # Connect network to ensure that all FLows know their Component
         # Storing all original start values
         self._original_start_values = {
-            **{flow: flow.previous_flow_rate for flow in self.flow_system.flows.values()},
+            **{flow.label_full: flow.previous_flow_rate for flow in self.flow_system.flows.values()},
             **{
-                comp: comp.initial_charge_state
+                comp.label_full: comp.initial_charge_state
                 for comp in self.flow_system.components.values()
                 if isinstance(comp, Storage)
             },
@@ -423,10 +424,10 @@ class SegmentedCalculation(Calculation):
     def _reset_start_values(self):
         """This resets the start values of all Elements to its original state"""
         for flow in self.flow_system.flows.values():
-            flow.previous_flow_rate = self._original_start_values[flow]
+            flow.previous_flow_rate = self._original_start_values[flow.label_full]
         for comp in self.flow_system.components.values():
             if isinstance(comp, Storage):
-                comp.initial_charge_state = self._original_start_values[comp]
+                comp.initial_charge_state = self._original_start_values[comp.label_full]
 
     def _calculate_timesteps_of_segment(self) -> List[pd.DatetimeIndex]:
         active_timesteps_per_segment = []

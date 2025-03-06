@@ -36,7 +36,7 @@ class InvestParameters(Interface):
         fix_effects: Optional['EffectValuesUserScalar'] = None,
         specific_effects: Optional['EffectValuesUserScalar'] = None,  # costs per Flow-Unit/Storage-Size/...
         effects_in_segments: Optional[
-            Tuple[List[Tuple[Scalar, Scalar]], Dict['Effect', List[Tuple[Scalar, Scalar]]]]
+            Tuple[List[Tuple[Scalar, Scalar]], Dict['str', List[Tuple[Scalar, Scalar]]]]
         ] = None,
         divest_effects: Optional['EffectValuesUserScalar'] = None,
     ):
