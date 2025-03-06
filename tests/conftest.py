@@ -145,7 +145,7 @@ def basic_flow_system() -> fx.FlowSystem:
 
 
 @pytest.fixture
-def flow_system_base() -> fx.FlowSystem:
+def flow_system_complex() -> fx.FlowSystem:
     """
     Helper method to create a base model with configurable parameters
     """
@@ -194,16 +194,6 @@ def flow_system_base() -> fx.FlowSystem:
         Q_fu=fx.Flow('Q_fu', bus='Gas', size=200, relative_minimum=0, relative_maximum=1),
     )
 
-    aKWK = fx.linear_converters.CHP(
-        'KWK',
-        eta_th=0.5,
-        eta_el=0.4,
-        on_off_parameters=fx.OnOffParameters(effects_per_switch_on=0.01),
-        P_el=fx.Flow('P_el', bus='Strom', size=60, relative_minimum=5 / 60, previous_flow_rate=10),
-        Q_th=fx.Flow('Q_th', bus='Fernwärme', size=1e3),
-        Q_fu=fx.Flow('Q_fu', bus='Gas', size=1e3),
-    )
-
     invest_Speicher = fx.InvestParameters(
         fix_effects=0,
         effects_in_segments=([(5, 25), (25, 100)],
@@ -227,56 +217,36 @@ def flow_system_base() -> fx.FlowSystem:
         prevent_simultaneous_charge_and_discharge=True,
     )
 
-    flow_system.add_elements(aGaskessel, aKWK, aSpeicher)
+    flow_system.add_elements(aGaskessel, aSpeicher)
 
     return flow_system
 
 
 @pytest.fixture
-def flow_system_segments_of_flows() -> fx.FlowSystem:
-    Q_th_Last = np.array([30, 0, 90, 110, 110, 20, 20, 20, 20])
-    P_el_Last = np.array([40, 40, 40, 40, 40, 40, 40, 40, 40])
-    flow_system = fx.FlowSystem(pd.date_range('2020-01-01', periods=9, freq='h', name='time'))
-    # Define the components and flow_system
-    flow_system.add_elements(
-        fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True),
-        fx.Effect('CO2', 'kg', 'CO2_e-Emissionen', specific_share_to_other_effects_operation={'costs': 0.2}),
-        fx.Effect('PE', 'kWh_PE', 'Primärenergie', maximum_total=3.5e3),
-        fx.Bus('Strom'),
-        fx.Bus('Fernwärme'),
-        fx.Bus('Gas'),
-        fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', 'Fernwärme', size=1, fixed_relative_profile=Q_th_Last)),
-        fx.Source('Gastarif', source=fx.Flow('Q_Gas', 'Gas', size=1000, effects_per_flow_hour={'costs': 0.04, 'CO2': 0.3})),
-        fx.Sink('Einspeisung', sink=fx.Flow('P_el', 'Strom', effects_per_flow_hour=-1 * P_el_Last)),
-    )
-    aGaskessel = fx.linear_converters.Boiler(
-        'Kessel',
-        eta=0.5,
-        on_off_parameters=fx.OnOffParameters(effects_per_running_hour={'costs': 0, 'CO2': 1000}),
-        Q_th=fx.Flow(
-            'Q_th',
-            bus='Fernwärme',
-            size=fx.InvestParameters(
-                fix_effects=1000, fixed_size=50, optional=False, specific_effects={'costs': 10, 'PE': 2}
-            ),
-            load_factor_max=1.0,
-            load_factor_min=0.1,
-            relative_minimum=5 / 50,
-            relative_maximum=1,
-            on_off_parameters=fx.OnOffParameters(
-                on_hours_total_min=0,
-                on_hours_total_max=1000,
-                consecutive_on_hours_max=10,
-                consecutive_off_hours_max=10,
-                effects_per_switch_on=0.01,
-                switch_on_total_max=1000,
-            ),
-            previous_flow_rate=50,
-            flow_hours_total_max=1e6,
-        ),
-        Q_fu=fx.Flow('Q_fu', bus='Gas', size=200, relative_minimum=0, relative_maximum=1),
-    )
-    aKWK = fx.LinearConverter(
+def flow_system_base(flow_system_complex) -> fx.FlowSystem:
+    """
+    Helper method to create a base model with configurable parameters
+    """
+    flow_system = flow_system_complex
+
+    flow_system.add_elements(fx.linear_converters.CHP(
+        'KWK',
+        eta_th=0.5,
+        eta_el=0.4,
+        on_off_parameters=fx.OnOffParameters(effects_per_switch_on=0.01),
+        P_el=fx.Flow('P_el', bus='Strom', size=60, relative_minimum=5 / 60, previous_flow_rate=10),
+        Q_th=fx.Flow('Q_th', bus='Fernwärme', size=1e3),
+        Q_fu=fx.Flow('Q_fu', bus='Gas', size=1e3),
+    ))
+
+    return flow_system
+
+
+@pytest.fixture
+def flow_system_segments_of_flows(flow_system_complex) -> fx.FlowSystem:
+    flow_system = flow_system_complex
+
+    flow_system.add_elements(fx.LinearConverter(
         'KWK',
         inputs=[fx.Flow('Q_fu', bus='Gas')],
         outputs=[fx.Flow('P_el', bus='Strom', size=60, relative_maximum=55, previous_flow_rate=10),
@@ -287,31 +257,7 @@ def flow_system_segments_of_flows() -> fx.FlowSystem:
             'Q_fu': [(12, 70), (90, 200)],
         },
         on_off_parameters=fx.OnOffParameters(effects_per_switch_on=0.01),
-    )
-
-    costsInvestsizeSegments = ([(5, 25), (25, 100)], {'costs': [(50, 250), (250, 800)], 'PE': [(5, 25), (25, 100)]})
-    invest_Speicher = fx.InvestParameters(
-        fix_effects=0,
-        effects_in_segments=costsInvestsizeSegments,
-        optional=False,
-        specific_effects={'costs': 0.01, 'CO2': 0.01},
-        minimum_size=0,
-        maximum_size=1000,
-    )
-    aSpeicher = fx.Storage(
-        'Speicher',
-        charging=fx.Flow('Q_th_load', bus='Fernwärme', size=1e4),
-        discharging=fx.Flow('Q_th_unload', bus='Fernwärme', size=1e4),
-        capacity_in_flow_hours=invest_Speicher,
-        initial_charge_state=0,
-        maximal_final_charge_state=10,
-        eta_charge=0.9,
-        eta_discharge=1,
-        relative_loss_per_hour=0.08,
-        prevent_simultaneous_charge_and_discharge=True,
-    )
-
-    flow_system.add_elements(aGaskessel, aKWK, aSpeicher)
+    ))
 
     return flow_system
 
