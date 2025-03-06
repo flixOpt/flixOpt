@@ -1,3 +1,9 @@
+"""
+The conftest.py file is used by pytest to define shared fixtures, hooks, and configuration
+that apply to multiple test files without needing explicit imports.
+It helps avoid redundancy and centralizes reusable test logic.
+"""
+
 import numpy as np
 import pandas as pd
 import pytest
