@@ -37,7 +37,7 @@ if __name__ == '__main__':
         label='CO2',
         unit='kg',
         description='CO2_e-Emissionen',
-        specific_share_to_other_effects_operation={'costs': 0.2},
+        specific_share_to_other_effects_operation={costs.label: 0.2},
         maximum_operation_per_hour=1000,  # Max CO2 emissions per hour
     )
 

@@ -157,36 +157,9 @@ if __name__ == '__main__':
     # Calculations
     calculations: List[Union[fx.FullCalculation, fx.AggregatedCalculation, fx.SegmentedCalculation]] = []
 
-    import timeit
-    import os
-
-
-    def benchmark_flow_system_io(fs: fx.FlowSystem, compression, filename: str):
-        """Benchmark saving an xarray Dataset with NetCDF compression.
-        Returns:
-            dict: Contains execution time and file size in MB.
-        """
-        # Measure execution time
-        start_time = timeit.default_timer()
-        fs.to_netcdf(filename, compression=compression)
-        elapsed_time = timeit.default_timer() - start_time
-        file_size = os.path.getsize(filename) / (1024 * 1024)
-
-        # Print results
-        print(f"Compression Level: {compression}")
-        print(f"Execution Time: {elapsed_time:.3f} sec")
-        print(f"File Size: {file_size:.2f} MB")
-
-        return {"execution_time": elapsed_time, "file_size_mb": file_size}
-
-
     if full:
         calculation = fx.FullCalculation('Full', flow_system)
         calculation.do_modeling()
-        benchmark = {compression: benchmark_flow_system_io(flow_system, compression, f'results/benchmark_fs_io_{compression}.nc')
-                     for compression in [1, 5, 9]}
-        flow_system.to_netcdf('flowsystem_comp.nc')
-        flow_system.to_netcdf('flowsystem.nc')
         calculation.solve(fx.solvers.HighsSolver(0, 60))
         calculations.append(calculation)
 
