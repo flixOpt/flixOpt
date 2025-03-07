@@ -132,7 +132,7 @@ class CalculationResults:
         self.model.to_netcdf(path.with_suffix('.nc'), *args, **kwargs)
         with open(path.with_suffix('.json'), 'w', encoding='utf-8') as f:
             json.dump(self._get_meta_data(), f, indent=4, ensure_ascii=False)
-        logger.info(f'Saved calculation "{name}" to {path}')
+        logger.info(f'Saved calculation results "{name}" to {path}')
 
     def _get_meta_data(self) -> Dict:
         return {

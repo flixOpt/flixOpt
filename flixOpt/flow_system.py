@@ -8,6 +8,7 @@ import pathlib
 import warnings
 from io import StringIO
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
+import importlib.util
 
 import numpy as np
 import pandas as pd
@@ -190,10 +191,12 @@ class FlowSystem:
         ds.attrs = self.as_dict(data_mode='name')
         return ds
 
-    def to_netcdf(self, path: Union[str, pathlib.Path]):
+    def to_netcdf(self, path: Union[str, pathlib.Path], compression: int = 0):
+        if compression != 0 and importlib.util.find_spec('netCDF4') is None:
+            raise ModuleNotFoundError('Encoding is only supported with netCDF4. Install netcdf4 via pip install netcdf4.')
         ds = self.as_dataset()
         ds.attrs = {'flow_system': json.dumps(ds.attrs)}
-        ds.to_netcdf(path)
+        ds.to_netcdf(path, encoding=None if compression == 0 else {k: dict(zlib=True, complevel=compression).copy() for k in ds.data_vars})
         logger.info(f'Saved FlowSystem to {path}')
 
     def plot_network(
