@@ -309,7 +309,7 @@ class OnOffModel(ElementModel):
             #  eq: sum( Leistung(t,i))              - sum(Leistung_max(i))             * On(t) <= 0
             #  --> damit Gleichungswerte nicht zu groß werden, noch durch nr_of_flows geteilt:
             #  eq: sum( Leistung(t,i) / nr_of_flows ) - sum(Leistung_max(i)) / nr_of_flows * On(t) <= 0
-            absolute_maximum: Numeric = 0
+            absolute_maximum: Numeric = 0.0
             for variable, bounds in zip(self._defining_variables, self._defining_bounds, strict=False):
                 eq_on_2.add_summand(variable, 1 / nr_of_defining_variables, time_indices)
                 absolute_maximum += bounds[
