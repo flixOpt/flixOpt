@@ -10,12 +10,14 @@ readme = "README.md"
 requires-python = ">=3.10, <3.13"
 license = { text = "MIT License" }
 authors = [
+    { name = "Chair of Building Energy Systems and Heat Supply, TU Dresden", email = "peter.stange@tu-dresden.de" },
     { name = "Felix Bumann", email = "felixbumann387@gmail.com" },
     { name = "Felix Panitz", email = "baumbude@googlemail.com" },
     { name = "Peter Stange", email = "peter.stange@tu-dresden.de" }
 ]
 maintainers = [
-    { name = "Chair of Building Energy Systems and Heat Supply, TU Dresden", email = "peter.stange@tu-dresden.de" }
+    { name = "Felix Bumann", email = "felixbumann387@gmail.com" },
+    { name = "Peter Stange", email = "peter.stange@tu-dresden.de" }
 ]
 keywords = ["optimization", "energy systems", "numerical analysis"]
 classifiers = [
