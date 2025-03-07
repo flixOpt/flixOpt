@@ -1,14 +1,18 @@
 from typing import Dict, List, Optional, Union
 
 import pytest
-from conftest import assert_almost_equal_numeric, flow_system_base, flow_system_segments_of_flows, simple_flow_system
+from conftest import assert_almost_equal_numeric, flow_system_base, flow_system_segments_of_flows, simple_flow_system, flow_system_long
 
 import flixOpt as fx
 
 
-@pytest.fixture(params=[flow_system_base, flow_system_segments_of_flows, simple_flow_system])
+@pytest.fixture(params=[flow_system_base, flow_system_segments_of_flows, simple_flow_system, flow_system_long])
 def flow_system(request):
-    return request.getfixturevalue(request.param.__name__)
+    fs = request.getfixturevalue(request.param.__name__)
+    if isinstance(fs, fx.FlowSystem):
+        return fs
+    else:
+        return fs[0]
 
 
 def test_flow_system_io(flow_system):
