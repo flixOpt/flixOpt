@@ -6,11 +6,11 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2  # actions/checkout does not have v4 yet
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4  # v4 for Python setup
