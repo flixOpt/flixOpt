@@ -1,0 +1,37 @@
+name: Publish to TestPyPI and PyPI
+
+on:
+  release:
+    types: [created]  # Trigger when a release is created
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2  # actions/checkout does not have v4 yet
+
+      - name: Set up Python
+        uses: actions/setup-python@v4  # v4 for Python setup
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
+
+      - name: Build the distribution
+        run: |
+          python -m build
+
+      - name: Upload to TestPyPI
+        run: |
+          twine upload --repository testpypi dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+      - name: Get release notes from GitHub
+        run: |
+          echo "${{ github.event.release.body }}" > release_notes.txt
+          cat release_notes.txt
