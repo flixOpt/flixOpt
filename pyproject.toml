@@ -26,7 +26,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "Topic :: Scientific/Engineering :: Mathematics :: Numerical Analysis :: Optimization",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
     "Topic :: Software Development :: Libraries :: Python"
 ]
 dependencies = [
