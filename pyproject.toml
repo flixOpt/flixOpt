@@ -28,7 +28,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
     "License :: OSI Approved :: MIT License",
-    "Topic :: Software Development :: Libraries :: Python"
 ]
 dependencies = [
     "numpy >= 1.21.5, < 2",
