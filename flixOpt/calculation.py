@@ -167,17 +167,28 @@ class FullCalculation(Calculation):
 
         self.results = CalculationResults.from_calculation(self)
 
-    def save_results(self):
+    def save_results(self, save_flow_system: bool = False, compression: int = 0):
         """
         Saves the results of the calculation to a folder with the name of the calculation.
         The folder is created if it does not exist.
 
         The CalculationResults are saved as a .nc and a .json file.
         The calculation infos are saved as a .yaml file.
+        Optionally, the flow_system is saved as a .nc file.
+
+        Parameters
+        ----------
+        save_flow_system : bool, optional
+            Whether to save the flow_system, by default False
+        compression : int, optional
+            Compression level for the netCDF file, by default 0 wich leads to no compression.
+            Currently, only the Flow System file can be compressed.
         """
         with open(self.folder / f'{self.name}_infos.yaml', 'w', encoding='utf-8') as f:
             yaml.dump(self.infos, f, allow_unicode=True, sort_keys=False, indent=4)
         self.results.to_file(self.folder, self.name)
+        if save_flow_system:
+            self.flow_system.to_netcdf(self.folder / f'{self.name}_flowsystem.nc', compression)
 
     def _activate_time_series(self):
         self.flow_system.transform_data()
@@ -339,11 +350,12 @@ class SegmentedCalculation(Calculation):
             f'{self.timesteps_per_segment_with_overlap=} cant be greater than the total length {len(self.all_timesteps)}'
         )
 
+        self.flow_system._connect_network()  # Connect network to ensure that all FLows know their Component
         # Storing all original start values
         self._original_start_values = {
-            **{flow: flow.previous_flow_rate for flow in self.flow_system.flows.values()},
+            **{flow.label_full: flow.previous_flow_rate for flow in self.flow_system.flows.values()},
             **{
-                comp: comp.initial_charge_state
+                comp.label_full: comp.initial_charge_state
                 for comp in self.flow_system.components.values()
                 if isinstance(comp, Storage)
             },
@@ -417,10 +429,10 @@ class SegmentedCalculation(Calculation):
     def _reset_start_values(self):
         """This resets the start values of all Elements to its original state"""
         for flow in self.flow_system.flows.values():
-            flow.previous_flow_rate = self._original_start_values[flow]
+            flow.previous_flow_rate = self._original_start_values[flow.label_full]
         for comp in self.flow_system.components.values():
             if isinstance(comp, Storage):
-                comp.initial_charge_state = self._original_start_values[comp]
+                comp.initial_charge_state = self._original_start_values[comp.label_full]
 
     def _calculate_timesteps_of_segment(self) -> List[pd.DatetimeIndex]:
         active_timesteps_per_segment = []

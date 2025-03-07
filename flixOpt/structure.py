@@ -18,7 +18,6 @@ import xarray as xr
 from rich.console import Console
 from rich.pretty import Pretty
 
-from . import utils
 from .config import CONFIG
 from .core import NumericData, Scalar, TimeSeries, TimeSeriesCollection, TimeSeriesData
 
@@ -27,6 +26,18 @@ if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
+
+
+CLASS_REGISTRY = {}
+
+def register_class_for_io(cls):
+    """Register a class for serialization/deserialization."""
+    name = cls.__name__
+    if name in CLASS_REGISTRY:
+        raise ValueError(f'Class {name} already registered! Use a different Name for the class! '
+                         f'This error should only happen in developement')
+    CLASS_REGISTRY[name] = cls
+    return cls
 
 
 class SystemModel(linopy.Model):
@@ -124,6 +135,80 @@ class Interface:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
+    def to_dict(self) -> Dict:
+        """Convert the object to a dictionary representation."""
+        data = {'__class__': self.__class__.__name__}
+
+        # Get the constructor parameters
+        init_params = inspect.signature(self.__init__).parameters
+
+        for name in init_params:
+            if name == 'self':
+                continue
+
+            value = getattr(self, name, None)
+            data[name] = self._serialize_value(value)
+
+        return data
+
+    def _serialize_value(self, value: Any):
+        """Helper method to serialize a value based on its type."""
+        if value is None:
+            return None
+        elif isinstance(value, Interface):
+            return value.to_dict()
+        elif isinstance(value, (list, tuple)):
+            return self._serialize_list(value)
+        elif isinstance(value, dict):
+            return self._serialize_dict(value)
+        else:
+            return value
+
+    def _serialize_list(self, items):
+        """Serialize a list of items."""
+        return [self._serialize_value(item) for item in items]
+
+    def _serialize_dict(self, d):
+        """Serialize a dictionary of items."""
+        return {k: self._serialize_value(v) for k, v in d.items()}
+
+    @classmethod
+    def _deserialize_dict(cls, data: Dict) -> Union[Dict, 'Interface']:
+        if '__class__' in data:
+            class_name = data.pop('__class__')
+            try:
+                class_type = CLASS_REGISTRY[class_name]
+                if issubclass(class_type, Interface):
+                    # Use _deserialize_dict to process the arguments
+                    processed_data = {k: cls._deserialize_value(v) for k, v in data.items()}
+                    return class_type(**processed_data)
+                else:
+                    raise ValueError(f'Class "{class_name}" is not an Interface.')
+            except (AttributeError, KeyError) as e:
+                raise ValueError(f'Class "{class_name}" could not get reconstructed.') from e
+        else:
+            return {k: cls._deserialize_value(v) for k, v in data.items()}
+
+    @classmethod
+    def _deserialize_list(cls, data: List) -> List:
+        return [cls._deserialize_value(value) for value in data]
+
+    @classmethod
+    def _deserialize_value(cls, value: Any):
+        """Helper method to deserialize a value based on its type."""
+        if value is None:
+            return None
+        elif isinstance(value, dict):
+            return cls._deserialize_dict(value)
+        elif isinstance(value, list):
+            return cls._deserialize_list(value)
+        return value
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Interface':
+        """Create an instance from a dictionary representation."""
+        return cls._deserialize_dict(data)
+
     def __repr__(self):
         # Get the constructor arguments and their current values
         init_signature = inspect.signature(self.__init__)
@@ -151,7 +236,6 @@ class Element(Interface):
         """
         self.label = Element._valid_label(label)
         self.meta_data = meta_data if meta_data is not None else {}
-        self.used_time_series: List[TimeSeries] = []  # Used for better access
         self.model: Optional[ElementModel] = None
 
     def _plausibility_checks(self) -> None:

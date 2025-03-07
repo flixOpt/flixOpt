@@ -121,12 +121,12 @@ if __name__ == '__main__':
 
     # Gas Tariff
     a_gas_tarif = fx.Source(
-        'Gastarif', source=fx.Flow('Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs: gas_price, CO2: 0.3})
+        'Gastarif', source=fx.Flow('Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs.label: gas_price, CO2.label: 0.3})
     )
 
     # Coal Tariff
     a_kohle_tarif = fx.Source(
-        'Kohletarif', source=fx.Flow('Q_Kohle', bus='Kohle', size=1000, effects_per_flow_hour={costs: 4.6, CO2: 0.3})
+        'Kohletarif', source=fx.Flow('Q_Kohle', bus='Kohle', size=1000, effects_per_flow_hour={costs.label: 4.6, CO2.label: 0.3})
     )
 
     # Electricity Tariff and Feed-in
@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
     a_strom_tarif = fx.Source(
         'Stromtarif',
-        source=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour={costs: TS_electricity_price_buy, CO2: 0.3}),
+        source=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour={costs.label: TS_electricity_price_buy, CO2: 0.3}),
     )
 
     # Flow System Setup

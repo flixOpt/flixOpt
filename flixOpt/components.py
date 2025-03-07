@@ -14,14 +14,14 @@ from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesColl
 from .elements import Component, ComponentModel, Flow
 from .features import InvestmentModel, MultipleSegmentsModel, OnOffModel
 from .interface import InvestParameters, OnOffParameters
-from .structure import SystemModel
+from .structure import SystemModel, register_class_for_io
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
 
 logger = logging.getLogger('flixOpt')
 
-
+@register_class_for_io
 class LinearConverter(Component):
     """
     Converts one FLow into another via linear conversion factors
@@ -33,8 +33,8 @@ class LinearConverter(Component):
         inputs: List[Flow],
         outputs: List[Flow],
         on_off_parameters: OnOffParameters = None,
-        conversion_factors: List[Dict[Flow, NumericDataTS]] = None,
-        segmented_conversion_factors: Dict[Flow, List[Tuple[NumericDataTS, NumericDataTS]]] = None,
+        conversion_factors: List[Dict[str, NumericDataTS]] = None,
+        segmented_conversion_factors: Dict[str, List[Tuple[NumericDataTS, NumericDataTS]]] = None,
         meta_data: Optional[Dict] = None,
     ):
         """
@@ -83,12 +83,12 @@ class LinearConverter(Component):
 
             for conversion_factor in self.conversion_factors:
                 for flow in conversion_factor:
-                    if flow not in (self.inputs + self.outputs):
+                    if flow not in self.flows:
                         raise Exception(
-                            f'{self.label}: Flow {flow.label} in conversion_factors is not in inputs/outputs'
+                            f'{self.label}: Flow {flow} in conversion_factors is not in inputs/outputs'
                         )
         if self.segmented_conversion_factors:
-            for flow in self.inputs + self.outputs:
+            for flow in self.flows.values():
                 if isinstance(flow.size, InvestParameters) and flow.size.fixed_size is None:
                     raise Exception(
                         f'segmented_conversion_factors (in {self.label_full}) and variable size '
@@ -104,14 +104,14 @@ class LinearConverter(Component):
             for flow, segments in self.segmented_conversion_factors.items():
                 segmented_conversion_factors[flow] = [
                     (
-                        flow_system.create_time_series(f'{flow.label_full}|Stützstelle|{idx}a', segment[0]),
-                        flow_system.create_time_series(f'{flow.label_full}|Stützstelle|{idx}b', segment[1]),
+                        flow_system.create_time_series(f'{self.flows[flow].label_full}|Stützstelle|{idx}a', segment[0]),
+                        flow_system.create_time_series(f'{self.flows[flow].label_full}|Stützstelle|{idx}b', segment[1]),
                     )
                     for idx, segment in enumerate(segments)
                 ]
             self.segmented_conversion_factors = segmented_conversion_factors
 
-    def _transform_conversion_factors(self, flow_system: 'FlowSystem') -> List[Dict[Flow, TimeSeries]]:
+    def _transform_conversion_factors(self, flow_system: 'FlowSystem') -> List[Dict[str, TimeSeries]]:
         """macht alle Faktoren, die nicht TimeSeries sind, zu TimeSeries"""
         list_of_conversion_factors = []
         for idx, conversion_factor in enumerate(self.conversion_factors):
@@ -119,7 +119,7 @@ class LinearConverter(Component):
             for flow, values in conversion_factor.items():
                 # TODO: Might be better to use the label of the component instead of the flow
                 transformed_dict[flow] = flow_system.create_time_series(
-                    f'{flow.label_full}|conversion_factor{idx}', values
+                    f'{self.flows[flow].label_full}|conversion_factor{idx}', values
                 )
             list_of_conversion_factors.append(transformed_dict)
         return list_of_conversion_factors
@@ -129,6 +129,7 @@ class LinearConverter(Component):
         return len(self.inputs + self.outputs) - len(self.conversion_factors)
 
 
+@register_class_for_io
 class Storage(Component):
     """
     Klasse Storage
@@ -216,6 +217,7 @@ class Storage(Component):
         self.eta_charge: NumericDataTS = eta_charge
         self.eta_discharge: NumericDataTS = eta_discharge
         self.relative_loss_per_hour: NumericDataTS = relative_loss_per_hour
+        self.prevent_simultaneous_charge_and_discharge = prevent_simultaneous_charge_and_discharge
 
     def create_model(self, model: SystemModel) -> 'StorageModel':
         self.model = StorageModel(model, self)
@@ -238,6 +240,7 @@ class Storage(Component):
             self.capacity_in_flow_hours.transform_data(flow_system)
 
 
+@register_class_for_io
 class Transmission(Component):
     # TODO: automatic on-Value in Flows if loss_abs
     # TODO: loss_abs must be: investment_size * loss_abs_rel!!!
@@ -401,16 +404,16 @@ class LinearConverterModel(ComponentModel):
             all_output_flows = set(self.element.outputs)
 
             # für alle linearen Gleichungen:
-            for i, conv_fact in enumerate(self.element.conversion_factors):
-                used_flows = set(conv_fact.keys())
+            for i, conv_factors in enumerate(self.element.conversion_factors):
+                used_flows = set([self.element.flows[flow_label] for flow_label in conv_factors])
                 used_inputs: Set = all_input_flows & used_flows
                 used_outputs: Set = all_output_flows & used_flows
 
                 self.add(
                     self._model.add_constraints(
-                        sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_inputs])
+                        sum([flow.model.flow_rate * conv_factors[flow.label].active_data for flow in used_inputs])
                         ==
-                        sum([flow.model.flow_rate * conv_fact[flow].active_data for flow in used_outputs]),
+                        sum([flow.model.flow_rate * conv_factors[flow.label].active_data for flow in used_outputs]),
                         name=f'{self.label_full}|conversion_{i}'
                     )
                 )
@@ -419,10 +422,10 @@ class LinearConverterModel(ComponentModel):
         else:
             # TODO: Improve Inclusion of OnOffParameters. Instead of creating a Binary in every flow, the binary could only be part of the Segment itself
             segments: Dict[str, List[Tuple[NumericData, NumericData]]] = {
-                flow.model.flow_rate.name: [
+                self.element.flows[flow].model.flow_rate.name: [
                     (ts1.active_data, ts2.active_data) for ts1, ts2 in self.element.segmented_conversion_factors[flow]
                 ]
-                for flow in self.element.inputs + self.element.outputs
+                for flow in self.element.flows
             }
             linear_segments = MultipleSegmentsModel(
                 self._model, self.label_of_element, segments, self.on_off.on if self.on_off is not None else None
@@ -550,6 +553,7 @@ class StorageModel(ComponentModel):
         )
 
 
+@register_class_for_io
 class SourceAndSink(Component):
     """
     class for source (output-flow) and sink (input-flow) in one commponent
@@ -593,6 +597,7 @@ class SourceAndSink(Component):
         self.sink = sink
 
 
+@register_class_for_io
 class Source(Component):
     def __init__(self, label: str, source: Flow, meta_data: Optional[Dict] = None):
         """
@@ -609,6 +614,7 @@ class Source(Component):
         self.source = source
 
 
+@register_class_for_io
 class Sink(Component):
     def __init__(self, label: str, sink: Flow, meta_data: Optional[Dict] = None):
         """

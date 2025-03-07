@@ -37,7 +37,7 @@ if __name__ == '__main__':
         label='CO2',
         unit='kg',
         description='CO2_e-Emissionen',
-        specific_share_to_other_effects_operation={costs: 0.2},
+        specific_share_to_other_effects_operation={costs.label: 0.2},
         maximum_operation_per_hour=1000,  # Max CO2 emissions per hour
     )
 
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     # Gas Source: Gas tariff source with associated costs and CO2 emissions
     gas_source = fx.Source(
         label='Gastarif',
-        source=fx.Flow(label='Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs: 0.04, CO2: 0.3}),
+        source=fx.Flow(label='Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs.label: 0.04, CO2.label: 0.3}),
     )
 
     # Power Sink: Represents the export of electricity to the grid
@@ -114,3 +114,4 @@ if __name__ == '__main__':
     # Convert the results for the storage component to a dataframe and display
     df = calculation.results['Storage'].charge_state_and_flow_rates()
     print(df)
+    calculation.save_results(save_flow_system=True)

@@ -10,7 +10,7 @@ from flixOpt.core import TimeSeriesCollection
 
 from .config import CONFIG
 from .core import NumericData, NumericDataTS, Scalar
-from .structure import Element, Interface
+from .structure import Element, Interface, register_class_for_io
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
     from .flow_system import FlowSystem
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('flixOpt')
 
 
+@register_class_for_io
 class InvestParameters(Interface):
     """
     collects arguments for invest-stuff
@@ -35,7 +36,7 @@ class InvestParameters(Interface):
         fix_effects: Optional['EffectValuesUserScalar'] = None,
         specific_effects: Optional['EffectValuesUserScalar'] = None,  # costs per Flow-Unit/Storage-Size/...
         effects_in_segments: Optional[
-            Tuple[List[Tuple[Scalar, Scalar]], Dict['Effect', List[Tuple[Scalar, Scalar]]]]
+            Tuple[List[Tuple[Scalar, Scalar]], Dict['str', List[Tuple[Scalar, Scalar]]]]
         ] = None,
         divest_effects: Optional['EffectValuesUserScalar'] = None,
     ):
@@ -96,7 +97,7 @@ class InvestParameters(Interface):
     def maximum_size(self):
         return self.fixed_size or self._maximum_size
 
-
+@register_class_for_io
 class OnOffParameters(Interface):
     def __init__(
         self,

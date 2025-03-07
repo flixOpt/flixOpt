@@ -15,7 +15,7 @@ import pandas as pd
 
 from .core import NumericData, NumericDataTS, Scalar, TimeSeries, TimeSeriesCollection
 from .features import ShareAllocationModel
-from .structure import Element, ElementModel, Interface, Model, SystemModel
+from .structure import Element, ElementModel, Interface, Model, SystemModel, register_class_for_io
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('flixOpt')
 
 
+@register_class_for_io
 class Effect(Element):
     """
     Effect, i.g. costs, CO2 emissions, area, ...
@@ -207,6 +208,7 @@ class EffectCollection:
         self.add_effects(*effects)
 
     def create_model(self, model: SystemModel) -> 'EffectCollectionModel':
+        self._plausibility_checks()
         self.model = EffectCollectionModel(model, self)
         return self.model
 
@@ -220,8 +222,6 @@ class EffectCollection:
                 self.objective_effect = effect
             self._effects[effect.label] = effect
             logger.info(f'Registered new Effect: {effect.label}')
-
-        self._plausibility_checks()
 
     def create_effect_values_dict(self, effect_values_user: EffectValuesUser) -> Optional[EffectValuesDict]:
         """

@@ -14,7 +14,7 @@ from .core import NumericData, NumericDataTS, Scalar, TimeSeriesCollection
 from .effects import EffectValuesUser
 from .features import InvestmentModel, OnOffModel, PreventSimultaneousUsageModel
 from .interface import InvestParameters, OnOffParameters
-from .structure import Element, ElementModel, SystemModel
+from .structure import Element, ElementModel, SystemModel, register_class_for_io
 
 if TYPE_CHECKING:
     from .flow_system import FlowSystem
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger('flixOpt')
 
 
+@register_class_for_io
 class Component(Element):
     """
     basic component class for all components
@@ -75,6 +76,7 @@ class Component(Element):
         return infos
 
 
+@register_class_for_io
 class Bus(Element):
     """
     realizing balance of all linked flows
@@ -119,6 +121,7 @@ class Bus(Element):
         return False if self.excess_penalty_per_flow_hour is None else True
 
 
+@register_class_for_io
 class Connection:
     # input/output-dock (TODO:
     # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
@@ -128,6 +131,7 @@ class Connection:
         raise NotImplementedError()
 
 
+@register_class_for_io
 class Flow(Element):
     """
     flows are inputs and outputs of components
@@ -218,6 +222,7 @@ class Flow(Element):
                 f'Bus {bus.label} is passed as a Bus object to {self.label}. This is deprecated and will be removed '
                 f'in the future. Add the Bus to the FlowSystem instead and pass its label to the Flow.',
                 UserWarning,
+                stacklevel=1,
                 )
             self._bus_object = bus
         else:

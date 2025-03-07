@@ -940,7 +940,7 @@ class SegmentedSharesModel(Model):
         model: SystemModel,
         label_of_element: str,
         variable_segments: Tuple[linopy.Variable, List[Tuple[Scalar, Scalar]]],
-        share_segments: Dict['Effect', List[Tuple[Scalar, Scalar]]],
+        share_segments: Dict[str, List[Tuple[Scalar, Scalar]]],
         can_be_outside_segments: Optional[Union[bool, linopy.Variable]],
         label: str = 'SegmentedShares',
     ):
@@ -959,8 +959,8 @@ class SegmentedSharesModel(Model):
         self._shares = {
             effect: self.add(self._model.add_variables(
                 coords=self._model.coords if self._as_tme_series else None,
-                name=f'{self.label_full}|{effect.label}'),
-                f'{effect.label}'
+                name=f'{self.label_full}|{effect}'),
+                f'{effect}'
             ) for effect in self._share_segments
         }
 
