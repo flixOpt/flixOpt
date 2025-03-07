@@ -2,11 +2,12 @@ name: Python Package CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [main]  # Run on pushes to main (after PR is merged)
     tags:
       - 'v*'  # Trigger on version tags
   pull_request:
-    branches: [main, next/*]
+    branches: [main, next/*]  # Run when PRs are created or updated
+    types: [opened, synchronize, reopened]
   release:
     types: [created]  # Trigger when a release is created
 
