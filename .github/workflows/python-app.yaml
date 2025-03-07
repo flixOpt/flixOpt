@@ -93,10 +93,10 @@ jobs:
           python -m venv test_env
           source test_env/bin/activate
           # Get the package name from the built distribution
-          PACKAGE_NAME=$(ls dist/*.tar.gz | head -n 1 | sed 's/dist\///' | sed 's/-[0-9].*//')
+          PACKAGE_NAME=$(ls dist/*.tar.gz | head -n 1 | sed 's/dist\///' | sed 's/-[0-9].*$//')
           # Install from TestPyPI with retry (TestPyPI can be slow to index)
           pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ $PACKAGE_NAME || \
           (sleep 30 && pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ $PACKAGE_NAME) || \
           (sleep 60 && pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ $PACKAGE_NAME)
           # Basic import test
-          python -c "import $PACKAGE_NAME.replace('-', '_'); print('Installation successful!')"
+          python -c "import $PACKAGE_NAME; print('Installation successful!')"
