@@ -4,10 +4,11 @@ that apply to multiple test files without needing explicit imports.
 It helps avoid redundancy and centralizes reusable test logic.
 """
 
+import os
+
 import numpy as np
 import pandas as pd
 import pytest
-import os
 
 import flixOpt as fx
 
@@ -281,99 +282,76 @@ def flow_system_long():
     data = ts_raw['2020-01-01 00:00:00':'2020-12-31 23:45:00']['2020-01-01':'2020-01-03 23:45:00']
 
     # Extract data columns
-    P_el_Last = data['P_Netz/MW'].values
-    Q_th_Last = data['Q_Netz/MW'].values
+    electrical_load = data['P_Netz/MW'].values
+    thermal_load = data['Q_Netz/MW'].values
     p_el = data['Strompr.€/MWh'].values
-    gP = data['Gaspr.€/MWh'].values
-    timesteps = pd.DatetimeIndex(data.index)
+    gas_price = data['Gaspr.€/MWh'].values
 
-    # Create effects
-    costs = fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True)
-    CO2 = fx.Effect('CO2', 'kg', 'CO2_e-Emissionen')
-    PE = fx.Effect('PE', 'kWh_PE', 'Primärenergie')
-
-    # Create components (similar to original implementation)
-    boiler = fx.linear_converters.Boiler(
-        'Kessel',
-        eta=0.85,
-        Q_th=fx.Flow(label='Q_th', bus='Fernwärme'),
-        Q_fu=fx.Flow(
-            label='Q_fu',
-            bus='Gas',
-            size=95,
-            relative_minimum=12 / 95,
-            previous_flow_rate=0,
-            on_off_parameters=fx.OnOffParameters(effects_per_switch_on=1000),
-        ),
-    )
-    chp = fx.linear_converters.CHP(
-        'BHKW2',
-        eta_th=0.58,
-        eta_el=0.22,
-        on_off_parameters=fx.OnOffParameters(effects_per_switch_on=24000),
-        P_el=fx.Flow('P_el', bus='Strom'),
-        Q_th=fx.Flow('Q_th', bus='Fernwärme'),
-        Q_fu=fx.Flow('Q_fu', bus='Kohle', size=288, relative_minimum=87 / 288),
-    )
-    storage = fx.Storage(
-        'Speicher',
-        charging=fx.Flow('Q_th_load', size=137, bus='Fernwärme'),
-        discharging=fx.Flow('Q_th_unload', size=158, bus='Fernwärme'),
-        capacity_in_flow_hours=684,
-        initial_charge_state=137,
-        minimal_final_charge_state=137,
-        maximal_final_charge_state=158,
-        eta_charge=1,
-        eta_discharge=1,
-        relative_loss_per_hour=0.001,
-        prevent_simultaneous_charge_and_discharge=True,
-    )
-
-    TS_Q_th_Last, TS_P_el_Last = fx.TimeSeriesData(Q_th_Last), fx.TimeSeriesData(P_el_Last, agg_weight=0.7)
-    heat_load, electricity_load = (
-        fx.Sink(
-            'Wärmelast', sink=fx.Flow('Q_th_Last', bus='Fernwärme', size=1, fixed_relative_profile=TS_Q_th_Last)
-        ),
-        fx.Sink('Stromlast', sink=fx.Flow('P_el_Last', bus='Strom', size=1, fixed_relative_profile=TS_P_el_Last)),
-    )
-    coal_tariff, gas_tariff = (
-        fx.Source(
-            'Kohletarif',
-            source=fx.Flow('Q_Kohle', bus='Kohle', size=1000, effects_per_flow_hour={costs.label: 4.6, CO2.label: 0.3}),
-        ),
-        fx.Source(
-            'Gastarif', source=fx.Flow('Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={costs.label: gP, CO2.label: 0.3})
-        ),
-    )
-
+    thermal_load_ts, electrical_load_ts = fx.TimeSeriesData(thermal_load), fx.TimeSeriesData(electrical_load,
+                                                                                             agg_weight=0.7)
     p_feed_in, p_sell = (
         fx.TimeSeriesData(-(p_el - 0.5), agg_group='p_el'),
         fx.TimeSeriesData(p_el + 0.5, agg_group='p_el'),
     )
-    electricity_feed_in, electricity_tariff = (
+
+    flow_system = fx.FlowSystem(pd.DatetimeIndex(data.index))
+    flow_system.add_elements(
+        fx.Bus('Strom'), fx.Bus('Fernwärme'),  fx.Bus('Gas'), fx.Bus('Kohle'),
+
+        fx.Effect('costs', '€', 'Kosten', is_standard=True, is_objective=True),
+        fx.Effect('CO2', 'kg', 'CO2_e-Emissionen'),
+        fx.Effect('PE', 'kWh_PE', 'Primärenergie'),
+
+        fx.Sink('Wärmelast', sink=fx.Flow('Q_th_Last', bus='Fernwärme', size=1, fixed_relative_profile=thermal_load_ts)),
+        fx.Sink('Stromlast', sink=fx.Flow('P_el_Last', bus='Strom', size=1, fixed_relative_profile=electrical_load_ts)),
+        fx.Source('Kohletarif',source=fx.Flow('Q_Kohle', bus='Kohle', size=1000, effects_per_flow_hour={'costs': 4.6, 'CO2': 0.3})),
+        fx.Source('Gastarif', source=fx.Flow('Q_Gas', bus='Gas', size=1000, effects_per_flow_hour={'costs': gas_price, 'CO2': 0.3})),
         fx.Sink('Einspeisung', sink=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour=p_feed_in)),
-        fx.Source(
-            'Stromtarif',
-            source=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour={costs.label: p_sell, CO2.label: 0.3}),
-        ),
+        fx.Source('Stromtarif', source=fx.Flow('P_el', bus='Strom', size=1000, effects_per_flow_hour={'costs': p_sell, 'CO2': 0.3}))
     )
 
-    # Create flow system
-    flow_system = fx.FlowSystem(timesteps)
-    flow_system.add_elements(costs, CO2, PE)
     flow_system.add_elements(
-        boiler, heat_load, electricity_load, gas_tariff, coal_tariff, electricity_feed_in, electricity_tariff,
-        chp, storage
-    )
-    flow_system.add_elements(
-        fx.Bus('Strom'), fx.Bus('Fernwärme'),
-        fx.Bus('Gas'), fx.Bus('Kohle')
+        fx.linear_converters.Boiler(
+            'Kessel',
+            eta=0.85,
+            Q_th=fx.Flow(label='Q_th', bus='Fernwärme'),
+            Q_fu=fx.Flow(
+                label='Q_fu',
+                bus='Gas',
+                size=95,
+                relative_minimum=12 / 95,
+                previous_flow_rate=0,
+                on_off_parameters=fx.OnOffParameters(effects_per_switch_on=1000),
+            ),
+        ),
+        fx.linear_converters.CHP(
+            'BHKW2',
+            eta_th=0.58,
+            eta_el=0.22,
+            on_off_parameters=fx.OnOffParameters(effects_per_switch_on=24000),
+            P_el=fx.Flow('P_el', bus='Strom'),
+            Q_th=fx.Flow('Q_th', bus='Fernwärme'),
+            Q_fu=fx.Flow('Q_fu', bus='Kohle', size=288, relative_minimum=87 / 288),
+        ),
+        fx.Storage(
+            'Speicher',
+            charging=fx.Flow('Q_th_load', size=137, bus='Fernwärme'),
+            discharging=fx.Flow('Q_th_unload', size=158, bus='Fernwärme'),
+            capacity_in_flow_hours=684,
+            initial_charge_state=137,
+            minimal_final_charge_state=137,
+            maximal_final_charge_state=158,
+            eta_charge=1,
+            eta_discharge=1,
+            relative_loss_per_hour=0.001,
+            prevent_simultaneous_charge_and_discharge=True,
+        ),
     )
 
     # Return all the necessary data
     return flow_system, {
-            'TS_Q_th_Last': TS_Q_th_Last,
-            'TS_P_el_Last': TS_P_el_Last,
+            'thermal_load_ts': thermal_load_ts,
+            'electrical_load_ts': electrical_load_ts,
         }
 
 

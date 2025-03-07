@@ -1,7 +1,13 @@
 from typing import Dict, List, Optional, Union
 
 import pytest
-from conftest import assert_almost_equal_numeric, flow_system_base, flow_system_segments_of_flows, simple_flow_system, flow_system_long
+from conftest import (
+    assert_almost_equal_numeric,
+    flow_system_base,
+    flow_system_long,
+    flow_system_segments_of_flows,
+    simple_flow_system,
+)
 
 import flixOpt as fx
 

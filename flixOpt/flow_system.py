@@ -2,13 +2,13 @@
 This module contains the FlowSystem class, which is used to collect instances of many other classes by the end User.
 """
 
+import importlib.util
 import json
 import logging
 import pathlib
 import warnings
 from io import StringIO
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
-import importlib.util
 
 import numpy as np
 import pandas as pd

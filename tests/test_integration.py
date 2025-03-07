@@ -376,8 +376,8 @@ class TestModelingTypes:
         """
         # Extract flow system and data from the fixture
         flow_system = flow_system_long[0]
-        TS_Q_th_Last = flow_system_long[1]['TS_Q_th_Last']
-        TS_P_el_Last = flow_system_long[1]['TS_P_el_Last']
+        thermal_load_ts = flow_system_long[1]['thermal_load_ts']
+        electrical_load_ts = flow_system_long[1]['electrical_load_ts']
 
         # Create calculation based on modeling type
         modeling_type = request.param
@@ -399,8 +399,8 @@ class TestModelingTypes:
                     aggregate_data_and_fix_non_binary_vars=True,
                     percentage_of_period_freedom=0,
                     penalty_of_period_freedom=0,
-                    time_series_for_low_peaks=[TS_P_el_Last, TS_Q_th_Last],
-                    time_series_for_high_peaks=[TS_Q_th_Last],
+                    time_series_for_low_peaks=[electrical_load_ts, thermal_load_ts],
+                    time_series_for_high_peaks=[thermal_load_ts],
                 ),
             )
             calc.do_modeling()
