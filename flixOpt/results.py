@@ -48,8 +48,6 @@ class CalculationResults:
         A dictionary of EffectResults for each effect in the flow_system.
     timesteps_extra : pd.DatetimeIndex
         The extra timesteps of the flow_system.
-    periods : pd.Index
-        The periods of the flow_system.
     hours_per_timestep : xr.DataArray
         The duration of each timestep in hours.
 
@@ -106,7 +104,7 @@ class CalculationResults:
                         for label, infos in results_structure['Effects'].items()}
 
         self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in results_structure['Time']], name='time')
-        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.timesteps_extra, self.periods)
+        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.timesteps_extra)
 
     def __getitem__(self, key: str) -> Union['ComponentResults', 'BusResults', 'EffectResults']:
         if key in self.components:

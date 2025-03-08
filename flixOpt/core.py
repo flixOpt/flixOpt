@@ -226,7 +226,7 @@ class TimeSeries:
 
     @property
     def stats(self) -> str:
-        """Return a statistical summary of the active data, considering periods if available."""
+        """Return a statistical summary of the active data."""
         return get_numeric_stats(self.active_data, padd=0)
 
     def _update_active_data(self):
@@ -348,22 +348,18 @@ class TimeSeriesCollection:
             timesteps: pd.DatetimeIndex,
             hours_of_last_timestep: Optional[float],
             hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]],
-            periods: Optional[List[int]] = None,
     ):
         (
             self.all_timesteps,
             self.all_timesteps_extra,
             self.all_hours_per_timestep,
             self.hours_of_previous_timesteps,
-            self.all_periods
         ) = TimeSeriesCollection.align_dimensions(timesteps,
-                                                   periods,
                                                    hours_of_last_timestep,
                                                    hours_of_previous_timesteps)
 
         self._active_timesteps = None
         self._active_timesteps_extra = None
-        self._active_periods = None
         self._active_hours_per_timestep = None
 
         self.group_weights: Dict[str, float] = {}
@@ -399,7 +395,6 @@ class TimeSeriesCollection:
             name=name,
             data=data if not isinstance(data, TimeSeriesData) else data.data,
             timesteps=self.timesteps if not extra_timestep else self.timesteps_extra,
-            periods=self.periods,
             aggregation_weight=data.agg_weight if isinstance(data, TimeSeriesData) else None,
             aggregation_group=data.agg_group if isinstance(data, TimeSeriesData) else None
         )
@@ -419,52 +414,42 @@ class TimeSeriesCollection:
 
         return self.weights
 
-    def activate_indices(self,
-                         active_timesteps: Optional[pd.DatetimeIndex] = None,
-                         active_periods: Optional[pd.Index] = None):
+    def activate_indices(self, active_timesteps: Optional[pd.DatetimeIndex] = None):
         """
-        Update active timesteps, periods, and data of the TimeSeriesCollection.
-        If no arguments are provided, the active timesteps and periods are reset.
+        Update active timesteps and data of the TimeSeriesCollection.
+        If no arguments are provided, the active timesteps are reset.
 
         Parameters
         ----------
         active_timesteps : Optional[pd.DatetimeIndex]
             The active timesteps of the model.
             If None, the all timesteps of the TimeSeriesCollection are taken.
-        active_periods : Optional[pd.Index]
-            The active periods of the model.
-            If None, all periods from the TimeSeriesCollection are taken.
         """
 
-        if active_timesteps is None and active_periods is None:
+        if active_timesteps is None:
             return self.reset()
 
         active_timesteps = active_timesteps if active_timesteps is not None else self.all_timesteps
-        active_periods = active_periods if active_periods is not None else self.all_periods
 
         if not np.all(active_timesteps.isin(self.all_timesteps)):
             raise ValueError('active_timesteps must be a subset of the timesteps of the TimeSeriesCollection')
-        if active_periods is not None and not np.all(active_periods.isin(self.all_periods)):
-            raise ValueError('active_periods must be a subset of the periods of the TimeSeriesCollection')
 
         (
             self._active_timesteps,
             self._active_timesteps_extra,
             self._active_hours_per_timestep,
             _,
-            self._active_periods
         ) = TimeSeriesCollection.align_dimensions(
-            active_timesteps, active_periods, self.hours_of_last_timestep, self.hours_of_previous_timesteps
+            active_timesteps, self.hours_of_last_timestep, self.hours_of_previous_timesteps
         )
 
         self._activate_timeserieses()
 
     def reset(self):
-        """Reset active timesteps and periods of all TimeSeries."""
+        """Reset active timesteps of all TimeSeries."""
         self._active_timesteps = None
         self._active_timesteps_extra = None
         self._active_hours_per_timestep = None
-        self._active_periods = None
         for time_series in self.time_series_data:
             time_series.reset()
 
@@ -502,11 +487,10 @@ class TimeSeriesCollection:
     @staticmethod
     def align_dimensions(
             timesteps: pd.DatetimeIndex,
-            periods: Optional[pd.Index] = None,
             hours_of_last_timestep: Optional[float] = None,
             hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None
-    ) -> Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Union[int, float, np.ndarray], Optional[pd.Index]]:
-        """Converts the given timesteps, periods and hours_of_last_timestep to the right format
+    ) -> Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Union[int, float, np.ndarray]]:
+        """Converts the given timesteps and hours_of_last_timestep to the right format
 
         Parameters
         ----------
@@ -515,14 +499,11 @@ class TimeSeriesCollection:
         hours_of_last_timestep : Optional[float], optional
             The duration of the last time step. Uses the last time interval if not specified
         hours_of_previous_timesteps: Un
-        periods : Optional[pd.Index], optional
-            The periods of the model. Every period has the same timesteps.
-            Usually years are used as periods.
 
         Returns
         -------
         Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Optional[pd.Index]]
-            The timesteps, timesteps_extra, hours_per_timestep and periods
+            The timesteps, timesteps_extra and hours_per_timestep
 
             - timesteps: pd.DatetimeIndex
                 The timesteps of the model.
@@ -532,9 +513,6 @@ class TimeSeriesCollection:
                 The duration of each timestep in hours.
             - hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]]
                 The duration of the previous timesteps in hours.
-            - periods: Optional[pd.Index]
-                The periods of the model. Every period has the same timesteps.
-                Usually years are used as periods.
         """
 
         if not isinstance(timesteps, pd.DatetimeIndex):
@@ -543,19 +521,13 @@ class TimeSeriesCollection:
             logger.warning('timesteps must be a pandas DatetimeIndex with name "time". Renamed it to "time".')
             timesteps.name = 'time'
 
-        if periods is not None and not isinstance(periods, pd.Index):
-            raise TypeError('periods must be a pandas Index or None')
-        if periods is not None and periods.name != 'period':
-            logger.warning('periods must be a pandas Index with name "period". Renamed it.')
-            periods.name = 'period'
-
         timesteps_extra = TimeSeriesCollection._create_extra_timestep(timesteps, hours_of_last_timestep)
         hours_of_previous_timesteps = TimeSeriesCollection._calculate_hours_of_previous_timesteps(
             timesteps, hours_of_previous_timesteps
         )
-        hours_per_step = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra, periods)
+        hours_per_step = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra)
 
-        return timesteps, timesteps_extra, hours_per_step, hours_of_previous_timesteps, periods
+        return timesteps, timesteps_extra, hours_per_step, hours_of_previous_timesteps
 
     def add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
         self.time_series_data.append(time_series)
@@ -565,7 +537,6 @@ class TimeSeriesCollection:
 
     def _activate_timeserieses(self):
         for time_series in self.time_series_data:
-            time_series.active_periods = self.periods
             if time_series in self._time_series_data_with_extra_step:
                 time_series.active_timesteps = self.timesteps_extra
             else:
@@ -591,7 +562,6 @@ class TimeSeriesCollection:
         ds.attrs.update({
             "timesteps": f"{self.all_timesteps[0]} ... {self.all_timesteps[-1]} | len={len(self.timesteps)}",
             "hours_per_timestep": get_numeric_stats(self.hours_per_timestep),
-            "periods": f"{self.periods[0]} ... {self.periods[-1]} | len={len(self.periods)}" if self.periods is not None else None,
         })
         return ds
 
@@ -622,14 +592,13 @@ class TimeSeriesCollection:
     @staticmethod
     def create_hours_per_timestep(
             timesteps_extra: pd.DatetimeIndex,
-            periods: Optional[pd.Index] = None
     ) -> xr.DataArray:
         """Creates a DataArray representing the duration of each timestep in hours."""
         hours_per_step = timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
         return xr.DataArray(
-            data=np.tile(hours_per_step, (len(periods), 1)) if periods is not None else hours_per_step,
-            coords=(periods, timesteps_extra[:-1]) if periods is not None else (timesteps_extra[:-1],),
-            dims=('period', 'time') if periods is not None else ('time',),
+            data=hours_per_step,
+            coords=(timesteps_extra[:-1],),
+            dims=('time',),
             name='hours_per_step'
         )
 
@@ -694,11 +663,11 @@ class TimeSeriesCollection:
 
     @property
     def coords(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
-        return (self.periods, self.timesteps) if self.periods is not None else (self.timesteps,)
+        return (self.timesteps,)
 
     @property
     def coords_extra(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
-        return (self.periods, self.timesteps_extra) if self.periods is not None else (self.timesteps_extra,)
+        return (self.timesteps_extra,)
 
     @property
     def timesteps(self) -> pd.DatetimeIndex:
@@ -707,10 +676,6 @@ class TimeSeriesCollection:
     @property
     def timesteps_extra(self) -> pd.DatetimeIndex:
         return self.all_timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
-
-    @property
-    def periods(self) -> pd.Index:
-        return self.all_periods if self._active_periods is None else self._active_periods
 
     @property
     def hours_per_timestep(self) -> xr.DataArray:
@@ -736,7 +701,6 @@ class TimeSeriesCollection:
             f"  Time Range: {self.timesteps[0]} -> {self.timesteps[-1]}\n"
             f"  No. of timesteps: {len(self.timesteps)}\n"
             f"  Hours per timestep: {get_numeric_stats(self.hours_per_timestep)}"
-            f"  Periods: {list(self.periods) if self.periods is not None else 'None'}\n"
             f"  TimeSeriesData:\n"
             f"{stats_summary}"
         )

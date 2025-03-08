@@ -27,7 +27,6 @@ def _results_structure(flow_system: FlowSystem) -> Dict[str, Dict]:
             for effect in sorted(flow_system.effects, key=lambda effect: effect.label_full.upper())
         },
         'Time': [datetime.datetime.isoformat(date) for date in flow_system.time_series_collection.timesteps_extra],
-        'Periods': flow_system.time_series_collection.periods.tolist() if flow_system.time_series_collection.periods is not None else None
     }
 
 
