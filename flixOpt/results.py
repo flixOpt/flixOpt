@@ -106,7 +106,6 @@ class CalculationResults:
                         for label, infos in results_structure['Effects'].items()}
 
         self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in results_structure['Time']], name='time')
-        self.periods = pd.Index(results_structure['Periods'], name = 'period') if results_structure['Periods'] is not None else None
         self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.timesteps_extra, self.periods)
 
     def __getitem__(self, key: str) -> Union['ComponentResults', 'BusResults', 'EffectResults']:

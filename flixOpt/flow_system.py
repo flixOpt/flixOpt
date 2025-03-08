@@ -38,7 +38,6 @@ class FlowSystem:
             timesteps: pd.DatetimeIndex,
             hours_of_last_timestep: Optional[float] = None,
             hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None,
-            periods: Optional[List[int]] = None,
     ):
         """
         Parameters
@@ -52,15 +51,11 @@ class FlowSystem:
             If None, the first time increment of time_series is used.
             This is needed to calculate previous durations (for example consecutive_on_hours).
             If you use an array, take care that its long enough to cover all previous values!
-        periods : Optional[List[int]], optional
-            The periods of the model. Every period has the same timesteps.
-            Usually years are used as periods.
         """
         self.time_series_collection = TimeSeriesCollection(
             timesteps=timesteps,
             hours_of_last_timestep=hours_of_last_timestep,
             hours_of_previous_timesteps=hours_of_previous_timesteps,
-            periods=periods
         )
 
         # defaults:
@@ -79,7 +74,7 @@ class FlowSystem:
         flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
                                  hours_of_last_timestep=hours_of_last_timestep,
                                  hours_of_previous_timesteps=ds.attrs['hours_of_previous_timesteps'],
-                                 periods=pd.Index(ds.attrs['periods'], name='period') if ds.attrs.get('periods') is not None else None)
+                                 )
 
         structure = io.insert_dataarray({key: ds.attrs[key] for key in ['components', 'buses', 'effects']}, ds)
         flow_system.add_elements(
@@ -99,7 +94,7 @@ class FlowSystem:
         flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
                                  hours_of_last_timestep=hours_of_last_timestep,
                                  hours_of_previous_timesteps=data['hours_of_previous_timesteps'],
-                                 periods=pd.Index(data['periods'], name='period') if data.get('periods') is not None else None)
+                                 )
 
         flow_system.add_elements(
             *[Bus.from_dict(bus) for bus in data['buses'].values()]
@@ -177,7 +172,6 @@ class FlowSystem:
                 for effect in sorted(self.effects, key=lambda effect: effect.label.upper())
             },
             "timesteps_extra": [date.isoformat() for date in self.time_series_collection.timesteps_extra],
-            "periods": self.time_series_collection.periods,
             "hours_of_previous_timesteps": self.time_series_collection.hours_of_previous_timesteps,
         }
         if data_mode == 'data':

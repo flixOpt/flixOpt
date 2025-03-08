@@ -416,7 +416,7 @@ class TimeSeriesCollection:
             timesteps: pd.DatetimeIndex,
             hours_of_last_timestep: Optional[float],
             hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]],
-            periods: Optional[List[int]]
+            periods: Optional[List[int]] = None,
     ):
         (
             self.all_timesteps,
@@ -690,7 +690,7 @@ class TimeSeriesCollection:
     @staticmethod
     def create_hours_per_timestep(
             timesteps_extra: pd.DatetimeIndex,
-            periods: Optional[pd.Index]
+            periods: Optional[pd.Index] = None
     ) -> xr.DataArray:
         """Creates a DataArray representing the duration of each timestep in hours."""
         hours_per_step = timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')

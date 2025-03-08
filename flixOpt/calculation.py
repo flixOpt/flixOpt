@@ -44,7 +44,6 @@ class Calculation:
         name: str,
         flow_system: FlowSystem,
         active_timesteps: Optional[pd.DatetimeIndex] = None,
-        active_periods: Optional[pd.Index] = None,
         folder: Optional[pathlib.Path] = None,
     ):
         """
@@ -63,7 +62,6 @@ class Calculation:
         self.flow_system = flow_system
         self.model: Optional[SystemModel] = None
         self.active_timesteps = active_timesteps
-        self.active_periods = active_periods
 
         self.durations = {'modeling': 0.0, 'solving': 0.0, 'saving': 0.0}
         self.folder = pathlib.Path.cwd() / 'results' if folder is None else pathlib.Path(folder)
@@ -120,7 +118,6 @@ class Calculation:
         return {
             'Name': self.name,
             'Number of timesteps': len(self.flow_system.time_series_collection.timesteps),
-            'Periods': self.flow_system.time_series_collection.periods,
             'Calculation Type': self.__class__.__name__,
             'Constraints': self.model.constraints.ncons,
             'Variables': self.model.variables.nvars,
@@ -193,7 +190,7 @@ class FullCalculation(Calculation):
     def _activate_time_series(self):
         self.flow_system.transform_data()
         self.flow_system.time_series_collection.activate_indices(
-            active_timesteps=self.active_timesteps, active_periods=self.active_periods
+            active_timesteps=self.active_timesteps,
         )
 
 
@@ -232,8 +229,6 @@ class AggregatedCalculation(FullCalculation):
         folder : pathlib.Path or None
             folder where results should be saved. If None, then the current working directory is used.
         """
-        if flow_system.time_series_collection.periods is not None:
-            raise NotImplementedError('Multiple Periods are currently not supported in AggregatedCalculation')
         super().__init__(name, flow_system, active_timesteps, folder=folder)
         self.aggregation_parameters = aggregation_parameters
         self.components_to_clusterize = components_to_clusterize
