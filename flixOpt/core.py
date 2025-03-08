@@ -131,24 +131,26 @@ class TimeSeries:
 
     @classmethod
     def from_datasource(cls,
-                        data: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray],
+                        data: Union[Scalar, np.integer, np.floating, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray],
                         name: str,
                         timesteps: pd.DatetimeIndex = None,
-                        periods: Optional[pd.Index] = None,
                         aggregation_weight: Optional[float] = None,
                         aggregation_group: Optional[str] = None
                         ) -> 'TimeSeries':
         """
-        Initialize the TimeSeries from multiple datasources.
+        Initialize the TimeSeries from multiple data sources.
 
         Parameters:
         - data (pd.Series): A Series with a DatetimeIndex and possibly a MultiIndex.
-        - dims (Tuple[pd.Index, ...]): The dimensions of the TimeSeries.
+        - name (str): The name of the TimeSeries.
+        - timesteps (pd.DatetimeIndex): The timesteps of the TimeSeries.
         - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
         - aggregation_group (str, optional): The group this TimeSeries is a part of. agg_weight is split between members of a group. Default is None.
         """
-        data = cls(DataConverter.as_dataarray(data, timesteps, periods), name, aggregation_weight, aggregation_group)
-        return data
+        return cls(DataConverter.as_dataarray(data, timesteps),
+                   name,
+                   aggregation_weight,
+                   aggregation_group)
 
     @classmethod
     def from_json(cls, data: Optional[Dict[str, Any]] = None, path: Optional[str] = None) -> 'TimeSeries':
@@ -198,9 +200,8 @@ class TimeSeries:
         self._update_active_data()
 
     def reset(self):
-        """Reset active timesteps and periods."""
+        """Reset active timesteps."""
         self.active_timesteps = None
-        self.active_periods = None
 
     def restore_data(self):
         """Restore stored_data from the backup."""
@@ -230,10 +231,7 @@ class TimeSeries:
 
     def _update_active_data(self):
         """Update the active data."""
-        if 'period' in self._stored_data.indexes:
-            self._active_data = self._stored_data.sel(time=self.active_timesteps, period=self.active_periods)
-        else:
-            self._active_data = self._stored_data.sel(time=self.active_timesteps)
+        self._active_data = self._stored_data.sel(time=self.active_timesteps)
 
     @property
     def all_equal(self) -> bool:
@@ -258,31 +256,9 @@ class TimeSeries:
         self._update_active_data()  # Refresh view
 
     @property
-    def active_periods(self) -> Optional[pd.Index]:
-        """Return the current active index."""
-        return self._active_periods
-
-    @active_periods.setter
-    def active_periods(self, periods: Optional[pd.Index]):
-        """Set new active periods and refresh active_data."""
-        if periods is None:
-            self._active_periods = self.stored_data.indexes['period'] if 'period' in self.stored_data.indexes else None
-        elif isinstance(periods, pd.Index):
-            self._active_periods = periods
-        else:
-            raise TypeError("periods must be a pd.Index or None")
-
-        self._update_active_data()  # Refresh view
-
-    @property
     def active_data(self) -> xr.DataArray:
         """Return a view of stored_data based on active_index."""
         return self._active_data
-
-    @active_data.setter
-    def active_data(self, value):
-        """Prevent direct modification of active_data."""
-        raise AttributeError("active_data cannot be directly modified. Modify stored_data instead.")
 
     @property
     def stored_data(self) -> xr.DataArray:
@@ -299,12 +275,11 @@ class TimeSeries:
         value: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
             Data to update stored_data with.
         """
-        new_data = DataConverter.as_dataarray(value, time=self.active_timesteps, period=self.active_periods)
+        new_data = DataConverter.as_dataarray(value, timesteps=self.active_timesteps)
         if new_data.equals(self._stored_data):
             return  # No change in stored_data. Do nothing. This prevents pushing out the backup
         self._stored_data = new_data
         self.active_timesteps = None
-        self.active_periods = None
 
     @property
     def sel(self):
