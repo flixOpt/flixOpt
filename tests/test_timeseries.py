@@ -100,7 +100,7 @@ class TestTimeSeries:
         assert sample_timeseries.active_timesteps.equals(sample_time_index)
 
         # Test invalid type
-        with pytest.raises(TypeError, match="must be a pandas Index"):
+        with pytest.raises(TypeError, match="must be a pandas DatetimeIndex"):
             sample_timeseries.active_timesteps = "invalid"
 
     def test_reset(self, sample_timeseries, sample_time_index):
@@ -244,7 +244,7 @@ class TestTimeSeries:
         )
 
         # Test validation in from_json
-        with pytest.raises(ValueError, match="Only one of path and data"):
+        with pytest.raises(ValueError, match="one of 'path' or 'data'"):
             TimeSeries.from_json(data=json_dict, path='dummy.json')
 
     def test_all_equal(self, sample_time_index):
