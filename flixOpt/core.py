@@ -321,19 +321,19 @@ class TimeSeries:
         return other / self.active_data
 
     # Unary operations. Not sure if this is the best way...
-    def __neg__(self):
+    def __neg__(self) -> xr.DataArray:
         return -self.active_data
 
-    def __pos__(self):
+    def __pos__(self) -> xr.DataArray:
         return +self.active_data
 
-    def __abs__(self):
+    def __abs__(self) -> xr.DataArray:
         return abs(self.active_data)
 
-    def __gt__(self, other):
+    def __gt__(self, other) -> bool:
         """Compare two TimeSeries instances based on their xarray.DataArray."""
         if isinstance(other, TimeSeries):
-            return (self.active_data > other.active_data).all()
+            return (self.active_data > other.active_data).all().item()
         return NotImplemented  # In case the comparison is with something else
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
