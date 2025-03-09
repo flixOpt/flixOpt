@@ -459,38 +459,68 @@ class TimeSeries:
 
 
 class TimeSeriesCollection:
+    """
+    Collection of TimeSeries objects with shared timestep management.
+
+    TimeSeriesCollection handles multiple TimeSeries objects with synchronized
+    timesteps, provides operations on collections, and manages extra timesteps.
+    """
+
     def __init__(
             self,
             timesteps: pd.DatetimeIndex,
-            hours_of_last_timestep: Optional[float],
-            hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]],
+            hours_of_last_timestep: Optional[float] = None,
+            hours_of_previous_timesteps: Optional[Union[float, np.ndarray]] = None
     ):
-        (
-            self.all_timesteps,
-            self.all_timesteps_extra,
-            self.all_hours_per_timestep,
-            self.hours_of_previous_timesteps,
-        ) = TimeSeriesCollection.align_dimensions(timesteps,
-                                                   hours_of_last_timestep,
-                                                   hours_of_previous_timesteps)
+        """Initialize with timesteps and optional duration settings."""
+        # Prepare and validate timesteps
+        self._validate_timesteps(timesteps)
+        self.hours_of_previous_timesteps = self._calculate_hours_of_previous_timesteps(
+            timesteps, hours_of_previous_timesteps
+        )
 
+        # Set up timesteps and hours
+        self.all_timesteps = timesteps
+        self.all_timesteps_extra = self._create_timesteps_with_extra(timesteps, hours_of_last_timestep)
+        self.all_hours_per_timestep = self._calculate_hours_per_timestep(self.all_timesteps_extra)
+
+        # Active timestep tracking
         self._active_timesteps = None
         self._active_timesteps_extra = None
         self._active_hours_per_timestep = None
 
+        # Dictionary of time series by name
+        self.time_series_data: Dict[str, TimeSeries] = {}
+
+        # Aggregation
         self.group_weights: Dict[str, float] = {}
         self.weights: Dict[str, float] = {}
-        self.time_series_data: List[TimeSeries] = []
-        self._time_series_data_with_extra_step: List[TimeSeries] = []  # All part of self.time_series_data, but with extra timestep
+
+        # Caches for performance
+        self._cache_constants: Optional[List[TimeSeries]] = None
+        self._cache_non_constants: Optional[List[TimeSeries]] = None
+        self._cache_invalidated = False
+
+    @classmethod
+    def with_uniform_timesteps(
+            cls,
+            start_time: pd.Timestamp,
+            periods: int,
+            freq: str,
+            hours_per_step: Optional[float] = None
+    ) -> 'TimeSeriesCollection':
+        """Create a collection with uniform timesteps."""
+        timesteps = pd.date_range(start_time, periods=periods, freq=freq, name='time')
+        return cls(timesteps, hours_of_previous_timesteps=hours_per_step)
 
     def create_time_series(
-        self,
-        data: Union[NumericData, TimeSeriesData],
-        name: str,
-        extra_timestep: bool=False
+            self,
+            data: Union[NumericData, TimeSeriesData],
+            name: str,
+            needs_extra_timestep: bool = False
     ) -> TimeSeries:
         """
-        Creates a TimeSeries from the given data and adds it to the time_series_data.
+        Creates a TimeSeries from the given data and adds it to the collection.
 
         Parameters
         ----------
@@ -498,7 +528,7 @@ class TimeSeriesCollection:
             The data to create the TimeSeries from.
         name: str
             The name of the TimeSeries.
-        extra_timestep: bool, optional
+        needs_extra_timestep: bool, optional
             Whether to create an additional timestep at the end of the timesteps.
 
         Returns
@@ -507,299 +537,330 @@ class TimeSeriesCollection:
             The created TimeSeries.
 
         """
-        time_series = TimeSeries.from_datasource(
-            name=name,
-            data=data if not isinstance(data, TimeSeriesData) else data.data,
-            timesteps=self.timesteps if not extra_timestep else self.timesteps_extra,
-            aggregation_weight=data.agg_weight if isinstance(data, TimeSeriesData) else None,
-            aggregation_group=data.agg_group if isinstance(data, TimeSeriesData) else None
-        )
+        # Check for duplicate name
+        if name in self.time_series_data:
+            raise ValueError(f"TimeSeries '{name}' already exists in this collection")
 
+        # Determine which timesteps to use
+        timesteps_to_use = self.timesteps_extra if needs_extra_timestep else self.timesteps
+
+        # Create the time series
         if isinstance(data, TimeSeriesData):
-            data.label = time_series.name  # Connecting User_time_series to TimeSeries
+            time_series = TimeSeries.from_datasource(
+                name=name,
+                data=data.data,
+                timesteps=timesteps_to_use,
+                aggregation_weight=data.agg_weight,
+                aggregation_group=data.agg_group,
+                needs_extra_timestep=needs_extra_timestep
+            )
+            # Connect the user time series to the created TimeSeries
+            data.label = name
+        else:
+            time_series = TimeSeries.from_datasource(
+                name=name,
+                data=data,
+                timesteps=timesteps_to_use,
+                needs_extra_timestep=needs_extra_timestep
+            )
 
-        self.add_time_series(time_series, extra_timestep)
+        # Add to the collection
+        self.add_time_series(time_series)
+        self._invalidate_cache()
+
         return time_series
 
     def calculate_aggregation_weights(self) -> Dict[str, float]:
+        """Calculate and return aggregation weights for all time series."""
         self.group_weights = self._calculate_group_weights()
-        self.weights = self._calculate_aggregation_weights()
+        self.weights = self._calculate_weights()
 
         if np.all(np.isclose(list(self.weights.values()), 1, atol=1e-6)):
             logger.info('All Aggregation weights were set to 1')
 
         return self.weights
 
-    def activate_indices(self, active_timesteps: Optional[pd.DatetimeIndex] = None):
+    def activate_timesteps(self, active_timesteps: Optional[pd.DatetimeIndex] = None):
         """
-        Update active timesteps and data of the TimeSeriesCollection.
+        Update active timesteps for the collection and all time series.
         If no arguments are provided, the active timesteps are reset.
 
         Parameters
         ----------
         active_timesteps : Optional[pd.DatetimeIndex]
             The active timesteps of the model.
-            If None, the all timesteps of the TimeSeriesCollection are taken.
-        """
-
+            If None, the all timesteps of the TimeSeriesCollection are taken."""
         if active_timesteps is None:
             return self.reset()
 
-        active_timesteps = active_timesteps if active_timesteps is not None else self.all_timesteps
-
-        if not np.all(active_timesteps.isin(self.all_timesteps)):
+        if not np.all(np.isin(active_timesteps, self.all_timesteps)):
             raise ValueError('active_timesteps must be a subset of the timesteps of the TimeSeriesCollection')
 
-        (
-            self._active_timesteps,
-            self._active_timesteps_extra,
-            self._active_hours_per_timestep,
-            _,
-        ) = TimeSeriesCollection.align_dimensions(
-            active_timesteps, self.hours_of_last_timestep, self.hours_of_previous_timesteps
-        )
+        # Calculate derived timesteps
+        self._active_timesteps = active_timesteps
+        last_ts_idx = np.where(self.all_timesteps == active_timesteps[-1])[0][0]
+        self._active_timesteps_extra = self.all_timesteps_extra[:last_ts_idx + 2]
+        self._active_hours_per_timestep = self.all_hours_per_timestep.sel(time=active_timesteps)
 
-        self._activate_timeserieses()
+        # Update all time series
+        self._update_time_series_timesteps()
 
     def reset(self):
-        """Reset active timesteps of all TimeSeries."""
+        """Reset active timesteps to defaults for all time series."""
         self._active_timesteps = None
         self._active_timesteps_extra = None
         self._active_hours_per_timestep = None
-        for time_series in self.time_series_data:
+
+        for time_series in self.time_series_data.values():
             time_series.reset()
 
     def restore_data(self):
-        """Restore stored_data from the backup."""
-        for time_series in self.time_series_data:
+        """Restore original data for all time series."""
+        for time_series in self.time_series_data.values():
             time_series.restore_data()
+        self._invalidate_cache()
 
     def insert_new_data(self, data: pd.DataFrame):
-        """Insert new data into the TimeSeriesCollection.
-
-        Parameters
-        ----------
-        data : pd.DataFrame
-            The new data to insert.
-            Must have the same columns as the TimeSeries in the TimeSeriesCollection.
-            Must have the same index as the timesteps of the TimeSeriesCollection.
-        """
+        """Update time series with new data from a DataFrame."""
         if not isinstance(data, pd.DataFrame):
-            raise TypeError(f"data must be a pandas DataFrame. Got {type(data)=}")
+            raise TypeError(f"data must be a pandas DataFrame, got {type(data).__name__}")
 
-        for time_series in self.time_series_data:
-            if time_series.name in data.columns:
-                if time_series in self._time_series_data_with_extra_step:
-                    extra_step_value = data[time_series.name].iloc[-1]
-                    time_series.stored_data = pd.concat(
-                        [data[time_series.name], pd.Series(
-                            extra_step_value, index=[data.index[-1] + pd.Timedelta(hours=self.hours_of_last_timestep)])
-                         ]
-                    )
+        if not data.index.equals(self.timesteps):
+            raise ValueError("DataFrame index must match collection timesteps")
+
+        for name, ts in self.time_series_data.items():
+            if name in data.columns:
+                if not ts.needs_extra_timestep:
+                    ts.stored_data = data[name]
                 else:
-                    time_series.stored_data = data[time_series.name]
-                logger.debug(f'Inserted data for {time_series.name}')
+                    # For time series with extra timestep, add the extra value
+                    extra_step_value = data[name].iloc[-1]
+                    extra_step_index = pd.DatetimeIndex([self.timesteps_extra[-1]], name='time')
+                    extra_step_series = pd.Series([extra_step_value], index=extra_step_index)
 
-    @staticmethod
-    def align_dimensions(
-            timesteps: pd.DatetimeIndex,
-            hours_of_last_timestep: Optional[float] = None,
-            hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None
-    ) -> Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Union[int, float, np.ndarray]]:
-        """Converts the given timesteps and hours_of_last_timestep to the right format
+                    # Combine the regular data with the extra timestep
+                    combined_series = pd.concat([data[name], extra_step_series])
+                    ts.stored_data = combined_series
 
-        Parameters
-        ----------
-        timesteps : pd.DatetimeIndex
-            The timesteps of the model.
-        hours_of_last_timestep : Optional[float], optional
-            The duration of the last time step. Uses the last time interval if not specified
-        hours_of_previous_timesteps: Un
+                logger.debug(f'Updated data for {name}')
 
-        Returns
-        -------
-        Tuple[pd.DatetimeIndex, pd.DatetimeIndex, xr.DataArray, Optional[pd.Index]]
-            The timesteps, timesteps_extra and hours_per_timestep
+        self._invalidate_cache()
 
-            - timesteps: pd.DatetimeIndex
-                The timesteps of the model.
-            - timesteps_extra: pd.DatetimeIndex
-                The timesteps of the model, including an extra timestep at the end.
-            - hours_per_timestep: xr.DataArray
-                The duration of each timestep in hours.
-            - hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]]
-                The duration of the previous timesteps in hours.
-        """
+    def add_time_series(self, time_series: TimeSeries):
+        """Add an existing TimeSeries to the collection."""
+        if time_series.name in self.time_series_data:
+            raise ValueError(f"TimeSeries '{time_series.name}' already exists in this collection")
 
-        if not isinstance(timesteps, pd.DatetimeIndex):
-            raise TypeError('timesteps must be a pandas DatetimeIndex')
-        if not timesteps.name == 'time':
-            logger.warning('timesteps must be a pandas DatetimeIndex with name "time". Renamed it to "time".')
-            timesteps.name = 'time'
+        self.time_series_data[time_series.name] = time_series
+        self._invalidate_cache()
 
-        timesteps_extra = TimeSeriesCollection._create_extra_timestep(timesteps, hours_of_last_timestep)
-        hours_of_previous_timesteps = TimeSeriesCollection._calculate_hours_of_previous_timesteps(
-            timesteps, hours_of_previous_timesteps
-        )
-        hours_per_step = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra)
+    def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant') -> pd.DataFrame:
+        """Convert collection to DataFrame with optional filtering."""
+        # Convert to Dataset first
+        include_constants = filtered != 'non_constant'
+        ds = self.to_dataset(include_constants=include_constants)
+        df = ds.to_dataframe()
 
-        return timesteps, timesteps_extra, hours_per_step, hours_of_previous_timesteps
-
-    def add_time_series(self, time_series: TimeSeries, extra_timestep: bool):
-        self.time_series_data.append(time_series)
-        if extra_timestep:
-            self._time_series_data_with_extra_step.append(time_series)
-        self._check_unique_labels()
-
-    def _activate_timeserieses(self):
-        for time_series in self.time_series_data:
-            if time_series in self._time_series_data_with_extra_step:
-                time_series.active_timesteps = self.timesteps_extra
-            else:
-                time_series.active_timesteps = self.timesteps
-
-    def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant'):
-        df = self.to_dataset().to_dataframe()
-        if filtered == 'all':  # Return all time series
+        # Apply filtering
+        if filtered == 'all':
             return df
-        elif filtered == 'constant':  # Return only constant time series
-            return df.loc[:, df.nunique() ==1]
-        elif filtered == 'non_constant':  # Return only non-constant time series
+        elif filtered == 'constant':
+            return df.loc[:, df.nunique() == 1]
+        elif filtered == 'non_constant':
             return df.loc[:, df.nunique() > 1]
         else:
-            raise ValueError('Not supported argument for "filtered".')
+            raise ValueError("filtered must be one of: 'all', 'constant', 'non_constant'")
 
     def to_dataset(self, include_constants: bool = True) -> xr.Dataset:
-        """Combine all stored DataArrays into a single Dataset."""
-        ds = xr.Dataset({time_series.name: time_series.active_data
-                         for time_series in self.time_series_data
-                         if not time_series.all_equal or (time_series.all_equal and include_constants)})
+        """Combine all time series into a single Dataset."""
+        # Determine which series to include
+        if include_constants:
+            series_to_include = self.time_series_data.values()
+        else:
+            series_to_include = self.non_constants
+
+        ds = xr.Dataset({ts.name: ts.active_data for ts in series_to_include})
 
         ds.attrs.update({
-            "timesteps": f"{self.all_timesteps[0]} ... {self.all_timesteps[-1]} | len={len(self.timesteps)}",
-            "hours_per_timestep": get_numeric_stats(self.hours_per_timestep),
+            "timesteps": f"{self.timesteps[0]} ... {self.timesteps[-1]} | len={len(self.timesteps)}",
+            "hours_per_timestep": self._format_stats(self.hours_per_timestep),
         })
         return ds
 
-    @staticmethod
-    def _create_extra_timestep(timesteps: pd.DatetimeIndex,
-                               hours_of_last_timestep: Optional[float]) -> pd.DatetimeIndex:
-        """Creates an extra timestep at the end of the timesteps."""
-        if hours_of_last_timestep:
-            last_date = pd.DatetimeIndex(
-                [timesteps[-1] + pd.to_timedelta(hours_of_last_timestep, 'h')])
-        else:
-            last_date = pd.DatetimeIndex([timesteps[-1] + (timesteps[-1] - timesteps[-2])])
+    def _update_time_series_timesteps(self):
+        """Update active timesteps for all time series."""
+        for ts in self.time_series_data.values():
+            if ts.needs_extra_timestep:
+                ts.active_timesteps = self.timesteps_extra
+            else:
+                ts.active_timesteps = self.timesteps
 
+    def _invalidate_cache(self):
+        """Mark caches as invalid."""
+        self._cache_invalidated = True
+        self._cache_constants = None
+        self._cache_non_constants = None
+
+    @staticmethod
+    def _validate_timesteps(timesteps: pd.DatetimeIndex):
+        """Validate timesteps format and rename if needed."""
+        if not isinstance(timesteps, pd.DatetimeIndex):
+            raise TypeError('timesteps must be a pandas DatetimeIndex')
+
+        if len(timesteps) < 2:
+            raise ValueError('timesteps must contain at least 2 timestamps')
+
+        # Ensure timesteps has the required name
+        if timesteps.name != 'time':
+            logger.warning('Renamed timesteps to "time" (was "%s")', timesteps.name)
+            timesteps.name = 'time'
+
+    @staticmethod
+    def _create_timesteps_with_extra(
+            timesteps: pd.DatetimeIndex,
+            hours_of_last_timestep: Optional[float]
+    ) -> pd.DatetimeIndex:
+        """Create timesteps with an extra step at the end."""
+        if hours_of_last_timestep is not None:
+            # Create the extra timestep using the specified duration
+            last_date = pd.DatetimeIndex([timesteps[-1] + pd.Timedelta(hours=hours_of_last_timestep)],name='time')
+        else:
+            # Use the last interval as the extra timestep duration
+            last_date = pd.DatetimeIndex([timesteps[-1] + (timesteps[-1] - timesteps[-2])], name='time')
+
+        # Combine with original timesteps
         return pd.DatetimeIndex(timesteps.append(last_date), name='time')
 
     @staticmethod
     def _calculate_hours_of_previous_timesteps(
             timesteps: pd.DatetimeIndex,
-            hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]]
-    ) -> Union[int, float, np.ndarray]:
-        """Calculates the duration of the previous timesteps in hours."""
-        return (
-            ((timesteps[1] - timesteps[0]) / np.timedelta64(1, 'h'))
-            if hours_of_previous_timesteps is None
-            else hours_of_previous_timesteps
-        )
+            hours_of_previous_timesteps: Optional[Union[float, np.ndarray]]
+    ) -> Union[float, np.ndarray]:
+        """Calculate duration of regular timesteps."""
+        if hours_of_previous_timesteps is not None:
+            return hours_of_previous_timesteps
+
+        # Calculate from the first interval
+        first_interval = timesteps[1] - timesteps[0]
+        return first_interval.total_seconds() / 3600  # Convert to hours
 
     @staticmethod
-    def create_hours_per_timestep(
-            timesteps_extra: pd.DatetimeIndex,
-    ) -> xr.DataArray:
-        """Creates a DataArray representing the duration of each timestep in hours."""
-        hours_per_step = timesteps_extra.to_series().diff()[1:].values / pd.to_timedelta(1, 'h')
+    def _calculate_hours_per_timestep(timesteps_extra: pd.DatetimeIndex) -> xr.DataArray:
+        """Calculate duration of each timestep."""
+        # Calculate differences between consecutive timestamps
+        hours_per_step = np.diff(timesteps_extra) / pd.Timedelta(hours=1)
+
         return xr.DataArray(
             data=hours_per_step,
-            coords=(timesteps_extra[:-1],),
+            coords={'time': timesteps_extra[:-1]},
             dims=('time',),
             name='hours_per_step'
         )
 
     def _calculate_group_weights(self) -> Dict[str, float]:
-        """Calculates the aggregation weights of each group"""
+        """Calculate weights for aggregation groups."""
+        # Count series in each group
         groups = [
-            time_series.aggregation_group
-            for time_series in self.time_series_data
-            if time_series.aggregation_group is not None
+            ts.aggregation_group
+            for ts in self.time_series_data.values()
+            if ts.aggregation_group is not None
         ]
-        group_size = dict(Counter(groups))
-        group_weights = {group: 1 / size for group, size in group_size.items()}
-        return group_weights
+        group_counts = Counter(groups)
 
-    def _calculate_aggregation_weights(self) -> Dict[str, float]:
-        """Calculates the aggregation weight for each TimeSeries. Default is 1"""
-        return {
-            time_series.name: self.group_weights.get(time_series.aggregation_group, time_series.aggregation_weight or 1)
-            for time_series in self.time_series_data
-        }
+        # Calculate weight for each group (1/count)
+        return {group: 1 / count for group, count in group_counts.items()}
 
-    def _check_unique_labels(self):
-        """Makes sure every label of the TimeSeries in time_series_list is unique"""
-        label_counts = Counter([time_series.name for time_series in self.time_series_data])
-        duplicates = [label for label, count in label_counts.items() if count > 1]
-        assert duplicates == [], 'Duplicate TimeSeries labels found: {}.'.format(', '.join(duplicates))
+    def _calculate_weights(self) -> Dict[str, float]:
+        """Calculate weights for all time series."""
+        # Calculate weight for each time series
+        weights = {}
+        for name, ts in self.time_series_data.items():
+            if ts.aggregation_group is not None:
+                # Use group weight
+                weights[name] = self.group_weights.get(ts.aggregation_group, 1)
+            else:
+                # Use individual weight or default to 1
+                weights[name] = ts.aggregation_weight or 1
 
-    def __getitem__(self, name: str) -> 'TimeSeries':
-        """
-        Get a time_series by label
+        return weights
 
-        Raises:
-            KeyError: If no time_series with the given label is found.
-        """
-        #TODO: This is not efficient! Use a dict instead
-        for time_series in self.time_series_data:  # TODO: This is not efficient! Use a dict instead
-            if time_series.name == name:
-                return time_series
-        raise KeyError(f'TimeSeries "{name}" not found!')
+    def _format_stats(self, data) -> str:
+        """Format statistics for a data array."""
+        if hasattr(data, 'values'):
+            values = data.values
+        else:
+            values = np.asarray(data)
+
+        mean_val = np.mean(values)
+        min_val = np.min(values)
+        max_val = np.max(values)
+
+        return f"mean: {mean_val:.2f}, min: {min_val:.2f}, max: {max_val:.2f}"
+
+    def __getitem__(self, name: str) -> TimeSeries:
+        """Get a TimeSeries by name."""
+        try:
+            return self.time_series_data[name]
+        except KeyError:
+            raise KeyError(f'TimeSeries "{name}" not found')
 
     def __iter__(self) -> Iterator[TimeSeries]:
-        return iter(self.time_series_data)
+        """Iterate through all TimeSeries in the collection."""
+        return iter(self.time_series_data.values())
 
     def __len__(self) -> int:
+        """Get the number of TimeSeries in the collection."""
         return len(self.time_series_data)
 
     def __contains__(self, item: Union[str, TimeSeries]) -> bool:
-        """Check if the effect exists. Checks for label or object"""
+        """Check if a TimeSeries exists in the collection."""
         if isinstance(item, str):
-            return item in [ts.name for ts in self.time_series_data]  # Check if the label exists
+            return item in self.time_series_data
         elif isinstance(item, TimeSeries):
-            return item in self.time_series_data  # Check if the object exists
+            return item in self.time_series_data.values()
         return False
 
     @property
     def non_constants(self) -> List[TimeSeries]:
-        return [time_series for time_series in self.time_series_data if not time_series.all_equal]
+        """Get time series with varying values."""
+        if self._cache_non_constants is None or self._cache_invalidated:
+            self._cache_non_constants = [
+                ts for ts in self.time_series_data.values()
+                if not ts.all_equal
+            ]
+            self._cache_invalidated = False
+        return self._cache_non_constants
 
     @property
     def constants(self) -> List[TimeSeries]:
-        return [time_series for time_series in self.time_series_data if time_series.all_equal]
-
-    @property
-    def coords(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
-        return (self.timesteps,)
-
-    @property
-    def coords_extra(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
-        return (self.timesteps_extra,)
+        """Get time series with constant values."""
+        if self._cache_constants is None or self._cache_invalidated:
+            self._cache_constants = [
+                ts for ts in self.time_series_data.values()
+                if ts.all_equal
+            ]
+            self._cache_invalidated = False
+        return self._cache_constants
 
     @property
     def timesteps(self) -> pd.DatetimeIndex:
+        """Get the active timesteps."""
         return self.all_timesteps if self._active_timesteps is None else self._active_timesteps
 
     @property
     def timesteps_extra(self) -> pd.DatetimeIndex:
+        """Get the active timesteps with extra step."""
         return self.all_timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
 
     @property
     def hours_per_timestep(self) -> xr.DataArray:
+        """Get the duration of each active timestep."""
         return self.all_hours_per_timestep if self._active_hours_per_timestep is None else self._active_hours_per_timestep
 
     @property
     def hours_of_last_timestep(self) -> float:
-        return self.hours_per_timestep[-1].item()
+        """Get the duration of the last timestep."""
+        return float(self.hours_per_timestep[-1].item())
 
     def __repr__(self):
         return f"TimeSeriesCollection:\n{self.to_dataset()}"
@@ -814,10 +875,10 @@ class TimeSeriesCollection:
 
         return (
             f"TimeSeriesCollection with {len(self.time_series_data)} series\n"
-            f"  Time Range: {self.timesteps[0]} -> {self.timesteps[-1]}\n"
-            f"  No. of timesteps: {len(self.timesteps)}\n"
-            f"  Hours per timestep: {get_numeric_stats(self.hours_per_timestep)}"
-            f"  TimeSeriesData:\n"
+            f"  Time Range: {self.timesteps[0]} → {self.timesteps[-1]}\n"
+            f"  No. of timesteps: {len(self.timesteps)} + 1 extra\n"
+            f"  Hours per timestep: {get_numeric_stats(self.hours_per_timestep)}\n"
+            f"  Time Series Data:\n"
             f"{stats_summary}"
         )
 
