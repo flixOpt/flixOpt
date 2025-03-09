@@ -17,7 +17,7 @@ import xarray as xr
 logger = logging.getLogger('flixOpt')
 
 Scalar = Union[int, float]  # Datatype
-NumericData = Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
+NumericData = Union[int, float, np.integer, np.floating, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
 NumericDataTS = Union[NumericData, 'TimeSeriesData']
 
 
@@ -128,60 +128,102 @@ class TimeSeriesData:
 
 
 class TimeSeries:
+    """
+    A class representing time series data with active and stored states.
+
+    TimeSeries provides a way to store time-indexed data and work with temporal subsets.
+    It supports arithmetic operations, aggregation, and JSON serialization.
+
+    Attributes:
+        name (str): The name of the time series
+        aggregation_weight (Optional[float]): Weight used for aggregation
+        aggregation_group (Optional[str]): Group name for shared aggregation weighting
+        needs_extra_timestep (bool): Whether this series needs an extra timestep
+    """
 
     @classmethod
     def from_datasource(cls,
-                        data: Union[Scalar, np.integer, np.floating, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray],
+                        data: NumericData,
                         name: str,
-                        timesteps: pd.DatetimeIndex = None,
+                        timesteps: pd.DatetimeIndex,
                         aggregation_weight: Optional[float] = None,
-                        aggregation_group: Optional[str] = None
+                        aggregation_group: Optional[str] = None,
+                        needs_extra_timestep: bool = False
                         ) -> 'TimeSeries':
         """
         Initialize the TimeSeries from multiple data sources.
 
         Parameters:
-        - data (pd.Series): A Series with a DatetimeIndex and possibly a MultiIndex.
-        - name (str): The name of the TimeSeries.
-        - timesteps (pd.DatetimeIndex): The timesteps of the TimeSeries.
-        - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
-        - aggregation_group (str, optional): The group this TimeSeries is a part of. agg_weight is split between members of a group. Default is None.
+            data: The time series data
+            name: The name of the TimeSeries
+            timesteps: The timesteps of the TimeSeries
+            aggregation_weight: The weight in aggregation calculations
+            aggregation_group: Group this TimeSeries belongs to for aggregation weight sharing
+            needs_extra_timestep: Whether this series requires an extra timestep
+
+        Returns:
+            A new TimeSeries instance
         """
-        return cls(DataConverter.as_dataarray(data, timesteps),
-                   name,
-                   aggregation_weight,
-                   aggregation_group)
+        return cls(
+            DataConverter.as_dataarray(data, timesteps),
+            name,
+            aggregation_weight,
+            aggregation_group,
+            needs_extra_timestep
+        )
 
     @classmethod
     def from_json(cls, data: Optional[Dict[str, Any]] = None, path: Optional[str] = None) -> 'TimeSeries':
         """
-        Load a TimeSeries from a dictionary or json file
+        Load a TimeSeries from a dictionary or json file.
+
+        Parameters:
+            data: Dictionary containing TimeSeries data
+            path: Path to a JSON file containing TimeSeries data
+
+        Returns:
+            A new TimeSeries instance
+
+        Raises:
+            ValueError: If both path and data are provided or neither is provided
         """
-        if path is not None and data is not None:
-            raise ValueError("Only one of path and data can be provided")
+        if (path is None and data is None) or (path is not None and data is not None):
+            raise ValueError("Exactly one of 'path' or 'data' must be provided")
+
         if path is not None:
             with open(path, 'r') as f:
                 data = json.load(f)
+
+        # Convert ISO date strings to datetime objects
         data["data"]["coords"]["time"]["data"] = pd.to_datetime(data["data"]["coords"]["time"]["data"])
+
+        # Create the TimeSeries instance
         return cls(
             data=xr.DataArray.from_dict(data["data"]),
             name=data["name"],
             aggregation_weight=data["aggregation_weight"],
             aggregation_group=data["aggregation_group"],
+            needs_extra_timestep=data["needs_extra_timestep"]
         )
 
     def __init__(self,
                  data: xr.DataArray,
                  name: str,
                  aggregation_weight: Optional[float] = None,
-                 aggregation_group: Optional[str] = None):
+                 aggregation_group: Optional[str] = None,
+                 needs_extra_timestep: bool = False):
         """
         Initialize a TimeSeries with a DataArray.
 
         Parameters:
-        - data (xr.DataArray): A Series with a DatetimeIndex and possibly a MultiIndex.
-        - aggregation_weight (float, optional): The weight of the data in the aggregation. Defaults to None.
-        - aggregation_group (str, optional): The group this TimeSeries is a part of. agg_weight is split between members of a group. Default is None.
+            data: The DataArray containing time series data
+            name: The name of the TimeSeries
+            aggregation_weight: The weight in aggregation calculations
+            aggregation_group: Group this TimeSeries belongs to for weight sharing
+            needs_extra_timestep: Whether this series requires an extra timestep
+
+        Raises:
+            ValueError: If data doesn't have a 'time' index or has more than 1 dimension
         """
         if 'time' not in data.indexes:
             raise ValueError(f'DataArray must have a "time" index. Got {data.indexes}')
@@ -191,95 +233,131 @@ class TimeSeries:
         self.name = name
         self.aggregation_weight = aggregation_weight
         self.aggregation_group = aggregation_group
+        self.needs_extra_timestep = needs_extra_timestep
 
-        self._stored_data = data.copy()
-        self._backup: xr.DataArray = self.stored_data  # Single backup instance. Enables to temporarily overwrite the data.
+        # Data management
+        self._stored_data = data.copy(deep=True)
+        self._backup = self._stored_data.copy(deep=True)
+        self._active_timesteps = self._stored_data.indexes['time']
         self._active_data = None
-
-        self._active_timesteps = self.stored_data.indexes['time']
         self._update_active_data()
 
     def reset(self):
-        """Reset active timesteps."""
+        """
+        Reset active timesteps to the full set of stored timesteps.
+        """
         self.active_timesteps = None
 
     def restore_data(self):
-        """Restore stored_data from the backup."""
-        self._stored_data = self._backup.copy()
+        """
+        Restore stored_data from the backup and reset active timesteps.
+        """
+        self._stored_data = self._backup.copy(deep=True)
         self.reset()
 
     def to_json(self, path: Optional[pathlib.Path] = None) -> Dict[str, Any]:
         """
-        Save the TimeSeries to a dictionary or json file
+        Save the TimeSeries to a dictionary or JSON file.
+
+        Parameters:
+            path: Optional path to save JSON file
+
+        Returns:
+            Dictionary representation of the TimeSeries
         """
         data = {
             "name": self.name,
             "aggregation_weight": self.aggregation_weight,
             "aggregation_group": self.aggregation_group,
+            "needs_extra_timestep": self.needs_extra_timestep,
             "data": self.active_data.to_dict(),
         }
-        data["data"]["coords"]["time"]["data"] = [date.isoformat() for date in data["data"]["coords"]["time"]["data"]]
+
+        # Convert datetime objects to ISO strings
+        data["data"]["coords"]["time"]["data"] = [
+            date.isoformat() for date in data["data"]["coords"]["time"]["data"]
+        ]
+
+        # Save to file if path is provided
         if path is not None:
+            indent = 4 if len(self.active_timesteps) <= 480 else None
             with open(path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4 if len(self.active_timesteps) <= 480 else None, ensure_ascii=False)
+                json.dump(data, f, indent=indent, ensure_ascii=False)
+
         return data
 
     @property
     def stats(self) -> str:
-        """Return a statistical summary of the active data."""
+        """
+        Return a statistical summary of the active data.
+
+        Returns:
+            String representation of data statistics
+        """
         return get_numeric_stats(self.active_data, padd=0)
 
     def _update_active_data(self):
-        """Update the active data."""
+        """
+        Update the active data based on active_timesteps.
+        """
         self._active_data = self._stored_data.sel(time=self.active_timesteps)
 
     @property
     def all_equal(self) -> bool:
-        """ Checks for all values in the being equal"""
+        """Check if all values in the series are equal."""
         return np.unique(self.active_data.values).size == 1
 
     @property
     def active_timesteps(self) -> pd.DatetimeIndex:
-        """Return the current active index."""
+        """Get the current active timesteps."""
         return self._active_timesteps
 
     @active_timesteps.setter
     def active_timesteps(self, timesteps: Optional[pd.DatetimeIndex]):
-        """Set active_timesteps and refresh active_data."""
+        """
+        Set active_timesteps and refresh active_data.
+
+        Parameters:
+            timesteps: New timesteps to activate, or None to use all stored timesteps
+
+        Raises:
+            TypeError: If timesteps is not a pandas DatetimeIndex or None
+        """
         if timesteps is None:
             self._active_timesteps = self.stored_data.indexes['time']
         elif isinstance(timesteps, pd.DatetimeIndex):
             self._active_timesteps = timesteps
         else:
-            raise TypeError("active_index must be a pandas Index or MultiIndex or None")
+            raise TypeError("active_timesteps must be a pandas DatetimeIndex or None")
 
-        self._update_active_data()  # Refresh view
+        self._update_active_data()
 
     @property
     def active_data(self) -> xr.DataArray:
-        """Return a view of stored_data based on active_index."""
+        """Get a view of stored_data based on active_timesteps."""
         return self._active_data
 
     @property
     def stored_data(self) -> xr.DataArray:
-        """Return a copy of stored_data. Prevents modification of stored data"""
+        """Get a copy of the full stored data."""
         return self._stored_data.copy()
 
     @stored_data.setter
-    def stored_data(self, value: Union[pd.Series, pd.DataFrame, xr.DataArray]):
+    def stored_data(self, value: NumericData):
         """
-        Update stored_data and refresh active_index and active_data.
+        Update stored_data and refresh active_data.
 
-        Parameters
-        ----------
-        value: Union[int, float, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
-            Data to update stored_data with.
+        Parameters:
+            value: New data to store
         """
         new_data = DataConverter.as_dataarray(value, timesteps=self.active_timesteps)
+
+        # Skip if data is unchanged to avoid overwriting backup
         if new_data.equals(self._stored_data):
-            return  # No change in stored_data. Do nothing. This prevents pushing out the backup
+            return
+
         self._stored_data = new_data
-        self.active_timesteps = None
+        self.active_timesteps = None  # Reset to full timeline
 
     @property
     def sel(self):
@@ -290,7 +368,7 @@ class TimeSeries:
         return self.active_data.isel
 
     def _apply_operation(self, other, op):
-        # Enable arithmetic operations using active_data
+        """Apply an operation between this TimeSeries and another object."""
         if isinstance(other, TimeSeries):
             other = other.active_data
         return op(self.active_data, other)
@@ -307,7 +385,6 @@ class TimeSeries:
     def __truediv__(self, other):
         return self._apply_operation(other, lambda x, y: x / y)
 
-    # Reflected arithmetic operations (to handle cases like `some_xarray + ts1`)
     def __radd__(self, other):
         return other + self.active_data
 
@@ -320,7 +397,6 @@ class TimeSeries:
     def __rtruediv__(self, other):
         return other / self.active_data
 
-    # Unary operations. Not sure if this is the best way...
     def __neg__(self) -> xr.DataArray:
         return -self.active_data
 
@@ -330,16 +406,56 @@ class TimeSeries:
     def __abs__(self) -> xr.DataArray:
         return abs(self.active_data)
 
-    def __gt__(self, other) -> bool:
-        """Compare two TimeSeries instances based on their xarray.DataArray."""
+    def __gt__(self, other):
+        """
+        Compare if this TimeSeries is greater than another.
+
+        Parameters:
+            other: Another TimeSeries to compare with
+
+        Returns:
+            True if all values in this TimeSeries are greater than other
+        """
         if isinstance(other, TimeSeries):
             return (self.active_data > other.active_data).all().item()
-        return NotImplemented  # In case the comparison is with something else
+        return NotImplemented
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """Ensures NumPy functions like np.add(TimeSeries, xarray) work correctly."""
+        """
+        Handle NumPy universal functions.
+
+        This allows NumPy functions to work with TimeSeries objects.
+        """
+        # Convert any TimeSeries inputs to their active_data
         inputs = [x.active_data if isinstance(x, TimeSeries) else x for x in inputs]
         return getattr(ufunc, method)(*inputs, **kwargs)
+
+    def __repr__(self):
+        """
+        Get a string representation of the TimeSeries.
+
+        Returns:
+            String showing TimeSeries details
+        """
+        attrs = {
+            'name': self.name,
+            'aggregation_weight': self.aggregation_weight,
+            'aggregation_group': self.aggregation_group,
+            'needs_extra_timestep': self.needs_extra_timestep,
+            'shape': self.active_data.shape,
+            'time_range': f"{self.active_timesteps[0]} to {self.active_timesteps[-1]}"
+        }
+        attr_str = ', '.join(f"{k}={repr(v)}" for k, v in attrs.items())
+        return f"TimeSeries({attr_str})"
+
+    def __str__(self):
+        """
+        Get a human-readable string representation.
+
+        Returns:
+            Descriptive string with statistics
+        """
+        return f"TimeSeries '{self.name}': {self.stats}"
 
 
 class TimeSeriesCollection:
