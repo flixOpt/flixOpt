@@ -53,7 +53,7 @@ class DataConverter:
                     raise ConversionError("DataFrame index doesn't match timesteps index")
                 if not len(data.columns) == 1:
                     raise ConversionError('DataFrame must have exactly one column')
-                return xr.DataArray(data.values, coords=coords, dims=dims)
+                return xr.DataArray(data.values.flatten(), coords=coords, dims=dims)
             elif isinstance(data, pd.Series):
                 if not data.index.equals(timesteps):
                     raise ConversionError("Series index doesn't match timesteps index")
@@ -75,7 +75,7 @@ class DataConverter:
         except Exception as e:
             if isinstance(e, ConversionError):
                 raise
-            raise ConversionError(f"Conversion error: {str(e)}") from e
+            raise ConversionError(f"Converting data {type(data)} to xarray.Dataset raised an error: {str(e)}") from e
 
 
 class TimeSeriesData:
