@@ -327,8 +327,6 @@ class SegmentedCalculation(Calculation):
             folder where results should be saved. If None, then the current working directory is used.
         """
         super().__init__(name, flow_system, folder=folder)
-        if flow_system.time_series_collection.periods is not None:
-            raise NotImplementedError('Multiple Periods are currently not supported in SegmentedCalculation')
         self.timesteps_per_segment = timesteps_per_segment
         self.overlap_timesteps = overlap_timesteps
         self.nr_of_previous_values = nr_of_previous_values

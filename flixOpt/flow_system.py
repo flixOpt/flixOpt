@@ -67,9 +67,7 @@ class FlowSystem:
     @classmethod
     def from_dataset(cls, ds: xr.Dataset):
         timesteps_extra = pd.DatetimeIndex(ds.attrs['timesteps_extra'], name='time')
-        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(
-            timesteps_extra, None
-        ).isel(time=-1).item()
+        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra).isel(time=-1).item()
 
         flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
                                  hours_of_last_timestep=hours_of_last_timestep,
@@ -87,9 +85,7 @@ class FlowSystem:
     @classmethod
     def from_dict(cls, data: Dict) -> 'FlowSystem':
         timesteps_extra = pd.DatetimeIndex(data['timesteps_extra'], name='time')
-        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(
-            timesteps_extra, None
-        ).isel(time=-1).item()
+        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra).isel(time=-1).item()
 
         flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
                                  hours_of_last_timestep=hours_of_last_timestep,

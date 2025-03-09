@@ -351,7 +351,7 @@ class SegmentedCalculationResults:
         self.overlap_timesteps = overlap_timesteps
         self.name = name
         self.folder = pathlib.Path(folder) if folder is not None else pathlib.Path.cwd() / 'results'
-        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.all_timesteps, None)
+        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.all_timesteps)
 
     def solution_without_overlap(self, variable: str) -> xr.DataArray:
         """Returns the solution of a variable without overlap"""
