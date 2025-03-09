@@ -67,7 +67,7 @@ class FlowSystem:
     @classmethod
     def from_dataset(cls, ds: xr.Dataset):
         timesteps_extra = pd.DatetimeIndex(ds.attrs['timesteps_extra'], name='time')
-        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra).isel(time=-1).item()
+        hours_of_last_timestep = TimeSeriesCollection.calculate_hours_per_timestep(timesteps_extra).isel(time=-1).item()
 
         flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
                                  hours_of_last_timestep=hours_of_last_timestep,
@@ -85,7 +85,7 @@ class FlowSystem:
     @classmethod
     def from_dict(cls, data: Dict) -> 'FlowSystem':
         timesteps_extra = pd.DatetimeIndex(data['timesteps_extra'], name='time')
-        hours_of_last_timestep = TimeSeriesCollection.create_hours_per_timestep(timesteps_extra).isel(time=-1).item()
+        hours_of_last_timestep = TimeSeriesCollection.calculate_hours_per_timestep(timesteps_extra).isel(time=-1).item()
 
         flow_system = FlowSystem(timesteps=timesteps_extra[:-1],
                                  hours_of_last_timestep=hours_of_last_timestep,
@@ -272,7 +272,7 @@ class FlowSystem:
             self,
             name: str,
             data: Optional[Union[NumericData, TimeSeriesData, TimeSeries]],
-            extra_timestep: bool = False,
+            needs_extra_timestep: bool = False,
     ) -> Optional[TimeSeries]:
         """
         Tries to create a TimeSeries from NumericData Data and adds it to the time_series_collection
@@ -290,12 +290,12 @@ class FlowSystem:
             return self.time_series_collection.create_time_series(
                 data=data.active_data,
                 name=name,
-                extra_timestep=extra_timestep
+                needs_extra_timestep=needs_extra_timestep
             )
         return self.time_series_collection.create_time_series(
             data=data,
             name=name,
-            extra_timestep=extra_timestep
+            needs_extra_timestep=needs_extra_timestep
         )
 
     def create_effect_time_series(self,

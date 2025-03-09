@@ -482,7 +482,7 @@ class TimeSeriesCollection:
         # Set up timesteps and hours
         self.all_timesteps = timesteps
         self.all_timesteps_extra = self._create_timesteps_with_extra(timesteps, hours_of_last_timestep)
-        self.all_hours_per_timestep = self._calculate_hours_per_timestep(self.all_timesteps_extra)
+        self.all_hours_per_timestep = self.calculate_hours_per_timestep(self.all_timesteps_extra)
 
         # Active timestep tracking
         self._active_timesteps = None
@@ -745,7 +745,7 @@ class TimeSeriesCollection:
         return first_interval.total_seconds() / 3600  # Convert to hours
 
     @staticmethod
-    def _calculate_hours_per_timestep(timesteps_extra: pd.DatetimeIndex) -> xr.DataArray:
+    def calculate_hours_per_timestep(timesteps_extra: pd.DatetimeIndex) -> xr.DataArray:
         """Calculate duration of each timestep."""
         # Calculate differences between consecutive timestamps
         hours_per_step = np.diff(timesteps_extra) / pd.Timedelta(hours=1)
@@ -851,6 +851,14 @@ class TimeSeriesCollection:
     def timesteps_extra(self) -> pd.DatetimeIndex:
         """Get the active timesteps with extra step."""
         return self.all_timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
+
+    @property
+    def coords(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
+        return (self.timesteps,)
+
+    @property
+    def coords_extra(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
+        return (self.timesteps_extra,)
 
     @property
     def hours_per_timestep(self) -> xr.DataArray:

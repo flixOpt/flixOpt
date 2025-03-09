@@ -104,7 +104,7 @@ class CalculationResults:
                         for label, infos in results_structure['Effects'].items()}
 
         self.timesteps_extra = pd.DatetimeIndex([datetime.datetime.fromisoformat(date) for date in results_structure['Time']], name='time')
-        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.timesteps_extra)
+        self.hours_per_timestep = TimeSeriesCollection.calculate_hours_per_timestep(self.timesteps_extra)
 
     def __getitem__(self, key: str) -> Union['ComponentResults', 'BusResults', 'EffectResults']:
         if key in self.components:
@@ -351,7 +351,7 @@ class SegmentedCalculationResults:
         self.overlap_timesteps = overlap_timesteps
         self.name = name
         self.folder = pathlib.Path(folder) if folder is not None else pathlib.Path.cwd() / 'results'
-        self.hours_per_timestep = TimeSeriesCollection.create_hours_per_timestep(self.all_timesteps)
+        self.hours_per_timestep = TimeSeriesCollection.calculate_hours_per_timestep(self.all_timesteps)
 
     def solution_without_overlap(self, variable: str) -> xr.DataArray:
         """Returns the solution of a variable without overlap"""

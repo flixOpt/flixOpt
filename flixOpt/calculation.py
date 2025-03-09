@@ -189,7 +189,7 @@ class FullCalculation(Calculation):
 
     def _activate_time_series(self):
         self.flow_system.transform_data()
-        self.flow_system.time_series_collection.activate_indices(
+        self.flow_system.time_series_collection.activate_timesteps(
             active_timesteps=self.active_timesteps,
         )
 
