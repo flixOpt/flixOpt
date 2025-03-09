@@ -852,13 +852,6 @@ class TimeSeriesCollection:
         """Get the active timesteps with extra step."""
         return self.all_timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
 
-    @property
-    def coords(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
-        return (self.timesteps,)
-
-    @property
-    def coords_extra(self) -> Union[Tuple[pd.Index, pd.DatetimeIndex], Tuple[pd.DatetimeIndex]]:
-        return (self.timesteps_extra,)
 
     @property
     def hours_per_timestep(self) -> xr.DataArray:

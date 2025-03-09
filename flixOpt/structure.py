@@ -67,12 +67,12 @@ class SystemModel(linopy.Model):
         return self.time_series_collection.hours_of_previous_timesteps
 
     @property
-    def coords(self):
-        return self.time_series_collection.coords
+    def coords(self) -> Tuple[pd.DatetimeIndex]:
+        return (self.time_series_collection.timesteps,)
 
     @property
-    def coords_extra(self):
-        return self.time_series_collection.coords_extra
+    def coords_extra(self) -> Tuple[pd.DatetimeIndex]:
+        return (self.time_series_collection.timesteps_extra,)
 
 
 class Interface:
