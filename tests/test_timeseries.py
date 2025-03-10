@@ -643,7 +643,7 @@ class TestTimeSeriesCollection:
         hours = collection.hours_per_timestep.values
 
         # Expected hours between timestamps
-        expected = np.array([24, 36, 12, 48])
+        expected = np.array([24, 36, 12, 48, 48])
         assert np.allclose(hours, expected)
 
     def test_validation_and_errors(self, sample_timesteps):
