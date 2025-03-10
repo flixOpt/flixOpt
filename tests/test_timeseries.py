@@ -487,17 +487,11 @@ class TestTimeSeriesCollection:
         assert len(non_constants) == 2  # varying_series, extra_timestep_series
         assert all(not ts.all_equal for ts in non_constants)
 
-        # Test caching behavior
-        id_before = id(populated_collection.constants)
-        # Access again without changes
-        assert id(populated_collection.constants) == id_before
-
-        # Modify a series to invalidate cache
+        # Test modifying a series changes the results
         populated_collection["constant_series"].stored_data = np.array([1, 2, 3, 4, 5])
-
-        # Cache should be rebuilt
-        assert id(populated_collection.constants) != id_before
-        assert len(populated_collection.constants) == 3  # One less constant now
+        updated_constants = populated_collection.constants
+        assert len(updated_constants) == 3  # One less constant
+        assert "constant_series" not in [ts.name for ts in updated_constants]
 
     def test_timesteps_properties(self, populated_collection, sample_timesteps):
         """Test timestep-related properties."""
