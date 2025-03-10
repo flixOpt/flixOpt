@@ -496,11 +496,6 @@ class TimeSeriesCollection:
         self.group_weights: Dict[str, float] = {}
         self.weights: Dict[str, float] = {}
 
-        # Caches for performance
-        self._cache_constants: Optional[List[TimeSeries]] = None
-        self._cache_non_constants: Optional[List[TimeSeries]] = None
-        self._cache_invalidated = False
-
     @classmethod
     def with_uniform_timesteps(
             cls,
@@ -566,7 +561,6 @@ class TimeSeriesCollection:
 
         # Add to the collection
         self.add_time_series(time_series)
-        self._invalidate_cache()
 
         return time_series
 
@@ -618,7 +612,6 @@ class TimeSeriesCollection:
         """Restore original data for all time series."""
         for time_series in self.time_series_data.values():
             time_series.restore_data()
-        self._invalidate_cache()
 
     def insert_new_data(self, data: pd.DataFrame):
         """Update time series with new data from a DataFrame."""
@@ -644,15 +637,12 @@ class TimeSeriesCollection:
 
                 logger.debug(f'Updated data for {name}')
 
-        self._invalidate_cache()
-
     def add_time_series(self, time_series: TimeSeries):
         """Add an existing TimeSeries to the collection."""
         if time_series.name in self.time_series_data:
             raise ValueError(f"TimeSeries '{time_series.name}' already exists in this collection")
 
         self.time_series_data[time_series.name] = time_series
-        self._invalidate_cache()
 
     def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant') -> pd.DataFrame:
         """Convert collection to DataFrame with optional filtering."""
@@ -694,12 +684,6 @@ class TimeSeriesCollection:
                 ts.active_timesteps = self.timesteps_extra
             else:
                 ts.active_timesteps = self.timesteps
-
-    def _invalidate_cache(self):
-        """Mark caches as invalid."""
-        self._cache_invalidated = True
-        self._cache_constants = None
-        self._cache_non_constants = None
 
     @staticmethod
     def _validate_timesteps(timesteps: pd.DatetimeIndex):
@@ -823,24 +807,18 @@ class TimeSeriesCollection:
     @property
     def non_constants(self) -> List[TimeSeries]:
         """Get time series with varying values."""
-        if self._cache_non_constants is None or self._cache_invalidated:
-            self._cache_non_constants = [
-                ts for ts in self.time_series_data.values()
-                if not ts.all_equal
-            ]
-            self._cache_invalidated = False
-        return self._cache_non_constants
+        return [
+            ts for ts in self.time_series_data.values()
+            if not ts.all_equal
+        ]
 
     @property
     def constants(self) -> List[TimeSeries]:
         """Get time series with constant values."""
-        if self._cache_constants is None or self._cache_invalidated:
-            self._cache_constants = [
-                ts for ts in self.time_series_data.values()
-                if ts.all_equal
-            ]
-            self._cache_invalidated = False
-        return self._cache_constants
+        return [
+            ts for ts in self.time_series_data.values()
+            if ts.all_equal
+        ]
 
     @property
     def timesteps(self) -> pd.DatetimeIndex:
@@ -851,7 +829,6 @@ class TimeSeriesCollection:
     def timesteps_extra(self) -> pd.DatetimeIndex:
         """Get the active timesteps with extra step."""
         return self.all_timesteps_extra if self._active_timesteps_extra is None else self._active_timesteps_extra
-
 
     @property
     def hours_per_timestep(self) -> xr.DataArray:
