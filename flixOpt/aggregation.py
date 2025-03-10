@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
 try:
     import tsam.timeseriesaggregation as tsam
     TSAM_AVAILABLE = True
