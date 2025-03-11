@@ -341,7 +341,6 @@ class FlowModel(ElementModel):
                     parameters=self.element.size,
                     defining_variable=self.flow_rate,
                     relative_bounds_of_defining_variable=self.relative_flow_rate_bounds,
-                    fixed_relative_profile=self.fixed_relative_flow_rate,
                     on_variable=self.on_off.on if self.on_off is not None else None,
                 ),
                 'investment'
@@ -432,7 +431,6 @@ class FlowModel(ElementModel):
         if size.fixed_size is not None:
             return rel_min * size.fixed_size, rel_max * size.fixed_size
         return rel_min * size.minimum_size, rel_max * size.maximum_size
-
 
     @property
     def relative_flow_rate_bounds(self) -> Tuple[NumericData, NumericData]:

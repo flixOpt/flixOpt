@@ -34,7 +34,6 @@ class InvestmentModel(Model):
         parameters: InvestParameters,
         defining_variable: [linopy.Variable],
         relative_bounds_of_defining_variable: Tuple[NumericData, NumericData],
-        fixed_relative_profile: Optional[NumericData] = None,
         label: Optional[str] = None,
         on_variable: Optional[linopy.Variable] = None,
     ):
@@ -50,7 +49,6 @@ class InvestmentModel(Model):
         self._on_variable = on_variable
         self._defining_variable = defining_variable
         self._relative_bounds_of_defining_variable = relative_bounds_of_defining_variable
-        self._fixed_relative_profile = fixed_relative_profile
         self.parameters = parameters
 
     def do_modeling(self):
@@ -143,41 +141,32 @@ class InvestmentModel(Model):
 
     def _create_bounds_for_defining_variable(self):
         variable = self._defining_variable
-        # fixed relative value
-        if self._fixed_relative_profile is not None:
-            # TODO: Allow Off? Currently not..
-            self.add(self._model.add_constraints(
-                variable == self.size * self._fixed_relative_profile,
-                name=f'{self.label_full}|fixed_{variable.name}'),
-                f'fixed_{variable.name}')
+        lb_relative, ub_relative = self._relative_bounds_of_defining_variable
+        # eq: defining_variable(t)  <= size * upper_bound(t)
+        self.add(self._model.add_constraints(
+            variable <= self.size * ub_relative,
+            name=f'{self.label_full}|ub_{variable.name}'),
+            f'ub_{variable.name}')
 
+        if self._on_variable is None:
+            # eq: defining_variable(t) >= investment_size * relative_minimum(t)
+            self.add(self._model.add_constraints(
+                variable >= self.size * lb_relative,
+                name=f'{self.label_full}|lb_{variable.name}'),
+                f'lb_{variable.name}')
         else:
-            lb_relative, ub_relative = self._relative_bounds_of_defining_variable
-            # eq: defining_variable(t)  <= size * upper_bound(t)
+            ## 2. Gleichung: Minimum durch Investmentgröße und On
+            # eq: defining_variable(t) >= mega * (On(t)-1) + size * relative_minimum(t)
+            #     ... mit mega = relative_maximum * maximum_size
+            # äquivalent zu:.
+            # eq: - defining_variable(t) + mega * On(t) + size * relative_minimum(t) <= + mega
+            mega = lb_relative * self.parameters.maximum_size
+            on = self._on_variable
             self.add(self._model.add_constraints(
-                variable <= self.size * ub_relative,
-                name=f'{self.label_full}|ub_{variable.name}'),
-                f'ub_{variable.name}')
-
-            if self._on_variable is None:
-                # eq: defining_variable(t) >= investment_size * relative_minimum(t)
-                self.add(self._model.add_constraints(
-                    variable >= self.size * lb_relative,
-                    name=f'{self.label_full}|lb_{variable.name}'),
-                    f'lb_{variable.name}')
-            else:
-                ## 2. Gleichung: Minimum durch Investmentgröße und On
-                # eq: defining_variable(t) >= mega * (On(t)-1) + size * relative_minimum(t)
-                #     ... mit mega = relative_maximum * maximum_size
-                # äquivalent zu:.
-                # eq: - defining_variable(t) + mega * On(t) + size * relative_minimum(t) <= + mega
-                mega = lb_relative * self.parameters.maximum_size
-                on = self._on_variable
-                self.add(self._model.add_constraints(
-                    variable >= mega * (on - 1) + self.size * lb_relative,
-                    name=f'{self.label_full}|lb_{variable.name}'),
-                    f'lb_{variable.name}')
-                # anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu OnOff ??
+                variable >= mega * (on - 1) + self.size * lb_relative,
+                name=f'{self.label_full}|lb_{variable.name}'),
+                f'lb_{variable.name}')
+            # anmerkung: Glg bei Spezialfall relative_minimum = 0 redundant zu OnOff ??
 
 
 class OnOffModel(Model):
