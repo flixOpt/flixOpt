@@ -567,7 +567,7 @@ class SourceAndSink(Component):
         label: str,
         source: Flow,
         sink: Flow,
-        prevent_simultaneous_flows: bool = True,
+        prevent_simultaneous_sink_and_source: bool = True,
         meta_data: Optional[Dict] = None,
     ):
         """
@@ -581,7 +581,7 @@ class SourceAndSink(Component):
             output-flow of this component
         sink : Flow
             input-flow of this component
-        prevent_simultaneous_flows: boolean. Default ist True.
+        prevent_simultaneous_sink_and_source: boolean. Default ist True.
             True: inflow and outflow are not allowed to be both non-zero at same timestep.
             False: inflow and outflow are working independently.
 
@@ -590,11 +590,12 @@ class SourceAndSink(Component):
             label,
             inputs=[sink],
             outputs=[source],
-            prevent_simultaneous_flows=prevent_simultaneous_flows,
+            prevent_simultaneous_flows=[source, sink] if prevent_simultaneous_sink_and_source else None,
             meta_data=meta_data,
         )
         self.source = source
         self.sink = sink
+        self.prevent_simultaneous_sink_and_source = prevent_simultaneous_sink_and_source
 
 
 @register_class_for_io
