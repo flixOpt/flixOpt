@@ -13,16 +13,19 @@ import pytest
 import flixOpt as fx
 
 
-def get_solver():
+@pytest.fixture()
+def highs_solver():
     return fx.solvers.HighsSolver(mip_gap=0, time_limit_seconds=300)
 
 
-@pytest.fixture(params=['highs', 'gurobi'])
+@pytest.fixture()
+def gurobi_solver():
+    return fx.solvers.GurobiSolver(mip_gap=0, time_limit_seconds=300)
+
+
+@pytest.fixture(params=[highs_solver, gurobi_solver])
 def solver_fixture(request):
-    return {
-        'highs': fx.solvers.HighsSolver(0.0001, 60),
-        'gurobi': fx.solvers.GurobiSolver(0.0001, 60),
-    }[request.param]
+    return request.getfixturevalue(request.param.__name__)
 
 
 # Custom assertion function

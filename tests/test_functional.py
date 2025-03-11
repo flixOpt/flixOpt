@@ -24,6 +24,8 @@ from numpy.testing import assert_allclose
 
 import flixOpt as fx
 
+from .conftest import solver_fixture
+
 np.random.seed(45)
 
 
@@ -100,14 +102,6 @@ def solve_and_load(
     calculation.do_modeling()
     calculation.solve(solver)
     return calculation.results
-
-
-@pytest.fixture(params=['highs', 'gurobi'])
-def solver_fixture(request):
-    return {
-        'highs': fx.solvers.HighsSolver(0.01, 60),
-        'gurobi': fx.solvers.GurobiSolver(0.01, 60),
-    }[request.param]
 
 
 @pytest.fixture

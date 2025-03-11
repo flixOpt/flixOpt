@@ -10,6 +10,7 @@ from .conftest import (
     flow_system_long,
     flow_system_segments_of_flows,
     simple_flow_system,
+    highs_solver
 )
 
 
@@ -22,17 +23,17 @@ def flow_system(request):
         return fs[0]
 
 
-def test_flow_system_file_io(flow_system):
+def test_flow_system_file_io(flow_system, highs_solver):
     calculation_0 = fx.FullCalculation('IO', flow_system=flow_system)
     calculation_0.do_modeling()
-    calculation_0.solve(fx.solvers.HighsSolver(mip_gap=0.001, time_limit_seconds=30))
+    calculation_0.solve(highs_solver)
 
     calculation_0.save_results(save_flow_system=True, compression=5)
     flow_system_1 = fx.FlowSystem.from_netcdf(f'results/{calculation_0.name}_flowsystem.nc')
 
     calculation_1 = fx.FullCalculation('Loaded_IO', flow_system=flow_system_1)
     calculation_1.do_modeling()
-    calculation_1.solve(fx.solvers.HighsSolver(mip_gap=0.001, time_limit_seconds=30))
+    calculation_1.solve(highs_solver)
 
     assert_almost_equal_numeric(calculation_0.results.model.objective.value,
                                 calculation_1.results.model.objective.value,

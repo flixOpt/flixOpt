@@ -9,16 +9,16 @@ import flixOpt as fx
 from .conftest import (
     assert_almost_equal_numeric,
     create_calculation_and_solve,
-    get_solver,
+    highs_solver,
 )
 
 
 class TestFlowSystem:
-    def test_simple_flow_system(self, simple_flow_system):
+    def test_simple_flow_system(self, simple_flow_system, highs_solver):
         """
         Test the effects of the simple energy system model
         """
-        calculation = create_calculation_and_solve(simple_flow_system, get_solver(), 'test_simple_flow_system')
+        calculation = create_calculation_and_solve(simple_flow_system, highs_solver, 'test_simple_flow_system')
 
         effects = calculation.flow_system.effects
 
@@ -36,11 +36,11 @@ class TestFlowSystem:
             'CO2 doesnt match expected value'
         )
 
-    def test_model_components(self, simple_flow_system):
+    def test_model_components(self, simple_flow_system, highs_solver):
         """
         Test the component flows of the simple energy system model
         """
-        calculation = create_calculation_and_solve(simple_flow_system, get_solver(), 'test_model_components')
+        calculation = create_calculation_and_solve(simple_flow_system, highs_solver, 'test_model_components')
         comps = calculation.flow_system.components
 
         # Boiler assertions
@@ -57,12 +57,12 @@ class TestFlowSystem:
             'Q_th doesnt match expected value',
         )
 
-    def test_results_persistence(self, simple_flow_system):
+    def test_results_persistence(self, simple_flow_system, highs_solver):
         """
         Test saving and loading results
         """
         # Save results to file
-        calculation = create_calculation_and_solve(simple_flow_system, get_solver(), 'test_model_components')
+        calculation = create_calculation_and_solve(simple_flow_system, highs_solver, 'test_model_components')
 
         calculation.results.to_file()
 
@@ -86,7 +86,7 @@ class TestFlowSystem:
 
 
 class TestComponents:
-    def test_transmission_basic(self, basic_flow_system):
+    def test_transmission_basic(self, basic_flow_system, highs_solver):
         """Test basic transmission functionality"""
         flow_system = basic_flow_system
         flow_system.add_elements(fx.Bus('Wärme lokal'))
@@ -108,7 +108,7 @@ class TestComponents:
 
         flow_system.add_elements(transmission, boiler)
 
-        _ = create_calculation_and_solve(flow_system, get_solver(), 'test_transmission_basic')
+        _ = create_calculation_and_solve(flow_system, highs_solver, 'test_transmission_basic')
 
         # Assertions
         assert_almost_equal_numeric(
@@ -123,7 +123,7 @@ class TestComponents:
             'Losses are not computed correctly',
         )
 
-    def test_transmission_advanced(self, basic_flow_system):
+    def test_transmission_advanced(self, basic_flow_system, highs_solver):
         """Test advanced transmission functionality"""
         flow_system = basic_flow_system
         flow_system.add_elements(fx.Bus('Wärme lokal'))
@@ -163,7 +163,7 @@ class TestComponents:
 
         flow_system.add_elements(transmission, boiler, boiler2, last2)
 
-        calculation = create_calculation_and_solve(flow_system, get_solver(), 'test_transmission_advanced')
+        calculation = create_calculation_and_solve(flow_system, highs_solver, 'test_transmission_advanced')
 
         # Assertions
         assert_almost_equal_numeric(
@@ -194,8 +194,8 @@ class TestComponents:
 
 class TestComplex:
 
-    def test_basic_flow_system(self, flow_system_base):
-        calculation = create_calculation_and_solve(flow_system_base, get_solver(), 'test_basic_flow_system')
+    def test_basic_flow_system(self, flow_system_base, highs_solver):
+        calculation = create_calculation_and_solve(flow_system_base, highs_solver, 'test_basic_flow_system')
 
         # Assertions
         assert_almost_equal_numeric(
@@ -324,8 +324,8 @@ class TestComplex:
             'Speicher investCosts_segmented_costs doesnt match expected value',
         )
 
-    def test_segments_of_flows(self, flow_system_segments_of_flows):
-        calculation = create_calculation_and_solve(flow_system_segments_of_flows, get_solver(), 'test_segments_of_flows')
+    def test_segments_of_flows(self, flow_system_segments_of_flows, highs_solver):
+        calculation = create_calculation_and_solve(flow_system_segments_of_flows, highs_solver, 'test_segments_of_flows')
 
         effects = calculation.flow_system.effects
         comps = calculation.flow_system.components
@@ -370,7 +370,7 @@ class TestComplex:
 class TestModelingTypes:
 
     @pytest.fixture(params=['full', 'segmented', 'aggregated'])
-    def modeling_calculation(self, request, flow_system_long):
+    def modeling_calculation(self, request, flow_system_long, highs_solver):
         """
         Fixture to run calculations with different modeling types
         """
@@ -384,10 +384,10 @@ class TestModelingTypes:
         if modeling_type == 'full':
             calc = fx.FullCalculation('fullModel', flow_system)
             calc.do_modeling()
-            calc.solve(get_solver())
+            calc.solve(highs_solver)
         elif modeling_type == 'segmented':
             calc = fx.SegmentedCalculation('segModel', flow_system, timesteps_per_segment=96, overlap_timesteps=1)
-            calc.do_modeling_and_solve(get_solver())
+            calc.do_modeling_and_solve(highs_solver)
         elif modeling_type == 'aggregated':
             calc = fx.AggregatedCalculation(
                 'aggModel',
@@ -404,7 +404,7 @@ class TestModelingTypes:
                 ),
             )
             calc.do_modeling()
-            calc.solve(get_solver())
+            calc.solve(highs_solver)
 
         return calc, modeling_type
 
