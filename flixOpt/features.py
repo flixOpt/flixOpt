@@ -37,9 +37,6 @@ class InvestmentModel(Model):
         label: Optional[str] = None,
         on_variable: Optional[linopy.Variable] = None,
     ):
-        """
-        If fixed relative profile is used, the relative bounds are ignored
-        """
         super().__init__(model, label_of_element, label)
         self.size: Optional[Union[Scalar, linopy.Variable]] = None
         self.is_invested: Optional[linopy.Variable] = None
@@ -142,6 +139,16 @@ class InvestmentModel(Model):
     def _create_bounds_for_defining_variable(self):
         variable = self._defining_variable
         lb_relative, ub_relative = self._relative_bounds_of_defining_variable
+        if np.all(lb_relative == ub_relative):
+            self.add(self._model.add_constraints(
+                variable == self.size * ub_relative,
+                name=f'{self.label_full}|fix_{variable.name}'),
+                f'fix_{variable.name}')
+            if self._on_variable is not None:
+                raise ValueError(f'Flow {self.label} has a fixed relative flow rate and an on_variable.'
+                                 f'This combination is currently not supported.')
+            return
+
         # eq: defining_variable(t)  <= size * upper_bound(t)
         self.add(self._model.add_constraints(
             variable <= self.size * ub_relative,

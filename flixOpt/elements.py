@@ -190,9 +190,9 @@ class Flow(Element):
             (if size is not const, maybe load_factor_min fits better for you!)
         fixed_relative_profile : scalar, array, TimeSeriesData, optional
             fixed relative values for flow (if given).
-            val(t) := fixed_relative_profile(t) * size(t)
+            flow_rate(t) := fixed_relative_profile(t) * size(t)
             With this value, the flow_rate is no opt-variable anymore;
-            (relative_minimum u. relative_maximum are making sense anymore)
+            (relative_minimum u. relative_maximum are iverwritten)
             used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
             If the load-profile is just an upper limit, use relative_maximum instead.
         previous_flow_rate : scalar, array, optional
@@ -272,6 +272,13 @@ class Flow(Element):
                 f'the resulting flow_rate will be very high. To fix this, assign a size to the Flow {self}.'
             )
 
+        if self.fixed_relative_profile is not None and self.on_off_parameters is not None:
+            raise ValueError(
+                f'Flow {self.label} has both a fixed_relative_profile and an on_off_parameters. This is not supported. '
+                f'Use relative_minimum and relative_maximum instead, '
+                f'if you want to allow flows to be switched on and off.'
+            )
+
     @property
     def label_full(self) -> str:
         return f'{self.component}({self.label})'
@@ -308,14 +315,6 @@ class FlowModel(ElementModel):
             ),
             'flow_rate'
         )
-        if self.element.fixed_relative_profile is not None:
-            self.add(
-                self._model.add_constraints(
-                    self.flow_rate == self.element.fixed_relative_profile.active_data,
-                    name=f'{self.label_full}|fix_flow_rate'
-                ),
-                'flow_rate (fix)'
-            )
 
         # OnOff
         if self.element.on_off_parameters is not None:
