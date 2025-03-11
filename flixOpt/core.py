@@ -592,9 +592,10 @@ class TimeSeriesCollection:
 
         # Calculate derived timesteps
         self._active_timesteps = active_timesteps
+        first_ts_index = np.where(self.all_timesteps == active_timesteps[0])[0][0]
         last_ts_idx = np.where(self.all_timesteps == active_timesteps[-1])[0][0]
-        self._active_timesteps_extra = self.all_timesteps_extra[:last_ts_idx + 2]
-        self._active_hours_per_timestep = self.all_hours_per_timestep.sel(time=active_timesteps)
+        self._active_timesteps_extra = self.all_timesteps_extra[first_ts_index:last_ts_idx + 2]
+        self._active_hours_per_timestep = self.all_hours_per_timestep.isel(time=slice(first_ts_index, last_ts_idx + 1))
 
         # Update all time series
         self._update_time_series_timesteps()
