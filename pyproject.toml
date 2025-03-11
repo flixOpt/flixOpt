@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=61.0.0", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "flixOpt"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Vector based energy and material flow optimization framework in Python."
 readme = "README.md"
 requires-python = ">=3.10, <3.13"
@@ -32,9 +32,8 @@ classifiers = [
 dependencies = [
     "numpy >= 1.21.5, < 2",
     "PyYAML >= 6.0",
-    "Pyomo >= 6.4.2",
+    "linopy >= 0.4.4",
     "rich >= 13.0.1",
-    "tsam >= 2.3.1",  # Used for time series aggregation
     "highspy >= 1.5.3",  # Default solver
     "pandas >= 2, < 3",  # Used in post-processing
     "matplotlib >= 3.5.2",  # Used in post-processing
@@ -46,18 +45,15 @@ dependencies = [
 dev = [
     "pytest",
     "ruff",
-    "linopy >= 0.4.4",
-    "scipy >= 1.15.1",  # Used by tsam. Prior versions have conflict with highspy. See https://github.com/scipy/scipy/issues/22257
-    "gurobipy >= 10",
-]
-
-linopy = [
-    "linopy >= 0.4.4",
-    "scipy >= 1.15.1",  # Used by tsam. Prior versions have conflict with highspy. See https://github.com/scipy/scipy/issues/22257
-]
-
-visualization = [
     "pyvis == 0.3.1",  # Used for visualizing the FLowSystem
+    "tsam >= 2.3.1",  # Used for time series aggregation
+    "scipy >= 1.15.1",  # Used by tsam. Prior versions have conflict with highspy. See https://github.com/scipy/scipy/issues/22257
+]
+
+full = [
+    "pyvis == 0.3.1",  # Used for visualizing the FLowSystem
+    "tsam >= 2.3.1",  # Used for time series aggregation
+    "scipy >= 1.15.1",  # Used by tsam. Prior versions have conflict with highspy. See https://github.com/scipy/scipy/issues/22257
 ]
 
 [project.urls]
@@ -70,6 +66,9 @@ exclude = ["tests", "docs", "examples", "examples.*", "Tutorials", ".git", ".vsc
 
 [tool.setuptools.package-data]
 "flixOpt" = ["config.yaml"]
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
 
 [tool.ruff]
 # Files or directories to exclude (e.g., virtual environments, cache, build artifacts)

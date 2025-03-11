@@ -220,7 +220,8 @@ class OnOffModel(Model):
         assert len(defining_variables) == len(defining_bounds), 'Every defining Variable needs bounds to Model OnOff'
         self.parameters = on_off_parameters
         self._defining_variables = defining_variables
-        self._defining_bounds = defining_bounds
+        # Ensure that no lower bound is below a certain threshold
+        self._defining_bounds = [(np.maximum(lb, CONFIG.modeling.EPSILON), ub) for lb, ub in defining_bounds]
         self._previous_values = previous_values
 
         self.on: Optional[linopy.Variable] = None
@@ -497,9 +498,10 @@ class OnOffModel(Model):
                 f'{variable_name}_minimum_duration'
             )
 
-            if previous_duration < minimum_duration.isel(time=0):
+            if 0 < previous_duration < minimum_duration.isel(time=0):
                 # Force the first step to be = 1, if the minimum_duration is not reached in previous_values
                 # Note: Only if the previous consecutive_duration is smaller than the minimum duration
+                # and the previous_duration is greater 0!
                 # eq: On(t=0) = 1
                 self.add(self._model.add_constraints(
                     binary_variable.isel(time=0) == 1,

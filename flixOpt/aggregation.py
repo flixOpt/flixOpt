@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 import linopy
 import numpy as np
 import pandas as pd
-import tsam.timeseriesaggregation as tsam
+
+try:
+    import tsam.timeseriesaggregation as tsam
+    TSAM_AVAILABLE = True
+except ImportError:
+    TSAM_AVAILABLE = False
 
 from .components import Storage
 from .core import Scalar, TimeSeriesData
@@ -50,6 +55,9 @@ class Aggregation:
         """
         Write a docstring please
         """
+        if not TSAM_AVAILABLE:
+            raise ImportError("The 'tsam' package is required for clustering functionality. "
+                              "Install it with 'pip install tsam'.")
         self.original_data = copy.deepcopy(original_data)
         self.hours_per_time_step = hours_per_time_step
         self.hours_per_period = hours_per_period

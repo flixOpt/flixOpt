@@ -590,7 +590,7 @@ class SourceAndSink(Component):
             label,
             inputs=[sink],
             outputs=[source],
-            prevent_simultaneous_flows=[source, sink] if prevent_simultaneous_sink_and_source else None,
+            prevent_simultaneous_flows=[sink, source] if prevent_simultaneous_flows is True else None,
             meta_data=meta_data,
         )
         self.source = source
