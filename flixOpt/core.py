@@ -841,8 +841,8 @@ class TimeSeriesCollection:
         """Get a TimeSeries by name."""
         try:
             return self.time_series_data[name]
-        except KeyError:
-            raise KeyError(f'TimeSeries "{name}" not found')
+        except KeyError as e:
+            raise KeyError(f'TimeSeries "{name}" not found in the TimeSeriesCollection') from e
 
     def __iter__(self) -> Iterator[TimeSeries]:
         """Iterate through all TimeSeries in the collection."""

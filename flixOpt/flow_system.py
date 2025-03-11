@@ -131,7 +131,10 @@ class FlowSystem:
 
         """
         if self._connected:
-            warnings.warn('You are adding elements to an already connected FlowSystem. This is not recommended (But it works).')
+            warnings.warn(
+                'You are adding elements to an already connected FlowSystem. This is not recommended (But it works).',
+            stacklevel=2
+            )
             self._connected = False
         for new_element in list(elements):
             if isinstance(new_element, Component):
