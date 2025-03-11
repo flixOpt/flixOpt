@@ -16,9 +16,7 @@ from .interface import InvestParameters, OnOffParameters
 from .structure import Model, SystemModel
 
 if TYPE_CHECKING:  # for type checking and preventing circular imports
-    from .components import Storage
     from .effects import Effect
-    from .elements import Flow
 
 
 logger = logging.getLogger('flixOpt')

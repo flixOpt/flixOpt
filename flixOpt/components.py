@@ -61,9 +61,9 @@ class LinearConverter(Component):
         super().__init__(label, inputs, outputs, on_off_parameters, meta_data=meta_data)
         self.conversion_factors = conversion_factors or []
         self.segmented_conversion_factors = segmented_conversion_factors or {}
-        self._plausibility_checks()
 
     def create_model(self, model: SystemModel) -> 'LinearConverterModel':
+        self._plausibility_checks()
         self.model = LinearConverterModel(model, self)
         return self.model
 

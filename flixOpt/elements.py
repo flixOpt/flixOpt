@@ -229,9 +229,8 @@ class Flow(Element):
             self.bus = bus
             self._bus_object = None
 
-        self._plausibility_checks()
-
     def create_model(self, model: SystemModel) -> 'FlowModel':
+        self._plausibility_checks()
         self.model = FlowModel(model, self)
         return self.model
 
