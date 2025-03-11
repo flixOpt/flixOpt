@@ -614,30 +614,6 @@ class TimeSeriesCollection:
         for time_series in self.time_series_data.values():
             time_series.restore_data()
 
-    def insert_new_data(self, data: pd.DataFrame):
-        """Update time series with new data from a DataFrame."""
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError(f"data must be a pandas DataFrame, got {type(data).__name__}")
-
-        if not data.index.equals(self.timesteps):
-            raise ValueError("DataFrame index must match collection timesteps")
-
-        for name, ts in self.time_series_data.items():
-            if name in data.columns:
-                if not ts.needs_extra_timestep:
-                    ts.stored_data = data[name]
-                else:
-                    # For time series with extra timestep, add the extra value
-                    extra_step_value = data[name].iloc[-1]
-                    extra_step_index = pd.DatetimeIndex([self.timesteps_extra[-1]], name='time')
-                    extra_step_series = pd.Series([extra_step_value], index=extra_step_index)
-
-                    # Combine the regular data with the extra timestep
-                    combined_series = pd.concat([data[name], extra_step_series])
-                    ts.stored_data = combined_series
-
-                logger.debug(f'Updated data for {name}')
-
     def add_time_series(self, time_series: TimeSeries):
         """Add an existing TimeSeries to the collection."""
         if time_series.name in self.time_series_data:
@@ -645,11 +621,76 @@ class TimeSeriesCollection:
 
         self.time_series_data[time_series.name] = time_series
 
-    def to_dataframe(self, filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant') -> pd.DataFrame:
-        """Convert collection to DataFrame with optional filtering."""
-        # Convert to Dataset first
+    def insert_new_data(self, data: pd.DataFrame, include_extra_timestep: bool = False):
+        """
+        Update time series with new data from a DataFrame.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame containing new data with timestamps as index
+        include_extra_timestep : bool, optional
+            Whether the provided data already includes the extra timestep, by default False
+        """
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError(f"data must be a pandas DataFrame, got {type(data).__name__}")
+
+        # Check if the DataFrame index matches the expected timesteps
+        expected_timesteps = self.timesteps_extra if include_extra_timestep else self.timesteps
+        if not data.index.equals(expected_timesteps):
+            raise ValueError(
+                f"DataFrame index must match {'collection timesteps with extra timestep' if include_extra_timestep else 'collection timesteps'}")
+
+        for name, ts in self.time_series_data.items():
+            if name in data.columns:
+                if not ts.needs_extra_timestep:
+                    # For time series without extra timestep
+                    if include_extra_timestep:
+                        # If data includes extra timestep but series doesn't need it, exclude the last point
+                        ts.stored_data = data[name].iloc[:-1]
+                    else:
+                        # Use data as is
+                        ts.stored_data = data[name]
+                else:
+                    # For time series with extra timestep
+                    if include_extra_timestep:
+                        # Data already includes extra timestep
+                        ts.stored_data = data[name]
+                    else:
+                        # Need to add extra timestep - extrapolate from the last value
+                        extra_step_value = data[name].iloc[-1]
+                        extra_step_index = pd.DatetimeIndex([self.timesteps_extra[-1]], name='time')
+                        extra_step_series = pd.Series([extra_step_value], index=extra_step_index)
+
+                        # Combine the regular data with the extra timestep
+                        ts.stored_data = pd.concat([data[name], extra_step_series])
+
+                logger.debug(f'Updated data for {name}')
+
+    def to_dataframe(self,
+                     filtered: Literal['all', 'constant', 'non_constant'] = 'non_constant',
+                     include_extra_timestep: bool = True) -> pd.DataFrame:
+        """
+        Convert collection to DataFrame with optional filtering and timestep control.
+
+        Parameters
+        ----------
+        filtered : Literal['all', 'constant', 'non_constant'], optional
+            Filter time series by variability, by default 'non_constant'
+        include_extra_timestep : bool, optional
+            Whether to include the extra timestep in the result, by default True
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame representation of the collection
+        """
         include_constants = filtered != 'non_constant'
         ds = self.to_dataset(include_constants=include_constants)
+
+        if not include_extra_timestep:
+            ds = ds.isel(time=slice(None, -1))
+
         df = ds.to_dataframe()
 
         # Apply filtering
@@ -663,19 +704,33 @@ class TimeSeriesCollection:
             raise ValueError("filtered must be one of: 'all', 'constant', 'non_constant'")
 
     def to_dataset(self, include_constants: bool = True) -> xr.Dataset:
-        """Combine all time series into a single Dataset."""
+        """
+        Combine all time series into a single Dataset with all timesteps.
+
+        Parameters
+        ----------
+        include_constants : bool, optional
+            Whether to include time series with constant values, by default True
+
+        Returns
+        -------
+        xr.Dataset
+            Dataset containing all selected time series with all timesteps
+        """
         # Determine which series to include
         if include_constants:
             series_to_include = self.time_series_data.values()
         else:
             series_to_include = self.non_constants
 
-        ds = xr.Dataset({ts.name: ts.active_data for ts in series_to_include})
+        # Create dataset with all time series (with all their timesteps)
+        ds = xr.Dataset({[ts.name]: ts.active_data for ts in series_to_include})
 
         ds.attrs.update({
-            "timesteps": f"{self.timesteps[0]} ... {self.timesteps[-1]} | len={len(self.timesteps)}",
+            "timesteps": f"{self.timesteps_extra[0]} ... {self.timesteps_extra[-1]} | len={len(self.timesteps_extra)}",
             "hours_per_timestep": self._format_stats(self.hours_per_timestep),
         })
+
         return ds
 
     def _update_time_series_timesteps(self):

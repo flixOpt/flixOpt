@@ -275,7 +275,7 @@ class AggregatedCalculation(FullCalculation):
 
         # Aggregation - creation of aggregated timeseries:
         self.aggregation = Aggregation(
-            original_data=self.flow_system.time_series_collection.to_dataframe().iloc[:-1,:],  # Exclude last row (NaN)
+            original_data=self.flow_system.time_series_collection.to_dataframe(include_extra_timestep=False),  # Exclude last row (NaN)
             hours_per_time_step=float(dt_min),
             hours_per_period=self.aggregation_parameters.hours_per_period,
             nr_of_periods=self.aggregation_parameters.nr_of_periods,
@@ -287,7 +287,7 @@ class AggregatedCalculation(FullCalculation):
         self.aggregation.cluster()
         self.aggregation.plot()
         if self.aggregation_parameters.aggregate_data_and_fix_non_binary_vars:
-            self.flow_system.time_series_collection.insert_new_data(self.aggregation.aggregated_data)
+            self.flow_system.time_series_collection.insert_new_data(self.aggregation.aggregated_data, include_extra_timestep=False)
         self.durations['aggregation'] = round(timeit.default_timer() - t_start_agg, 2)
 
 
