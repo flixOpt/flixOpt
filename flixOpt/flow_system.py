@@ -64,6 +64,8 @@ class FlowSystem:
         self.effects: EffectCollection = EffectCollection()
         self.model: Optional[SystemModel] = None
 
+        self._connected = False
+
     @classmethod
     def from_dataset(cls, ds: xr.Dataset):
         timesteps_extra = pd.DatetimeIndex(ds.attrs['timesteps_extra'], name='time')
@@ -128,6 +130,9 @@ class FlowSystem:
             modeling Elements
 
         """
+        if self._connected:
+            warnings.warn('You are adding elements to an already connected FlowSystem. This is not recommended (But it works).')
+            self._connected = False
         for new_element in list(elements):
             if isinstance(new_element, Component):
                 self._add_components(new_element)
@@ -241,7 +246,8 @@ class FlowSystem:
         return plotting.plot_network(node_infos, edge_infos, path, controls, show)
 
     def network_infos(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, Dict[str, str]]]:
-        self._connect_network()
+        if not self._connected:
+            self._connect_network()
         nodes = {
             node.label_full: {
                 'label': node.label,
@@ -264,7 +270,8 @@ class FlowSystem:
         return nodes, edges
 
     def transform_data(self):
-        self._connect_network()
+        if not self._connected:
+            self._connect_network()
         for element in self.all_elements.values():
             element.transform_data(self)
 
@@ -324,6 +331,8 @@ class FlowSystem:
         }
 
     def create_model(self) -> SystemModel:
+        if not self._connected:
+            raise RuntimeError('FlowSystem is not connected. Call FlowSystem.connect() first.')
         self.model = SystemModel(self)
         return self.model
 
@@ -383,6 +392,9 @@ class FlowSystem:
                     bus.outputs.append(flow)
                 elif not flow.is_input_in_component and flow not in bus.inputs:
                     bus.inputs.append(flow)
+        logger.debug(f'Connected {len(self.buses)} Buses and {len(self.components)} '
+                     f'via {len(self.flows)} Flows inside the FlowSystem.')
+        self._connected = True
 
     def __repr__(self):
         return f'<{self.__class__.__name__} with {len(self.components)} components and {len(self.effects)} effects>'
