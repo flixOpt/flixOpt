@@ -52,7 +52,7 @@ class HighsSolver(_Solver):
     @property
     def _options(self) -> Dict[str, Any]:
         return {
-            'mip_gap': self.mip_gap,
+            'mip_rel_gap': self.mip_gap,
             'time_limit': self.time_limit_seconds,
             'threads': self.threads,
         }
