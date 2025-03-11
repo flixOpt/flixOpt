@@ -21,7 +21,7 @@ def flow_system(request):
         return fs[0]
 
 
-def test_flow_system_io(flow_system):
+def test_flow_system_file_io(flow_system):
     calculation_0 = fx.FullCalculation('IO', flow_system=flow_system)
     calculation_0.do_modeling()
     calculation_0.solve(fx.solvers.HighsSolver(mip_gap=0.001, time_limit_seconds=30))
@@ -42,6 +42,19 @@ def test_flow_system_io(flow_system):
         calculation_1.results.model.variables['costs|total'].solution.values,
         'costs doesnt match expected value',
     )
+
+
+def test_flow_system_io(flow_system):
+    di = flow_system.as_dict()
+    _ = fx.FlowSystem.from_dict(di)
+
+    ds = flow_system.as_dataset()
+    _ = fx.FlowSystem.from_dataset(ds)
+
+    print(flow_system)
+    flow_system.__repr__()
+    flow_system.__str__()
+
 
 if __name__ == '__main__':
     pytest.main(['-v', '--disable-warnings'])
