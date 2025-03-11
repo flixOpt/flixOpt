@@ -9,7 +9,6 @@ import flixOpt as fx
 from .conftest import (
     assert_almost_equal_numeric,
     create_calculation_and_solve,
-    highs_solver,
 )
 
 

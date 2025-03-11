@@ -10,7 +10,6 @@ from .conftest import (
     flow_system_long,
     flow_system_segments_of_flows,
     simple_flow_system,
-    highs_solver
 )
 
 

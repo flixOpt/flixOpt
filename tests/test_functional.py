@@ -24,8 +24,6 @@ from numpy.testing import assert_allclose
 
 import flixOpt as fx
 
-from .conftest import solver_fixture
-
 np.random.seed(45)
 
 
