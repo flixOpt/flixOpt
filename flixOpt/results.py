@@ -208,11 +208,11 @@ class _NodeResults(_ElementResults):
         self.inputs = inputs
         self.outputs = outputs
 
-    def plot_flow_rates(self,
+    def plot_node_balance(self,
                         save: Union[bool, pathlib.Path] = False,
                         show: bool = True):
         fig = plotting.with_plotly(
-            self.flow_rates(with_last_timestep=True).to_dataframe(), mode='area', title=f'Flow rates of {self.label}'
+            self.node_balance(with_last_timestep=True).to_dataframe(), mode='area', title=f'Flow rates of {self.label}'
         )
         return plotly_save_and_show(
             fig,
@@ -221,7 +221,7 @@ class _NodeResults(_ElementResults):
             show=show,
             save=True if save else False)
 
-    def flow_rates(self,
+    def node_balance(self,
                    negate_inputs: bool = True,
                    negate_outputs: bool = False,
                    threshold: Optional[float] = 1e-5,
@@ -265,7 +265,7 @@ class ComponentResults(_NodeResults):
                           show: bool = True) -> plotly.graph_objs._figure.Figure:
         if not self.is_storage:
             raise ValueError(f'Cant plot charge_state. "{self.label}" is not a storage')
-        fig = plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
+        fig = plotting.with_plotly(self.node_balance(with_last_timestep=True).to_dataframe(),
                                     mode='area',
                                     title=f'Operation Balance of {self.label}',
                                     show=False)
