@@ -184,15 +184,15 @@ class _ElementResults:
                  constraints: List[str]):
         self._calculation_results = calculation_results
         self.label = label
-        self._variables = variables
-        self._constraints = constraints
+        self._variable_names = variables
+        self._constraint_names = constraints
 
-        self.variables = self._calculation_results.model.variables[self._variables]
-        self.constraints = self._calculation_results.model.constraints[self._constraints]
+        self.variables = self._calculation_results.model.variables[self._variable_names]
+        self.constraints = self._calculation_results.model.constraints[self._constraint_names]
 
     @property
     def variables_time(self):
-        return self.variables[[name for name in self._variables if 'time' in self.variables[name].dims]]
+        return self.variables[[name for name in self._variable_names if 'time' in self.variables[name].dims]]
 
 
 class _NodeResults(_ElementResults):
@@ -311,7 +311,8 @@ class EffectResults(_ElementResults):
     """Results for an Effect"""
 
     def get_shares_from(self, element: str):
-        return self.variables[[name for name in self._variables if name.startswith(f'{element}->')]]
+        """ Get the shares from an Element (without subelements) to the Effect"""
+        return self.variables[[name for name in self._variable_names if name.startswith(f'{element}->')]]
 
 
 class SegmentedCalculationResults:
