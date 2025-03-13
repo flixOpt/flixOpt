@@ -160,6 +160,14 @@ class CalculationResults:
     def storages(self) -> List['ComponentResults']:
         return [comp for comp in self.components.values() if comp.is_storage]
 
+    @property
+    def variables(self) -> linopy.Variables:
+        return self.model.variables
+
+    @property
+    def constraints(self) -> linopy.Constraints:
+        return self.model.constraints
+
 
 class _ElementResults:
     @classmethod
