@@ -42,15 +42,19 @@ nav:
 theme:
   name: material
   palette:
-    - scheme: default  # Light mode
-      primary: indigo
-      accent: deep purple
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo  # Try different colors like: deep purple, blue, teal
+      accent: purple
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-    - scheme: slate  # Dark mode
-      primary: indigo
-      accent: deep purple
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo  # Can be different from light mode
+      accent: purple
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
