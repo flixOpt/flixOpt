@@ -33,6 +33,7 @@ nav:
 
 
     - Calculation: api/calculation.md
+    - Datatypes: api/datatypes.md
   - LaTeX: latex-example.md
   - Contribute: contribute.md
 
@@ -115,11 +116,15 @@ plugins:
             members_order: source
             heading_level: 2
             show_submodules: true
-            docstring_style: google
+            docstring_style: numpy
             show_signature_annotations: true
             separate_signature: true
-            filters: ["!^_"]  # Exclude private methods
+            filters: ["!^_[^_]", "^__init__"]  # Exclude private methods but include __init__
             docstring_section_style: table
+            show_bases: true
+            show_docstring_attributes: false  # Exclude attributes
+            merge_init_into_class: true  # Merge __init__ docs into class docs
+            infer_type_annotations: true
 
 extra_javascript:
   - javascripts/mathjax.js  # Custom MathJax 3 CDN Configuration
