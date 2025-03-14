@@ -62,9 +62,8 @@ full = [
 docs = [
     "mkdocs-material==9.*",
     "mkdocstrings-python",
-    "mkdocs-gen-files",
     "mkdocs-section-index",
-    "mkdocs-table-reader-plugin"
+    "mkdocs-table-reader-plugin",
 ]
 
 [project.urls]
