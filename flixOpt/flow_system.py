@@ -40,17 +40,13 @@ class FlowSystem:
             hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None,
     ):
         """
-        Parameters
-        ----------
-        timesteps : pd.DatetimeIndex
-            The timesteps of the model.
-        hours_of_last_timestep : Optional[float], optional
-            The duration of the last time step. Uses the last time interval if not specified
-        hours_of_previous_timesteps : Union[int, float, np.ndarray]
-            The duration of previous timesteps.
-            If None, the first time increment of time_series is used.
-            This is needed to calculate previous durations (for example consecutive_on_hours).
-            If you use an array, take care that its long enough to cover all previous values!
+        Args:
+            timesteps: The timesteps of the model.
+            hours_of_last_timestep: The duration of the last time step. Uses the last time interval if not specified
+            hours_of_previous_timesteps: The duration of previous timesteps.
+                If None, the first time increment of time_series is used.
+                This is needed to calculate previous durations (for example consecutive_on_hours).
+                If you use an array, take care that its long enough to cover all previous values!
         """
         self.time_series_collection = TimeSeriesCollection(
             timesteps=timesteps,
@@ -126,7 +122,7 @@ class FlowSystem:
 
         Parameters
         ----------
-        *elements : childs of  Element like Boiler, HeatPump, Bus,...
+        *elements: childs of  Element like Boiler, HeatPump, Bus,...
             modeling Elements
 
         """
@@ -154,7 +150,7 @@ class FlowSystem:
 
         Parameters:
         -----------
-        path : Union[str, pathlib.Path]
+        path: Union[str, pathlib.Path]
             The path to the json file.
         """
         with open(path, 'w', encoding='utf-8') as f:
@@ -211,33 +207,23 @@ class FlowSystem:
         """
         Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.
 
-        Parameters:
-        - path (Union[bool, str, pathlib.Path], default='flow_system.html'):
-          Path to save the HTML visualization.
-            - `False`: Visualization is created but not saved.
-            - `str` or `Path`: Specifies file path (default: 'flow_system.html').
-
-        - controls (Union[bool, List[str]], default=True):
-          UI controls to add to the visualization.
-            - `True`: Enables all available controls.
-            - `List`: Specify controls, e.g., ['nodes', 'layout'].
-            - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
-
-        - show (bool, default=True):
-          Whether to open the visualization in the web browser.
+        Args:
+            path: Path to save the HTML visualization.
+                - `False`: Visualization is created but not saved.
+                - `str` or `Path`: Specifies file path (default: 'flow_system.html').
+            controls: UI controls to add to the visualization.
+                - `True`: Enables all available controls.
+                - `List`: Specify controls, e.g., ['nodes', 'layout'].
+                - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
+            show: Whether to open the visualization in the web browser.
 
         Returns:
         - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
 
-        Usage:
-        - Visualize and open the network with default options:
-          >>> self.plot_network()
-
-        - Save the visualization without opening:
-          >>> self.plot_network(show=False)
-
-        - Visualize with custom controls and path:
-          >>> self.plot_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+        Examples:
+            >>> flow_system.plot_network()
+            >>> flow_system.plot_network(show=False)
+            >>> flow_system.plot_network(path='output/custom_network.html', controls=['nodes', 'layout'])
 
         Notes:
         - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
@@ -345,7 +331,7 @@ class FlowSystem:
 
         Parameters
         ----------
-        element : Element
+        element: Element
             new element to check
         """
         if element in self.all_elements.values():

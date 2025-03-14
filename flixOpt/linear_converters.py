@@ -28,20 +28,13 @@ class Boiler(LinearConverter):
         meta_data: Optional[Dict] = None,
     ):
         """
-        constructor for boiler
-
-        Parameters
-        ----------
-        label : str
-            name of bolier.
-        eta : float or TS
-            thermal efficiency.
-        Q_fu : Flow
-            fuel input-flow
-        Q_th : Flow
-            thermal output-flow.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
+        Args:
+            label: The label of the Element. Used to identify it in the FlowSystem
+            eta: thermal efficiency.
+            Q_fu: fuel input-flow
+            Q_th: thermal output-flow.
+            on_off_parameters: Parameters defining the on/off behavior of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -76,19 +69,13 @@ class Power2Heat(LinearConverter):
         meta_data: Optional[Dict] = None,
     ):
         """
-        Parameters
-        ----------
-        label : str
-            name of bolier.
-        eta : float or TS
-            thermal efficiency.
-        P_el : Flow
-            electric input-flow
-        Q_th : Flow
-            thermal output-flow.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
-
+        Args:
+            label: The label of the Element. Used to identify it in the FlowSystem
+            eta: thermal efficiency.
+            P_el: electric input-flow
+            Q_th: thermal output-flow.
+            on_off_parameters: Parameters defining the on/off behavior of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -124,18 +111,13 @@ class HeatPump(LinearConverter):
         meta_data: Optional[Dict] = None,
     ):
         """
-        Parameters
-        ----------
-        label : str
-            name of heatpump.
-        COP : float or TS
-            Coefficient of performance.
-        P_el : Flow
-            electricity input-flow.
-        Q_th : Flow
-            thermal output-flow.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
+        Args:
+            label: The label of the Element. Used to identify it in the FlowSystem
+            COP: Coefficient of performance.
+            P_el: electricity input-flow.
+            Q_th: thermal output-flow.
+            on_off_parameters: Parameters defining the on/off behavior of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -171,19 +153,13 @@ class CoolingTower(LinearConverter):
         meta_data: Optional[Dict] = None,
     ):
         """
-        Parameters
-        ----------
-        label : str
-            name of cooling tower.
-        specific_electricity_demand : float or TS
-            auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
-        P_el : Flow
-            electricity input-flow.
-        Q_th : Flow
-            thermal input-flow.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
-
+        Args:
+            label: The label of the Element. Used to identify it in the FlowSystem
+            specific_electricity_demand: auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
+            P_el: electricity input-flow.
+            Q_th: thermal input-flow.
+            on_off_parameters: Parameters defining the on/off behavior of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -223,24 +199,15 @@ class CHP(LinearConverter):
         meta_data: Optional[Dict] = None,
     ):
         """
-        constructor of cCHP
-
-        Parameters
-        ----------
-        label : str
-            name of CHP-unit.
-        eta_th : float or TS
-            thermal efficiency.
-        eta_el : float or TS
-            electrical efficiency.
-        Q_fu : cFlow
-            fuel input-flow.
-        P_el : cFlow
-            electricity output-flow.
-        Q_th : cFlow
-            heat output-flow.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
+        Args:
+            label: The label of the Element. Used to identify it in the FlowSystem
+            eta_th: thermal efficiency.
+            eta_el: electrical efficiency.
+            Q_fu: fuel input-flow.
+            P_el: electricity output-flow.
+            Q_th: heat output-flow.
+            on_off_parameters: Parameters defining the on/off behavior of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         heat = {Q_fu.label: eta_th, Q_th.label: 1}
         electricity = {Q_fu.label: eta_el, P_el.label: 1}
@@ -292,20 +259,14 @@ class HeatPumpWithSource(LinearConverter):
         meta_data: Optional[Dict] = None,
     ):
         """
-        Parameters
-        ----------
-        label : str
-            name of heatpump.
-        COP : float, TS
-            Coefficient of performance.
-        Q_ab : Flow
-            Heatsource input-flow.
-        P_el : Flow
-            electricity input-flow.
-        Q_th : Flow
-            thermal output-flow.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
+        Args:
+            label: The label of the Element. Used to identify it in the FlowSystem
+            COP: Coefficient of performance.
+            Q_ab: Heatsource input-flow.
+            P_el: electricity input-flow.
+            Q_th: thermal output-flow.
+            on_off_parameters: Parameters defining the on/off behavior of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
 
         # super:

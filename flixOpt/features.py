@@ -607,7 +607,7 @@ class OnOffModel(Model):
         ----------
         previous_values: List[NumericData]
             List of previous values of the defining variables. In Range [0, inf] or None (ignored)
-        epsilon : float, optional
+        epsilon: float, optional
             Tolerance for equality to determine "off" state, default is 1e-5.
 
         Returns:
@@ -639,9 +639,9 @@ class OnOffModel(Model):
 
         Parameters
         ----------
-        binary_values : int, np.ndarray
+        binary_values: int, np.ndarray
             An int or 1D binary array containing only `0`s and `1`s.
-        hours_per_timestep : int, float, np.ndarray
+        hours_per_timestep: int, float, np.ndarray
             The duration of each timestep in hours.
 
         Returns
@@ -746,17 +746,17 @@ class MultipleSegmentsModel(Model):
         """
         Parameters
         ----------
-        model : linopy.Model
+        model: linopy.Model
             Model to which the segmented variable belongs.
-        label_of_element : str
+        label_of_element: str
             Name of the parent variable.
-        sample_points : dict[str, list[tuple[float, float]]]
+        sample_points: dict[str, list[tuple[float, float]]]
             Dictionary mapping variables (names) to their sample points for each segment.
             The sample points are tuples of the form (start, end).
-        can_be_outside_segments : bool or linopy.Variable, optional
+        can_be_outside_segments: bool or linopy.Variable, optional
             Whether the variable can be outside the segments. If True, a variable is created.
             If False or None, no variable is created. If a Variable is passed, it is used.
-        as_time_series : bool, optional
+        as_time_series: bool, optional
         """
         super().__init__(model, label_of_element, label)
         self.outside_segments: Optional[linopy.Variable] = None
@@ -900,11 +900,11 @@ class ShareAllocationModel(Model):
 
         Parameters
         ----------
-        system_model : SystemModel
+        system_model: SystemModel
             The system model.
-        name : str
+        name: str
             The name of the share.
-        expression : linopy.LinearExpression
+        expression: linopy.LinearExpression
             The expression of the share. Added to the right hand side of the constraint.
         """
         if name in self.shares:
