@@ -207,33 +207,23 @@ class FlowSystem:
         """
         Visualizes the network structure of a FlowSystem using PyVis, saving it as an interactive HTML file.
 
-        Parameters:
-        - path (Union[bool, str, pathlib.Path], default='flow_system.html'):
-          Path to save the HTML visualization.
-            - `False`: Visualization is created but not saved.
-            - `str` or `Path`: Specifies file path (default: 'flow_system.html').
-
-        - controls (Union[bool, List[str]], default=True):
-          UI controls to add to the visualization.
-            - `True`: Enables all available controls.
-            - `List`: Specify controls, e.g., ['nodes', 'layout'].
-            - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
-
-        - show (bool, default=True):
-          Whether to open the visualization in the web browser.
+        Args:
+            path: Path to save the HTML visualization.
+                - `False`: Visualization is created but not saved.
+                - `str` or `Path`: Specifies file path (default: 'flow_system.html').
+            controls: UI controls to add to the visualization.
+                - `True`: Enables all available controls.
+                - `List`: Specify controls, e.g., ['nodes', 'layout'].
+                - Options: 'nodes', 'edges', 'layout', 'interaction', 'manipulation', 'physics', 'selection', 'renderer'.
+            show: Whether to open the visualization in the web browser.
 
         Returns:
         - Optional[pyvis.network.Network]: The `Network` instance representing the visualization, or `None` if `pyvis` is not installed.
 
-        Usage:
-        - Visualize and open the network with default options:
-          >>> self.plot_network()
-
-        - Save the visualization without opening:
-          >>> self.plot_network(show=False)
-
-        - Visualize with custom controls and path:
-          >>> self.plot_network(path='output/custom_network.html', controls=['nodes', 'layout'])
+        Examples:
+            >>> flow_system.plot_network()
+            >>> flow_system.plot_network(show=False)
+            >>> flow_system.plot_network(path='output/custom_network.html', controls=['nodes', 'layout'])
 
         Notes:
         - This function requires `pyvis`. If not installed, the function prints a warning and returns `None`.
