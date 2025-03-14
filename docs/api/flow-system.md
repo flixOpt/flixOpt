@@ -1,71 +1,56 @@
-# FlowSystem API Reference
+# FlowSystem
 
 The FlowSystem is the central organizing component in flixOpt, responsible for managing the time series, components, buses, and effects that make up your energy system model.
 
-## FlowSystem Class
+## API Reference
 
 ::: flixOpt.flow_system.FlowSystem
     options:
-      members: true
-      show_root_heading: true
-      show_source: true
+      show_root_heading: false
+      show_root_toc_entry: false
+      show_object_full_path: false
+      show_category_heading: false
+      show_source: false
+      members_order: source
+      heading_level: 3
+      docstring_section_style: table
 
-## Examples
-
-### Creating a FlowSystem
+## Usage Examples
 
 ```python
 import flixOpt as fx
 import pandas as pd
 
-# Create the timesteps with hourly steps for one day
-timesteps = pd.date_range('2020-01-01', periods=24, freq='h')
 
-# Initialize the FlowSystem with the timesteps
-flow_system = fx.FlowSystem(timesteps=timesteps)
+# Create timesteps with hourly steps for one day
+timesteps = pd.date_range('2023-01-01', steps=24, freq='1h')
 
-# Add components, buses, and effects
+# Initialize the FlowSystem
+flow_system = fx.FlowSystem(timesteps)
+
+# Add buses, components and effects
 heat_bus = fx.Bus("Heat")
-flow_system.add_elements(heat_bus)
+electricity_bus = fx.Bus("Electricity")
+costs = fx.Effect("costs", "€", "Costs", is_standard=True, is_objective=True)
+flow_system.add_elements(heat_bus, electricity_bus, costs)
 
-# Visualize the network
+# You can add components with their connected flows
+heat_pump = fx.linear_converters.HeatPump(
+  label="HeatPump",
+  COP=3.0,
+  P_el=fx.Flow("power", electricity_bus.label, effects_per_flow_hour=0.2),
+  Q_th=fx.Flow("heat", heat_bus.label)
+)
+flow_system.add_elements(heat_pump)
+
+# Access components and flow_system structure
+print(flow_system.components)  # Dictionary of all components
+print(flow_system.buses)  # Dictionary of all buses
+print(flow_system.flows)  # Dictionary of all flows
+
+# Visualize the flow_system network
 flow_system.plot_network(show=True)
-```
 
-### Accessing FlowSystem Components
-
-```python
-# Get a list of all components
-components = flow_system.components
-
-# Get a specific component by label
-if "Boiler" in flow_system.components:
-    boiler = flow_system.components["Boiler"]
-    
-# Get all flows in the flow_system
-flows = flow_system.flows
-
-# Get all buses in the flow_system
-buses = flow_system.buses
-```
-
-### Time Series and Indices
-
-```python
-# Get the full time series
-full_time = flow_system.time_series
-
-# Get a subset of the time series
-indices = range(12)  # First 12 hours
-time_subset, time_with_end, dt_hours, total_hours = flow_system.get_time_data_from_indices(indices)
-```
-
-### Saving System Information
-
-```python
-# Save flow_system information to a JSON file
-flow_system.to_json("system_info.json")
-
-# Save flow_system visualization
-flow_system.visualize_network(path="system_network.html", show=False)
+# Save the flow_system definition
+flow_system.to_json("flow_system_definition.json")
 ```
