@@ -39,7 +39,7 @@ class Component(Element):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             inputs: input flows.
             outputs: output flows.
             on_off_parameters: Information about on and off state of Component.
@@ -85,7 +85,7 @@ class Bus(Element):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             excess_penalty_per_flow_hour: excess costs / penalty costs (bus balance compensation)
                 (none/ 0 -> no penalty). The default is 1e5.
                 (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
@@ -152,8 +152,8 @@ class Flow(Element):
     ):
         r"""
         Args:
-            label: The name
-            bus: bus (label) to which flow is linked
+            label: The label of the FLow. Used to identify it in the FlowSystem. Its `full_label` consists of the label of the Component and the label of the Flow.
+            bus: blabel of the bus the flow is connected to.
             size: size of the flow. If InvestmentParameters is used, size is optimized.
                 If size is None, a default value is used.
             relative_minimum: min value is relative_minimum multiplied by size

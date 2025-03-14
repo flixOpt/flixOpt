@@ -51,7 +51,7 @@ class Effect(Element):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             unit: The unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
             description: The long name
             is_standard: true, if Standard-Effect (for direct input of value without effect (alternatively to dict)) , else false

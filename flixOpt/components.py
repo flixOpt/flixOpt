@@ -39,7 +39,7 @@ class LinearConverter(Component):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             inputs: The input Flows
             outputs: The output Flows
             on_off_parameters: Information about on and off states. See class OnOffParameters.
@@ -155,7 +155,7 @@ class Storage(Component):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             charging: ingoing flow.
             discharging: outgoing flow.
             capacity_in_flow_hours: nominal capacity/size of the storage
@@ -242,7 +242,7 @@ class Transmission(Component):
         with potential losses.
 
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             in1: The inflow at side A. Pass InvestmentParameters here.
             out1: The outflow at side B.
             in2: The optional inflow at side B.
@@ -537,7 +537,7 @@ class SourceAndSink(Component):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             source: output-flow of this component
             sink: input-flow of this component
             prevent_simultaneous_sink_and_source: If True, inflow and outflow can not be active simultaniously.
@@ -560,7 +560,7 @@ class Source(Component):
     def __init__(self, label: str, source: Flow, meta_data: Optional[Dict] = None):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             source: output-flow of source
             meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
@@ -573,7 +573,7 @@ class Sink(Component):
     def __init__(self, label: str, sink: Flow, meta_data: Optional[Dict] = None):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             meta_data: used to store more information about the element. Is not used internally, but saved in the results
             sink: input-flow of sink
         """

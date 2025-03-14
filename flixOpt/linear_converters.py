@@ -29,7 +29,7 @@ class Boiler(LinearConverter):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             eta: thermal efficiency.
             Q_fu: fuel input-flow
             Q_th: thermal output-flow.
@@ -70,7 +70,7 @@ class Power2Heat(LinearConverter):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             eta: thermal efficiency.
             P_el: electric input-flow
             Q_th: thermal output-flow.
@@ -112,7 +112,7 @@ class HeatPump(LinearConverter):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             COP: Coefficient of performance.
             P_el: electricity input-flow.
             Q_th: thermal output-flow.
@@ -154,7 +154,7 @@ class CoolingTower(LinearConverter):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             specific_electricity_demand: auxiliary electricty demand per cooling power, i.g. 0.02 (2 %).
             P_el: electricity input-flow.
             Q_th: thermal input-flow.
@@ -200,7 +200,7 @@ class CHP(LinearConverter):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             eta_th: thermal efficiency.
             eta_el: electrical efficiency.
             Q_fu: fuel input-flow.
@@ -260,7 +260,7 @@ class HeatPumpWithSource(LinearConverter):
     ):
         """
         Args:
-            label: The name
+            label: The label of the Element. Used to identify it in the FlowSystem
             COP: Coefficient of performance.
             Q_ab: Heatsource input-flow.
             P_el: electricity input-flow.
