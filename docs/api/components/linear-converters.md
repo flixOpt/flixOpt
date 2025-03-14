@@ -1,54 +1,20 @@
 # Linear Converters API Reference
 
-The `linear_converters` module provides pre-defined specialized converters that extend the base `LinearConverter` class. These components make it easier to create common energy system elements like boilers, heat pumps, and CHPs.
-
-## Boiler
+The `linear_converters` module provides pre-defined specialized converters that simplify the usage of the `LinearConverter` class. Common energy system elements like boilers, heat pumps, and CHPs are predefined.
+For more advanced LinearConverters, refer to the [LinearConverter API Reference](linear-converter.md).
 
 ::: flixOpt.linear_converters.Boiler
-    options:
-      members: true
-      show_root_heading: true
-      show_source: true
-
-## Power2Heat
 
 ::: flixOpt.linear_converters.Power2Heat
-    options:
-      members: true
-      show_root_heading: true
-      show_source: true
-
-## HeatPump
 
 ::: flixOpt.linear_converters.HeatPump
-    options:
-      members: true
-      show_root_heading: true
-      show_source: true
-
-## HeatPumpWithSource
 
 ::: flixOpt.linear_converters.HeatPumpWithSource
-    options:
-      members: true
-      show_root_heading: true
-      show_source: true
-
-## CoolingTower
 
 ::: flixOpt.linear_converters.CoolingTower
-    options:
-      members: true
-      show_root_heading: true
-      show_source: true
-
-## CHP (Combined Heat and Power)
 
 ::: flixOpt.linear_converters.CHP
-    options:
-      members: true
-      show_root_heading: true
-      show_source: true
+
 
 ## Examples
 

@@ -26,7 +26,7 @@ nav:
         - Sink: api/components/sink.md
         - SourceAndSink: api/components/source-and-sink.md
         - LinearConverter: api/components/linear-converter.md
-        - LinearConverter Subclasses: api/components/linear-converters.md
+        - Subclasses of LinearConverter: api/components/linear-converters.md
       - Interfaces:
         - OnOffParameters: api/interfaces/on_off_parameters.md
         - InvestParameters: api/interfaces/invest_parameters.md
@@ -118,6 +118,9 @@ plugins:
 
            # Sets google as the docstring style
            docstring_style: google
+
+           # whether the documented object's name should be displayed as a heading at the beginning of its documentation
+           show_root_heading: true
 
            # Improves type annotations
            modernize_annotations: true
