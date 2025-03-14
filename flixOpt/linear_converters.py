@@ -34,7 +34,7 @@ class Boiler(LinearConverter):
             Q_fu: fuel input-flow
             Q_th: thermal output-flow.
             on_off_parameters: Parameters defining the on/off behavior of the component.
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -75,7 +75,7 @@ class Power2Heat(LinearConverter):
             P_el: electric input-flow
             Q_th: thermal output-flow.
             on_off_parameters: Parameters defining the on/off behavior of the component.
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -117,7 +117,7 @@ class HeatPump(LinearConverter):
             P_el: electricity input-flow.
             Q_th: thermal output-flow.
             on_off_parameters: Parameters defining the on/off behavior of the component.
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -159,7 +159,7 @@ class CoolingTower(LinearConverter):
             P_el: electricity input-flow.
             Q_th: thermal input-flow.
             on_off_parameters: Parameters defining the on/off behavior of the component.
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -199,24 +199,15 @@ class CHP(LinearConverter):
         meta_data: Optional[Dict] = None,
     ):
         """
-        constructor of cCHP
-
-        Parameters
-        ----------
-        label: str
-            name of CHP-unit.
-        eta_th: float or TS
-            thermal efficiency.
-        eta_el: float or TS
-            electrical efficiency.
-        Q_fu: cFlow
-            fuel input-flow.
-        P_el: cFlow
-            electricity output-flow.
-        Q_th: cFlow
-            heat output-flow.
-        meta_data: Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
+        Args:
+            label: The name
+            eta_th: thermal efficiency.
+            eta_el: electrical efficiency.
+            Q_fu: fuel input-flow.
+            P_el: electricity output-flow.
+            Q_th: heat output-flow.
+            on_off_parameters: Parameters defining the on/off behavior of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         heat = {Q_fu.label: eta_th, Q_th.label: 1}
         electricity = {Q_fu.label: eta_el, P_el.label: 1}
@@ -275,7 +266,7 @@ class HeatPumpWithSource(LinearConverter):
             P_el: electricity input-flow.
             Q_th: thermal output-flow.
             on_off_parameters: Parameters defining the on/off behavior of the component.
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
 
         # super:

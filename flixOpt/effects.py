@@ -54,7 +54,6 @@ class Effect(Element):
             label: The name
             unit: The unit of effect, i.g. €, kg_CO2, kWh_primaryEnergy
             description: The long name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             is_standard: true, if Standard-Effect (for direct input of value without effect (alternatively to dict)) , else false
             is_objective: true, if optimization target
             specific_share_to_other_effects_operation: {effectType: TS, ...}, i.g. 180 €/t_CO2, input as {costs: 180}, optional
@@ -69,6 +68,7 @@ class Effect(Element):
             maximum_invest: maximal sum (only invest) of the effect
             minimum_total: min sum of effect (invest+operation).
             maximum_total: max sum of effect (invest+operation).
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(label, meta_data=meta_data)
         self.label = label

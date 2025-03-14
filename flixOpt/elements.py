@@ -40,7 +40,6 @@ class Component(Element):
         """
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             inputs: input flows.
             outputs: output flows.
             on_off_parameters: Information about on and off state of Component.
@@ -49,6 +48,7 @@ class Component(Element):
                 See class OnOffParameters.
             prevent_simultaneous_flows: Define a Group of Flows. Only one them can be on at a time.
                 Induces On-Variable in all Flows! If possible, use OnOffParameters in a single Flow instead.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(label, meta_data=meta_data)
         self.inputs: List['Flow'] = inputs or []
@@ -86,10 +86,10 @@ class Bus(Element):
         """
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             excess_penalty_per_flow_hour: excess costs / penalty costs (bus balance compensation)
                 (none/ 0 -> no penalty). The default is 1e5.
                 (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(label, meta_data=meta_data)
         self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
@@ -153,8 +153,7 @@ class Flow(Element):
         r"""
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
-            bus: bus to which flow is linked
+            bus: bus (label) to which flow is linked
             size: size of the flow. If InvestmentParameters is used, size is optimized.
                 If size is None, a default value is used.
             relative_minimum: min value is relative_minimum multiplied by size
@@ -178,6 +177,7 @@ class Flow(Element):
                 used for fixed load or supply profiles, i.g. heat demand, wind-power, solarthermal
                 If the load-profile is just an upper limit, use relative_maximum instead.
             previous_flow_rate: previous flow rate of the component.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(label, meta_data=meta_data)
         self.size = size or CONFIG.modeling.BIG  # Default size

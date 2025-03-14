@@ -237,7 +237,7 @@ class Element(Interface):
         """
         Args:
             label: The label of the element
-            meta_data: Used to store more information about the element. Is not used internally, but saved in the results
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         self.label = Element._valid_label(label)
         self.meta_data = meta_data if meta_data is not None else {}

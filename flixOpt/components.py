@@ -40,7 +40,6 @@ class LinearConverter(Component):
         """
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             inputs: The input Flows
             outputs: The output Flows
             on_off_parameters: Information about on and off states. See class OnOffParameters.
@@ -52,6 +51,7 @@ class LinearConverter(Component):
                 Either 'segmented_conversion_factors' or 'conversion_factors' can be used!
                 --> "gaps" can be expressed by a segment not starting at the end of the prior segment: [(1,3), (4,5)]
                 --> "points" can expressed as segment with same begin and end: [(3,3), (4,4)]
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(label, inputs, outputs, on_off_parameters, meta_data=meta_data)
         self.conversion_factors = conversion_factors or []
@@ -156,7 +156,6 @@ class Storage(Component):
         """
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             charging: ingoing flow.
             discharging: outgoing flow.
             capacity_in_flow_hours: nominal capacity/size of the storage
@@ -170,6 +169,7 @@ class Storage(Component):
             relative_loss_per_hour: loss per chargeState-Unit per hour. The default is 0.
             prevent_simultaneous_charge_and_discharge: If True, loading and unloading at the same time is not possible.
                 Increases the number of binary variables, but is recommended for easier evaluation. The default is True.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         # TODO: fixed_relative_chargeState implementieren
         super().__init__(
@@ -243,7 +243,6 @@ class Transmission(Component):
 
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             in1: The inflow at side A. Pass InvestmentParameters here.
             out1: The outflow at side B.
             in2: The optional inflow at side B.
@@ -253,6 +252,7 @@ class Transmission(Component):
             absolute_losses: The absolute loss, occur only when the Flow is on. Induces the creation of the ON-Variable
             on_off_parameters: Parameters defining the on/off behavior of the component.
             prevent_simultaneous_flows_in_both_directions: If True, inflow and outflow are not allowed to be both non-zero at same timestep.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -538,10 +538,10 @@ class SourceAndSink(Component):
         """
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             source: output-flow of this component
             sink: input-flow of this component
             prevent_simultaneous_sink_and_source: If True, inflow and outflow can not be active simultaniously.
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(
             label,
@@ -561,8 +561,8 @@ class Source(Component):
         """
         Args:
             label: The name
-            meta_data: used to store more information about the element. Is not used internally, but saved in the results
             source: output-flow of source
+            meta_data: used to store more information about the Element. Is not used internally, but saved in the results. Only use python native types.
         """
         super().__init__(label, outputs=[source], meta_data=meta_data)
         self.source = source
