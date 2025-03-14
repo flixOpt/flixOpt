@@ -2,56 +2,21 @@
 
 We warmly welcome contributions from the community! This guide will help you get started with contributing to our project.
 
-## Ways to Contribute
-
-There are many ways you can contribute:
-
-1. **Reporting Bugs**
-    - Open clear, detailed issues on our GitHub repository
-    - Include:
-        - Steps to reproduce
-        - Expected behavior
-        - Actual behavior
-        - Your environment details
-
-2. **Suggesting Enhancements**
-    - Submit feature requests as GitHub issues
-    - Provide:
-        - Clear description of the proposed feature
-        - Potential use cases
-        - Any initial thoughts on implementation
-
-3. **Code Contributions**
-    - Fork the repository
-    - Create a new branch for your feature or bugfix
-    - Write clear, documented code
-    - Ensure all tests pass
-    - Add tests for your code, if your changes are complex
-    - Submit a pull request
-
 ## Development Setup
-```bash
-# Clone the repository
-git clone https://github.com/flixOpt/flixopt.git
-cd flixopt
+1. Clone the repository `git clone https://github.com/flixOpt/flixopt.git`
+2. Install the development dependencies `pip install -editable .[dev, docs]`
+3. Run `pytest` and `ruff check .` to ensure your code passes all tests
 
-# It's recommended to use a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+## Documentation
+flixOpt uses [mkdocs](https://www.mkdocs.org/) to generate documentation. To preview the documentation locally, run `mkdocs serve` in the root directory.
 
-# Install development dependencies
-pip install -e .[dev]  # This installs the package in editable mode with development dependencies
+## Helpful Commands
+- `mkdocs serve` to preview the documentation locally. Navigate to `http://127.0.0.1:8000/` to view the documentation.
+- `pytest` to run the test suite (You can also run the provided python script `run_all_test.py`)
+- `ruff check .` to run the linter
+- `ruff check . --fix` to automatically fix linting issues
 
-# Create a new branch
-git checkout -b feature/your-feature-name
-
-# Run tests
-pytest
-
-# Run a linter to improve code quality
-ruff check . --fix
-```
-
+---
 # Best practices
 
 ## Coding Guidelines
