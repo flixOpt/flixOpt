@@ -1,19 +1,6 @@
-# FlowSystem
-
-The FlowSystem is the central organizing component in flixOpt, responsible for managing the time series, components, buses, and effects that make up your energy system model.
-
-## API Reference
+## Overview
 
 ::: flixOpt.flow_system.FlowSystem
-    options:
-      show_root_heading: false
-      show_root_toc_entry: false
-      show_object_full_path: false
-      show_category_heading: false
-      show_source: false
-      members_order: source
-      heading_level: 3
-      docstring_section_style: table
 
 ## Usage Examples
 

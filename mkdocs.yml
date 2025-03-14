@@ -14,10 +14,28 @@ nav:
     - Advanced Example: examples/advanced.md
   - API Reference:
     - FlowSystem: api/flow-system.md
-    - Component: api/component.md
-    - LinearConverter: api/linear-converter.md
-    - Effect: api/effect.md
+    - Elements:
+      - Effect: api/effect.md
+      - Flow: api/flow.md
+      - Bus: api/bus.md
+      - Components:
+        - Storage: api/components/storage.md
+        - LinearConverter: api/components/linear-converter.md
+        - Transmission: api/components/transmission.md
+        - Source: api/components/source.md
+        - Sink: api/components/sink.md
+        - SourceAndSink: api/components/source-and-sink.md
+        - LinearConverter: api/components/linear-converter.md
+        - LinearConverter Subclasses: api/components/linear-converters.md
+      - Interfaces:
+        - OnOffParameters: api/interfaces/on-off-parameters.md
+        - InvestParameters: api/interfaces/invest-parameters.md
+
+
     - Calculation: api/calculation.md
+  - LaTeX: latex-example.md
+  - Contribute: contribute.md
+
 
 theme:
   name: material
@@ -48,11 +66,14 @@ theme:
     - navigation.footer
     - toc.follow
     - navigation.indexes
+    - search.suggest
+    - search.highlight
     - content.action.edit
     - content.action.view
     - content.code.copy
     - content.code.annotate
     - content.tooltips
+    - content.code.copy
 
 markdown_extensions:
   - admonition
@@ -68,6 +89,7 @@ markdown_extensions:
   - abbr
   - md_in_html
   - footnotes
+  - tables
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.emoji:
@@ -78,21 +100,31 @@ plugins:
   - search
   - table-reader
   - mkdocstrings:
+      default_handler: python
       handlers:
         python:
+          paths: [flixOpt]  # Package directory relative to mkdocs.yml
           options:
-            merge_init_into_class: true
-            docstring_options:
-              ignore_init_summary: true
-              trim_doctest_flags: true
-  - gen-files:
-      scripts:
-        - scripts/gen_ref_pages.py
+            group_by_category: true
+            show_source: false
+            show_root_heading: true
+            show_object_full_path: false
+            show_category_heading: true
+            show_if_no_docstring: true
+            show_signature: true
+            members_order: source
+            heading_level: 2
+            show_submodules: true
+            docstring_style: google
+            show_signature_annotations: true
+            separate_signature: true
+            filters: ["!^_"]  # Exclude private methods
+            docstring_section_style: table
 
 extra_javascript:
-  - javascripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
-  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - javascripts/mathjax.js  # Custom MathJax 3 CDN Configuration
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js  #MathJax 3 CDN
+  - https://polyfill.io/v3/polyfill.min.js?features=es6  #Support for older browsers
 
 watch:
   - flixOpt
