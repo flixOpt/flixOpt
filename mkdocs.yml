@@ -5,18 +5,16 @@ repo_url: https://github.com/flixOpt/flixopt
 repo_name: flixOpt/flixopt
 
 nav:
-  - Home: index.md
+  - Home: readme.md
   - Getting Started: getting-started.md
-  - User Guide:
-    - Installation: guide/installation.md
-    - Concepts: guide/concepts.md
-    - Components: guide/components.md
+  - Concepts: concepts/overview.md
   - Examples:
     - Basic Example: examples/basic.md
     - Advanced Example: examples/advanced.md
   - API Reference:
-    - FlowSystem: api/flow_system.md
+    - FlowSystem: api/flow-system.md
     - Components: api/components.md
+    - LinearConverters: api/linear-converters.md
     - Effects: api/effects.md
     - Calculations: api/calculation.md
 
@@ -24,9 +22,9 @@ theme:
   name: material
   palette:
     primary: indigo
-    accent: indigo
-  logo: images/logo.png
-  favicon: images/favicon.png
+    accent: deep purple
+  logo: images/flixopt-icon.svg
+  favicon: images/flixopt-icon.svg
   icon:
     repo: fontawesome/brands/github
   features:
@@ -66,3 +64,7 @@ plugins:
         python:
           options:
             show_source: true
+            docstring_style: google
+            show_root_heading: true
+            show_category_heading: true
+            show_if_no_docstring: true
