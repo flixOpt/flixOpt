@@ -32,7 +32,7 @@ Every flixOpt model starts with creating a FlowSystem.
 - Have a size (fixed or optimized as an investment decision)
 - Can have fixed profiles (for demands or renewable generation)
 - Can have constraints (min/max, total flow hours, etc.)
-- Can have associated [Effects](#Effects)
+- Can have associated [Effects](#effects)
 
 ### Components
 
