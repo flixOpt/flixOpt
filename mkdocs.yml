@@ -5,6 +5,20 @@ repo_url: https://github.com/flixOpt/flixopt
 repo_name: flixOpt/flixopt
 
 
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Concepts: concepts/overview.md
+  - Examples:
+    - Basic Example: examples/basic.md
+    - Advanced Example: examples/advanced.md
+  - API Reference:
+    - FlowSystem: api/flow-system.md
+    - Component: api/component.md
+    - LinearConverter: api/linear-converter.md
+    - Effect: api/effect.md
+    - Calculation: api/calculation.md
+
 theme:
   name: material
   palette:
@@ -71,8 +85,6 @@ plugins:
             docstring_options:
               ignore_init_summary: true
               trim_doctest_flags: true
-  - literate-nav:
-      nav_file: SUMMARY.md
   - gen-files:
       scripts:
         - scripts/gen_ref_pages.py
