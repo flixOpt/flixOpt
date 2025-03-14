@@ -9,9 +9,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Concepts: concepts/overview.md
-  - Examples:
-    - Basic Example: examples/basic.md
-    - Advanced Example: examples/advanced.md
+  - Examples: examples.md
   - API Reference:
     - FlowSystem: api/flow-system.md
     - Elements:
@@ -35,7 +33,7 @@ nav:
 
     - Calculation: api/calculation.md
     - Datatypes: api/datatypes.md
-  - LaTeX: latex-example.md
+  - Display Math example: latex-example.md
   - Contribute: contribute.md
 
 
@@ -156,7 +154,7 @@ plugins:
            merge_init_into_class: true
 
            # Sets the base heading level for documented objects (h2)
-           heading_level: 2
+           heading_level: 1
 
            # Orders members as they appear in the source code
            members_order: source
