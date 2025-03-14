@@ -16,9 +16,14 @@ import xarray as xr
 
 logger = logging.getLogger('flixOpt')
 
-Scalar = Union[int, float]  # Datatype
+Scalar = Union[int, float]
+"""A type representing a single number, either integer or float."""
+
 NumericData = Union[int, float, np.integer, np.floating, np.ndarray, pd.Series, pd.DataFrame, xr.DataArray]
+"""Represents any form of numeric data, from simple scalars to complex data structures."""
+
 NumericDataTS = Union[NumericData, 'TimeSeriesData']
+"""Represents either standard numeric data or TimeSeriesData."""
 
 
 class ConversionError(Exception):
@@ -93,19 +98,13 @@ class TimeSeriesData:
             --> this 3 series of same type share one weight, i.e. internally assigned each weight = 1/3
             (instead of standard weight = 1)
 
-        Parameters
-        ----------
-        data : Union[int, float, np.ndarray]
-            The timeseries data, which can be a scalar, array, or numpy array.
-        agg_group : str, optional
-            The group this TimeSeriesData is a part of. agg_weight is split between members of a group. Default is None.
-        agg_weight : float, optional
-            The weight for calculation_type 'aggregated', should be between 0 and 1. Default is None.
+        Args:
+            data: The timeseries data, which can be a scalar, array, or numpy array.
+            agg_group: The group this TimeSeriesData is a part of. agg_weight is split between members of a group. Default is None.
+            agg_weight: The weight for calculation_type 'aggregated', should be between 0 and 1. Default is None.
 
-        Raises
-        ------
-        Exception
-            If both agg_group and agg_weight are set, an exception is raised.
+        Raises:
+            Exception: If both agg_group and agg_weight are set, an exception is raised.
         """
         self.data = data
         self.agg_group = agg_group
@@ -215,7 +214,7 @@ class TimeSeries:
         """
         Initialize a TimeSeries with a DataArray.
 
-        Parameters:
+        Args:
             data: The DataArray containing time series data
             name: The name of the TimeSeries
             aggregation_weight: The weight in aggregation calculations
@@ -472,7 +471,16 @@ class TimeSeriesCollection:
             hours_of_last_timestep: Optional[float] = None,
             hours_of_previous_timesteps: Optional[Union[float, np.ndarray]] = None
     ):
-        """Initialize with timesteps and optional duration settings."""
+
+        """
+        Args:
+            timesteps: The timesteps of the Collection.
+            hours_of_last_timestep: The duration of the last time step. Uses the last time interval if not specified
+            hours_of_previous_timesteps: The duration of previous timesteps.
+                If None, the first time increment of time_series is used.
+                This is needed to calculate previous durations (for example consecutive_on_hours).
+                If you use an array, take care that its long enough to cover all previous values!
+        """
         # Prepare and validate timesteps
         self._validate_timesteps(timesteps)
         self.hours_of_previous_timesteps = self._calculate_hours_of_previous_timesteps(
@@ -581,7 +589,7 @@ class TimeSeriesCollection:
 
         Parameters
         ----------
-        active_timesteps : Optional[pd.DatetimeIndex]
+        active_timesteps: Optional[pd.DatetimeIndex]
             The active timesteps of the model.
             If None, the all timesteps of the TimeSeriesCollection are taken."""
         if active_timesteps is None:
@@ -627,9 +635,9 @@ class TimeSeriesCollection:
 
         Parameters
         ----------
-        data : pd.DataFrame
+        data: pd.DataFrame
             DataFrame containing new data with timestamps as index
-        include_extra_timestep : bool, optional
+        include_extra_timestep: bool, optional
             Whether the provided data already includes the extra timestep, by default False
         """
         if not isinstance(data, pd.DataFrame):
@@ -675,9 +683,9 @@ class TimeSeriesCollection:
 
         Parameters
         ----------
-        filtered : Literal['all', 'constant', 'non_constant'], optional
+        filtered: Literal['all', 'constant', 'non_constant'], optional
             Filter time series by variability, by default 'non_constant'
-        include_extra_timestep : bool, optional
+        include_extra_timestep: bool, optional
             Whether to include the extra timestep in the result, by default True
 
         Returns
@@ -709,7 +717,7 @@ class TimeSeriesCollection:
 
         Parameters
         ----------
-        include_constants : bool, optional
+        include_constants: bool, optional
             Whether to include time series with constant values, by default True
 
         Returns

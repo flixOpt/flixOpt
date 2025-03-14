@@ -40,17 +40,13 @@ class FlowSystem:
             hours_of_previous_timesteps: Optional[Union[int, float, np.ndarray]] = None,
     ):
         """
-        Parameters
-        ----------
-        timesteps : pd.DatetimeIndex
-            The timesteps of the model.
-        hours_of_last_timestep : Optional[float], optional
-            The duration of the last time step. Uses the last time interval if not specified
-        hours_of_previous_timesteps : Union[int, float, np.ndarray]
-            The duration of previous timesteps.
-            If None, the first time increment of time_series is used.
-            This is needed to calculate previous durations (for example consecutive_on_hours).
-            If you use an array, take care that its long enough to cover all previous values!
+        Args:
+            timesteps: The timesteps of the model.
+            hours_of_last_timestep: The duration of the last time step. Uses the last time interval if not specified
+            hours_of_previous_timesteps: The duration of previous timesteps.
+                If None, the first time increment of time_series is used.
+                This is needed to calculate previous durations (for example consecutive_on_hours).
+                If you use an array, take care that its long enough to cover all previous values!
         """
         self.time_series_collection = TimeSeriesCollection(
             timesteps=timesteps,
@@ -126,7 +122,7 @@ class FlowSystem:
 
         Parameters
         ----------
-        *elements : childs of  Element like Boiler, HeatPump, Bus,...
+        *elements: childs of  Element like Boiler, HeatPump, Bus,...
             modeling Elements
 
         """
@@ -154,7 +150,7 @@ class FlowSystem:
 
         Parameters:
         -----------
-        path : Union[str, pathlib.Path]
+        path: Union[str, pathlib.Path]
             The path to the json file.
         """
         with open(path, 'w', encoding='utf-8') as f:
@@ -345,7 +341,7 @@ class FlowSystem:
 
         Parameters
         ----------
-        element : Element
+        element: Element
             new element to check
         """
         if element in self.all_elements.values():

@@ -29,26 +29,26 @@ class CalculationResults:
 
     Parameters
     ----------
-    model : linopy.Model
+    model: linopy.Model
         The linopy model that was used to solve the calculation.
-    infos : Dict
+    infos: Dict
         Information about the calculation,
-    results_structure : Dict[str, Dict[str, Dict]]
+    results_structure: Dict[str, Dict[str, Dict]]
         The structure of the flow_system that was used to solve the calculation.
 
     Attributes
     ----------
-    model : linopy.Model
+    model: linopy.Model
         The linopy model that was used to solve the calculation.
-    components : Dict[str, ComponentResults]
+    components: Dict[str, ComponentResults]
         A dictionary of ComponentResults for each component in the flow_system.
-    buses : Dict[str, BusResults]
+    buses: Dict[str, BusResults]
         A dictionary of BusResults for each bus in the flow_system.
-    effects : Dict[str, EffectResults]
+    effects: Dict[str, EffectResults]
         A dictionary of EffectResults for each effect in the flow_system.
-    timesteps_extra : pd.DatetimeIndex
+    timesteps_extra: pd.DatetimeIndex
         The extra timesteps of the flow_system.
-    hours_per_timestep : xr.DataArray
+    hours_per_timestep: xr.DataArray
         The duration of each timestep in hours.
 
     Class Methods
@@ -81,13 +81,25 @@ class CalculationResults:
                    name=calculation.name,
                    folder=calculation.folder)
 
-    def __init__(self,
-                 model: linopy.Model,
-                 results_structure: Dict[str, Dict[str, Dict]],
-                 name: str,
-                 infos: Dict,
-                 network_infos: Dict,
-                 folder: Optional[pathlib.Path] = None):
+    def __init__(
+        self,
+        model: linopy.Model,
+        results_structure: Dict[str, Dict[str, Dict]],
+        name: str,
+        infos: Dict,
+        network_infos: Dict,
+        folder: Optional[pathlib.Path] = None
+    ):
+        """
+        Args:
+            model: The linopy model that was used to solve the calculation.
+            results_structure: The structure of the flow_system that was used to solve the calculation.
+            name: The name of the calculation.
+            infos: Information about the calculation,
+            network_infos: Information about the network.
+            folder: The folder where the results are saved.
+        """
+
         self.model = model
         self._results_structure = results_structure
         self.infos = infos

@@ -116,8 +116,11 @@ plugins:
            # "^__init__" explicitly includes constructor methods
            filters: ["!^_[^_]", "^__init__"]
 
-           # Sets NumPy as the docstring style, recognizing sections like "Parameters", "Returns"
-           docstring_style: numpy
+           # Sets google as the docstring style
+           docstring_style: google
+
+           # Improves type annotations
+           modernize_annotations: true
 
            # Renders parameter sections as tables instead of lists for better readability
            docstring_section_style: table

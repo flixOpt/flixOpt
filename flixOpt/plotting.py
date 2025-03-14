@@ -37,20 +37,20 @@ def with_plotly(
 
     Parameters
     ----------
-    data : pd.DataFrame
+    data: pd.DataFrame
         A DataFrame containing the data to plot, where the index represents
         time (e.g., hours), and each column represents a separate data series.
-    mode : {'bar', 'line'}, default='bar'
+    mode: {'bar', 'line'}, default='bar'
         The plotting mode. Use 'bar' for stacked bar charts or 'line' for
         stepped lines.
-    colors : List[str], str, default='viridis'
+    colors: List[str], str, default='viridis'
         A List of colors (as str) or a name of a colorscale (e.g., 'viridis', 'plasma') to use for
         coloring the data series.
     title: str
         The title of the plot.
     ylabel: str
         The label for the y-axis.
-    fig : go.Figure, optional
+    fig: go.Figure, optional
         A Plotly figure object to plot on. If not provided, a new figure
         will be created.
     show: bool
@@ -210,20 +210,20 @@ def with_matplotlib(
 
     Parameters
     ----------
-    data : pd.DataFrame
+    data: pd.DataFrame
         A DataFrame containing the data to plot. The index should represent
         time (e.g., hours), and each column represents a separate data series.
-    mode : {'bar', 'line'}, default='bar'
+    mode: {'bar', 'line'}, default='bar'
         Plotting mode. Use 'bar' for stacked bar charts or 'line' for stepped lines.
-    colors : List[str], str, default='viridis'
+    colors: List[str], str, default='viridis'
         A List of colors (as str) or a name of a colorscale (e.g., 'viridis', 'plasma') to use for
         coloring the data series.
     figsize: Tuple[int, int], optional
         Specify the size of the figure
-    fig : plt.Figure, optional
+    fig: plt.Figure, optional
         A Matplotlib figure object to plot on. If not provided, a new figure
         will be created.
-    ax : plt.Axes, optional
+    ax: plt.Axes, optional
         A Matplotlib axes object to plot on. If not provided, a new axes
         will be created.
     show: bool
@@ -327,12 +327,12 @@ def heat_map_matplotlib(
 
     Parameters
     ----------
-    data : pd.DataFrame
+    data: pd.DataFrame
         A DataFrame containing the data to be visualized. The index will be used for the y-axis, and columns will be used for the x-axis.
         The values in the DataFrame will be represented as colors in the heatmap.
-    color_map : str, optional
+    color_map: str, optional
         The colormap to use for the heatmap. Default is 'viridis'. Matplotlib supports various colormaps like 'plasma', 'inferno', 'cividis', etc.
-    figsize : tuple of float, optional
+    figsize: tuple of float, optional
         The size of the figure to create. Default is (12, 6), which results in a width of 12 inches and a height of 6 inches.
     show: bool
         Wether to show the figure after creation.
@@ -406,12 +406,12 @@ def heat_map_plotly(
 
     Parameters
     ----------
-    data : pd.DataFrame
+    data: pd.DataFrame
         A DataFrame with the data to be visualized. The index will be used for the y-axis, and columns will be used for the x-axis.
         The values in the DataFrame will be represented as colors in the heatmap.
-    color_map : str, optional
+    color_map: str, optional
         The color scale to use for the heatmap. Default is 'viridis'. Plotly supports various color scales like 'Cividis', 'Inferno', etc.
-    categorical_labels : bool, optional
+    categorical_labels: bool, optional
         If True, the x and y axes are treated as categorical data (i.e., the index and columns will not be interpreted as continuous data).
         Default is True. If False, the axes are treated as continuous, which may be useful for time series or numeric data.
     show: bool
@@ -481,10 +481,10 @@ def reshape_to_2d(data_1d: np.ndarray, nr_of_steps_per_column: int) -> np.ndarra
 
     Parameters
     ----------
-    data_1d : np.ndarray
+    data_1d: np.ndarray
         A 1D numpy array with the data to reshape.
 
-    nr_of_steps_per_column : int
+    nr_of_steps_per_column: int
         The number of steps (rows) per column in the resulting 2D array. For example,
         this could be 24 (for hours) or 31 (for days in a month).
 
@@ -535,15 +535,15 @@ def heat_map_data_from_df(
 
     Parameters
     ----------
-    df : pd.DataFrame
+    df: pd.DataFrame
         A DataFrame with a DateTime index containing the data to reshape.
-    periods : str
+    periods: str
         The time interval of each period (columns of the heatmap),
         such as 'YS' (year start), 'W' (weekly), 'D' (daily), 'h' (hourly) etc.
-    steps_per_period : str
+    steps_per_period: str
         The time interval within each period (rows in the heatmap),
         such as 'YS' (year start), 'W' (weekly), 'D' (daily), 'h' (hourly) etc.
-    fill : str, optional
+    fill: str, optional
         Method to fill missing values: 'ffill' for forward fill or 'bfill' for backward fill.
 
     Returns

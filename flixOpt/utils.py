@@ -36,9 +36,9 @@ def convert_dataarray(data: xr.DataArray, mode: Literal['py', 'numpy', 'xarray',
 
     Parameters
     ----------
-    data : xr.DataArray
+    data: xr.DataArray
         The data to convert.
-    mode : Literal['py', 'numpy', 'xarray', 'structure']
+    mode: Literal['py', 'numpy', 'xarray', 'structure']
         Whether to return the dataaray to
         - python native types (for json)
         - numpy array

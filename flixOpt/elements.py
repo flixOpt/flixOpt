@@ -38,20 +38,17 @@ class Component(Element):
         meta_data: Optional[Dict] = None,
     ):
         """
-        Parameters
-        ----------
-        label : str
-            name.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
-        inputs : input flows.
-        outputs : output flows.
-        on_off_parameters: Information about on and off state of Component.
-            Component is On/Off, if all connected Flows are On/Off.
-            Induces On-Variable in all FLows!
-            See class OnOffParameters.
-        prevent_simultaneous_flows: Define a Group of Flows. Only one them can be on at a time.
-            Induces On-Variable in all FLows!
+        Args:
+            label: The name
+            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            inputs: input flows.
+            outputs: output flows.
+            on_off_parameters: Information about on and off state of Component.
+                Component is On/Off, if all connected Flows are On/Off.
+                Induces On-Variable in all FLows!
+                See class OnOffParameters.
+            prevent_simultaneous_flows: Define a Group of Flows. Only one them can be on at a time.
+                Induces On-Variable in all Flows! If possible, use OnOffParameters in a single Flow instead.
         """
         super().__init__(label, meta_data=meta_data)
         self.inputs: List['Flow'] = inputs or []
@@ -87,16 +84,12 @@ class Bus(Element):
         self, label: str, excess_penalty_per_flow_hour: Optional[NumericDataTS] = 1e5, meta_data: Optional[Dict] = None
     ):
         """
-        Parameters
-        ----------
-        label : str
-            name.
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
-        excess_penalty_per_flow_hour : none or scalar, array or TimeSeriesData
-            excess costs / penalty costs (bus balance compensation)
-            (none/ 0 -> no penalty). The default is 1e5.
-            (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
+        Args:
+            label: The name
+            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            excess_penalty_per_flow_hour: excess costs / penalty costs (bus balance compensation)
+                (none/ 0 -> no penalty). The default is 1e5.
+                (Take care: if you use a timeseries (no scalar), timeseries is aggregated if calculation_type = aggregated!)
         """
         super().__init__(label, meta_data=meta_data)
         self.excess_penalty_per_flow_hour = excess_penalty_per_flow_hour
@@ -125,9 +118,12 @@ class Bus(Element):
 class Connection:
     # input/output-dock (TODO:
     # -> wäre cool, damit Komponenten auch auch ohne Knoten verbindbar
-    # input wären wie Flow,aber statt bus : connectsTo -> hier andere Connection oder aber Bus (dort keine Connection, weil nicht notwendig)
+    # input wären wie Flow,aber statt bus: connectsTo -> hier andere Connection oder aber Bus (dort keine Connection, weil nicht notwendig)
 
     def __init__(self):
+        """
+        This class is not yet implemented!
+        """
         raise NotImplementedError()
 
 
@@ -155,48 +151,33 @@ class Flow(Element):
         meta_data: Optional[Dict] = None,
     ):
         r"""
-        Parameters
-        ----------
-        label : str
-            name of flow
-        meta_data : Optional[Dict]
-            used to store more information about the element. Is not used internally, but saved in the results
-        bus : Bus, optional
-            bus to which flow is linked
-        size : scalar, InvestmentParameters, optional
-            size of the flow. If InvestmentParameters is used, size is optimized.
-            If size is None, a default value is used.
-        relative_minimum : scalar, array, TimeSeriesData, optional
-            min value is relative_minimum multiplied by size
-        relative_maximum : scalar, array, TimeSeriesData, optional
-            max value is relative_maximum multiplied by size. If size = max then relative_maximum=1
-        load_factor_min : scalar, optional
-            minimal load factor  general: avg Flow per nominalVal/investSize
-            (e.g. boiler, kW/kWh=h; solarthermal: kW/m²;
-             def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
-        load_factor_max : scalar, optional
-            maximal load factor (see minimal load factor)
-        effects_per_flow_hour : scalar, array, TimeSeriesData, optional
-            operational costs, costs per flow-"work"
-        on_off_parameters : OnOffParameters, optional
-            If present, flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
-            Therefore a binary var "on" is used. Further, several other restrictions and effects can be modeled
-            through this On/Off State (See OnOffParameters)
-        flow_hours_total_max : TYPE, optional
-            maximum flow-hours ("flow-work")
-            (if size is not const, maybe load_factor_max fits better for you!)
-        flow_hours_total_min : TYPE, optional
-            minimum flow-hours ("flow-work")
-            (if size is not const, maybe load_factor_min fits better for you!)
-        fixed_relative_profile : scalar, array, TimeSeriesData, optional
-            fixed relative values for flow (if given).
-            flow_rate(t) := fixed_relative_profile(t) * size(t)
-            With this value, the flow_rate is no opt-variable anymore;
-            (relative_minimum u. relative_maximum are iverwritten)
-            used for fixed load profiles, i.g. heat demand, wind-power, solarthermal
-            If the load-profile is just an upper limit, use relative_maximum instead.
-        previous_flow_rate : scalar, array, optional
-            previous flow rate of the component.
+        Args:
+            label: The name
+            meta_data: used to store more information about the element. Is not used internally, but saved in the results
+            bus: bus to which flow is linked
+            size: size of the flow. If InvestmentParameters is used, size is optimized.
+                If size is None, a default value is used.
+            relative_minimum: min value is relative_minimum multiplied by size
+            relative_maximum: max value is relative_maximum multiplied by size. If size = max then relative_maximum=1
+            load_factor_min: minimal load factor  general: avg Flow per nominalVal/investSize
+                (e.g. boiler, kW/kWh=h; solarthermal: kW/m²;
+                 def: :math:`load\_factor:= sumFlowHours/ (nominal\_val \cdot \Delta t_{tot})`
+            load_factor_max: maximal load factor (see minimal load factor)
+            effects_per_flow_hour: operational costs, costs per flow-"work"
+            on_off_parameters: If present, flow can be "off", i.e. be zero (only relevant if relative_minimum > 0)
+                Therefore a binary var "on" is used. Further, several other restrictions and effects can be modeled
+                through this On/Off State (See OnOffParameters)
+            flow_hours_total_max: maximum flow-hours ("flow-work")
+                (if size is not const, maybe load_factor_max is the better choice!)
+            flow_hours_total_min: minimum flow-hours ("flow-work")
+                (if size is not predefined, maybe load_factor_min is the better choice!)
+            fixed_relative_profile: fixed relative values for flow (if given).
+                flow_rate(t) := fixed_relative_profile(t) * size(t)
+                With this value, the flow_rate is no optimization-variable anymore.
+                (relative_minimum and relative_maximum are ignored)
+                used for fixed load or supply profiles, i.g. heat demand, wind-power, solarthermal
+                If the load-profile is just an upper limit, use relative_maximum instead.
+            previous_flow_rate: previous flow rate of the component.
         """
         super().__init__(label, meta_data=meta_data)
         self.size = size or CONFIG.modeling.BIG  # Default size
