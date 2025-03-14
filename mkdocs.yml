@@ -4,19 +4,6 @@ site_url: https://flixopt.github.io/flixopt/
 repo_url: https://github.com/flixOpt/flixopt
 repo_name: flixOpt/flixopt
 
-nav:
-  - Home: readme.md
-  - Getting Started: getting-started.md
-  - Concepts: concepts/overview.md
-  - Examples:
-    - Basic Example: examples/basic.md
-    - Advanced Example: examples/advanced.md
-  - API Reference:
-    - FlowSystem: api/flow-system.md
-    - Components: api/components.md
-    - LinearConverters: api/linear-converters.md
-    - Effects: api/effects.md
-    - Calculations: api/calculation.md
 
 theme:
   name: material
@@ -38,43 +25,57 @@ theme:
   icon:
     repo: fontawesome/brands/github
   features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
     - navigation.tabs
     - navigation.sections
-    - toc.integrate
-    - search.suggest
-    - search.highlight
-    - content.tabs.link
-    - content.code.annotation
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - navigation.indexes
+    - content.action.edit
+    - content.action.view
     - content.code.copy
+    - content.code.annotate
+    - content.tooltips
 
 markdown_extensions:
+  - admonition
+  - codehilite
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
-  - pymdownx.arithmatex:
-      generic: true
-  - admonition
-  - footnotes
   - attr_list
+  - abbr
   - md_in_html
-  - def_list
-  - tables
-
-extra_javascript:
-  - javascripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
-  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - footnotes
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
   - search
+  - table-reader
   - mkdocstrings:
       handlers:
         python:
           options:
-            show_source: true
-            docstring_style: google
-            show_root_heading: true
-            show_category_heading: true
-            show_if_no_docstring: true
+            merge_init_into_class: true
+            docstring_options:
+              ignore_init_summary: true
+              trim_doctest_flags: true
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - gen-files:
+      scripts:
+        - scripts/gen_ref_pages.py
+
+watch:
+  - flixOpt
