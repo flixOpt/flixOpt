@@ -415,20 +415,15 @@ class FlowModel(ElementModel):
                 )
 
     @property
-    def with_investment(self) -> bool:
-        """Checks if the element's size is investment-driven."""
-        return isinstance(self.element.size, InvestParameters)
-
-    @property
     def absolute_flow_rate_bounds(self) -> Tuple[NumericData, NumericData]:
         """Returns absolute flow rate bounds. Important for OnOffModel"""
-        rel_min, rel_max = self.relative_flow_rate_bounds
+        relative_minimum, relative_maximum = self.relative_flow_rate_bounds
         size = self.element.size
-        if not self.with_investment:
-            return rel_min * size, rel_max * size
+        if not isinstance(size, InvestParameters):
+            return relative_minimum * size, relative_maximum * size
         if size.fixed_size is not None:
-            return rel_min * size.fixed_size, rel_max * size.fixed_size
-        return rel_min * size.minimum_size, rel_max * size.maximum_size
+            return relative_minimum * size.fixed_size, relative_maximum * size.fixed_size
+        return relative_minimum * size.minimum_size, relative_maximum * size.maximum_size
 
     @property
     def relative_flow_rate_bounds(self) -> Tuple[NumericData, NumericData]:

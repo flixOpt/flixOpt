@@ -160,6 +160,14 @@ class CalculationResults:
     def storages(self) -> List['ComponentResults']:
         return [comp for comp in self.components.values() if comp.is_storage]
 
+    @property
+    def variables(self) -> linopy.Variables:
+        return self.model.variables
+
+    @property
+    def constraints(self) -> linopy.Constraints:
+        return self.model.constraints
+
 
 class _ElementResults:
     @classmethod
@@ -176,15 +184,15 @@ class _ElementResults:
                  constraints: List[str]):
         self._calculation_results = calculation_results
         self.label = label
-        self._variables = variables
-        self._constraints = constraints
+        self._variable_names = variables
+        self._constraint_names = constraints
 
-        self.variables = self._calculation_results.model.variables[self._variables]
-        self.constraints = self._calculation_results.model.constraints[self._constraints]
+        self.variables = self._calculation_results.model.variables[self._variable_names]
+        self.constraints = self._calculation_results.model.constraints[self._constraint_names]
 
     @property
     def variables_time(self):
-        return self.variables[[name for name in self._variables if 'time' in self.variables[name].dims]]
+        return self.variables[[name for name in self._variable_names if 'time' in self.variables[name].dims]]
 
 
 class _NodeResults(_ElementResults):
@@ -208,11 +216,11 @@ class _NodeResults(_ElementResults):
         self.inputs = inputs
         self.outputs = outputs
 
-    def plot_flow_rates(self,
+    def plot_node_balance(self,
                         save: Union[bool, pathlib.Path] = False,
                         show: bool = True):
         fig = plotting.with_plotly(
-            self.flow_rates(with_last_timestep=True).to_dataframe(), mode='area', title=f'Flow rates of {self.label}'
+            self.node_balance(with_last_timestep=True).to_dataframe(), mode='area', title=f'Flow rates of {self.label}'
         )
         return plotly_save_and_show(
             fig,
@@ -221,7 +229,7 @@ class _NodeResults(_ElementResults):
             show=show,
             save=True if save else False)
 
-    def flow_rates(self,
+    def node_balance(self,
                    negate_inputs: bool = True,
                    negate_outputs: bool = False,
                    threshold: Optional[float] = 1e-5,
@@ -265,7 +273,7 @@ class ComponentResults(_NodeResults):
                           show: bool = True) -> plotly.graph_objs._figure.Figure:
         if not self.is_storage:
             raise ValueError(f'Cant plot charge_state. "{self.label}" is not a storage')
-        fig = plotting.with_plotly(self.flow_rates(with_last_timestep=True).to_dataframe(),
+        fig = plotting.with_plotly(self.node_balance(with_last_timestep=True).to_dataframe(),
                                     mode='area',
                                     title=f'Operation Balance of {self.label}',
                                     show=False)
@@ -303,7 +311,8 @@ class EffectResults(_ElementResults):
     """Results for an Effect"""
 
     def get_shares_from(self, element: str):
-        return self.variables[[name for name in self._variables if name.startswith(f'{element}->')]]
+        """ Get the shares from an Element (without subelements) to the Effect"""
+        return self.variables[[name for name in self._variable_names if name.startswith(f'{element}->')]]
 
 
 class SegmentedCalculationResults:
