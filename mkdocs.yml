@@ -20,16 +20,17 @@ nav:
       - Bus: api/bus.md
       - Components:
         - Storage: api/components/storage.md
-        - LinearConverter: api/components/linear-converter.md
+        - LinearConverter: api/components/linear_converter.md
         - Transmission: api/components/transmission.md
         - Source: api/components/source.md
         - Sink: api/components/sink.md
-        - SourceAndSink: api/components/source-and-sink.md
+        - SourceAndSink: api/components/source_and_sink.md
         - LinearConverter: api/components/linear-converter.md
         - LinearConverter Subclasses: api/components/linear-converters.md
       - Interfaces:
-        - OnOffParameters: api/interfaces/on-off-parameters.md
-        - InvestParameters: api/interfaces/invest-parameters.md
+        - OnOffParameters: api/interfaces/on_off_parameters.md
+        - InvestParameters: api/interfaces/invest_parameters.md
+        - AggregationParameters: api/interfaces/aggregation_parameters.md
 
 
     - Calculation: api/calculation.md
@@ -97,34 +98,73 @@ markdown_extensions:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
+
 plugins:
-  - search
-  - table-reader
-  - mkdocstrings:
-      default_handler: python
-      handlers:
-        python:
-          paths: [flixOpt]  # Package directory relative to mkdocs.yml
-          options:
-            group_by_category: true
-            show_source: false
-            show_root_heading: true
-            show_object_full_path: false
-            show_category_heading: true
-            show_if_no_docstring: true
-            show_signature: true
-            members_order: source
-            heading_level: 2
-            show_submodules: true
-            docstring_style: numpy
-            show_signature_annotations: true
-            separate_signature: true
-            filters: ["!^_[^_]", "^__init__"]  # Exclude private methods but include __init__
-            docstring_section_style: table
-            show_bases: true
-            show_docstring_attributes: false  # Exclude attributes
-            merge_init_into_class: true  # Merge __init__ docs into class docs
-            infer_type_annotations: true
+ - search  # Enables the search functionality in the documentation
+ - table-reader  # Allows including tables from external files
+ - mkdocstrings:  # Handles automatic API documentation generation
+     default_handler: python  # Sets Python as the default language
+     handlers:
+       python:  # Configuration for Python code documentation
+         options:
+           # Controls which members to include or exclude from documentation
+           # "!^_[^_]" excludes private members (single underscore)
+           # "^__init__" explicitly includes constructor methods
+           filters: ["!^_[^_]", "^__init__"]
+
+           # Sets NumPy as the docstring style, recognizing sections like "Parameters", "Returns"
+           docstring_style: numpy
+
+           # Renders parameter sections as tables instead of lists for better readability
+           docstring_section_style: table
+
+           # Hides the source code implementation from documentation
+           show_source: false
+
+           # Displays simple class names instead of full import paths
+           show_object_full_path: false
+
+           # Shows class attributes in the documentation
+           show_docstring_attributes: true
+
+           # Documents objects even if they don't have docstrings
+           show_if_no_docstring: true
+
+           # Displays category headings (Methods, Attributes, etc.) for organization
+           show_category_heading: true
+
+           # Shows method signatures with parameters
+           show_signature: true
+
+           # Includes type annotations in the signatures when available
+           show_signature_annotations: true
+
+           # Displays signatures separate from descriptions for cleaner layout
+           separate_signature: true
+
+           # Promotes constructor parameters to class-level documentation
+           merge_init_into_class: true
+
+           # Uses Python type hints to supplement docstring information
+           infer_type_annotations: true
+
+           # Sets the base heading level for documented objects (h2)
+           heading_level: 2
+
+           # Orders members as they appear in the source code
+           members_order: source
+
+           # Include members inherited from parent classes
+           inherited_members: true
+           selection:
+             members_order: source  # Keep order within each kind
+             order_by_kind:
+               - function
+               - method
+               - property
+               - attribute
+               - module
+               - class
 
 extra_javascript:
   - javascripts/mathjax.js  # Custom MathJax 3 CDN Configuration

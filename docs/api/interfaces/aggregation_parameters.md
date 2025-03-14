@@ -1,0 +1,1 @@
+::: flixOpt.aggregation.AggregationParameters
