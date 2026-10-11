@@ -48,7 +48,7 @@ dependencies = [
     "highspy >= 1.5.3, < 2, != 1.14.0",
     # Visualization
     "matplotlib >= 3.5.2, < 4",
-    "plotly >= 5.15.0, < 7",
+    "plotly >= 5.15.0, < 8",
     "xarray_plotly >= 0.0.13, < 1",
 ]
 
