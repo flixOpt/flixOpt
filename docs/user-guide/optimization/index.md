@@ -253,6 +253,7 @@ Variables follow this naming pattern:
 | **HiGHS** | Open-source | Fast | Free |
 | **Gurobi** | Commercial | Fastest | Academic/Commercial |
 | **CPLEX** | Commercial | Fastest | Academic/Commercial |
+| **Xpress** | Commercial | Fastest | Free Community/Academic/Commercial |
 | **GLPK** | Open-source | Slower | Free |
 
 **Recommendation:** Start with HiGHS (included by default). Use Gurobi/CPLEX for large models or when speed matters.

@@ -33,7 +33,13 @@ def gurobi_solver():
     return fx.solvers.GurobiSolver(mip_gap=0, time_limit_seconds=300)
 
 
-@pytest.fixture(params=[highs_solver, gurobi_solver], ids=['highs', 'gurobi'])
+@pytest.fixture()
+def xpress_solver():
+    pytest.importorskip('xpress', reason='Xpress not available in this environment')
+    return fx.solvers.XpressSolver(mip_gap=0, time_limit_seconds=300)
+
+
+@pytest.fixture(params=[highs_solver, gurobi_solver, xpress_solver], ids=['highs', 'gurobi', 'xpress'])
 def solver_fixture(request):
     return request.getfixturevalue(request.param.__name__)
 

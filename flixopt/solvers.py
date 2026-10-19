@@ -42,6 +42,7 @@ class _Solver:
         raise NotImplementedError
 
 
+@dataclass
 class GurobiSolver(_Solver):
     """
     Gurobi solver configuration.
@@ -64,6 +65,7 @@ class GurobiSolver(_Solver):
         }
 
 
+@dataclass
 class HighsSolver(_Solver):
     """
     HiGHS solver configuration.
@@ -86,4 +88,32 @@ class HighsSolver(_Solver):
             'time_limit': self.time_limit_seconds,
             'threads': self.threads,
             'log_to_console': self.log_to_console,
+        }
+
+
+@dataclass
+class XpressSolver(_Solver):
+    """
+    FICO Xpress solver configuration.
+
+    Requires Xpress >= 9.0 (for `TIMELIMIT`) and linopy >= 0.5.8 (to retrieve solutions after hitting the time limit).
+
+    Args:
+        mip_gap: Acceptable relative optimality gap in [0.0, 1.0]; mapped to Xpress `MIPRELSTOP`.
+        time_limit_seconds: Time limit in seconds; mapped to Xpress `TIMELIMIT`.
+        log_to_console: If False, no output to console; mapped to Xpress `OUTPUTLOG`.
+        extra_options: Additional Xpress controls merged into `options`.
+        threads (int | None): Number of threads to use; mapped to Xpress `THREADS`. If None, Xpress chooses.
+    """
+
+    threads: int | None = None
+    name: ClassVar[str] = 'xpress'
+
+    @property
+    def _options(self) -> dict[str, Any]:
+        return {
+            'MIPRELSTOP': self.mip_gap,
+            'TIMELIMIT': self.time_limit_seconds,
+            'THREADS': self.threads,
+            'OUTPUTLOG': 1 if self.log_to_console else 0,
         }
