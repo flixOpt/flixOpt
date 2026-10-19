@@ -87,3 +87,25 @@ class HighsSolver(_Solver):
             'threads': self.threads,
             'log_to_console': self.log_to_console,
         }
+
+
+class XpressSolver(_Solver):
+    """
+    FICO Xpress solver configuration.
+
+    Args:
+        mip_gap: Acceptable relative optimality gap in [0.0, 1.0]; mapped to Xpress `MIPRELSTOP`.
+        time_limit_seconds: Time limit in seconds; mapped to Xpress `TIMELIMIT`.
+        log_to_console: If False, no output to console; mapped to Xpress `OUTPUTLOG`.
+        extra_options: Additional Xpress controls (e.g. `{'THREADS': 4}`) merged into `options`.
+    """
+
+    name: ClassVar[str] = 'xpress'
+
+    @property
+    def _options(self) -> dict[str, Any]:
+        return {
+            'MIPRELSTOP': self.mip_gap,
+            'TIMELIMIT': self.time_limit_seconds,
+            'OUTPUTLOG': 1 if self.log_to_console else 0,
+        }
