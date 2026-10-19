@@ -50,7 +50,7 @@ For academic use, Gurobi offers free licenses:
 
 ### FICO Xpress (Optional)
 
-Xpress ships with a free Community license for small models (up to 5000 rows and columns). Academic and commercial licenses are available from [FICO](https://www.fico.com/en/fico-xpress-community-license):
+Xpress ships with a free Community license for small models (up to 5000 rows and columns combined). Academic and commercial licenses are available from [FICO](https://www.fico.com/en/fico-xpress-community-license):
 
 1. Install Xpress:
    ```bash
