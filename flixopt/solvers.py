@@ -96,6 +96,8 @@ class XpressSolver(_Solver):
     """
     FICO Xpress solver configuration.
 
+    Requires Xpress >= 9.0 (for `TIMELIMIT`) and linopy >= 0.5.8 (to retrieve solutions after hitting the time limit).
+
     Args:
         mip_gap: Acceptable relative optimality gap in [0.0, 1.0]; mapped to Xpress `MIPRELSTOP`.
         time_limit_seconds: Time limit in seconds; mapped to Xpress `TIMELIMIT`.

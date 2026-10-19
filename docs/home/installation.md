@@ -59,6 +59,9 @@ Xpress ships with a free Community license for small models (up to 5000 rows and
 2. For larger models, point Xpress to your license file (e.g. via the `XPAUTH_PATH` environment variable)
 3. Use it via `fx.solvers.XpressSolver()`
 
+!!! note "Version requirements"
+    `XpressSolver` needs Xpress 9.0 or newer (for the `TIMELIMIT` control). Use linopy 0.5.8 or newer: older versions cannot return a solution when Xpress stops at the time limit.
+
 ## Verification
 
 Verify your installation by running:
