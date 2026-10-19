@@ -11,6 +11,13 @@ For more details regarding the individual PRs and contributors, please refer to 
 
 ---
 
+## [9.1.0](https://github.com/flixOpt/flixopt/compare/v9.0.0...v9.1.0) (2026-10-19)
+
+
+### Features
+
+* add XpressSolver; fix HighsSolver threads ([#788](https://github.com/flixOpt/flixopt/issues/788)) ([470c9e9](https://github.com/flixOpt/flixopt/commit/470c9e9de3108262b92d3b2b096d7242e552acfc))
+
 ## [9.0.0](https://github.com/flixOpt/flixopt/compare/v8.1.0...v9.0.0) (2026-09-08)
 
 
