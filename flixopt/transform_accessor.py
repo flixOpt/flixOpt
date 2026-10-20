@@ -537,6 +537,7 @@ class _Expander:
                 expanded_sol_vars[name] = self.expand_dataarray(da, name, is_solution=True)
             expanded_fs._solution = xr.Dataset(expanded_sol_vars, attrs=reduced_solution.attrs)
             expanded_fs._solution = expanded_fs._solution.reindex(time=self._original_timesteps_extra)
+            expanded_fs._solver_report = self._fs.solver_report
 
             # 3. Combine charge_state with SOC_boundary for intercluster storages
             self._combine_intercluster_charge_states(expanded_fs, reduced_solution)

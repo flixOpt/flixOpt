@@ -314,5 +314,41 @@ class TestNetCDFRoundtrip:
         assert len(restored.clusters) == len(fs_clustered.clusters)
 
 
+class TestSolverReport:
+    """Tests for persisting linopy's SolverReport alongside the solution."""
+
+    def test_solver_report_after_solve(self, simple_flow_system, highs_solver):
+        assert simple_flow_system.solver_report is None
+        simple_flow_system.optimize(highs_solver)
+
+        report = simple_flow_system.solver_report
+        assert report is not None
+        assert report.runtime is not None
+        assert report.mip_gap is not None
+
+    def test_netcdf_roundtrip_preserves_solver_report(self, tmp_path, simple_flow_system, highs_solver):
+        simple_flow_system.optimize(highs_solver)
+
+        path = tmp_path / 'solved.nc'
+        simple_flow_system.to_netcdf(path)
+        restored = fx.FlowSystem.from_netcdf(path)
+
+        assert restored.solver_report == simple_flow_system.solver_report
+
+    def test_solver_report_not_saved_without_solution(self, simple_flow_system, highs_solver):
+        simple_flow_system.optimize(highs_solver)
+
+        ds = simple_flow_system.to_dataset(include_solution=False)
+
+        assert 'solver_report' not in ds.attrs
+        assert fx.FlowSystem.from_dataset(ds).solver_report is None
+
+    def test_solver_report_cleared_on_reset(self, simple_flow_system, highs_solver):
+        simple_flow_system.optimize(highs_solver)
+        simple_flow_system.reset()
+
+        assert simple_flow_system.solver_report is None
+
+
 if __name__ == '__main__':
     pytest.main(['-v', '--disable-warnings'])

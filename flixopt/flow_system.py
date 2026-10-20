@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from collections.abc import Collection
 
     import pyvis
+    from linopy.constants import SolverReport
 
     from .clustering import Clustering
     from .solvers import _Solver
@@ -260,6 +261,9 @@ class FlowSystem(Interface, CompositeContainerMixin[Element]):
 
         # Solution dataset - populated after optimization or loaded from file
         self._solution: xr.Dataset | None = None
+
+        # Solver-reported metrics (runtime, mip_gap, dual_bound) of the solve that produced the solution
+        self._solver_report: SolverReport | None = None
 
         # Variable categories for segment expansion handling
         # Populated when model is built, used by transform.expand()
@@ -1470,10 +1474,16 @@ class FlowSystem(Interface, CompositeContainerMixin[Element]):
 
         # Store solution on FlowSystem for direct Element access
         self.solution = self.model.solution
+        self._solver_report = self.model.solver.report if self.model.solver is not None else None
 
         # Copy variable categories for segment expansion handling
         self._variable_categories = self.model.variable_categories.copy()
 
+        if self.model.termination_condition != 'optimal':
+            logger.warning(
+                f'Solver terminated with condition "{self.model.termination_condition}". '
+                f'The solution may be suboptimal. {self._solver_report}'
+            )
         logger.info(f'Optimization solved successfully. Objective: {self.model.objective.value:.4f}')
 
         return self
@@ -1500,9 +1510,27 @@ class FlowSystem(Interface, CompositeContainerMixin[Element]):
 
     @solution.setter
     def solution(self, value: xr.Dataset | None) -> None:
-        """Set the solution dataset and invalidate statistics cache."""
+        """Set the solution dataset and invalidate statistics cache and solver report."""
         self._solution = value
+        self._solver_report = None  # Belongs to the previous solution
         self._statistics = None  # Invalidate cached statistics
+
+    @property
+    def solver_report(self) -> SolverReport | None:
+        """Solver-reported metrics of the solve that produced the current solution.
+
+        A :class:`linopy.constants.SolverReport` with ``runtime`` (seconds), ``mip_gap``
+        (relative gap reached) and ``dual_bound``. Fields the solver does not report are None.
+        Persisted through :meth:`to_netcdf` / :meth:`from_netcdf`.
+
+        Returns:
+            The report, or None if not solved or the solution did not come from a single solve.
+
+        Example:
+            >>> flow_system.optimize(solver)
+            >>> flow_system.solver_report.mip_gap
+        """
+        return self._solver_report
 
     @property
     def variable_categories(self) -> dict[str, VariableCategory]:

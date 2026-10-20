@@ -13,7 +13,7 @@ import time
 import warnings
 from collections import defaultdict
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, fields
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -1827,6 +1827,13 @@ class FlowSystemDatasetIO:
             solution_ds = solution_ds.rename({'solution_time': 'time'})
         flow_system.solution = solution_ds
 
+        if 'solver_report' in reference_structure:
+            from linopy.constants import SolverReport
+
+            report_dict = json.loads(reference_structure['solver_report'])
+            known = {f.name for f in fields(SolverReport)}
+            flow_system._solver_report = SolverReport(**{k: v for k, v in report_dict.items() if k in known})
+
     @classmethod
     def _restore_clustering(
         cls,
@@ -1967,6 +1974,8 @@ class FlowSystemDatasetIO:
 
         # Add solution data
         ds = cls._add_solution_to_dataset(ds, flow_system.solution, include_solution)
+        if include_solution and flow_system.solution is not None and flow_system.solver_report is not None:
+            ds.attrs['solver_report'] = json.dumps(asdict(flow_system.solver_report))
 
         # Add carriers
         ds = cls._add_carriers_to_dataset(ds, flow_system._carriers)

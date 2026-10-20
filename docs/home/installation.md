@@ -60,7 +60,7 @@ Xpress ships with a free Community license for small models (up to 5000 rows and
 3. Use it via `fx.solvers.XpressSolver()`
 
 !!! note "Version requirements"
-    `XpressSolver` needs Xpress 9.0 or newer (for the `TIMELIMIT` control). Use linopy 0.5.8 or newer: older versions cannot return a solution when Xpress stops at the time limit.
+    `XpressSolver` needs Xpress 9.0 or newer (for the `TIMELIMIT` control).
 
 ## Verification
 

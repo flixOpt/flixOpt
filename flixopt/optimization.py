@@ -17,6 +17,7 @@ import pathlib
 import sys
 import timeit
 import warnings
+from dataclasses import asdict
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from tqdm import tqdm
@@ -285,6 +286,7 @@ class Optimization:
 
         # Store solution on FlowSystem for direct Element access
         self.flow_system.solution = self.model.solution
+        self.flow_system._solver_report = self.model.solver.report if self.model.solver is not None else None
 
         self.results = Results.from_optimization(self)
 
@@ -363,6 +365,10 @@ class Optimization:
             'Variables': self.model.variables.nvars,
             'Main Results': self.main_results,
             'Durations': self.durations,
+            'Solver Report': {
+                'termination_condition': self.model.termination_condition,
+                **(asdict(self.flow_system.solver_report) if self.flow_system.solver_report is not None else {}),
+            },
             'Config': CONFIG.to_dict(),
         }
 

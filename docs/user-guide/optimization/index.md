@@ -45,6 +45,15 @@ print(flow_system.model.constraints)
 flow_system.solve(fx.solvers.HighsSolver())
 ```
 
+The solver's own metrics are available as linopy's `SolverReport` and are saved with the solution by `to_netcdf()`:
+
+```python
+report = flow_system.solver_report
+print(report.runtime, report.mip_gap, report.dual_bound)  # None if the solver doesn't report a value
+```
+
+If the solver stops early (e.g. at its time limit), flixopt logs a warning with the termination condition.
+
 **Best for:**
 
 - Small to medium problems
